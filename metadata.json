@@ -1,0 +1,6 @@
+{
+  "name": "Renea Infraestrutura",
+  "description": "Controle operacional completo: cadastro de empresas, obras, frotas, motoristas, abastecimento, lubrificação, diário de obras (RDO) e relatórios de consumo e custos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

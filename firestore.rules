@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Reusable general ID validation to prevent resource injection
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper to validate the incoming Renea cloud state payload (anti-value poisoning)
+    function isValidCloudState(data) {
+      return data != null 
+        && data.updatedAt is string 
+        && data.updatedAt.size() <= 64
+        && data.empresas is list
+        && data.obras is list
+        && data.equipamentos is list;
+    }
+
+    // Matches the cloud backup path for the Renea Infraestrutura system
+    match /sistemarenea_cloud/{docId} {
+      allow read: if isValidId(docId);
+      allow create, update: if isValidId(docId) && isValidCloudState(request.resource.data);
+      allow delete: if isValidId(docId);
+    }
+  }
+}

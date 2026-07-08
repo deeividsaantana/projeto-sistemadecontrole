@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "sistemarenea_cloud": {
+      "title": "Sistema Renea Cloud Storage",
+      "description": "Unified database state for the Renea Infraestrutura system to sync and restore data dynamically.",
+      "type": "object",
+      "properties": {
+        "empresas": {
+          "type": "array",
+          "description": "Lista de empresas cadastradas"
+        },
+        "obras": {
+          "type": "array",
+          "description": "Lista de obras/locais"
+        },
+        "equipamentos": {
+          "type": "array",
+          "description": "Lista de equipamentos frotas"
+        },
+        "funcionarios": {
+          "type": "array",
+          "description": "Lista de funcionários"
+        },
+        "comboios": {
+          "type": "array",
+          "description": "Lista de comboios lubrificantes"
+        },
+        "combustiveis": {
+          "type": "array",
+          "description": "Tipos de combustíveis cadastrados"
+        },
+        "lubrificantes": {
+          "type": "array",
+          "description": "Produtos lubrificantes cadastrados"
+        },
+        "etapas": {
+          "type": "array",
+          "description": "Etapas de serviço de obras"
+        },
+        "abastecimentos": {
+          "type": "array",
+          "description": "Histórico de abastecimentos de diesel"
+        },
+        "lubrificacoes": {
+          "type": "array",
+          "description": "Histórico de lubrificações de campo"
+        },
+        "rdos": {
+          "type": "array",
+          "description": "Relatórios Diários de Obra lançados"
+        },
+        "historyLogs": {
+          "type": "array",
+          "description": "Histórico geral de trilhas de auditoria"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data e hora da última sincronização com a nuvem"
+        }
+      },
+      "required": [
+        "empresas",
+        "obras",
+        "equipamentos",
+        "abastecimentos",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/sistemarenea_cloud/{docId}": {
+      "schema": "sistemarenea_cloud",
+      "description": "Armazena o backup sincronizado de todo o sistema Renea"
+    }
+  }
+}
