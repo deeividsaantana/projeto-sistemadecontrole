@@ -22,11 +22,24 @@ service cloud.firestore {
         && data.equipamentos is list;
     }
 
-    // Matches the cloud backup path for the Renea Infraestrutura system
+    // Legacy single-document backup path. Kept read-only for migration of
+    // old backups into the new per-item collections below; the app no
+    // longer writes new data here.
     match /sistemarenea_cloud/{docId} {
       allow read: if isValidId(docId);
       allow create, update: if isValidId(docId) && isValidCloudState(request.resource.data);
       allow delete: if isValidId(docId);
+    }
+
+    // NOVA ARQUITETURA: cada frota, RDO, relatório, equipamento, lançamento
+    // de combustível/lubrificante, ticket etc. é um documento individual
+    // dentro da sua própria coleção "sistemarenea_*", em vez de tudo
+    // dentro de um único documento. Isso é o que resolve o erro de limite
+    // de 1 MiB por documento do Firestore.
+    match /{collectionId}/{docId} {
+      allow read, write: if isValidId(docId) && collectionId.matches(
+        '^sistemarenea_(frotas|rdos|relatorios|equipamentos|combustivel|lubrificantes|tickets|meta|empresas|obras|funcionarios|tipos_combustivel|produtos_lubrificacao|etapas_servico|listas_presenca|ordens_servico|grupos_equipe|presencas_link|historico_presencas|apontamento_ramos|apontamento_ramo_registros|materiais_cadastro|materiais_registros|notifications)$'
+      );
     }
   }
 }
