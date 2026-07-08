@@ -69,12 +69,25 @@ export const RENEA_COLLECTIONS = {
   legacyCloud: 'sistemarenea_cloud',
 } as const;
 
-/** Deixa o texto seguro para ser usado como ID de documento no Firestore. */
+/**
+ * Deixa o texto seguro para ser usado como ID de documento no Firestore.
+ *
+ * IMPORTANTE: as regras de segurança (firestore.rules -> isValidId) só
+ * aceitam IDs que casem com '^[a-zA-Z0-9_-]+$' e com no máximo 128
+ * caracteres. Qualquer ID fora disso (acentos, espaços, "/", "#", ".",
+ * emojis, nomes muito longos etc.) faz o Firestore recusar a escrita
+ * inteira do batch com "Missing or insufficient permissions", mesmo que
+ * as regras pareçam permissivas. Por isso a sanitização aqui precisa
+ * espelhar exatamente o que a regra exige, e não só trocar espaço/barra.
+ */
 const sanitizeDocId = (rawId: string): string =>
   String(rawId ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos (á->a, ç->c, ã->a...)
     .trim()
-    .replace(/[/\s]+/g, '_')
-    .slice(0, 1500);
+    .replace(/[^a-zA-Z0-9_-]+/g, '_') // qualquer caractere fora do permitido vira "_"
+    .replace(/^_+|_+$/g, '') // remove "_" nas pontas
+    .slice(0, 128); // limite exigido por isValidId() nas regras
 
 const isDocTooLargeError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
