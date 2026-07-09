@@ -79,7 +79,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-branco.svg';
 
 // Firebase Imports
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 
 // Icons Import
@@ -485,40 +485,67 @@ export default function App() {
     customMateriaisCadastro = materiaisCadastro,
     customMateriaisRegistros = materiaisRegistros
   ): Promise<{ success: boolean; message: string }> => {
-    const path = 'sistemarenea_cloud/main_data';
+    // NOTE: Each data type is stored in its OWN Firestore document (instead of
+    // one giant "main_data" document with everything inside). Firestore has a
+    // hard 1,048,576 byte (1MB) limit per document. With all fields combined
+    // into a single document, the app was hitting that limit (real error seen:
+    // "size (2,524,365 bytes) exceeds the maximum allowed size of 1,048,576
+    // bytes") and every sync failed. Splitting by data type keeps each document
+    // far smaller and independent, so growth in one area (e.g. RDOs or
+    // equipment photos) doesn't break syncing of everything else.
+    const path = 'sistemarenea_cloud/*';
+    const nowIso = new Date().toISOString();
+    const fieldsToSync: Record<string, any> = {
+      empresas: customEmpresas,
+      obras: customObras,
+      equipamentos: customEquipamentos,
+      funcionarios: customFuncionarios,
+      comboios: customComboios,
+      combustiveis: customCombustiveis,
+      lubrificantes: customLubrificantes,
+      etapas: customEtapas,
+      abastecimentos: customAbastecimentos,
+      lubrificacoes: customLubrificacoes,
+      ticketsJazida: customTicketsJazida,
+      rdos: customRdos,
+      listasPresenca: customListasPresenca,
+      ordensServico: customOrdensServico,
+      gruposEquipe: customGruposEquipe,
+      presencasLink: customPresencasLink,
+      historicoPresencas: customHistoricoPresencas,
+      apontamentoRamos: customApontamentoRamos,
+      apontamentoRamoRegistros: customApontamentoRamoRegistros,
+      materiaisCadastro: customMateriaisCadastro,
+      materiaisRegistros: customMateriaisRegistros,
+      notifications: customNotifications,
+      historyLogs: customHistory
+    };
     try {
-      const data = {
-        empresas: customEmpresas,
-        obras: customObras,
-        equipamentos: customEquipamentos,
-        funcionarios: customFuncionarios,
-        comboios: customComboios,
-        combustiveis: customCombustiveis,
-        lubrificantes: customLubrificantes,
-        etapas: customEtapas,
-        abastecimentos: customAbastecimentos,
-        lubrificacoes: customLubrificacoes,
-        ticketsJazida: customTicketsJazida,
-        rdos: customRdos,
-        listasPresenca: customListasPresenca,
-        ordensServico: customOrdensServico,
-        gruposEquipe: customGruposEquipe,
-        presencasLink: customPresencasLink,
-        historicoPresencas: customHistoricoPresencas,
-        apontamentoRamos: customApontamentoRamos,
-        apontamentoRamoRegistros: customApontamentoRamoRegistros,
-        materiaisCadastro: customMateriaisCadastro,
-        materiaisRegistros: customMateriaisRegistros,
-        notifications: customNotifications,
-        historyLogs: customHistory,
-        updatedAt: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'sistemarenea_cloud', 'main_data'), data);
-      
+      const oversized: string[] = [];
+      await Promise.all(
+        Object.entries(fieldsToSync).map(async ([key, value]) => {
+          const payload = { value, updatedAt: nowIso };
+          // Rough size guard (Firestore's real limit accounts for encoding
+          // overhead too, so we warn well before the hard 1MB ceiling).
+          const approxBytes = new Blob([JSON.stringify(payload)]).size;
+          if (approxBytes > 900000) {
+            oversized.push(`${key} (~${(approxBytes / 1024 / 1024).toFixed(2)}MB)`);
+          }
+          await setDoc(doc(db, 'sistemarenea_cloud', key), payload);
+        })
+      );
+      await setDoc(doc(db, 'sistemarenea_cloud', 'meta'), { updatedAt: nowIso });
+
       const nowStr = new Date().toLocaleString('pt-BR');
       setLastCloudSync(nowStr);
       localStorage.setItem('renea_last_cloud_sync', nowStr);
       setIsFirebaseConnected(true);
+      if (oversized.length > 0) {
+        return {
+          success: true,
+          message: `Sincronizado, mas atenção: os seguintes dados estão próximos do limite de tamanho do Firestore e podem falhar em breve: ${oversized.join(', ')}. Considere reduzir fotos/anexos.`
+        };
+      }
       return { success: true, message: 'Os dados foram sincronizados na nuvem Firebase com sucesso!' };
     } catch (error: any) {
       if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
@@ -530,12 +557,34 @@ export default function App() {
 
   // Firebase Download Cloud Sync
   const handleDownloadFromFirebase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
-    const path = 'sistemarenea_cloud/main_data';
+    const path = 'sistemarenea_cloud/*';
     try {
-      const docSnap = await getDoc(doc(db, 'sistemarenea_cloud', 'main_data'));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        
+      // New format: one document per data type inside the 'sistemarenea_cloud' collection.
+      const snapshot = await getDocs(collection(db, 'sistemarenea_cloud'));
+      const data: Record<string, any> = {};
+      let foundNewFormat = false;
+      snapshot.forEach(docSnap => {
+        if (docSnap.id === 'meta') return;
+        const docData = docSnap.data();
+        if (docData && Object.prototype.hasOwnProperty.call(docData, 'value')) {
+          data[docSnap.id] = docData.value;
+          foundNewFormat = true;
+        }
+      });
+
+      // Backward compatibility: older backups were saved as a single
+      // 'main_data' document with all fields at the top level.
+      if (!foundNewFormat) {
+        const legacyDoc = await getDoc(doc(db, 'sistemarenea_cloud', 'main_data'));
+        if (legacyDoc.exists()) {
+          Object.assign(data, legacyDoc.data());
+        }
+      }
+
+      if (Object.keys(data).length === 0) {
+        return { success: false, message: 'Nenhum backup encontrado no Firestore.' };
+      }
+
         // Update all local states and persist to localStorage
         if (data.empresas) {
           setEmpresas(data.empresas);
@@ -635,9 +684,6 @@ export default function App() {
         localStorage.setItem('renea_last_cloud_sync', nowStr);
         setIsFirebaseConnected(true);
         return { success: true, message: 'Dados restaurados do Firebase com sucesso!' };
-      } else {
-        return { success: false, message: 'Nenhum backup encontrado no Firestore.' };
-      }
     } catch (error: any) {
       if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
         handleFirestoreError(error, OperationType.GET, path);
