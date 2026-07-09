@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Empresa, 
   ObraLocal, 
@@ -79,14 +79,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-branco.svg';
 
 // Firebase Imports
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import {
-  RENEA_COLLECTIONS,
-  SIZE_LIMIT_FRIENDLY_MESSAGE,
-  pushCollection,
-  pullCollection
-} from './utils/firebaseSync';
 
 // Icons Import
 import { 
@@ -238,6 +232,10 @@ export default function App() {
   // Firebase Sync States
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(false);
+  // Debounce ref for background auto-sync uploads: avoids firing one full-database
+  // write per action when several actions happen in quick succession, which was
+  // exhausting Firestore's queued-write limit and quota.
+  const autoSyncDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
 
   // Database States
@@ -487,66 +485,42 @@ export default function App() {
     customMateriaisCadastro = materiaisCadastro,
     customMateriaisRegistros = materiaisRegistros
   ): Promise<{ success: boolean; message: string }> => {
-    // NOVA ARQUITETURA: cada item vira um documento individual em sua
-    // própria coleção (sistemarenea_frotas, sistemarenea_rdos, etc.), em
-    // vez de tudo dentro de um único documento "sistemarenea_cloud/main_data".
-    // Isso evita estourar o limite de 1 MiB por documento do Firestore.
-    const path = 'sistemarenea_* (coleções separadas)';
+    const path = 'sistemarenea_cloud/main_data';
     try {
-      await Promise.all([
-        pushCollection(RENEA_COLLECTIONS.empresas, customEmpresas, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.obras, customObras, item => item.id),
-        // sistemarenea_equipamentos/{prefixo}: cada equipamento é indexado
-        // pelo prefixo da frota, como pedido na nova estrutura.
-        pushCollection(RENEA_COLLECTIONS.equipamentos, customEquipamentos, item => item.prefixo || item.id),
-        pushCollection(RENEA_COLLECTIONS.funcionarios, customFuncionarios, item => item.id),
-        // sistemarenea_frotas/{id}: comboios (frota de abastecimento).
-        pushCollection(RENEA_COLLECTIONS.frotas, customComboios, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.tiposCombustivel, customCombustiveis, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.produtosLubrificacao, customLubrificantes, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.etapasServico, customEtapas, item => item.id),
-        // sistemarenea_combustivel/{id}: lançamentos de abastecimento.
-        pushCollection(RENEA_COLLECTIONS.combustivel, customAbastecimentos, item => item.id),
-        // sistemarenea_lubrificantes/{id}: lançamentos de lubrificação.
-        pushCollection(RENEA_COLLECTIONS.lubrificantes, customLubrificacoes, item => item.id),
-        // sistemarenea_tickets/{id}: tickets de jazida.
-        pushCollection(RENEA_COLLECTIONS.tickets, customTicketsJazida, item => item.id),
-        // sistemarenea_rdos/{id}
-        pushCollection(RENEA_COLLECTIONS.rdos, customRdos, item => item.id),
-        // sistemarenea_relatorios/{id}: histórico de alterações (relatórios de auditoria).
-        pushCollection(RENEA_COLLECTIONS.relatorios, customHistory, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.listasPresenca, customListasPresenca, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.ordensServico, customOrdensServico, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.gruposEquipe, customGruposEquipe, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.presencasLink, customPresencasLink, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.historicoPresencas, customHistoricoPresencas, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.apontamentoRamos, customApontamentoRamos, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.apontamentoRamoRegistros, customApontamentoRamoRegistros, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.materiaisCadastro, customMateriaisCadastro, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.materiaisRegistros, customMateriaisRegistros, item => item.id),
-        pushCollection(RENEA_COLLECTIONS.notifications, customNotifications, item => item.id),
-      ]);
-
-      // sistemarenea_meta/sync: metadados da sincronização (não guarda os
-      // dados em si, apenas quando foi o último backup).
-      await setDoc(
-        doc(db, RENEA_COLLECTIONS.meta, 'sync'),
-        {
-          lastBackupAt: serverTimestamp(),
-          lastBackupAtLocal: new Date().toISOString()
-        },
-        { merge: true }
-      );
-
+      const data = {
+        empresas: customEmpresas,
+        obras: customObras,
+        equipamentos: customEquipamentos,
+        funcionarios: customFuncionarios,
+        comboios: customComboios,
+        combustiveis: customCombustiveis,
+        lubrificantes: customLubrificantes,
+        etapas: customEtapas,
+        abastecimentos: customAbastecimentos,
+        lubrificacoes: customLubrificacoes,
+        ticketsJazida: customTicketsJazida,
+        rdos: customRdos,
+        listasPresenca: customListasPresenca,
+        ordensServico: customOrdensServico,
+        gruposEquipe: customGruposEquipe,
+        presencasLink: customPresencasLink,
+        historicoPresencas: customHistoricoPresencas,
+        apontamentoRamos: customApontamentoRamos,
+        apontamentoRamoRegistros: customApontamentoRamoRegistros,
+        materiaisCadastro: customMateriaisCadastro,
+        materiaisRegistros: customMateriaisRegistros,
+        notifications: customNotifications,
+        historyLogs: customHistory,
+        updatedAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'sistemarenea_cloud', 'main_data'), data);
+      
       const nowStr = new Date().toLocaleString('pt-BR');
       setLastCloudSync(nowStr);
       localStorage.setItem('renea_last_cloud_sync', nowStr);
       setIsFirebaseConnected(true);
       return { success: true, message: 'Os dados foram sincronizados na nuvem Firebase com sucesso!' };
     } catch (error: any) {
-      if (error?.message === SIZE_LIMIT_FRIENDLY_MESSAGE) {
-        return { success: false, message: SIZE_LIMIT_FRIENDLY_MESSAGE };
-      }
       if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
         handleFirestoreError(error, OperationType.WRITE, path);
       }
@@ -556,156 +530,114 @@ export default function App() {
 
   // Firebase Download Cloud Sync
   const handleDownloadFromFirebase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
-    // NOVA ARQUITETURA: lê cada coleção separadamente (um documento por
-    // item) e reconstrói o estado local, em vez de ler um único documento
-    // "sistemarenea_cloud/main_data".
-    const path = 'sistemarenea_* (coleções separadas)';
+    const path = 'sistemarenea_cloud/main_data';
     try {
-      const [
-        empresasData,
-        obrasData,
-        equipamentosData,
-        funcionariosData,
-        comboiosData,
-        combustiveisData,
-        lubrificantesData,
-        etapasData,
-        abastecimentosData,
-        lubrificacoesData,
-        ticketsJazidaData,
-        rdosData,
-        historyLogsData,
-        listasPresencaData,
-        ordensServicoData,
-        gruposEquipeData,
-        presencasLinkData,
-        historicoPresencasData,
-        apontamentoRamosData,
-        apontamentoRamoRegistrosData,
-        materiaisCadastroData,
-        materiaisRegistrosData,
-        notificationsData
-      ] = await Promise.all([
-        pullCollection<Empresa>(RENEA_COLLECTIONS.empresas),
-        pullCollection<ObraLocal>(RENEA_COLLECTIONS.obras),
-        pullCollection<Equipamento>(RENEA_COLLECTIONS.equipamentos),
-        pullCollection<Funcionario>(RENEA_COLLECTIONS.funcionarios),
-        pullCollection<Comboio>(RENEA_COLLECTIONS.frotas),
-        pullCollection<TipoCombustivel>(RENEA_COLLECTIONS.tiposCombustivel),
-        pullCollection<ProdutoLubrificacao>(RENEA_COLLECTIONS.produtosLubrificacao),
-        pullCollection<EtapaServico>(RENEA_COLLECTIONS.etapasServico),
-        pullCollection<Abastecimento>(RENEA_COLLECTIONS.combustivel),
-        pullCollection<Lubrificacao>(RENEA_COLLECTIONS.lubrificantes),
-        pullCollection<TicketJazida>(RENEA_COLLECTIONS.tickets),
-        pullCollection<RdoDiario>(RENEA_COLLECTIONS.rdos),
-        pullCollection<HistoryLog>(RENEA_COLLECTIONS.relatorios),
-        pullCollection<ListaPresenca>(RENEA_COLLECTIONS.listasPresenca),
-        pullCollection<OrdemServico>(RENEA_COLLECTIONS.ordensServico),
-        pullCollection<GrupoEquipe>(RENEA_COLLECTIONS.gruposEquipe),
-        pullCollection<PresencaApontamento>(RENEA_COLLECTIONS.presencasLink),
-        pullCollection<HistoricoPresenca>(RENEA_COLLECTIONS.historicoPresencas),
-        pullCollection<ApontamentoRamo>(RENEA_COLLECTIONS.apontamentoRamos),
-        pullCollection<ApontamentoRamoRegistro>(RENEA_COLLECTIONS.apontamentoRamoRegistros),
-        pullCollection<MaterialCadastro>(RENEA_COLLECTIONS.materiaisCadastro),
-        pullCollection<MaterialRegistro>(RENEA_COLLECTIONS.materiaisRegistros),
-        pullCollection<AppNotification>(RENEA_COLLECTIONS.notifications)
-      ]);
-
-      // Migração de segurança: se as coleções novas ainda estiverem vazias
-      // (primeiro download após esta correção) mas existir um backup antigo
-      // no documento único legado, usamos esses dados como fallback para
-      // não perder nada. Na próxima "Enviar Dados para a Nuvem" eles já são
-      // regravados no formato novo (um documento por item).
-      let legacyData: any = null;
-      const allNewCollectionsEmpty = [
-        empresasData, obrasData, equipamentosData, funcionariosData, comboiosData,
-        combustiveisData, lubrificantesData, etapasData, abastecimentosData,
-        lubrificacoesData, ticketsJazidaData, rdosData, historyLogsData,
-        listasPresencaData, ordensServicoData, gruposEquipeData, presencasLinkData,
-        historicoPresencasData, apontamentoRamosData, apontamentoRamoRegistrosData,
-        materiaisCadastroData, materiaisRegistrosData, notificationsData
-      ].every(arr => arr.length === 0);
-
-      if (allNewCollectionsEmpty) {
-        try {
-          const legacySnap = await getDoc(doc(db, RENEA_COLLECTIONS.legacyCloud, 'main_data'));
-          if (legacySnap.exists()) legacyData = legacySnap.data();
-        } catch {
-          // Se o documento legado também falhar (ex.: já estourou o limite),
-          // simplesmente seguimos sem ele.
+      const docSnap = await getDoc(doc(db, 'sistemarenea_cloud', 'main_data'));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        
+        // Update all local states and persist to localStorage
+        if (data.empresas) {
+          setEmpresas(data.empresas);
+          localStorage.setItem('renea_empresas', JSON.stringify(data.empresas));
         }
-      }
-
-      const pick = <T,>(fresh: T[], legacyKey: string): T[] =>
-        (fresh.length > 0 ? fresh : (legacyData?.[legacyKey] as T[] | undefined)) || [];
-
-      const finalEmpresas = pick(empresasData, 'empresas');
-      const finalObras = pick(obrasData, 'obras');
-      const finalEquipamentos = pick(equipamentosData, 'equipamentos');
-      const finalFuncionarios = pick(funcionariosData, 'funcionarios');
-      const finalComboios = pick(comboiosData, 'comboios');
-      const finalCombustiveis = pick(combustiveisData, 'combustiveis');
-      const finalLubrificantes = pick(lubrificantesData, 'lubrificantes');
-      const finalEtapas = pick(etapasData, 'etapas');
-      const finalAbastecimentos = pick(abastecimentosData, 'abastecimentos');
-      const finalLubrificacoes = pick(lubrificacoesData, 'lubrificacoes');
-      const finalTicketsJazida = pick(ticketsJazidaData, 'ticketsJazida');
-      const finalRdos = pick(rdosData, 'rdos');
-      const finalHistoryLogs = pick(historyLogsData, 'historyLogs');
-      const finalListasPresenca = pick(listasPresencaData, 'listasPresenca');
-      const finalOrdensServico = pick(ordensServicoData, 'ordensServico');
-      const finalGruposEquipe = pick(gruposEquipeData, 'gruposEquipe');
-      const finalPresencasLink = pick(presencasLinkData, 'presencasLink');
-      const finalHistoricoPresencas = pick(historicoPresencasData, 'historicoPresencas');
-      const finalApontamentoRamos = pick(apontamentoRamosData, 'apontamentoRamos');
-      const finalApontamentoRamoRegistros = pick(apontamentoRamoRegistrosData, 'apontamentoRamoRegistros');
-      const finalMateriaisCadastro = pick(materiaisCadastroData, 'materiaisCadastro');
-      const finalMateriaisRegistros = pick(materiaisRegistrosData, 'materiaisRegistros');
-      const finalNotifications = pick(notificationsData, 'notifications');
-
-      const hasAnyData = [
-        finalEmpresas, finalObras, finalEquipamentos, finalFuncionarios, finalComboios,
-        finalCombustiveis, finalLubrificantes, finalEtapas, finalAbastecimentos,
-        finalLubrificacoes, finalTicketsJazida, finalRdos, finalHistoryLogs,
-        finalListasPresenca, finalOrdensServico, finalGruposEquipe, finalPresencasLink,
-        finalHistoricoPresencas, finalApontamentoRamos, finalApontamentoRamoRegistros,
-        finalMateriaisCadastro, finalMateriaisRegistros, finalNotifications
-      ].some(arr => arr.length > 0);
-
-      if (!hasAnyData) {
+        if (data.obras) {
+          setObras(data.obras);
+          localStorage.setItem('renea_obras', JSON.stringify(data.obras));
+        }
+        if (data.equipamentos) {
+          setEquipamentos(data.equipamentos);
+          localStorage.setItem('renea_equipamentos', JSON.stringify(data.equipamentos));
+        }
+        if (data.funcionarios) {
+          setFuncionarios(data.funcionarios);
+          localStorage.setItem('renea_funcionarios', JSON.stringify(data.funcionarios));
+        }
+        if (data.comboios) {
+          setComboios(data.comboios);
+          localStorage.setItem('renea_comboios', JSON.stringify(data.comboios));
+        }
+        if (data.combustiveis) {
+          setCombustiveis(data.combustiveis);
+          localStorage.setItem('renea_combustiveis', JSON.stringify(data.combustiveis));
+        }
+        if (data.lubrificantes) {
+          setLubrificantes(data.lubrificantes);
+          localStorage.setItem('renea_lubrificantes', JSON.stringify(data.lubrificantes));
+        }
+        if (data.etapas) {
+          setEtapas(data.etapas);
+          localStorage.setItem('renea_etapas', JSON.stringify(data.etapas));
+        }
+        if (data.abastecimentos) {
+          setAbastecimentos(data.abastecimentos);
+          localStorage.setItem('renea_abastecimentos', JSON.stringify(data.abastecimentos));
+        }
+        if (data.lubrificacoes) {
+          setLubrificacoes(data.lubrificacoes);
+          localStorage.setItem('renea_lubrificacoes', JSON.stringify(data.lubrificacoes));
+        }
+        if (data.ticketsJazida) {
+          setTicketsJazida(data.ticketsJazida);
+          localStorage.setItem('renea_tickets_jazida', JSON.stringify(data.ticketsJazida));
+        }
+        if (data.rdos) {
+          setRdos(data.rdos);
+          localStorage.setItem('renea_rdos', JSON.stringify(data.rdos));
+        }
+        if (data.listasPresenca) {
+          setListasPresenca(data.listasPresenca);
+          localStorage.setItem('renea_listas_presenca', JSON.stringify(data.listasPresenca));
+        }
+        if (data.ordensServico) {
+          setOrdensServico(data.ordensServico);
+          localStorage.setItem('renea_ordens_servico', JSON.stringify(data.ordensServico));
+        }
+        if (data.gruposEquipe) {
+          setGruposEquipe(data.gruposEquipe);
+          localStorage.setItem('renea_grupos_equipes', JSON.stringify(data.gruposEquipe));
+        }
+        if (data.presencasLink) {
+          setPresencasLink(data.presencasLink);
+          localStorage.setItem('renea_presencas_link', JSON.stringify(data.presencasLink));
+        }
+        if (data.historicoPresencas) {
+          setHistoricoPresencas(data.historicoPresencas);
+          localStorage.setItem('renea_historico_presencas', JSON.stringify(data.historicoPresencas));
+        }
+        if (data.apontamentoRamos) {
+          setApontamentoRamos(data.apontamentoRamos);
+          localStorage.setItem('renea_apontamento_ramos', JSON.stringify(data.apontamentoRamos));
+        }
+        if (data.apontamentoRamoRegistros) {
+          setApontamentoRamoRegistros(data.apontamentoRamoRegistros);
+          localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(data.apontamentoRamoRegistros));
+        }
+        if (data.materiaisCadastro) {
+          setMateriaisCadastro(data.materiaisCadastro);
+          localStorage.setItem('renea_materiais_cadastro', JSON.stringify(data.materiaisCadastro));
+        }
+        if (data.materiaisRegistros) {
+          setMateriaisRegistros(data.materiaisRegistros);
+          localStorage.setItem('renea_materiais_registros', JSON.stringify(data.materiaisRegistros));
+        }
+        if (data.notifications) {
+          setNotifications(data.notifications);
+          localStorage.setItem('renea_notifications', JSON.stringify(data.notifications));
+        }
+        if (data.historyLogs) {
+          setHistoryLogs(data.historyLogs);
+          localStorage.setItem('renea_history_logs', JSON.stringify(data.historyLogs));
+        }
+        
+        const nowStr = new Date().toLocaleString('pt-BR');
+        setLastCloudSync(nowStr);
+        localStorage.setItem('renea_last_cloud_sync', nowStr);
+        setIsFirebaseConnected(true);
+        return { success: true, message: 'Dados restaurados do Firebase com sucesso!' };
+      } else {
         return { success: false, message: 'Nenhum backup encontrado no Firestore.' };
       }
-
-      // Atualiza todos os estados locais e persiste no localStorage
-      if (finalEmpresas.length) { setEmpresas(finalEmpresas); localStorage.setItem('renea_empresas', JSON.stringify(finalEmpresas)); }
-      if (finalObras.length) { setObras(finalObras); localStorage.setItem('renea_obras', JSON.stringify(finalObras)); }
-      if (finalEquipamentos.length) { setEquipamentos(finalEquipamentos); localStorage.setItem('renea_equipamentos', JSON.stringify(finalEquipamentos)); }
-      if (finalFuncionarios.length) { setFuncionarios(finalFuncionarios); localStorage.setItem('renea_funcionarios', JSON.stringify(finalFuncionarios)); }
-      if (finalComboios.length) { setComboios(finalComboios); localStorage.setItem('renea_comboios', JSON.stringify(finalComboios)); }
-      if (finalCombustiveis.length) { setCombustiveis(finalCombustiveis); localStorage.setItem('renea_combustiveis', JSON.stringify(finalCombustiveis)); }
-      if (finalLubrificantes.length) { setLubrificantes(finalLubrificantes); localStorage.setItem('renea_lubrificantes', JSON.stringify(finalLubrificantes)); }
-      if (finalEtapas.length) { setEtapas(finalEtapas); localStorage.setItem('renea_etapas', JSON.stringify(finalEtapas)); }
-      if (finalAbastecimentos.length) { setAbastecimentos(finalAbastecimentos); localStorage.setItem('renea_abastecimentos', JSON.stringify(finalAbastecimentos)); }
-      if (finalLubrificacoes.length) { setLubrificacoes(finalLubrificacoes); localStorage.setItem('renea_lubrificacoes', JSON.stringify(finalLubrificacoes)); }
-      if (finalTicketsJazida.length) { setTicketsJazida(finalTicketsJazida); localStorage.setItem('renea_tickets_jazida', JSON.stringify(finalTicketsJazida)); }
-      if (finalRdos.length) { setRdos(finalRdos); localStorage.setItem('renea_rdos', JSON.stringify(finalRdos)); }
-      if (finalListasPresenca.length) { setListasPresenca(finalListasPresenca); localStorage.setItem('renea_listas_presenca', JSON.stringify(finalListasPresenca)); }
-      if (finalOrdensServico.length) { setOrdensServico(finalOrdensServico); localStorage.setItem('renea_ordens_servico', JSON.stringify(finalOrdensServico)); }
-      if (finalGruposEquipe.length) { setGruposEquipe(finalGruposEquipe); localStorage.setItem('renea_grupos_equipes', JSON.stringify(finalGruposEquipe)); }
-      if (finalPresencasLink.length) { setPresencasLink(finalPresencasLink); localStorage.setItem('renea_presencas_link', JSON.stringify(finalPresencasLink)); }
-      if (finalHistoricoPresencas.length) { setHistoricoPresencas(finalHistoricoPresencas); localStorage.setItem('renea_historico_presencas', JSON.stringify(finalHistoricoPresencas)); }
-      if (finalApontamentoRamos.length) { setApontamentoRamos(finalApontamentoRamos); localStorage.setItem('renea_apontamento_ramos', JSON.stringify(finalApontamentoRamos)); }
-      if (finalApontamentoRamoRegistros.length) { setApontamentoRamoRegistros(finalApontamentoRamoRegistros); localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(finalApontamentoRamoRegistros)); }
-      if (finalMateriaisCadastro.length) { setMateriaisCadastro(finalMateriaisCadastro); localStorage.setItem('renea_materiais_cadastro', JSON.stringify(finalMateriaisCadastro)); }
-      if (finalMateriaisRegistros.length) { setMateriaisRegistros(finalMateriaisRegistros); localStorage.setItem('renea_materiais_registros', JSON.stringify(finalMateriaisRegistros)); }
-      if (finalNotifications.length) { setNotifications(finalNotifications); localStorage.setItem('renea_notifications', JSON.stringify(finalNotifications)); }
-      if (finalHistoryLogs.length) { setHistoryLogs(finalHistoryLogs); localStorage.setItem('renea_history_logs', JSON.stringify(finalHistoryLogs)); }
-
-      const nowStr = new Date().toLocaleString('pt-BR');
-      setLastCloudSync(nowStr);
-      localStorage.setItem('renea_last_cloud_sync', nowStr);
-      setIsFirebaseConnected(true);
-      return { success: true, message: 'Dados restaurados do Firebase com sucesso!' };
     } catch (error: any) {
       if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
         handleFirestoreError(error, OperationType.GET, path);
@@ -755,9 +687,17 @@ export default function App() {
       'Sistema Local'
     );
 
-    // Handle background cloud sync if Auto Sync is active
+    // Handle background cloud sync if Auto Sync is active.
+    // Debounced: if several actions happen in quick succession, only the last
+    // one (after 2.5s of inactivity) actually triggers a Firebase write. This
+    // prevents piling up multiple full-database writes at once, which used to
+    // exhaust Firestore's queued-write limit and daily quota.
     if (localStorage.getItem('renea_auto_sync') === 'true') {
-      setTimeout(() => {
+      if (autoSyncDebounceRef.current) {
+        clearTimeout(autoSyncDebounceRef.current);
+      }
+      autoSyncDebounceRef.current = setTimeout(() => {
+        autoSyncDebounceRef.current = null;
         const getLS = (key: string, def: any) => {
           const val = localStorage.getItem(key);
           return val ? JSON.parse(val) : def;
@@ -789,9 +729,13 @@ export default function App() {
         ).then(res => {
           if (res.success) {
             console.log("Auto-sync completed successfully.");
+          } else {
+            console.warn("Auto-sync failed:", res.message);
           }
+        }).catch(err => {
+          console.warn("Auto-sync error:", err);
         });
-      }, 100);
+      }, 2500);
     }
   };
 

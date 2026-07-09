@@ -1,92 +1,77 @@
 {
   "entities": {
-    "sistemarenea_item": {
-      "title": "Sistema Renea Cloud Item",
-      "description": "Documento individual de um item (frota, RDO, relatório, equipamento, lançamento de combustível/lubrificante, ticket, etc.) sincronizado com o Firestore. Cada registro do sistema local vira um documento próprio dentro da coleção correspondente, em vez de todos os dados ficarem dentro de um único documento.",
+    "sistemarenea_cloud": {
+      "title": "Sistema Renea Cloud Storage",
+      "description": "Unified database state for the Renea Infraestrutura system to sync and restore data dynamically.",
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único do item (usado também como ID do documento, exceto em sistemarenea_equipamentos, que usa o prefixo da frota)."
+        "empresas": {
+          "type": "array",
+          "description": "Lista de empresas cadastradas"
+        },
+        "obras": {
+          "type": "array",
+          "description": "Lista de obras/locais"
+        },
+        "equipamentos": {
+          "type": "array",
+          "description": "Lista de equipamentos frotas"
+        },
+        "funcionarios": {
+          "type": "array",
+          "description": "Lista de funcionários"
+        },
+        "comboios": {
+          "type": "array",
+          "description": "Lista de comboios lubrificantes"
+        },
+        "combustiveis": {
+          "type": "array",
+          "description": "Tipos de combustíveis cadastrados"
+        },
+        "lubrificantes": {
+          "type": "array",
+          "description": "Produtos lubrificantes cadastrados"
+        },
+        "etapas": {
+          "type": "array",
+          "description": "Etapas de serviço de obras"
+        },
+        "abastecimentos": {
+          "type": "array",
+          "description": "Histórico de abastecimentos de diesel"
+        },
+        "lubrificacoes": {
+          "type": "array",
+          "description": "Histórico de lubrificações de campo"
+        },
+        "rdos": {
+          "type": "array",
+          "description": "Relatórios Diários de Obra lançados"
+        },
+        "historyLogs": {
+          "type": "array",
+          "description": "Histórico geral de trilhas de auditoria"
         },
         "updatedAt": {
           "type": "string",
           "format": "date-time",
-          "description": "Timestamp do servidor (serverTimestamp) da última gravação deste item."
+          "description": "Data e hora da última sincronização com a nuvem"
         }
       },
-      "required": ["updatedAt"]
-    },
-    "sistemarenea_meta_sync": {
-      "title": "Metadados de sincronização",
-      "description": "Documento único com metadados sobre a última sincronização (não guarda os dados do sistema, apenas o carimbo de tempo do último backup).",
-      "type": "object",
-      "properties": {
-        "lastBackupAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp do servidor (serverTimestamp) do último envio de dados para a nuvem."
-        },
-        "lastBackupAtLocal": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Data/hora local (ISO) do último envio, para exibição amigável na interface."
-        }
-      }
+      "required": [
+        "empresas",
+        "obras",
+        "equipamentos",
+        "abastecimentos",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
-    "/sistemarenea_frotas/{id}": {
-      "schema": "sistemarenea_item",
-      "description": "Comboios/frota de abastecimento — um documento por item."
-    },
-    "/sistemarenea_rdos/{id}": {
-      "schema": "sistemarenea_item",
-      "description": "Relatórios Diários de Obra (RDOs) — um documento por item."
-    },
-    "/sistemarenea_relatorios/{id}": {
-      "schema": "sistemarenea_item",
-      "description": "Histórico/trilha de auditoria (relatórios de alterações) — um documento por item."
-    },
-    "/sistemarenea_equipamentos/{prefixo}": {
-      "schema": "sistemarenea_item",
-      "description": "Equipamentos cadastrados, indexados pelo prefixo da frota — um documento por item."
-    },
-    "/sistemarenea_combustivel/{id}": {
-      "schema": "sistemarenea_item",
-      "description": "Lançamentos de abastecimento de combustível — um documento por item."
-    },
-    "/sistemarenea_lubrificantes/{id}": {
-      "schema": "sistemarenea_item",
-      "description": "Lançamentos de lubrificação — um documento por item."
-    },
-    "/sistemarenea_tickets/{id}": {
-      "schema": "sistemarenea_item",
-      "description": "Tickets de jazida — um documento por item."
-    },
-    "/sistemarenea_meta/sync": {
-      "schema": "sistemarenea_meta_sync",
-      "description": "Metadados da sincronização (lastBackupAt)."
-    },
-    "/sistemarenea_empresas/{id}": { "schema": "sistemarenea_item", "description": "Empresas cadastradas — um documento por item." },
-    "/sistemarenea_obras/{id}": { "schema": "sistemarenea_item", "description": "Obras/locais — um documento por item." },
-    "/sistemarenea_funcionarios/{id}": { "schema": "sistemarenea_item", "description": "Funcionários — um documento por item." },
-    "/sistemarenea_tipos_combustivel/{id}": { "schema": "sistemarenea_item", "description": "Tipos de combustível cadastrados." },
-    "/sistemarenea_produtos_lubrificacao/{id}": { "schema": "sistemarenea_item", "description": "Produtos de lubrificação cadastrados." },
-    "/sistemarenea_etapas_servico/{id}": { "schema": "sistemarenea_item", "description": "Etapas de serviço de obras." },
-    "/sistemarenea_listas_presenca/{id}": { "schema": "sistemarenea_item", "description": "Listas de presença." },
-    "/sistemarenea_ordens_servico/{id}": { "schema": "sistemarenea_item", "description": "Ordens de serviço de manutenção." },
-    "/sistemarenea_grupos_equipe/{id}": { "schema": "sistemarenea_item", "description": "Grupos/equipes de presença." },
-    "/sistemarenea_presencas_link/{id}": { "schema": "sistemarenea_item", "description": "Apontamentos de presença via link externo." },
-    "/sistemarenea_historico_presencas/{id}": { "schema": "sistemarenea_item", "description": "Histórico de edições de presença." },
-    "/sistemarenea_apontamento_ramos/{id}": { "schema": "sistemarenea_item", "description": "Ramos de apontamento cadastrados." },
-    "/sistemarenea_apontamento_ramo_registros/{id}": { "schema": "sistemarenea_item", "description": "Registros de apontamento por ramo." },
-    "/sistemarenea_materiais_cadastro/{id}": { "schema": "sistemarenea_item", "description": "Materiais cadastrados." },
-    "/sistemarenea_materiais_registros/{id}": { "schema": "sistemarenea_item", "description": "Registros de movimentação de materiais." },
-    "/sistemarenea_notifications/{id}": { "schema": "sistemarenea_item", "description": "Notificações do sistema." },
     "/sistemarenea_cloud/{docId}": {
-      "schema": "sistemarenea_cloud_legacy",
-      "description": "[LEGADO] Documento único antigo, mantido somente como leitura para migração automática de backups feitos antes da correção da arquitetura de sincronização. Não é mais gravado pelo sistema."
+      "schema": "sistemarenea_cloud",
+      "description": "Armazena o backup sincronizado de todo o sistema Renea"
     }
   }
 }
