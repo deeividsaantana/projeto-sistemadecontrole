@@ -17,7 +17,12 @@ import {
   Eye,
   MapPin,
   Upload,
-  CopyPlus
+  CopyPlus,
+  Link2,
+  ClipboardCheck,
+  Clock3,
+  CheckCircle2,
+  FilePenLine
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
@@ -29,6 +34,7 @@ interface TicketsJazidaTabProps {
   onSaveTicket: (item: TicketJazida, isNew: boolean) => void;
   onDeleteTicket: (id: string) => void;
   onImportTickets: (items: TicketJazida[]) => void;
+  onReserveTicketNumber: () => Promise<string>;
 }
 
 const TIPOS_MATERIAL: TipoMaterialJazida[] = ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Argila', 'Mataco', 'Solo mole', 'Outros'];
@@ -40,7 +46,7 @@ const DESTINOS_OBRA: DestinoObraJazida[] = [
 ];
 const EMPRESAS_TICKET: EmpresaTicketJazida[] = ['RENEA', 'Terceiro', 'Outros'];
 
-export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets }: TicketsJazidaTabProps) {
+export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber }: TicketsJazidaTabProps) {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,6 +57,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [ticketTab, setTicketTab] = useState<TipoTicketJazida>('Liberação');
+  const [linkMessage, setLinkMessage] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
@@ -108,9 +115,16 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setObservacao('');
   };
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = async () => {
     resetFormFields();
     setIsFormOpen(true);
+    if (ticketTab === 'Liberação') {
+      try {
+        setTicketNumero(await onReserveTicketNumber());
+      } catch {
+        setValidationError('Não foi possível gerar o número automático. Confira a conexão com o Firebase.');
+      }
+    }
   };
 
   const handleOpenEdit = (t: TicketJazida) => {
@@ -178,6 +192,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       estaca: '',
       observacao: `Recebimento gerado a partir da liberação Nº ${liberacao.ticketNumero}.`,
       status: 'OK',
+      statusFluxo: 'Rascunho',
+      origemRegistro: 'Admin',
       criadoEm: now,
       atualizadoEm: now,
     }, true);
@@ -218,6 +234,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     const existing = !isNew ? tickets.find(t => t.id === editingId) : undefined;
 
     onSaveTicket({
+      ...(existing || {}),
       id: isNew ? `ticket-${Date.now()}` : editingId!,
       data,
       tipoTicket,
@@ -237,6 +254,10 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       empresa,
       observacao: observacao.trim(),
       status: 'OK',
+      statusFluxo: existing?.statusFluxo || 'Enviado',
+      unidadeQuantidade: existing?.unidadeQuantidade || 'm³',
+      origemRegistro: existing?.origemRegistro || 'Admin',
+      enviadoEm: existing?.enviadoEm || (isNew ? now : undefined),
       criadoEm: existing?.criadoEm || now,
       atualizadoEm: now,
     }, isNew);
@@ -251,7 +272,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     return tickets.filter(t => {
       const tipo = t.tipoTicket || 'Liberação';
       if (tipo !== ticketTab) return false;
-      const status = t.status || 'OK';
+      const status = t.statusFluxo || t.status || 'Enviado';
       if (fDataInicial && t.data < fDataInicial) return false;
       if (fDataFinal && t.data > fDataFinal) return false;
       if (fTicketNumero && !t.ticketNumero.toLowerCase().includes(fTicketNumero.toLowerCase())) return false;
@@ -284,6 +305,35 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     return { totalTickets, totalM3, okCount, pendCount, dupCount, media };
   }, [filteredTickets]);
 
+  const flowDashboard = useMemo(() => {
+    const grouped = new Map<string, { numero: string; liberacao?: TicketJazida; recebimento?: TicketJazida }>();
+    tickets.forEach(ticket => {
+      const pair = grouped.get(ticket.ticketNumero) || { numero: ticket.ticketNumero };
+      if ((ticket.tipoTicket || 'Liberação') === 'Liberação') pair.liberacao = ticket;
+      else pair.recebimento = ticket;
+      grouped.set(ticket.ticketNumero, pair);
+    });
+    const pairs = Array.from(grouped.values()).sort((a, b) => Number(b.numero) - Number(a.numero));
+    const drafts = tickets.filter(ticket => ticket.statusFluxo === 'Rascunho').length;
+    const pending = pairs.filter(pair => pair.liberacao?.statusFluxo !== 'Rascunho'
+      && pair.liberacao && (!pair.recebimento || pair.recebimento.statusFluxo === 'Rascunho')).length;
+    const completed = pairs.filter(pair => pair.liberacao && pair.recebimento
+      && pair.liberacao.statusFluxo !== 'Rascunho'
+      && pair.recebimento.statusFluxo !== 'Rascunho').length;
+    return { pairs, drafts, pending, completed };
+  }, [tickets]);
+
+  const copyPublicLink = async () => {
+    const link = `${window.location.origin}/ticket-link/geral`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkMessage('Link copiado.');
+    } catch {
+      setLinkMessage(link);
+    }
+    window.setTimeout(() => setLinkMessage(''), 3500);
+  };
+
   const statusStyles: Record<string, string> = {
     'OK': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     'Pendente': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -291,6 +341,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     'Verificar quantidade': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
     'Verificar bomba': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
     'Erro de importação': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+    'Rascunho': 'bg-amber-500/10 text-amber-300 border-amber-500/20',
+    'Enviado': 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
   };
 
   const normalizeImportHeader = (value: string) =>
@@ -507,7 +559,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
       const matchesExportFilters = (t: TicketJazida, tipo: TipoTicketJazida) => {
         if ((t.tipoTicket || 'Liberação') !== tipo) return false;
-        const status = t.status || 'OK';
+        const status = t.statusFluxo || t.status || 'Enviado';
         if (fDataInicial && t.data < fDataInicial) return false;
         if (fDataFinal && t.data > fDataFinal) return false;
         if (fTicketNumero && !t.ticketNumero.toLowerCase().includes(fTicketNumero.toLowerCase())) return false;
@@ -532,8 +584,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         const isRecebimento = tipo === 'Recebimento';
         const ws = wb.addWorksheet(isRecebimento ? 'RECEBIMENTO' : 'LIBERAÇÃO');
         const headers = isRecebimento
-          ? ['Data', 'Ticket Nº', 'Prefixo', 'Família do Equipamento', 'Equipamento', 'Placa', 'Hora de chegada', 'Tipo de material', 'Quantidade m³', 'Ramo de Descarga', 'Empresa', 'Estaca', 'Status / Conferência']
-          : ['Data', 'Ticket Nº', 'Prefixo', 'Família do Equipamento', 'Equipamento', 'Placa', 'Hora de saída', 'Tipo de material', 'Quantidade m³', 'Destino / Obra', 'Empresa', 'Status / Conferência'];
+          ? ['Data', 'Ticket Nº', 'Prefixo', 'Família do Equipamento', 'Equipamento', 'Placa', 'Hora de chegada', 'Tipo de material', 'Quantidade', 'Unidade', 'Ramo de Descarga', 'Empresa', 'Estaca', 'Carga conforme', 'Responsável', 'Observações', 'Situação', 'Assinado digitalmente']
+          : ['Data', 'Ticket Nº', 'Prefixo', 'Família do Equipamento', 'Equipamento', 'Placa', 'Hora de saída', 'Tipo de material', 'Quantidade', 'Unidade', 'Destino / Obra', 'Empresa', 'Responsável', 'Situação', 'Assinado digitalmente'];
 
         ws.columns = headers.map((header, index) => ({
           key: `col${index + 1}`,
@@ -567,10 +619,15 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                   item.horaChegada || item.horaSaida || '',
                   item.tipoMaterial,
                   item.quantidadeM3,
+                  item.unidadeQuantidade || 'm³',
                   item.destinoObra,
                   item.empresa,
                   item.estaca || '',
-                  item.status || 'OK',
+                  typeof item.cargaConforme === 'boolean' ? (item.cargaConforme ? 'Sim' : 'Não') : '',
+                  item.nomeLegivel || item.responsavelLiberacao,
+                  item.observacao || '',
+                  item.statusFluxo || item.status || 'Enviado',
+                  item.assinaturaDigital ? 'Sim' : 'Não',
                 ]
               : [
                   item.data ? item.data.split('-').reverse().join('/') : '',
@@ -582,9 +639,12 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                   item.horaSaida || '',
                   item.tipoMaterial,
                   item.quantidadeM3,
+                  item.unidadeQuantidade || 'm³',
                   item.destinoObra,
                   item.empresa,
-                  item.status || 'OK',
+                  item.nomeLegivel || item.responsavelLiberacao,
+                  item.statusFluxo || item.status || 'Enviado',
+                  item.assinaturaDigital ? 'Sim' : 'Não',
                 ];
             ws.addRow(values);
           });
@@ -700,8 +760,15 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
       doc.setFont('helvetica', 'bold');
       doc.text('Assinatura:', 12, y);
-      y += 14;
-      doc.line(12, y, pageWidth - 12, y);
+      if (t.assinaturaDigital) {
+        doc.addImage(t.assinaturaDigital, 'PNG', 12, y + 3, 86, 28);
+        y += 34;
+        doc.setFont('helvetica', 'normal');
+        doc.text(t.assinaturaResponsavel || t.nomeLegivel || t.responsavelLiberacao || '', 12, y);
+      } else {
+        y += 14;
+        doc.line(12, y, pageWidth - 12, y);
+      }
 
       doc.save(`ticket_jazida_${t.ticketNumero}.pdf`);
     } catch (err) {
@@ -722,14 +789,71 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           </h1>
           <p className="text-xs text-slate-400 mt-1">Tickets de liberação e recebimento com hora de saída ou chegada.</p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
-        >
-          <Plus className="w-4.5 h-4.5" />
-          Novo Ticket de {ticketTab}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={copyPublicLink}
+            className="px-4 py-2.5 bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Link2 className="w-4 h-4" /> Link dos apontadores
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            Novo Ticket de {ticketTab}
+          </button>
+        </div>
       </div>
+
+      {linkMessage && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-300">
+          <ClipboardCheck className="h-4 w-4 shrink-0" />
+          <span className="break-all">{linkMessage}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-lg border border-amber-500/20 bg-slate-900 p-4">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Rascunhos</span><FilePenLine className="h-4 w-4 text-amber-400" /></div>
+          <strong className="mt-2 block text-2xl text-white">{flowDashboard.drafts}</strong>
+          <span className="text-[10px] text-slate-500">Ainda podem ser editados e enviados</span>
+        </div>
+        <div className="rounded-lg border border-sky-500/20 bg-slate-900 p-4">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Aguardando recebimento</span><Clock3 className="h-4 w-4 text-sky-400" /></div>
+          <strong className="mt-2 block text-2xl text-white">{flowDashboard.pending}</strong>
+          <span className="text-[10px] text-slate-500">Liberação enviada, chegada pendente</span>
+        </div>
+        <div className="rounded-lg border border-emerald-500/20 bg-slate-900 p-4">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Pares concluídos</span><CheckCircle2 className="h-4 w-4 text-emerald-400" /></div>
+          <strong className="mt-2 block text-2xl text-white">{flowDashboard.completed}</strong>
+          <span className="text-[10px] text-slate-500">Liberação e recebimento enviados</span>
+        </div>
+      </div>
+
+      {flowDashboard.pairs.length > 0 && (
+        <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div><h2 className="text-sm font-black text-white">Acompanhamento das duas vias</h2><p className="text-[10px] text-slate-500">Últimos caminhões registrados</p></div>
+            <span className="text-[10px] font-bold text-slate-500">{flowDashboard.pairs.length} números</span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {flowDashboard.pairs.slice(0, 9).map(pair => {
+              const releaseSent = pair.liberacao && pair.liberacao.statusFluxo !== 'Rascunho';
+              const receiptSent = pair.recebimento && pair.recebimento.statusFluxo !== 'Rascunho';
+              return (
+                <div key={pair.numero} className="rounded-md border border-slate-800 bg-slate-950/60 p-3">
+                  <div className="flex items-center justify-between"><b className="text-xs text-white">Ticket {pair.numero}</b><span className="text-[10px] text-slate-500">{pair.liberacao?.placa || pair.recebimento?.placa || 'Sem placa'}</span></div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <span className={`rounded px-2 py-1.5 text-center text-[10px] font-black ${releaseSent ? 'bg-emerald-500/10 text-emerald-300' : pair.liberacao ? 'bg-amber-500/10 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>Liberação {releaseSent ? 'enviada' : pair.liberacao ? 'rascunho' : 'pendente'}</span>
+                    <span className={`rounded px-2 py-1.5 text-center text-[10px] font-black ${receiptSent ? 'bg-emerald-500/10 text-emerald-300' : pair.recebimento ? 'bg-amber-500/10 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>Recebimento {receiptSent ? 'enviado' : pair.recebimento ? 'rascunho' : 'pendente'}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="inline-flex bg-slate-950 p-1 rounded-xl border border-slate-800">
         {(['Liberação', 'Recebimento'] as TipoTicketJazida[]).map(tipo => (
@@ -840,6 +964,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status</label>
               <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
+                <option value="Rascunho">Rascunho</option>
+                <option value="Enviado">Enviado</option>
                 <option value="OK">OK</option>
                 <option value="Pendente">Pendente</option>
                 <option value="Duplicado">Duplicado</option>
@@ -924,17 +1050,18 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                 </div>
               )}
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ticket Nº *</label>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ticket Nº {tipoTicket === 'Liberação' ? '(automático)' : '*'}</label>
                 <input
                   type="text"
                   value={ticketNumero}
                   onChange={e => setTicketNumero(e.target.value)}
+                  readOnly={tipoTicket === 'Liberação' && editingId === null}
                   onBlur={() => {
                     if (tipoTicket === 'Recebimento' && ticketNumero.trim()) {
                       applyLiberacaoCloneToForm(ticketNumero);
                     }
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 read-only:text-emerald-400 read-only:cursor-not-allowed"
                   required
                 />
               </div>
@@ -1044,7 +1171,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                 </tr>
               ) : (
                 filteredTickets.map(t => {
-                  const status = t.status || 'OK';
+                  const status = t.statusFluxo || t.status || 'Enviado';
                   const hasRecebimentoClone = tickets.some(item =>
                     (item.tipoTicket || 'Liberação') === 'Recebimento' &&
                     item.ticketNumero.trim().toLowerCase() === t.ticketNumero.trim().toLowerCase()
@@ -1065,7 +1192,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                         )}
                       </td>
                       <td className="py-4 px-5 text-slate-300">{t.tipoMaterial}</td>
-                      <td className="py-4 px-5 font-mono text-emerald-400 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')}</td>
+                      <td className="py-4 px-5 font-mono text-emerald-400 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')} <span className="text-[9px] text-slate-500">{t.unidadeQuantidade || 'm³'}</span></td>
                       <td className="py-4 px-5 text-slate-400">
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-600" />{t.destinoObra}</span>
                         {t.estaca && <span className="block text-[10px] text-slate-500 mt-0.5">{t.estaca}</span>}
@@ -1113,14 +1240,22 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               <p><b>Data:</b> {viewingTicket.data.split('-').reverse().join('/')} às {(viewingTicket.tipoTicket || 'Liberação') === 'Recebimento' ? (viewingTicket.horaChegada || viewingTicket.horaSaida) : viewingTicket.horaSaida}</p>
               <p><b>Prefixo/Placa:</b> {viewingTicket.prefixo} / {viewingTicket.placa}</p>
               <p><b>Equipamento:</b> {viewingTicket.equipamentoNome || '—'} {viewingTicket.familiaEquipamento ? `(${viewingTicket.familiaEquipamento})` : ''}</p>
-              <p><b>Material:</b> {viewingTicket.tipoMaterial} — {viewingTicket.quantidadeM3} m³</p>
+              <p><b>Material:</b> {viewingTicket.tipoMaterial === 'Outros' ? viewingTicket.materialOutro || 'Outros' : viewingTicket.tipoMaterial} — {viewingTicket.quantidadeM3} {viewingTicket.unidadeQuantidade || 'm³'}</p>
               <p><b>Destino:</b> {viewingTicket.destinoObra}</p>
               {(viewingTicket.tipoTicket || 'Liberação') === 'Recebimento' && <p><b>Estaca:</b> {viewingTicket.estaca || '—'}</p>}
+              {(viewingTicket.tipoTicket || 'Liberação') === 'Recebimento' && <p><b>Carga conforme:</b> {typeof viewingTicket.cargaConforme === 'boolean' ? (viewingTicket.cargaConforme ? 'Sim' : 'Não') : '—'}</p>}
               <p><b>Empresa:</b> {viewingTicket.empresa}</p>
               <p><b>Responsável:</b> {viewingTicket.responsavelLiberacao || '—'}</p>
               <p><b>Nome legível:</b> {viewingTicket.nomeLegivel || '—'}</p>
               <p><b>Observação:</b> {viewingTicket.observacao || '—'}</p>
+              <p><b>Situação:</b> {viewingTicket.statusFluxo || 'Enviado'}</p>
             </div>
+            {viewingTicket.assinaturaDigital && (
+              <div className="rounded-lg border border-slate-700 bg-white p-2">
+                <p className="mb-1 text-[9px] font-black uppercase text-slate-500">Assinatura digital</p>
+                <img src={viewingTicket.assinaturaDigital} alt={`Assinatura de ${viewingTicket.nomeLegivel}`} className="h-28 w-full object-contain" />
+              </div>
+            )}
           </div>
         </div>
       )}

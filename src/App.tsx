@@ -73,6 +73,7 @@ import PresencaLinkExterno from './components/PresencaLinkExterno';
 import ApontamentoRamosTab from './components/ApontamentoRamosTab';
 import ApontamentoRamoLinkExterno from './components/ApontamentoRamoLinkExterno';
 import MateriaisTab from './components/MateriaisTab';
+import TicketLinkExterno from './components/TicketLinkExterno';
 
 // Motion and Logo Import
 import { motion, AnimatePresence } from 'motion/react';
@@ -86,6 +87,12 @@ import {
   getFirebaseConnectionStatus,
   uploadFirebaseBackup,
 } from './firebaseCloudSync';
+import {
+  deletePublicTicket,
+  loadPublicTickets,
+  reservePublicTicketNumber,
+  savePublicTicket,
+} from './firebaseTickets';
 
 // Icons Import
 import { 
@@ -202,6 +209,12 @@ const materialRegistroKey = (item: MaterialRegistro) =>
 
 const materialCadastroKey = (item: MaterialCadastro) => item.nome.trim().toLowerCase();
 
+const mergeTicketCollections = (current: TicketJazida[], incoming: TicketJazida[]) => {
+  const indexed = new Map(current.map(item => [item.id, item]));
+  incoming.forEach(item => indexed.set(item.id, item));
+  return Array.from(indexed.values());
+};
+
 const getPresenceTokenFromUrl = () => {
   if (typeof window === 'undefined') return '';
   const byQuery = new URLSearchParams(window.location.search).get('presenca');
@@ -216,6 +229,12 @@ const getApontamentoTokenFromUrl = () => {
   if (byQuery) return decodeURIComponent(byQuery);
   const match = window.location.pathname.match(/\/apontamento-link\/([^/?#]+)/);
   return match ? decodeURIComponent(match[1]) : '';
+};
+
+const isTicketLinkUrl = () => {
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname.startsWith('/ticket-link')
+    || new URLSearchParams(window.location.search).has('tickets');
 };
 
 export default function App() {
@@ -264,8 +283,10 @@ export default function App() {
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
+  const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
   const externalPresenceToken = getPresenceTokenFromUrl();
   const externalApontamentoToken = getApontamentoTokenFromUrl();
+  const externalTicketLink = isTicketLinkUrl();
 
   // Hydrate states from localstorage on mount
   useEffect(() => {
@@ -670,7 +691,7 @@ export default function App() {
   // Com a sincronizacao automatica ativa, verifica periodicamente se outro
   // dispositivo publicou uma versao mais recente e atualiza este navegador.
   useEffect(() => {
-    if (!isAutoSyncEnabled || externalPresenceToken || externalApontamentoToken) return;
+    if (!isAutoSyncEnabled || externalPresenceToken || externalApontamentoToken || externalTicketLink) return;
 
     let cancelled = false;
     let isChecking = false;
@@ -710,7 +731,7 @@ export default function App() {
       window.clearTimeout(initialCheck);
       window.clearInterval(interval);
     };
-  }, [isAutoSyncEnabled, externalPresenceToken, externalApontamentoToken]);
+  }, [isAutoSyncEnabled, externalPresenceToken, externalApontamentoToken, externalTicketLink]);
 
   useEffect(() => {
     if (!externalPresenceToken) return;
@@ -723,6 +744,34 @@ export default function App() {
     setIsExternalApontamentoLoading(true);
     handleDownloadFromFirebase().finally(() => setIsExternalApontamentoLoading(false));
   }, [externalApontamentoToken]);
+
+  const refreshPublicTickets = async () => {
+    const publicTickets = await loadPublicTickets(db);
+    if (publicTickets.length === 0) return;
+    setTicketsJazida(current => {
+      const merged = mergeTicketCollections(current, publicTickets);
+      localStorage.setItem('renea_tickets_jazida', JSON.stringify(merged));
+      return merged;
+    });
+  };
+
+  useEffect(() => {
+    if (!externalTicketLink) return;
+    setIsExternalTicketLoading(true);
+    handleDownloadFromFirebase()
+      .catch(() => undefined)
+      .then(refreshPublicTickets)
+      .finally(() => setIsExternalTicketLoading(false));
+  }, [externalTicketLink]);
+
+  useEffect(() => {
+    if (!isLoggedIn || externalTicketLink) return;
+    refreshPublicTickets().catch(error => console.warn('Falha ao atualizar tickets públicos:', error));
+    const interval = window.setInterval(() => {
+      refreshPublicTickets().catch(error => console.warn('Falha ao atualizar tickets públicos:', error));
+    }, 30_000);
+    return () => window.clearInterval(interval);
+  }, [isLoggedIn, externalTicketLink]);
 
   // Helper to save data and append to changes history
   const saveAndLog = (
@@ -1420,6 +1469,8 @@ export default function App() {
         localStorage.setItem('renea_tickets_jazida', JSON.stringify(updated));
       }
     );
+    void savePublicTicket(db, { ...item, origemRegistro: item.origemRegistro || 'Admin' })
+      .catch(error => console.warn('Falha ao espelhar ticket no link público:', error));
   };
 
   const handleDeleteTicketJazida = (id: string) => {
@@ -1436,6 +1487,8 @@ export default function App() {
         localStorage.setItem('renea_tickets_jazida', JSON.stringify(updated));
       }
     );
+    void deletePublicTicket(db, id)
+      .catch(error => console.warn('Falha ao excluir ticket público:', error));
   };
 
   const handleImportTicketsJazida = (novosItens: TicketJazida[]) => {
@@ -1455,6 +1508,27 @@ export default function App() {
         localStorage.setItem('renea_tickets_jazida', JSON.stringify(updated));
       }
     );
+  };
+
+  const handleReserveTicketNumber = () => reservePublicTicketNumber(db, ticketsJazida);
+
+  const handleSaveTicketLink = async (
+    item: TicketJazida,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      await savePublicTicket(db, item);
+      const updated = mergeTicketCollections(ticketsJazida, [item]);
+      setTicketsJazida(updated);
+      localStorage.setItem('renea_tickets_jazida', JSON.stringify(updated));
+      return {
+        success: true,
+        message: item.statusFluxo === 'Rascunho'
+          ? 'Rascunho salvo com sucesso.'
+          : `Ticket ${item.ticketNumero} enviado com sucesso.`,
+      };
+    } catch (error) {
+      return { success: false, message: formatFirebaseSyncError(error) };
+    }
   };
 
   const handleSaveRdo = (item: RdoDiario, isNew: boolean) => {
@@ -2477,6 +2551,17 @@ export default function App() {
     }
   };
 
+  if (externalTicketLink) {
+    return (
+      <TicketLinkExterno
+        tickets={ticketsJazida}
+        isLoadingCloud={isExternalTicketLoading}
+        onReserveNumber={handleReserveTicketNumber}
+        onSaveTicket={handleSaveTicketLink}
+      />
+    );
+  }
+
   if (externalPresenceToken) {
     return (
       <PresencaLinkExterno
@@ -2711,7 +2796,6 @@ export default function App() {
           </div>
           <div className="grid grid-cols-2 gap-y-1 text-slate-400">
             <span>Frota: {equipamentos.length}</span>
-            <span>RDOs: {rdos.length}</span>
             <span>Empresas: {empresas.length}</span>
             <span>Materiais: {materiaisRegistros.length}</span>
           </div>
@@ -3131,6 +3215,7 @@ export default function App() {
                 onSaveTicket={handleSaveTicketJazida}
                 onDeleteTicket={handleDeleteTicketJazida}
                 onImportTickets={handleImportTicketsJazida}
+                onReserveTicketNumber={handleReserveTicketNumber}
               />
             )}
 

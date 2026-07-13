@@ -1036,7 +1036,7 @@ export default function RelatoriosTab({
             <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
             Emissão de Relatórios Customizados
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Gere resumos, consumo operacional de combustível por frota, empresa, lubrificações e diários RDO.</p>
+          <p className="text-xs text-slate-400 mt-1">Gere resumos, consumo operacional de combustível por frota, empresa e lubrificações.</p>
         </div>
 
          <div className="flex items-center gap-2">
@@ -1071,7 +1071,6 @@ export default function RelatoriosTab({
             { id: 'consumo_empresa', label: 'Consumo por Empresa', icon: Building2, desc: 'Divisão de litros abastecidos por empresa.' },
             { id: 'consumo_periodo', label: 'Consumo por Período', icon: Fuel, desc: 'Extrato analítico de todos os abastecimentos.' },
             { id: 'lubrificacao_frota', label: 'Lubrificações da Frota', icon: Droplets, desc: 'Relatório de trocas de óleos e graxas.' },
-            { id: 'rdo_data', label: 'RDO Diário por Obra', icon: ClipboardList, desc: 'Extrato das atividades físicas diárias.' },
             { id: 'equipamentos_mobilizados', label: 'Equipamentos Ativos', icon: Truck, desc: 'Frota ativa operando nas frentes de obra.' },
             { id: 'equipamentos_manutencao', label: 'Frota em Manutenção', icon: AlertTriangle, desc: 'Inventário sob custódia da oficina.' },
             { id: 'resumo_obra', label: 'Resumo Geral por Obra', icon: MapPin, desc: 'Consolidado de trabalhadores e frentes.' },

@@ -258,16 +258,6 @@ export default function Dashboard({
     });
   });
 
-  // Active RDO issues
-  rdos.filter(r => r.pendencias && r.pendencias.trim() !== '').forEach(rdo => {
-    const ob = obras.find(o => o.id === rdo.obraLocalId);
-    pendingAlerts.push({
-      id: `alert-rdo-${rdo.id}`,
-      type: 'danger',
-      text: `Pendência de RDO (${rdo.data})`,
-      details: `Na obra ${ob ? ob.nome : 'Obra'}: "${rdo.pendencias}"`
-    });
-  });
 
   return (
     <div className="space-y-6" id="dashboard-tab">
@@ -738,7 +728,7 @@ export default function Dashboard({
             {pendingAlerts.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-6">
                 <p className="text-xs text-emerald-400 font-bold mb-1">✓ Sem pendências críticas</p>
-                <p className="text-[10px] text-slate-500">Toda a frota e RDOs estão atualizados e conformes.</p>
+                <p className="text-[10px] text-slate-500">Toda a frota está atualizada e sem alertas críticos.</p>
               </div>
             ) : (
               pendingAlerts.map(alert => {
@@ -764,9 +754,9 @@ export default function Dashboard({
       </div>
 
       {/* 5. Recent RDO & Audit Log row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="recent-rdo-audit-row">
+      <div className="grid grid-cols-1 gap-6" id="operational-audit-row">
         {/* Left Column: Recent RDOs logged */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div className="hidden">
           <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
             <h3 className="text-xs uppercase tracking-widest font-black text-slate-400 font-mono flex items-center gap-1.5">
               <ClipboardList className="w-4 h-4 text-emerald-400" />

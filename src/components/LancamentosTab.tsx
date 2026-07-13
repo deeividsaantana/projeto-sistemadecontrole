@@ -919,7 +919,7 @@ export default function LancamentosTab({
             <ClipboardList className="w-5 h-5 text-emerald-500" />
             Lançamentos de Campo Diários
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Insira abastecimentos rápidos, manutenções de lubrificação e o Relatório Diário de Obra (RDO).</p>
+          <p className="text-xs text-slate-400 mt-1">Insira abastecimentos rápidos e manutenções de lubrificação.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -958,7 +958,7 @@ export default function LancamentosTab({
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
-            {mode === 'abastecimentos' ? 'Novo Abastecimento' : mode === 'lubrificacoes' ? 'Nova Lubrificação' : 'Criar RDO Diário'}
+            {mode === 'abastecimentos' ? 'Novo Abastecimento' : 'Nova Lubrificação'}
           </button>
         </div>
       </div>
@@ -985,13 +985,6 @@ export default function LancamentosTab({
         >
           <Droplets className="w-4 h-4" />
           Lubrificação
-        </button>
-        <button
-          onClick={() => { setMode('rdos'); setIsFormOpen(false); setSearchQuery(''); resetFormFields(); }}
-          className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${mode === 'rdos' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-100'}`}
-        >
-          <ClipboardList className="w-4 h-4" />
-          RDO Diário
         </button>
       </div>
 

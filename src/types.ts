@@ -270,6 +270,8 @@ export type DestinoObraJazida =
 
 export type EmpresaTicketJazida = 'RENEA' | 'Terceiro' | 'Outros';
 export type TipoTicketJazida = 'Liberação' | 'Recebimento';
+export type StatusFluxoTicket = 'Rascunho' | 'Enviado';
+export type UnidadeQuantidadeTicket = 'm³' | 'caçamba';
 
 export interface TicketJazida {
   id: string;
@@ -291,6 +293,14 @@ export interface TicketJazida {
   empresa: EmpresaTicketJazida;
   observacao: string;
   status?: StatusRegistroCombustivel;
+  statusFluxo?: StatusFluxoTicket;
+  unidadeQuantidade?: UnidadeQuantidadeTicket;
+  cargaConforme?: boolean;
+  assinaturaDigital?: string;
+  assinaturaResponsavel?: string;
+  materialOutro?: string;
+  origemRegistro?: 'Link' | 'Admin' | 'Importação';
+  enviadoEm?: string;
   criadoEm?: string;
   atualizadoEm?: string;
 }
