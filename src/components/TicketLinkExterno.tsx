@@ -6,12 +6,15 @@ import {
   CheckCircle2,
   Clock3,
   FilePenLine,
+  Eye,
+  History,
   Loader2,
   PackageCheck,
   Save,
   Search,
   Send,
   Truck,
+  X,
 } from 'lucide-react';
 import { DestinoObraJazida, TicketJazida, TipoMaterialJazida, TipoTicketJazida } from '../types';
 import reneaLogo from '../assets/images/logo-renea-branco.svg';
@@ -33,6 +36,7 @@ const DESTINATIONS: DestinoObraJazida[] = [
 ];
 const DRAFT_KEY = 'renea_ticket_link_drafts_v2';
 const DEVICE_KEY = 'renea_ticket_device_id_v1';
+const HISTORY_KEY = 'renea_ticket_link_history_v1';
 
 const twoDigits = (value: number) => String(value).padStart(2, '0');
 const nowTime = () => {
@@ -114,6 +118,26 @@ const storeDrafts = (drafts: TicketJazida[]) => {
   }
 };
 
+const readOwnHistory = (deviceId: string): TicketJazida[] => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') as TicketJazida[];
+    return stored
+      .filter(item => item.dispositivoId === deviceId && item.statusFluxo === 'Enviado')
+      .sort((a, b) => String(b.enviadoEm || b.atualizadoEm || '').localeCompare(String(a.enviadoEm || a.atualizadoEm || '')))
+      .slice(0, 20);
+  } catch {
+    return [];
+  }
+};
+
+const storeOwnHistory = (items: TicketJazida[]) => {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 20)));
+  } catch {
+    // O envio ao banco continua funcionando mesmo se o aparelho estiver sem espaço local.
+  }
+};
+
 export default function TicketLinkExterno({
   tickets,
   isLoadingCloud,
@@ -126,6 +150,8 @@ export default function TicketLinkExterno({
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<TicketJazida | null>(null);
   const [drafts, setDrafts] = useState<TicketJazida[]>(() => readDrafts(deviceId));
+  const [ownHistory, setOwnHistory] = useState<TicketJazida[]>(() => readOwnHistory(deviceId));
+  const [viewingOwnTicket, setViewingOwnTicket] = useState<TicketJazida | null>(null);
   const [search, setSearch] = useState('');
   const [showReceiptSearch, setShowReceiptSearch] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -166,6 +192,22 @@ export default function TicketLinkExterno({
         .sort((a, b) => String(b.atualizadoEm || '').localeCompare(String(a.atualizadoEm || '')))
         .slice(0, 8);
       storeDrafts(merged);
+      return merged;
+    });
+  }, [tickets, deviceId]);
+
+  useEffect(() => {
+    const remoteOwnSent = tickets.filter(ticket =>
+      ticket.statusFluxo === 'Enviado' && ticket.dispositivoId === deviceId,
+    );
+    if (remoteOwnSent.length === 0) return;
+    setOwnHistory(current => {
+      const indexed = new Map(current.map(item => [item.id, item]));
+      remoteOwnSent.forEach(item => indexed.set(item.id, item));
+      const merged = Array.from(indexed.values())
+        .sort((a, b) => String(b.enviadoEm || b.atualizadoEm || '').localeCompare(String(a.enviadoEm || a.atualizadoEm || '')))
+        .slice(0, 20);
+      storeOwnHistory(merged);
       return merged;
     });
   }, [tickets, deviceId]);
@@ -276,6 +318,13 @@ export default function TicketLinkExterno({
         const nextDrafts = drafts.filter(item => item.id !== saved.id);
         setDrafts(nextDrafts);
         storeDrafts(nextDrafts);
+        setOwnHistory(current => {
+          const nextHistory = [saved, ...current.filter(item => item.id !== saved.id)]
+            .sort((a, b) => String(b.enviadoEm || b.atualizadoEm || '').localeCompare(String(a.enviadoEm || a.atualizadoEm || '')))
+            .slice(0, 20);
+          storeOwnHistory(nextHistory);
+          return nextHistory;
+        });
         setForm(saved);
         setMessage(result.message || 'Ticket enviado com sucesso.');
         setScreen('success');
@@ -369,6 +418,31 @@ export default function TicketLinkExterno({
                       <ArrowRight className="h-5 w-5 text-amber-700" />
                     </button>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {ownHistory.length > 0 && (
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2"><History className="h-5 w-5 text-emerald-700" /><div><h2 className="font-black">Meus envios</h2><p className="text-xs text-slate-500">Somente tickets enviados neste aparelho.</p></div></div>
+                  <span className="text-xs font-bold text-slate-400">{ownHistory.length}</span>
+                </div>
+                <div className="grid gap-2">
+                  {ownHistory.slice(0, 8).map(item => {
+                    const receiptAlreadySent = ownHistory.some(historyItem => historyItem.tipoTicket === 'Recebimento' && historyItem.ticketNumero === item.ticketNumero);
+                    return (
+                      <div key={item.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div><b className="block text-sm text-slate-950">Ticket {item.ticketNumero} · {item.tipoTicket}</b><small className="text-slate-500">{item.placa || 'Sem placa'} · {item.prefixo || 'Sem prefixo'} · {item.data.split('-').reverse().join('/')}</small></div>
+                          <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => setViewingOwnTicket(item)} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 px-3 text-xs font-black text-slate-700"><Eye className="h-4 w-4" /> Visualizar</button>
+                            {(item.tipoTicket || 'Liberação') === 'Liberação' && !receiptAlreadySent && <button type="button" onClick={() => beginReceipt(item)} className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-black text-white"><PackageCheck className="h-4 w-4" /> Fazer recebimento</button>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -478,12 +552,36 @@ export default function TicketLinkExterno({
             <div><p className="text-xs font-black uppercase text-emerald-700">Enviado com sucesso</p><h1 className="mt-1 text-3xl font-black">Ticket {form.ticketNumero}</h1><p className="mt-2 text-sm text-slate-500">{form.tipoTicket} registrada e disponível no painel administrativo.</p></div>
             <div className="grid gap-3">
               {form.tipoTicket === 'Liberação' && <button type="button" onClick={() => beginReceipt(form)} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-emerald-600 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Preencher recebimento deste ticket</button>}
+              <button type="button" onClick={() => setViewingOwnTicket(form)} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 font-black text-slate-700"><Eye className="h-5 w-5" /> Visualizar comprovante</button>
               <button type="button" onClick={beginRelease} disabled={isStarting} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-slate-950 px-5 font-black text-white"><Truck className="h-5 w-5" /> Próximo caminhão</button>
               <button type="button" onClick={() => { setMessage(''); setForm(null); setScreen('home'); }} className="h-12 font-bold text-slate-600">Voltar ao início</button>
             </div>
           </div>
         )}
       </main>
+
+      {viewingOwnTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" onClick={() => setViewingOwnTicket(null)}>
+          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-lg bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+              <div><p className="text-xs font-black uppercase text-emerald-700">{viewingOwnTicket.tipoTicket}</p><h2 className="text-xl font-black">Ticket {viewingOwnTicket.ticketNumero}</h2></div>
+              <button type="button" onClick={() => setViewingOwnTicket(null)} aria-label="Fechar visualização" className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-500"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="space-y-5 p-5">
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 sm:grid-cols-4">
+                {[['Prefixo', viewingOwnTicket.prefixo], ['Placa', viewingOwnTicket.placa], ['Data', viewingOwnTicket.data.split('-').reverse().join('/')], [viewingOwnTicket.tipoTicket === 'Recebimento' ? 'Chegada' : 'Saída', viewingOwnTicket.tipoTicket === 'Recebimento' ? viewingOwnTicket.horaChegada || viewingOwnTicket.horaSaida : viewingOwnTicket.horaSaida]].map(([label, value]) => <div key={label} className="bg-white p-3"><span className="block text-[10px] font-black uppercase text-slate-500">{label}</span><strong className="mt-1 block text-sm">{value || '—'}</strong></div>)}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-md border border-slate-200 p-4"><span className="text-[10px] font-black uppercase text-slate-500">Material e quantidade</span><p className="mt-2 font-bold">{viewingOwnTicket.tipoMaterial === 'Outros' ? viewingOwnTicket.materialOutro : viewingOwnTicket.tipoMaterial} · {viewingOwnTicket.quantidadeM3} {viewingOwnTicket.unidadeQuantidade || 'm³'}</p></div>
+                <div className="rounded-md border border-slate-200 p-4"><span className="text-[10px] font-black uppercase text-slate-500">{viewingOwnTicket.tipoTicket === 'Recebimento' ? 'Ramo de descarga' : 'Destino / obra'}</span><p className="mt-2 font-bold">{viewingOwnTicket.destinoObra === 'Outros' ? viewingOwnTicket.destinoOutro : viewingOwnTicket.destinoObra}</p></div>
+              </div>
+              {viewingOwnTicket.observacao && <div className="rounded-md border border-slate-200 p-4"><span className="text-[10px] font-black uppercase text-slate-500">Observações</span><p className="mt-2 text-sm">{viewingOwnTicket.observacao}</p></div>}
+              {viewingOwnTicket.assinaturaDigital && <div className="rounded-md border border-slate-200 p-4"><span className="text-[10px] font-black uppercase text-slate-500">Assinatura digital</span><img src={viewingOwnTicket.assinaturaDigital} alt="Assinatura do responsável" className="mx-auto mt-2 h-28 max-w-full object-contain" /><p className="border-t border-slate-300 pt-1 text-center text-xs font-bold">{viewingOwnTicket.nomeLegivel}</p></div>}
+              {(viewingOwnTicket.tipoTicket || 'Liberação') === 'Liberação' && !ownHistory.some(item => item.tipoTicket === 'Recebimento' && item.ticketNumero === viewingOwnTicket.ticketNumero) && <button type="button" onClick={() => { const release = viewingOwnTicket; setViewingOwnTicket(null); beginReceipt(release); }} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Fazer recebimento deste ticket</button>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
