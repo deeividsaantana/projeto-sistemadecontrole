@@ -55,7 +55,6 @@ const todayInput = () => {
 export default function ApontamentoRamoLinkExterno({
   token,
   ramos,
-  registros,
   isLoadingCloud,
   onSubmitApontamento
 }: ApontamentoRamoLinkExternoProps) {
@@ -93,11 +92,6 @@ export default function ApontamentoRamoLinkExterno({
     [activeRamos, selectedRamoId, tokenRamo]
   );
 
-  const alreadySent = useMemo(
-    () => Boolean(selectedRamo && registros.some(item => item.ramoId === selectedRamo.id && item.data === data)),
-    [data, selectedRamo, registros]
-  );
-
   useEffect(() => {
     if (!tokenRamo) return;
     setSelectedRamoId(tokenRamo.id);
@@ -113,7 +107,7 @@ export default function ApontamentoRamoLinkExterno({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selectedRamo || alreadySent || isSubmitting) return;
+    if (!selectedRamo || isSubmitting) return;
     if (!responsavel.trim()) {
       setFeedback({ type: 'error', message: 'Informe o nome do apontador antes de enviar.' });
       return;
@@ -166,27 +160,28 @@ export default function ApontamentoRamoLinkExterno({
 
   return (
     <div id="apontamento-publico" className="public-link-light antialiased">
-      <motion.div
-        className="mx-auto max-w-4xl px-4 py-5 sm:py-8"
+      <header className="public-link-topbar px-4 py-4 shadow-lg">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
+          <img src={reneaLogo} alt="RENEA" className="h-8 w-auto object-contain" />
+          <div className="min-w-0 text-right">
+            <p className="text-xs font-black uppercase text-emerald-400">Apontamento digital</p>
+            <p className="truncate text-[11px] text-slate-400">{selectedRamo.canteiroNome} · {selectedRamo.ramoNome}</p>
+          </div>
+        </div>
+      </header>
+      <motion.main
+        className="mx-auto max-w-4xl px-4 py-6 sm:py-8"
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
       >
-        <header className="public-link-header mb-4 rounded-lg border p-4 sm:p-5">
-          <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-emerald-500/20 overflow-hidden flex items-center justify-center shrink-0">
-              <img src={reneaLogo} alt="RENEA" className="w-full h-full object-contain p-1.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-emerald-400 text-[10px] uppercase tracking-widest font-black">
-                <ShieldCheck className="w-4 h-4" />
-                Link seguro de apontamento
-              </div>
-              <h1 className="text-lg sm:text-2xl font-black text-white mt-1">{selectedRamo.canteiroNome}</h1>
-              <p className="text-sm text-slate-400 mt-1">{selectedRamo.ramoNome} - informe seu nome abaixo</p>
-            </div>
+        <section className="mb-5">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase text-emerald-700">
+            <ShieldCheck className="h-4 w-4" /> Link seguro
           </div>
-        </header>
+          <h1 className="mt-1 text-2xl font-black text-slate-950">Apontamento diário</h1>
+          <p className="mt-1 text-sm text-slate-500">Confira o canteiro e o ramo antes de preencher.</p>
+        </section>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <section className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
@@ -327,13 +322,6 @@ export default function ApontamentoRamoLinkExterno({
             </label>
           </section>
 
-          {alreadySent && (
-            <div className="public-link-warning flex items-start gap-3 rounded-lg border p-4 text-sm">
-              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-              <span>Este ramo já foi apontado para a data selecionada. Procure o administrativo para ajuste controlado.</span>
-            </div>
-          )}
-
           {feedback && (
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.99 }}
@@ -352,14 +340,14 @@ export default function ApontamentoRamoLinkExterno({
 
           <button
             type="submit"
-            disabled={alreadySent || isSubmitting}
+            disabled={isSubmitting}
             className="w-full min-h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-black text-sm flex items-center justify-center gap-2 transition-colors"
           >
             <Send className="w-4 h-4" />
             {isSubmitting ? 'Enviando...' : 'Enviar apontamento do ramo'}
           </button>
         </form>
-      </motion.div>
+      </motion.main>
     </div>
   );
 }

@@ -1930,22 +1930,7 @@ export default function App() {
     data: string,
     items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>
   ): Promise<{ success: boolean; message: string }> => {
-    const alreadySent = presencasLink.some(item => item.grupoId === grupo.id && item.data === data);
-    if (alreadySent) {
-      const updatedNotifications = persistPresenceNotifications([
-        createPresenceNotification(
-          'Reenvio bloqueado',
-          `Alguém tentou reenviar a presença do grupo ${grupo.nome} para ${data}.`,
-          'warning'
-        )
-      ]);
-      await handleUploadToFirebase(
-        empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
-        abastecimentos, lubrificacoes, ticketsJazida, rdos, historyLogs, listasPresenca, ordensServico,
-        gruposEquipe, presencasLink, historicoPresencas, updatedNotifications
-      );
-      return { success: false, message: 'A presença deste grupo já foi enviada para esta data.' };
-    }
+    const isDuplicateSubmission = presencasLink.some(item => item.grupoId === grupo.id && item.data === data);
 
     const now = new Date();
     const horaEnvio = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -1991,6 +1976,13 @@ export default function App() {
     const notificationsToAdd: AppNotification[] = [
       createPresenceNotification('Presença enviada', logMessage, 'success')
     ];
+    if (isDuplicateSubmission) {
+      notificationsToAdd.push(createPresenceNotification(
+        'Presença duplicada para conferência',
+        `O grupo ${grupo.nome} enviou novamente a presença de ${data}. Os dois envios foram mantidos no painel administrativo.`,
+        'warning'
+      ));
+    }
     if (absentCount > 0) {
       notificationsToAdd.push(createPresenceNotification(
         'Funcionário ausente',
@@ -2271,23 +2263,7 @@ export default function App() {
       return { success: false, message: 'Informe o nome do apontador antes de enviar.' };
     }
 
-    const alreadySent = apontamentoRamoRegistros.some(item => item.ramoId === ramo.id && item.data === payload.data);
-    if (alreadySent) {
-      const updatedNotifications = persistPresenceNotifications([
-        createPresenceNotification(
-          'Reenvio bloqueado',
-          `Alguém tentou reenviar o apontamento do ramo ${ramo.ramoNome} para ${payload.data}.`,
-          'warning'
-        )
-      ]);
-      await handleUploadToFirebase(
-        empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
-        abastecimentos, lubrificacoes, ticketsJazida, rdos, historyLogs, listasPresenca, ordensServico,
-        gruposEquipe, presencasLink, historicoPresencas, updatedNotifications,
-        apontamentoRamos, apontamentoRamoRegistros
-      );
-      return { success: false, message: 'Este ramo já recebeu apontamento para esta data.' };
-    }
+    const isDuplicateSubmission = apontamentoRamoRegistros.some(item => item.ramoId === ramo.id && item.data === payload.data);
 
     const now = new Date();
     const horaEnvio = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -2336,6 +2312,13 @@ export default function App() {
     const notificationsToAdd: AppNotification[] = [
       createPresenceNotification('Apontamento enviado', logMessage, 'success')
     ];
+    if (isDuplicateSubmission) {
+      notificationsToAdd.push(createPresenceNotification(
+        'Apontamento duplicado para conferência',
+        `O ramo ${ramo.ramoNome} recebeu outro apontamento para ${payload.data}. Os dois envios foram mantidos no painel administrativo.`,
+        'warning'
+      ));
+    }
     if (Object.values(newRegistro.condicao).includes('Impraticável')) {
       notificationsToAdd.push(createPresenceNotification(
         'Condição impraticável',

@@ -82,6 +82,7 @@ const generateToken = () => {
 };
 
 const buildPresenceLink = (token: string) => `${window.location.origin}/presenca-link/${encodeURIComponent(token)}`;
+const presenceDuplicateKey = (item: PresencaApontamento) => `${item.grupoId}|${item.data}|${item.funcionarioId}`;
 
 const downloadBlob = (blob: Blob, fileName: string) => {
   const url = URL.createObjectURL(blob);
@@ -161,6 +162,15 @@ export default function ControlePresencaTab({
     [recordsForReferenceDate]
   );
 
+  const duplicatePresenceKeys = useMemo(() => {
+    const counts = new Map<string, number>();
+    presencasLink.forEach(item => {
+      const key = presenceDuplicateKey(item);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return new Set(Array.from(counts.entries()).filter(([, count]) => count > 1).map(([key]) => key));
+  }, [presencasLink]);
+
   const pendingGroups = useMemo(
     () => activeGroups.filter(grupo => !sentGroupIds.has(grupo.id)),
     [activeGroups, sentGroupIds]
@@ -171,10 +181,11 @@ export default function ControlePresencaTab({
     const present = recordsForReferenceDate.filter(item => item.status === 'Presente').length;
     const absent = recordsForReferenceDate.filter(item => item.status === 'Ausente').length;
     const justified = recordsForReferenceDate.filter(item => item.status === 'Falta justificada').length;
+    const duplicates = recordsForReferenceDate.filter(item => duplicatePresenceKeys.has(presenceDuplicateKey(item))).length;
     const sent = sentGroupIds.size;
     const percent = planned > 0 ? Math.round((present / planned) * 100) : 0;
-    return { planned, present, absent, justified, sent, pending: pendingGroups.length, percent };
-  }, [activeGroups, pendingGroups.length, recordsForReferenceDate, sentGroupIds.size]);
+    return { planned, present, absent, justified, duplicates, sent, pending: pendingGroups.length, percent };
+  }, [activeGroups, duplicatePresenceKeys, pendingGroups.length, recordsForReferenceDate, sentGroupIds.size]);
 
   const filteredRecords = useMemo(() => {
     return presencasLink.filter(item => {
@@ -198,12 +209,20 @@ export default function ControlePresencaTab({
       const absentRows = groupRows.filter(item => item.status === 'Ausente');
       return absentRows.length >= 3 || (groupRows.length > 0 && absentRows.length / groupRows.length >= 0.3);
     });
+    const duplicateGroups = activeGroups.filter(grupo =>
+      recordsForReferenceDate.some(item => item.grupoId === grupo.id && duplicatePresenceKeys.has(presenceDuplicateKey(item)))
+    );
 
     return [
       ...pendingGroups.map(grupo => ({
         title: 'Grupo pendente',
         text: `${grupo.nome} ainda não enviou a presença de ${dataReferencia}.`,
         type: 'warning' as const
+      })),
+      ...duplicateGroups.map(grupo => ({
+        title: 'Envio duplicado para conferência',
+        text: `${grupo.nome} possui mais de um envio em ${dataReferencia}. Confira os registros antes de editar ou excluir.`,
+        type: 'error' as const
       })),
       ...ausencias.slice(0, 5).map(item => ({
         title: 'Funcionário ausente',
@@ -221,7 +240,7 @@ export default function ControlePresencaTab({
         type: 'warning' as const
       }))
     ];
-  }, [activeGroups, dataReferencia, pendingGroups, recordsForReferenceDate]);
+  }, [activeGroups, dataReferencia, duplicatePresenceKeys, pendingGroups, recordsForReferenceDate]);
 
   const visibleFuncionarios = useMemo(() => {
     const query = employeeSearch.trim().toLowerCase();
@@ -468,13 +487,14 @@ export default function ControlePresencaTab({
             />
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
             <Metric label="Previstos" value={dashboard.planned} />
             <Metric label="Presentes" value={dashboard.present} tone="text-emerald-300" />
             <Metric label="Ausentes" value={dashboard.absent} tone="text-rose-300" />
             <Metric label="Justificadas" value={dashboard.justified} tone="text-amber-300" />
             <Metric label="Enviaram" value={dashboard.sent} tone="text-blue-300" />
             <Metric label="Pendentes" value={dashboard.pending} tone="text-orange-300" />
+            <Metric label="Duplicados" value={dashboard.duplicates} tone={dashboard.duplicates ? 'text-rose-300' : 'text-emerald-300'} />
             <Metric label="% Presença" value={`${dashboard.percent}%`} tone="text-emerald-300" />
           </div>
 
@@ -892,9 +912,18 @@ export default function ControlePresencaTab({
                     <td colSpan={10} className="px-3 py-10 text-center text-slate-500">Nenhum apontamento encontrado.</td>
                   </tr>
                 ) : (
-                  filteredRecords.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-800/40">
-                      <td className="px-3 py-3 text-slate-300 font-mono">{item.data}</td>
+                  filteredRecords.map(item => {
+                    const isDuplicate = duplicatePresenceKeys.has(presenceDuplicateKey(item));
+                    return (
+                    <tr key={item.id} className={isDuplicate ? 'bg-rose-500/5 hover:bg-rose-500/10' : 'hover:bg-slate-800/40'}>
+                      <td className="px-3 py-3 text-slate-300 font-mono">
+                        {item.data}
+                        {isDuplicate && (
+                          <span className="mt-1 flex w-fit items-center gap-1 rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-black text-rose-300">
+                            <AlertTriangle className="h-3 w-3" /> Duplicado
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-3 text-white font-bold">{item.grupoNome}</td>
                       <td className="px-3 py-3 text-slate-300">{item.responsavel}</td>
                       <td className="px-3 py-3 text-slate-300">{item.frenteServico}</td>
@@ -913,7 +942,8 @@ export default function ControlePresencaTab({
                         </button>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

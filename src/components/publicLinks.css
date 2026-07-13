@@ -50,26 +50,13 @@
   box-shadow: 0 0 0 3px rgb(16 185 129 / 12%);
 }
 
-.public-link-light .public-link-header {
+.public-link-light .public-link-topbar {
   background: #020617 !important;
-  border-color: #1e293b !important;
-  box-shadow: 0 14px 35px rgb(15 23 42 / 12%);
-}
-
-.public-link-light .public-link-header .text-white,
-.public-link-light .public-link-header .text-slate-100,
-.public-link-light .public-link-header .text-slate-200,
-.public-link-light .public-link-header .text-slate-300 {
   color: #ffffff !important;
 }
 
-.public-link-light .public-link-header .text-slate-400,
-.public-link-light .public-link-header .text-slate-500 {
-  color: #cbd5e1 !important;
-}
-
-.public-link-light .public-link-header .bg-slate-950 {
-  background: #020617 !important;
+.public-link-light .public-link-topbar .text-slate-400 {
+  color: #94a3b8 !important;
 }
 
 .public-link-light .bg-emerald-600,

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   BarChart3,
   ClipboardCopy,
   Download,
@@ -47,6 +48,7 @@ const getTodayInput = () => {
 };
 
 const buildApontamentoLink = () => `${window.location.origin}/apontamento-link/${encodeURIComponent(APONTAMENTO_LINK_TOKEN)}`;
+const apontamentoDuplicateKey = (registro: ApontamentoRamoRegistro) => `${registro.ramoId}|${registro.data}`;
 
 const downloadBlob = (blob: Blob, fileName: string) => {
   const url = URL.createObjectURL(blob);
@@ -115,6 +117,17 @@ export default function ApontamentoRamosTab({
       return true;
     }).sort((a, b) => b.data.localeCompare(a.data) || b.horaEnvio.localeCompare(a.horaEnvio));
   }, [filtroCanteiro, filtroRamo, periodoFim, periodoInicio, registroSearch, registros]);
+
+  const duplicateApontamentoKeys = useMemo(() => {
+    const counts = new Map<string, number>();
+    registros.forEach(registro => {
+      const key = apontamentoDuplicateKey(registro);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return new Set(Array.from(counts.entries()).filter(([, count]) => count > 1).map(([key]) => key));
+  }, [registros]);
+
+  const duplicateFilteredCount = filteredRegistros.filter(registro => duplicateApontamentoKeys.has(apontamentoDuplicateKey(registro))).length;
 
   const enviadosHoje = registros.filter(reg => reg.data === today).length;
   const totalMaoObra = filteredRegistros.reduce((sum, reg) => sum + totalQuantidade(reg.funcoes), 0);
@@ -408,10 +421,11 @@ export default function ApontamentoRamosTab({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <MetricCard label="Registros" value={filteredRegistros.length} hint="no filtro" />
             <MetricCard label="Mão de obra" value={totalMaoObra} hint="quantidade total" />
             <MetricCard label="Equipamentos" value={totalEquipamentos} hint="quantidade total" />
+            <MetricCard label="Em duplicidade" value={duplicateFilteredCount} hint="mesmo ramo e data" tone={duplicateFilteredCount ? 'rose' : 'emerald'} />
           </div>
 
           {editingRegistro && (
@@ -445,11 +459,18 @@ export default function ApontamentoRamosTab({
                 <tbody className="divide-y divide-slate-800/60">
                   {filteredRegistros.length === 0 ? (
                     <tr><td colSpan={9} className="py-10 text-center text-slate-500">Nenhum apontamento encontrado para os filtros.</td></tr>
-                  ) : filteredRegistros.map(reg => (
-                    <tr key={reg.id} className="hover:bg-slate-800/30">
+                  ) : filteredRegistros.map(reg => {
+                    const isDuplicate = duplicateApontamentoKeys.has(apontamentoDuplicateKey(reg));
+                    return (
+                    <tr key={reg.id} className={isDuplicate ? 'bg-rose-500/5 hover:bg-rose-500/10' : 'hover:bg-slate-800/30'}>
                       <td className="py-3 px-4 font-mono text-slate-300">
                         <span className="font-black text-white">{reg.data.split('-').reverse().join('/')}</span>
                         <span className="block text-[10px] text-slate-500">{reg.horaEnvio}</span>
+                        {isDuplicate && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-black text-rose-300">
+                            <AlertTriangle className="h-3 w-3" /> Duplicado
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-black text-emerald-300 block">{reg.canteiroNome}</span>
@@ -475,7 +496,8 @@ export default function ApontamentoRamosTab({
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
