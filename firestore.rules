@@ -13,20 +13,19 @@ service cloud.firestore {
     }
 
     // Helper to validate the incoming Renea cloud state payload (anti-value poisoning)
-    // Each document now stores ONE data type as { value: <list>, updatedAt: <string> }
-    // instead of the whole database in a single document (that hit Firestore's
-    // 1MB per-document limit). The 'meta' document only carries updatedAt.
-    function isValidCloudState(docId, data) {
-      return data != null
-        && data.updatedAt is string
+    function isValidCloudState(data) {
+      return data != null 
+        && data.updatedAt is string 
         && data.updatedAt.size() <= 64
-        && (docId == 'meta' || data.value is list || data.value is map);
+        && data.empresas is list
+        && data.obras is list
+        && data.equipamentos is list;
     }
 
     // Matches the cloud backup path for the Renea Infraestrutura system
     match /sistemarenea_cloud/{docId} {
       allow read: if isValidId(docId);
-      allow create, update: if isValidId(docId) && isValidCloudState(docId, request.resource.data);
+      allow create, update: if isValidId(docId) && isValidCloudState(request.resource.data);
       allow delete: if isValidId(docId);
     }
   }

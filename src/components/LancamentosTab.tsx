@@ -36,7 +36,8 @@ import {
   Users,
   FileSpreadsheet,
   FilterX,
-  Upload
+  Upload,
+  Download
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 
@@ -134,19 +135,19 @@ export default function LancamentosTab({
     (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
   const COLUMN_SYNONYMS: Record<string, string[]> = {
-    data: ['data'],
-    frota: ['frota', 'prefixo', 'equipamento'],
-    kmInicial: ['km inicial', 'kminicial', 'km'],
-    horimetroInicial: ['horimetro inicial', 'horimetro'],
-    bombaInicial: ['bomba inicial', 'inicio bomba', 'inicial bomba'],
-    quantidadeLitros: ['qtde de litros', 'quantidade de litros', 'quantidade', 'litros', 'qtd litros'],
-    bombaFinal: ['bomba final', 'fim bomba', 'final bomba'],
-    hora: ['hora'],
-    comboio: ['comboio', 'tanque', 'comboio tanque'],
-    tipoCombustivel: ['tipo do combustivel', 'tipo combustivel', 'tipo de combustivel', 'combustivel'],
+    data: ['data', 'data abastecimento', 'data do abastecimento'],
+    frota: ['frota', 'prefixo', 'equipamento', 'frota prefixo', 'equipamento frota', 'cb', 'codigo equipamento'],
+    kmInicial: ['km inicial', 'kminicial', 'km', 'hodometro', 'odometro'],
+    horimetroInicial: ['horimetro inicial', 'horimetro', 'hm inicial', 'hm'],
+    bombaInicial: ['bomba inicial', 'inicio bomba', 'inicial bomba', 'bico inicial', 'marcador inicial'],
+    quantidadeLitros: ['qtde de litros', 'quantidade de litros', 'quantidade', 'litros', 'qtd litros', 'litros abastecidos', 'volume', 'abastecido'],
+    bombaFinal: ['bomba final', 'fim bomba', 'final bomba', 'bico final', 'marcador final'],
+    hora: ['hora', 'hora abastecimento', 'hora do abastecimento'],
+    comboio: ['comboio', 'tanque', 'comboio tanque', 'bomba', 'caminhao comboio', 'caminhao tanque'],
+    tipoCombustivel: ['tipo do combustivel', 'tipo combustivel', 'tipo de combustivel', 'combustivel', 'produto'],
     empresa: ['empresa'],
-    observacao: ['observacao', 'obs'],
-    responsavel: ['responsavel'],
+    observacao: ['observacao', 'obs', 'observacoes'],
+    responsavel: ['responsavel', 'operador', 'frentista', 'apontador'],
   };
 
   const parseDateValue = (val: any): string => {
@@ -195,8 +196,17 @@ export default function LancamentosTab({
   const parseNumberValue = (val: any): number => {
     if (val === null || val === undefined || val === '') return NaN;
     if (typeof val === 'number') return val;
-    const str = String(val).replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
-    return parseFloat(str);
+    const raw = String(val).trim().replace(/\s/g, '');
+    const numberLike = raw.replace(/[^\d.,-]/g, '');
+    const normalized = numberLike.includes(',') && numberLike.includes('.')
+      ? numberLike.replace(/\./g, '').replace(',', '.')
+      : numberLike.includes(',')
+        ? numberLike.replace(',', '.')
+        : /^\d{1,3}(\.\d{3})+$/.test(numberLike)
+          ? numberLike.replace(/\./g, '')
+          : numberLike;
+    const cleaned = normalized.replace(/[^\d.-]/g, '');
+    return parseFloat(cleaned);
   };
 
   const handleImportFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,9 +296,20 @@ export default function LancamentosTab({
           const kmInicial = parseNumberValue(getCell(row, 'kmInicial')) || 0;
           const horimetroInicial = parseNumberValue(getCell(row, 'horimetroInicial')) || 0;
 
-          const eq = equipamentos.find(e => e.prefixo.toLowerCase() === frotaTexto.toLowerCase() || e.nome.toLowerCase() === frotaTexto.toLowerCase());
-          const comb = combustiveis.find(c => c.nome.toLowerCase() === tipoCombustivelTexto.toLowerCase() || tipoCombustivelTexto.toLowerCase().includes(c.nome.toLowerCase()));
-          const combVeic = comboios.find(c => c.nome.toLowerCase() === comboioTexto.toLowerCase() || c.nome.toLowerCase().includes(comboioTexto.toLowerCase()));
+          const frotaNorm = frotaTexto.toLowerCase();
+          const combustivelNorm = tipoCombustivelTexto.toLowerCase();
+          const comboioNorm = comboioTexto.toLowerCase();
+          const eq = equipamentos.find(e => e.prefixo.toLowerCase() === frotaNorm || e.nome.toLowerCase() === frotaNorm);
+          const comb = combustiveis.find(c => {
+            const nome = c.nome.toLowerCase();
+            return nome === combustivelNorm || combustivelNorm.includes(nome) || nome.includes(combustivelNorm);
+          });
+          const combVeic = comboioNorm
+            ? comboios.find(c => {
+                const nome = c.nome.toLowerCase();
+                return nome === comboioNorm || nome.includes(comboioNorm) || comboioNorm.includes(nome);
+              })
+            : undefined;
 
           const preview: Record<string, string> = {
             Aba: ws.name, Data: dataStr || String(rawData || ''), Frota: frotaTexto, Hora: horaStr,
@@ -667,6 +688,133 @@ export default function LancamentosTab({
     return { totalLitros, totalRegistros, mediaLitros, frotasUnicas };
   }, [filteredAbastecimentos]);
 
+  const downloadWorkbookFile = async (wb: ExcelJS.Workbook, fileName: string) => {
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadModeloCombustivel = async () => {
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'RENEA';
+      wb.created = new Date();
+
+      const ws = wb.addWorksheet('COMBUSTIVEL');
+      const headers = [
+        'Data', 'Frota', 'Hora', 'Tipo do Combustivel', 'Quantidade de Litros', 'Bomba Inicial',
+        'Bomba Final', 'Comboio', 'Responsavel', 'Km Inicial', 'Horimetro Inicial', 'Empresa', 'Observacao'
+      ];
+      const widths = [13, 14, 10, 24, 18, 15, 15, 18, 22, 14, 17, 22, 34];
+
+      ws.columns = headers.map((header, index) => ({
+        header,
+        key: `col${index + 1}`,
+        width: widths[index] || 16,
+      }));
+      ws.mergeCells(1, 1, 1, headers.length);
+      ws.getCell(1, 1).value = 'MODELO DE IMPORTAÇÃO - COMBUSTÍVEL';
+      ws.getRow(1).height = 24;
+      ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 13 };
+      ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
+      ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+      ws.mergeCells(2, 1, 2, headers.length);
+      ws.getCell(2, 1).value = 'Preencha uma linha por abastecimento. Use as abas EQUIPAMENTOS, COMBUSTIVEIS e COMBOIOS como referência para os nomes aceitos.';
+      ws.getRow(2).height = 26;
+      ws.getRow(2).font = { color: { argb: 'FF475569' }, italic: true };
+      ws.getRow(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+
+      const headerRow = ws.getRow(4);
+      headerRow.values = [, ...headers];
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      headerRow.height = 22;
+
+      const eqModelo = equipamentos[0];
+      const combModelo = combustiveis[0];
+      const comboioModelo = comboios[0];
+      const empresaModelo = eqModelo ? empresas.find(emp => emp.id === eqModelo.empresaId) : undefined;
+      ws.getRow(5).values = [
+        ,
+        new Date(),
+        eqModelo?.prefixo || '',
+        '07:00',
+        combModelo?.nome || '',
+        0,
+        0,
+        0,
+        comboioModelo?.nome || '',
+        comboioModelo?.responsavel || '',
+        0,
+        0,
+        empresaModelo?.nome || '',
+        'Exemplo: abastecimento importado pela planilha',
+      ];
+
+      ws.getColumn(1).numFmt = 'dd/mm/yyyy';
+      [5, 6, 7, 10, 11].forEach(col => { ws.getColumn(col).numFmt = '#,##0.00'; });
+      ws.eachRow((row, rowNumber) => {
+        row.eachCell({ includeEmpty: true }, cell => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          };
+          if (rowNumber >= 5) cell.alignment = { vertical: 'middle', horizontal: 'left' };
+        });
+      });
+      ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
+      ws.views = [{ state: 'frozen', ySplit: 4 }];
+
+      for (let row = 5; row <= 500; row += 1) {
+        ws.getCell(row, 2).dataValidation = { type: 'list', allowBlank: false, formulae: ['EQUIPAMENTOS!$A$2:$A$1000'] };
+        ws.getCell(row, 4).dataValidation = { type: 'list', allowBlank: false, formulae: ['COMBUSTIVEIS!$A$2:$A$1000'] };
+        ws.getCell(row, 8).dataValidation = { type: 'list', allowBlank: true, formulae: ['COMBOIOS!$A$2:$A$1000'] };
+      }
+
+      const setupCatalogSheet = (sheet: ExcelJS.Worksheet, catalogHeaders: string[]) => {
+        sheet.columns = catalogHeaders.map((header, index) => ({ header, key: `col${index + 1}`, width: [18, 32, 18, 16, 24, 18][index] || 18 }));
+        const row = sheet.getRow(1);
+        row.values = [, ...catalogHeaders];
+        row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
+        row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        sheet.views = [{ state: 'frozen', ySplit: 1 }];
+        sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: catalogHeaders.length } };
+      };
+
+      const eqSheet = wb.addWorksheet('EQUIPAMENTOS');
+      setupCatalogSheet(eqSheet, ['Frota', 'Descricao', 'Tipo', 'Placa', 'Empresa', 'Status']);
+      equipamentos.forEach(eq => {
+        const empresa = empresas.find(emp => emp.id === eq.empresaId);
+        eqSheet.addRow([eq.prefixo, eq.nome, eq.tipo, eq.placa || eq.seriePlaca || '', empresa?.nome || '', eq.status]);
+      });
+
+      const combSheet = wb.addWorksheet('COMBUSTIVEIS');
+      setupCatalogSheet(combSheet, ['Tipo do Combustivel']);
+      (combustiveis.length ? combustiveis : [{ id: 'modelo-diesel-s10', nome: 'Diesel S10' }]).forEach(comb => combSheet.addRow([comb.nome]));
+
+      const comboioSheet = wb.addWorksheet('COMBOIOS');
+      setupCatalogSheet(comboioSheet, ['Comboio', 'Placa', 'Capacidade Litros', 'Responsavel']);
+      comboios.forEach(comboio => comboioSheet.addRow([comboio.nome, comboio.placa, comboio.capacidadeLitros, comboio.responsavel]));
+
+      await downloadWorkbookFile(wb, `MODELO_importacao_combustivel_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (err) {
+      console.error('Erro ao gerar modelo de combustível:', err);
+      setValidationError('Não foi possível gerar o modelo de importação. Tente novamente.');
+    }
+  };
+
   // Exportação Excel do módulo de Combustível — Prioridade 2
   // Exporta somente os registros filtrados (filteredAbastecimentos já reflete os filtros ativos).
   const handleExportExcelAbastecimentos = async () => {
@@ -741,17 +889,8 @@ export default function LancamentosTab({
       ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
       ws.views = [{ state: 'frozen', ySplit: 4 }];
 
-      const buffer = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
       const sufixo = hasFiltrosAtivos ? '_filtrado' : '';
-      link.setAttribute('download', `RENEA_combustivel${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      await downloadWorkbookFile(wb, `RENEA_combustivel${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
       console.error('Erro ao exportar Excel de combustível:', err);
       setValidationError('Não foi possível exportar o Excel. Tente novamente.');
@@ -783,14 +922,53 @@ export default function LancamentosTab({
           <p className="text-xs text-slate-400 mt-1">Insira abastecimentos rápidos, manutenções de lubrificação e o Relatório Diário de Obra (RDO).</p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
-        >
-          <Plus className="w-4.5 h-4.5" />
-          {mode === 'abastecimentos' ? 'Novo Abastecimento' : mode === 'lubrificacoes' ? 'Nova Lubrificação' : 'Criar RDO Diário'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {mode === 'abastecimentos' && (
+            <>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isParsingImport}
+                className="px-4 py-2.5 bg-slate-950 border border-emerald-600/40 hover:border-emerald-500 disabled:opacity-60 text-emerald-400 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Upload className="w-4 h-4" />
+                {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportExcelAbastecimentos}
+                disabled={isExportingExcel}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                {isExportingExcel ? 'Exportando...' : 'Exportar Excel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadModeloCombustivel}
+                className="px-4 py-2.5 bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Baixar modelo
+              </button>
+            </>
+          )}
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            {mode === 'abastecimentos' ? 'Novo Abastecimento' : mode === 'lubrificacoes' ? 'Nova Lubrificação' : 'Criar RDO Diário'}
+          </button>
+        </div>
       </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xlsm"
+        onChange={handleImportFileSelected}
+        className="hidden"
+      />
 
       {/* Subtab Selectors */}
       <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-850 max-w-md" id="lancamentos-selector">
@@ -939,13 +1117,6 @@ export default function LancamentosTab({
               <Upload className="w-3.5 h-3.5" />
               {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xlsm"
-              onChange={handleImportFileSelected}
-              className="hidden"
-            />
           </div>
 
           {/* Cards de resumo respeitando os filtros aplicados */}
