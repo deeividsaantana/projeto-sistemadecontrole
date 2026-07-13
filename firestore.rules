@@ -12,20 +12,80 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Helper to validate the incoming Renea cloud state payload (anti-value poisoning)
-    function isValidCloudState(data) {
-      return data != null 
-        && data.updatedAt is string 
+    function hasBaseFields(data) {
+      return data != null
+        && data.keys().hasAll(['updatedAt', 'empresas', 'obras', 'equipamentos'])
+        && data.updatedAt is string
         && data.updatedAt.size() <= 64
         && data.empresas is list
         && data.obras is list
         && data.equipamentos is list;
     }
 
+    // Formato legado: todo o banco era salvo em um unico documento.
+    function isValidLegacyCloudState(data) {
+      return hasBaseFields(data)
+        && (!data.keys().hasAny(['schemaVersion']) || data.schemaVersion != 2);
+    }
+
+    // Formato v2: manifesto pequeno apontando para blocos menores que o limite
+    // de 1 MiB imposto pelo Firestore.
+    function isValidCloudManifest(data) {
+      return hasBaseFields(data)
+        && data.keys().hasAll([
+          'schemaVersion',
+          'kind',
+          'generation',
+          'chunks',
+          'tableHashes',
+          'totalRecords'
+        ])
+        && data.schemaVersion == 2
+        && data.kind == 'manifest'
+        && data.generation is string
+        && data.generation.size() <= 64
+        && data.chunks is map
+        && data.tableHashes is map
+        && data.totalRecords is map;
+    }
+
+    function isValidCloudChunk(data) {
+      return hasBaseFields(data)
+        && data.keys().hasAll([
+          'schemaVersion',
+          'kind',
+          'generation',
+          'table',
+          'chunkIndex',
+          'totalChunks',
+          'contentHash',
+          'payload'
+        ])
+        && data.schemaVersion == 2
+        && data.kind == 'chunk'
+        && data.generation is string
+        && data.generation.size() <= 64
+        && data.table is string
+        && data.table.size() <= 64
+        && data.chunkIndex is int
+        && data.chunkIndex >= 0
+        && data.totalChunks is int
+        && data.totalChunks > 0
+        && data.contentHash is string
+        && data.contentHash.size() <= 64
+        && data.payload is string
+        && data.payload.size() <= 700000;
+    }
+
     // Matches the cloud backup path for the Renea Infraestrutura system
     match /sistemarenea_cloud/{docId} {
       allow read: if isValidId(docId);
-      allow create, update: if isValidId(docId) && isValidCloudState(request.resource.data);
+      allow create, update: if isValidId(docId)
+        && (
+          isValidLegacyCloudState(request.resource.data)
+          || isValidCloudManifest(request.resource.data)
+          || isValidCloudChunk(request.resource.data)
+        );
       allow delete: if isValidId(docId);
     }
   }

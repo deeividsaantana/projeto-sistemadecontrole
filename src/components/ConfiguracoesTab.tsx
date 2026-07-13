@@ -354,7 +354,7 @@ export default function ConfiguracoesTab({
               <div>
                 <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">Status da Conexão</span>
                 <span className={`text-xs font-black font-mono block mt-0.5 ${isFirebaseConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {isFirebaseConnected ? '✓ Firebase Inicializado' : '⚠️ Modo Local / Configurando'}
+                  {isFirebaseConnected ? '✓ Firestore Conectado' : '⚠️ Firebase Indisponível'}
                 </span>
               </div>
               <div>

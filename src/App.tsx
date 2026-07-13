@@ -79,8 +79,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-branco.svg';
 
 // Firebase Imports
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './firebase';
+import { db } from './firebase';
+import {
+  downloadFirebaseBackup,
+  formatFirebaseSyncError,
+  getFirebaseConnectionStatus,
+  uploadFirebaseBackup,
+} from './firebaseCloudSync';
 
 // Icons Import
 import { 
@@ -433,7 +438,7 @@ export default function App() {
   }, []);
 
 
-  // Check Firebase connection and load sync preferences on mount
+  // Check the real Firestore connection and load sync preferences on mount.
   useEffect(() => {
     const autoSyncSaved = localStorage.getItem('renea_auto_sync') === 'true';
     setIsAutoSyncEnabled(autoSyncSaved);
@@ -443,12 +448,25 @@ export default function App() {
 
     const checkConnection = async () => {
       try {
-        const docRef = doc(db, 'sistemarenea_cloud', 'connection_test');
-        await getDoc(docRef);
-        setIsFirebaseConnected(true);
+        const status = await getFirebaseConnectionStatus(db);
+        setIsFirebaseConnected(status.connected);
+
+        if (status.updatedAt) {
+          const cloudDate = new Date(status.updatedAt);
+          if (!Number.isNaN(cloudDate.getTime())) {
+            const cloudDateLabel = cloudDate.toLocaleString('pt-BR');
+            setLastCloudSync(cloudDateLabel);
+            localStorage.setItem('renea_last_cloud_sync', cloudDateLabel);
+          }
+
+          // Primeira execucao da versao nova: registra a nuvem atual como base sem
+          // sobrescrever silenciosamente os dados locais que ainda nao foram enviados.
+          if (!localStorage.getItem('renea_last_cloud_sync_iso')) {
+            localStorage.setItem('renea_last_cloud_sync_iso', status.updatedAt);
+          }
+        }
       } catch (error) {
-        console.warn("Firebase check completed (offline or waiting configuration):", error);
-        // If it was just a warning or standard check, try to resolve status
+        console.warn('Falha ao validar a conexao real com o Firestore:', error);
         setIsFirebaseConnected(false);
       }
     };
@@ -481,7 +499,6 @@ export default function App() {
     customMateriaisCadastro = materiaisCadastro,
     customMateriaisRegistros = materiaisRegistros
   ): Promise<{ success: boolean; message: string }> => {
-    const path = 'sistemarenea_cloud/main_data';
     try {
       const data = {
         empresas: customEmpresas,
@@ -507,30 +524,31 @@ export default function App() {
         materiaisRegistros: customMateriaisRegistros,
         notifications: customNotifications,
         historyLogs: customHistory,
-        updatedAt: new Date().toISOString()
       };
-      await setDoc(doc(db, 'sistemarenea_cloud', 'main_data'), data);
+      const uploadResult = await uploadFirebaseBackup(db, data);
       
-      const nowStr = new Date().toLocaleString('pt-BR');
+      const nowStr = new Date(uploadResult.updatedAt).toLocaleString('pt-BR');
       setLastCloudSync(nowStr);
       localStorage.setItem('renea_last_cloud_sync', nowStr);
+      localStorage.setItem('renea_last_cloud_sync_iso', uploadResult.updatedAt);
       setIsFirebaseConnected(true);
-      return { success: true, message: 'Os dados foram sincronizados na nuvem Firebase com sucesso!' };
-    } catch (error: any) {
-      if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
-        handleFirestoreError(error, OperationType.WRITE, path);
-      }
-      return { success: false, message: `Falha ao sincronizar com Firebase: ${error.message || error}` };
+      return {
+        success: true,
+        message: `Firebase sincronizado: ${uploadResult.totalRecords.toLocaleString('pt-BR')} registros protegidos em blocos seguros.`,
+      };
+    } catch (error: unknown) {
+      setIsFirebaseConnected(false);
+      console.error('Falha ao sincronizar o backup no Firebase:', error);
+      return { success: false, message: formatFirebaseSyncError(error) };
     }
   };
 
   // Firebase Download Cloud Sync
   const handleDownloadFromFirebase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
-    const path = 'sistemarenea_cloud/main_data';
     try {
-      const docSnap = await getDoc(doc(db, 'sistemarenea_cloud', 'main_data'));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+      const backup = await downloadFirebaseBackup(db);
+      if (backup.data) {
+        const data = backup.data;
         
         // Update all local states and persist to localStorage
         if (data.empresas) {
@@ -626,21 +644,73 @@ export default function App() {
           localStorage.setItem('renea_history_logs', JSON.stringify(data.historyLogs));
         }
         
-        const nowStr = new Date().toLocaleString('pt-BR');
+        const syncIso = backup.updatedAt || new Date().toISOString();
+        const syncDate = new Date(syncIso);
+        const nowStr = Number.isNaN(syncDate.getTime())
+          ? new Date().toLocaleString('pt-BR')
+          : syncDate.toLocaleString('pt-BR');
         setLastCloudSync(nowStr);
         localStorage.setItem('renea_last_cloud_sync', nowStr);
+        localStorage.setItem('renea_last_cloud_sync_iso', syncIso);
         setIsFirebaseConnected(true);
-        return { success: true, message: 'Dados restaurados do Firebase com sucesso!' };
+        return {
+          success: true,
+          message: `Dados restaurados do Firebase com sucesso (${backup.totalRecords.toLocaleString('pt-BR')} registros).`,
+        };
       } else {
         return { success: false, message: 'Nenhum backup encontrado no Firestore.' };
       }
-    } catch (error: any) {
-      if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
-        handleFirestoreError(error, OperationType.GET, path);
-      }
-      return { success: false, message: `Falha ao importar do Firebase: ${error.message || error}` };
+    } catch (error: unknown) {
+      setIsFirebaseConnected(false);
+      console.error('Falha ao restaurar o backup do Firebase:', error);
+      return { success: false, message: formatFirebaseSyncError(error) };
     }
   };
+
+  // Com a sincronizacao automatica ativa, verifica periodicamente se outro
+  // dispositivo publicou uma versao mais recente e atualiza este navegador.
+  useEffect(() => {
+    if (!isAutoSyncEnabled || externalPresenceToken || externalApontamentoToken) return;
+
+    let cancelled = false;
+    let isChecking = false;
+
+    const pullRemoteChanges = async () => {
+      if (cancelled || isChecking) return;
+      isChecking = true;
+      try {
+        const status = await getFirebaseConnectionStatus(db);
+        if (cancelled) return;
+        setIsFirebaseConnected(status.connected);
+
+        if (!status.updatedAt) return;
+        const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
+        if (!localCloudVersion) {
+          localStorage.setItem('renea_last_cloud_sync_iso', status.updatedAt);
+          return;
+        }
+
+        if (localCloudVersion !== status.updatedAt) {
+          await handleDownloadFromFirebase();
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setIsFirebaseConnected(false);
+          console.warn('Verificacao automatica do Firebase falhou:', error);
+        }
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    const initialCheck = window.setTimeout(pullRemoteChanges, 3_000);
+    const interval = window.setInterval(pullRemoteChanges, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initialCheck);
+      window.clearInterval(interval);
+    };
+  }, [isAutoSyncEnabled, externalPresenceToken, externalApontamentoToken]);
 
   useEffect(() => {
     if (!externalPresenceToken) return;
@@ -3109,7 +3179,14 @@ export default function App() {
                   setIsAutoSyncEnabled(val);
                   localStorage.setItem('renea_auto_sync', val ? 'true' : 'false');
                   if (val) {
-                    handleUploadToFirebase();
+                    handleUploadToFirebase().then(result => {
+                      addNotification(
+                        result.success ? 'Firebase sincronizado' : 'Falha no Firebase',
+                        result.message,
+                        result.success ? 'success' : 'error',
+                        'Firebase Cloud',
+                      );
+                    });
                   }
                 }}
                 onUploadToFirebase={handleUploadToFirebase}
