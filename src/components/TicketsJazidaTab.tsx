@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { jsPDF } from 'jspdf';
 import { TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
@@ -225,6 +226,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [viewingTicket, setViewingTicket] = useState<TicketJazida | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{ fileName: string; items: TicketJazida[]; ignored: number } | null>(null);
+  const [isConfirmingImport, setIsConfirmingImport] = useState(false);
   const [ticketTab, setTicketTab] = useState<TipoTicketJazida>('Liberação');
   const [linkMessage, setLinkMessage] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -746,12 +749,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         setValidationError(`Nenhum ticket novo foi encontrado. ${ignored ? `${ignored} linha(s) foram ignoradas por erro ou duplicidade.` : 'Confira se a planilha tem as abas LIBERAÇÃO e RECEBIMENTO.'}`);
         return;
       }
-      if (!window.confirm(`${imported.length} ticket(s) válido(s) serão importados. ${ignored} linha(s) foram ignoradas por dados incompletos ou duplicidade. Deseja continuar?`)) {
-        setImportMessage('Importação cancelada. Nenhum ticket foi alterado.');
-        return;
-      }
-      onImportTickets(imported);
-      setImportMessage(`${imported.length} ticket(s) importado(s) de ${file.name}.${ignored ? ` ${ignored} linha(s) ignorada(s).` : ''}`);
+      setPendingImport({ fileName: file.name, items: imported, ignored });
     } catch (err: any) {
       console.error('Erro ao importar tickets:', err);
       setValidationError(err?.message || 'Não foi possível importar a planilha de tickets. Use um arquivo .xlsx ou .xlsm no modelo de liberação/recebimento.');
@@ -759,6 +757,15 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       setIsImporting(false);
       if (importInputRef.current) importInputRef.current.value = '';
     }
+  };
+
+  const confirmTicketsImport = () => {
+    if (!pendingImport || isConfirmingImport) return;
+    setIsConfirmingImport(true);
+    onImportTickets(pendingImport.items);
+    setImportMessage(`${pendingImport.items.length} ticket(s) importado(s) de ${pendingImport.fileName}.${pendingImport.ignored ? ` ${pendingImport.ignored} linha(s) ignorada(s).` : ''}`);
+    setPendingImport(null);
+    setIsConfirmingImport(false);
   };
 
   // ---- Exportação Excel ----
@@ -1025,6 +1032,27 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
   return (
     <div className="space-y-6" id="tickets-jazida-tab">
+      <SpreadsheetImportReview
+        open={Boolean(pendingImport)}
+        title="Importar tickets de liberação e recebimento"
+        fileName={pendingImport?.fileName || ''}
+        validCount={pendingImport?.items.length || 0}
+        ignoredCount={pendingImport?.ignored || 0}
+        columns={['Via', 'Ticket', 'Data', 'Prefixo', 'Placa', 'Material', 'Quantidade']}
+        rows={(pendingImport?.items || []).map(item => ({
+          Via: item.tipoTicket || 'Liberação',
+          Ticket: item.ticketNumero,
+          Data: item.data.split('-').reverse().join('/'),
+          Prefixo: item.prefixo,
+          Placa: item.placa,
+          Material: item.tipoMaterial,
+          Quantidade: item.quantidadeM3
+        }))}
+        note="As abas LIBERAÇÃO e RECEBIMENTO são lidas juntas. Tickets repetidos ou incompletos ficam fora da importação."
+        confirming={isConfirmingImport}
+        onCancel={() => setPendingImport(null)}
+        onConfirm={confirmTicketsImport}
+      />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
@@ -1041,7 +1069,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             onClick={() => importInputRef.current?.click()}
             disabled={isImporting}
             title="Importar tickets de uma planilha XLSX ou XLSM"
-            className="px-4 py-2.5 bg-slate-900 border border-slate-700 hover:border-emerald-500 disabled:opacity-60 text-slate-200 font-bold text-xs rounded-md transition-colors flex items-center gap-1.5"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Upload className="w-4 h-4 text-emerald-400" />
             {isImporting ? 'Validando planilha...' : 'Importar tickets'}

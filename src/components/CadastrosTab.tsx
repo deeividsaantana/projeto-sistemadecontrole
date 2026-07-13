@@ -6,6 +6,7 @@
 import React, { useRef, useState } from 'react';
 import ExcelJS from 'exceljs';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
+import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { 
   Empresa, 
   ObraLocal, 
@@ -116,6 +117,8 @@ export default function CadastrosTab({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const [importFeedback, setImportFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ fileName: string; rows: Record<string, string>[] } | null>(null);
+  const [isConfirmingImport, setIsConfirmingImport] = useState(false);
 
   // Field validation warnings
   const [validationError, setValidationError] = useState<string>('');
@@ -499,13 +502,7 @@ export default function CadastrosTab({
         setImportFeedback({ type: 'error', message: 'A planilha não possui linhas para importar.' });
         return;
       }
-      const confirmed = window.confirm(`Foram encontradas ${rows.length} linha(s) em ${file.name}. Os registros existentes com a mesma chave serão atualizados. Deseja continuar?`);
-      if (!confirmed) {
-        setImportFeedback({ type: 'error', message: 'Importação cancelada. Nenhum registro foi alterado.' });
-        return;
-      }
-      const result = onImportCadastros(subTab, rows);
-      setImportFeedback({ type: result.success ? 'success' : 'error', message: result.message });
+      setPendingImport({ fileName: file.name, rows });
     } catch (error: any) {
       console.error('Erro ao importar planilha de cadastros:', error);
       setImportFeedback({ type: 'error', message: error?.message || 'Não foi possível ler a planilha. Use CSV, TSV, XLSX ou XLSM.' });
@@ -514,8 +511,29 @@ export default function CadastrosTab({
     }
   };
 
+  const confirmSpreadsheetImport = () => {
+    if (!pendingImport || isConfirmingImport) return;
+    setIsConfirmingImport(true);
+    const result = onImportCadastros(subTab, pendingImport.rows);
+    setImportFeedback({ type: result.success ? 'success' : 'error', message: result.message });
+    setPendingImport(null);
+    setIsConfirmingImport(false);
+  };
+
   return (
     <div className="space-y-6" id="cadastros-container">
+      <SpreadsheetImportReview
+        open={Boolean(pendingImport)}
+        title={`Importar ${subTab}`}
+        fileName={pendingImport?.fileName || ''}
+        validCount={pendingImport?.rows.length || 0}
+        columns={pendingImport ? Object.keys(pendingImport.rows[0] || {}) : []}
+        rows={pendingImport?.rows || []}
+        note="Registros com a mesma chave serão atualizados. Confira a amostra antes de gravar no banco de dados."
+        confirming={isConfirmingImport}
+        onCancel={() => setPendingImport(null)}
+        onConfirm={confirmSpreadsheetImport}
+      />
       
       {/* Upper header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
@@ -530,7 +548,7 @@ export default function CadastrosTab({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => importFileInputRef.current?.click()}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white"
           >
             <Upload className="w-4.5 h-4.5" />
             Importar planilha

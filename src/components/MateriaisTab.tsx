@@ -6,6 +6,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import SpreadsheetImportReview from './SpreadsheetImportReview';
 import {
   Archive,
   BarChart3,
@@ -252,6 +253,8 @@ export default function MateriaisTab({
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{ fileName: string; registros: MaterialRegistro[]; materiais: MaterialCadastro[] } | null>(null);
+  const [isConfirmingImport, setIsConfirmingImport] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -486,18 +489,22 @@ export default function MateriaisTab({
         setFeedback({ type: 'error', message: 'Nenhum lançamento válido foi encontrado na planilha.' });
         return;
       }
-      if (!window.confirm(`${imported.length} lançamento(s) válido(s) foram encontrados em ${file.name}. Confirma a importação para o banco de dados?`)) {
-        setFeedback({ type: 'error', message: 'Importação cancelada. Nenhum registro foi alterado.' });
-        return;
-      }
       const importedMateriais = buildCatalogFromRegistros(imported);
-      const result = onImportRegistros(imported, importedMateriais);
-      setFeedback({ type: result.success ? 'success' : 'error', message: result.message });
+      setPendingImport({ fileName: file.name, registros: imported, materiais: importedMateriais });
     } catch (error: any) {
       setFeedback({ type: 'error', message: `Falha ao importar planilha: ${error.message || error}` });
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const confirmSpreadsheetImport = () => {
+    if (!pendingImport || isConfirmingImport) return;
+    setIsConfirmingImport(true);
+    const result = onImportRegistros(pendingImport.registros, pendingImport.materiais);
+    setFeedback({ type: result.success ? 'success' : 'error', message: result.message });
+    setPendingImport(null);
+    setIsConfirmingImport(false);
   };
 
   const exportExcel = async () => {
@@ -606,6 +613,26 @@ export default function MateriaisTab({
 
   return (
     <div className="space-y-6" id="materiais-tab">
+      <SpreadsheetImportReview
+        open={Boolean(pendingImport)}
+        title="Importar controle de materiais"
+        fileName={pendingImport?.fileName || ''}
+        validCount={pendingImport?.registros.length || 0}
+        columns={['Data', 'Aba', 'Material', 'Unidade', 'Quantidade', 'Fornecedor', 'Placa']}
+        rows={(pendingImport?.registros || []).map(item => ({
+          Data: formatDate(item.data),
+          Aba: item.aba,
+          Material: item.material,
+          Unidade: item.unidade,
+          Quantidade: item.quantidade,
+          Fornecedor: item.fornecedor,
+          Placa: item.placa
+        }))}
+        note="A planilha foi validada e os materiais novos serão adicionados ao catálogo junto com os lançamentos."
+        confirming={isConfirmingImport}
+        onCancel={() => setPendingImport(null)}
+        onConfirm={confirmSpreadsheetImport}
+      />
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-slate-900 border border-slate-850 p-6 rounded-3xl shadow-xl">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
@@ -617,7 +644,7 @@ export default function MateriaisTab({
 
         <div className="flex flex-wrap items-center gap-2">
           <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportFile} className="hidden" />
-          <button onClick={() => importInputRef.current?.click()} disabled={isImporting} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-100 text-xs font-black flex items-center gap-2">
+          <button onClick={() => importInputRef.current?.click()} disabled={isImporting} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
             <Upload className="w-4 h-4" />
             {isImporting ? 'Importando...' : 'Importar planilha'}
           </button>

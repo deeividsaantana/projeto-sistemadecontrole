@@ -1,0 +1,107 @@
+.public-link-light {
+  min-height: 100vh;
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.public-link-light .bg-slate-900 {
+  background: #ffffff !important;
+}
+
+.public-link-light .bg-slate-950 {
+  background: #f8fafc !important;
+}
+
+.public-link-light .bg-slate-800 {
+  background: #e2e8f0 !important;
+}
+
+.public-link-light .border-slate-800,
+.public-link-light .border-slate-850 {
+  border-color: #dbe3ec !important;
+}
+
+.public-link-light .text-white,
+.public-link-light .text-slate-100,
+.public-link-light .text-slate-200,
+.public-link-light .text-slate-300 {
+  color: #0f172a !important;
+}
+
+.public-link-light .text-slate-400,
+.public-link-light .text-slate-500 {
+  color: #64748b !important;
+}
+
+.public-link-light .rounded-2xl,
+.public-link-light .rounded-xl {
+  border-radius: 8px !important;
+}
+
+.public-link-light input,
+.public-link-light select,
+.public-link-light textarea {
+  color-scheme: light;
+}
+
+.public-link-light input:focus,
+.public-link-light select:focus,
+.public-link-light textarea:focus {
+  box-shadow: 0 0 0 3px rgb(16 185 129 / 12%);
+}
+
+.public-link-light .public-link-header {
+  background: #020617 !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 14px 35px rgb(15 23 42 / 12%);
+}
+
+.public-link-light .public-link-header .text-white,
+.public-link-light .public-link-header .text-slate-100,
+.public-link-light .public-link-header .text-slate-200,
+.public-link-light .public-link-header .text-slate-300 {
+  color: #ffffff !important;
+}
+
+.public-link-light .public-link-header .text-slate-400,
+.public-link-light .public-link-header .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+
+.public-link-light .public-link-header .bg-slate-950 {
+  background: #020617 !important;
+}
+
+.public-link-light .bg-emerald-600,
+.public-link-light .bg-emerald-500 {
+  color: #ffffff !important;
+}
+
+.public-link-light .public-link-success {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+.public-link-light .public-link-error {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #9f1239 !important;
+}
+
+.public-link-light .public-link-warning {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-link-light *,
+  .public-link-light *::before,
+  .public-link-light *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import SpreadsheetImportReview from './SpreadsheetImportReview';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -911,7 +912,7 @@ export default function LancamentosTab({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isParsingImport}
-                className="px-4 py-2.5 bg-slate-950 border border-emerald-600/40 hover:border-emerald-500 disabled:opacity-60 text-emerald-400 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
                 {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
@@ -1087,7 +1088,7 @@ export default function LancamentosTab({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isParsingImport}
-              className="flex items-center gap-1.5 px-4 py-2 bg-slate-950 border border-emerald-600/40 hover:border-emerald-500 disabled:opacity-60 text-emerald-400 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Upload className="w-3.5 h-3.5" />
               {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
@@ -1700,94 +1701,26 @@ export default function LancamentosTab({
         </div>
       )}
 
-      {/* Modal de Conferência da Importação de Planilha — Prioridade 3 */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-3xl max-h-[85vh] bg-slate-900 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl space-y-4 flex flex-col">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm uppercase tracking-wider font-black text-white font-mono flex items-center gap-2">
-                <Upload className="w-4 h-4 text-emerald-400" />
-                Conferência da Importação — {importFileName}
-              </h3>
-              <button onClick={handleCancelImport} className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="bg-slate-950 border border-slate-850 rounded-xl p-3">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Linhas encontradas</p>
-                <p className="text-lg font-black text-white font-mono mt-0.5">{importSummary.total}</p>
-              </div>
-              <div className="bg-slate-950 border border-emerald-500/20 rounded-xl p-3">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Válidas</p>
-                <p className="text-lg font-black text-emerald-400 font-mono mt-0.5">{importSummary.validas}</p>
-              </div>
-              <div className="bg-slate-950 border border-rose-500/20 rounded-xl p-3">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Com erro</p>
-                <p className="text-lg font-black text-rose-400 font-mono mt-0.5">{importSummary.comErro}</p>
-              </div>
-              <div className="bg-slate-950 border border-amber-500/20 rounded-xl p-3">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Duplicadas</p>
-                <p className="text-lg font-black text-amber-400 font-mono mt-0.5">{importSummary.duplicadas}</p>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto border border-slate-850 rounded-xl">
-              <table className="w-full text-left border-collapse text-xxs">
-                <thead className="sticky top-0 bg-slate-950">
-                  <tr className="text-slate-400 uppercase text-[10px] font-bold">
-                    <th className="py-2 px-3">Linha</th>
-                    <th className="py-2 px-3">Data</th>
-                    <th className="py-2 px-3">Frota</th>
-                    <th className="py-2 px-3">Litros</th>
-                    <th className="py-2 px-3">Combustível</th>
-                    <th className="py-2 px-3">Status</th>
-                    <th className="py-2 px-3">Motivo</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {importRows.map(r => (
-                    <tr key={r.linha} className={!r.valido ? 'bg-rose-500/5' : ''}>
-                      <td className="py-2 px-3 text-slate-500 font-mono">{r.linha}</td>
-                      <td className="py-2 px-3 text-slate-300">{r.preview.Data}</td>
-                      <td className="py-2 px-3 text-slate-300">{r.preview.Frota}</td>
-                      <td className="py-2 px-3 text-slate-300">{r.preview.Litros}</td>
-                      <td className="py-2 px-3 text-slate-300">{r.preview['Combustível']}</td>
-                      <td className="py-2 px-3">
-                        {r.valido ? (
-                          <span className="text-emerald-400 font-bold">✔ Válido</span>
-                        ) : r.duplicado ? (
-                          <span className="text-amber-400 font-bold">Duplicado</span>
-                        ) : (
-                          <span className="text-rose-400 font-bold">Erro</span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-slate-500">{r.motivo || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex gap-2.5">
-              <button
-                onClick={handleConfirmImport}
-                disabled={importSummary.validas === 0 || isConfirmingImport}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
-              >
-                {isConfirmingImport ? 'Importando...' : `Confirmar Importação (${importSummary.validas} registro(s))`}
-              </button>
-              <button
-                onClick={handleCancelImport}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SpreadsheetImportReview
+        open={isImportModalOpen}
+        title="Importar abastecimentos"
+        fileName={importFileName}
+        validCount={importSummary.validas}
+        ignoredCount={importSummary.comErro + importSummary.duplicadas}
+        columns={['Linha', 'Data', 'Frota', 'Litros', 'Combustível', 'Status']}
+        rows={importRows.map(row => ({
+          Linha: row.linha,
+          Data: row.preview.Data,
+          Frota: row.preview.Frota,
+          Litros: row.preview.Litros,
+          Combustível: row.preview['Combustível'],
+          Status: row.valido ? 'Válido' : row.duplicado ? 'Duplicado' : row.motivo || 'Erro'
+        }))}
+        note={`${importSummary.total} linha(s) analisada(s). Registros duplicados ou com campos obrigatórios ausentes não serão gravados.`}
+        confirming={isConfirmingImport}
+        onCancel={handleCancelImport}
+        onConfirm={handleConfirmImport}
+      />
 
     </div>
   );

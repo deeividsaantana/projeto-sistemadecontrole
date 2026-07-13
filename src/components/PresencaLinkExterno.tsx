@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, Search, Send, ShieldCheck, UserCheck, Users } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Funcionario, GrupoEquipe, ObraLocal, PresencaApontamento, PresencaStatus } from '../types';
 import reneaLogo from '../assets/images/logo-renea-branco.svg';
+import './publicLinks.css';
 
 // Token especial usado pelo "link único" de presença. Quando o token recebido
 // na URL for este valor, em vez de buscar um grupo específico, exibimos uma
@@ -127,7 +129,7 @@ export default function PresencaLinkExterno({
 
   if (isLoadingCloud && gruposEquipe.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+      <div className="public-link-light flex min-h-screen items-center justify-center p-4">
         <div className="text-center">
           <Clock className="w-8 h-8 text-emerald-400 mx-auto animate-spin" />
           <p className="text-sm text-slate-400 mt-3">Carregando dados do Sistema Renea...</p>
@@ -139,9 +141,14 @@ export default function PresencaLinkExterno({
   if (!grupo) {
     if (isGeneralLink) {
       return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 antialiased">
-          <div className="max-w-2xl mx-auto px-4 py-5 sm:py-8">
-            <header className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-4">
+        <div id="presenca-publica" className="public-link-light antialiased">
+          <motion.div
+            className="mx-auto max-w-2xl px-4 py-5 sm:py-8"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+          >
+            <header className="public-link-header mb-4 rounded-lg border p-4 sm:p-5">
               <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-7 w-auto object-contain mb-2" />
               <div className="flex items-center gap-2 text-emerald-400 text-[10px] uppercase tracking-widest font-black">
                 <ShieldCheck className="w-4 h-4" />
@@ -191,14 +198,14 @@ export default function PresencaLinkExterno({
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       );
     }
 
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center">
+      <div className="public-link-light flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
           <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
           <h1 className="text-xl font-black text-white mt-4">Link indisponível</h1>
           <p className="text-sm text-slate-400 mt-2">
@@ -212,9 +219,14 @@ export default function PresencaLinkExterno({
   const presentCount = Object.values(items).filter(item => item.status === 'Presente').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 antialiased">
-      <div className="max-w-3xl mx-auto px-4 py-5 sm:py-8">
-        <header className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-4">
+    <div id="presenca-publica" className="public-link-light antialiased">
+      <motion.div
+        className="mx-auto max-w-3xl px-4 py-5 sm:py-8"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      >
+        <header className="public-link-header mb-4 rounded-lg border p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-7 w-auto object-contain mb-2" />
@@ -315,21 +327,26 @@ export default function PresencaLinkExterno({
           </section>
 
           {alreadySent && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-100 text-sm flex items-start gap-3">
+            <div className="public-link-warning flex items-start gap-3 rounded-lg border p-4 text-sm">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>A presença deste grupo já foi enviada para a data selecionada. Procure o administrativo para atualização controlada.</span>
             </div>
           )}
 
           {feedback && (
-            <div className={`p-4 rounded-2xl border text-sm flex items-start gap-3 ${
-              feedback.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100'
-                : 'bg-rose-500/10 border-rose-500/20 text-rose-100'
-            }`}>
-              {feedback.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" /> : <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />}
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+              className={`flex items-start gap-3 rounded-lg border p-4 text-sm ${feedback.type === 'success' ? 'public-link-success' : 'public-link-error'}`}
+            >
+              {feedback.type === 'success' ? (
+                <motion.span initial={{ scale: 0, rotate: -35 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 520, damping: 22 }}>
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                </motion.span>
+              ) : <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />}
               <span>{feedback.message}</span>
-            </div>
+            </motion.div>
           )}
 
           <button
@@ -341,7 +358,7 @@ export default function PresencaLinkExterno({
             Enviar presença
           </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

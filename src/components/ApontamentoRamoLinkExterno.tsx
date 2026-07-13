@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock, Send, ShieldCheck, Users } from 'lucide-react';
+import { motion } from 'motion/react';
+import './publicLinks.css';
 import {
   ApontamentoQuantidadeItem,
   ApontamentoRamo,
@@ -136,7 +138,7 @@ export default function ApontamentoRamoLinkExterno({
 
   if (isLoadingCloud && !tokenRamo) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+      <div className="public-link-light flex min-h-screen items-center justify-center p-4">
         <div className="text-center">
           <Clock className="w-8 h-8 text-emerald-400 mx-auto animate-spin" />
           <p className="text-sm text-slate-400 mt-3">Carregando dados do Sistema Renea...</p>
@@ -147,8 +149,8 @@ export default function ApontamentoRamoLinkExterno({
 
   if (!tokenRamo || !selectedRamo) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center">
+      <div className="public-link-light flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
           <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
           <h1 className="text-xl font-black text-white mt-4">Link indisponível</h1>
           <p className="text-sm text-slate-400 mt-2">
@@ -163,9 +165,14 @@ export default function ApontamentoRamoLinkExterno({
   const totalEquipamentos = totalQuantidade(equipamentos);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 antialiased">
-      <div className="max-w-4xl mx-auto px-4 py-5 sm:py-8">
-        <header className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-4">
+    <div id="apontamento-publico" className="public-link-light antialiased">
+      <motion.div
+        className="mx-auto max-w-4xl px-4 py-5 sm:py-8"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      >
+        <header className="public-link-header mb-4 rounded-lg border p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <div className="w-12 h-12 rounded-xl bg-slate-950 border border-emerald-500/20 overflow-hidden flex items-center justify-center shrink-0">
               <img src={reneaLogo} alt="RENEA" className="w-full h-full object-contain p-1.5" />
@@ -321,17 +328,26 @@ export default function ApontamentoRamoLinkExterno({
           </section>
 
           {alreadySent && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-100 text-sm flex items-start gap-3">
+            <div className="public-link-warning flex items-start gap-3 rounded-lg border p-4 text-sm">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>Este ramo já foi apontado para a data selecionada. Procure o administrativo para ajuste controlado.</span>
             </div>
           )}
 
           {feedback && (
-            <div className={`p-4 rounded-2xl border text-sm flex items-start gap-3 ${feedback.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100' : 'bg-rose-500/10 border-rose-500/20 text-rose-100'}`}>
-              {feedback.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" /> : <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />}
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+              className={`flex items-start gap-3 rounded-lg border p-4 text-sm ${feedback.type === 'success' ? 'public-link-success' : 'public-link-error'}`}
+            >
+              {feedback.type === 'success' ? (
+                <motion.span initial={{ scale: 0, rotate: -35 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 520, damping: 22 }}>
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                </motion.span>
+              ) : <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />}
               <span>{feedback.message}</span>
-            </div>
+            </motion.div>
           )}
 
           <button
@@ -343,7 +359,7 @@ export default function ApontamentoRamoLinkExterno({
             {isSubmitting ? 'Enviando...' : 'Enviar apontamento do ramo'}
           </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }
