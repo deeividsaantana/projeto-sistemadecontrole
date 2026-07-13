@@ -1,5 +1,5 @@
-const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const FIREBASE_SERVICE_ACCOUNT_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || 'https://sistemarenea-default-rtdb.firebaseio.com';
@@ -100,7 +100,7 @@ async function fetchDados() {
   };
 }
 
-exports.handler = async () => {
+export const handler = async () => {
   try {
     const dados = await fetchDados();
 

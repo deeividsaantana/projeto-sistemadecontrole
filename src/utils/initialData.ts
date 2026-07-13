@@ -25,7 +25,8 @@ import {
   ApontamentoRamoRegistro,
   TicketJazida,
   MaterialCadastro,
-  MaterialRegistro
+  MaterialRegistro,
+  ParteDiariaEquipamento
 } from '../types';
 import { APONTAMENTO_LINK_TOKEN } from './apontamentoRamosConfig';
 import {
@@ -941,6 +942,8 @@ export const INITIAL_APONTAMENTO_RAMOS: ApontamentoRamo[] = APONTAMENTO_RAMOS_BA
 }));
 
 export const INITIAL_APONTAMENTO_RAMO_REGISTROS: ApontamentoRamoRegistro[] = [];
+
+export const INITIAL_PARTES_DIARIAS_EQUIPAMENTOS: ParteDiariaEquipamento[] = [];
 
 
 export const INITIAL_ORDENS_SERVICO: OrdemServico[] = [];

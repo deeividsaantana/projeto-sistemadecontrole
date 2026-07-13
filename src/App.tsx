@@ -31,7 +31,8 @@ import {
   CondicaoApontamento,
   TicketJazida,
   MaterialCadastro,
-  MaterialRegistro
+  MaterialRegistro,
+  ParteDiariaEquipamento
 } from './types';
 
 import { 
@@ -56,7 +57,8 @@ import {
   INITIAL_APONTAMENTO_RAMO_REGISTROS,
   INITIAL_TICKETS_JAZIDA,
   INITIAL_MATERIAIS_CADASTRO,
-  INITIAL_MATERIAIS_REGISTROS
+  INITIAL_MATERIAIS_REGISTROS,
+  INITIAL_PARTES_DIARIAS_EQUIPAMENTOS
 } from './utils/initialData';
 
 // Subcomponents Imports
@@ -74,6 +76,8 @@ import ApontamentoRamosTab from './components/ApontamentoRamosTab';
 import ApontamentoRamoLinkExterno from './components/ApontamentoRamoLinkExterno';
 import MateriaisTab from './components/MateriaisTab';
 import TicketLinkExterno from './components/TicketLinkExterno';
+import ParteDiariaEquipamentosTab from './components/ParteDiariaEquipamentosTab';
+import { auditFuelDataset } from './utils/combustivelValidation';
 
 // Motion and Logo Import
 import { motion, AnimatePresence } from 'motion/react';
@@ -135,7 +139,8 @@ import {
   Wrench,
   Truck,
   BarChart3,
-  Package
+  Package,
+  CircleGauge
 } from 'lucide-react';
 
 import { AppNotification } from './types';
@@ -155,6 +160,7 @@ const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
+      { id: 'partes-diarias', label: 'Parte Diária de Equipamentos', icon: CircleGauge },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'materiais', label: 'Materiais', icon: Package },
@@ -336,6 +342,7 @@ export default function App() {
   const [apontamentoRamoRegistros, setApontamentoRamoRegistros] = useState<ApontamentoRamoRegistro[]>([]);
   const [materiaisCadastro, setMateriaisCadastro] = useState<MaterialCadastro[]>([]);
   const [materiaisRegistros, setMateriaisRegistros] = useState<MaterialRegistro[]>([]);
+  const [partesDiariasEquipamentos, setPartesDiariasEquipamentos] = useState<ParteDiariaEquipamento[]>([]);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
@@ -375,6 +382,7 @@ export default function App() {
       localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(INITIAL_APONTAMENTO_RAMO_REGISTROS));
       localStorage.setItem('renea_materiais_cadastro', JSON.stringify(INITIAL_MATERIAIS_CADASTRO));
       localStorage.setItem('renea_materiais_registros', JSON.stringify(INITIAL_MATERIAIS_REGISTROS));
+      localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
       localStorage.setItem('renea_history_logs', JSON.stringify(INITIAL_HISTORY_LOGS));
       localStorage.setItem('renea_notifications', JSON.stringify(getInitialNotifications()));
       localStorage.setItem('renea_data_loaded_v2', 'true');
@@ -403,6 +411,7 @@ export default function App() {
       setApontamentoRamoRegistros(INITIAL_APONTAMENTO_RAMO_REGISTROS);
       setMateriaisCadastro(INITIAL_MATERIAIS_CADASTRO);
       setMateriaisRegistros(INITIAL_MATERIAIS_REGISTROS);
+      setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
       setHistoryLogs(INITIAL_HISTORY_LOGS);
       setNotifications(getInitialNotifications());
     } else {
@@ -427,6 +436,7 @@ export default function App() {
       const savedApontamentoRamoRegistros = localStorage.getItem('renea_apontamento_ramo_registros');
       const savedMateriaisCadastro = localStorage.getItem('renea_materiais_cadastro');
       const savedMateriaisRegistros = localStorage.getItem('renea_materiais_registros');
+      const savedPartesDiariasEquipamentos = localStorage.getItem('renea_partes_diarias_equipamentos');
       const savedHistory = localStorage.getItem('renea_history_logs');
       const savedNotifications = localStorage.getItem('renea_notifications');
       const shouldMigratePresencePeople = localStorage.getItem('renea_colaboradores_planilha_v1') !== 'true';
@@ -482,6 +492,7 @@ export default function App() {
       setApontamentoRamoRegistros(savedApontamentoRamoRegistros ? JSON.parse(savedApontamentoRamoRegistros) : INITIAL_APONTAMENTO_RAMO_REGISTROS);
       setMateriaisCadastro(loadedMateriaisCadastro);
       setMateriaisRegistros(loadedMateriaisRegistros);
+      setPartesDiariasEquipamentos(savedPartesDiariasEquipamentos ? JSON.parse(savedPartesDiariasEquipamentos) : INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
       setHistoryLogs(savedHistory ? JSON.parse(savedHistory) : INITIAL_HISTORY_LOGS);
       setNotifications(savedNotifications ? JSON.parse(savedNotifications) : getInitialNotifications());
 
@@ -498,6 +509,9 @@ export default function App() {
       }
       if (!savedApontamentoRamoRegistros) {
         localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(INITIAL_APONTAMENTO_RAMO_REGISTROS));
+      }
+      if (!savedPartesDiariasEquipamentos) {
+        localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
       }
       if (shouldMigrateSpreadsheetSeed) {
         localStorage.setItem('renea_equipamentos', JSON.stringify(loadedEquipamentos));
@@ -579,7 +593,8 @@ export default function App() {
     customApontamentoRamos = apontamentoRamos,
     customApontamentoRamoRegistros = apontamentoRamoRegistros,
     customMateriaisCadastro = materiaisCadastro,
-    customMateriaisRegistros = materiaisRegistros
+    customMateriaisRegistros = materiaisRegistros,
+    customPartesDiariasEquipamentos = partesDiariasEquipamentos
   ): Promise<{ success: boolean; message: string }> => {
     try {
       const data = {
@@ -604,6 +619,7 @@ export default function App() {
         apontamentoRamoRegistros: customApontamentoRamoRegistros,
         materiaisCadastro: customMateriaisCadastro,
         materiaisRegistros: customMateriaisRegistros,
+        partesDiariasEquipamentos: customPartesDiariasEquipamentos,
         notifications: customNotifications,
         historyLogs: customHistory,
       };
@@ -716,6 +732,10 @@ export default function App() {
         if (data.materiaisRegistros) {
           setMateriaisRegistros(data.materiaisRegistros);
           localStorage.setItem('renea_materiais_registros', JSON.stringify(data.materiaisRegistros));
+        }
+        if (data.partesDiariasEquipamentos) {
+          setPartesDiariasEquipamentos(data.partesDiariasEquipamentos);
+          localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(data.partesDiariasEquipamentos));
         }
         if (data.notifications) {
           setNotifications(data.notifications);
@@ -929,7 +949,8 @@ export default function App() {
           getLS('renea_apontamento_ramos', INITIAL_APONTAMENTO_RAMOS),
           getLS('renea_apontamento_ramo_registros', INITIAL_APONTAMENTO_RAMO_REGISTROS),
           getLS('renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO),
-          getLS('renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS)
+          getLS('renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS),
+          getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS)
         ).then(res => {
           if (res.success) {
             console.log("Auto-sync completed successfully.");
@@ -1471,36 +1492,10 @@ export default function App() {
     return persistImport('Etapas de Serviço', 'renea_etapas', setEtapas, result.next, incoming.length, result.created, result.updated);
   };
 
-  // Recalcula a "cadeia da bomba" de cada comboio: ordena os abastecimentos de um
-  // mesmo comboio cronologicamente (data + hora) e faz com que a Bomba Final de
-  // cada lançamento vire automaticamente a Bomba Inicial do lançamento seguinte,
-  // propagando o ajuste adiante sempre que algo é criado, editado ou excluído.
-  const recalcularCadeiaBombas = (lista: Abastecimento[]): Abastecimento[] => {
-    const porComboio = new Map<string, Abastecimento[]>();
-    lista.forEach(item => {
-      const arr = porComboio.get(item.comboioId) || [];
-      arr.push(item);
-      porComboio.set(item.comboioId, arr);
-    });
-
-    const recalculados = new Map<string, Abastecimento>();
-    porComboio.forEach(registros => {
-      const ordenados = [...registros].sort((a, b) => {
-        const chaveA = `${a.data} ${a.hora}`;
-        const chaveB = `${b.data} ${b.hora}`;
-        return chaveA.localeCompare(chaveB);
-      });
-      let bombaAnterior: number | null = null;
-      ordenados.forEach(item => {
-        const bombaInicial = bombaAnterior === null ? item.bombaInicial : bombaAnterior;
-        const bombaFinal = bombaInicial + item.quantidadeLitros;
-        recalculados.set(item.id, { ...item, bombaInicial, bombaFinal });
-        bombaAnterior = bombaFinal;
-      });
-    });
-
-    return lista.map(item => recalculados.get(item.id) || item);
-  };
+  // Mantém o que foi digitado e aponta inconsistências. Dados operacionais nunca
+  // são silenciosamente reescritos para parecer que a sequência da bomba fechou.
+  const auditarBaseCombustivel = (lista: Abastecimento[]): Abastecimento[] =>
+    auditFuelDataset(lista, equipamentos);
 
   // Transaction Handlers
   const handleSaveAbastecimento = (item: Abastecimento, isNew: boolean) => {
@@ -1510,7 +1505,7 @@ export default function App() {
     } else {
       updated = abastecimentos.map(x => x.id === item.id ? item : x);
     }
-    updated = recalcularCadeiaBombas(updated);
+    updated = auditarBaseCombustivel(updated);
     const eq = equipamentos.find(e => e.id === item.equipamentoId);
     saveAndLog(
       'Abastecimentos', 
@@ -1528,7 +1523,7 @@ export default function App() {
     const item = abastecimentos.find(x => x.id === id);
     if (!item) return;
     let updated = abastecimentos.filter(x => x.id !== id);
-    updated = recalcularCadeiaBombas(updated);
+    updated = auditarBaseCombustivel(updated);
     saveAndLog(
       'Abastecimentos', 
       'Excluiu', 
@@ -1545,11 +1540,13 @@ export default function App() {
   const handleImportAbastecimentos = (novosItens: Abastecimento[]) => {
     if (!novosItens || novosItens.length === 0) return;
     let updated = [...abastecimentos, ...novosItens];
-    updated = recalcularCadeiaBombas(updated);
+    updated = auditarBaseCombustivel(updated);
+    const origens = new Set(novosItens.map(item => item.origem || 'Planilha'));
+    const origemDescricao = origens.size === 1 ? [...origens][0] : 'fontes combinadas';
     saveAndLog(
       'Abastecimentos',
       'Criou',
-      `Importou ${novosItens.length} registro(s) de combustível via planilha Excel.`,
+      `Importou ${novosItens.length} registro(s) de combustível via ${origemDescricao}.`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -1885,7 +1882,8 @@ export default function App() {
       getLS('renea_apontamento_ramos', INITIAL_APONTAMENTO_RAMOS),
       getLS('renea_apontamento_ramo_registros', INITIAL_APONTAMENTO_RAMO_REGISTROS),
       getLS('renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO),
-      getLS('renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS)
+      getLS('renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS),
+      getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS)
     );
   };
 
@@ -2243,6 +2241,62 @@ export default function App() {
     return { success: true, message: logMsg };
   };
 
+  const handleSaveParteDiariaEquipamento = (registro: ParteDiariaEquipamento, isNew: boolean) => {
+    const updated = isNew
+      ? [registro, ...partesDiariasEquipamentos]
+      : partesDiariasEquipamentos.map(item => item.id === registro.id ? registro : item);
+
+    saveAndLog(
+      'Parte Diária de Equipamentos',
+      isNew ? 'Criou' : 'Editou',
+      `${isNew ? 'Criou' : 'Editou'} a parte nº ${registro.numero} do equipamento ${registro.prefixo} em ${registro.data}.`,
+      historyLogs,
+      () => {
+        setPartesDiariasEquipamentos(updated);
+        localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(updated));
+      }
+    );
+    setTimeout(() => uploadLocalSnapshotToFirebase(), 120);
+  };
+
+  const handleImportPartesDiariasEquipamentos = (registros: ParteDiariaEquipamento[]) => {
+    if (!registros.length) return;
+    const existingIds = new Set(partesDiariasEquipamentos.map(item => item.id));
+    const novos = registros.filter(item => !existingIds.has(item.id));
+    if (!novos.length) return;
+    const updated = [...novos, ...partesDiariasEquipamentos];
+    saveAndLog(
+      'Parte Diária de Equipamentos',
+      'Criou',
+      `Migrou ${novos.length} ficha(s) do legado SGE para conferência.`,
+      historyLogs,
+      () => {
+        setPartesDiariasEquipamentos(updated);
+        localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(updated));
+      }
+    );
+    setTimeout(() => uploadLocalSnapshotToFirebase(), 120);
+  };
+
+  const handleDeleteParteDiariaEquipamento = (id: string) => {
+    const registro = partesDiariasEquipamentos.find(item => item.id === id);
+    if (!registro) return;
+    if (!confirm(`Excluir a parte diária nº ${registro.numero} do equipamento ${registro.prefixo}?`)) return;
+
+    const updated = partesDiariasEquipamentos.filter(item => item.id !== id);
+    saveAndLog(
+      'Parte Diária de Equipamentos',
+      'Excluiu',
+      `Excluiu a parte nº ${registro.numero} do equipamento ${registro.prefixo}, datada de ${registro.data}.`,
+      historyLogs,
+      () => {
+        setPartesDiariasEquipamentos(updated);
+        localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(updated));
+      }
+    );
+    setTimeout(() => uploadLocalSnapshotToFirebase(), 120);
+  };
+
   const handleSubmitApontamentoRamoLink = async (
     ramo: ApontamentoRamo,
     payload: {
@@ -2374,6 +2428,7 @@ export default function App() {
     apontamentoRamoRegistros?: ApontamentoRamoRegistro[];
     materiaisCadastro?: MaterialCadastro[];
     materiaisRegistros?: MaterialRegistro[];
+    partesDiariasEquipamentos?: ParteDiariaEquipamento[];
     notifications?: AppNotification[];
     historyLogs?: HistoryLog[];
   }) => {
@@ -2398,6 +2453,7 @@ export default function App() {
     setApontamentoRamoRegistros(imported.apontamentoRamoRegistros || []);
     setMateriaisCadastro(imported.materiaisCadastro || []);
     setMateriaisRegistros(imported.materiaisRegistros || []);
+    setPartesDiariasEquipamentos(imported.partesDiariasEquipamentos || []);
     setNotifications(imported.notifications || []);
     
     const logs = imported.historyLogs || [{
@@ -2431,6 +2487,7 @@ export default function App() {
     localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(imported.apontamentoRamoRegistros || []));
     localStorage.setItem('renea_materiais_cadastro', JSON.stringify(imported.materiaisCadastro || []));
     localStorage.setItem('renea_materiais_registros', JSON.stringify(imported.materiaisRegistros || []));
+    localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(imported.partesDiariasEquipamentos || []));
     localStorage.setItem('renea_notifications', JSON.stringify(imported.notifications || []));
     localStorage.setItem('renea_history_logs', JSON.stringify(logs));
   };
@@ -2456,6 +2513,7 @@ export default function App() {
     setApontamentoRamoRegistros(INITIAL_APONTAMENTO_RAMO_REGISTROS);
     setMateriaisCadastro(INITIAL_MATERIAIS_CADASTRO);
     setMateriaisRegistros(INITIAL_MATERIAIS_REGISTROS);
+    setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
     setHistoryLogs(INITIAL_HISTORY_LOGS);
 
     localStorage.setItem('renea_empresas', JSON.stringify(INITIAL_EMPRESAS));
@@ -2478,6 +2536,7 @@ export default function App() {
     localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(INITIAL_APONTAMENTO_RAMO_REGISTROS));
     localStorage.setItem('renea_materiais_cadastro', JSON.stringify(INITIAL_MATERIAIS_CADASTRO));
     localStorage.setItem('renea_materiais_registros', JSON.stringify(INITIAL_MATERIAIS_REGISTROS));
+    localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
     localStorage.setItem('renea_history_logs', JSON.stringify(INITIAL_HISTORY_LOGS));
     localStorage.setItem('renea_colaboradores_planilha_v1', 'true');
     localStorage.setItem('renea_materiais_planilha_v1', 'true');
@@ -2505,6 +2564,7 @@ export default function App() {
     setApontamentoRamoRegistros([]);
     setMateriaisCadastro([]);
     setMateriaisRegistros([]);
+    setPartesDiariasEquipamentos([]);
     setHistoryLogs([{
       id: `log-${Date.now()}`,
       timestamp: new Date().toLocaleString('pt-BR'),
@@ -2535,6 +2595,7 @@ export default function App() {
     localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify([]));
     localStorage.setItem('renea_materiais_cadastro', JSON.stringify([]));
     localStorage.setItem('renea_materiais_registros', JSON.stringify([]));
+    localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify([]));
     localStorage.setItem('renea_history_logs', JSON.stringify([]));
   };
 
@@ -2561,6 +2622,7 @@ export default function App() {
       apontamentoRamoRegistros,
       materiaisCadastro,
       materiaisRegistros,
+      partesDiariasEquipamentos,
       notifications,
       historyLogs
     }, null, 2);
@@ -2631,6 +2693,7 @@ export default function App() {
       const incomingApontamentoRamoRegistros = (parsed.apontamentoRamoRegistros || []).filter((x: ApontamentoRamoRegistro) => inRange(x.data));
       const incomingTicketsJazida = (parsed.ticketsJazida || []).filter((x: TicketJazida) => inRange(x.data));
       const incomingMateriaisRegistros = (parsed.materiaisRegistros || []).filter((x: MaterialRegistro) => inRange(x.data));
+      const incomingPartesDiariasEquipamentos = (parsed.partesDiariasEquipamentos || []).filter((x: ParteDiariaEquipamento) => inRange(x.data));
 
       const newAbastecimentos = mergeById(abastecimentos, incomingAbastecimentos);
       const newLubrificacoes = mergeById(lubrificacoes, incomingLubrificacoes);
@@ -2641,6 +2704,7 @@ export default function App() {
       const newApontamentoRamoRegistros = mergeById(apontamentoRamoRegistros, incomingApontamentoRamoRegistros);
       const newTicketsJazida = mergeById(ticketsJazida, incomingTicketsJazida);
       const newMateriaisRegistros = mergeById(materiaisRegistros, incomingMateriaisRegistros);
+      const newPartesDiariasEquipamentos = mergeById(partesDiariasEquipamentos, incomingPartesDiariasEquipamentos);
 
       setEmpresas(newEmpresas); localStorage.setItem('renea_empresas', JSON.stringify(newEmpresas));
       setObras(newObras); localStorage.setItem('renea_obras', JSON.stringify(newObras));
@@ -2663,8 +2727,9 @@ export default function App() {
       setApontamentoRamoRegistros(newApontamentoRamoRegistros); localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(newApontamentoRamoRegistros));
       setMateriaisCadastro(newMateriaisCadastro); localStorage.setItem('renea_materiais_cadastro', JSON.stringify(newMateriaisCadastro));
       setMateriaisRegistros(newMateriaisRegistros); localStorage.setItem('renea_materiais_registros', JSON.stringify(newMateriaisRegistros));
+      setPartesDiariasEquipamentos(newPartesDiariasEquipamentos); localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(newPartesDiariasEquipamentos));
 
-      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingRdos.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingApontamentoRamoRegistros.length + incomingTicketsJazida.length + incomingMateriaisRegistros.length;
+      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingRdos.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingApontamentoRamoRegistros.length + incomingTicketsJazida.length + incomingMateriaisRegistros.length + incomingPartesDiariasEquipamentos.length;
       const logMsg = `Importou seletivamente ${totalImportados} registro(s) datado(s) entre ${dataInicio || 'início'} e ${dataFim || 'fim'}, além dos cadastros base.`;
       const newLog: HistoryLog = {
         id: `log-${Date.now()}`,
@@ -3222,6 +3287,18 @@ export default function App() {
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onSaveRdo={handleSaveRdo}
                 onDeleteRdo={handleDeleteRdo}
+              />
+            )}
+
+            {activeTab === 'partes-diarias' && (
+              <ParteDiariaEquipamentosTab
+                registros={partesDiariasEquipamentos}
+                equipamentos={equipamentos}
+                funcionarios={funcionarios}
+                obras={obras}
+                onSave={handleSaveParteDiariaEquipamento}
+                onDelete={handleDeleteParteDiariaEquipamento}
+                onImport={handleImportPartesDiariasEquipamentos}
               />
             )}
 

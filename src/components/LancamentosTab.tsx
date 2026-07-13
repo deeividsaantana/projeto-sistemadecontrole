@@ -42,6 +42,8 @@ import {
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
+import CombustivelInteligenteTab from './CombustivelInteligenteTab';
+import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -138,13 +140,13 @@ export default function LancamentosTab({
 
   const COLUMN_SYNONYMS: Record<string, string[]> = {
     data: ['data', 'data abastecimento', 'data do abastecimento'],
-    frota: ['frota', 'prefixo', 'equipamento', 'frota prefixo', 'equipamento frota', 'cb', 'codigo equipamento'],
+    frota: ['frota', 'prefixo', 'equipamento', 'frota prefixo', 'equipamento frota', 'cb', 'codigo equipamento', 'n frota', 'numero frota', 'prefixo placa', 'placa'],
     kmInicial: ['km inicial', 'kminicial', 'km', 'hodometro', 'odometro'],
     horimetroInicial: ['horimetro inicial', 'horimetro', 'hm inicial', 'hm'],
     bombaInicial: ['bomba inicial', 'inicio bomba', 'inicial bomba', 'bico inicial', 'marcador inicial'],
-    quantidadeLitros: ['qtde de litros', 'quantidade de litros', 'quantidade', 'litros', 'qtd litros', 'litros abastecidos', 'volume', 'abastecido'],
+    quantidadeLitros: ['qtde de litros', 'quantidade de litros', 'quantidade', 'litros', 'qtd litros', 'litros abastecidos', 'volume', 'abastecido', 'qtd l', 'qtde l', 'volume abastecido'],
     bombaFinal: ['bomba final', 'fim bomba', 'final bomba', 'bico final', 'marcador final'],
-    hora: ['hora', 'hora abastecimento', 'hora do abastecimento'],
+    hora: ['hora', 'hora abastecimento', 'hora do abastecimento', 'horario', 'horário'],
     comboio: ['comboio', 'tanque', 'comboio tanque', 'bomba', 'caminhao comboio', 'caminhao tanque'],
     tipoCombustivel: ['tipo do combustivel', 'tipo combustivel', 'tipo de combustivel', 'combustivel', 'produto'],
     empresa: ['empresa'],
@@ -156,11 +158,14 @@ export default function LancamentosTab({
     if (!val) return '';
     if (val instanceof Date) {
       const y = val.getFullYear(), m = String(val.getMonth() + 1).padStart(2, '0'), d = String(val.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
+      const parsed = `${y}-${m}-${d}`;
+      return isValidFuelDate(parsed) ? parsed : '';
     }
     if (typeof val === 'number') {
-      const parsed = new Date(Math.round((val - 25569) * 86400 * 1000));
-      return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+      const wholeDays = Math.floor(val);
+      const parsed = new Date(Date.UTC(1899, 11, 30) + wholeDays * 86400 * 1000);
+      const iso = Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+      return isValidFuelDate(iso) ? iso : '';
     }
     const str = String(val).trim();
     // dd/mm/yyyy
@@ -168,31 +173,36 @@ export default function LancamentosTab({
     if (br) {
       const [, d, m, y] = br;
       const year = y.length === 2 ? `20${y}` : y;
-      return `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      const parsed = `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      return isValidFuelDate(parsed) ? parsed : '';
     }
     // yyyy-mm-dd
     const iso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
     if (iso) {
       const [, y, m, d] = iso;
-      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      const parsed = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      return isValidFuelDate(parsed) ? parsed : '';
     }
     return '';
   };
 
   const parseTimeValue = (val: any): string => {
-    if (!val) return '';
+    if (val === null || val === undefined || val === '') return '';
     if (val instanceof Date) {
       return `${String(val.getHours()).padStart(2, '0')}:${String(val.getMinutes()).padStart(2, '0')}`;
     }
     if (typeof val === 'number') {
-      let totalMinutes = Math.round((val % 1) * 24 * 60);
-      if (totalMinutes < 0) totalMinutes += 24 * 60;
-      return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+      if (val >= 0 && val < 1) {
+        let totalMinutes = Math.round(val * 24 * 60);
+        if (totalMinutes < 0) totalMinutes += 24 * 60;
+        return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+      }
+      const normalized = normalizeQuickTime(String(val));
+      return normalized.valid ? normalized.value : String(val);
     }
     const str = String(val).trim();
-    const m = str.match(/^(\d{1,2}):(\d{2})/);
-    if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
-    return '';
+    const normalized = normalizeQuickTime(str);
+    return normalized.valid ? normalized.value : str;
   };
 
   const parseNumberValue = (val: any): number => {
@@ -284,10 +294,19 @@ export default function LancamentosTab({
 
           const dataStr = parseDateValue(rawData);
           const frotaTexto = String(rawFrota || '').trim();
-          const horaStr = parseTimeValue(getCell(row, 'hora')) || '00:00';
-          const quantidade = parseNumberValue(rawQtd);
-          const bombaInicial = parseNumberValue(getCell(row, 'bombaInicial')) || 0;
+          const horaStr = parseTimeValue(getCell(row, 'hora'));
+          const quantidadeLida = parseNumberValue(rawQtd);
+          const bombaInicialLida = parseNumberValue(getCell(row, 'bombaInicial'));
           const bombaFinalPlanilha = parseNumberValue(getCell(row, 'bombaFinal'));
+          const bombaInicial = Number.isFinite(bombaInicialLida) ? bombaInicialLida : 0;
+          const quantidadeCalculada = Number.isFinite(bombaFinalPlanilha) && bombaFinalPlanilha > bombaInicial
+            ? bombaFinalPlanilha - bombaInicial
+            : NaN;
+          const quantidade = Number.isFinite(quantidadeLida) ? quantidadeLida : quantidadeCalculada;
+          const quantidadeFoiCalculada = !Number.isFinite(quantidadeLida) && Number.isFinite(quantidadeCalculada);
+          const bombaFinal = Number.isFinite(bombaFinalPlanilha)
+            ? bombaFinalPlanilha
+            : Number.isFinite(quantidade) ? bombaInicial + quantidade : 0;
           const tipoCombustivelTexto = String(getCell(row, 'tipoCombustivel') || '').trim();
           const comboioTexto = String(getCell(row, 'comboio') || '').trim();
           const empresaTexto = String(getCell(row, 'empresa') || '').trim();
@@ -299,21 +318,25 @@ export default function LancamentosTab({
           const frotaNorm = frotaTexto.toLowerCase();
           const combustivelNorm = tipoCombustivelTexto.toLowerCase();
           const comboioNorm = comboioTexto.toLowerCase();
-          const eq = equipamentos.find(e => e.prefixo.toLowerCase() === frotaNorm || e.nome.toLowerCase() === frotaNorm);
-          const comb = combustiveis.find(c => {
-            const nome = c.nome.toLowerCase();
-            return nome === combustivelNorm || combustivelNorm.includes(nome) || nome.includes(combustivelNorm);
-          });
-          const combVeic = comboioNorm
-            ? comboios.find(c => {
-                const nome = c.nome.toLowerCase();
-                return nome === comboioNorm || nome.includes(comboioNorm) || comboioNorm.includes(nome);
-              })
-            : undefined;
+          const eq = findEquipmentByPrefix(frotaTexto, equipamentos)
+            || equipamentos.find(e => e.nome.toLowerCase() === frotaNorm);
+          const combExato = combustiveis.find(c => c.nome.toLowerCase() === combustivelNorm);
+          const combParciais = combustivelNorm
+            ? combustiveis.filter(c => combustivelNorm.includes(c.nome.toLowerCase()) || c.nome.toLowerCase().includes(combustivelNorm))
+            : [];
+          const comb = combExato || (combParciais.length === 1 ? combParciais[0] : undefined);
+          const comboioExato = comboios.find(c => c.nome.toLowerCase() === comboioNorm);
+          const comboiosParciais = comboioNorm
+            ? comboios.filter(c => comboioNorm.includes(c.nome.toLowerCase()) || c.nome.toLowerCase().includes(comboioNorm))
+            : [];
+          const combVeic = comboioExato || (comboiosParciais.length === 1 ? comboiosParciais[0] : undefined);
 
           const preview: Record<string, string> = {
             Aba: ws.name, Data: dataStr || String(rawData || ''), Frota: frotaTexto, Hora: horaStr,
             Litros: String(quantidade || ''), Combustível: tipoCombustivelTexto, Comboio: comboioTexto, Empresa: empresaTexto,
+            Responsável: responsavel || 'Não informado na planilha',
+            Leitura: horimetroInicial > 0 ? `H ${horimetroInicial}` : kmInicial > 0 ? `KM ${kmInicial}` : '',
+            Bomba: `${bombaInicial || ''} → ${bombaFinal || ''}`,
           };
 
           // Validações
@@ -321,10 +344,13 @@ export default function LancamentosTab({
           if (!dataStr) motivo = 'Data inválida.';
           else if (!frotaTexto) motivo = 'Frota vazia.';
           else if (!eq) motivo = `Frota "${frotaTexto}" não encontrada no cadastro.`;
+          else if (!horaStr || !normalizeQuickTime(horaStr).valid) motivo = 'Hora vazia ou inválida.';
           else if (isNaN(quantidade) || quantidade === undefined) motivo = 'Quantidade vazia.';
           else if (quantidade <= 0) motivo = 'Quantidade menor ou igual a zero.';
           else if (!tipoCombustivelTexto) motivo = 'Tipo de combustível vazio.';
-          else if (!comb) motivo = `Tipo de combustível "${tipoCombustivelTexto}" não encontrado no cadastro.`;
+          else if (!comb) motivo = `Tipo de combustível "${tipoCombustivelTexto}" não localizado de forma única no cadastro.`;
+          else if (!comboioTexto) motivo = 'Comboio vazio.';
+          else if (!combVeic) motivo = `Comboio "${comboioTexto}" não localizado de forma única no cadastro.`;
 
           // Checagem de bomba final (Prioridade 4)
           let statusFinal: string = 'OK';
@@ -358,12 +384,19 @@ export default function LancamentosTab({
               kmInicial,
               bombaInicial,
               quantidadeLitros: quantidade,
-              bombaFinal: bombaFinalCalculada,
+              bombaFinal,
               tipoCombustivelId: comb!.id,
               comboioId: combVeic?.id || '',
-              responsavel: responsavel || 'Importado da planilha',
-              observacao: observacao || `Fonte: ${ws.name}`,
-              status: statusFinal as any,
+              responsavel,
+              observacao: [
+                observacao || `Fonte: ${ws.name}`,
+                empresaTexto ? `Empresa informada na planilha: ${empresaTexto}.` : '',
+                !responsavel ? 'Responsável não informado na planilha; conferir no registro.' : '',
+                quantidadeFoiCalculada ? 'Quantidade calculada pela diferença entre bomba final e inicial.' : '',
+              ].filter(Boolean).join(' | '),
+              status: (!responsavel && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal) as any,
+              origem: 'Planilha',
+              documentoOrigemNome: file.name,
               criadoEm: new Date().toISOString(),
               atualizadoEm: new Date().toISOString(),
             } : undefined,
@@ -891,6 +924,72 @@ export default function LancamentosTab({
     const ob = obras.find(o => o.id === r.obraLocalId);
     return r.data.includes(q) || r.servicoExecutado.toLowerCase().includes(q) || (ob && ob.nome.toLowerCase().includes(q));
   }).sort((a,b) => b.data.localeCompare(a.data));
+
+  if (String(mode) === 'abastecimentos') {
+    return (
+      <>
+        {validationError && (
+          <div className="mb-4 flex items-start gap-3 border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            {validationError}
+          </div>
+        )}
+        <CombustivelInteligenteTab
+          empresas={empresas}
+          equipamentos={equipamentos}
+          comboios={comboios}
+          combustiveis={combustiveis}
+          abastecimentos={abastecimentos}
+          onSaveAbastecimento={onSaveAbastecimento}
+          onDeleteAbastecimento={onDeleteAbastecimento}
+          onImportAbastecimentos={onImportAbastecimentos}
+          onOpenLubrificacao={() => {
+            setMode('lubrificacoes');
+            setIsFormOpen(false);
+            setSearchQuery('');
+            resetFormFields();
+          }}
+          onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
+          isParsingSpreadsheet={isParsingImport}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xlsm"
+          onChange={handleImportFileSelected}
+          className="hidden"
+        />
+        <SpreadsheetImportReview
+          open={isImportModalOpen}
+          title="Importar abastecimentos"
+          fileName={importFileName}
+          validCount={importSummary.validas}
+          ignoredCount={importSummary.comErro + importSummary.duplicadas}
+          columns={['Linha', 'Data', 'Hora', 'Frota', 'Leitura', 'Bomba', 'Litros', 'Combustível', 'Comboio', 'Empresa', 'Responsável', 'Status']}
+          rows={importRows.map(row => ({
+            Linha: row.linha,
+            Data: row.preview.Data,
+            Hora: row.preview.Hora,
+            Frota: row.preview.Frota,
+            Leitura: row.preview.Leitura,
+            Bomba: row.preview.Bomba,
+            Litros: row.preview.Litros,
+            Combustível: row.preview['Combustível'],
+            Comboio: row.preview.Comboio,
+            Empresa: row.preview.Empresa,
+            Responsável: row.preview['Responsável'],
+            Status: row.valido
+              ? row.item?.status === 'Conferência necessária' ? 'Importável • conferir responsável' : 'Válido'
+              : row.duplicado ? 'Duplicado' : row.motivo || 'Erro'
+          }))}
+          note={`${importSummary.total} linha(s) analisada(s). Registros duplicados ou com campos obrigatórios ausentes não serão gravados.`}
+          confirming={isConfirmingImport}
+          onCancel={handleCancelImport}
+          onConfirm={handleConfirmImport}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="space-y-6" id="lancamentos-tab">
@@ -1707,14 +1806,22 @@ export default function LancamentosTab({
         fileName={importFileName}
         validCount={importSummary.validas}
         ignoredCount={importSummary.comErro + importSummary.duplicadas}
-        columns={['Linha', 'Data', 'Frota', 'Litros', 'Combustível', 'Status']}
+        columns={['Linha', 'Data', 'Hora', 'Frota', 'Leitura', 'Bomba', 'Litros', 'Combustível', 'Comboio', 'Empresa', 'Responsável', 'Status']}
         rows={importRows.map(row => ({
           Linha: row.linha,
           Data: row.preview.Data,
+          Hora: row.preview.Hora,
           Frota: row.preview.Frota,
+          Leitura: row.preview.Leitura,
+          Bomba: row.preview.Bomba,
           Litros: row.preview.Litros,
           Combustível: row.preview['Combustível'],
-          Status: row.valido ? 'Válido' : row.duplicado ? 'Duplicado' : row.motivo || 'Erro'
+          Comboio: row.preview.Comboio,
+          Empresa: row.preview.Empresa,
+          Responsável: row.preview['Responsável'],
+          Status: row.valido
+            ? row.item?.status === 'Conferência necessária' ? 'Importável • conferir responsável' : 'Válido'
+            : row.duplicado ? 'Duplicado' : row.motivo || 'Erro'
         }))}
         note={`${importSummary.total} linha(s) analisada(s). Registros duplicados ou com campos obrigatórios ausentes não serão gravados.`}
         confirming={isConfirmingImport}

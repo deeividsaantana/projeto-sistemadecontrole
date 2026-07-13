@@ -1,0 +1,5 @@
+RENEA - ATUALIZAÇÃO V7
+Descompacte o conteúdo na raiz do repositório atual, substituindo os arquivos.
+Este pacote não contém .git, node_modules ou dados locais do navegador.
+
+Arquivos atualizados: 18

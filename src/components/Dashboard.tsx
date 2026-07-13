@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { useEquipamentosExternos } from '../hooks/useEquipamentosExternos';
+import { auditFuelDataset, getFuelQualityScore } from '../utils/combustivelValidation';
 
 import { 
   Empresa, 
@@ -49,6 +50,7 @@ import {
   TrendingUp, 
   ArrowUpRight,
   ShieldAlert,
+  ShieldCheck,
   MapPin
 } from 'lucide-react';
 
@@ -90,6 +92,12 @@ export default function Dashboard({
 
   // 1. Calculations & Metrics
   const totalLiters = abastecimentos.reduce((acc, curr) => acc + curr.quantidadeLitros, 0);
+  const auditedFuelRecords = auditFuelDataset(abastecimentos, equipamentos);
+  const fuelQualityScore = auditedFuelRecords.length
+    ? Math.round(auditedFuelRecords.reduce((sum, item) => sum + getFuelQualityScore(item.alertas || []), 0) / auditedFuelRecords.length)
+    : 100;
+  const fuelReviewCount = auditedFuelRecords.filter(item => item.alertas?.some(alert => alert.severidade !== 'info')).length;
+  const fuelCriticalCount = auditedFuelRecords.filter(item => item.alertas?.some(alert => alert.severidade === 'critico')).length;
   
   const equipamentosExternos = useEquipamentosExternos();
   const activeEquipments = equipamentos.filter(e => e.status === 'Ativo' || e.status === 'Mobilizado').length;
@@ -195,7 +203,8 @@ export default function Dashboard({
   }).filter(item => item.presencas > 0);
 
   // 7. Today's attendance summary (most recent diário per obra, prioritizing today's date)
-  const todayStr = new Date().toISOString().split('T')[0];
+  const nowLocal = new Date();
+  const todayStr = new Date(nowLocal.getTime() - nowLocal.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
   const latestListaPorObra = obras.map(site => {
     const siteLists = listasPresenca.filter(p => p.obraId === site.id);
     if (siteLists.length === 0) return null;
@@ -226,6 +235,22 @@ export default function Dashboard({
 
   // 6. Dynamic Alerts & Pendencies
   const pendingAlerts: { id: string; type: 'warning' | 'info' | 'danger'; text: string; details: string }[] = [];
+
+  if (fuelCriticalCount > 0) {
+    pendingAlerts.push({
+      id: 'alert-fuel-quality-critical',
+      type: 'danger',
+      text: `${fuelCriticalCount} abastecimento(s) com inconsistência crítica`,
+      details: 'Há divergência de bomba, duplicidade ou campo essencial que precisa de conferência no documento original.'
+    });
+  } else if (fuelReviewCount > 0) {
+    pendingAlerts.push({
+      id: 'alert-fuel-quality-review',
+      type: 'warning',
+      text: `${fuelReviewCount} abastecimento(s) aguardam conferência`,
+      details: 'Abra a Central de Combustível para revisar a qualidade e a sequência operacional.'
+    });
+  }
 
   // Maintenance equipment alerts
   equipamentos.filter(e => e.status === 'Manutenção').forEach(eq => {
@@ -290,7 +315,7 @@ export default function Dashboard({
       </div>
 
       {/* 2. KPI Scorecard Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="kpi-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4" id="kpi-grid">
         {/* KPI 1 */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden group hover:border-emerald-500/30 transition-all">
           <div className="p-3 bg-emerald-600/10 text-emerald-400 rounded-xl">
@@ -344,6 +369,25 @@ export default function Dashboard({
             </span>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => onNavigate('lancamentos')}
+          className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 text-left shadow-sm transition-all hover:border-cyan-500/40"
+        >
+          <div className="p-3 bg-cyan-500/10 text-cyan-300 rounded-xl">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Qualidade do Diesel</span>
+            <span className={`text-xl font-black font-mono block mt-1 ${fuelQualityScore >= 90 ? 'text-emerald-300' : fuelQualityScore >= 65 ? 'text-amber-300' : 'text-rose-300'}`}>
+              {abastecimentos.length ? `${fuelQualityScore}%` : '--'}
+            </span>
+            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5 truncate">
+              {fuelReviewCount ? `${fuelReviewCount} para conferir` : 'Base auditada'}
+            </span>
+          </div>
+        </button>
       </div>
 
       {/* 2.5 Presença & Manutenção Summary Row */}

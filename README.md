@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Sistema Renea
 
-# Run and deploy your AI Studio app
+Webapp operacional para controle de equipamentos, combustível, materiais, tickets de jazida, apontamentos e presença.
 
-This contains everything you need to run your app locally.
+## Módulos principais
 
-View your app in AI Studio: https://ai.studio/apps/500a897d-adcd-4af1-8593-35db3e642bb6
+- Combustível inteligente com digitação rápida por prefixo, auditoria contínua, importação e exportação em Excel.
+- Leitura assistida de PDF ou foto de abastecimento, com transcrição estruturada e conferência humana obrigatória.
+- Dashboard de consumo, qualidade dos dados, sequência de bomba e desvios de KM/horímetro.
+- Parte diária de equipamentos com lançamento, indicadores, filtros, edição e PDF no padrão do formulário físico.
+- Consulta e migração controlada do legado SGE, preservando os dados dos bancos Access antigos.
+- Tickets de liberação e recebimento vinculados, assinatura digital, histórico e impressão em duas vias.
+- Links públicos operacionais para tickets, apontamentos e presença, com rascunhos isolados por aparelho.
+- Sincronização segmentada com Firebase para respeitar o limite de tamanho dos documentos do Firestore.
 
-## Run Locally
+## Executar localmente
 
-**Prerequisites:**  Node.js
+Requisitos: Node.js 20 ou superior.
 
+```bash
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Para validar a versão de produção:
+
+```bash
+npm run build
+```
+
+## Publicação
+
+O frontend e as funções estão preparados para Netlify. A leitura inteligente de documentos usa a variável secreta `GEMINI_API_KEY` somente no servidor; a chave não deve ser colocada no código do navegador.
+
+Consulte:
+
+- `INSTRUCOES_PUBLICACAO_NETLIFY.md`
+- `INSTRUCOES_CONTAS_FIREBASE.md`
+- `LEGADO_SGE_CONVERSAO.md`
+- `VALIDACAO_V7.md`
+
+## Segurança dos documentos
+
+PDFs e fotos enviados para análise não são persistidos no banco. O sistema grava apenas os dados revisados, o nome do arquivo, a impressão digital SHA-256 e a trilha de conferência.

@@ -126,7 +126,23 @@ export type StatusRegistroCombustivel =
   | 'Duplicado'
   | 'Verificar quantidade'
   | 'Verificar bomba'
+  | 'Verificar horímetro'
+  | 'Verificar KM'
+  | 'Verificar sequência'
+  | 'Consumo fora do padrão'
+  | 'Conferência necessária'
   | 'Erro de importação';
+
+export type OrigemRegistroCombustivel = 'Manual' | 'Planilha' | 'PDF/Foto IA' | 'Legado Access';
+export type SeveridadeAlertaCombustivel = 'info' | 'aviso' | 'critico';
+
+export interface AlertaCombustivel {
+  codigo: string;
+  campo: string;
+  severidade: SeveridadeAlertaCombustivel;
+  mensagem: string;
+  valorEsperado?: string;
+}
 
 export interface Abastecimento {
   id: string;
@@ -143,6 +159,12 @@ export interface Abastecimento {
   responsavel: string;
   observacao: string;
   status?: StatusRegistroCombustivel; // Opcional para não quebrar registros antigos. Padrão: 'OK'
+  origem?: OrigemRegistroCombustivel;
+  alertas?: AlertaCombustivel[];
+  confiancaExtracao?: number;
+  documentoOrigemNome?: string;
+  documentoOrigemHash?: string;
+  camposRevisados?: string[];
   criadoEm?: string; // ISO timestamp
   atualizadoEm?: string; // ISO timestamp
 }
@@ -371,4 +393,64 @@ export interface AppNotification {
   timestamp: string; // HH:MM
   read: boolean;
   source: 'Netlify App' | 'Sistema Local' | 'Firebase Cloud';
+}
+
+export type RespostaChecklistEquipamento = 'Sim' | 'Não' | 'N/A';
+export type StatusParteDiariaEquipamento = 'Conferido' | 'Pendente' | 'Com deficiência' | 'Inconsistente';
+export type TipoMarcacaoParteDiaria = 'Relógio' | 'Horímetro';
+
+export interface ParteDiariaAtividade {
+  id: string;
+  descricao: string;
+  centroCusto: string;
+  codigoPerda: string;
+  tipoMarcacao: TipoMarcacaoParteDiaria;
+  inicial: string;
+  final: string;
+  totalHoras: number;
+}
+
+export interface ParteDiariaTransporte {
+  id: string;
+  descricao: string;
+  centroCusto: string;
+  destino: string;
+  materialTransportado: string;
+  quantidadeViagens: number;
+  equipamentoCarga: string;
+}
+
+export interface ParteDiariaChecklistItem {
+  codigo: string;
+  descricao: string;
+  resposta: RespostaChecklistEquipamento;
+  observacao?: string;
+}
+
+export interface ParteDiariaEquipamento {
+  id: string;
+  numero: string;
+  data: string;
+  obraId: string;
+  obraNome: string;
+  equipamentoId: string;
+  prefixo: string;
+  tipoEquipamento: string;
+  jornada: number;
+  operadorId: string;
+  operadorNome: string;
+  matricula: string;
+  apontador: string;
+  encarregado: string;
+  horimetroInicial: number;
+  horimetroFinal: number;
+  totalHorasTrabalhadas: number;
+  atividades: ParteDiariaAtividade[];
+  transportes: ParteDiariaTransporte[];
+  checklist: ParteDiariaChecklistItem[];
+  outrosProblemas: string;
+  status: StatusParteDiariaEquipamento;
+  observacao: string;
+  criadoEm: string;
+  atualizadoEm: string;
 }
