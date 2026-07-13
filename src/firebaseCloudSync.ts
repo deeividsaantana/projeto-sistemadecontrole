@@ -9,6 +9,32 @@ const CLOUD_COLLECTION = 'sistemarenea_cloud';
 const CLOUD_MANIFEST_ID = 'main_data_v2';
 const LEGACY_DOCUMENT_ID = 'main_data';
 const CLOUD_SCHEMA_VERSION = 2;
+const INTERMEDIATE_META_ID = 'meta';
+const INTERMEDIATE_TABLE_IDS = [
+  'empresas',
+  'obras',
+  'equipamentos',
+  'funcionarios',
+  'comboios',
+  'combustiveis',
+  'lubrificantes',
+  'etapas',
+  'abastecimentos',
+  'lubrificacoes',
+  'ticketsJazida',
+  'rdos',
+  'listasPresenca',
+  'ordensServico',
+  'gruposEquipe',
+  'presencasLink',
+  'historicoPresencas',
+  'apontamentoRamos',
+  'apontamentoRamoRegistros',
+  'materiaisCadastro',
+  'materiaisRegistros',
+  'notifications',
+  'historyLogs',
+] as const;
 const MAX_CHUNK_PAYLOAD_BYTES = 600_000;
 const FIREBASE_READ_TIMEOUT_MS = 20_000;
 const FIREBASE_WRITE_TIMEOUT_MS = 45_000;
@@ -53,7 +79,7 @@ export interface FirebaseUploadResult {
 
 export interface FirebaseDownloadResult {
   data: FirebaseCloudData | null;
-  source: 'v2' | 'legacy' | 'none';
+  source: 'v2' | 'intermediate' | 'legacy' | 'none';
   updatedAt: string;
   totalRecords: number;
 }
@@ -61,10 +87,11 @@ export interface FirebaseDownloadResult {
 const textEncoder = new TextEncoder();
 
 const compatibilityFields = {
-  // Mantem os novos documentos aceitos pelas regras antigas durante a publicacao.
+  // Mantem os novos documentos aceitos pelas duas versoes anteriores das regras.
   empresas: [],
   obras: [],
   equipamentos: [],
+  value: { schemaVersion: CLOUD_SCHEMA_VERSION },
 };
 
 const withTimeout = async <T>(
@@ -197,6 +224,36 @@ const countRecords = (data: FirebaseCloudData) => (
   )
 );
 
+const readIntermediateBackup = async (
+  database: Firestore,
+): Promise<FirebaseDownloadResult | null> => {
+  const metaSnapshot = await getDocumentFromServer(database, INTERMEDIATE_META_ID);
+  if (!metaSnapshot.exists()) return null;
+
+  const tableSnapshots = await runWithConcurrency(INTERMEDIATE_TABLE_IDS.map(table => async () => ({
+    table,
+    snapshot: await getDocumentFromServer(database, table),
+  })));
+  const restoredData: FirebaseCloudData = {};
+
+  tableSnapshots.forEach(({ table, snapshot }) => {
+    if (!snapshot.exists()) return;
+    const value = snapshot.data().value;
+    if (Array.isArray(value)) restoredData[table] = value;
+  });
+
+  if (Object.keys(restoredData).length === 0) return null;
+  const metaData = metaSnapshot.data();
+  const updatedAt = typeof metaData.updatedAt === 'string' ? metaData.updatedAt : '';
+  restoredData.updatedAt = updatedAt;
+  return {
+    data: restoredData,
+    source: 'intermediate',
+    updatedAt,
+    totalRecords: countRecords(restoredData),
+  };
+};
+
 export const formatFirebaseSyncError = (error: unknown): string => {
   const code = typeof error === 'object' && error !== null && 'code' in error
     ? String((error as { code?: unknown }).code || '')
@@ -231,6 +288,16 @@ export const getFirebaseConnectionStatus = async (
       connected: true,
       updatedAt: typeof manifest.updatedAt === 'string' ? manifest.updatedAt : '',
       schemaVersion: manifest.schemaVersion === CLOUD_SCHEMA_VERSION ? CLOUD_SCHEMA_VERSION : 0,
+    };
+  }
+
+  const intermediateSnapshot = await getDocumentFromServer(database, INTERMEDIATE_META_ID);
+  if (intermediateSnapshot.exists()) {
+    const intermediateData = intermediateSnapshot.data();
+    return {
+      connected: true,
+      updatedAt: typeof intermediateData.updatedAt === 'string' ? intermediateData.updatedAt : '',
+      schemaVersion: 1,
     };
   }
 
@@ -397,6 +464,9 @@ export const downloadFirebaseBackup = async (
       totalRecords: countRecords(restoredData),
     };
   }
+
+  const intermediateBackup = await readIntermediateBackup(database);
+  if (intermediateBackup) return intermediateBackup;
 
   const legacySnapshot = await getDocumentFromServer(database, LEGACY_DOCUMENT_ID);
   if (!legacySnapshot.exists()) {

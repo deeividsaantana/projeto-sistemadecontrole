@@ -28,6 +28,16 @@ service cloud.firestore {
         && (!data.keys().hasAny(['schemaVersion']) || data.schemaVersion != 2);
     }
 
+    // Formato intermediario publicado em 09/07/2026: uma tabela por documento
+    // no campo value. Mantido para leitura e migracao sem perda de dados.
+    function isValidIntermediateCloudState(docId, data) {
+      return data != null
+        && data.keys().hasAll(['updatedAt'])
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 64
+        && (docId == 'meta' || data.value is list || data.value is map);
+    }
+
     // Formato v2: manifesto pequeno apontando para blocos menores que o limite
     // de 1 MiB imposto pelo Firestore.
     function isValidCloudManifest(data) {
@@ -83,6 +93,7 @@ service cloud.firestore {
       allow create, update: if isValidId(docId)
         && (
           isValidLegacyCloudState(request.resource.data)
+          || isValidIntermediateCloudState(docId, request.resource.data)
           || isValidCloudManifest(request.resource.data)
           || isValidCloudChunk(request.resource.data)
         );
