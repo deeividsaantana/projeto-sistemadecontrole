@@ -22,7 +22,10 @@ import {
   ClipboardCheck,
   Clock3,
   CheckCircle2,
-  FilePenLine
+  FilePenLine,
+  SlidersHorizontal,
+  ChevronDown,
+  CalendarDays
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
@@ -46,6 +49,171 @@ const DESTINOS_OBRA: DestinoObraJazida[] = [
   'Ferradura', 'Coluna de Brita', 'Apoio', 'Jazida', 'Outros'
 ];
 const EMPRESAS_TICKET: EmpresaTicketJazida[] = ['RENEA', 'Terceiro', 'Outros'];
+
+const TicketSingleDocument = ({ ticket, copy }: { ticket: TicketJazida; copy: 1 | 2 }) => {
+  const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
+  const material = ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
+  const destination = ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
+  const materials = ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Outros'];
+  const field = (label: string, value: React.ReactNode, className = '') => (
+    <div className={`min-h-14 border-r border-b border-slate-500 p-2 ${className}`}>
+      <div className="text-[9px] font-bold uppercase text-slate-600">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-slate-950">{value || '—'}</div>
+    </div>
+  );
+
+  return (
+    <div className="aspect-[1.414/1] min-w-[760px] w-full overflow-hidden border border-slate-500 bg-white text-slate-950">
+      <div className="grid grid-cols-[1fr_1.6fr_.55fr] border-l border-t border-slate-500">
+        <div className="h-24 border-r border-b border-slate-500 p-3 flex items-center">
+          <img src={reneaLogoFull} alt="RENEA" className="max-h-14 max-w-44 object-contain" />
+        </div>
+        <div className="h-24 border-r border-b border-slate-500 grid place-items-center text-center px-3">
+          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento' : 'Liberação'} - Obra</h2><p className="mt-1 text-[10px] text-slate-600">Complexo Alto Tietê</p></div>
+        </div>
+        <div className="h-24 border-r border-b border-slate-500 p-2">
+          <div className="text-[9px] font-bold uppercase text-slate-600">Ticket Nº</div>
+          <div className="mt-3 border-b border-slate-500 pb-1 text-center text-2xl font-bold">{ticket.ticketNumero}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 border-l border-slate-500">
+        {field('Prefixo', ticket.prefixo)}
+        {field('Placa', ticket.placa)}
+        {field('Data', ticket.data.split('-').reverse().join('/'))}
+        {field(isReceipt ? 'Hora de chegada' : 'Hora de saída', isReceipt ? ticket.horaChegada || ticket.horaSaida : ticket.horaSaida)}
+      </div>
+
+      <div className="border-l border-r border-b border-slate-500 p-3 min-h-20">
+        <div className="text-[9px] font-bold uppercase text-slate-600">Tipo de material</div>
+        <div className="mt-4 grid grid-cols-6 gap-3">
+          {materials.map(option => <div key={option} className="flex items-center gap-2 text-xs"><span className={`h-4 w-4 border border-slate-600 grid place-items-center font-bold ${material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros') ? 'bg-slate-900 text-white' : ''}`}>{material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros') ? 'X' : ''}</span>{option}</div>)}
+        </div>
+        {ticket.tipoMaterial === 'Outros' && <div className="mt-2 text-xs">Especificação: <strong>{material}</strong></div>}
+      </div>
+
+      <div className="grid grid-cols-[1fr_1.4fr_.8fr] border-l border-slate-500">
+        {field('Quantidade', `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`)}
+        {field(isReceipt ? 'Ramo de descarga' : 'Destino / obra', destination)}
+        {field('Estaca', ticket.estaca || '—')}
+      </div>
+
+      <div className="border-l border-r border-b border-slate-500 p-3 min-h-16">
+        <div className="text-[9px] font-bold uppercase text-slate-600">Carga conforme?</div>
+        <div className="mt-3 flex gap-12 text-xs"><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-slate-600 grid place-items-center font-bold ${ticket.cargaConforme === true ? 'bg-slate-900 text-white' : ''}`}>{ticket.cargaConforme === true ? 'X' : ''}</i>Sim</span><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-slate-600 grid place-items-center font-bold ${ticket.cargaConforme === false ? 'bg-slate-900 text-white' : ''}`}>{ticket.cargaConforme === false ? 'X' : ''}</i>Não</span></div>
+      </div>
+
+      <div className="border-l border-r border-b border-slate-500 p-3 min-h-24">
+        <div className="text-[9px] font-bold uppercase text-slate-600">Divergências / observações</div>
+        <p className="mt-3 text-xs leading-relaxed">{ticket.observacao || 'Sem observações.'}</p>
+      </div>
+
+      <div className="grid grid-cols-2 border-l border-slate-500">
+        <div className="min-h-28 border-r border-b border-slate-500 p-3">
+          <div className="text-[9px] font-bold uppercase text-slate-600">Assinatura - {isReceipt ? 'Recebedor' : 'Responsável pela liberação'}</div>
+          {ticket.assinaturaDigital && <img src={ticket.assinaturaDigital} alt="Assinatura digital" className="mx-auto h-14 max-w-[80%] object-contain" />}
+          <div className="mt-1 border-t border-slate-500 pt-1 text-center text-[10px]">{ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível'}</div>
+        </div>
+        <div className="min-h-28 border-r border-b border-slate-500 p-3 flex flex-col justify-end">
+          <div className="border-t border-slate-500 pt-1 text-center text-[10px]">Assinatura - Conferente da obra / Nome legível</div>
+        </div>
+      </div>
+      <div className="border-x border-b border-slate-500 py-1 text-center text-[7px] uppercase text-slate-500">{copy}ª via - {copy === 1 ? 'Obra' : 'Controle'} | Documento digital RENEA</div>
+    </div>
+  );
+};
+
+const TicketDocumentPreview = ({ ticket }: { ticket: TicketJazida }) => (
+  <div className="aspect-[210/297] min-w-[760px] w-full overflow-hidden bg-white p-3 shadow-lg" id="ticket-print-preview">
+    <div className="flex h-full flex-col justify-between">
+      <TicketSingleDocument ticket={ticket} copy={1} />
+      <div className="relative border-t border-dashed border-slate-500"><span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-[7px] uppercase text-slate-500">Linha de corte</span></div>
+      <TicketSingleDocument ticket={ticket} copy={2} />
+    </div>
+  </div>
+);
+
+const generateTwoCopyTicketPdf = async (ticket: TicketJazida) => {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
+  const material = ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
+  const destination = ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
+  let logo = '';
+  try {
+    const response = await fetch(reneaLogoFull);
+    const blob = await response.blob();
+    logo = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result || ''));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch { /* o título textual mantém o documento utilizável */ }
+
+  const drawCopy = (top: number, copy: 1 | 2) => {
+    const left = 8;
+    const width = 194;
+    const line = (x1: number, y1: number, x2: number, y2: number) => doc.line(x1, y1, x2, y2);
+    const label = (text: string, x: number, y: number) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(6); doc.setTextColor(71, 85, 105); doc.text(text.toUpperCase(), x, y); };
+    const value = (text: string, x: number, y: number, maxWidth?: number) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(15, 23, 42); doc.text(String(text || '—'), x, y, maxWidth ? { maxWidth } : undefined); };
+    const box = (x: number, y: number, checked: boolean) => { doc.rect(x, y, 4, 4); if (checked) { doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('X', x + 0.8, y + 3.3); } };
+
+    doc.setDrawColor(100, 116, 139);
+    doc.setLineWidth(0.25);
+    doc.rect(left, top, width, 134);
+    line(left, top + 20, left + width, top + 20);
+    line(left + 55, top, left + 55, top + 20);
+    line(left + 165, top, left + 165, top + 20);
+    if (logo) doc.addImage(logo, 'PNG', left + 3, top + 4, 44, 12);
+    else { doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('RENEA', left + 5, top + 13); }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42);
+    doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO' : 'LIBERAÇÃO'} - OBRA`, left + 60, top + 8);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.text('Complexo Alto Tietê', left + 60, top + 13);
+    label('Ticket Nº', left + 169, top + 5); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text(ticket.ticketNumero, left + 179.5, top + 14, { align: 'center' });
+
+    const vehicleTop = top + 20;
+    [0, 48, 96, 142, 194].forEach(offset => line(left + offset, vehicleTop, left + offset, vehicleTop + 14));
+    [['Prefixo', ticket.prefixo], ['Placa', ticket.placa], ['Data', ticket.data.split('-').reverse().join('/')], [isReceipt ? 'Hora de chegada' : 'Hora de saída', isReceipt ? ticket.horaChegada || ticket.horaSaida : ticket.horaSaida]].forEach(([name, content], index) => { const x = left + [3, 51, 99, 145][index]; label(name, x, vehicleTop + 4); value(content, x, vehicleTop + 10); });
+    line(left, vehicleTop + 14, left + width, vehicleTop + 14);
+
+    const materialTop = vehicleTop + 14;
+    label('Tipo de material', left + 3, materialTop + 4);
+    ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Outros'].forEach((option, index) => { const x = left + 5 + index * 31; box(x, materialTop + 8, material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')); value(option, x + 6, materialTop + 11.5); });
+    line(left, materialTop + 18, left + width, materialTop + 18);
+
+    const detailTop = materialTop + 18;
+    line(left + 55, detailTop, left + 55, detailTop + 14); line(left + 145, detailTop, left + 145, detailTop + 14);
+    label('Quantidade (m³ / caçamba)', left + 3, detailTop + 4); value(`${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`, left + 3, detailTop + 10);
+    label(isReceipt ? 'Ramo de descarga' : 'Destino / obra', left + 58, detailTop + 4); value(destination, left + 58, detailTop + 10, 82);
+    label('Estaca', left + 148, detailTop + 4); value(ticket.estaca || '—', left + 148, detailTop + 10);
+    line(left, detailTop + 14, left + width, detailTop + 14);
+
+    const conformTop = detailTop + 14;
+    label('Carga conforme?', left + 3, conformTop + 4); box(left + 78, conformTop + 5, ticket.cargaConforme === true); value('SIM', left + 84, conformTop + 8.5); box(left + 110, conformTop + 5, ticket.cargaConforme === false); value('NÃO', left + 116, conformTop + 8.5);
+    line(left, conformTop + 14, left + width, conformTop + 14);
+
+    const obsTop = conformTop + 14;
+    label('Divergências / observações', left + 3, obsTop + 4);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(15, 23, 42);
+    doc.text(doc.splitTextToSize(ticket.observacao || '', width - 8).slice(0, 4), left + 3, obsTop + 10);
+    line(left, obsTop + 29, left + width, obsTop + 29);
+
+    const signatureTop = obsTop + 29;
+    line(left + width / 2, signatureTop, left + width / 2, signatureTop + 22);
+    label(`Assinatura - ${isReceipt ? 'Recebedor' : 'Responsável pela liberação'}`, left + 3, signatureTop + 4);
+    if (ticket.assinaturaDigital) { try { doc.addImage(ticket.assinaturaDigital, 'PNG', left + 8, signatureTop + 4, 70, 11); } catch { /* assinatura inválida não interrompe */ } }
+    line(left + 4, signatureTop + 16, left + width / 2 - 4, signatureTop + 16); value(ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível', left + 4, signatureTop + 20);
+    label('Assinatura - Conferente / Fiscal', left + width / 2 + 3, signatureTop + 4); line(left + width / 2 + 4, signatureTop + 16, left + width - 4, signatureTop + 16); value('Nome legível', left + width / 2 + 4, signatureTop + 20);
+    line(left, signatureTop + 22, left + width, signatureTop + 22);
+    doc.setFontSize(5); doc.setTextColor(100, 116, 139); doc.text(`${copy}ª VIA - ${copy === 1 ? 'OBRA' : 'CONTROLE'} | DOCUMENTO DIGITAL RENEA`, left + width / 2, signatureTop + 25, { align: 'center' });
+  };
+
+  drawCopy(7, 1);
+  doc.setLineDashPattern([2, 2], 0); doc.line(8, 148.5, 202, 148.5); doc.setLineDashPattern([], 0);
+  doc.setFontSize(5); doc.setTextColor(100, 116, 139); doc.text('LINHA DE CORTE', 105, 147.5, { align: 'center' });
+  drawCopy(156, 2);
+  doc.save(`ticket_${isReceipt ? 'recebimento' : 'liberacao'}_${ticket.ticketNumero}.pdf`);
+};
 
 export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber }: TicketsJazidaTabProps) {
 
@@ -212,6 +380,34 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   };
 
   const hasFiltrosAtivos = !!(searchQuery || fDataInicial || fDataFinal || fTicketNumero || fPrefixo || fPlaca || fTipoMaterial || fDestinoObra || fEmpresa || fStatus);
+  const activeFilterCount = [searchQuery, fDataInicial, fDataFinal, fTicketNumero, fPrefixo, fPlaca, fTipoMaterial, fDestinoObra, fEmpresa, fStatus].filter(Boolean).length;
+
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const applyPeriod = (days?: number) => {
+    if (!days) {
+      setFDataInicial('');
+      setFDataFinal('');
+      return;
+    }
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - (days - 1));
+    setFDataInicial(formatLocalDate(start));
+    setFDataFinal(formatLocalDate(end));
+  };
+
+  const isPeriodActive = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - (days - 1));
+    return fDataInicial === formatLocalDate(start) && fDataFinal === formatLocalDate(end);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,7 +474,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     return tickets.filter(t => {
       const tipo = t.tipoTicket || 'Liberação';
       if (tipo !== ticketTab) return false;
-      const status = t.statusFluxo || t.status || 'Enviado';
+      const flowStatus = t.statusFluxo || 'Enviado';
+      const qualityStatus = t.status || 'OK';
       if (fDataInicial && t.data < fDataInicial) return false;
       if (fDataFinal && t.data > fDataFinal) return false;
       if (fTicketNumero && !t.ticketNumero.toLowerCase().includes(fTicketNumero.toLowerCase())) return false;
@@ -287,7 +484,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       if (fTipoMaterial && t.tipoMaterial !== fTipoMaterial) return false;
       if (fDestinoObra && t.destinoObra !== fDestinoObra) return false;
       if (fEmpresa && t.empresa !== fEmpresa) return false;
-      if (fStatus && status !== fStatus) return false;
+      if (fStatus && !([flowStatus, qualityStatus].includes(fStatus))) return false;
 
       if (q) {
         const haystack = [
@@ -573,7 +770,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
       const matchesExportFilters = (t: TicketJazida, tipo: TipoTicketJazida) => {
         if ((t.tipoTicket || 'Liberação') !== tipo) return false;
-        const status = t.statusFluxo || t.status || 'Enviado';
+        const flowStatus = t.statusFluxo || 'Enviado';
+        const qualityStatus = t.status || 'OK';
         if (fDataInicial && t.data < fDataInicial) return false;
         if (fDataFinal && t.data > fDataFinal) return false;
         if (fTicketNumero && !t.ticketNumero.toLowerCase().includes(fTicketNumero.toLowerCase())) return false;
@@ -582,7 +780,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         if (fTipoMaterial && t.tipoMaterial !== fTipoMaterial) return false;
         if (fDestinoObra && t.destinoObra !== fDestinoObra) return false;
         if (fEmpresa && t.empresa !== fEmpresa) return false;
-        if (fStatus && status !== fStatus) return false;
+        if (fStatus && !([flowStatus, qualityStatus].includes(fStatus))) return false;
         if (q) {
           const haystack = [
             t.ticketNumero, t.prefixo, t.placa, t.familiaEquipamento, t.equipamentoNome,
@@ -705,6 +903,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
   const handlePrintTicket = async (t: TicketJazida) => {
     try {
+      await generateTwoCopyTicketPdf(t);
+      return;
       const doc = new jsPDF('p', 'mm', 'a5');
       const pageWidth = doc.internal.pageSize.getWidth();
       let y = 14;
@@ -803,6 +1003,16 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         </div>
         <div className="flex flex-wrap gap-2">
           <button
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+            disabled={isImporting}
+            title="Importar tickets de uma planilha XLSX ou XLSM"
+            className="px-4 py-2.5 bg-slate-900 border border-slate-700 hover:border-emerald-500 disabled:opacity-60 text-slate-200 font-bold text-xs rounded-md transition-colors flex items-center gap-1.5"
+          >
+            <Upload className="w-4 h-4 text-emerald-400" />
+            {isImporting ? 'Validando planilha...' : 'Importar tickets'}
+          </button>
+          <button
             onClick={copyPublicLink}
             className="px-4 py-2.5 bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
@@ -815,6 +1025,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             <Plus className="w-4.5 h-4.5" />
             Novo Ticket de {ticketTab}
           </button>
+          <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportTicketsFile} className="hidden" />
         </div>
       </div>
 
@@ -879,41 +1090,63 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         ))}
       </div>
 
-      {/* Quick search + filter toggle + export */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3 bg-slate-900 border border-slate-850 p-3 rounded-2xl">
-        <div className="relative flex-1">
+      {/* Busca, atalhos e filtros */}
+      <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="relative flex-1">
           <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
           <input
+            id="ticket-search"
+            name="ticketSearch"
             type="text"
-            placeholder="Buscar por ticket, prefixo, placa, material, destino..."
+            placeholder="Buscar ticket, placa, prefixo, material, destino ou responsável"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full h-10 bg-slate-950 border border-slate-700 rounded-md pl-10 pr-4 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
           />
+          </div>
+          <button type="button" onClick={() => setFiltrosAbertos(v => !v)} aria-expanded={filtrosAbertos} className={`h-10 flex items-center justify-center gap-2 px-4 rounded-md text-xs font-bold border transition-colors ${filtrosAbertos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-950 border-slate-700 text-slate-300 hover:border-emerald-500'}`}>
+            <SlidersHorizontal className="w-4 h-4" />
+            Mais filtros
+            {activeFilterCount > 0 && <span className="min-w-5 h-5 px-1 rounded bg-white/15 grid place-items-center text-[10px]">{activeFilterCount}</span>}
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
+          </button>
+          <button type="button" onClick={handleExportExcel} disabled={isExporting} className="h-10 flex items-center justify-center gap-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs rounded-md">
+            <FileSpreadsheet className="w-4 h-4" />
+            {isExporting ? 'Exportando...' : hasFiltrosAtivos ? 'Exportar resultado' : 'Exportar Excel'}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setFiltrosAbertos(v => !v)}
-          className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${filtrosAbertos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-emerald-500'}`}
-        >
-          <Search className="w-3.5 h-3.5" />
-          Filtros avançados
-        </button>
-        <button type="button" onClick={handleExportExcel} disabled={isExporting} className="flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
-          <FileSpreadsheet className="w-3.5 h-3.5" />
-          {isExporting ? 'Exportando...' : 'Exportar planilha'}
-        </button>
-        <button type="button" onClick={() => importInputRef.current?.click()} disabled={isImporting} className="flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-950 border border-emerald-600/40 hover:border-emerald-500 disabled:opacity-60 text-emerald-400 font-bold text-xs rounded-xl transition-all cursor-pointer">
-          <Upload className="w-3.5 h-3.5" />
-          {isImporting ? 'Importando...' : 'Importar planilha'}
-        </button>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".xlsx,.xlsm"
-          onChange={handleImportTicketsFile}
-          className="hidden"
-        />
+
+        <div className="flex flex-col xl:flex-row xl:items-center gap-3 border-t border-slate-800 pt-3">
+          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase shrink-0"><CalendarDays className="w-4 h-4" /> Período</div>
+          <div className="flex flex-wrap gap-1.5">
+            {[{ label: 'Hoje', days: 1 }, { label: '7 dias', days: 7 }, { label: '30 dias', days: 30 }].map(period => (
+              <button key={period.days} type="button" onClick={() => applyPeriod(period.days)} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${isPeriodActive(period.days) ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'}`}>{period.label}</button>
+            ))}
+            <button type="button" onClick={() => applyPeriod()} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${!fDataInicial && !fDataFinal ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'}`}>Todo período</button>
+          </div>
+          <div className="xl:ml-auto flex items-center gap-2">
+            <label htmlFor="ticket-quick-status" className="text-[10px] font-bold text-slate-500 uppercase">Situação</label>
+            <select id="ticket-quick-status" value={fStatus} onChange={e => setFStatus(e.target.value)} className="h-8 min-w-40 bg-slate-950 border border-slate-700 rounded-md px-3 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500">
+              <option value="">Todas</option><option value="Enviado">Enviados</option><option value="Rascunho">Rascunhos</option><option value="Pendente">Pendentes</option><option value="Duplicado">Duplicados</option><option value="OK">Conferidos</option>
+            </select>
+            {hasFiltrosAtivos && <button type="button" onClick={limparFiltros} title="Limpar todos os filtros" className="h-8 w-8 grid place-items-center rounded-md border border-slate-700 text-slate-400 hover:border-rose-500 hover:text-rose-400"><FilterX className="w-4 h-4" /></button>}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+        <span>Exibindo <strong className="text-slate-200">{filteredTickets.length}</strong> de {tickets.filter(item => (item.tipoTicket || 'Liberação') === ticketTab).length} tickets de {ticketTab.toLowerCase()}.</span>
+        {hasFiltrosAtivos && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {fDataInicial && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">De {fDataInicial.split('-').reverse().join('/')}</span>}
+            {fDataFinal && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Até {fDataFinal.split('-').reverse().join('/')}</span>}
+            {fTipoMaterial && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Material: {fTipoMaterial}</span>}
+            {fDestinoObra && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Destino: {fDestinoObra}</span>}
+            {fEmpresa && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Empresa: {fEmpresa}</span>}
+            {fStatus && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Situação: {fStatus}</span>}
+          </div>
+        )}
       </div>
 
       {importMessage && (
@@ -929,27 +1162,27 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
       {/* Filter panel + summary cards */}
       {filtrosAbertos && (
-        <div className="bg-slate-900 border border-slate-850 rounded-2xl p-5 space-y-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Inicial</label>
-              <input type="date" value={fDataInicial} onChange={e => setFDataInicial(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-start-date" className="text-xxs font-bold uppercase text-slate-400">Data inicial</label>
+              <input id="filter-start-date" name="filterStartDate" type="date" value={fDataInicial} onChange={e => setFDataInicial(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Final</label>
-              <input type="date" value={fDataFinal} onChange={e => setFDataFinal(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-end-date" className="text-xxs font-bold uppercase text-slate-400">Data final</label>
+              <input id="filter-end-date" name="filterEndDate" type="date" value={fDataFinal} onChange={e => setFDataFinal(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ticket Nº</label>
-              <input type="text" value={fTicketNumero} onChange={e => setFTicketNumero(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-ticket-number" className="text-xxs font-bold uppercase text-slate-400">Ticket Nº</label>
+              <input id="filter-ticket-number" name="filterTicketNumber" type="text" value={fTicketNumero} onChange={e => setFTicketNumero(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
-              <input type="text" value={fPrefixo} onChange={e => setFPrefixo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-prefix" className="text-xxs font-bold uppercase text-slate-400">Prefixo</label>
+              <input id="filter-prefix" name="filterPrefix" type="text" value={fPrefixo} onChange={e => setFPrefixo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
-              <input type="text" value={fPlaca} onChange={e => setFPlaca(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-plate" className="text-xxs font-bold uppercase text-slate-400">Placa</label>
+              <input id="filter-plate" name="filterPlate" type="text" value={fPlaca} onChange={e => setFPlaca(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Material</label>
@@ -1247,33 +1480,18 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
       {/* View modal */}
       {viewingTicket && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setViewingTicket(null)}>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-3" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-black text-emerald-400">Ticket {viewingTicket.ticketNumero}</h3>
-              <button onClick={() => setViewingTicket(null)} className="p-1 text-slate-500 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="text-xs text-slate-300 space-y-1.5">
-              <p><b>Tipo:</b> {viewingTicket.tipoTicket || 'Liberação'}</p>
-              <p><b>Data:</b> {viewingTicket.data.split('-').reverse().join('/')} às {(viewingTicket.tipoTicket || 'Liberação') === 'Recebimento' ? (viewingTicket.horaChegada || viewingTicket.horaSaida) : viewingTicket.horaSaida}</p>
-              <p><b>Prefixo/Placa:</b> {viewingTicket.prefixo} / {viewingTicket.placa}</p>
-              <p><b>Equipamento:</b> {viewingTicket.equipamentoNome || '—'} {viewingTicket.familiaEquipamento ? `(${viewingTicket.familiaEquipamento})` : ''}</p>
-              <p><b>Material:</b> {viewingTicket.tipoMaterial === 'Outros' ? viewingTicket.materialOutro || 'Outros' : viewingTicket.tipoMaterial} — {viewingTicket.quantidadeM3} {viewingTicket.unidadeQuantidade || 'm³'}</p>
-              <p><b>Destino:</b> {viewingTicket.destinoObra === 'Outros' ? viewingTicket.destinoOutro || 'Outros' : viewingTicket.destinoObra}</p>
-              {(viewingTicket.tipoTicket || 'Liberação') === 'Recebimento' && <p><b>Estaca:</b> {viewingTicket.estaca || '—'}</p>}
-              {(viewingTicket.tipoTicket || 'Liberação') === 'Recebimento' && <p><b>Carga conforme:</b> {typeof viewingTicket.cargaConforme === 'boolean' ? (viewingTicket.cargaConforme ? 'Sim' : 'Não') : '—'}</p>}
-              <p><b>Empresa:</b> {viewingTicket.empresa}</p>
-              <p><b>Responsável:</b> {viewingTicket.responsavelLiberacao || '—'}</p>
-              <p><b>Nome legível:</b> {viewingTicket.nomeLegivel || '—'}</p>
-              <p><b>Observação:</b> {viewingTicket.observacao || '—'}</p>
-              <p><b>Situação:</b> {viewingTicket.statusFluxo || 'Enviado'}</p>
-            </div>
-            {viewingTicket.assinaturaDigital && (
-              <div className="rounded-lg border border-slate-700 bg-white p-2">
-                <p className="mb-1 text-[9px] font-black uppercase text-slate-500">Assinatura digital</p>
-                <img src={viewingTicket.assinaturaDigital} alt={`Assinatura de ${viewingTicket.nomeLegivel}`} className="h-28 w-full object-contain" />
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-3 md:p-6" onClick={() => setViewingTicket(null)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 max-w-6xl w-full max-h-[96vh] flex flex-col gap-3" onClick={e => e.stopPropagation()}>
+            <div className="flex flex-wrap justify-between items-center gap-3">
+              <div><h3 className="text-sm font-black text-white">Visualização para impressão</h3><p className="text-[10px] text-slate-500">Ticket {viewingTicket.ticketNumero} no padrão operacional RENEA</p></div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => handlePrintTicket(viewingTicket)} className="h-9 px-4 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2"><Printer className="w-4 h-4" /> Imprimir / PDF</button>
+                <button type="button" onClick={() => setViewingTicket(null)} title="Fechar visualização" className="h-9 w-9 grid place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
               </div>
-            )}
+            </div>
+            <div className="overflow-auto bg-slate-800 p-3">
+              <TicketDocumentPreview ticket={viewingTicket} />
+            </div>
           </div>
         </div>
       )}

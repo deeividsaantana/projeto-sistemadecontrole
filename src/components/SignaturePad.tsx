@@ -10,11 +10,13 @@ interface SignaturePadProps {
 export default function SignaturePad({ value = '', onChange, disabled = false }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
+  const renderTokenRef = useRef(0);
   const [hasInk, setHasInk] = useState(Boolean(value));
 
   const prepareCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const renderToken = ++renderTokenRef.current;
     const rect = canvas.getBoundingClientRect();
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     canvas.width = Math.max(1, Math.floor(rect.width * ratio));
@@ -31,12 +33,15 @@ export default function SignaturePad({ value = '', onChange, disabled = false }:
 
     if (value) {
       const image = new Image();
-      image.onload = () => context.drawImage(image, 0, 0, rect.width, rect.height);
+      image.onload = () => {
+        if (renderToken === renderTokenRef.current) context.drawImage(image, 0, 0, rect.width, rect.height);
+      };
       image.src = value;
     }
   };
 
   useEffect(() => {
+    setHasInk(Boolean(value));
     prepareCanvas();
     const canvas = canvasRef.current;
     if (!canvas || typeof ResizeObserver === 'undefined') return;
@@ -80,9 +85,21 @@ export default function SignaturePad({ value = '', onChange, disabled = false }:
   };
 
   const clear = () => {
+    renderTokenRef.current += 1;
+    drawingRef.current = false;
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (canvas && context) {
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      context.save();
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      context.clearRect(0, 0, canvas.width / ratio, canvas.height / ratio);
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width / ratio, canvas.height / ratio);
+      context.restore();
+    }
     onChange('');
     setHasInk(false);
-    requestAnimationFrame(prepareCanvas);
   };
 
   return (

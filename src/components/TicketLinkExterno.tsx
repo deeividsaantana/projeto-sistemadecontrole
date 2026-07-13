@@ -287,7 +287,11 @@ export default function TicketLinkExterno({
         setScreen('home');
       }
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Não foi possível salvar o ticket.');
+      console.error('Falha técnica ao enviar ticket:', saveError);
+      const detail = saveError instanceof Error ? saveError.message : '';
+      setError(detail.includes('já foi enviado por outra pessoa')
+        ? detail
+        : 'Não foi possível salvar agora. Verifique a internet e tente novamente.');
     } finally {
       setIsSaving(false);
     }

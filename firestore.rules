@@ -87,15 +87,50 @@ service cloud.firestore {
         && data.payload.size() <= 700000;
     }
 
+    function isValidTicketCounter(docId, data) {
+      return docId == 'ticket_counter'
+        && data != null
+        && data.keys().hasAll(['updatedAt', 'kind', 'value'])
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 64
+        && data.kind == 'ticket_counter'
+        && data.value is map
+        && data.value.nextNumber is number
+        && data.value.nextNumber >= 1;
+    }
+
+    function isValidPublicTicket(docId, data) {
+      return docId.matches('^ticket_public_[a-zA-Z0-9_\\-]+$')
+        && data != null
+        && data.keys().hasAll(['updatedAt', 'kind', 'value'])
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 64
+        && data.kind == 'ticket_public'
+        && data.value is map
+        && data.value.id is string
+        && data.value.id.size() <= 160
+        && data.value.ticketNumero is string
+        && data.value.ticketNumero.size() <= 32
+        && data.value.prefixo is string
+        && data.value.prefixo.size() <= 64
+        && data.value.placa is string
+        && data.value.placa.size() <= 32;
+    }
+
     // Matches the cloud backup path for the Renea Infraestrutura system
     match /sistemarenea_cloud/{docId} {
-      allow read: if isValidId(docId);
+      allow get: if isValidId(docId);
+      // A consulta do link usa where('kind', '==', 'ticket_public'). O Firestore
+      // comprova esta condição antes de liberar somente os tickets públicos.
+      allow list: if resource.data.kind == 'ticket_public';
       allow create, update: if isValidId(docId)
         && (
           isValidLegacyCloudState(request.resource.data)
           || isValidIntermediateCloudState(docId, request.resource.data)
           || isValidCloudManifest(request.resource.data)
           || isValidCloudChunk(request.resource.data)
+          || isValidTicketCounter(docId, request.resource.data)
+          || isValidPublicTicket(docId, request.resource.data)
         );
       allow delete: if isValidId(docId);
     }

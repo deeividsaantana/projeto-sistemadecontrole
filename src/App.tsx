@@ -822,7 +822,10 @@ export default function App() {
     setExternalTicketLoadError('');
     loadPublicTickets(db)
       .then(setExternalPublicTickets)
-      .catch(error => setExternalTicketLoadError(formatFirebaseSyncError(error)))
+      .catch(error => {
+        console.error('Falha técnica ao carregar tickets públicos:', error);
+        setExternalTicketLoadError('Não foi possível atualizar os tickets agora. Verifique a internet e tente novamente.');
+      })
       .finally(() => setIsExternalTicketLoading(false));
   }, [externalTicketLink]);
 
@@ -1669,7 +1672,14 @@ export default function App() {
           : `Ticket ${item.ticketNumero} enviado com sucesso.`,
       };
     } catch (error) {
-      return { success: false, message: formatFirebaseSyncError(error) };
+      console.error('Falha técnica ao salvar ticket público:', error);
+      const detail = error instanceof Error ? error.message : '';
+      return {
+        success: false,
+        message: detail.includes('já foi enviado por outra pessoa')
+          ? detail
+          : 'Não foi possível salvar agora. Verifique a internet e tente novamente.',
+      };
     }
   };
 
