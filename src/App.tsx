@@ -80,7 +80,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-branco.svg';
 
 // Firebase Imports
-import { db } from './firebase';
+import { auth, db } from './firebase';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  type User,
+} from 'firebase/auth';
 import {
   downloadFirebaseBackup,
   formatFirebaseSyncError,
@@ -106,6 +114,11 @@ import {
   X,
   LogIn,
   LogOut,
+  UserPlus,
+  Eye,
+  EyeOff,
+  Search,
+  ChevronRight,
   FolderPlus,
   ShieldCheck,
   Calendar,
@@ -130,6 +143,40 @@ import { AppNotification } from './types';
 // Notificações reais começam vazias. Elas são preenchidas apenas por ações
 // genuínas do usuário (cadastros, edições, sincronizações com o Firebase etc.)
 const getInitialNotifications = (): AppNotification[] => [];
+
+const NAVIGATION_GROUPS = [
+  {
+    label: 'Visão geral',
+    items: [
+      { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
+      { id: 'reports', label: 'Relatórios Gerais', icon: FileText },
+    ],
+  },
+  {
+    label: 'Operação',
+    items: [
+      { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
+      { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
+      { id: 'materiais', label: 'Materiais', icon: Package },
+      { id: 'manutencao', label: 'Manutenção', icon: Wrench },
+    ],
+  },
+  {
+    label: 'Equipes e campo',
+    items: [
+      { id: 'presenca', label: 'Presença', icon: Users },
+      { id: 'controle-presenca', label: 'Controle de Presença', icon: ShieldCheck },
+      { id: 'apontamentos', label: 'Apontamentos', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Administração',
+    items: [
+      { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
+      { id: 'configuracoes', label: 'Apoio e Configuração', icon: Settings },
+    ],
+  },
+] as const;
 
 type CadastroImportTarget = 'empresas' | 'obras' | 'equipamentos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
 type CadastroImportRow = Record<string, string>;
@@ -240,9 +287,16 @@ const isTicketLinkUrl = () => {
 export default function App() {
   // Login State
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [registrationName, setRegistrationName] = useState<string>('');
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(true);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
+  const activeUserName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
 
   // Notification and Toast States
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -252,6 +306,7 @@ export default function App() {
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [menuSearch, setMenuSearch] = useState<string>('');
 
   // Firebase Sync States
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
@@ -270,6 +325,7 @@ export default function App() {
   const [abastecimentos, setAbastecimentos] = useState<Abastecimento[]>([]);
   const [lubrificacoes, setLubrificacoes] = useState<Lubrificacao[]>([]);
   const [ticketsJazida, setTicketsJazida] = useState<TicketJazida[]>([]);
+  const [externalPublicTickets, setExternalPublicTickets] = useState<TicketJazida[]>([]);
   const [rdos, setRdos] = useState<RdoDiario[]>([]);
   const [listasPresenca, setListasPresenca] = useState<ListaPresenca[]>([]);
   const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([]);
@@ -284,17 +340,16 @@ export default function App() {
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
   const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
+  const [externalTicketLoadError, setExternalTicketLoadError] = useState('');
   const externalPresenceToken = getPresenceTokenFromUrl();
   const externalApontamentoToken = getApontamentoTokenFromUrl();
   const externalTicketLink = isTicketLinkUrl();
 
   // Hydrate states from localstorage on mount
   useEffect(() => {
-    // Auth persistency check
-    const authSaved = localStorage.getItem('renea_is_logged_in');
-    if (authSaved === 'true') {
-      setIsLoggedIn(true);
-    }
+    // O link público de tickets carrega somente os documentos públicos de
+    // tickets. Nenhum cadastro, relatório ou backup administrativo é hidratado.
+    if (externalTicketLink) return;
 
     const isDataLoadedV2 = localStorage.getItem('renea_data_loaded_v2') === 'true';
 
@@ -457,6 +512,12 @@ export default function App() {
       }
     }
   }, []);
+
+  useEffect(() => onAuthStateChanged(auth, user => {
+    setCurrentUser(user);
+    setIsLoggedIn(Boolean(user));
+    setIsAuthenticating(false);
+  }), []);
 
 
   // Check the real Firestore connection and load sync preferences on mount.
@@ -758,9 +819,10 @@ export default function App() {
   useEffect(() => {
     if (!externalTicketLink) return;
     setIsExternalTicketLoading(true);
-    handleDownloadFromFirebase()
-      .catch(() => undefined)
-      .then(refreshPublicTickets)
+    setExternalTicketLoadError('');
+    loadPublicTickets(db)
+      .then(setExternalPublicTickets)
+      .catch(error => setExternalTicketLoadError(formatFirebaseSyncError(error)))
       .finally(() => setIsExternalTicketLoading(false));
   }, [externalTicketLink]);
 
@@ -772,6 +834,38 @@ export default function App() {
     }, 30_000);
     return () => window.clearInterval(interval);
   }, [isLoggedIn, externalTicketLink]);
+
+  useEffect(() => {
+    if (!isLoggedIn || externalTicketLink) return;
+    const legacyTickets = ticketsJazida.filter(ticket => !ticket.origemRegistro);
+    if (legacyTickets.length === 0) return;
+    const migrationKey = legacyTickets.map(ticket => ticket.id).sort().join('|');
+    if (localStorage.getItem('renea_ticket_public_migration_v3') === migrationKey) return;
+
+    let cancelled = false;
+    const migrateLegacyTickets = async () => {
+      for (let index = 0; index < legacyTickets.length; index += 5) {
+        const batch = legacyTickets.slice(index, index + 5);
+        await Promise.all(batch.map(ticket => savePublicTicket(
+          db,
+          { ...ticket, origemRegistro: 'Importação', statusFluxo: ticket.statusFluxo || 'Enviado' },
+          { allowOverwriteSent: true },
+        )));
+      }
+      if (cancelled) return;
+      const migratedIds = new Set(legacyTickets.map(ticket => ticket.id));
+      setTicketsJazida(current => {
+        const migrated = current.map(ticket => migratedIds.has(ticket.id)
+          ? { ...ticket, origemRegistro: 'Importação' as const, statusFluxo: ticket.statusFluxo || 'Enviado' as const }
+          : ticket);
+        localStorage.setItem('renea_tickets_jazida', JSON.stringify(migrated));
+        return migrated;
+      });
+      localStorage.setItem('renea_ticket_public_migration_v3', migrationKey);
+    };
+    migrateLegacyTickets().catch(error => console.warn('Falha ao preparar tickets antigos para o link:', error));
+    return () => { cancelled = true; };
+  }, [isLoggedIn, externalTicketLink, ticketsJazida]);
 
   // Helper to save data and append to changes history
   const saveAndLog = (
@@ -785,7 +879,7 @@ export default function App() {
     const newLog: HistoryLog = {
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toLocaleString('pt-BR'),
-      usuario: 'admin',
+      usuario: activeUserName,
       acao: action,
       tela: tableName,
       descricao: description
@@ -843,22 +937,68 @@ export default function App() {
   };
 
   // Auth Handler
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim() === 'admin' && password === 'renea123') {
-      setIsLoggedIn(true);
+    setLoginError('');
+    setIsAuthenticating(true);
+    try {
+      await signInWithEmailAndPassword(auth, username.trim().toLowerCase(), password);
       setLoginError('');
-      localStorage.setItem('renea_is_logged_in', 'true');
-    } else {
-      setLoginError('Usuário ou senha incorretos! Use admin / renea123.');
+    } catch (error: any) {
+      const code = String(error?.code || '');
+      setLoginError(code.includes('invalid-credential') || code.includes('user-not-found')
+        ? 'E-mail ou senha incorretos.'
+        : code.includes('too-many-requests')
+          ? 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
+          : 'Não foi possível entrar. Verifique sua conexão e tente novamente.');
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
-  const handleLogout = () => {
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (registrationName.trim().length < 3) {
+      setLoginError('Informe o nome completo do usuário.');
+      return;
+    }
+    if (password.length < 8) {
+      setLoginError('A senha deve ter pelo menos 8 caracteres.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setLoginError('As senhas não coincidem.');
+      return;
+    }
+    setIsAuthenticating(true);
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, username.trim().toLowerCase(), password);
+      await updateProfile(credential.user, { displayName: registrationName.trim() });
+      setCurrentUser(credential.user);
+    } catch (error: any) {
+      const code = String(error?.code || '');
+      setLoginError(code.includes('email-already-in-use')
+        ? 'Este e-mail já possui uma conta.'
+        : code.includes('invalid-email')
+          ? 'Informe um e-mail válido.'
+          : code.includes('weak-password')
+            ? 'Escolha uma senha mais forte.'
+            : code.includes('operation-not-allowed')
+              ? 'O cadastro por e-mail precisa ser habilitado no Firebase Authentication.'
+            : 'Não foi possível criar a conta. Tente novamente.');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
     setIsLoggedIn(false);
+    setCurrentUser(null);
     setUsername('');
     setPassword('');
-    localStorage.removeItem('renea_is_logged_in');
+    setConfirmPassword('');
   };
 
   // CRUD State Handlers
@@ -1469,7 +1609,11 @@ export default function App() {
         localStorage.setItem('renea_tickets_jazida', JSON.stringify(updated));
       }
     );
-    void savePublicTicket(db, { ...item, origemRegistro: item.origemRegistro || 'Admin' })
+    void savePublicTicket(
+      db,
+      { ...item, origemRegistro: item.origemRegistro || 'Admin' },
+      { allowOverwriteSent: true },
+    )
       .catch(error => console.warn('Falha ao espelhar ticket no link público:', error));
   };
 
@@ -1517,9 +1661,7 @@ export default function App() {
   ): Promise<{ success: boolean; message: string }> => {
     try {
       await savePublicTicket(db, item);
-      const updated = mergeTicketCollections(ticketsJazida, [item]);
-      setTicketsJazida(updated);
-      localStorage.setItem('renea_tickets_jazida', JSON.stringify(updated));
+      setExternalPublicTickets(current => mergeTicketCollections(current, [item]));
       return {
         success: true,
         message: item.statusFluxo === 'Rascunho'
@@ -1885,7 +2027,7 @@ export default function App() {
       status,
       observacao,
       updatedAt: new Date().toISOString(),
-      atualizadoPor: 'admin',
+      atualizadoPor: activeUserName,
       motivoAlteracao: motivo
     };
     const updatedPresencas = presencasLink.map(row => row.id === id ? updatedItem : row);
@@ -1895,7 +2037,7 @@ export default function App() {
       grupoId: item.grupoId,
       funcionarioId: item.funcionarioId,
       data: item.data,
-      editadoPor: 'admin',
+      editadoPor: activeUserName,
       editadoEm: new Date().toLocaleString('pt-BR'),
       motivo,
       valorAnterior: `${item.status}${item.observacao ? ` - ${item.observacao}` : ''}`,
@@ -2268,7 +2410,7 @@ export default function App() {
     const logs = imported.historyLogs || [{
       id: `log-${Date.now()}`,
       timestamp: new Date().toLocaleString('pt-BR'),
-      usuario: 'admin',
+      usuario: activeUserName,
       acao: 'Editou',
       tela: 'Banco de Dados',
       descricao: 'Restaurou backup completo do sistema com sucesso.'
@@ -2373,7 +2515,7 @@ export default function App() {
     setHistoryLogs([{
       id: `log-${Date.now()}`,
       timestamp: new Date().toLocaleString('pt-BR'),
-      usuario: 'admin',
+      usuario: activeUserName,
       acao: 'Excluiu',
       tela: 'Banco de Dados',
       descricao: 'Limpou completamente todas as tabelas de dados do sistema.'
@@ -2534,7 +2676,7 @@ export default function App() {
       const newLog: HistoryLog = {
         id: `log-${Date.now()}`,
         timestamp: new Date().toLocaleString('pt-BR'),
-        usuario: 'admin',
+        usuario: activeUserName,
         acao: 'Criou',
         tela: 'Banco de Dados',
         descricao: logMsg
@@ -2554,9 +2696,10 @@ export default function App() {
   if (externalTicketLink) {
     return (
       <TicketLinkExterno
-        tickets={ticketsJazida}
+        tickets={externalPublicTickets}
         isLoadingCloud={isExternalTicketLoading}
-        onReserveNumber={handleReserveTicketNumber}
+        loadError={externalTicketLoadError}
+        onReserveNumber={() => reservePublicTicketNumber(db, externalPublicTickets)}
         onSaveTicket={handleSaveTicketLink}
       />
     );
@@ -2589,14 +2732,21 @@ export default function App() {
   }
 
   // Login Screen Render
+  if (isAuthenticating && !isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+        <div className="flex items-center gap-3 text-sm font-semibold">
+          <span className="w-5 h-5 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
+          Validando acesso seguro...
+        </div>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-slate-100 antialiased font-sans" id="login-viewport">
-        <div className="w-full max-w-md bg-slate-900 border border-emerald-500/35 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-          {/* Decorative glowing green background circles */}
-          <div className="absolute -top-16 -left-16 w-36 h-36 bg-emerald-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-emerald-500/10 rounded-full blur-3xl"></div>
-
+        <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-7 shadow-2xl relative overflow-hidden">
           {/* Branded Logo and Header */}
           <div className="text-center mb-8 relative">
             <div className="mx-auto w-48 h-auto flex items-center justify-center mb-4">
@@ -2610,52 +2760,73 @@ export default function App() {
             <p className="text-xs text-slate-400 mt-2">Sistema Integrado de Gestão Operacional</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5 relative">
+          <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-lg mb-6" role="tablist" aria-label="Acesso ao sistema">
+            <button type="button" role="tab" aria-selected={!isRegistering} onClick={() => { setIsRegistering(false); setLoginError(''); }} className={`py-2 text-xs font-bold rounded-md transition-colors ${!isRegistering ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}>
+              Entrar
+            </button>
+            <button type="button" role="tab" aria-selected={isRegistering} onClick={() => { setIsRegistering(true); setLoginError(''); }} className={`py-2 text-xs font-bold rounded-md transition-colors ${isRegistering ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}>
+              Criar conta
+            </button>
+          </div>
+
+          <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4 relative">
+            {isRegistering && (
+              <div className="space-y-1.5">
+                <label htmlFor="registration-name" className="text-xs font-bold text-slate-300 uppercase">Nome completo</label>
+                <input id="registration-name" name="name" type="text" autoComplete="name" placeholder="Nome do colaborador" value={registrationName} onChange={(e) => setRegistrationName(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-emerald-500" required />
+              </div>
+            )}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Usuário Padrão</label>
+              <label htmlFor="login-email" className="text-xs font-bold text-slate-300 uppercase">E-mail corporativo</label>
               <input 
-                type="text"
-                placeholder="ex: admin"
+                id="login-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="nome@empresa.com.br"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Senha de Acesso</label>
-              <input 
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
-                required
-              />
+              <label htmlFor="login-password" className="text-xs font-bold text-slate-300 uppercase">Senha de acesso</label>
+              <div className="relative">
+                <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete={isRegistering ? 'new-password' : 'current-password'} placeholder="Mínimo de 8 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 pr-12 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500" required />
+                <button type="button" onClick={() => setShowPassword(value => !value)} title={showPassword ? 'Ocultar senha' : 'Mostrar senha'} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white">
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
+            {isRegistering && (
+              <div className="space-y-1.5">
+                <label htmlFor="confirm-password" className="text-xs font-bold text-slate-300 uppercase">Confirmar senha</label>
+                <input id="confirm-password" name="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-emerald-500" required />
+              </div>
+            )}
+
             {loginError && (
-              <div className="text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2">
+                <div role="alert" className="text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-md px-3.5 py-2">
                 {loginError}
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+              disabled={isAuthenticating}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-extrabold text-sm uppercase rounded-md shadow-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              <LogIn className="w-4 h-4" />
-              Entrar no Sistema
+              {isRegistering ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
+              {isRegistering ? 'Criar conta e entrar' : 'Entrar no sistema'}
             </button>
           </form>
 
-          {/* Floating Instructions box for testing */}
-          <div className="mt-8 pt-4 border-t border-slate-800/80 text-center">
-            <div className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-950/55 px-3 py-1.5 rounded-full border border-slate-800">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Dica de Teste: <strong>admin</strong> / <strong>renea123</strong></span>
-            </div>
+          <div className="mt-6 pt-4 border-t border-slate-800 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            Acesso protegido pelo Firebase Authentication
           </div>
         </div>
       </div>
@@ -2675,12 +2846,71 @@ export default function App() {
     localStorage.setItem('renea_notifications', JSON.stringify([]));
   };
 
+  const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase('pt-BR');
+  const filteredNavigationGroups = NAVIGATION_GROUPS
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => !normalizedMenuSearch || item.label.toLocaleLowerCase('pt-BR').includes(normalizedMenuSearch)),
+    }))
+    .filter(group => group.items.length > 0);
+
+  const navigateTo = (tab: string, closeMobile = false) => {
+    setActiveTab(tab);
+    if (closeMobile) setIsMobileMenuOpen(false);
+  };
+
+  const renderNavigation = (mobile = false) => (
+    <>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+        <input
+          type="search"
+          value={menuSearch}
+          onChange={event => setMenuSearch(event.target.value)}
+          placeholder="Buscar módulo"
+          aria-label="Buscar módulo no menu"
+          className="w-full h-9 pl-9 pr-3 bg-slate-950 border border-slate-800 rounded-md text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-600"
+        />
+      </div>
+      <div className="space-y-5">
+        {filteredNavigationGroups.map(group => (
+          <section key={group.label} aria-label={group.label}>
+            <p className="px-3 mb-1.5 text-[9px] font-black uppercase text-slate-600">{group.label}</p>
+            <div className="space-y-1">
+              {group.items.map(item => {
+                const Icon = item.icon;
+                const active = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigateTo(item.id, mobile)}
+                    aria-current={active ? 'page' : undefined}
+                    title={item.label}
+                    className={`group w-full min-h-10 flex items-center gap-3 px-3 py-2 rounded-md text-xs font-bold transition-colors ${active ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-slate-500 group-hover:text-emerald-400'}`} />
+                    <span className="flex-1 text-left leading-tight">{item.label}</span>
+                    <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-70'}`} />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+        {filteredNavigationGroups.length === 0 && (
+          <p className="px-3 py-6 text-center text-xs text-slate-500">Nenhum módulo encontrado.</p>
+        )}
+      </div>
+    </>
+  );
+
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row text-slate-100 antialiased font-sans" id="app-root">
       
       {/* 1. SIDEBAR NAVIGATION - DESKTOP */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 shrink-0 select-none print:hidden" id="desktop-sidebar">
+      <aside className="hidden md:flex flex-col w-72 bg-slate-900 border-r border-slate-800 shrink-0 select-none print:hidden" id="desktop-sidebar">
         {/* Branded Header */}
         <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950/20">
           <img 
@@ -2692,94 +2922,8 @@ export default function App() {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-6 space-y-1">
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <LayoutDashboard className="w-4 h-4 shrink-0" />
-            Painel de Controle
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('cadastros')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <FolderPlus className="w-4 h-4 shrink-0" />
-            Cadastros Auxiliares
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('lancamentos')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'lancamentos' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <ClipboardList className="w-4 h-4 shrink-0" />
-            Lançamentos Diários
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('presenca')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'presenca' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <Users className="w-4 h-4 shrink-0" />
-            Presença
-          </button>
-
-          <button
-            onClick={() => setActiveTab('controle-presenca')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'controle-presenca' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <ShieldCheck className="w-4 h-4 shrink-0" />
-            Controle de Presença
-          </button>
-
-          <button
-            onClick={() => setActiveTab('apontamentos')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'apontamentos' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <BarChart3 className="w-4 h-4 shrink-0" />
-            Apontamentos
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('manutencao')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'manutencao' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <Wrench className="w-4 h-4 shrink-0" />
-            Manutenção
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('tickets-jazida')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'tickets-jazida' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <Truck className="w-4 h-4 shrink-0" />
-            Tickets Jazida
-          </button>
-
-          <button
-            onClick={() => setActiveTab('materiais')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'materiais' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <Package className="w-4 h-4 shrink-0" />
-            Materiais
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('reports')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <FileText className="w-4 h-4 shrink-0" />
-            Relatórios Gerais
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('configuracoes')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'configuracoes' ? 'bg-emerald-600/15 text-emerald-400 border-l-4 border-emerald-500 pl-3' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'}`}
-          >
-            <Settings className="w-4 h-4 shrink-0" />
-            Apoio & Configuração
-          </button>
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {renderNavigation(false)}
         </nav>
 
         {/* Database Status Info */}
@@ -2800,11 +2944,11 @@ export default function App() {
             <span>Materiais: {materiaisRegistros.length}</span>
           </div>
           <button 
-            onClick={handleLogout}
+            onClick={() => void handleLogout()}
             className="w-full mt-2 py-1.5 bg-slate-800 hover:bg-rose-950 hover:text-rose-400 border border-slate-700/60 hover:border-rose-900/60 text-slate-400 rounded-lg font-bold text-[9px] flex items-center justify-center gap-1 transition-all cursor-pointer"
           >
             <LogOut className="w-3 h-3" />
-            Desconectar Admin
+            Sair da conta
           </button>
         </div>
       </aside>
@@ -2850,7 +2994,7 @@ export default function App() {
       {/* Mobile Drawer Menu overlay */}
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
-          <div className="w-64 bg-slate-900 border-l border-slate-800 p-5 flex flex-col space-y-4 shadow-xl">
+          <div className="w-80 max-w-[88vw] bg-slate-900 border-l border-slate-800 p-5 flex flex-col space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <span className="text-xs font-bold text-slate-400 tracking-wider">NAVEGAÇÃO</span>
               <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
@@ -2858,90 +3002,11 @@ export default function App() {
               </button>
             </div>
 
-            <nav className="flex-1 flex flex-col gap-1">
-              <button 
-                onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <LayoutDashboard className="w-4.5 h-4.5" /> Painel Geral
-              </button>
-
-              <button 
-                onClick={() => { setActiveTab('cadastros'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <FolderPlus className="w-4.5 h-4.5" /> Cadastros Auxiliares
-              </button>
-
-              <button 
-                onClick={() => { setActiveTab('lancamentos'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'lancamentos' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <ClipboardList className="w-4.5 h-4.5" /> Lançamentos Diários
-              </button>
-
-              <button 
-                onClick={() => { setActiveTab('presenca'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'presenca' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <Users className="w-4.5 h-4.5" /> Presença
-              </button>
-
-              <button
-                onClick={() => { setActiveTab('controle-presenca'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'controle-presenca' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <ShieldCheck className="w-4.5 h-4.5" /> Controle de Presença
-              </button>
-
-              <button
-                onClick={() => { setActiveTab('apontamentos'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'apontamentos' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <BarChart3 className="w-4.5 h-4.5" /> Apontamentos
-              </button>
-
-              <button 
-                onClick={() => { setActiveTab('manutencao'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'manutencao' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <Wrench className="w-4.5 h-4.5" /> Manutenção
-              </button>
-
-              <button 
-                onClick={() => { setActiveTab('tickets-jazida'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'tickets-jazida' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <Truck className="w-4.5 h-4.5" /> Tickets Jazida
-              </button>
-
-              <button
-                onClick={() => { setActiveTab('materiais'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'materiais' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <Package className="w-4.5 h-4.5" /> Materiais
-              </button>
-
-              <button 
-                onClick={() => { setActiveTab('reports'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <FileText className="w-4.5 h-4.5" /> Relatórios Gerais
-              </button>
-
-              <button 
-                onClick={() => { setActiveTab('configuracoes'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'configuracoes' ? 'bg-emerald-600/15 text-emerald-400' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <Settings className="w-4.5 h-4.5" /> Apoio & Configurações
-              </button>
-
-              <div className="pt-6 mt-4 border-t border-slate-800 flex flex-col gap-2">
-                <button
-                  onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
-                  className="w-full py-2 bg-rose-650/10 text-rose-400 hover:bg-rose-650/20 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" /> Desconectar Admin
+            <nav className="flex-1 overflow-y-auto">
+              {renderNavigation(true)}
+              <div className="pt-5 mt-5 border-t border-slate-800">
+                <button type="button" onClick={() => { void handleLogout(); setIsMobileMenuOpen(false); }} className="w-full py-2.5 bg-rose-950/30 text-rose-400 hover:bg-rose-950/60 rounded-md font-bold text-xs flex items-center justify-center gap-2">
+                  <LogOut className="w-4 h-4" /> Sair da conta
                 </button>
               </div>
             </nav>
@@ -3075,9 +3140,12 @@ export default function App() {
                 {new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
-            <div className="h-9 px-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2 text-xs font-bold text-slate-200">
-              <div className="w-5 h-5 bg-emerald-600 rounded-md flex items-center justify-center font-bold text-white text-[10px]">AD</div>
-              <span>Administrador</span>
+            <div className="h-10 px-3 rounded-md bg-slate-900 border border-slate-800 flex items-center gap-2 text-xs font-bold text-slate-200 max-w-56">
+              <div className="w-6 h-6 bg-emerald-600 rounded-md flex items-center justify-center font-bold text-white text-[10px] shrink-0">{(currentUser?.displayName || currentUser?.email || 'U').slice(0, 2).toUpperCase()}</div>
+              <div className="min-w-0 text-left">
+                <span className="block truncate">{currentUser?.displayName || 'Usuário RENEA'}</span>
+                <span className="block truncate text-[9px] font-normal text-slate-500">{currentUser?.email}</span>
+              </div>
             </div>
           </div>
         </div>

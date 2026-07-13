@@ -25,6 +25,7 @@ import {
   FilePenLine
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
+import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { jsPDF } from 'jspdf';
 import { TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
@@ -73,6 +74,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [tipoMaterial, setTipoMaterial] = useState<TipoMaterialJazida>('Solo');
   const [quantidadeM3, setQuantidadeM3] = useState<number>(1);
   const [destinoObra, setDestinoObra] = useState<DestinoObraJazida>('Marginal');
+  const [destinoOutro, setDestinoOutro] = useState('');
   const [responsavelLiberacao, setResponsavelLiberacao] = useState('');
   const [nomeLegivel, setNomeLegivel] = useState('');
   const [empresa, setEmpresa] = useState<EmpresaTicketJazida>('RENEA');
@@ -108,6 +110,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setTipoMaterial('Solo');
     setQuantidadeM3(1);
     setDestinoObra('Marginal');
+    setDestinoOutro('');
     setResponsavelLiberacao('');
     setNomeLegivel('');
     setEmpresa('RENEA');
@@ -142,6 +145,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setTipoMaterial(t.tipoMaterial);
     setQuantidadeM3(t.quantidadeM3);
     setDestinoObra(t.destinoObra);
+    setDestinoOutro(t.destinoOutro || '');
     setResponsavelLiberacao(t.responsavelLiberacao);
     setNomeLegivel(t.nomeLegivel);
     setEmpresa(t.empresa);
@@ -221,6 +225,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     if (tipoTicket === 'Liberação' && !horaSaida) { setValidationError('Informe a Hora de Saída.'); return; }
     if (!tipoMaterial) { setValidationError('Selecione o Tipo de Material.'); return; }
     if (!quantidadeM3 || quantidadeM3 <= 0) { setValidationError('Quantidade (m³) deve ser maior que zero.'); return; }
+    if (destinoObra === 'Outros' && !destinoOutro.trim()) { setValidationError('Informe o destino ou ramo de descarga.'); return; }
 
     const duplicado = tickets.some(t =>
       t.ticketNumero.trim().toLowerCase() === ticketNumero.trim().toLowerCase() &&
@@ -248,6 +253,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       tipoMaterial,
       quantidadeM3: Number(quantidadeM3),
       destinoObra,
+      destinoOutro: destinoOutro.trim(),
       estaca: estaca.trim(),
       responsavelLiberacao: responsavelLiberacao.trim(),
       nomeLegivel: nomeLegivel.trim(),
@@ -286,7 +292,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       if (q) {
         const haystack = [
           t.ticketNumero, t.prefixo, t.placa, t.familiaEquipamento, t.equipamentoNome,
-          t.tipoMaterial, t.destinoObra, t.estaca, t.empresa, t.responsavelLiberacao,
+          t.tipoMaterial, t.destinoObra, t.destinoOutro, t.estaca, t.empresa, t.responsavelLiberacao,
           t.nomeLegivel, t.observacao, t.data
         ].filter(Boolean).join(' ').toLowerCase();
         if (!haystack.includes(q)) return false;
@@ -297,22 +303,29 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
   const resumo = useMemo(() => {
     const totalTickets = filteredTickets.length;
-    const totalM3 = filteredTickets.reduce((s, t) => s + (Number(t.quantidadeM3) || 0), 0);
+    const totalM3 = filteredTickets
+      .filter(ticket => (ticket.unidadeQuantidade || 'm³') === 'm³')
+      .reduce((sum, ticket) => sum + (Number(ticket.quantidadeM3) || 0), 0);
+    const totalCacambas = filteredTickets
+      .filter(ticket => ticket.unidadeQuantidade === 'caçamba')
+      .reduce((sum, ticket) => sum + (Number(ticket.quantidadeM3) || 0), 0);
     const okCount = filteredTickets.filter(t => (t.status || 'OK') === 'OK').length;
     const pendCount = filteredTickets.filter(t => (t.status || 'OK') === 'Pendente').length;
     const dupCount = filteredTickets.filter(t => (t.status || 'OK') === 'Duplicado').length;
-    const media = totalTickets > 0 ? totalM3 / totalTickets : 0;
-    return { totalTickets, totalM3, okCount, pendCount, dupCount, media };
+    return { totalTickets, totalM3, totalCacambas, okCount, pendCount, dupCount };
   }, [filteredTickets]);
 
   const flowDashboard = useMemo(() => {
     const grouped = new Map<string, { numero: string; liberacao?: TicketJazida; recebimento?: TicketJazida }>();
-    tickets.forEach(ticket => {
-      const pair = grouped.get(ticket.ticketNumero) || { numero: ticket.ticketNumero };
-      if ((ticket.tipoTicket || 'Liberação') === 'Liberação') pair.liberacao = ticket;
-      else pair.recebimento = ticket;
-      grouped.set(ticket.ticketNumero, pair);
-    });
+    [...tickets]
+      .sort((a, b) => String(a.atualizadoEm || a.criadoEm || '').localeCompare(String(b.atualizadoEm || b.criadoEm || '')))
+      .forEach(ticket => {
+        const pair: { numero: string; liberacao?: TicketJazida; recebimento?: TicketJazida } =
+          grouped.get(ticket.ticketNumero) || { numero: ticket.ticketNumero };
+        if ((ticket.tipoTicket || 'Liberação') === 'Liberação') pair.liberacao = ticket;
+        else pair.recebimento = ticket;
+        grouped.set(ticket.ticketNumero, pair);
+      });
     const pairs = Array.from(grouped.values()).sort((a, b) => Number(b.numero) - Number(a.numero));
     const drafts = tickets.filter(ticket => ticket.statusFluxo === 'Rascunho').length;
     const pending = pairs.filter(pair => pair.liberacao?.statusFluxo !== 'Rascunho'
@@ -470,9 +483,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setValidationError('');
     setImportMessage('');
     try {
-      const buffer = await file.arrayBuffer();
-      const wb = new ExcelJS.Workbook();
-      await wb.xlsx.load(buffer as any);
+      const wb = await loadValidatedWorkbook(file);
       const worksheets = wb.worksheets.filter(ws => {
         const name = normalizeImportHeader(ws.name);
         return name.includes('liberacao') || name.includes('recebimento');
@@ -538,11 +549,15 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         setValidationError(`Nenhum ticket novo foi encontrado. ${ignored ? `${ignored} linha(s) foram ignoradas por erro ou duplicidade.` : 'Confira se a planilha tem as abas LIBERAÇÃO e RECEBIMENTO.'}`);
         return;
       }
+      if (!window.confirm(`${imported.length} ticket(s) válido(s) serão importados. ${ignored} linha(s) foram ignoradas por dados incompletos ou duplicidade. Deseja continuar?`)) {
+        setImportMessage('Importação cancelada. Nenhum ticket foi alterado.');
+        return;
+      }
       onImportTickets(imported);
       setImportMessage(`${imported.length} ticket(s) importado(s) de ${file.name}.${ignored ? ` ${ignored} linha(s) ignorada(s).` : ''}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao importar tickets:', err);
-      setValidationError('Não foi possível importar a planilha de tickets. Use um arquivo .xlsx ou .xlsm no modelo de liberação/recebimento.');
+      setValidationError(err?.message || 'Não foi possível importar a planilha de tickets. Use um arquivo .xlsx ou .xlsm no modelo de liberação/recebimento.');
     } finally {
       setIsImporting(false);
       if (importInputRef.current) importInputRef.current.value = '';
@@ -554,8 +569,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setIsExporting(true);
     try {
       const wb = new ExcelJS.Workbook();
-      wb.creator = 'RENEA';
-      wb.created = new Date();
+      configureCorporateWorkbook(wb, 'Tickets de Liberação e Recebimento');
 
       const matchesExportFilters = (t: TicketJazida, tipo: TipoTicketJazida) => {
         if ((t.tipoTicket || 'Liberação') !== tipo) return false;
@@ -572,7 +586,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         if (q) {
           const haystack = [
             t.ticketNumero, t.prefixo, t.placa, t.familiaEquipamento, t.equipamentoNome,
-            t.tipoMaterial, t.destinoObra, t.estaca, t.empresa, t.responsavelLiberacao,
+            t.tipoMaterial, t.destinoObra, t.destinoOutro, t.estaca, t.empresa, t.responsavelLiberacao,
             t.nomeLegivel, t.observacao, t.data
           ].filter(Boolean).join(' ').toLowerCase();
           if (!haystack.includes(q)) return false;
@@ -620,7 +634,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                   item.tipoMaterial,
                   item.quantidadeM3,
                   item.unidadeQuantidade || 'm³',
-                  item.destinoObra,
+                  item.destinoObra === 'Outros' ? item.destinoOutro || 'Outros' : item.destinoObra,
                   item.empresa,
                   item.estaca || '',
                   typeof item.cargaConforme === 'boolean' ? (item.cargaConforme ? 'Sim' : 'Não') : '',
@@ -640,7 +654,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                   item.tipoMaterial,
                   item.quantidadeM3,
                   item.unidadeQuantidade || 'm³',
-                  item.destinoObra,
+                  item.destinoObra === 'Outros' ? item.destinoOutro || 'Outros' : item.destinoObra,
                   item.empresa,
                   item.nomeLegivel || item.responsavelLiberacao,
                   item.statusFluxo || item.status || 'Enviado',
@@ -649,35 +663,26 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             ws.addRow(values);
           });
 
-        ws.eachRow((row, rowNumber) => {
-          row.eachCell({ includeEmpty: true }, cell => {
-            cell.border = {
-              top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-              left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-              bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-              right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            };
-            if (rowNumber > 4) cell.alignment = { vertical: 'middle', horizontal: 'left' };
-          });
+        styleCorporateWorksheet(ws, {
+          title: isRecebimento ? 'Tickets de Recebimento' : 'Tickets de Liberação',
+          headerRow: 4,
+          lastColumn: headers.length,
+          recordCount: Math.max(0, ws.rowCount - 4),
+          filters: [fDataInicial ? `Início: ${fDataInicial}` : '', fDataFinal ? `Fim: ${fDataFinal}` : '', fStatus ? `Situação: ${fStatus}` : ''],
         });
-        ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
-        ws.views = [{ state: 'frozen', ySplit: 4 }];
       };
 
       addTicketWorksheet('Liberação');
       addTicketWorksheet('Recebimento');
-
-      const buffer = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
+      const exportados = tickets.filter(item => matchesExportFilters(item, item.tipoTicket || 'Liberação'));
+      addCorporateSummarySheet(wb, 'Tickets de Jazida', [
+        ['Total exportado', exportados.length],
+        ['Liberações', exportados.filter(item => (item.tipoTicket || 'Liberação') === 'Liberação').length],
+        ['Recebimentos', exportados.filter(item => item.tipoTicket === 'Recebimento').length],
+        ['Pendentes', exportados.filter(item => (item.statusFluxo || item.status) === 'Pendente').length],
+      ]);
       const sufixo = hasFiltrosAtivos ? '_filtrado' : '';
-      link.setAttribute('download', `RENEA_tickets_jazida${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      await downloadCorporateWorkbook(wb, `RENEA_tickets_jazida${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
       console.error('Erro ao exportar Excel de tickets jazida:', err);
       setValidationError('Não foi possível exportar o Excel. Tente novamente.');
@@ -731,13 +736,15 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         ['Equipamento', t.equipamentoNome || '—'],
         ['Hora de Chegada', t.horaChegada || '—'],
         ['Hora de Saída', t.horaSaida || '—'],
-        ['Tipo de Material', t.tipoMaterial],
-        ['Quantidade (m³)', String(t.quantidadeM3)],
-        ['Destino / Obra', t.destinoObra],
+        ['Tipo de Material', t.tipoMaterial === 'Outros' ? t.materialOutro || 'Outros' : t.tipoMaterial],
+        ['Quantidade', `${t.quantidadeM3} ${t.unidadeQuantidade || 'm³'}`],
+        [(t.tipoTicket || 'Liberação') === 'Recebimento' ? 'Ramo de Descarga' : 'Destino / Obra', t.destinoObra === 'Outros' ? t.destinoOutro || 'Outros' : t.destinoObra],
         ['Estaca', t.estaca || '—'],
-        ['Responsável pela Liberação', t.responsavelLiberacao || '—'],
+        ['Carga Conforme', typeof t.cargaConforme === 'boolean' ? (t.cargaConforme ? 'Sim' : 'Não') : '—'],
+        [(t.tipoTicket || 'Liberação') === 'Recebimento' ? 'Responsável pelo Recebimento' : 'Responsável pela Liberação', t.responsavelLiberacao || '—'],
         ['Nome Legível', t.nomeLegivel || '—'],
         ['Empresa', t.empresa],
+        ['Situação', t.statusFluxo || t.status || 'Enviado'],
       ];
 
       doc.setFontSize(10);
@@ -761,10 +768,15 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       doc.setFont('helvetica', 'bold');
       doc.text('Assinatura:', 12, y);
       if (t.assinaturaDigital) {
-        doc.addImage(t.assinaturaDigital, 'PNG', 12, y + 3, 86, 28);
-        y += 34;
-        doc.setFont('helvetica', 'normal');
-        doc.text(t.assinaturaResponsavel || t.nomeLegivel || t.responsavelLiberacao || '', 12, y);
+        try {
+          doc.addImage(t.assinaturaDigital, 'PNG', 12, y + 3, 86, 28);
+          y += 34;
+          doc.setFont('helvetica', 'normal');
+          doc.text(t.assinaturaResponsavel || t.nomeLegivel || t.responsavelLiberacao || '', 12, y);
+        } catch {
+          y += 14;
+          doc.line(12, y, pageWidth - 12, y);
+        }
       } else {
         y += 14;
         doc.line(12, y, pageWidth - 12, y);
@@ -1006,8 +1018,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               <p className="text-lg font-black text-rose-400 font-mono mt-1">{resumo.dupCount}</p>
             </div>
             <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Média m³/Ticket</p>
-              <p className="text-lg font-black text-white font-mono mt-1">{resumo.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</p>
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total Caçambas</p>
+              <p className="text-lg font-black text-white font-mono mt-1">{resumo.totalCacambas.toLocaleString('pt-BR')}</p>
             </div>
           </div>
         </div>
@@ -1101,6 +1113,12 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                   {DESTINOS_OBRA.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
+              {destinoObra === 'Outros' && (
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">{tipoTicket === 'Recebimento' ? 'Qual ramo de descarga? *' : 'Qual destino? *'}</label>
+                  <input type="text" value={destinoOutro} onChange={e => setDestinoOutro(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+              )}
               {tipoTicket === 'Recebimento' && (
                 <div className="space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Estaca</label>
@@ -1194,7 +1212,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                       <td className="py-4 px-5 text-slate-300">{t.tipoMaterial}</td>
                       <td className="py-4 px-5 font-mono text-emerald-400 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')} <span className="text-[9px] text-slate-500">{t.unidadeQuantidade || 'm³'}</span></td>
                       <td className="py-4 px-5 text-slate-400">
-                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-600" />{t.destinoObra}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-600" />{t.destinoObra === 'Outros' ? t.destinoOutro || 'Outros' : t.destinoObra}</span>
                         {t.estaca && <span className="block text-[10px] text-slate-500 mt-0.5">{t.estaca}</span>}
                       </td>
                       <td className="py-4 px-5 text-slate-400">{t.empresa}</td>
@@ -1241,7 +1259,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               <p><b>Prefixo/Placa:</b> {viewingTicket.prefixo} / {viewingTicket.placa}</p>
               <p><b>Equipamento:</b> {viewingTicket.equipamentoNome || '—'} {viewingTicket.familiaEquipamento ? `(${viewingTicket.familiaEquipamento})` : ''}</p>
               <p><b>Material:</b> {viewingTicket.tipoMaterial === 'Outros' ? viewingTicket.materialOutro || 'Outros' : viewingTicket.tipoMaterial} — {viewingTicket.quantidadeM3} {viewingTicket.unidadeQuantidade || 'm³'}</p>
-              <p><b>Destino:</b> {viewingTicket.destinoObra}</p>
+              <p><b>Destino:</b> {viewingTicket.destinoObra === 'Outros' ? viewingTicket.destinoOutro || 'Outros' : viewingTicket.destinoObra}</p>
               {(viewingTicket.tipoTicket || 'Liberação') === 'Recebimento' && <p><b>Estaca:</b> {viewingTicket.estaca || '—'}</p>}
               {(viewingTicket.tipoTicket || 'Liberação') === 'Recebimento' && <p><b>Carga conforme:</b> {typeof viewingTicket.cargaConforme === 'boolean' ? (viewingTicket.cargaConforme ? 'Sim' : 'Não') : '—'}</p>}
               <p><b>Empresa:</b> {viewingTicket.empresa}</p>

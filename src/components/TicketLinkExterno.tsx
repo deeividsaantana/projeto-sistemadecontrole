@@ -20,6 +20,7 @@ import SignaturePad from './SignaturePad';
 interface TicketLinkExternoProps {
   tickets: TicketJazida[];
   isLoadingCloud: boolean;
+  loadError?: string;
   onReserveNumber: () => Promise<string>;
   onSaveTicket: (ticket: TicketJazida) => Promise<{ success: boolean; message: string }>;
 }
@@ -31,12 +32,34 @@ const DESTINATIONS: DestinoObraJazida[] = [
   'Rua Padre Eustáquio', 'SP066 Ibar', 'Canteiro da Marginal', 'Jazida', 'Outros',
 ];
 const DRAFT_KEY = 'renea_ticket_link_drafts_v2';
+const DEVICE_KEY = 'renea_ticket_device_id_v1';
 
-const nowTime = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-const today = () => new Date().toISOString().slice(0, 10);
+const twoDigits = (value: number) => String(value).padStart(2, '0');
+const nowTime = () => {
+  const now = new Date();
+  return `${twoDigits(now.getHours())}:${twoDigits(now.getMinutes())}`;
+};
+const today = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${twoDigits(now.getMonth() + 1)}-${twoDigits(now.getDate())}`;
+};
 
-const emptyTicket = (type: TipoTicketJazida, number: string): TicketJazida => ({
-  id: `ticket-link-${type === 'Liberação' ? 'lib' : 'rec'}-${number}-${Date.now()}`,
+const getDeviceId = () => {
+  const created = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  try {
+    const existing = localStorage.getItem(DEVICE_KEY);
+    if (existing) return existing;
+    localStorage.setItem(DEVICE_KEY, created);
+  } catch {
+    return created;
+  }
+  return created;
+};
+
+const emptyTicket = (type: TipoTicketJazida, number: string, deviceId: string): TicketJazida => ({
+  id: `ticket-link-${type === 'Liberação' ? 'lib' : 'rec'}-${number}`,
   tipoTicket: type,
   ticketNumero: number,
   prefixo: '',
@@ -48,6 +71,7 @@ const emptyTicket = (type: TipoTicketJazida, number: string): TicketJazida => ({
   quantidadeM3: 1,
   unidadeQuantidade: 'm³',
   destinoObra: 'Ramo 200',
+  destinoOutro: '',
   estaca: '',
   responsavelLiberacao: '',
   nomeLegivel: '',
@@ -55,12 +79,13 @@ const emptyTicket = (type: TipoTicketJazida, number: string): TicketJazida => ({
   observacao: '',
   statusFluxo: 'Rascunho',
   origemRegistro: 'Link',
+  dispositivoId: deviceId,
   criadoEm: new Date().toISOString(),
   atualizadoEm: new Date().toISOString(),
 });
 
-const cloneForReceipt = (release: TicketJazida): TicketJazida => ({
-  ...emptyTicket('Recebimento', release.ticketNumero),
+const cloneForReceipt = (release: TicketJazida, deviceId: string): TicketJazida => ({
+  ...emptyTicket('Recebimento', release.ticketNumero, deviceId),
   prefixo: release.prefixo,
   placa: release.placa,
   tipoMaterial: release.tipoMaterial,
@@ -68,27 +93,41 @@ const cloneForReceipt = (release: TicketJazida): TicketJazida => ({
   quantidadeM3: release.quantidadeM3,
   unidadeQuantidade: release.unidadeQuantidade || 'm³',
   destinoObra: release.destinoObra,
+  destinoOutro: release.destinoOutro,
 });
 
-const readDrafts = (): TicketJazida[] => {
+const readDrafts = (deviceId: string): TicketJazida[] => {
   try {
-    return JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]');
+    const stored = JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]') as TicketJazida[];
+    return stored.filter(item => item.dispositivoId === deviceId);
   } catch {
     return [];
+  }
+};
+
+const storeDrafts = (drafts: TicketJazida[]) => {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts.slice(0, 8)));
+    return true;
+  } catch {
+    return false;
   }
 };
 
 export default function TicketLinkExterno({
   tickets,
   isLoadingCloud,
+  loadError = '',
   onReserveNumber,
   onSaveTicket,
 }: TicketLinkExternoProps) {
+  const [deviceId] = useState(getDeviceId);
   const [screen, setScreen] = useState<'home' | 'form' | 'success'>('home');
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<TicketJazida | null>(null);
-  const [drafts, setDrafts] = useState<TicketJazida[]>(readDrafts);
+  const [drafts, setDrafts] = useState<TicketJazida[]>(() => readDrafts(deviceId));
   const [search, setSearch] = useState('');
+  const [showReceiptSearch, setShowReceiptSearch] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [message, setMessage] = useState('');
@@ -101,6 +140,7 @@ export default function TicketLinkExterno({
         .map(ticket => ticket.ticketNumero),
     );
     const normalizedSearch = search.trim().toLowerCase();
+    if (normalizedSearch.length < 2) return [];
     return tickets
       .filter(ticket => (ticket.tipoTicket || 'Liberação') === 'Liberação')
       .filter(ticket => ticket.statusFluxo !== 'Rascunho' && !sentReceipts.has(ticket.ticketNumero))
@@ -110,12 +150,33 @@ export default function TicketLinkExterno({
   }, [tickets, search]);
 
   useEffect(() => {
+    const remoteOwnDrafts = tickets.filter(ticket =>
+      ticket.statusFluxo === 'Rascunho' && ticket.dispositivoId === deviceId,
+    );
+    if (remoteOwnDrafts.length === 0) return;
+    setDrafts(current => {
+      const indexed = new Map(remoteOwnDrafts.map(item => [item.id, item]));
+      current.forEach(item => {
+        const remote = indexed.get(item.id);
+        if (!remote || String(item.atualizadoEm || '') > String(remote.atualizadoEm || '')) {
+          indexed.set(item.id, item);
+        }
+      });
+      const merged = Array.from(indexed.values())
+        .sort((a, b) => String(b.atualizadoEm || '').localeCompare(String(a.atualizadoEm || '')))
+        .slice(0, 8);
+      storeDrafts(merged);
+      return merged;
+    });
+  }, [tickets, deviceId]);
+
+  useEffect(() => {
     if (!form || screen !== 'form' || form.statusFluxo !== 'Rascunho') return;
-    const next = [form, ...drafts.filter(item => item.id !== form.id)].slice(0, 20);
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+    const next = [form, ...drafts.filter(item => item.id !== form.id)].slice(0, 8);
+    storeDrafts(next);
     setDrafts(previous => {
       const withoutCurrent = previous.filter(item => item.id !== form.id);
-      return [form, ...withoutCurrent].slice(0, 20);
+      return [form, ...withoutCurrent].slice(0, 8);
     });
   }, [form, screen]);
 
@@ -129,7 +190,7 @@ export default function TicketLinkExterno({
     setError('');
     try {
       const number = await onReserveNumber();
-      setForm(emptyTicket('Liberação', number));
+      setForm(emptyTicket('Liberação', number, deviceId));
       setStep(1);
       setScreen('form');
     } catch {
@@ -140,7 +201,7 @@ export default function TicketLinkExterno({
   };
 
   const beginReceipt = (release: TicketJazida) => {
-    setForm(cloneForReceipt(release));
+    setForm(cloneForReceipt(release, deviceId));
     setStep(1);
     setError('');
     setScreen('form');
@@ -166,6 +227,10 @@ export default function TicketLinkExterno({
       }
       if (form.tipoMaterial === 'Outros' && !form.materialOutro?.trim()) {
         setError('Descreva o material selecionado como Outros.');
+        return false;
+      }
+      if (form.destinoObra === 'Outros' && !form.destinoOutro?.trim()) {
+        setError('Descreva o destino ou ramo de descarga.');
         return false;
       }
       if (form.tipoTicket === 'Recebimento' && typeof form.cargaConforme !== 'boolean') {
@@ -199,7 +264,9 @@ export default function TicketLinkExterno({
       assinaturaResponsavel: form.nomeLegivel,
       statusFluxo: send ? 'Enviado' : 'Rascunho',
       atualizadoEm: new Date().toISOString(),
-      enviadoEm: send ? new Date().toISOString() : form.enviadoEm,
+      ...(send
+        ? { enviadoEm: new Date().toISOString() }
+        : form.enviadoEm ? { enviadoEm: form.enviadoEm } : {}),
     };
 
     try {
@@ -208,14 +275,14 @@ export default function TicketLinkExterno({
       if (send) {
         const nextDrafts = drafts.filter(item => item.id !== saved.id);
         setDrafts(nextDrafts);
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(nextDrafts));
+        storeDrafts(nextDrafts);
         setForm(saved);
         setMessage(result.message || 'Ticket enviado com sucesso.');
         setScreen('success');
       } else {
-        const nextDrafts = [saved, ...drafts.filter(item => item.id !== saved.id)].slice(0, 20);
+        const nextDrafts = [saved, ...drafts.filter(item => item.id !== saved.id)].slice(0, 8);
         setDrafts(nextDrafts);
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(nextDrafts));
+        storeDrafts(nextDrafts);
         setMessage('Rascunho salvo. Você pode continuar depois neste aparelho.');
         setScreen('home');
       }
@@ -262,6 +329,7 @@ export default function TicketLinkExterno({
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> {message}
               </div>
             )}
+            {loadError && <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">{loadError}</div>}
             {error && <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>}
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -276,7 +344,10 @@ export default function TicketLinkExterno({
               </button>
               <button
                 type="button"
-                onClick={() => document.getElementById('recebimentos-pendentes')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => {
+                  setShowReceiptSearch(true);
+                  window.setTimeout(() => document.getElementById('recebimentos-pendentes')?.scrollIntoView({ behavior: 'smooth' }), 50);
+                }}
                 className="flex min-h-32 items-center gap-4 rounded-md border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-emerald-400"
               >
                 <PackageCheck className="h-8 w-8 text-emerald-600" />
@@ -298,18 +369,20 @@ export default function TicketLinkExterno({
               </section>
             )}
 
-            <section id="recebimentos-pendentes" className="space-y-3 scroll-mt-4">
+            {showReceiptSearch && <section id="recebimentos-pendentes" className="space-y-3 scroll-mt-4">
               <div className="flex items-center justify-between gap-3">
-                <div><h2 className="font-black">Aguardando recebimento</h2><p className="text-xs text-slate-500">Selecione o caminhão que chegou.</p></div>
-                <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-black">{pendingReceipts.length}</span>
+                <div><h2 className="font-black">Localizar liberação</h2><p className="text-xs text-slate-500">Pesquise o caminhão que chegou.</p></div>
+                <button type="button" onClick={() => { setShowReceiptSearch(false); setSearch(''); }} className="text-xs font-bold text-slate-500">Fechar</button>
               </div>
               <label className="relative block">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar ticket, placa ou prefixo" className="h-12 w-full rounded-md border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none focus:border-emerald-500" />
               </label>
               <div className="grid gap-2">
-                {pendingReceipts.length === 0 ? (
-                  <div className="rounded-md border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Nenhuma liberação pendente encontrada.</div>
+                {search.trim().length < 2 ? (
+                  <div className="rounded-md border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Digite pelo menos dois caracteres para pesquisar.</div>
+                ) : pendingReceipts.length === 0 ? (
+                  <div className="rounded-md border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Nenhuma liberação pendente encontrada. Tickets concluídos não aparecem aqui.</div>
                 ) : pendingReceipts.slice(0, 20).map(release => (
                   <button key={release.id} type="button" onClick={() => beginReceipt(release)} className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-emerald-400">
                     <span><b className="block text-sm text-slate-900">Ticket {release.ticketNumero} · {release.placa}</b><small className="text-slate-500">{release.prefixo} · {release.tipoMaterial} · {release.quantidadeM3} {release.unidadeQuantidade || 'm³'}</small></span>
@@ -317,7 +390,7 @@ export default function TicketLinkExterno({
                   </button>
                 ))}
               </div>
-            </section>
+            </section>}
           </div>
         )}
 
@@ -362,6 +435,7 @@ export default function TicketLinkExterno({
                     <Field label="Unidade" required><div className="grid h-12 grid-cols-2 rounded-md bg-slate-100 p-1">{(['m³', 'caçamba'] as const).map(unit => <button key={unit} type="button" onClick={() => update('unidadeQuantidade', unit)} className={`rounded text-sm font-black ${form.unidadeQuantidade === unit ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}>{unit}</button>)}</div></Field>
                   </div>
                   <Field label={form.tipoTicket === 'Liberação' ? 'Destino / obra' : 'Ramo de descarga'} required><select value={form.destinoObra} onChange={event => update('destinoObra', event.target.value)} className="ticket-input">{DESTINATIONS.map(destination => <option key={destination}>{destination}</option>)}</select></Field>
+                  {form.destinoObra === 'Outros' && <Field label={form.tipoTicket === 'Liberação' ? 'Qual destino?' : 'Qual ramo de descarga?'} required><input value={form.destinoOutro || ''} onChange={event => update('destinoOutro', event.target.value)} className="ticket-input" /></Field>}
                   {form.tipoTicket === 'Recebimento' && (
                     <>
                       <Field label="Estaca"><input value={form.estaca || ''} onChange={event => update('estaca', event.target.value)} className="ticket-input" placeholder="Ex.: 120+10" /></Field>

@@ -5,6 +5,7 @@
 
 import React, { useRef, useState } from 'react';
 import ExcelJS from 'exceljs';
+import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import { 
   Empresa, 
   ObraLocal, 
@@ -459,15 +460,15 @@ export default function CadastrosTab({
   const parseWorkbookFile = async (file: File): Promise<Record<string, string>[]> => {
     const lowerName = file.name.toLowerCase();
     if (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv')) {
+      if (file.size === 0) throw new Error('O arquivo está vazio.');
+      if (file.size > 10 * 1024 * 1024) throw new Error('O arquivo CSV/TSV ultrapassa o limite de 10 MB.');
       const text = await file.text();
       return lowerName.endsWith('.tsv')
         ? parseCsvText(text.replace(/\t/g, ';'))
         : parseCsvText(text);
     }
 
-    const buffer = await file.arrayBuffer();
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer as any);
+    const workbook = await loadValidatedWorkbook(file);
     const worksheet = workbook.worksheets[0];
     if (!worksheet) return [];
 
@@ -498,11 +499,16 @@ export default function CadastrosTab({
         setImportFeedback({ type: 'error', message: 'A planilha não possui linhas para importar.' });
         return;
       }
+      const confirmed = window.confirm(`Foram encontradas ${rows.length} linha(s) em ${file.name}. Os registros existentes com a mesma chave serão atualizados. Deseja continuar?`);
+      if (!confirmed) {
+        setImportFeedback({ type: 'error', message: 'Importação cancelada. Nenhum registro foi alterado.' });
+        return;
+      }
       const result = onImportCadastros(subTab, rows);
       setImportFeedback({ type: result.success ? 'success' : 'error', message: result.message });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao importar planilha de cadastros:', error);
-      setImportFeedback({ type: 'error', message: 'Não foi possível ler a planilha. Use CSV, TSV ou XLSX.' });
+      setImportFeedback({ type: 'error', message: error?.message || 'Não foi possível ler a planilha. Use CSV, TSV, XLSX ou XLSM.' });
     } finally {
       if (importFileInputRef.current) importFileInputRef.current.value = '';
     }

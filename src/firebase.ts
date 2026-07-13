@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDGN9xLkhgsqDIMXSTU9G03LEeC4Jmjpo4",
@@ -18,6 +19,7 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize services
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 
 // Error handling types and helper as specified by firebase-integration skill
 export enum OperationType {

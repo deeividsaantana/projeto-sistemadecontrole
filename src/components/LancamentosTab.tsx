@@ -40,6 +40,7 @@ import {
   Download
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
+import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -216,9 +217,7 @@ export default function LancamentosTab({
     setIsParsingImport(true);
     setValidationError('');
     try {
-      const buffer = await file.arrayBuffer();
-      const wb = new ExcelJS.Workbook();
-      await wb.xlsx.load(buffer as any);
+      const wb = await loadValidatedWorkbook(file);
       const targetSheets = wb.worksheets.filter(sheet => {
         const name = normalizeHeader(sheet.name);
         return name.includes('combustivel') || name.includes('nao cadastrados') || name.includes('naocadastrados');
@@ -373,9 +372,9 @@ export default function LancamentosTab({
 
       setImportRows(rows);
       setIsImportModalOpen(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao ler planilha:', err);
-      setValidationError('Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx válido.');
+      setValidationError(err?.message || 'Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx válido.');
     } finally {
       setIsParsingImport(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -689,23 +688,13 @@ export default function LancamentosTab({
   }, [filteredAbastecimentos]);
 
   const downloadWorkbookFile = async (wb: ExcelJS.Workbook, fileName: string) => {
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    await downloadCorporateWorkbook(wb, fileName);
   };
 
   const handleDownloadModeloCombustivel = async () => {
     try {
       const wb = new ExcelJS.Workbook();
-      wb.creator = 'RENEA';
-      wb.created = new Date();
+      configureCorporateWorkbook(wb, 'Modelo de Importação de Combustível');
 
       const ws = wb.addWorksheet('COMBUSTIVEL');
       const headers = [
@@ -821,8 +810,7 @@ export default function LancamentosTab({
     setIsExportingExcel(true);
     try {
       const wb = new ExcelJS.Workbook();
-      wb.creator = 'RENEA';
-      wb.created = new Date();
+      configureCorporateWorkbook(wb, 'Controle de Combustível');
       const ws = wb.addWorksheet('COMBUSTIVEL');
       const headers = [
         'Data', 'Prefixo', 'Descrição', 'Km inicial', 'Horímetro', 'Início bomba', 'Fim bomba',
@@ -875,19 +863,13 @@ export default function LancamentosTab({
         ]);
       });
 
-      ws.eachRow((row, rowNumber) => {
-        row.eachCell({ includeEmpty: true }, cell => {
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-          };
-          if (rowNumber > 4) cell.alignment = { vertical: 'middle', horizontal: 'left' };
-        });
-      });
-      ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
-      ws.views = [{ state: 'frozen', ySplit: 4 }];
+      styleCorporateWorksheet(ws, { title: 'Controle de Combustível', headerRow: 4, lastColumn: headers.length, recordCount: filteredAbastecimentos.length });
+      addCorporateSummarySheet(wb, 'Controle de Combustível', [
+        ['Registros exportados', filteredAbastecimentos.length],
+        ['Litros totais', filteredAbastecimentos.reduce((total, item) => total + Number(item.quantidadeLitros || 0), 0)],
+        ['Equipamentos atendidos', new Set(filteredAbastecimentos.map(item => item.equipamentoId)).size],
+        ['Comboios utilizados', new Set(filteredAbastecimentos.map(item => item.comboioId).filter(Boolean)).size],
+      ], [hasFiltrosAtivos ? 'Filtros da tela aplicados' : 'Base completa']);
 
       const sufixo = hasFiltrosAtivos ? '_filtrado' : '';
       await downloadWorkbookFile(wb, `RENEA_combustivel${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);

@@ -287,6 +287,7 @@ export interface TicketJazida {
   tipoMaterial: TipoMaterialJazida;
   quantidadeM3: number;
   destinoObra: DestinoObraJazida;
+  destinoOutro?: string;
   estaca?: string;
   responsavelLiberacao: string;
   nomeLegivel: string;
@@ -300,6 +301,7 @@ export interface TicketJazida {
   assinaturaResponsavel?: string;
   materialOutro?: string;
   origemRegistro?: 'Link' | 'Admin' | 'Importação';
+  dispositivoId?: string;
   enviadoEm?: string;
   criadoEm?: string;
   atualizadoEm?: string;

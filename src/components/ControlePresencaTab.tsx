@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
+import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { GENERAL_PRESENCE_TOKEN } from './PresencaLinkExterno';
@@ -330,6 +331,7 @@ export default function ControlePresencaTab({
 
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
+    configureCorporateWorkbook(workbook, 'Controle de Presença');
     const sheet = workbook.addWorksheet('Controle de Presença');
     sheet.columns = [
       { header: 'Data', key: 'data', width: 14 },
@@ -343,14 +345,12 @@ export default function ControlePresencaTab({
       { header: 'Horário', key: 'hora', width: 12 }
     ];
     rowsForExport.forEach(row => sheet.addRow(row));
-    sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } };
-    sheet.views = [{ state: 'frozen', ySplit: 1 }];
-    const buffer = await workbook.xlsx.writeBuffer();
-    downloadBlob(
-      new Blob([buffer as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-      `presenca-${getTodayInput()}.xlsx`
-    );
+    styleCorporateWorksheet(sheet, { title: 'Controle de Presença', headerRow: 1, lastColumn: 9, recordCount: rowsForExport.length });
+    addCorporateSummarySheet(workbook, 'Controle de Presença', [
+      ['Registros exportados', rowsForExport.length],
+      ['Data de referência', getTodayInput().split('-').reverse().join('/')],
+    ]);
+    await downloadCorporateWorkbook(workbook, `RENEA_presenca_${getTodayInput()}.xlsx`);
   };
 
   const handleExportPdf = () => {

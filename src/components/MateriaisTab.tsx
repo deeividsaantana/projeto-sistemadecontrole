@@ -5,6 +5,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ExcelJS from 'exceljs';
+import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import {
   Archive,
   BarChart3,
@@ -477,14 +478,16 @@ export default function MateriaisTab({
     setIsImporting(true);
     setFeedback(null);
     try {
-      const workbook = new ExcelJS.Workbook();
-      const buffer = await file.arrayBuffer();
-      await workbook.xlsx.load(buffer as any);
+      const workbook = await loadValidatedWorkbook(file);
       const imported = workbook.worksheets
         .filter(sheet => !['RES_GERAL', 'Planilha1'].includes(sheet.name))
         .flatMap(sheet => parseWorksheetRows(sheet));
       if (imported.length === 0) {
         setFeedback({ type: 'error', message: 'Nenhum lançamento válido foi encontrado na planilha.' });
+        return;
+      }
+      if (!window.confirm(`${imported.length} lançamento(s) válido(s) foram encontrados em ${file.name}. Confirma a importação para o banco de dados?`)) {
+        setFeedback({ type: 'error', message: 'Importação cancelada. Nenhum registro foi alterado.' });
         return;
       }
       const importedMateriais = buildCatalogFromRegistros(imported);
@@ -501,8 +504,7 @@ export default function MateriaisTab({
     setIsExporting(true);
     try {
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = 'Sistema RENEA';
-      workbook.created = new Date();
+      configureCorporateWorkbook(workbook, 'Controle de Materiais');
 
       const ws = workbook.addWorksheet('Lancamentos');
       ws.columns = [
@@ -576,8 +578,15 @@ export default function MateriaisTab({
       matWs.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
       matWs.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF115E59' } };
 
-      const buffer = await workbook.xlsx.writeBuffer();
-      downloadBlob(new Blob([buffer], { type: EXCEL_MIME }), `Renea_Materiais_${dataInicio || 'inicio'}_${dataFim || 'fim'}.xlsx`);
+      styleCorporateWorksheet(ws, { title: 'Lançamentos de Materiais', headerRow: 1, recordCount: filteredRegistros.length });
+      styleCorporateWorksheet(resumoWs, { title: 'Resumo de Materiais por Local', headerRow: 1 });
+      styleCorporateWorksheet(matWs, { title: 'Cadastro de Materiais', headerRow: 1, recordCount: materiais.length });
+      addCorporateSummarySheet(workbook, 'Controle de Materiais', [
+        ['Lançamentos exportados', filteredRegistros.length],
+        ['Materiais cadastrados', materiais.length],
+        ['Quantidade total', filteredRegistros.reduce((total, item) => total + Number(item.quantidade || 0), 0)],
+      ], [dataInicio ? `Início: ${dataInicio}` : '', dataFim ? `Fim: ${dataFim}` : '', search ? `Busca: ${search}` : '']);
+      await downloadCorporateWorkbook(workbook, `RENEA_materiais_${dataInicio || 'inicio'}_${dataFim || 'fim'}.xlsx`);
     } finally {
       setIsExporting(false);
     }
@@ -607,7 +616,7 @@ export default function MateriaisTab({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <input ref={importInputRef} type="file" accept=".xlsx,.xls" onChange={handleImportFile} className="hidden" />
+          <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportFile} className="hidden" />
           <button onClick={() => importInputRef.current?.click()} disabled={isImporting} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-100 text-xs font-black flex items-center gap-2">
             <Upload className="w-4 h-4" />
             {isImporting ? 'Importando...' : 'Importar planilha'}

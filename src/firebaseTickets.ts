@@ -17,6 +17,10 @@ const TICKET_DOCUMENT_PREFIX = 'ticket_public_';
 
 const safeDocumentId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100);
 
+// O Firestore rejeita propriedades com valor undefined. A serialização mantém
+// os dados válidos do ticket e remove somente campos opcionais ainda vazios.
+const sanitizeForFirestore = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
 const nextNumberFromTickets = (tickets: TicketJazida[]) => {
   const highest = tickets.reduce((max, ticket) => {
     const numeric = Number.parseInt(String(ticket.ticketNumero).replace(/\D/g, ''), 10);
@@ -45,17 +49,39 @@ export const reservePublicTicketNumber = async (
   });
 };
 
-export const savePublicTicket = async (database: Firestore, ticket: TicketJazida) => {
+export const savePublicTicket = async (
+  database: Firestore,
+  ticket: TicketJazida,
+  options: { allowOverwriteSent?: boolean } = {},
+) => {
   const ticketRef = doc(
     database,
     CLOUD_COLLECTION,
     `${TICKET_DOCUMENT_PREFIX}${safeDocumentId(ticket.id)}`,
   );
-  await setDoc(ticketRef, {
+  const firestorePayload = {
     updatedAt: new Date().toISOString(),
     kind: 'ticket_public',
-    value: ticket,
-  });
+    value: sanitizeForFirestore(ticket),
+  };
+
+  if (
+    ticket.tipoTicket === 'Recebimento'
+    && ticket.statusFluxo === 'Enviado'
+    && !options.allowOverwriteSent
+  ) {
+    await runTransaction(database, async transaction => {
+      const current = await transaction.get(ticketRef);
+      const currentTicket = current.data()?.value as TicketJazida | undefined;
+      if (currentTicket?.statusFluxo === 'Enviado') {
+        throw new Error(`O recebimento do Ticket ${ticket.ticketNumero} já foi enviado por outra pessoa.`);
+      }
+      transaction.set(ticketRef, firestorePayload);
+    });
+    return;
+  }
+
+  await setDoc(ticketRef, firestorePayload);
 };
 
 export const deletePublicTicket = async (database: Firestore, ticketId: string) => {

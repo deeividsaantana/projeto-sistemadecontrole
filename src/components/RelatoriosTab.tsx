@@ -44,6 +44,7 @@ import spmarLogo from '../assets/images/spmar_logo.png';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
+import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 
 interface RelatoriosTabProps {
   empresas: Empresa[];
@@ -886,8 +887,7 @@ export default function RelatoriosTab({
         return 130;
       };
       const wb = new ExcelJS.Workbook();
-      wb.creator = 'Sistema RENEA';
-      wb.created = new Date();
+      configureCorporateWorkbook(wb, title);
 
       const ws = wb.addWorksheet(title.substring(0, 31), {
         views: [{ state: 'frozen', ySplit: headerRowNumber }],
@@ -983,6 +983,20 @@ export default function RelatoriosTab({
         from: { row: headerRowNumber, column: 1 },
         to: { row: lastDataRow, column: colCount }
       };
+      styleCorporateWorksheet(ws, {
+        title,
+        headerRow: headerRowNumber,
+        lastColumn: colCount,
+        dataStartRow: headerRowNumber + 1,
+        recordCount: rows.length,
+        filters: [`Período: ${periodo}`, `Tipo: ${reportType}`],
+        autoFit: false,
+      });
+      addCorporateSummarySheet(wb, title, [
+        ['Registros exportados', rows.length],
+        ['Período', periodo],
+        ['Tipo de relatório', reportType],
+      ], [`Período: ${periodo}`]);
 
       // Logos como objetos de imagem nativos do Excel (resolve o erro de "imagem vinculada quebrada"
       // que ocorria no formato HTML/MHTML antigo, pois agora o arquivo é um .xlsx binário real)
@@ -1008,16 +1022,7 @@ export default function RelatoriosTab({
         console.warn('Não foi possível inserir as logos na planilha. O relatório será exportado sem elas.', imgError);
       }
 
-      const buffer = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename.replace(/\.xls$/, '.xlsx'));
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      await downloadCorporateWorkbook(wb, filename.replace(/\.xls$/, '.xlsx'));
     } catch (error) {
       console.error("Erro ao exportar Excel:", error);
       alert('Não foi possível gerar o arquivo Excel. Tente novamente ou contate o suporte.');
