@@ -50,7 +50,7 @@ const DESTINOS_OBRA: DestinoObraJazida[] = [
 ];
 const EMPRESAS_TICKET: EmpresaTicketJazida[] = ['RENEA', 'Terceiro', 'Outros'];
 
-const TicketSingleDocument = ({ ticket, copy }: { ticket: TicketJazida; copy: 1 | 2 }) => {
+const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
   const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
   const material = ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
   const destination = ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
@@ -118,26 +118,23 @@ const TicketSingleDocument = ({ ticket, copy }: { ticket: TicketJazida; copy: 1 
           <div className="border-t border-slate-500 pt-1 text-center text-[10px]">Assinatura - Conferente da obra / Nome legível</div>
         </div>
       </div>
-      <div className="border-x border-b border-slate-500 py-1 text-center text-[7px] uppercase text-slate-500">{copy}ª via - {copy === 1 ? 'Obra' : 'Controle'} | Documento digital RENEA</div>
+      <div className="border-x border-b border-slate-500 py-1 text-center text-[7px] uppercase text-slate-500">Via de {ticket.tipoTicket || 'Liberação'} | Documento digital RENEA</div>
     </div>
   );
 };
 
-const TicketDocumentPreview = ({ ticket }: { ticket: TicketJazida }) => (
+const TicketDocumentPreview = ({ releaseTicket, receiptTicket }: { releaseTicket: TicketJazida; receiptTicket: TicketJazida }) => (
   <div className="aspect-[210/297] min-w-[760px] w-full overflow-hidden bg-white p-3 shadow-lg" id="ticket-print-preview">
     <div className="flex h-full flex-col justify-between">
-      <TicketSingleDocument ticket={ticket} copy={1} />
+      <TicketSingleDocument ticket={releaseTicket} />
       <div className="relative border-t border-dashed border-slate-500"><span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-[7px] uppercase text-slate-500">Linha de corte</span></div>
-      <TicketSingleDocument ticket={ticket} copy={2} />
+      <TicketSingleDocument ticket={receiptTicket} />
     </div>
   </div>
 );
 
-const generateTwoCopyTicketPdf = async (ticket: TicketJazida) => {
+const generatePairedTicketPdf = async (releaseTicket: TicketJazida, receiptTicket: TicketJazida) => {
   const doc = new jsPDF('p', 'mm', 'a4');
-  const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
-  const material = ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
-  const destination = ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
   let logo = '';
   try {
     const response = await fetch(reneaLogoFull);
@@ -150,7 +147,10 @@ const generateTwoCopyTicketPdf = async (ticket: TicketJazida) => {
     });
   } catch { /* o título textual mantém o documento utilizável */ }
 
-  const drawCopy = (top: number, copy: 1 | 2) => {
+  const drawCopy = (ticket: TicketJazida, top: number, copyLabel: string) => {
+    const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
+    const material = ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
+    const destination = ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
     const left = 8;
     const width = 194;
     const line = (x1: number, y1: number, x2: number, y2: number) => doc.line(x1, y1, x2, y2);
@@ -164,7 +164,7 @@ const generateTwoCopyTicketPdf = async (ticket: TicketJazida) => {
     line(left, top + 20, left + width, top + 20);
     line(left + 55, top, left + 55, top + 20);
     line(left + 165, top, left + 165, top + 20);
-    if (logo) doc.addImage(logo, 'PNG', left + 3, top + 4, 44, 12);
+    if (logo) doc.addImage(logo, 'PNG', left + 10, top + 1, 32.2, 18);
     else { doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('RENEA', left + 5, top + 13); }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42);
     doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO' : 'LIBERAÇÃO'} - OBRA`, left + 60, top + 8);
@@ -205,14 +205,14 @@ const generateTwoCopyTicketPdf = async (ticket: TicketJazida) => {
     line(left + 4, signatureTop + 16, left + width / 2 - 4, signatureTop + 16); value(ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível', left + 4, signatureTop + 20);
     label('Assinatura - Conferente / Fiscal', left + width / 2 + 3, signatureTop + 4); line(left + width / 2 + 4, signatureTop + 16, left + width - 4, signatureTop + 16); value('Nome legível', left + width / 2 + 4, signatureTop + 20);
     line(left, signatureTop + 22, left + width, signatureTop + 22);
-    doc.setFontSize(5); doc.setTextColor(100, 116, 139); doc.text(`${copy}ª VIA - ${copy === 1 ? 'OBRA' : 'CONTROLE'} | DOCUMENTO DIGITAL RENEA`, left + width / 2, signatureTop + 25, { align: 'center' });
+    doc.setFontSize(5); doc.setTextColor(100, 116, 139); doc.text(`VIA DE ${copyLabel} | DOCUMENTO DIGITAL RENEA`, left + width / 2, signatureTop + 25, { align: 'center' });
   };
 
-  drawCopy(7, 1);
+  drawCopy(releaseTicket, 7, 'LIBERAÇÃO');
   doc.setLineDashPattern([2, 2], 0); doc.line(8, 148.5, 202, 148.5); doc.setLineDashPattern([], 0);
   doc.setFontSize(5); doc.setTextColor(100, 116, 139); doc.text('LINHA DE CORTE', 105, 147.5, { align: 'center' });
-  drawCopy(156, 2);
-  doc.save(`ticket_${isReceipt ? 'recebimento' : 'liberacao'}_${ticket.ticketNumero}.pdf`);
+  drawCopy(receiptTicket, 156, 'RECEBIMENTO');
+  doc.save(`ticket_liberacao_recebimento_${releaseTicket.ticketNumero}.pdf`);
 };
 
 export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber }: TicketsJazidaTabProps) {
@@ -901,9 +901,41 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     });
   };
 
+  const getTicketPair = (baseTicket: TicketJazida) => {
+    const sameNumber = tickets.filter(item => item.ticketNumero === baseTicket.ticketNumero);
+    const existingRelease = sameNumber.find(item => (item.tipoTicket || 'Liberação') === 'Liberação');
+    const existingReceipt = sameNumber.find(item => item.tipoTicket === 'Recebimento');
+    const shared = existingRelease || existingReceipt || baseTicket;
+    const releaseTicket: TicketJazida = existingRelease || {
+      ...shared,
+      id: `${shared.id}-release-preview`,
+      tipoTicket: 'Liberação',
+      horaSaida: shared.horaSaida || '',
+      horaChegada: undefined,
+      cargaConforme: undefined,
+      estaca: '',
+      assinaturaDigital: undefined,
+      nomeLegivel: '',
+    };
+    const receiptTicket: TicketJazida = existingReceipt || {
+      ...shared,
+      id: `${shared.id}-receipt-preview`,
+      tipoTicket: 'Recebimento',
+      horaChegada: '',
+      horaSaida: '',
+      cargaConforme: undefined,
+      estaca: '',
+      observacao: '',
+      assinaturaDigital: undefined,
+      nomeLegivel: '',
+    };
+    return { releaseTicket, receiptTicket };
+  };
+
   const handlePrintTicket = async (t: TicketJazida) => {
     try {
-      await generateTwoCopyTicketPdf(t);
+      const pair = getTicketPair(t);
+      await generatePairedTicketPdf(pair.releaseTicket, pair.receiptTicket);
       return;
       const doc = new jsPDF('p', 'mm', 'a5');
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -988,6 +1020,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       setValidationError('Não foi possível gerar o PDF do ticket.');
     }
   };
+
+  const viewingPair = viewingTicket ? getTicketPair(viewingTicket) : null;
 
   return (
     <div className="space-y-6" id="tickets-jazida-tab">
@@ -1479,7 +1513,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       </div>
 
       {/* View modal */}
-      {viewingTicket && (
+      {viewingTicket && viewingPair && (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-3 md:p-6" onClick={() => setViewingTicket(null)}>
           <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 max-w-6xl w-full max-h-[96vh] flex flex-col gap-3" onClick={e => e.stopPropagation()}>
             <div className="flex flex-wrap justify-between items-center gap-3">
@@ -1490,7 +1524,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               </div>
             </div>
             <div className="overflow-auto bg-slate-800 p-3">
-              <TicketDocumentPreview ticket={viewingTicket} />
+              <TicketDocumentPreview releaseTicket={viewingPair.releaseTicket} receiptTicket={viewingPair.receiptTicket} />
             </div>
           </div>
         </div>
