@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -138,6 +139,31 @@ const storeOwnHistory = (items: TicketJazida[]) => {
   }
 };
 
+const OwnHistoryVia = ({ type, ticket }: { type: TipoTicketJazida; ticket?: TicketJazida }) => {
+  const isReceipt = type === 'Recebimento';
+  return (
+    <section className={`overflow-hidden rounded-md border ${ticket ? 'border-slate-300 bg-white' : 'border-dashed border-slate-300 bg-slate-50'}`}>
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+        <div><p className="text-[10px] font-black uppercase text-emerald-700">Via de {type}</p><h3 className="font-black">{ticket ? `Ticket ${ticket.ticketNumero}` : 'Aguardando preenchimento'}</h3></div>
+        <span className={`rounded px-2 py-1 text-[10px] font-black ${ticket ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>{ticket ? 'Enviado' : 'Pendente'}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-px bg-slate-200 sm:grid-cols-4">
+        {[
+          ['Prefixo', ticket?.prefixo || ''],
+          ['Placa', ticket?.placa || ''],
+          ['Data', ticket?.data ? ticket.data.split('-').reverse().join('/') : ''],
+          [isReceipt ? 'Chegada' : 'Saída', ticket ? (isReceipt ? ticket.horaChegada || ticket.horaSaida : ticket.horaSaida) : ''],
+        ].map(([label, value]) => <div key={label} className="min-h-16 bg-white p-3"><span className="block text-[9px] font-black uppercase text-slate-500">{label}</span><strong className="mt-1 block text-sm">{value || '—'}</strong></div>)}
+      </div>
+      <div className="grid gap-px bg-slate-200 sm:grid-cols-2">
+        <div className="min-h-20 bg-white p-3"><span className="text-[9px] font-black uppercase text-slate-500">Material e quantidade</span><p className="mt-2 text-sm font-bold">{ticket ? `${ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial} · ${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}` : '—'}</p></div>
+        <div className="min-h-20 bg-white p-3"><span className="text-[9px] font-black uppercase text-slate-500">{isReceipt ? 'Ramo de descarga' : 'Destino / obra'}</span><p className="mt-2 text-sm font-bold">{ticket ? (ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra) : '—'}</p></div>
+      </div>
+      <div className="min-h-20 border-t border-slate-200 bg-white p-3"><span className="text-[9px] font-black uppercase text-slate-500">Assinatura</span>{ticket?.assinaturaDigital ? <><img src={ticket.assinaturaDigital} alt={`Assinatura da via de ${type}`} className="mx-auto h-12 max-w-full object-contain" /><p className="border-t border-slate-300 pt-1 text-center text-[10px] font-bold">{ticket.nomeLegivel}</p></> : <div className="mt-8 border-t border-slate-300" />}</div>
+    </section>
+  );
+};
+
 export default function TicketLinkExterno({
   tickets,
   isLoadingCloud,
@@ -156,6 +182,7 @@ export default function TicketLinkExterno({
   const [showReceiptSearch, setShowReceiptSearch] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -174,6 +201,18 @@ export default function TicketLinkExterno({
         .some(value => value.toLowerCase().includes(normalizedSearch)))
       .sort((a, b) => Number(b.ticketNumero) - Number(a.ticketNumero));
   }, [tickets, search]);
+
+  const ownHistoryPairs = useMemo(() => {
+    const grouped = new Map<string, { number: string; release?: TicketJazida; receipt?: TicketJazida; updatedAt: string }>();
+    ownHistory.forEach(ticket => {
+      const pair = grouped.get(ticket.ticketNumero) || { number: ticket.ticketNumero, updatedAt: '' };
+      if ((ticket.tipoTicket || 'Liberação') === 'Liberação') pair.release = ticket;
+      else pair.receipt = ticket;
+      pair.updatedAt = [pair.updatedAt, ticket.enviadoEm || ticket.atualizadoEm || ''].sort().at(-1) || '';
+      grouped.set(ticket.ticketNumero, pair);
+    });
+    return Array.from(grouped.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [ownHistory]);
 
   useEffect(() => {
     const remoteOwnDrafts = tickets.filter(ticket =>
@@ -224,6 +263,7 @@ export default function TicketLinkExterno({
 
   const update = <K extends keyof TicketJazida,>(key: K, value: TicketJazida[K]) => {
     setForm(current => current ? { ...current, [key]: value, atualizadoEm: new Date().toISOString() } : current);
+    setReviewConfirmed(false);
     setError('');
   };
 
@@ -234,6 +274,7 @@ export default function TicketLinkExterno({
       const number = await onReserveNumber();
       setForm(emptyTicket('Liberação', number, deviceId));
       setStep(1);
+      setReviewConfirmed(false);
       setScreen('form');
     } catch {
       setError('Não foi possível reservar o número agora. Confira a internet e tente novamente.');
@@ -245,6 +286,7 @@ export default function TicketLinkExterno({
   const beginReceipt = (release: TicketJazida) => {
     setForm(cloneForReceipt(release, deviceId));
     setStep(1);
+    setReviewConfirmed(false);
     setError('');
     setScreen('form');
   };
@@ -252,6 +294,7 @@ export default function TicketLinkExterno({
   const editDraft = (draft: TicketJazida) => {
     setForm(draft);
     setStep(1);
+    setReviewConfirmed(false);
     setError('');
     setScreen('form');
   };
@@ -280,12 +323,19 @@ export default function TicketLinkExterno({
         return false;
       }
     }
+    if (targetStep === 3 && (!form.nomeLegivel.trim() || !form.assinaturaDigital)) {
+      setError('Informe o nome legível e faça a assinatura digital para continuar.');
+      return false;
+    }
     setError('');
     return true;
   };
 
   const nextStep = () => {
-    if (validateStep(step)) setStep(current => Math.min(3, current + 1));
+    if (validateStep(step)) {
+      setReviewConfirmed(false);
+      setStep(current => Math.min(4, current + 1));
+    }
   };
 
   const persist = async (send: boolean) => {
@@ -294,6 +344,10 @@ export default function TicketLinkExterno({
       if (!validateStep(1) || !validateStep(2)) return;
       if (!form.nomeLegivel.trim() || !form.assinaturaDigital) {
         setError('Informe o nome legível e faça a assinatura digital antes de enviar.');
+        return;
+      }
+      if (!reviewConfirmed) {
+        setError('Confirme que revisou os dados antes de enviar.');
         return;
       }
     }
@@ -346,6 +400,13 @@ export default function TicketLinkExterno({
     }
   };
 
+  const viewingOwnPair = viewingOwnTicket ? {
+    release: ownHistory.find(item => (item.tipoTicket || 'Liberação') === 'Liberação' && item.ticketNumero === viewingOwnTicket.ticketNumero)
+      || ((viewingOwnTicket.tipoTicket || 'Liberação') === 'Liberação' ? viewingOwnTicket : undefined),
+    receipt: ownHistory.find(item => item.tipoTicket === 'Recebimento' && item.ticketNumero === viewingOwnTicket.ticketNumero)
+      || (viewingOwnTicket.tipoTicket === 'Recebimento' ? viewingOwnTicket : undefined),
+  } : null;
+
   if (isLoadingCloud) {
     return (
       <div className="min-h-screen bg-slate-950 text-white grid place-items-center p-6">
@@ -393,7 +454,7 @@ export default function TicketLinkExterno({
                 className="flex min-h-32 items-center gap-4 rounded-md bg-emerald-600 p-5 text-left text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60"
               >
                 {isStarting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Truck className="h-8 w-8" />}
-                <span><b className="block text-lg">Nova liberação</b><small className="text-emerald-50">Saída de um caminhão</small></span>
+                <span className="flex items-center gap-3"><i className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/15 text-sm not-italic">1</i><span><b className="block text-lg">Fazer liberação</b><small className="text-emerald-50">Quando o caminhão estiver saindo</small></span></span>
               </button>
               <button
                 type="button"
@@ -404,7 +465,7 @@ export default function TicketLinkExterno({
                 className="flex min-h-32 items-center gap-4 rounded-md border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-emerald-400"
               >
                 <PackageCheck className="h-8 w-8 text-emerald-600" />
-                <span><b className="block text-lg">Recebimento</b><small className="text-slate-500">Confirmar chegada da carga</small></span>
+                <span className="flex items-center gap-3"><i className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-100 text-sm not-italic">2</i><span><b className="block text-lg">Fazer recebimento</b><small className="text-slate-500">Quando o caminhão chegar à obra</small></span></span>
               </button>
             </div>
 
@@ -426,23 +487,20 @@ export default function TicketLinkExterno({
               <section className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2"><History className="h-5 w-5 text-emerald-700" /><div><h2 className="font-black">Meus envios</h2><p className="text-xs text-slate-500">Somente tickets enviados neste aparelho.</p></div></div>
-                  <span className="text-xs font-bold text-slate-400">{ownHistory.length}</span>
+                  <span className="text-xs font-bold text-slate-400">{ownHistoryPairs.length}</span>
                 </div>
                 <div className="grid gap-2">
-                  {ownHistory.slice(0, 8).map(item => {
-                    const receiptAlreadySent = ownHistory.some(historyItem => historyItem.tipoTicket === 'Recebimento' && historyItem.ticketNumero === item.ticketNumero);
-                    return (
-                      <div key={item.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+                  {ownHistoryPairs.slice(0, 8).map(pair => (
+                      <div key={pair.number} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div><b className="block text-sm text-slate-950">Ticket {item.ticketNumero} · {item.tipoTicket}</b><small className="text-slate-500">{item.placa || 'Sem placa'} · {item.prefixo || 'Sem prefixo'} · {item.data.split('-').reverse().join('/')}</small></div>
+                          <div><b className="block text-sm text-slate-950">Ticket {pair.number}</b><small className="text-slate-500">{pair.release?.placa || pair.receipt?.placa || 'Sem placa'} · Liberação {pair.release ? 'enviada' : 'pendente'} · Recebimento {pair.receipt ? 'enviado' : 'pendente'}</small></div>
                           <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => setViewingOwnTicket(item)} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 px-3 text-xs font-black text-slate-700"><Eye className="h-4 w-4" /> Visualizar</button>
-                            {(item.tipoTicket || 'Liberação') === 'Liberação' && !receiptAlreadySent && <button type="button" onClick={() => beginReceipt(item)} className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-black text-white"><PackageCheck className="h-4 w-4" /> Fazer recebimento</button>}
+                            <button type="button" onClick={() => setViewingOwnTicket(pair.release || pair.receipt || null)} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 px-3 text-xs font-black text-slate-700"><Eye className="h-4 w-4" /> Visualizar vias</button>
+                            {pair.release && !pair.receipt && <button type="button" onClick={() => beginReceipt(pair.release!)} className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-black text-white"><PackageCheck className="h-4 w-4" /> Fazer recebimento</button>}
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
+                  ))}
                 </div>
               </section>
             )}
@@ -479,10 +537,10 @@ export default function TicketLinkExterno({
               <span className="rounded-md bg-slate-950 px-3 py-2 text-sm font-black text-white">Ticket {form.ticketNumero}</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2" aria-label={`Etapa ${step} de 3`}>
-              {[1, 2, 3].map(item => <div key={item} className={`h-2 rounded-full ${item <= step ? 'bg-emerald-500' : 'bg-slate-300'}`} />)}
+            <div className="grid grid-cols-4 gap-2" aria-label={`Etapa ${step} de 4`}>
+              {[1, 2, 3, 4].map(item => <div key={item} className={`h-2 rounded-full transition-colors ${item <= step ? 'bg-emerald-500' : 'bg-slate-300'}`} />)}
             </div>
-            <div><p className="text-xs font-black uppercase text-emerald-700">{form.tipoTicket} · etapa {step} de 3</p><h1 className="text-2xl font-black">{step === 1 ? 'Veículo e horário' : step === 2 ? 'Dados da carga' : 'Responsável e assinatura'}</h1></div>
+            <div><p className="text-xs font-black uppercase text-emerald-700">{form.tipoTicket} · etapa {step} de 4</p><h1 className="text-2xl font-black">{step === 1 ? 'Veículo e horário' : step === 2 ? 'Dados da carga' : step === 3 ? 'Responsável e assinatura' : 'Revisar e confirmar'}</h1></div>
 
             <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
               {step === 1 && (
@@ -531,6 +589,30 @@ export default function TicketLinkExterno({
                   <div className="rounded-md bg-slate-50 p-4 text-xs text-slate-600"><b className="block text-slate-900">Resumo do Ticket {form.ticketNumero}</b>{form.prefixo} · {form.placa} · {form.tipoMaterial === 'Outros' ? form.materialOutro : form.tipoMaterial} · {form.quantidadeM3} {form.unidadeQuantidade}</div>
                 </div>
               )}
+
+              {step === 4 && (
+                <div className="space-y-5">
+                  <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+                    <h2 className="font-black text-emerald-950">Você confirma os dados que serão enviados?</h2>
+                    <p className="mt-1 text-sm text-emerald-800">Confira os campos abaixo. Use “Alterar” para corrigir qualquer informação.</p>
+                  </div>
+                  <div className="overflow-hidden rounded-md border border-slate-200">
+                    <ReviewSection title="Veículo e horário" onEdit={() => { setReviewConfirmed(false); setStep(1); }}>
+                      <ReviewItem label="Ticket" value={form.ticketNumero} /><ReviewItem label="Prefixo" value={form.prefixo} /><ReviewItem label="Placa" value={form.placa} /><ReviewItem label="Data" value={form.data.split('-').reverse().join('/')} /><ReviewItem label={form.tipoTicket === 'Liberação' ? 'Saída' : 'Chegada'} value={form.tipoTicket === 'Liberação' ? form.horaSaida : form.horaChegada || form.horaSaida} />
+                    </ReviewSection>
+                    <ReviewSection title="Carga" onEdit={() => { setReviewConfirmed(false); setStep(2); }}>
+                      <ReviewItem label="Material" value={form.tipoMaterial === 'Outros' ? form.materialOutro || 'Outros' : form.tipoMaterial} /><ReviewItem label="Quantidade" value={`${form.quantidadeM3} ${form.unidadeQuantidade || 'm³'}`} /><ReviewItem label={form.tipoTicket === 'Liberação' ? 'Destino / obra' : 'Ramo de descarga'} value={form.destinoObra === 'Outros' ? form.destinoOutro || 'Outros' : form.destinoObra} />{form.tipoTicket === 'Recebimento' && <ReviewItem label="Carga conforme" value={form.cargaConforme ? 'Sim' : 'Não'} />}
+                    </ReviewSection>
+                    <ReviewSection title="Responsável" onEdit={() => { setReviewConfirmed(false); setStep(3); }}>
+                      <ReviewItem label="Nome legível" value={form.nomeLegivel} /><ReviewItem label="Assinatura" value={form.assinaturaDigital ? 'Assinatura registrada' : 'Não informada'} />
+                    </ReviewSection>
+                  </div>
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-md border p-4 transition-colors ${reviewConfirmed ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 bg-white'}`}>
+                    <input type="checkbox" checked={reviewConfirmed} onChange={event => { setReviewConfirmed(event.target.checked); setError(''); }} className="mt-0.5 h-5 w-5 accent-emerald-600" />
+                    <span className="text-sm font-bold text-slate-800">Confirmo que revisei e que os dados acima estão corretos.</span>
+                  </label>
+                </div>
+              )}
             </section>
 
             {error && <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>}
@@ -539,7 +621,7 @@ export default function TicketLinkExterno({
               <button type="button" onClick={() => persist(false)} disabled={isSaving} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 text-sm font-black text-slate-700"><Save className="h-4 w-4" /> Salvar rascunho</button>
               <div className="flex gap-2">
                 {step > 1 && <button type="button" onClick={() => setStep(current => current - 1)} className="h-12 flex-1 rounded-md border border-slate-300 bg-white px-5 text-sm font-black sm:flex-none">Voltar</button>}
-                {step < 3 ? <button type="button" onClick={nextStep} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-slate-950 px-6 text-sm font-black text-white sm:flex-none">Continuar <ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={() => persist(true)} disabled={isSaving} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 text-sm font-black text-white sm:flex-none">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar ticket</button>}
+                {step < 4 ? <button type="button" onClick={nextStep} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-slate-950 px-6 text-sm font-black text-white sm:flex-none">{step === 3 ? 'Revisar dados' : 'Continuar'} <ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={() => persist(true)} disabled={isSaving || !reviewConfirmed} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Confirmar e enviar</button>}
               </div>
             </div>
             <p className="flex items-center justify-center gap-2 text-center text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> O preenchimento fica salvo neste aparelho enquanto você avança.</p>
@@ -548,10 +630,15 @@ export default function TicketLinkExterno({
 
         {screen === 'success' && form && (
           <div className="mx-auto max-w-lg space-y-6 py-8 text-center">
-            <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" />
+            <div className="relative mx-auto h-24 w-24">
+              <motion.div initial={{ scale: 0.55, opacity: 0.7 }} animate={{ scale: 1.35, opacity: 0 }} transition={{ duration: 0.75, ease: 'easeOut' }} className="absolute inset-2 rounded-full border-4 border-emerald-400" />
+              <motion.div initial={{ scale: 0, rotate: -18 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 280, damping: 16 }} className="absolute inset-2 grid place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 360, damping: 18 }}><Check className="h-10 w-10" strokeWidth={4} /></motion.div>
+              </motion.div>
+            </div>
             <div><p className="text-xs font-black uppercase text-emerald-700">Enviado com sucesso</p><h1 className="mt-1 text-3xl font-black">Ticket {form.ticketNumero}</h1><p className="mt-2 text-sm text-slate-500">{form.tipoTicket} registrada e disponível no painel administrativo.</p></div>
             <div className="grid gap-3">
-              {form.tipoTicket === 'Liberação' && <button type="button" onClick={() => beginReceipt(form)} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-emerald-600 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Preencher recebimento deste ticket</button>}
+              {form.tipoTicket === 'Liberação' && <button type="button" onClick={() => beginReceipt(form)} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-emerald-600 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Registrar recebimento agora</button>}
               <button type="button" onClick={() => setViewingOwnTicket(form)} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 font-black text-slate-700"><Eye className="h-5 w-5" /> Visualizar comprovante</button>
               <button type="button" onClick={beginRelease} disabled={isStarting} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-slate-950 px-5 font-black text-white"><Truck className="h-5 w-5" /> Próximo caminhão</button>
               <button type="button" onClick={() => { setMessage(''); setForm(null); setScreen('home'); }} className="h-12 font-bold text-slate-600">Voltar ao início</button>
@@ -560,24 +647,18 @@ export default function TicketLinkExterno({
         )}
       </main>
 
-      {viewingOwnTicket && (
+      {viewingOwnTicket && viewingOwnPair && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" onClick={() => setViewingOwnTicket(null)}>
           <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-lg bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
-              <div><p className="text-xs font-black uppercase text-emerald-700">{viewingOwnTicket.tipoTicket}</p><h2 className="text-xl font-black">Ticket {viewingOwnTicket.ticketNumero}</h2></div>
+              <div><p className="text-xs font-black uppercase text-emerald-700">Liberação + recebimento</p><h2 className="text-xl font-black">Ticket {viewingOwnTicket.ticketNumero}</h2></div>
               <button type="button" onClick={() => setViewingOwnTicket(null)} aria-label="Fechar visualização" className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-500"><X className="h-4 w-4" /></button>
             </div>
             <div className="space-y-5 p-5">
-              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 sm:grid-cols-4">
-                {[['Prefixo', viewingOwnTicket.prefixo], ['Placa', viewingOwnTicket.placa], ['Data', viewingOwnTicket.data.split('-').reverse().join('/')], [viewingOwnTicket.tipoTicket === 'Recebimento' ? 'Chegada' : 'Saída', viewingOwnTicket.tipoTicket === 'Recebimento' ? viewingOwnTicket.horaChegada || viewingOwnTicket.horaSaida : viewingOwnTicket.horaSaida]].map(([label, value]) => <div key={label} className="bg-white p-3"><span className="block text-[10px] font-black uppercase text-slate-500">{label}</span><strong className="mt-1 block text-sm">{value || '—'}</strong></div>)}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-md border border-slate-200 p-4"><span className="text-[10px] font-black uppercase text-slate-500">Material e quantidade</span><p className="mt-2 font-bold">{viewingOwnTicket.tipoMaterial === 'Outros' ? viewingOwnTicket.materialOutro : viewingOwnTicket.tipoMaterial} · {viewingOwnTicket.quantidadeM3} {viewingOwnTicket.unidadeQuantidade || 'm³'}</p></div>
-                <div className="rounded-md border border-slate-200 p-4"><span className="text-[10px] font-black uppercase text-slate-500">{viewingOwnTicket.tipoTicket === 'Recebimento' ? 'Ramo de descarga' : 'Destino / obra'}</span><p className="mt-2 font-bold">{viewingOwnTicket.destinoObra === 'Outros' ? viewingOwnTicket.destinoOutro : viewingOwnTicket.destinoObra}</p></div>
-              </div>
-              {viewingOwnTicket.observacao && <div className="rounded-md border border-slate-200 p-4"><span className="text-[10px] font-black uppercase text-slate-500">Observações</span><p className="mt-2 text-sm">{viewingOwnTicket.observacao}</p></div>}
-              {viewingOwnTicket.assinaturaDigital && <div className="rounded-md border border-slate-200 p-4"><span className="text-[10px] font-black uppercase text-slate-500">Assinatura digital</span><img src={viewingOwnTicket.assinaturaDigital} alt="Assinatura do responsável" className="mx-auto mt-2 h-28 max-w-full object-contain" /><p className="border-t border-slate-300 pt-1 text-center text-xs font-bold">{viewingOwnTicket.nomeLegivel}</p></div>}
-              {(viewingOwnTicket.tipoTicket || 'Liberação') === 'Liberação' && !ownHistory.some(item => item.tipoTicket === 'Recebimento' && item.ticketNumero === viewingOwnTicket.ticketNumero) && <button type="button" onClick={() => { const release = viewingOwnTicket; setViewingOwnTicket(null); beginReceipt(release); }} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Fazer recebimento deste ticket</button>}
+              <OwnHistoryVia type="Liberação" ticket={viewingOwnPair.release} />
+              <div className="flex items-center gap-3 text-[10px] font-black uppercase text-slate-400"><span className="h-px flex-1 bg-slate-200" />Vias vinculadas<span className="h-px flex-1 bg-slate-200" /></div>
+              <OwnHistoryVia type="Recebimento" ticket={viewingOwnPair.receipt} />
+              {viewingOwnPair.release && !viewingOwnPair.receipt && <button type="button" onClick={() => { const release = viewingOwnPair.release!; setViewingOwnTicket(null); beginReceipt(release); }} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Fazer recebimento deste ticket</button>}
             </div>
           </div>
         </div>
@@ -588,4 +669,12 @@ export default function TicketLinkExterno({
 
 function Field({ label, required = false, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return <label className="block space-y-2"><span className="text-xs font-black uppercase text-slate-600">{label}{required && <span className="text-rose-600"> *</span>}</span>{children}</label>;
+}
+
+function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: React.ReactNode }) {
+  return <section className="border-b border-slate-200 p-4 last:border-b-0"><div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-black text-slate-950">{title}</h3><button type="button" onClick={onEdit} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-black text-slate-600 hover:border-emerald-500 hover:text-emerald-700">Alterar</button></div><div className="grid gap-3 sm:grid-cols-2">{children}</div></section>;
+}
+
+function ReviewItem({ label, value }: { label: string; value?: React.ReactNode }) {
+  return <div><span className="block text-[10px] font-black uppercase text-slate-500">{label}</span><strong className="mt-0.5 block text-sm text-slate-900">{value || '—'}</strong></div>;
 }

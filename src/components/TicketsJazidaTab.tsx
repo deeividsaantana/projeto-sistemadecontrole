@@ -1048,9 +1048,10 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           </button>
           <button
             onClick={copyPublicLink}
+            title="Copiar o link único para liberação e recebimento"
             className="px-4 py-2.5 bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Link2 className="w-4 h-4" /> Link dos apontadores
+            <Link2 className="w-4 h-4" /> Copiar link público
           </button>
           <button
             onClick={handleOpenCreate}
