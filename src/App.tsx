@@ -2261,18 +2261,20 @@ export default function App() {
 
   const handleImportPartesDiariasEquipamentos = (registros: ParteDiariaEquipamento[]) => {
     if (!registros.length) return;
-    const existingIds = new Set(partesDiariasEquipamentos.map(item => item.id));
-    const novos = registros.filter(item => !existingIds.has(item.id));
-    if (!novos.length) return;
-    const updated = [...novos, ...partesDiariasEquipamentos];
+    const key = (item: ParteDiariaEquipamento) =>
+      item.numero
+        ? normalizeImportText(`numero-${item.numero}`)
+        : normalizeImportText(`${item.data}-${item.equipamentoId || item.prefixo}-${item.operadorNome}`);
+    const result = mergeImportedRecords(partesDiariasEquipamentos, registros, key);
+    if (!result.created && !result.updated) return;
     saveAndLog(
       'Parte Diária de Equipamentos',
       'Criou',
-      `Migrou ${novos.length} ficha(s) do legado SGE para conferência.`,
+      `Importou partes diárias: ${result.created} nova(s), ${result.updated} atualizada(s).`,
       historyLogs,
       () => {
-        setPartesDiariasEquipamentos(updated);
-        localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(updated));
+        setPartesDiariasEquipamentos(result.next);
+        localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(result.next));
       }
     );
     setTimeout(() => uploadLocalSnapshotToFirebase(), 120);

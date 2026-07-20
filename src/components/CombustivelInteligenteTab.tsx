@@ -41,6 +41,8 @@ import {
   normalizeQuickTime,
   validateFueling,
 } from '../utils/combustivelValidation';
+import { analyzeFuelDocumentLocally, buildFuelOperationalAnalysis } from '../utils/fuelDocumentParsing';
+import type { OperationalAnalysis } from '../utils/operationalAnalysis';
 import {
   addCorporateSummarySheet,
   configureCorporateWorkbook,
@@ -48,6 +50,7 @@ import {
   styleCorporateWorksheet,
 } from '../utils/excelCorporate';
 import { auth } from '../firebase';
+import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 
 interface CombustivelInteligenteTabProps {
   empresas: Empresa[];
@@ -108,6 +111,7 @@ interface AiAnalysisResponse {
   paginas: number;
   avisosDocumento: string[];
   registros: Array<Record<string, any>>;
+  analiseOperacional?: OperationalAnalysis;
 }
 
 const today = () => {
@@ -131,8 +135,8 @@ const statusTone: Record<string, string> = {
   Duplicado: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
   'Verificar quantidade': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
   'Verificar bomba': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
-  'Verificar horímetro': 'border-rose-500/30 bg-rose-500/10 text-rose-300',
-  'Verificar KM': 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+  'Verificar horímetro': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+  'Verificar KM': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   'Verificar sequência': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   'Consumo fora do padrão': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
   'Conferência necessária': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
@@ -541,6 +545,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentUrl, setDocumentUrl] = useState('');
   const [documentHash, setDocumentHash] = useState('');
+  const [manualDocumentText, setManualDocumentText] = useState('');
   const [documentAnalysis, setDocumentAnalysis] = useState<AiAnalysisResponse | null>(null);
   const [aiRows, setAiRows] = useState<AiExtractionRow[]>([]);
   const [selectedAiRow, setSelectedAiRow] = useState('');
@@ -568,10 +573,82 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     if (documentUrl) URL.revokeObjectURL(documentUrl);
     setDocumentFile(file);
     setDocumentUrl(URL.createObjectURL(file));
+    setManualDocumentText('');
     setDocumentAnalysis(null);
     setAiRows([]);
     setSelectedAiRow('');
     setAiError('');
+  };
+
+  const mapAnalysisRows = (analysis: AiAnalysisResponse): AiExtractionRow[] =>
+    (analysis.registros || []).map((raw, index): AiExtractionRow => {
+      const equipment = findEquipmentByPrefix(String(raw.prefixo || ''), equipamentos);
+      const fuel = findCatalogItem<TipoCombustivel>(String(raw.tipoCombustivel || ''), combustiveis, (item) => item.nome);
+      const comboio = findCatalogItem<Comboio>(String(raw.comboio || ''), comboios, (item) => item.nome);
+      const normalizedTime = normalizeQuickTime(String(raw.hora || ''));
+      const pumpStart = Number(raw.bombaInicial || 0);
+      const pumpEnd = Number(raw.bombaFinal || 0);
+      const liters = Number(raw.quantidadeLitros ?? (pumpEnd > pumpStart ? pumpEnd - pumpStart : 0));
+      return {
+        id: uid(`ai-${index}`),
+        selected: true,
+        revisado: false,
+        pagina: Number(raw.pagina || 1),
+        linha: Number(raw.linha || index + 1),
+        prefixo: equipment?.prefixo || String(raw.prefixo || '').toUpperCase(),
+        equipamentoId: equipment?.id || '',
+        data: String(raw.data || analysis.dataDocumento || ''),
+        hora: normalizedTime.valid ? normalizedTime.value : String(raw.hora || ''),
+        horimetroInicial: Number(raw.horimetroInicial || 0),
+        kmInicial: Number(raw.kmInicial || 0),
+        bombaInicial: pumpStart,
+        bombaFinal: pumpEnd || pumpStart + liters,
+        quantidadeLitros: liters,
+        tipoCombustivelId: fuel?.id || '',
+        comboioId: comboio?.id || '',
+        responsavel: String(raw.responsavel || ''),
+        observacao: [raw.observacao, `Transcrição: ${raw.transcricaoOriginal || ''}`].filter(Boolean).join(' | '),
+        confiancaGeral: Math.max(0, Math.min(1, Number(raw.confiancaGeral || 0))),
+        camposIncertos: Array.isArray(raw.camposIncertos) ? raw.camposIncertos.map(String) : [],
+        transcricaoOriginal: String(raw.transcricaoOriginal || ''),
+      };
+    });
+
+  const analyzeDocumentWithServer = async () => {
+    if (!documentFile) throw new Error('Selecione um PDF ou uma foto.');
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Sessão Firebase não ativa para a análise inteligente.');
+
+    const prepared = await compressImageForAnalysis(documentFile);
+    const dataBase64 = prepared.dataUrl.split(',')[1] || '';
+    if (dataBase64.length > 7_000_000) {
+      throw new Error('O documento ficou grande demais. Divida o PDF ou envie uma foto por página.');
+    }
+    const idToken = await currentUser.getIdToken();
+    const response = await fetch('/.netlify/functions/analisar-combustivel-documento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({
+        fileName: documentFile.name,
+        mimeType: prepared.mimeType,
+        dataBase64,
+        equipamentos: equipamentos.map((item) => item.prefixo),
+        combustiveis: combustiveis.map((item) => item.nome),
+        comboios: comboios.map((item) => item.nome),
+      }),
+    });
+    let payload: any = null;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error(
+        response.status === 404
+          ? 'Function Netlify não encontrada neste ambiente.'
+          : `Resposta inválida da análise inteligente (HTTP ${response.status}).`,
+      );
+    }
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'A análise do documento falhou.');
+    return payload.analysis as AiAnalysisResponse;
   };
 
   const runDocumentAnalysis = async () => {
@@ -582,71 +659,56 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setAnalyzing(true);
     setAiError('');
     try {
-      const prepared = await compressImageForAnalysis(documentFile);
-      const dataBase64 = prepared.dataUrl.split(',')[1] || '';
-      if (dataBase64.length > 7_000_000)
-        throw new Error('O documento ficou grande demais. Divida o PDF ou envie uma foto por página.');
       const hash = await hashFile(documentFile);
       if (abastecimentos.some((item) => item.documentoOrigemHash === hash)) {
         throw new Error(
           'Este mesmo documento já foi gravado no banco. Abra os registros e confira antes de importá-lo novamente.',
         );
       }
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error('Sua sessão expirou. Entre novamente para analisar o documento.');
-      const idToken = await currentUser.getIdToken();
-      const response = await fetch('/.netlify/functions/analisar-combustivel-documento', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({
-          fileName: documentFile.name,
-          mimeType: prepared.mimeType,
-          dataBase64,
-          equipamentos: equipamentos.map((item) => item.prefixo),
-          combustiveis: combustiveis.map((item) => item.nome),
-          comboios: comboios.map((item) => item.nome),
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.success) throw new Error(payload.message || 'A análise do documento falhou.');
-      const analysis = payload.analysis as AiAnalysisResponse;
-      const mappedRows = (analysis.registros || []).map((raw, index): AiExtractionRow => {
-        const equipment = findEquipmentByPrefix(String(raw.prefixo || ''), equipamentos);
-        const fuel = findCatalogItem(String(raw.tipoCombustivel || ''), combustiveis, (item) => item.nome);
-        const comboio = findCatalogItem(String(raw.comboio || ''), comboios, (item) => item.nome);
-        const normalizedTime = normalizeQuickTime(String(raw.hora || ''));
-        const pumpStart = Number(raw.bombaInicial || 0);
-        const pumpEnd = Number(raw.bombaFinal || 0);
-        const liters = Number(raw.quantidadeLitros ?? (pumpEnd > pumpStart ? pumpEnd - pumpStart : 0));
-        return {
-          id: uid(`ai-${index}`),
-          selected: true,
-          revisado: false,
-          pagina: Number(raw.pagina || 1),
-          linha: Number(raw.linha || index + 1),
-          prefixo: equipment?.prefixo || String(raw.prefixo || '').toUpperCase(),
-          equipamentoId: equipment?.id || '',
-          data: String(raw.data || analysis.dataDocumento || ''),
-          hora: normalizedTime.valid ? normalizedTime.value : String(raw.hora || ''),
-          horimetroInicial: Number(raw.horimetroInicial || 0),
-          kmInicial: Number(raw.kmInicial || 0),
-          bombaInicial: pumpStart,
-          bombaFinal: pumpEnd || pumpStart + liters,
-          quantidadeLitros: liters,
-          tipoCombustivelId: fuel?.id || '',
-          comboioId: comboio?.id || '',
-          responsavel: String(raw.responsavel || ''),
-          observacao: [raw.observacao, `Transcrição: ${raw.transcricaoOriginal || ''}`].filter(Boolean).join(' | '),
-          confiancaGeral: Math.max(0, Math.min(1, Number(raw.confiancaGeral || 0))),
-          camposIncertos: Array.isArray(raw.camposIncertos) ? raw.camposIncertos.map(String) : [],
-          transcricaoOriginal: String(raw.transcricaoOriginal || ''),
+
+      let analysis: AiAnalysisResponse | null = null;
+      let serverError = '';
+      try {
+        analysis = await analyzeDocumentWithServer();
+      } catch (error) {
+        serverError = error instanceof Error ? error.message : 'IA indisponível.';
+      }
+
+      if (!analysis) {
+        const localAnalysis = await analyzeFuelDocumentLocally(
+          documentFile,
+          {
+            equipamentos: equipamentos.map((item) => item.prefixo),
+            combustiveis: combustiveis.map((item) => item.nome),
+            comboios: comboios.map((item) => item.nome),
+          },
+          { manualText: manualDocumentText, defaultDate: entryDate || today() },
+        );
+        analysis = {
+          ...localAnalysis,
+          avisosDocumento: [
+            `Análise inteligente indisponível: ${serverError}`,
+            ...localAnalysis.avisosDocumento,
+          ],
         };
-      });
+      }
+
+      analysis = {
+        ...analysis,
+        analiseOperacional: analysis.analiseOperacional
+          || buildFuelOperationalAnalysis(analysis.registros || [], analysis.avisosDocumento || []),
+      };
+
+      const mappedRows = mapAnalysisRows(analysis);
       setDocumentHash(hash);
       setDocumentAnalysis(analysis);
       setAiRows(mappedRows);
       setSelectedAiRow(mappedRows[0]?.id || '');
-      if (!mappedRows.length) setAiError('Nenhum abastecimento foi identificado no documento.');
+      if (!mappedRows.length) {
+        setAiError(
+          'Nenhum abastecimento foi identificado. Para foto ou PDF escaneado, configure a análise inteligente no Netlify ou cole a transcrição/OCR no campo de texto e analise novamente.',
+        );
+      }
     } catch (error) {
       setAiError(error instanceof Error ? error.message : 'Não foi possível analisar o documento.');
     } finally {
@@ -742,6 +804,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setAiRows([]);
     setDocumentAnalysis(null);
     setDocumentFile(null);
+    setManualDocumentText('');
     if (documentUrl) URL.revokeObjectURL(documentUrl);
     setDocumentUrl('');
     setView('registros');
@@ -1458,6 +1521,25 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   {aiError}
                 </div>
               )}
+              <section className="border border-slate-800 bg-slate-950 p-4">
+                <label className="text-xs font-bold uppercase text-slate-400">
+                  Texto extraído / OCR
+                  <textarea
+                    value={manualDocumentText}
+                    onChange={(event) => setManualDocumentText(event.target.value)}
+                    placeholder="Cole aqui o texto do PDF ou da foto quando o documento for escaneado."
+                    className="mt-2 min-h-28 w-full resize-y border border-slate-700 bg-slate-900 p-3 text-sm normal-case text-slate-200 outline-none focus:border-cyan-500"
+                  />
+                </label>
+              </section>
+              {documentAnalysis?.avisosDocumento?.length ? (
+                <div className="border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                  {documentAnalysis.avisosDocumento.map((warning) => (
+                    <div key={warning}>{warning}</div>
+                  ))}
+                </div>
+              ) : null}
+              <OperationalAnalysisPanel analysis={documentAnalysis?.analiseOperacional} />
               <section className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
                 <div className="min-h-[620px] overflow-hidden border border-slate-800 bg-slate-950">
                   <div className="border-b border-slate-800 p-3 text-xs font-bold uppercase text-slate-500">

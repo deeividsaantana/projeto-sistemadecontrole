@@ -81,6 +81,18 @@ const getPreviousRecord = (
   .filter(item => item.id !== current.id && predicate(item) && toTimestamp(item) < toTimestamp(current))
   .sort((a, b) => toTimestamp(b).localeCompare(toTimestamp(a)))[0];
 
+const getCompatiblePreviousMeterRecord = (
+  current: Abastecimento,
+  records: Abastecimento[],
+  predicate: (item: Abastecimento) => boolean,
+  field: 'horimetroInicial' | 'kmInicial',
+) => records
+  .filter(item => item.id !== current.id
+    && predicate(item)
+    && Number(item[field] || 0) > 0
+    && Number(item[field] || 0) < Number(current[field] || 0))
+  .sort((a, b) => Number(b[field] || 0) - Number(a[field] || 0))[0];
+
 const addAlert = (
   list: AlertaCombustivel[],
   codigo: string,
@@ -149,32 +161,45 @@ export const validateFueling = (
     : undefined;
   if (previousEquipment) {
     if (current.horimetroInicial > 0 && previousEquipment.horimetroInicial > 0 && current.horimetroInicial < previousEquipment.horimetroInicial) {
-      addAlert(alerts, 'HORIMETRO_REGREDIU', 'horimetroInicial', 'critico', 'Horímetro menor que a última leitura desta frota.', previousEquipment.horimetroInicial.toLocaleString('pt-BR'));
+      addAlert(alerts, 'HORIMETRO_REGREDIU', 'horimetroInicial', 'aviso', 'Horímetro menor que a leitura anterior por data. Confirme se é lançamento retroativo, troca/reinício de medidor ou data aproximada.', previousEquipment.horimetroInicial.toLocaleString('pt-BR'));
     } else if (current.horimetroInicial > 0 && previousEquipment.horimetroInicial > 0 && current.horimetroInicial === previousEquipment.horimetroInicial && current.quantidadeLitros > 0) {
       addAlert(alerts, 'HORIMETRO_NAO_AVANCOU', 'horimetroInicial', 'aviso', 'Horímetro repetido mesmo com novo abastecimento. Confirme a leitura.');
     }
     if (current.kmInicial > 0 && previousEquipment.kmInicial > 0 && current.kmInicial < previousEquipment.kmInicial) {
-      addAlert(alerts, 'KM_REGREDIU', 'kmInicial', 'critico', 'Quilometragem menor que a última leitura desta frota.', previousEquipment.kmInicial.toLocaleString('pt-BR'));
+      addAlert(alerts, 'KM_REGREDIU', 'kmInicial', 'aviso', 'Quilometragem menor que a leitura anterior por data. Confirme se é lançamento retroativo, troca/reinício de medidor ou data aproximada.', previousEquipment.kmInicial.toLocaleString('pt-BR'));
     } else if (current.kmInicial > 0 && previousEquipment.kmInicial > 0 && current.kmInicial === previousEquipment.kmInicial && current.quantidadeLitros > 0) {
       addAlert(alerts, 'KM_NAO_AVANCOU', 'kmInicial', 'aviso', 'Quilometragem repetida mesmo com novo abastecimento. Confirme a leitura.');
     }
+  }
 
-    if (current.horimetroInicial > 0 && previousEquipment.horimetroInicial > 0 && current.quantidadeLitros > 0) {
-      const deltaHours = current.horimetroInicial - previousEquipment.horimetroInicial;
-      if (deltaHours > 0) {
-        const litersPerHour = current.quantidadeLitros / deltaHours;
-        if (litersPerHour < 0.5 || litersPerHour > 120) {
-          addAlert(alerts, 'CONSUMO_HORA_FORA_PADRAO', 'horimetroInicial', 'aviso', `Consumo calculado de ${litersPerHour.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L/h fora da faixa ampla de conferência.`, '0,5 a 120 L/h');
-        }
+  const previousEquipmentHour = Number(previousEquipment?.horimetroInicial || 0);
+  const previousEquipmentKm = Number(previousEquipment?.kmInicial || 0);
+  const previousHourMeter = equipment && current.horimetroInicial > 0
+    ? (previousEquipment && previousEquipmentHour > 0 && current.horimetroInicial > previousEquipmentHour
+      ? previousEquipment
+      : getCompatiblePreviousMeterRecord(current, records, item => item.equipamentoId === current.equipamentoId, 'horimetroInicial'))
+    : undefined;
+  const previousKmMeter = equipment && current.kmInicial > 0
+    ? (previousEquipment && previousEquipmentKm > 0 && current.kmInicial > previousEquipmentKm
+      ? previousEquipment
+      : getCompatiblePreviousMeterRecord(current, records, item => item.equipamentoId === current.equipamentoId, 'kmInicial'))
+    : undefined;
+
+  if (current.horimetroInicial > 0 && previousHourMeter?.horimetroInicial > 0 && current.quantidadeLitros > 0) {
+    const deltaHours = current.horimetroInicial - previousHourMeter.horimetroInicial;
+    if (deltaHours > 0) {
+      const litersPerHour = current.quantidadeLitros / deltaHours;
+      if (litersPerHour < 0.5 || litersPerHour > 120) {
+        addAlert(alerts, 'CONSUMO_HORA_FORA_PADRAO', 'horimetroInicial', 'aviso', `Consumo calculado de ${litersPerHour.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L/h fora da faixa ampla de conferência.`, '0,5 a 120 L/h');
       }
-    } else if (current.kmInicial > 0 && previousEquipment.kmInicial > 0 && current.quantidadeLitros > 0) {
-      const deltaKm = current.kmInicial - previousEquipment.kmInicial;
-      if (deltaKm > 0) {
-        const kmPerLiter = deltaKm / current.quantidadeLitros;
-        const [min, max] = getKmConsumptionRange(equipment);
-        if (kmPerLiter < min || kmPerLiter > max) {
-          addAlert(alerts, 'CONSUMO_KM_FORA_PADRAO', 'kmInicial', 'aviso', `Média calculada de ${kmPerLiter.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} km/L fora da faixa da família.`, `${min} a ${max} km/L`);
-        }
+    }
+  } else if (current.kmInicial > 0 && previousKmMeter?.kmInicial > 0 && current.quantidadeLitros > 0) {
+    const deltaKm = current.kmInicial - previousKmMeter.kmInicial;
+    if (deltaKm > 0) {
+      const kmPerLiter = deltaKm / current.quantidadeLitros;
+      const [min, max] = getKmConsumptionRange(equipment);
+      if (kmPerLiter < min || kmPerLiter > max) {
+        addAlert(alerts, 'CONSUMO_KM_FORA_PADRAO', 'kmInicial', 'aviso', `Média calculada de ${kmPerLiter.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} km/L fora da faixa da família.`, `${min} a ${max} km/L`);
       }
     }
   }
