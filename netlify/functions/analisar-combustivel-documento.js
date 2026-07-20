@@ -177,7 +177,7 @@ export const handler = async (event) => {
     return jsonResponse(503, {
       success: false,
       code: 'AI_NOT_CONFIGURED',
-      message: 'A análise inteligente ainda não foi configurada pelo administrador no Netlify.',
+      message: 'IA online sem chave no Netlify. Cadastre GEMINI_API_KEY nas variáveis de ambiente e redeploye o site. Enquanto isso, use PDF com texto ou cole a transcrição/OCR para a leitura local.',
     });
   }
 

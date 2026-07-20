@@ -684,10 +684,13 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           },
           { manualText: manualDocumentText, defaultDate: entryDate || today() },
         );
+        const aiSetupWarning = /AI_NOT_CONFIGURED|sem chave|não foi configurada|nao foi configurada/i.test(serverError)
+          ? 'IA online ainda não configurada no Netlify. A leitura local foi usada quando possível; para fotos e PDFs escaneados, cadastre GEMINI_API_KEY no Netlify.'
+          : `IA online indisponível: ${serverError}`;
         analysis = {
           ...localAnalysis,
           avisosDocumento: [
-            `Análise inteligente indisponível: ${serverError}`,
+            aiSetupWarning,
             ...localAnalysis.avisosDocumento,
           ],
         };
