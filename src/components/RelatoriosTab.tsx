@@ -143,14 +143,15 @@ export default function RelatoriosTab({
       
       case 'consumo_frota': {
         // Pivot: uma linha por frota, uma coluna por produto (combustível ou lubrificante)
-        type LinhaFrota = { eq: Equipamento; company: string; localizacao: string; produtos: { [nomeProduto: string]: number } };
+        type LinhaFrota = { eq: Pick<Equipamento, 'id' | 'prefixo' | 'nome'>; company: string; localizacao: string; produtos: { [nomeProduto: string]: number } };
         const grouped: { [id: string]: LinhaFrota } = {};
 
-        const getOrCreate = (eq: Equipamento): LinhaFrota => {
+        const getOrCreate = (eq: Pick<Equipamento, 'id' | 'prefixo' | 'nome'>, companyName?: string, localizacaoNome?: string): LinhaFrota => {
           if (!grouped[eq.id]) {
-            const companyName = empresas.find(em => em.id === eq.empresaId)?.nome || 'Outra';
-            const localizacao = obras.find(o => o.id === eq.localAtualId)?.nome || 'NÃO LOCALIZADO';
-            grouped[eq.id] = { eq, company: companyName, localizacao, produtos: {} };
+            const fullEq = equipamentos.find(item => item.id === eq.id);
+            const company = companyName || empresas.find(em => em.id === fullEq?.empresaId)?.nome || 'Sem cadastro';
+            const localizacao = localizacaoNome || obras.find(o => o.id === fullEq?.localAtualId)?.nome || 'NÃO LOCALIZADO';
+            grouped[eq.id] = { eq, company, localizacao, produtos: {} };
           }
           return grouped[eq.id];
         };
@@ -161,13 +162,20 @@ export default function RelatoriosTab({
           if (filtroResponsavel && !ab.responsavel.toLowerCase().includes(filtroResponsavel.toLowerCase())) return;
 
           const eq = equipamentos.find(e => e.id === ab.equipamentoId);
-          if (!eq) return;
-          if (filtroEmpresaId && eq.empresaId !== filtroEmpresaId) return;
-          if (filtroEquipamentoId && eq.id !== filtroEquipamentoId) return;
-          if (filtroObraId && eq.localAtualId !== filtroObraId) return;
+          if (eq) {
+            if (filtroEmpresaId && eq.empresaId !== filtroEmpresaId) return;
+            if (filtroEquipamentoId && eq.id !== filtroEquipamentoId) return;
+            if (filtroObraId && eq.localAtualId !== filtroObraId) return;
+          } else {
+            if (filtroEmpresaId || filtroEquipamentoId || filtroObraId) return;
+          }
 
           const produtoNome = combustiveis.find(c => c.id === ab.tipoCombustivelId)?.nome || 'Combustível';
-          const linha = getOrCreate(eq);
+          const linha = getOrCreate(eq || {
+            id: `sem-cadastro-${ab.prefixoInformado || ab.id}`,
+            prefixo: ab.prefixoInformado || 'Sem prefixo',
+            nome: 'Pendente de cadastro',
+          });
           linha.produtos[produtoNome] = (linha.produtos[produtoNome] || 0) + ab.quantidadeLitros;
         });
 
@@ -204,13 +212,13 @@ export default function RelatoriosTab({
           if (filtroCombustivelId && ab.tipoCombustivelId !== filtroCombustivelId) return;
 
           const eq = equipamentos.find(e => e.id === ab.equipamentoId);
-          if (!eq) return;
+          if (!eq && (filtroEmpresaId || filtroEquipamentoId || filtroObraId)) return;
 
-          if (filtroEmpresaId && eq.empresaId !== filtroEmpresaId) return;
-          if (filtroEquipamentoId && eq.id !== filtroEquipamentoId) return;
+          if (eq && filtroEmpresaId && eq.empresaId !== filtroEmpresaId) return;
+          if (eq && filtroEquipamentoId && eq.id !== filtroEquipamentoId) return;
 
-          const company = empresas.find(em => em.id === eq.empresaId);
-          const cName = company ? company.nome : 'Terceirizados';
+          const company = eq ? empresas.find(em => em.id === eq.empresaId) : undefined;
+          const cName = company ? company.nome : 'Sem cadastro de frota';
 
           if (!grouped[cName]) {
             grouped[cName] = { companyName: cName, liters: 0, vehiclesCount: 0, countAbas: 0 };
@@ -480,8 +488,8 @@ export default function RelatoriosTab({
           return [
             r.data.split('-').reverse().join('/'),
             r.hora,
-            eq ? eq.prefixo : '—',
-            eq ? eq.nome : '—',
+            eq ? eq.prefixo : r.prefixoInformado || 'Sem prefixo',
+            eq ? eq.nome : 'Pendente de cadastro',
             emp || '—',
             comb,
             `${r.quantidadeLitros} L`,
@@ -500,8 +508,8 @@ export default function RelatoriosTab({
           return [
             r.data.split('-').reverse().join('/'),
             r.hora,
-            eq ? eq.prefixo : '—',
-            eq ? eq.nome : '—',
+            eq ? eq.prefixo : r.prefixoInformado || 'Sem prefixo',
+            eq ? eq.nome : 'Pendente de cadastro',
             prod,
             r.compartimento,
             r.quantidade.toString(),
@@ -760,8 +768,8 @@ export default function RelatoriosTab({
           return [
             r.data.split('-').reverse().join('/'),
             r.hora,
-            eq ? eq.prefixo : '—',
-            eq ? eq.nome : '—',
+            eq ? eq.prefixo : r.prefixoInformado || 'Sem prefixo',
+            eq ? eq.nome : 'Pendente de cadastro',
             emp || '—',
             comb,
             r.quantidadeLitros.toString(),
@@ -1342,8 +1350,8 @@ export default function RelatoriosTab({
                               <span className="text-[10px] text-slate-500 block">{ab.hora}</span>
                             </td>
                             <td className="py-3 px-3">
-                              <span className="font-mono font-black text-emerald-400 mr-1.5">{eq ? eq.prefixo : 'FROTA'}</span>
-                              <span className="text-slate-400 truncate max-w-[120px] inline-block align-bottom">{eq ? eq.nome : '—'}</span>
+                              <span className="font-mono font-black text-emerald-400 mr-1.5">{eq ? eq.prefixo : ab.prefixoInformado || 'FROTA'}</span>
+                              <span className="text-slate-400 truncate max-w-[120px] inline-block align-bottom">{eq ? eq.nome : 'Pendente de cadastro'}</span>
                             </td>
                             <td className="py-3 px-3 text-slate-300 font-semibold">{comb}</td>
                             <td className="py-3 px-3 text-slate-400 font-mono text-[10px]">

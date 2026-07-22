@@ -125,6 +125,7 @@ export const validateFueling = (
 ): AlertaCombustivel[] => {
   const alerts: AlertaCombustivel[] = [];
   const equipment = equipamentos.find(item => item.id === current.equipamentoId);
+  const informedPrefix = String(current.prefixoInformado || '').trim();
   const quickTime = normalizeQuickTime(current.hora);
 
   if (!current.data) {
@@ -135,7 +136,11 @@ export const validateFueling = (
     addAlert(alerts, 'DATA_FUTURA', 'data', 'aviso', 'A data está no futuro. Confirme antes de gravar.');
   }
   if (!quickTime.valid) addAlert(alerts, 'HORA_INVALIDA', 'hora', 'critico', 'Hora inválida. Use o formato HH:MM.');
-  if (!equipment) addAlert(alerts, 'FROTA_NAO_ENCONTRADA', 'equipamentoId', 'critico', 'Prefixo não localizado no cadastro de frota.');
+  if (!equipment && informedPrefix) {
+    addAlert(alerts, 'FROTA_NAO_CADASTRADA', 'prefixoInformado', 'aviso', `Prefixo "${informedPrefix}" ainda não existe no cadastro. O lançamento foi preservado para conferência.`);
+  } else if (!equipment) {
+    addAlert(alerts, 'FROTA_NAO_INFORMADA', 'equipamentoId', 'aviso', 'Prefixo/frota não informado. O lançamento foi preservado para conferência.');
+  }
   if (!current.tipoCombustivelId) addAlert(alerts, 'COMBUSTIVEL_OBRIGATORIO', 'tipoCombustivelId', 'critico', 'Tipo de combustível não informado.');
   if (!current.comboioId) addAlert(alerts, 'COMBOIO_OBRIGATORIO', 'comboioId', 'aviso', 'Comboio ou posto abastecedor não informado.');
   if (!current.responsavel?.trim()) addAlert(alerts, 'RESPONSAVEL_OBRIGATORIO', 'responsavel', 'critico', 'Responsável não informado.');
@@ -214,7 +219,7 @@ export const validateFueling = (
   const duplicate = records.some(item => item.id !== current.id
     && item.data === current.data
     && item.hora === quickTime.value
-    && item.equipamentoId === current.equipamentoId
+    && (item.equipamentoId || item.prefixoInformado || '') === (current.equipamentoId || current.prefixoInformado || '')
     && Math.abs(Number(item.quantidadeLitros) - Number(current.quantidadeLitros)) < 0.01
     && item.tipoCombustivelId === current.tipoCombustivelId);
   if (duplicate) addAlert(alerts, 'REGISTRO_DUPLICADO', 'registro', 'critico', 'Já existe um abastecimento com a mesma data, hora, frota, produto e quantidade.');
@@ -231,7 +236,7 @@ export const validateFueling = (
       alerts,
       'BAIXA_CONFIANCA_IA',
       'documento',
-      reviewed ? 'info' : Number(current.confiancaExtracao || 0) < 0.5 ? 'critico' : 'aviso',
+      reviewed ? 'info' : 'aviso',
       `Extração automática com ${Math.round(Number(current.confiancaExtracao || 0) * 100)}% de confiança; ${reviewed ? 'linha conferida manualmente.' : 'confira com o documento original.'}`,
     );
   }
@@ -277,15 +282,16 @@ export const auditFuelDataset = (records: Abastecimento[], equipamentos: Equipam
   chronological.forEach(record => {
     const normalizedTime = normalizeQuickTime(record.hora);
     const current = { ...record, hora: normalizedTime.valid ? normalizedTime.value : record.hora };
-    const duplicateKey = `${current.data}|${current.hora}|${current.equipamentoId}|${current.quantidadeLitros}|${current.tipoCombustivelId}`;
+    const equipmentKey = current.equipamentoId || current.prefixoInformado || '';
+    const duplicateKey = `${current.data}|${current.hora}|${equipmentKey}|${current.quantidadeLitros}|${current.tipoCombustivelId}`;
     const context = [
-      previousEquipment.get(current.equipamentoId),
+      previousEquipment.get(equipmentKey),
       current.comboioId ? previousPump.get(current.comboioId) : undefined,
       duplicateKeys.get(duplicateKey),
     ].filter((item, index, array): item is Abastecimento => Boolean(item) && array.findIndex(other => other?.id === item?.id) === index);
     const alertas = validateFueling(current, context, equipamentos);
     audited.set(current.id, { ...current, alertas, status: getFuelStatusFromAlerts(alertas) });
-    previousEquipment.set(current.equipamentoId, current);
+    if (equipmentKey) previousEquipment.set(equipmentKey, current);
     if (current.comboioId) previousPump.set(current.comboioId, current);
     if (!duplicateKeys.has(duplicateKey)) duplicateKeys.set(duplicateKey, current);
   });

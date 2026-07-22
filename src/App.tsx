@@ -1366,52 +1366,54 @@ export default function App() {
 
     if (target === 'empresas') {
       const incoming = validRows.map((row, index): Empresa | null => {
-        const nome = getImportValue(row, ['nome', 'empresa', 'nome fantasia', 'razao social', 'razão social']);
-        if (!nome) return null;
+        const cnpj = getImportValue(row, ['cnpj', 'documento']);
+        const nome = getImportValue(row, ['nome', 'empresa', 'nome fantasia', 'razao social', 'razão social']) || cnpj || `Empresa ${index + 1}`;
         return {
           id: `emp-import-${now}-${index}`,
           nome,
-          cnpj: getImportValue(row, ['cnpj', 'documento']),
+          cnpj,
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'gestor'])
         };
       }).filter(Boolean) as Empresa[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhuma empresa com nome foi encontrada na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhuma empresa foi encontrada na planilha.' };
       const result = mergeImportedRecords(empresas, incoming, item => normalizeImportText(item.cnpj || item.nome));
       return persistImport('Empresas', 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'obras') {
       const incoming = validRows.map((row, index): ObraLocal | null => {
-        const nome = getImportValue(row, ['nome', 'obra', 'local', 'canteiro']);
-        if (!nome) return null;
+        const endereco = getImportValue(row, ['endereco', 'endereço', 'cidade', 'localizacao', 'localização']);
+        const nome = getImportValue(row, ['nome', 'obra', 'local', 'canteiro']) || endereco || `Obra ${index + 1}`;
         return {
           id: `obr-import-${now}-${index}`,
           nome,
-          endereco: getImportValue(row, ['endereco', 'endereço', 'cidade', 'localizacao', 'localização']),
+          endereco,
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'engenheiro', 'gestor']),
           status: statusObra(getImportValue(row, ['status', 'situacao', 'situação']))
         };
       }).filter(Boolean) as ObraLocal[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhuma obra/local com nome foi encontrada na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhuma obra/local foi encontrada na planilha.' };
       const result = mergeImportedRecords(obras, incoming, item => normalizeImportText(item.nome));
       return persistImport('Obras/Locais', 'renea_obras', setObras, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'equipamentos') {
       const incoming = validRows.map((row, index): Equipamento | null => {
-        const prefixo = getImportValue(row, ['prefixo', 'frota', 'codigo', 'código', 'id frota']).toUpperCase();
-        const nome = getImportValue(row, ['nome', 'equipamento', 'descricao', 'descrição', 'maquina', 'máquina']);
-        if (!prefixo || !nome) return null;
+        const seriePlaca = getImportValue(row, ['serie', 'série', 'numero serie', 'número série', 'numero de serie', 'número de série', 'serie placa', 'série placa']).toUpperCase();
+        const placa = getImportValue(row, ['placa', 'placa veiculo', 'placa veículo']).toUpperCase();
+        const prefixo = (getImportValue(row, ['prefixo', 'frota', 'codigo', 'código', 'id frota']) || placa || seriePlaca || `EQ-${index + 1}`).toUpperCase();
+        const tipo = getImportValue(row, ['tipo', 'tipo equipamento', 'categoria']) || 'Outro';
+        const nome = getImportValue(row, ['nome', 'equipamento', 'descricao', 'descrição', 'maquina', 'máquina']) || tipo || prefixo;
         return {
           id: `eq-import-${now}-${index}`,
           prefixo,
           nome,
-          tipo: getImportValue(row, ['tipo', 'tipo equipamento', 'categoria']) || 'Outro',
+          tipo,
           marca: getImportValue(row, ['marca']),
           modelo: getImportValue(row, ['modelo']),
-          seriePlaca: getImportValue(row, ['serie', 'série', 'numero serie', 'número série', 'numero de serie', 'número de série', 'serie placa', 'série placa']).toUpperCase(),
-          placa: getImportValue(row, ['placa', 'placa veiculo', 'placa veículo']).toUpperCase() || undefined,
+          seriePlaca,
+          placa: placa || undefined,
           empresaId: findEmpresaId(getImportValue(row, ['empresa', 'proprietario', 'proprietário', 'empresa proprietaria', 'empresa proprietária'])),
           status: statusEquipamento(getImportValue(row, ['status', 'situacao', 'situação'])),
           localAtualId: findObraId(getImportValue(row, ['obra', 'local', 'canteiro', 'local atual', 'obra atual'])),
@@ -1420,19 +1422,19 @@ export default function App() {
           horasIndisponiveis: numberFromImport(getImportValue(row, ['horas indisponiveis', 'horas indisponíveis', 'horas manutencao', 'horas manutenção']))
         };
       }).filter(Boolean) as Equipamento[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhum equipamento com prefixo e nome foi encontrado na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhum equipamento foi encontrado na planilha.' };
       const result = mergeImportedRecords(equipamentos, incoming, item => normalizeImportText(item.prefixo));
       return persistImport('Equipamentos', 'renea_equipamentos', setEquipamentos, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'funcionarios') {
       const incoming = validRows.map((row, index): Funcionario | null => {
-        const nome = getImportValue(row, ['nome', 'funcionario', 'funcionário', 'colaborador']);
-        if (!nome) return null;
+        const matricula = getImportValue(row, ['matricula', 'matrícula']);
+        const nome = getImportValue(row, ['nome', 'funcionario', 'funcionário', 'colaborador']) || matricula || `Colaborador ${index + 1}`;
         const ativoValue = normalizeImportText(getImportValue(row, ['ativo', 'status', 'situacao', 'situação']));
         return {
-          id: getImportValue(row, ['matricula', 'matrícula']) || `fun-import-${now}-${index}`,
-          matricula: getImportValue(row, ['matricula', 'matrícula']) || undefined,
+          id: matricula || `fun-import-${now}-${index}`,
+          matricula: matricula || undefined,
           nome,
           cargo: getImportValue(row, ['cargo', 'funcao', 'função']) || 'A definir',
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
@@ -1444,24 +1446,24 @@ export default function App() {
           responsavelArea: getImportValue(row, ['responsavel area', 'responsável área']) || undefined
         };
       }).filter(Boolean) as Funcionario[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhum funcionário com nome foi encontrado na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhum funcionário foi encontrado na planilha.' };
       const result = mergeImportedRecords(funcionarios, incoming, item => normalizeImportText(item.matricula || item.nome));
       return persistImport('Funcionários', 'renea_funcionarios', setFuncionarios, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'comboios') {
       const incoming = validRows.map((row, index): Comboio | null => {
-        const nome = getImportValue(row, ['nome', 'comboio', 'identificacao', 'identificação']);
-        if (!nome) return null;
+        const placa = getImportValue(row, ['placa']).toUpperCase();
+        const nome = getImportValue(row, ['nome', 'comboio', 'identificacao', 'identificação']) || placa || `Comboio ${index + 1}`;
         return {
           id: `com-import-${now}-${index}`,
           nome,
-          placa: getImportValue(row, ['placa']).toUpperCase(),
+          placa,
           capacidadeLitros: numberFromImport(getImportValue(row, ['capacidade', 'capacidade litros', 'litros'])) || 3000,
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'motorista'])
         };
       }).filter(Boolean) as Comboio[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhum comboio com identificação foi encontrado na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhum comboio foi encontrado na planilha.' };
       const result = mergeImportedRecords(comboios, incoming, item => normalizeImportText(item.placa || item.nome));
       return persistImport('Comboios', 'renea_comboios', setComboios, result.next, incoming.length, result.created, result.updated);
     }
@@ -1507,10 +1509,11 @@ export default function App() {
     }
     updated = auditarBaseCombustivel(updated);
     const eq = equipamentos.find(e => e.id === item.equipamentoId);
+    const prefixoLog = eq?.prefixo || item.prefixoInformado || 'Frota sem cadastro';
     saveAndLog(
       'Abastecimentos', 
       isNew ? 'Criou' : 'Editou', 
-      `${isNew ? 'Lançou' : 'Editou'} abastecimento de ${item.quantidadeLitros}L para ${eq ? eq.prefixo : 'Frota'}.`,
+      `${isNew ? 'Lançou' : 'Editou'} abastecimento de ${item.quantidadeLitros}L para ${prefixoLog}.`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -3023,6 +3026,16 @@ export default function App() {
         />
 
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => navigateTo('cadastros', true)}
+            title="Abrir cadastros auxiliares"
+            aria-label="Abrir cadastros auxiliares"
+            className={`p-2 rounded-md border transition-colors cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}
+          >
+            <FolderPlus className="w-5 h-5" />
+          </button>
+
           {/* Notification Bell Mobile */}
           <div className="relative">
             <button 
@@ -3089,7 +3102,17 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigateTo('cadastros')}
+              title="Abrir cadastros auxiliares"
+              className={`h-10 px-3 rounded-md border text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-700'}`}
+            >
+              <FolderPlus className="w-4 h-4" />
+              <span>Cadastros</span>
+            </button>
+
             {/* Notification Bell Dropdown Button */}
             <div className="relative">
               <button 
@@ -3289,6 +3312,7 @@ export default function App() {
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onSaveRdo={handleSaveRdo}
                 onDeleteRdo={handleDeleteRdo}
+                onOpenCadastros={() => setActiveTab('cadastros')}
               />
             )}
 

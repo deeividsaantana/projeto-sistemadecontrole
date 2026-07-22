@@ -149,6 +149,7 @@ export interface Abastecimento {
   data: string; // YYYY-MM-DD
   hora: string; // HH:MM
   equipamentoId: string; // Frota (Equipamento)
+  prefixoInformado?: string; // Prefixo digitado/importado quando ainda não existe cadastro de equipamento
   horimetroInicial: number;
   kmInicial: number;
   bombaInicial: number;

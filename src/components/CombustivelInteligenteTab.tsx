@@ -62,6 +62,7 @@ interface CombustivelInteligenteTabProps {
   onDeleteAbastecimento: (id: string) => void;
   onImportAbastecimentos: (items: Abastecimento[]) => void;
   onOpenLubrificacao: () => void;
+  onOpenCadastros?: () => void;
   onOpenSpreadsheetImport: () => void;
   isParsingSpreadsheet: boolean;
 }
@@ -128,6 +129,11 @@ const normalize = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9]/g, '')
     .toLowerCase();
+
+const getFuelRecordPrefix = (record: Abastecimento, equipamentos: Equipamento[]) =>
+  equipamentos.find((item) => item.id === record.equipamentoId)?.prefixo
+  || record.prefixoInformado
+  || 'Sem prefixo';
 
 const statusTone: Record<string, string> = {
   OK: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
@@ -197,6 +203,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   onDeleteAbastecimento,
   onImportAbastecimentos,
   onOpenLubrificacao,
+  onOpenCadastros,
   onOpenSpreadsheetImport,
   isParsingSpreadsheet,
 }) => {
@@ -228,7 +235,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           return (
             !term ||
             [
-              equipment?.prefixo,
+              getFuelRecordPrefix(record, equipamentos),
               equipment?.nome,
               record.responsavel,
               record.observacao,
@@ -254,15 +261,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     const critical = filteredRecords.filter((item) =>
       item.alertas?.some((alert) => alert.severidade === 'critico'),
     ).length;
-    const averageQuality = filteredRecords.length
-      ? filteredRecords.reduce((sum, item) => sum + getFuelQualityScore(item.alertas || []), 0) / filteredRecords.length
-      : 100;
     return {
       totalLiters,
       alerts,
       critical,
-      averageQuality,
-      uniqueEquipment: new Set(filteredRecords.map((item) => item.equipamentoId)).size,
+      uniqueEquipment: new Set(filteredRecords.map((item) => item.equipamentoId || item.prefixoInformado || item.id)).size,
     };
   }, [filteredRecords]);
 
@@ -280,16 +283,17 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
   const equipmentRanking = useMemo(() => {
     const map = new Map<
-      string,
-      { equipmentId: string; liters: number; records: number; alerts: number; lastDate: string; rates: number[] }
-    >();
+        string,
+        { equipmentId: string; liters: number; records: number; alerts: number; lastDate: string; rates: number[] }
+      >();
     const chronological = [...filteredRecords].sort((a, b) =>
       `${a.data}T${a.hora}`.localeCompare(`${b.data}T${b.hora}`),
     );
     const previous = new Map<string, Abastecimento>();
     chronological.forEach((item) => {
-      const current = map.get(item.equipamentoId) || {
-        equipmentId: item.equipamentoId,
+      const equipmentKey = item.equipamentoId || item.prefixoInformado || item.id;
+      const current = map.get(equipmentKey) || {
+        equipmentId: equipmentKey,
         liters: 0,
         records: 0,
         alerts: 0,
@@ -300,11 +304,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       current.records += 1;
       current.alerts += item.alertas?.filter((alert) => alert.severidade !== 'info').length || 0;
       current.lastDate = current.lastDate > item.data ? current.lastDate : item.data;
-      const prior = previous.get(item.equipamentoId);
+      const prior = previous.get(equipmentKey);
       if (prior && item.horimetroInicial > prior.horimetroInicial && item.quantidadeLitros > 0)
         current.rates.push(item.quantidadeLitros / (item.horimetroInicial - prior.horimetroInicial));
-      previous.set(item.equipamentoId, item);
-      map.set(item.equipamentoId, current);
+      previous.set(equipmentKey, item);
+      map.set(equipmentKey, current);
     });
     return [...map.values()]
       .map((item) => ({
@@ -335,6 +339,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     });
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
   }, [filteredRecords]);
+
+  const pendingCadastroPrefixes = useMemo(
+    () => Array.from(new Set(
+      auditedRecords
+        .filter((record) => !record.equipamentoId && record.prefixoInformado)
+        .map((record) => String(record.prefixoInformado || '').trim().toUpperCase())
+        .filter(Boolean),
+    )).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })),
+    [auditedRecords],
+  );
 
   const clearFilters = () => {
     setFilterStart('');
@@ -452,6 +466,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         data: entryDate,
         hora: normalizeQuickTime(row.hora).value || row.hora,
         equipamentoId: row.equipamentoId,
+        prefixoInformado: row.prefixo.trim().toUpperCase(),
         horimetroInicial: Number(row.horimetroInicial || 0),
         kmInicial: Number(row.kmInicial || 0),
         bombaInicial: Number(row.bombaInicial || 0),
@@ -471,8 +486,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       return {
         row,
         record: finalized,
-        score: getFuelQualityScore(alerts),
-        blocking: alerts.some((alert) => alert.severidade === 'critico'),
+        alertCount: alerts.filter((alert) => alert.severidade !== 'info').length,
+        blocking: false,
       };
     });
   }, [quickRows, editingId, entryDate, entryFuel, entryComboio, entryResponsible, abastecimentos, equipamentos]);
@@ -484,10 +499,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setGlobalError('');
     if (!quickReady.length) {
       setGlobalError('Adicione ao menos um prefixo e os dados do abastecimento.');
-      return;
-    }
-    if (quickReady.some((item) => item.blocking)) {
-      setGlobalError('Existem campos bloqueantes. Corrija as linhas marcadas antes de revisar.');
       return;
     }
     setReviewOpen(true);
@@ -526,7 +537,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setQuickRows([
       {
         id: record.id,
-        prefixo: equipment?.prefixo || '',
+        prefixo: equipment?.prefixo || record.prefixoInformado || '',
         equipamentoId: record.equipamentoId,
         hora: record.hora,
         horimetroInicial: record.horimetroInicial,
@@ -833,8 +844,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       'Responsável',
       'Origem',
       'Status',
-      'Qualidade',
       'Alertas',
+      'Detalhes dos alertas',
       'Documento',
       'Observação',
     ];
@@ -847,7 +858,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       sheet.addRow([
         record.data,
         record.hora,
-        equipment?.prefixo || '',
+        getFuelRecordPrefix(record, equipamentos),
         equipment?.nome || '',
         company?.nome || '',
         combustiveis.find((item) => item.id === record.tipoCombustivelId)?.nome || '',
@@ -860,7 +871,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         record.responsavel,
         record.origem || 'Manual',
         record.status || 'OK',
-        getFuelQualityScore(record.alertas || []),
+        record.alertas?.filter((item) => item.severidade !== 'info').length || 0,
         record.alertas?.map((item) => item.mensagem).join(' | ') || '',
         record.documentoOrigemNome || '',
         record.observacao,
@@ -881,8 +892,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         ['Registros', filteredRecords.length],
         ['Litros', dashboard.totalLiters],
         ['Frotas', dashboard.uniqueEquipment],
-        ['Alertas', dashboard.alerts],
-        ['Qualidade média', `${formatNumber(dashboard.averageQuality, 0)}%`],
+        ['Alertas para conferir', dashboard.alerts],
       ],
       [],
     );
@@ -892,9 +902,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const navItems: Array<{ id: WorkspaceView; label: string; icon: React.ElementType }> = [
     { id: 'painel', label: 'Painel', icon: LayoutDashboard },
     { id: 'digitacao', label: 'Digitação rápida', icon: Keyboard },
-    { id: 'documento', label: 'Ler PDF ou foto', icon: ScanLine },
     { id: 'registros', label: 'Registros', icon: ListChecks },
-    { id: 'qualidade', label: 'Qualidade', icon: ShieldCheck },
+    { id: 'qualidade', label: 'Conferência', icon: ShieldCheck },
   ];
 
   const selectedAiEvaluation = aiEvaluated.find((item) => item.row.id === selectedAiRow);
@@ -920,6 +929,14 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           >
             <FileSpreadsheet size={17} /> {isParsingSpreadsheet ? 'Lendo...' : 'Importar Excel'}
           </button>
+          {onOpenCadastros && (
+            <button
+              onClick={onOpenCadastros}
+              className="inline-flex h-10 items-center gap-2 border border-slate-700 bg-slate-900 px-3 text-sm font-semibold"
+            >
+              <Database size={17} /> Cadastros
+            </button>
+          )}
           <button
             onClick={exportExcel}
             className="inline-flex h-10 items-center gap-2 border border-slate-700 bg-slate-900 px-3 text-sm font-semibold"
@@ -960,7 +977,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         })}
       </div>
 
-      {view !== 'digitacao' && view !== 'documento' && (
+      {view !== 'digitacao' && (
         <section className="grid gap-3 border-b border-slate-800 pb-5 md:grid-cols-2 xl:grid-cols-[1.5fr_repeat(5,1fr)_auto]">
           <label className="relative">
             <span className="sr-only">Buscar</span>
@@ -1053,6 +1070,26 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         </div>
       )}
 
+      {pendingCadastroPrefixes.length > 0 && (
+        <section className="flex flex-col gap-3 border border-amber-500/30 bg-amber-500/10 p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-amber-100">Prefixos aguardando cadastro auxiliar</h2>
+            <p className="mt-1 text-xs text-amber-200/80">
+              {pendingCadastroPrefixes.slice(0, 8).join(', ')}
+              {pendingCadastroPrefixes.length > 8 ? ` +${pendingCadastroPrefixes.length - 8}` : ''}
+            </p>
+          </div>
+          {onOpenCadastros && (
+            <button
+              onClick={onOpenCadastros}
+              className="inline-flex h-10 shrink-0 items-center gap-2 border border-amber-400/40 bg-slate-950 px-4 text-sm font-bold text-amber-100"
+            >
+              <Database size={17} /> Completar cadastros
+            </button>
+          )}
+        </section>
+      )}
+
       {view === 'painel' && (
         <div className="space-y-5">
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -1072,9 +1109,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 tone: 'text-sky-300',
               },
               {
-                label: 'Qualidade média',
-                value: `${formatNumber(dashboard.averageQuality, 0)}%`,
-                detail: 'Validação contínua',
+                label: 'A conferir',
+                value: dashboard.alerts,
+                detail: 'Alertas no filtro atual',
                 icon: ShieldCheck,
                 tone: 'text-cyan-300',
               },
@@ -1088,7 +1125,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               {
                 label: 'Registros críticos',
                 value: dashboard.critical,
-                detail: 'Bloqueios ou regressões',
+                detail: 'Conferência prioritária',
                 icon: Gauge,
                 tone: 'text-rose-300',
               },
@@ -1191,9 +1228,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       return (
                         <tr key={item.equipmentId}>
                           <td className="px-4 py-3">
-                            <strong className="text-white">{equipment?.prefixo || 'Frota'}</strong>
+                            <strong className="text-white">{equipment?.prefixo || item.equipmentId || 'Frota'}</strong>
                             <span className="block max-w-48 truncate text-xs text-slate-500">
-                              {equipment?.tipo || equipment?.nome}
+                              {equipment?.tipo || equipment?.nome || 'Pendente de cadastro'}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-emerald-300">{formatNumber(item.liters, 0)} L</td>
@@ -1306,7 +1343,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   {editingId ? 'Editar abastecimento' : 'Lançamento por prefixo'}
                 </h2>
                 <span className="text-xs text-slate-500">
-                  {quickRows.length} linha(s) | {quickEvaluated.filter((item) => item.blocking).length} bloqueio(s)
+                  {quickRows.length} linha(s) | {quickEvaluated.reduce((sum, item) => sum + item.alertCount, 0)} alerta(s)
                 </span>
               </div>
               <div className="flex gap-2">
@@ -1349,7 +1386,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   <span>Bomba final</span>
                   <span>Litros</span>
                   <span>Observação</span>
-                  <span>Qualidade</span>
+                  <span>Alertas</span>
                   <span />
                 </div>
                 {quickRows.map((row, index) => {
@@ -1367,7 +1404,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           value={row.prefixo}
                           onChange={(event) => updateQuickRow(row.id, 'prefixo', event.target.value)}
                           onBlur={(event) => updateQuickRow(row.id, 'prefixo', event.target.value)}
-                          className={`h-10 w-full border bg-slate-900 px-2 font-mono text-sm font-bold outline-none ${row.equipamentoId ? 'border-emerald-500/40 text-emerald-300' : 'border-rose-500/40 text-rose-200'}`}
+                          className={`h-10 w-full border bg-slate-900 px-2 font-mono text-sm font-bold outline-none ${row.equipamentoId ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-200'}`}
                         />
                       </div>
                       <input
@@ -1423,7 +1460,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         }
                         className={`h-10 border text-xs font-bold ${evaluation?.blocking ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' : evaluation?.record.alertas?.length ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}
                       >
-                        {evaluation?.score ?? 100}%
+                        {evaluation?.alertCount || 0}
                       </button>
                       <button
                         title="Excluir linha"
@@ -1874,7 +1911,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     'Bomba',
                     'Leitura',
                     'Origem',
-                    'Qualidade',
+                    'Alertas',
                     'Status',
                     'Ações',
                   ].map((label) => (
@@ -1887,7 +1924,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               <tbody className="divide-y divide-slate-800">
                 {filteredRecords.map((record) => {
                   const equipment = equipamentos.find((item) => item.id === record.equipamentoId);
-                  const score = getFuelQualityScore(record.alertas || []);
+                  const alertCount = record.alertas?.filter((item) => item.severidade !== 'info').length || 0;
                   return (
                     <tr key={record.id} className="hover:bg-slate-900/60">
                       <td className="px-4 py-3">
@@ -1895,8 +1932,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         <span className="block text-xs text-slate-500">{record.hora}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <strong className="font-mono text-emerald-300">{equipment?.prefixo || 'Não vinculada'}</strong>
-                        <span className="block max-w-48 truncate text-xs text-slate-500">{equipment?.nome}</span>
+                        <strong className="font-mono text-emerald-300">{getFuelRecordPrefix(record, equipamentos)}</strong>
+                        <span className="block max-w-48 truncate text-xs text-slate-500">{equipment?.nome || 'Pendente de cadastro'}</span>
                       </td>
                       <td className="px-4 py-3">
                         {combustiveis.find((item) => item.id === record.tipoCombustivelId)?.nome || '-'}
@@ -1928,15 +1965,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <strong
-                          className={
-                            score >= 90 ? 'text-emerald-300' : score >= 65 ? 'text-amber-300' : 'text-rose-300'
-                          }
-                        >
-                          {score}%
-                        </strong>
+                        <strong className={alertCount ? 'text-amber-300' : 'text-emerald-300'}>{alertCount}</strong>
                         <span className="block text-[10px] text-slate-600">
-                          {record.alertas?.length || 0} alerta(s)
+                          {record.alertas?.length || 0} total
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -1960,7 +1991,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                             onClick={() => {
                               if (
                                 confirm(
-                                  `Excluir o abastecimento de ${equipment?.prefixo || 'frota'} em ${formatDate(record.data)}?`,
+                                  `Excluir o abastecimento de ${getFuelRecordPrefix(record, equipamentos)} em ${formatDate(record.data)}?`,
                                 )
                               )
                                 onDeleteAbastecimento(record.id);
@@ -2025,16 +2056,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           <section className="border border-slate-800 bg-slate-950">
             <div className="border-b border-slate-800 p-4">
               <h2 className="font-bold text-white">Registros para conferência</h2>
-              <span className="text-xs text-slate-500">Ordenados pela menor pontuação</span>
+              <span className="text-xs text-slate-500">Ordenados por quantidade de alertas</span>
             </div>
             <div className="divide-y divide-slate-800">
               {[...filteredRecords]
                 .filter((item) => item.alertas?.length)
-                .sort((a, b) => getFuelQualityScore(a.alertas || []) - getFuelQualityScore(b.alertas || []))
+                .sort((a, b) => (b.alertas?.length || 0) - (a.alertas?.length || 0))
                 .slice(0, 30)
                 .map((record) => {
                   const equipment = equipamentos.find((item) => item.id === record.equipamentoId);
-                  const score = getFuelQualityScore(record.alertas || []);
+                  const alertCount = record.alertas?.filter((item) => item.severidade !== 'info').length || 0;
                   return (
                     <div
                       key={record.id}
@@ -2042,11 +2073,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     >
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <strong className="font-mono text-white">{equipment?.prefixo || 'Não vinculada'}</strong>
+                          <strong className="font-mono text-white">{getFuelRecordPrefix(record, equipamentos)}</strong>
                           <span
-                            className={`border px-2 py-0.5 text-[11px] font-bold ${score < 60 ? statusTone.Duplicado : statusTone['Conferência necessária']}`}
+                            className={`border px-2 py-0.5 text-[11px] font-bold ${alertCount ? statusTone['Conferência necessária'] : statusTone.OK}`}
                           >
-                            {score}%
+                            {alertCount} alerta(s)
                           </span>
                           <span className="text-xs text-slate-500">
                             {formatDate(record.data)} {record.hora}
@@ -2115,7 +2146,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     <th className="px-4 py-3">Leitura</th>
                     <th className="px-4 py-3">Bomba</th>
                     <th className="px-4 py-3">Litros</th>
-                    <th className="px-4 py-3">Qualidade</th>
+                    <th className="px-4 py-3">Alertas</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
@@ -2142,7 +2173,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         <span
                           className={`border px-2 py-1 text-xs font-bold ${item.record.alertas?.length ? statusTone['Conferência necessária'] : statusTone.OK}`}
                         >
-                          {item.score}%
+                          {item.alertCount || 0}
                         </span>
                       </td>
                     </tr>

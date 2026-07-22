@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { HistoryLog } from '../types';
 import { 
   Settings, 
@@ -67,6 +67,11 @@ export default function ConfiguracoesTab({
   
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyTela, setHistoryTela] = useState('');
+  const [historyAcao, setHistoryAcao] = useState('');
+  const [historyStart, setHistoryStart] = useState('');
+  const [historyEnd, setHistoryEnd] = useState('');
 
   // Firebase Cloud Sync states
   const [isSyncing, setIsSyncing] = useState(false);
@@ -74,6 +79,32 @@ export default function ConfiguracoesTab({
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [syncMsg, setSyncMsg] = useState('');
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+
+  const historyDateToIso = (timestamp: string) => {
+    const match = String(timestamp || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return match ? `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}` : '';
+  };
+
+  const historyTelaOptions = useMemo(
+    () => Array.from(new Set(historyLogs.map(log => log.tela).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [historyLogs],
+  );
+
+  const filteredHistoryLogs = useMemo(() => {
+    const term = historySearch.trim().toLowerCase();
+    return historyLogs.filter(log => {
+      const iso = historyDateToIso(log.timestamp);
+      if (historyTela && log.tela !== historyTela) return false;
+      if (historyAcao && log.acao !== historyAcao) return false;
+      if (historyStart && iso && iso < historyStart) return false;
+      if (historyEnd && iso && iso > historyEnd) return false;
+      if (!term) return true;
+      return [log.acao, log.tela, log.usuario, log.descricao, log.timestamp]
+        .join(' ')
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [historyLogs, historySearch, historyTela, historyAcao, historyStart, historyEnd]);
 
   // Trigger export download
   const handleExport = () => {
@@ -547,11 +578,64 @@ export default function ConfiguracoesTab({
               Trilha de auditoria local de todas as alterações feitas na sessão.
             </p>
 
+            <div className="grid grid-cols-1 gap-2">
+              <input
+                value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)}
+                placeholder="Buscar no histórico"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={historyTela}
+                  onChange={e => setHistoryTela(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">Todas as abas</option>
+                  {historyTelaOptions.map(tela => <option key={tela} value={tela}>{tela}</option>)}
+                </select>
+                <select
+                  value={historyAcao}
+                  onChange={e => setHistoryAcao(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">Todas as ações</option>
+                  <option value="Criou">Criou</option>
+                  <option value="Editou">Editou</option>
+                  <option value="Excluiu">Excluiu</option>
+                </select>
+                <input
+                  type="date"
+                  value={historyStart}
+                  onChange={e => setHistoryStart(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+                />
+                <input
+                  type="date"
+                  value={historyEnd}
+                  onChange={e => setHistoryEnd(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-slate-500">
+                <span>{filteredHistoryLogs.length} de {historyLogs.length} evento(s)</span>
+                {(historySearch || historyTela || historyAcao || historyStart || historyEnd) && (
+                  <button
+                    type="button"
+                    onClick={() => { setHistorySearch(''); setHistoryTela(''); setHistoryAcao(''); setHistoryStart(''); setHistoryEnd(''); }}
+                    className="font-bold text-emerald-400 hover:underline"
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-3.5 max-h-72 overflow-y-auto pr-1">
-              {historyLogs.length === 0 ? (
+              {filteredHistoryLogs.length === 0 ? (
                 <span className="text-xxs text-slate-500 italic block py-4 text-center">Nenhum evento registrado ainda.</span>
               ) : (
-                historyLogs.map(log => {
+                filteredHistoryLogs.map(log => {
                   const acColor = log.acao === 'Criou' 
                     ? 'text-emerald-400' 
                     : log.acao === 'Editou' 
