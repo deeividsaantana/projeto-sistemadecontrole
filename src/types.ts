@@ -396,6 +396,29 @@ export interface AppNotification {
   source: 'Netlify App' | 'Sistema Local' | 'Firebase Cloud';
 }
 
+export interface PeriodoArquivado {
+  id: string;
+  nome: string;
+  dataInicio: string;
+  dataFim: string;
+  criadoEm: string;
+  criadoPor: string;
+  resumo: Record<string, number>;
+  dados: {
+    abastecimentos: Abastecimento[];
+    lubrificacoes: Lubrificacao[];
+    ticketsJazida: TicketJazida[];
+    rdos: RdoDiario[];
+    listasPresenca: ListaPresenca[];
+    ordensServico: OrdemServico[];
+    presencasLink: PresencaApontamento[];
+    historicoPresencas: HistoricoPresenca[];
+    apontamentoRamoRegistros: ApontamentoRamoRegistro[];
+    materiaisRegistros: MaterialRegistro[];
+    partesDiariasEquipamentos: ParteDiariaEquipamento[];
+  };
+}
+
 export type RespostaChecklistEquipamento = 'Sim' | 'Não' | 'N/A';
 export type StatusParteDiariaEquipamento = 'Conferido' | 'Pendente' | 'Com deficiência' | 'Inconsistente';
 export type TipoMarcacaoParteDiaria = 'Relógio' | 'Horímetro';

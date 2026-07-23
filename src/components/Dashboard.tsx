@@ -5,7 +5,6 @@
 
 import React, { useMemo, useState } from 'react';
 import { useEquipamentosExternos } from '../hooks/useEquipamentosExternos';
-import { auditFuelDataset } from '../utils/combustivelValidation';
 
 import { 
   Empresa, 
@@ -50,7 +49,6 @@ import {
   TrendingUp, 
   ArrowUpRight,
   ShieldAlert,
-  ShieldCheck,
   MapPin
 } from 'lucide-react';
 
@@ -92,9 +90,7 @@ export default function Dashboard({
 
   // 1. Calculations & Metrics
   const totalLiters = abastecimentos.reduce((acc, curr) => acc + curr.quantidadeLitros, 0);
-  const auditedFuelRecords = auditFuelDataset(abastecimentos, equipamentos);
-  const fuelReviewCount = auditedFuelRecords.filter(item => item.alertas?.some(alert => alert.severidade !== 'info')).length;
-  const fuelCriticalCount = auditedFuelRecords.filter(item => item.alertas?.some(alert => alert.severidade === 'critico')).length;
+  const fuelLaunchCount = abastecimentos.length;
   
   const equipamentosExternos = useEquipamentosExternos();
   const activeEquipments = equipamentos.filter(e => e.status === 'Ativo' || e.status === 'Mobilizado').length;
@@ -431,22 +427,6 @@ export default function Dashboard({
   // 6. Dynamic Alerts & Pendencies
   const pendingAlerts: { id: string; type: 'warning' | 'info' | 'danger'; text: string; details: string }[] = [];
 
-  if (fuelCriticalCount > 0) {
-    pendingAlerts.push({
-      id: 'alert-fuel-quality-critical',
-      type: 'danger',
-      text: `${fuelCriticalCount} abastecimento(s) com conferência prioritária`,
-      details: 'Há divergência de bomba, duplicidade ou campo essencial para revisar antes de fechar o controle.'
-    });
-  } else if (fuelReviewCount > 0) {
-    pendingAlerts.push({
-      id: 'alert-fuel-quality-review',
-      type: 'warning',
-      text: `${fuelReviewCount} abastecimento(s) aguardam conferência`,
-      details: 'Abra a Central de Combustível para revisar cadastros pendentes, sequência e campos importados.'
-    });
-  }
-
   // Maintenance equipment alerts
   equipamentos.filter(e => e.status === 'Manutenção').forEach(eq => {
     pendingAlerts.push({
@@ -682,15 +662,15 @@ export default function Dashboard({
           className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 text-left shadow-sm transition-all hover:border-cyan-500/40"
         >
           <div className="p-3 bg-cyan-500/10 text-cyan-300 rounded-xl">
-            <ShieldCheck className="w-6 h-6" />
+            <Droplets className="w-6 h-6" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Conferência Diesel</span>
-            <span className={`text-xl font-black font-mono block mt-1 ${fuelReviewCount ? 'text-amber-300' : 'text-emerald-300'}`}>
-              {fuelReviewCount}
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Registros Combustível</span>
+            <span className="text-xl font-black font-mono block mt-1 text-emerald-300">
+              {fuelLaunchCount}
             </span>
             <span className="text-[10px] text-slate-400 font-semibold block mt-0.5 truncate">
-              {fuelReviewCount ? 'lançamento(s) para revisar' : 'Sem pendências'}
+              {fuelLaunchCount ? `${totalLiters.toLocaleString('pt-BR')} L lançados` : 'Sem lançamentos'}
             </span>
           </div>
         </button>

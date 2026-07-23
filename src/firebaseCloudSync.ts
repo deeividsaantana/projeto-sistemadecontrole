@@ -33,6 +33,7 @@ const INTERMEDIATE_TABLE_IDS = [
   'materiaisCadastro',
   'materiaisRegistros',
   'partesDiariasEquipamentos',
+  'periodosArquivados',
   'notifications',
   'historyLogs',
 ] as const;

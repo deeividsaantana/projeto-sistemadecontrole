@@ -134,20 +134,21 @@ const TicketDocumentPreview = ({ releaseTicket, receiptTicket }: { releaseTicket
   </div>
 );
 
-const generatePairedTicketPdf = async (releaseTicket: TicketJazida, receiptTicket: TicketJazida) => {
-  const doc = new jsPDF('p', 'mm', 'a4');
-  let logo = '';
+const loadTicketLogo = async () => {
   try {
     const response = await fetch(reneaLogoFull);
     const blob = await response.blob();
-    logo = await new Promise<string>((resolve, reject) => {
+    return await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(String(reader.result || ''));
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
   } catch { /* o título textual mantém o documento utilizável */ }
+  return '';
+};
 
+const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTicket: TicketJazida, logo: string) => {
   const drawCopy = (ticket: TicketJazida, top: number, copyLabel: string) => {
     const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
     const material = ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
@@ -213,7 +214,26 @@ const generatePairedTicketPdf = async (releaseTicket: TicketJazida, receiptTicke
   doc.setLineDashPattern([2, 2], 0); doc.line(8, 148.5, 202, 148.5); doc.setLineDashPattern([], 0);
   doc.setFontSize(5); doc.setTextColor(100, 116, 139); doc.text('LINHA DE CORTE', 105, 147.5, { align: 'center' });
   drawCopy(receiptTicket, 156, 'RECEBIMENTO');
+};
+
+const generatePairedTicketPdf = async (releaseTicket: TicketJazida, receiptTicket: TicketJazida) => {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const logo = await loadTicketLogo();
+  drawTicketPairOnPdf(doc, releaseTicket, receiptTicket, logo);
   doc.save(`ticket_liberacao_recebimento_${releaseTicket.ticketNumero}.pdf`);
+};
+
+const generateTicketBookPdf = async (
+  pairs: Array<{ releaseTicket: TicketJazida; receiptTicket: TicketJazida }>,
+  fileName: string
+) => {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const logo = await loadTicketLogo();
+  pairs.forEach((pair, index) => {
+    if (index > 0) doc.addPage();
+    drawTicketPairOnPdf(doc, pair.releaseTicket, pair.receiptTicket, logo);
+  });
+  doc.save(fileName);
 };
 
 export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber }: TicketsJazidaTabProps) {
@@ -230,6 +250,17 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
   const [ticketTab, setTicketTab] = useState<TipoTicketJazida>('Liberação');
   const [linkMessage, setLinkMessage] = useState('');
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isBatchPrinting, setIsBatchPrinting] = useState(false);
+  const [batchStartNumber, setBatchStartNumber] = useState('');
+  const [batchQuantity, setBatchQuantity] = useState(10);
+  const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
+  const [batchPrefixo, setBatchPrefixo] = useState('');
+  const [batchPlaca, setBatchPlaca] = useState('');
+  const [batchTipoMaterial, setBatchTipoMaterial] = useState<TipoMaterialJazida>('Solo');
+  const [batchQuantidadeM3, setBatchQuantidadeM3] = useState<number>(1);
+  const [batchDestinoObra, setBatchDestinoObra] = useState<DestinoObraJazida>('Marginal');
+  const [batchEmpresa, setBatchEmpresa] = useState<EmpresaTicketJazida>('RENEA');
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
@@ -535,6 +566,104 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       && pair.recebimento.statusFluxo !== 'Rascunho').length;
     return { pairs, drafts, pending, completed };
   }, [tickets]);
+
+  const nextTicketNumber = useMemo(() => {
+    const maxNumber = tickets.reduce((max, ticket) => {
+      const parsed = Number(String(ticket.ticketNumero || '').match(/\d+/)?.[0] || 0);
+      return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
+    }, 0);
+    return String(maxNumber + 1);
+  }, [tickets]);
+
+  const formatSequentialNumber = (start: string, offset: number) => {
+    const trimmed = start.trim();
+    const match = trimmed.match(/^(.*?)(\d+)(\D*)$/);
+    if (!match) return String(offset + 1);
+    const [, prefix, numeric, suffix] = match;
+    return `${prefix}${String(Number(numeric) + offset).padStart(numeric.length, '0')}${suffix}`;
+  };
+
+  const buildBatchTicket = (number: string, type: TipoTicketJazida, now: string): TicketJazida => ({
+    id: `ticket-lote-${type === 'Liberação' ? 'lib' : 'rec'}-${number}-${Date.now()}`,
+    data: batchDate,
+    tipoTicket: type,
+    ticketNumero: number,
+    prefixo: batchPrefixo.trim().toUpperCase(),
+    placa: batchPlaca.trim().toUpperCase(),
+    familiaEquipamento: '',
+    equipamentoNome: '',
+    horaSaida: type === 'Liberação' ? '08:00' : '',
+    horaChegada: type === 'Recebimento' ? '' : undefined,
+    tipoMaterial: batchTipoMaterial,
+    quantidadeM3: Number(batchQuantidadeM3) || 1,
+    destinoObra: batchDestinoObra,
+    destinoOutro: '',
+    responsavelLiberacao: '',
+    nomeLegivel: '',
+    empresa: batchEmpresa,
+    estaca: '',
+    observacao: 'Gerado em lote para impressão sequencial.',
+    status: 'OK',
+    statusFluxo: type === 'Liberação' ? 'Rascunho' : undefined,
+    unidadeQuantidade: 'm³',
+    origemRegistro: 'Admin',
+    criadoEm: now,
+    atualizadoEm: now,
+  });
+
+  const openBatchModal = () => {
+    setBatchStartNumber(nextTicketNumber);
+    setBatchDate(new Date().toISOString().split('T')[0]);
+    setBatchQuantity(10);
+    setBatchPrefixo('');
+    setBatchPlaca('');
+    setBatchTipoMaterial('Solo');
+    setBatchQuantidadeM3(1);
+    setBatchDestinoObra('Marginal');
+    setBatchEmpresa('RENEA');
+    setValidationError('');
+    setImportMessage('');
+    setIsBatchModalOpen(true);
+  };
+
+  const handleGenerateBatchTickets = async () => {
+    setValidationError('');
+    setImportMessage('');
+    const quantity = Math.max(1, Math.min(200, Math.floor(Number(batchQuantity) || 0)));
+    if (!batchStartNumber.trim()) { setValidationError('Informe o primeiro número da sequência.'); return; }
+    if (!batchDate) { setValidationError('Informe a data dos tickets.'); return; }
+
+    const numbers = Array.from({ length: quantity }, (_, index) => formatSequentialNumber(batchStartNumber, index));
+    const existing = new Set(tickets.map(ticket => `${ticket.tipoTicket || 'Liberação'}|${ticket.ticketNumero}`.toLowerCase()));
+    const duplicate = numbers.find(number => existing.has(`liberação|${number}`.toLowerCase()));
+    if (duplicate) {
+      setValidationError(`O Ticket Nº ${duplicate} já existe em liberação. Ajuste o início da sequência.`);
+      return;
+    }
+
+    setIsBatchPrinting(true);
+    try {
+      const now = new Date().toISOString();
+      const releaseTickets = numbers.map(number => buildBatchTicket(number, 'Liberação', now));
+      const pairs = releaseTickets.map(releaseTicket => ({
+        releaseTicket,
+        receiptTicket: {
+          ...buildBatchTicket(releaseTicket.ticketNumero, 'Recebimento', now),
+          id: `${releaseTicket.id}-receipt-preview`,
+          statusFluxo: undefined,
+        },
+      }));
+      onImportTickets(releaseTickets);
+      await generateTicketBookPdf(pairs, `tickets_sequenciais_${numbers[0]}_${numbers[numbers.length - 1]}.pdf`);
+      setImportMessage(`${releaseTickets.length} ticket(s) criados em ordem crescente e enviados para PDF.`);
+      setIsBatchModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao gerar tickets sequenciais:', err);
+      setValidationError('Não foi possível gerar o PDF da sequência de tickets.');
+    } finally {
+      setIsBatchPrinting(false);
+    }
+  };
 
   const copyPublicLink = async () => {
     const link = `${window.location.origin}/ticket-link/geral`;
@@ -1075,6 +1204,15 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             {isImporting ? 'Validando planilha...' : 'Importar tickets'}
           </button>
           <button
+            type="button"
+            onClick={openBatchModal}
+            title="Criar e imprimir tickets em ordem crescente"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white"
+          >
+            <Printer className="w-4 h-4 text-emerald-400" />
+            Imprimir sequência
+          </button>
+          <button
             onClick={copyPublicLink}
             title="Copiar o link único para liberação e recebimento"
             className="px-4 py-2.5 bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
@@ -1540,6 +1678,87 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           </table>
         </div>
       </div>
+
+      {isBatchModalOpen && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <Printer className="w-4 h-4 text-emerald-400" />
+                  Imprimir tickets em sequência
+                </h3>
+                <p className="text-[10px] text-slate-500 mt-1">Cria liberações em rascunho e gera um PDF em ordem crescente.</p>
+              </div>
+              <button type="button" disabled={isBatchPrinting} onClick={() => setIsBatchModalOpen(false)} className="h-8 w-8 grid place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white disabled:opacity-50">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Primeiro ticket</label>
+                <input value={batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade</label>
+                <input type="number" min="1" max="200" value={batchQuantity} onChange={e => setBatchQuantity(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data</label>
+                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
+                <input value={batchPrefixo} onChange={e => setBatchPrefixo(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
+                <input value={batchPlaca} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³)</label>
+                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Material</label>
+                <select value={batchTipoMaterial} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                  {TIPOS_MATERIAL.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / obra</label>
+                <select value={batchDestinoObra} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                  {DESTINOS_OBRA.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
+                <select value={batchEmpresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                  {EMPRESAS_TICKET.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-[10px] text-slate-400">
+              Sequência: {batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até {batchStartNumber ? formatSequentialNumber(batchStartNumber, Math.max(0, Math.min(200, Number(batchQuantity) || 1) - 1)) : '-'}.
+            </div>
+
+            {validationError && (
+              <div className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300">
+                {validationError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => setIsBatchModalOpen(false)} disabled={isBatchPrinting} className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-750 disabled:opacity-50">Cancelar</button>
+              <button type="button" onClick={handleGenerateBatchTickets} disabled={isBatchPrinting} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-60">
+                {isBatchPrinting ? 'Gerando PDF...' : 'Criar e imprimir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* View modal */}
       {viewingTicket && viewingPair && (
