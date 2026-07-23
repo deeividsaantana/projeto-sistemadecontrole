@@ -30,7 +30,6 @@ import {
 } from '../types';
 import { APONTAMENTO_LINK_TOKEN } from './apontamentoRamosConfig';
 import {
-  IMPORTED_SEED_ABASTECIMENTOS,
   IMPORTED_SEED_EQUIPAMENTOS,
   IMPORTED_SEED_TICKETS_JAZIDA
 } from './importedSpreadsheetSeed';
@@ -445,11 +444,7 @@ const BASE_INITIAL_ABASTECIMENTOS: Abastecimento[] = [
   { id: 'ab-73', data: '2026-06-23', hora: '12:55', equipamentoId: 'eq-ec063', horimetroInicial: 0, kmInicial: 0, bombaInicial: 93942, quantidadeLitros: 181, bombaFinal: 94123, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
 ];
 
-export const INITIAL_ABASTECIMENTOS: Abastecimento[] = mergeByKey(
-  BASE_INITIAL_ABASTECIMENTOS,
-  IMPORTED_SEED_ABASTECIMENTOS,
-  item => `${item.data}|${item.equipamentoId}|${item.hora}|${item.quantidadeLitros}|${item.bombaInicial}`
-);
+export const INITIAL_ABASTECIMENTOS: Abastecimento[] = [];
 
 export const INITIAL_TICKETS_JAZIDA: TicketJazida[] = IMPORTED_SEED_TICKETS_JAZIDA;
 

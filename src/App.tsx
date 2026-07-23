@@ -1540,18 +1540,28 @@ export default function App() {
   };
 
   // Importação de planilha — Prioridade 3: grava em lote (um único registro de histórico)
-  const handleImportAbastecimentos = (novosItens: Abastecimento[]) => {
-    if (!novosItens || novosItens.length === 0) return;
+  const handleImportAbastecimentos = (novosItens: Abastecimento[], combustiveisImportados: TipoCombustivel[] = []) => {
+    if ((!novosItens || novosItens.length === 0) && combustiveisImportados.length === 0) return;
+    const fuelMerge = combustiveisImportados.length
+      ? mergeImportedRecords(combustiveis, combustiveisImportados, item => normalizeImportText(item.nome))
+      : null;
     let updated = [...abastecimentos, ...novosItens];
     updated = auditarBaseCombustivel(updated);
     const origens = new Set(novosItens.map(item => item.origem || 'Planilha'));
     const origemDescricao = origens.size === 1 ? [...origens][0] : 'fontes combinadas';
+    const fuelMessage = fuelMerge && fuelMerge.created > 0
+      ? ` Também cadastrou ${fuelMerge.created} tipo(s) de combustível novo(s).`
+      : '';
     saveAndLog(
       'Abastecimentos',
       'Criou',
-      `Importou ${novosItens.length} registro(s) de combustível via ${origemDescricao}.`,
+      `Importou ${novosItens.length} registro(s) de combustível via ${origemDescricao}.${fuelMessage}`,
       historyLogs,
       () => {
+        if (fuelMerge) {
+          setCombustiveis(fuelMerge.next);
+          localStorage.setItem('renea_combustiveis', JSON.stringify(fuelMerge.next));
+        }
         setAbastecimentos(updated);
         localStorage.setItem('renea_abastecimentos', JSON.stringify(updated));
       }
@@ -2544,6 +2554,7 @@ export default function App() {
     localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
     localStorage.setItem('renea_history_logs', JSON.stringify(INITIAL_HISTORY_LOGS));
     localStorage.setItem('renea_colaboradores_planilha_v1', 'true');
+    localStorage.setItem('renea_planilhas_operacionais_v1', 'true');
     localStorage.setItem('renea_materiais_planilha_v1', 'true');
   };
 
@@ -2602,6 +2613,9 @@ export default function App() {
     localStorage.setItem('renea_materiais_registros', JSON.stringify([]));
     localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify([]));
     localStorage.setItem('renea_history_logs', JSON.stringify([]));
+    localStorage.setItem('renea_colaboradores_planilha_v1', 'true');
+    localStorage.setItem('renea_planilhas_operacionais_v1', 'true');
+    localStorage.setItem('renea_materiais_planilha_v1', 'true');
   };
 
   const handleExportFullData = (): string => {
