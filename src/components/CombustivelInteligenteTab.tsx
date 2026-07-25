@@ -25,7 +25,6 @@ import {
   Save,
   ScanLine,
   Search,
-  ShieldCheck,
   Trash2,
   Truck,
   Upload,
@@ -34,13 +33,11 @@ import {
 import ExcelJS from 'exceljs';
 import type { Abastecimento, AlertaCombustivel, Comboio, Empresa, Equipamento, TipoCombustivel } from '../types';
 import {
-  auditFuelDataset,
   findEquipmentByPrefix,
-  getFuelQualityScore,
-  getFuelStatusFromAlerts,
   normalizeQuickTime,
-  validateFueling,
 } from '../utils/combustivelValidation';
+import { analyzeFuelDocumentLocally, buildFuelOperationalAnalysis } from '../utils/fuelDocumentParsing';
+import type { OperationalAnalysis } from '../utils/operationalAnalysis';
 import {
   addCorporateSummarySheet,
   configureCorporateWorkbook,
@@ -48,6 +45,7 @@ import {
   styleCorporateWorksheet,
 } from '../utils/excelCorporate';
 import { auth } from '../firebase';
+import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 
 interface CombustivelInteligenteTabProps {
   empresas: Empresa[];
@@ -57,13 +55,14 @@ interface CombustivelInteligenteTabProps {
   abastecimentos: Abastecimento[];
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
-  onImportAbastecimentos: (items: Abastecimento[]) => void;
+  onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
   onOpenLubrificacao: () => void;
+  onOpenCadastros?: () => void;
   onOpenSpreadsheetImport: () => void;
   isParsingSpreadsheet: boolean;
 }
 
-type WorkspaceView = 'painel' | 'digitacao' | 'documento' | 'registros' | 'qualidade';
+type WorkspaceView = 'painel' | 'digitacao' | 'documento' | 'registros';
 
 interface QuickFuelRow {
   id: string;
@@ -108,6 +107,7 @@ interface AiAnalysisResponse {
   paginas: number;
   avisosDocumento: string[];
   registros: Array<Record<string, any>>;
+  analiseOperacional?: OperationalAnalysis;
 }
 
 const today = () => {
@@ -125,17 +125,21 @@ const normalize = (value: string) =>
     .replace(/[^a-zA-Z0-9]/g, '')
     .toLowerCase();
 
+const getFuelRecordPrefix = (record: Abastecimento, equipamentos: Equipamento[]) =>
+  equipamentos.find((item) => item.id === record.equipamentoId)?.prefixo
+  || record.prefixoInformado
+  || 'Sem prefixo';
+
 const statusTone: Record<string, string> = {
   OK: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
   Pendente: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   Duplicado: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
   'Verificar quantidade': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
   'Verificar bomba': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
-  'Verificar horímetro': 'border-rose-500/30 bg-rose-500/10 text-rose-300',
-  'Verificar KM': 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+  'Verificar horímetro': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+  'Verificar KM': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   'Verificar sequência': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   'Consumo fora do padrão': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
-  'Conferência necessária': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   'Erro de importação': 'border-rose-500/30 bg-rose-500/10 text-rose-300',
 };
 
@@ -193,6 +197,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   onDeleteAbastecimento,
   onImportAbastecimentos,
   onOpenLubrificacao,
+  onOpenCadastros,
   onOpenSpreadsheetImport,
   isParsingSpreadsheet,
 }) => {
@@ -209,7 +214,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     () => [...equipamentos].sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR', { numeric: true })),
     [equipamentos],
   );
-  const auditedRecords = useMemo(() => auditFuelDataset(abastecimentos, equipamentos), [abastecimentos, equipamentos]);
+  const auditedRecords = useMemo(() => abastecimentos, [abastecimentos]);
   const filteredRecords = useMemo(
     () =>
       auditedRecords
@@ -224,7 +229,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           return (
             !term ||
             [
-              equipment?.prefixo,
+              getFuelRecordPrefix(record, equipamentos),
               equipment?.nome,
               record.responsavel,
               record.observacao,
@@ -243,22 +248,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
   const dashboard = useMemo(() => {
     const totalLiters = filteredRecords.reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0);
-    const alerts = filteredRecords.reduce(
-      (sum, item) => sum + (item.alertas?.filter((alert) => alert.severidade !== 'info').length || 0),
-      0,
-    );
-    const critical = filteredRecords.filter((item) =>
-      item.alertas?.some((alert) => alert.severidade === 'critico'),
-    ).length;
-    const averageQuality = filteredRecords.length
-      ? filteredRecords.reduce((sum, item) => sum + getFuelQualityScore(item.alertas || []), 0) / filteredRecords.length
-      : 100;
     return {
       totalLiters,
-      alerts,
-      critical,
-      averageQuality,
-      uniqueEquipment: new Set(filteredRecords.map((item) => item.equipamentoId)).size,
+      alerts: 0,
+      critical: 0,
+      uniqueEquipment: new Set(filteredRecords.map((item) => item.equipamentoId || item.prefixoInformado || item.id)).size,
     };
   }, [filteredRecords]);
 
@@ -276,16 +270,17 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
   const equipmentRanking = useMemo(() => {
     const map = new Map<
-      string,
-      { equipmentId: string; liters: number; records: number; alerts: number; lastDate: string; rates: number[] }
-    >();
+        string,
+        { equipmentId: string; liters: number; records: number; alerts: number; lastDate: string; rates: number[] }
+      >();
     const chronological = [...filteredRecords].sort((a, b) =>
       `${a.data}T${a.hora}`.localeCompare(`${b.data}T${b.hora}`),
     );
     const previous = new Map<string, Abastecimento>();
     chronological.forEach((item) => {
-      const current = map.get(item.equipamentoId) || {
-        equipmentId: item.equipamentoId,
+      const equipmentKey = item.equipamentoId || item.prefixoInformado || item.id;
+      const current = map.get(equipmentKey) || {
+        equipmentId: equipmentKey,
         liters: 0,
         records: 0,
         alerts: 0,
@@ -294,13 +289,13 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       };
       current.liters += Number(item.quantidadeLitros || 0);
       current.records += 1;
-      current.alerts += item.alertas?.filter((alert) => alert.severidade !== 'info').length || 0;
+      current.alerts = 0;
       current.lastDate = current.lastDate > item.data ? current.lastDate : item.data;
-      const prior = previous.get(item.equipamentoId);
+      const prior = previous.get(equipmentKey);
       if (prior && item.horimetroInicial > prior.horimetroInicial && item.quantidadeLitros > 0)
         current.rates.push(item.quantidadeLitros / (item.horimetroInicial - prior.horimetroInicial));
-      previous.set(item.equipamentoId, item);
-      map.set(item.equipamentoId, current);
+      previous.set(equipmentKey, item);
+      map.set(equipmentKey, current);
     });
     return [...map.values()]
       .map((item) => ({
@@ -311,17 +306,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   }, [filteredRecords]);
 
   const issueRanking = useMemo(() => {
-    const map = new Map<string, { label: string; count: number; severity: AlertaCombustivel['severidade'] }>();
-    filteredRecords.forEach((record) =>
-      record.alertas?.forEach((alert) => {
-        const current = map.get(alert.codigo) || { label: alert.mensagem, count: 0, severity: alert.severidade };
-        current.count += 1;
-        if (alert.severidade === 'critico') current.severity = 'critico';
-        map.set(alert.codigo, current);
-      }),
-    );
-    return [...map.entries()].map(([code, value]) => ({ code, ...value })).sort((a, b) => b.count - a.count);
-  }, [filteredRecords]);
+    return [] as Array<{ code: string; label: string; count: number; severity: AlertaCombustivel['severidade'] }>;
+  }, []);
 
   const sourceDistribution = useMemo(() => {
     const map = new Map<string, number>();
@@ -331,6 +317,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     });
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
   }, [filteredRecords]);
+
+  const pendingCadastroPrefixes = useMemo(
+    () => Array.from(new Set<string>(
+      auditedRecords
+        .filter((record) => !record.equipamentoId && record.prefixoInformado)
+        .map((record) => String(record.prefixoInformado || '').trim().toUpperCase())
+        .filter(Boolean),
+    )).sort((a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true })),
+    [auditedRecords],
+  );
 
   const clearFilters = () => {
     setFilterStart('');
@@ -448,6 +444,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         data: entryDate,
         hora: normalizeQuickTime(row.hora).value || row.hora,
         equipamentoId: row.equipamentoId,
+        prefixoInformado: row.prefixo.trim().toUpperCase(),
         horimetroInicial: Number(row.horimetroInicial || 0),
         kmInicial: Number(row.kmInicial || 0),
         bombaInicial: Number(row.bombaInicial || 0),
@@ -461,17 +458,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         criadoEm: new Date().toISOString(),
         atualizadoEm: new Date().toISOString(),
       };
-      const alerts = validateFueling(record, [...abastecimentos, ...staged], equipamentos);
-      const finalized = { ...record, alertas: alerts, status: getFuelStatusFromAlerts(alerts) };
+      const finalized = { ...record, alertas: [], status: 'OK' as const };
       staged.push(finalized);
       return {
         row,
         record: finalized,
-        score: getFuelQualityScore(alerts),
-        blocking: alerts.some((alert) => alert.severidade === 'critico'),
+        alertCount: 0,
+        blocking: false,
       };
     });
-  }, [quickRows, editingId, entryDate, entryFuel, entryComboio, entryResponsible, abastecimentos, equipamentos]);
+  }, [quickRows, editingId, entryDate, entryFuel, entryComboio, entryResponsible]);
   const quickReady = quickEvaluated.filter(
     (item) => item.row.prefixo || item.row.quantidadeLitros || item.row.hora,
   );
@@ -480,10 +476,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setGlobalError('');
     if (!quickReady.length) {
       setGlobalError('Adicione ao menos um prefixo e os dados do abastecimento.');
-      return;
-    }
-    if (quickReady.some((item) => item.blocking)) {
-      setGlobalError('Existem campos bloqueantes. Corrija as linhas marcadas antes de revisar.');
       return;
     }
     setReviewOpen(true);
@@ -522,7 +514,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setQuickRows([
       {
         id: record.id,
-        prefixo: equipment?.prefixo || '',
+        prefixo: equipment?.prefixo || record.prefixoInformado || '',
         equipamentoId: record.equipamentoId,
         hora: record.hora,
         horimetroInicial: record.horimetroInicial,
@@ -541,6 +533,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentUrl, setDocumentUrl] = useState('');
   const [documentHash, setDocumentHash] = useState('');
+  const [manualDocumentText, setManualDocumentText] = useState('');
   const [documentAnalysis, setDocumentAnalysis] = useState<AiAnalysisResponse | null>(null);
   const [aiRows, setAiRows] = useState<AiExtractionRow[]>([]);
   const [selectedAiRow, setSelectedAiRow] = useState('');
@@ -568,10 +561,82 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     if (documentUrl) URL.revokeObjectURL(documentUrl);
     setDocumentFile(file);
     setDocumentUrl(URL.createObjectURL(file));
+    setManualDocumentText('');
     setDocumentAnalysis(null);
     setAiRows([]);
     setSelectedAiRow('');
     setAiError('');
+  };
+
+  const mapAnalysisRows = (analysis: AiAnalysisResponse): AiExtractionRow[] =>
+    (analysis.registros || []).map((raw, index): AiExtractionRow => {
+      const equipment = findEquipmentByPrefix(String(raw.prefixo || ''), equipamentos);
+      const fuel = findCatalogItem<TipoCombustivel>(String(raw.tipoCombustivel || ''), combustiveis, (item) => item.nome);
+      const comboio = findCatalogItem<Comboio>(String(raw.comboio || ''), comboios, (item) => item.nome);
+      const normalizedTime = normalizeQuickTime(String(raw.hora || ''));
+      const pumpStart = Number(raw.bombaInicial || 0);
+      const pumpEnd = Number(raw.bombaFinal || 0);
+      const liters = Number(raw.quantidadeLitros ?? (pumpEnd > pumpStart ? pumpEnd - pumpStart : 0));
+      return {
+        id: uid(`ai-${index}`),
+        selected: true,
+        revisado: false,
+        pagina: Number(raw.pagina || 1),
+        linha: Number(raw.linha || index + 1),
+        prefixo: equipment?.prefixo || String(raw.prefixo || '').toUpperCase(),
+        equipamentoId: equipment?.id || '',
+        data: String(raw.data || analysis.dataDocumento || ''),
+        hora: normalizedTime.valid ? normalizedTime.value : String(raw.hora || ''),
+        horimetroInicial: Number(raw.horimetroInicial || 0),
+        kmInicial: Number(raw.kmInicial || 0),
+        bombaInicial: pumpStart,
+        bombaFinal: pumpEnd || pumpStart + liters,
+        quantidadeLitros: liters,
+        tipoCombustivelId: fuel?.id || '',
+        comboioId: comboio?.id || '',
+        responsavel: String(raw.responsavel || ''),
+        observacao: [raw.observacao, `Transcrição: ${raw.transcricaoOriginal || ''}`].filter(Boolean).join(' | '),
+        confiancaGeral: Math.max(0, Math.min(1, Number(raw.confiancaGeral || 0))),
+        camposIncertos: Array.isArray(raw.camposIncertos) ? raw.camposIncertos.map(String) : [],
+        transcricaoOriginal: String(raw.transcricaoOriginal || ''),
+      };
+    });
+
+  const analyzeDocumentWithServer = async () => {
+    if (!documentFile) throw new Error('Selecione um PDF ou uma foto.');
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Sessão Firebase não ativa para a análise inteligente.');
+
+    const prepared = await compressImageForAnalysis(documentFile);
+    const dataBase64 = prepared.dataUrl.split(',')[1] || '';
+    if (dataBase64.length > 7_000_000) {
+      throw new Error('O documento ficou grande demais. Divida o PDF ou envie uma foto por página.');
+    }
+    const idToken = await currentUser.getIdToken();
+    const response = await fetch('/.netlify/functions/analisar-combustivel-documento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({
+        fileName: documentFile.name,
+        mimeType: prepared.mimeType,
+        dataBase64,
+        equipamentos: equipamentos.map((item) => item.prefixo),
+        combustiveis: combustiveis.map((item) => item.nome),
+        comboios: comboios.map((item) => item.nome),
+      }),
+    });
+    let payload: any = null;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error(
+        response.status === 404
+          ? 'Function Netlify não encontrada neste ambiente.'
+          : `Resposta inválida da análise inteligente (HTTP ${response.status}).`,
+      );
+    }
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'A análise do documento falhou.');
+    return payload.analysis as AiAnalysisResponse;
   };
 
   const runDocumentAnalysis = async () => {
@@ -582,71 +647,59 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setAnalyzing(true);
     setAiError('');
     try {
-      const prepared = await compressImageForAnalysis(documentFile);
-      const dataBase64 = prepared.dataUrl.split(',')[1] || '';
-      if (dataBase64.length > 7_000_000)
-        throw new Error('O documento ficou grande demais. Divida o PDF ou envie uma foto por página.');
       const hash = await hashFile(documentFile);
       if (abastecimentos.some((item) => item.documentoOrigemHash === hash)) {
         throw new Error(
           'Este mesmo documento já foi gravado no banco. Abra os registros e confira antes de importá-lo novamente.',
         );
       }
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error('Sua sessão expirou. Entre novamente para analisar o documento.');
-      const idToken = await currentUser.getIdToken();
-      const response = await fetch('/.netlify/functions/analisar-combustivel-documento', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({
-          fileName: documentFile.name,
-          mimeType: prepared.mimeType,
-          dataBase64,
-          equipamentos: equipamentos.map((item) => item.prefixo),
-          combustiveis: combustiveis.map((item) => item.nome),
-          comboios: comboios.map((item) => item.nome),
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.success) throw new Error(payload.message || 'A análise do documento falhou.');
-      const analysis = payload.analysis as AiAnalysisResponse;
-      const mappedRows = (analysis.registros || []).map((raw, index): AiExtractionRow => {
-        const equipment = findEquipmentByPrefix(String(raw.prefixo || ''), equipamentos);
-        const fuel = findCatalogItem(String(raw.tipoCombustivel || ''), combustiveis, (item) => item.nome);
-        const comboio = findCatalogItem(String(raw.comboio || ''), comboios, (item) => item.nome);
-        const normalizedTime = normalizeQuickTime(String(raw.hora || ''));
-        const pumpStart = Number(raw.bombaInicial || 0);
-        const pumpEnd = Number(raw.bombaFinal || 0);
-        const liters = Number(raw.quantidadeLitros ?? (pumpEnd > pumpStart ? pumpEnd - pumpStart : 0));
-        return {
-          id: uid(`ai-${index}`),
-          selected: true,
-          revisado: false,
-          pagina: Number(raw.pagina || 1),
-          linha: Number(raw.linha || index + 1),
-          prefixo: equipment?.prefixo || String(raw.prefixo || '').toUpperCase(),
-          equipamentoId: equipment?.id || '',
-          data: String(raw.data || analysis.dataDocumento || ''),
-          hora: normalizedTime.valid ? normalizedTime.value : String(raw.hora || ''),
-          horimetroInicial: Number(raw.horimetroInicial || 0),
-          kmInicial: Number(raw.kmInicial || 0),
-          bombaInicial: pumpStart,
-          bombaFinal: pumpEnd || pumpStart + liters,
-          quantidadeLitros: liters,
-          tipoCombustivelId: fuel?.id || '',
-          comboioId: comboio?.id || '',
-          responsavel: String(raw.responsavel || ''),
-          observacao: [raw.observacao, `Transcrição: ${raw.transcricaoOriginal || ''}`].filter(Boolean).join(' | '),
-          confiancaGeral: Math.max(0, Math.min(1, Number(raw.confiancaGeral || 0))),
-          camposIncertos: Array.isArray(raw.camposIncertos) ? raw.camposIncertos.map(String) : [],
-          transcricaoOriginal: String(raw.transcricaoOriginal || ''),
+
+      let analysis: AiAnalysisResponse | null = null;
+      let serverError = '';
+      try {
+        analysis = await analyzeDocumentWithServer();
+      } catch (error) {
+        serverError = error instanceof Error ? error.message : 'IA indisponível.';
+      }
+
+      if (!analysis) {
+        const localAnalysis = await analyzeFuelDocumentLocally(
+          documentFile,
+          {
+            equipamentos: equipamentos.map((item) => item.prefixo),
+            combustiveis: combustiveis.map((item) => item.nome),
+            comboios: comboios.map((item) => item.nome),
+          },
+          { manualText: manualDocumentText, defaultDate: entryDate || today() },
+        );
+        const aiSetupWarning = /AI_NOT_CONFIGURED|sem chave|não foi configurada|nao foi configurada/i.test(serverError)
+          ? 'IA online ainda não configurada no Netlify. A leitura local foi usada quando possível; para fotos e PDFs escaneados, cadastre GEMINI_API_KEY no Netlify.'
+          : `IA online indisponível: ${serverError}`;
+        analysis = {
+          ...localAnalysis,
+          avisosDocumento: [
+            aiSetupWarning,
+            ...localAnalysis.avisosDocumento,
+          ],
         };
-      });
+      }
+
+      analysis = {
+        ...analysis,
+        analiseOperacional: analysis.analiseOperacional
+          || buildFuelOperationalAnalysis(analysis.registros || [], analysis.avisosDocumento || []),
+      };
+
+      const mappedRows = mapAnalysisRows(analysis);
       setDocumentHash(hash);
       setDocumentAnalysis(analysis);
       setAiRows(mappedRows);
       setSelectedAiRow(mappedRows[0]?.id || '');
-      if (!mappedRows.length) setAiError('Nenhum abastecimento foi identificado no documento.');
+      if (!mappedRows.length) {
+        setAiError(
+          'Nenhum abastecimento foi identificado. Para foto ou PDF escaneado, configure a análise inteligente no Netlify ou cole a transcrição/OCR no campo de texto e analise novamente.',
+        );
+      }
     } catch (error) {
       setAiError(error instanceof Error ? error.message : 'Não foi possível analisar o documento.');
     } finally {
@@ -704,23 +757,14 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           criadoEm: new Date().toISOString(),
           atualizadoEm: new Date().toISOString(),
         };
-        const alerts = validateFueling(record, abastecimentos, equipamentos);
-        if (!row.revisado) {
-          alerts.push({
-            codigo: 'REVISAO_HUMANA_OBRIGATORIA',
-            campo: 'documento',
-            severidade: 'critico',
-            mensagem: 'Compare esta linha com o documento original e marque a conferência humana.',
-          });
-        }
         return {
           row,
-          record: { ...record, alertas: alerts, status: getFuelStatusFromAlerts(alerts) },
-          score: getFuelQualityScore(alerts),
-          blocking: alerts.some((alert) => alert.severidade === 'critico'),
+          record: { ...record, alertas: [], status: 'OK' as const },
+          score: 100,
+          blocking: false,
         };
       }),
-    [aiRows, documentFile, documentHash, abastecimentos, equipamentos],
+    [aiRows, documentFile, documentHash],
   );
 
   const saveAiRows = () => {
@@ -730,18 +774,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       setAiError('Selecione ao menos uma linha.');
       return;
     }
-    if (selected.some((item) => !item.row.revisado)) {
-      setAiError('Abra cada linha selecionada e confirme a conferência com o documento original.');
-      return;
-    }
-    if (selected.some((item) => item.blocking)) {
-      setAiError('As linhas selecionadas ainda possuem campos bloqueantes. Corrija antes de enviar ao banco.');
-      return;
-    }
     onImportAbastecimentos(selected.map((item) => item.record));
     setAiRows([]);
     setDocumentAnalysis(null);
     setDocumentFile(null);
+    setManualDocumentText('');
     if (documentUrl) URL.revokeObjectURL(documentUrl);
     setDocumentUrl('');
     setView('registros');
@@ -749,7 +786,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
   const exportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
-    configureCorporateWorkbook(workbook, 'Auditoria de Combustível e Diesel');
+    configureCorporateWorkbook(workbook, 'Controle de Combustível');
     const sheet = workbook.addWorksheet('ABASTECIMENTOS');
     const headers = [
       'Data',
@@ -767,8 +804,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       'Responsável',
       'Origem',
       'Status',
-      'Qualidade',
-      'Alertas',
       'Documento',
       'Observação',
     ];
@@ -781,7 +816,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       sheet.addRow([
         record.data,
         record.hora,
-        equipment?.prefixo || '',
+        getFuelRecordPrefix(record, equipamentos),
         equipment?.nome || '',
         company?.nome || '',
         combustiveis.find((item) => item.id === record.tipoCombustivelId)?.nome || '',
@@ -794,14 +829,12 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         record.responsavel,
         record.origem || 'Manual',
         record.status || 'OK',
-        getFuelQualityScore(record.alertas || []),
-        record.alertas?.map((item) => item.mensagem).join(' | ') || '',
         record.documentoOrigemNome || '',
         record.observacao,
       ]);
     });
     styleCorporateWorksheet(sheet, {
-      title: 'Auditoria de Combustível e Diesel',
+      title: 'Controle de Combustível',
       headerRow: 3,
       lastColumn: headers.length,
       dataStartRow: 4,
@@ -815,20 +848,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         ['Registros', filteredRecords.length],
         ['Litros', dashboard.totalLiters],
         ['Frotas', dashboard.uniqueEquipment],
-        ['Alertas', dashboard.alerts],
-        ['Qualidade média', `${formatNumber(dashboard.averageQuality, 0)}%`],
       ],
       [],
     );
-    await downloadCorporateWorkbook(workbook, `combustivel_auditado_${today()}.xlsx`);
+    await downloadCorporateWorkbook(workbook, `combustivel_${today()}.xlsx`);
   };
 
   const navItems: Array<{ id: WorkspaceView; label: string; icon: React.ElementType }> = [
     { id: 'painel', label: 'Painel', icon: LayoutDashboard },
     { id: 'digitacao', label: 'Digitação rápida', icon: Keyboard },
-    { id: 'documento', label: 'Ler PDF ou foto', icon: ScanLine },
     { id: 'registros', label: 'Registros', icon: ListChecks },
-    { id: 'qualidade', label: 'Qualidade', icon: ShieldCheck },
   ];
 
   const selectedAiEvaluation = aiEvaluated.find((item) => item.row.id === selectedAiRow);
@@ -840,10 +869,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-emerald-400">
             <Fuel size={16} /> Controle inteligente
           </div>
-          <h1 className="text-2xl font-bold text-white md:text-3xl">Combustível e Diesel</h1>
+          <h1 className="text-2xl font-bold text-white md:text-3xl">Combustível</h1>
           <p className="mt-1 text-sm text-slate-400">
-            {abastecimentos.length.toLocaleString('pt-BR')} registro(s) | {dashboard.alerts.toLocaleString('pt-BR')}{' '}
-            alerta(s) no filtro atual
+            {abastecimentos.length.toLocaleString('pt-BR')} registro(s) | lançamento livre manual, planilha ou documento
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -854,11 +882,19 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           >
             <FileSpreadsheet size={17} /> {isParsingSpreadsheet ? 'Lendo...' : 'Importar Excel'}
           </button>
+          {onOpenCadastros && (
+            <button
+              onClick={onOpenCadastros}
+              className="inline-flex h-10 items-center gap-2 border border-slate-700 bg-slate-900 px-3 text-sm font-semibold"
+            >
+              <Database size={17} /> Cadastros
+            </button>
+          )}
           <button
             onClick={exportExcel}
             className="inline-flex h-10 items-center gap-2 border border-slate-700 bg-slate-900 px-3 text-sm font-semibold"
           >
-            <Download size={17} /> Exportar auditoria
+            <Download size={17} /> Exportar Excel
           </button>
           <button
             onClick={onOpenLubrificacao}
@@ -894,7 +930,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         })}
       </div>
 
-      {view !== 'digitacao' && view !== 'documento' && (
+      {view !== 'digitacao' && (
         <section className="grid gap-3 border-b border-slate-800 pb-5 md:grid-cols-2 xl:grid-cols-[1.5fr_repeat(5,1fr)_auto]">
           <label className="relative">
             <span className="sr-only">Buscar</span>
@@ -987,6 +1023,26 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         </div>
       )}
 
+      {pendingCadastroPrefixes.length > 0 && (
+        <section className="flex flex-col gap-3 border border-amber-500/30 bg-amber-500/10 p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-amber-100">Prefixos aguardando cadastro auxiliar</h2>
+            <p className="mt-1 text-xs text-amber-200/80">
+              {pendingCadastroPrefixes.slice(0, 8).join(', ')}
+              {pendingCadastroPrefixes.length > 8 ? ` +${pendingCadastroPrefixes.length - 8}` : ''}
+            </p>
+          </div>
+          {onOpenCadastros && (
+            <button
+              onClick={onOpenCadastros}
+              className="inline-flex h-10 shrink-0 items-center gap-2 border border-amber-400/40 bg-slate-950 px-4 text-sm font-bold text-amber-100"
+            >
+              <Database size={17} /> Completar cadastros
+            </button>
+          )}
+        </section>
+      )}
+
       {view === 'painel' && (
         <div className="space-y-5">
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -1006,25 +1062,25 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 tone: 'text-sky-300',
               },
               {
-                label: 'Qualidade média',
-                value: `${formatNumber(dashboard.averageQuality, 0)}%`,
-                detail: 'Validação contínua',
-                icon: ShieldCheck,
+                label: 'Média por registro',
+                value: filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0',
+                detail: 'Litros por lançamento',
+                icon: Gauge,
                 tone: 'text-cyan-300',
               },
               {
-                label: 'Alertas',
-                value: dashboard.alerts,
-                detail: 'Campos para conferir',
-                icon: AlertTriangle,
+                label: 'Importados',
+                value: filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length,
+                detail: 'Planilha, PDF ou foto',
+                icon: FileSpreadsheet,
                 tone: 'text-amber-300',
               },
               {
-                label: 'Registros críticos',
-                value: dashboard.critical,
-                detail: 'Bloqueios ou regressões',
-                icon: Gauge,
-                tone: 'text-rose-300',
+                label: 'Livre para lançar',
+                value: filteredRecords.length,
+                detail: 'Registro operacional',
+                icon: CheckCircle2,
+                tone: 'text-emerald-300',
               },
             ].map((item) => {
               const Icon = item.icon;
@@ -1106,7 +1162,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
             <div className="overflow-hidden border border-slate-800 bg-slate-950">
               <div className="border-b border-slate-800 p-4">
                 <h2 className="font-bold text-white">Consumo por equipamento</h2>
-                <span className="text-xs text-slate-500">Volume, alertas e média calculável</span>
+                <span className="text-xs text-slate-500">Volume, média e último lançamento</span>
               </div>
               <div className="max-h-96 overflow-auto">
                 <table className="w-full min-w-[620px] text-left text-sm">
@@ -1115,7 +1171,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       <th className="px-4 py-3">Frota</th>
                       <th className="px-4 py-3">Litros</th>
                       <th className="px-4 py-3">L/h</th>
-                      <th className="px-4 py-3">Alertas</th>
+                      <th className="px-4 py-3">Registros</th>
                       <th className="px-4 py-3">Último</th>
                     </tr>
                   </thead>
@@ -1125,15 +1181,15 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       return (
                         <tr key={item.equipmentId}>
                           <td className="px-4 py-3">
-                            <strong className="text-white">{equipment?.prefixo || 'Frota'}</strong>
+                            <strong className="text-white">{equipment?.prefixo || item.equipmentId || 'Frota'}</strong>
                             <span className="block max-w-48 truncate text-xs text-slate-500">
-                              {equipment?.tipo || equipment?.nome}
+                              {equipment?.tipo || equipment?.nome || 'Pendente de cadastro'}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-emerald-300">{formatNumber(item.liters, 0)} L</td>
                           <td className="px-4 py-3">{item.averageRate ? formatNumber(item.averageRate) : '-'}</td>
-                          <td className={`px-4 py-3 ${item.alerts ? 'text-amber-300' : 'text-slate-500'}`}>
-                            {item.alerts}
+                          <td className="px-4 py-3 text-slate-300">
+                            {item.records}
                           </td>
                           <td className="px-4 py-3 text-slate-400">{formatDate(item.lastDate)}</td>
                         </tr>
@@ -1145,37 +1201,21 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
             </div>
             <div className="border border-slate-800 bg-slate-950">
               <div className="border-b border-slate-800 p-4">
-                <h2 className="font-bold text-white">Deficiências dos dados</h2>
-                <span className="text-xs text-slate-500">Ocorrências encontradas em todo o período</span>
+                <h2 className="font-bold text-white">Resumo operacional</h2>
+                <span className="text-xs text-slate-500">Base ativa no filtro atual</span>
               </div>
-              <div className="space-y-4 p-5">
-                {issueRanking.slice(0, 9).map((item, index) => (
-                  <div key={item.code}>
-                    <div className="mb-1 flex items-start justify-between gap-4 text-sm">
-                      <span>
-                        <strong className={item.severity === 'critico' ? 'text-rose-300' : 'text-amber-300'}>
-                          {item.code}
-                        </strong>
-                        <span className="ml-2 text-slate-300">{item.label}</span>
-                      </span>
-                      <strong>{item.count}</strong>
-                    </div>
-                    <div className="h-1.5 bg-slate-800">
-                      <div
-                        className={`h-full ${item.severity === 'critico' ? 'bg-rose-500' : 'bg-amber-400'}`}
-                        style={{ width: `${Math.max(8, (item.count / (issueRanking[0]?.count || 1)) * 100)}%` }}
-                      />
-                    </div>
+              <div className="grid gap-3 p-5 sm:grid-cols-2">
+                {[
+                  ['Manual', filteredRecords.filter(item => (item.origem || 'Manual') === 'Manual').length],
+                  ['Importados', filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length],
+                  ['Com documento', filteredRecords.filter(item => item.documentoOrigemNome).length],
+                  ['Com observação', filteredRecords.filter(item => item.observacao).length],
+                ].map(([label, value]) => (
+                  <div key={label} className="border border-slate-800 bg-slate-900 p-3">
+                    <span className="text-[10px] font-bold uppercase text-slate-500">{label}</span>
+                    <strong className="mt-1 block text-lg text-white">{value}</strong>
                   </div>
                 ))}
-                {!issueRanking.length && (
-                  <div className="grid min-h-64 place-items-center text-center text-sm text-slate-500">
-                    <div>
-                      <CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={30} />
-                      Nenhuma deficiência encontrada.
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </section>
@@ -1240,7 +1280,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   {editingId ? 'Editar abastecimento' : 'Lançamento por prefixo'}
                 </h2>
                 <span className="text-xs text-slate-500">
-                  {quickRows.length} linha(s) | {quickEvaluated.filter((item) => item.blocking).length} bloqueio(s)
+                  {quickRows.length} linha(s) | {quickEvaluated.reduce((sum, item) => sum + item.alertCount, 0)} alerta(s)
                 </span>
               </div>
               <div className="flex gap-2">
@@ -1283,7 +1323,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   <span>Bomba final</span>
                   <span>Litros</span>
                   <span>Observação</span>
-                  <span>Qualidade</span>
+                  <span>Status</span>
                   <span />
                 </div>
                 {quickRows.map((row, index) => {
@@ -1291,7 +1331,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   return (
                     <div
                       key={row.id}
-                      className={`grid grid-cols-[52px_140px_110px_125px_125px_135px_135px_120px_1fr_90px_42px] gap-2 border-b px-3 py-2 ${evaluation?.blocking ? 'border-rose-500/30 bg-rose-500/5' : 'border-slate-800'}`}
+                        className="grid grid-cols-[52px_140px_110px_125px_125px_135px_135px_120px_1fr_90px_42px] gap-2 border-b border-slate-800 px-3 py-2"
                     >
                       <span className="grid place-items-center text-sm text-slate-500">{index + 1}</span>
                       <div>
@@ -1301,7 +1341,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           value={row.prefixo}
                           onChange={(event) => updateQuickRow(row.id, 'prefixo', event.target.value)}
                           onBlur={(event) => updateQuickRow(row.id, 'prefixo', event.target.value)}
-                          className={`h-10 w-full border bg-slate-900 px-2 font-mono text-sm font-bold outline-none ${row.equipamentoId ? 'border-emerald-500/40 text-emerald-300' : 'border-rose-500/40 text-rose-200'}`}
+                          className={`h-10 w-full border bg-slate-900 px-2 font-mono text-sm font-bold outline-none ${row.equipamentoId ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-200'}`}
                         />
                       </div>
                       <input
@@ -1352,12 +1392,10 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         className="h-10 border border-slate-700 bg-slate-900 px-2 text-sm outline-none focus:border-emerald-500"
                       />
                       <button
-                        onClick={() =>
-                          setGlobalError(evaluation?.record.alertas?.map((item) => item.mensagem).join(' | ') || '')
-                        }
-                        className={`h-10 border text-xs font-bold ${evaluation?.blocking ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' : evaluation?.record.alertas?.length ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}
+                        onClick={() => setGlobalError('Registro livre para lançamento.')}
+                        className="h-10 border border-emerald-500/30 bg-emerald-500/10 text-xs font-bold text-emerald-300"
                       >
-                        {evaluation?.score ?? 100}%
+                        OK
                       </button>
                       <button
                         title="Excluir linha"
@@ -1458,6 +1496,25 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   {aiError}
                 </div>
               )}
+              <section className="border border-slate-800 bg-slate-950 p-4">
+                <label className="text-xs font-bold uppercase text-slate-400">
+                  Texto extraído / OCR
+                  <textarea
+                    value={manualDocumentText}
+                    onChange={(event) => setManualDocumentText(event.target.value)}
+                    placeholder="Cole aqui o texto do PDF ou da foto quando o documento for escaneado."
+                    className="mt-2 min-h-28 w-full resize-y border border-slate-700 bg-slate-900 p-3 text-sm normal-case text-slate-200 outline-none focus:border-cyan-500"
+                  />
+                </label>
+              </section>
+              {documentAnalysis?.avisosDocumento?.length ? (
+                <div className="border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                  {documentAnalysis.avisosDocumento.map((warning) => (
+                    <div key={warning}>{warning}</div>
+                  ))}
+                </div>
+              ) : null}
+              <OperationalAnalysisPanel analysis={documentAnalysis?.analiseOperacional} />
               <section className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
                 <div className="min-h-[620px] overflow-hidden border border-slate-800 bg-slate-950">
                   <div className="border-b border-slate-800 p-3 text-xs font-bold uppercase text-slate-500">
@@ -1465,7 +1522,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   </div>
                   {documentFile.type === 'application/pdf' ? (
                     <iframe
-                      title="Documento para conferência"
+                      title="Documento de origem"
                       src={documentUrl}
                       className="h-[720px] w-full bg-white"
                     />
@@ -1473,7 +1530,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     <div className="grid min-h-[620px] place-items-center overflow-auto p-3">
                       <img
                         src={documentUrl}
-                        alt="Documento para conferência"
+                        alt="Documento de origem"
                         className="max-h-[900px] max-w-full object-contain"
                       />
                     </div>
@@ -1482,7 +1539,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 <div className="border border-slate-800 bg-slate-950">
                   <div className="flex items-center justify-between border-b border-slate-800 p-4">
                     <div>
-                      <h2 className="font-bold text-white">Conferência da extração</h2>
+                      <h2 className="font-bold text-white">Prévia da extração</h2>
                       <span className="text-xs text-slate-500">{aiRows.length} linha(s) encontrada(s)</span>
                     </div>
                     {documentAnalysis && (
@@ -1656,14 +1713,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         </label>
                       </div>
                       <div
-                        className={`border p-3 text-sm ${selectedAiEvaluation.blocking ? 'border-rose-500/30 bg-rose-500/10 text-rose-200' : selectedAiEvaluation.record.alertas?.length ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}
+                        className="border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200"
                       >
-                        <strong>Qualidade {selectedAiEvaluation.score}%</strong>
-                        {selectedAiEvaluation.record.alertas?.map((alert) => (
-                          <div key={alert.codigo} className="mt-1 text-xs">
-                            {alert.mensagem}
-                          </div>
-                        ))}
+                        <strong>Pronto para lançar</strong>
                       </div>
                       <div className="border border-slate-800 bg-slate-900 p-3">
                         <span className="text-[10px] font-bold uppercase text-slate-500">Transcrição original</span>
@@ -1674,7 +1726,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     </div>
                   ) : (
                     <div className="grid min-h-[500px] place-items-center text-sm text-slate-500">
-                      Analise o documento para iniciar a conferência.
+                      Selecione uma linha para revisar os campos extraídos.
                     </div>
                   )}
                 </div>
@@ -1742,9 +1794,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                             <td className="px-3 py-3">{Math.round(item.row.confiancaGeral * 100)}%</td>
                             <td className="px-3 py-3">
                               <span
-                                className={`border px-2 py-1 text-xs font-bold ${item.blocking ? statusTone.Duplicado : item.record.alertas?.length ? statusTone['Conferência necessária'] : statusTone.OK}`}
+                                className="border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-300"
                               >
-                                {item.score}%
+                                Livre
                               </span>
                             </td>
                             <td className="px-3 py-3">
@@ -1772,13 +1824,13 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         <section className="overflow-hidden border border-slate-800 bg-slate-950">
           <div className="flex items-center justify-between border-b border-slate-800 p-4">
             <div>
-              <h2 className="font-bold text-white">Abastecimentos auditados</h2>
+              <h2 className="font-bold text-white">Abastecimentos</h2>
               <span className="text-xs text-slate-500">{filteredRecords.length} resultado(s)</span>
             </div>
             <Fuel className="text-emerald-300" size={20} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1180px] text-left text-sm">
+            <table className="w-full min-w-[1080px] text-left text-sm">
               <thead className="bg-slate-900 text-xs uppercase text-slate-500">
                 <tr>
                   {[
@@ -1789,7 +1841,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     'Bomba',
                     'Leitura',
                     'Origem',
-                    'Qualidade',
                     'Status',
                     'Ações',
                   ].map((label) => (
@@ -1802,7 +1853,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               <tbody className="divide-y divide-slate-800">
                 {filteredRecords.map((record) => {
                   const equipment = equipamentos.find((item) => item.id === record.equipamentoId);
-                  const score = getFuelQualityScore(record.alertas || []);
                   return (
                     <tr key={record.id} className="hover:bg-slate-900/60">
                       <td className="px-4 py-3">
@@ -1810,8 +1860,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         <span className="block text-xs text-slate-500">{record.hora}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <strong className="font-mono text-emerald-300">{equipment?.prefixo || 'Não vinculada'}</strong>
-                        <span className="block max-w-48 truncate text-xs text-slate-500">{equipment?.nome}</span>
+                        <strong className="font-mono text-emerald-300">{getFuelRecordPrefix(record, equipamentos)}</strong>
+                        <span className="block max-w-48 truncate text-xs text-slate-500">{equipment?.nome || 'Pendente de cadastro'}</span>
                       </td>
                       <td className="px-4 py-3">
                         {combustiveis.find((item) => item.id === record.tipoCombustivelId)?.nome || '-'}
@@ -1843,18 +1893,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <strong
-                          className={
-                            score >= 90 ? 'text-emerald-300' : score >= 65 ? 'text-amber-300' : 'text-rose-300'
-                          }
-                        >
-                          {score}%
-                        </strong>
-                        <span className="block text-[10px] text-slate-600">
-                          {record.alertas?.length || 0} alerta(s)
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
                         <span
                           className={`inline-flex border px-2 py-1 text-xs font-bold ${statusTone[record.status || 'OK'] || statusTone.Pendente}`}
                         >
@@ -1875,7 +1913,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                             onClick={() => {
                               if (
                                 confirm(
-                                  `Excluir o abastecimento de ${equipment?.prefixo || 'frota'} em ${formatDate(record.data)}?`,
+                                  `Excluir o abastecimento de ${getFuelRecordPrefix(record, equipamentos)} em ${formatDate(record.data)}?`,
                                 )
                               )
                                 onDeleteAbastecimento(record.id);
@@ -1902,7 +1940,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         </section>
       )}
 
-      {view === 'qualidade' && (
+      {false && (
         <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
           <section className="border border-slate-800 bg-slate-950">
             <div className="border-b border-slate-800 p-4">
@@ -1940,16 +1978,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           <section className="border border-slate-800 bg-slate-950">
             <div className="border-b border-slate-800 p-4">
               <h2 className="font-bold text-white">Registros para conferência</h2>
-              <span className="text-xs text-slate-500">Ordenados pela menor pontuação</span>
+              <span className="text-xs text-slate-500">Ordenados por quantidade de alertas</span>
             </div>
             <div className="divide-y divide-slate-800">
               {[...filteredRecords]
                 .filter((item) => item.alertas?.length)
-                .sort((a, b) => getFuelQualityScore(a.alertas || []) - getFuelQualityScore(b.alertas || []))
+                .sort((a, b) => (b.alertas?.length || 0) - (a.alertas?.length || 0))
                 .slice(0, 30)
                 .map((record) => {
                   const equipment = equipamentos.find((item) => item.id === record.equipamentoId);
-                  const score = getFuelQualityScore(record.alertas || []);
+                  const alertCount = record.alertas?.filter((item) => item.severidade !== 'info').length || 0;
                   return (
                     <div
                       key={record.id}
@@ -1957,11 +1995,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     >
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <strong className="font-mono text-white">{equipment?.prefixo || 'Não vinculada'}</strong>
+                          <strong className="font-mono text-white">{getFuelRecordPrefix(record, equipamentos)}</strong>
                           <span
-                            className={`border px-2 py-0.5 text-[11px] font-bold ${score < 60 ? statusTone.Duplicado : statusTone['Conferência necessária']}`}
+                            className={`border px-2 py-0.5 text-[11px] font-bold ${alertCount ? statusTone['Conferência necessária'] : statusTone.OK}`}
                           >
-                            {score}%
+                            {alertCount} alerta(s)
                           </span>
                           <span className="text-xs text-slate-500">
                             {formatDate(record.data)} {record.hora}
@@ -2030,7 +2068,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     <th className="px-4 py-3">Leitura</th>
                     <th className="px-4 py-3">Bomba</th>
                     <th className="px-4 py-3">Litros</th>
-                    <th className="px-4 py-3">Qualidade</th>
+                    <th className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
@@ -2054,10 +2092,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         {formatNumber(item.record.quantidadeLitros)} L
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`border px-2 py-1 text-xs font-bold ${item.record.alertas?.length ? statusTone['Conferência necessária'] : statusTone.OK}`}
-                        >
-                          {item.score}%
+                        <span className="border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-300">
+                          Livre
                         </span>
                       </td>
                     </tr>
@@ -2067,7 +2103,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
             </div>
             <div className="flex flex-col gap-3 border-t border-slate-800 p-4 md:flex-row md:items-center md:justify-between">
               <p className="text-sm text-slate-400">
-                Os dados serão gravados no banco e passarão a alimentar o painel e a auditoria.
+                Os dados serão gravados no banco e passarão a alimentar o painel e os relatórios.
               </p>
               <div className="flex gap-2">
                 <button

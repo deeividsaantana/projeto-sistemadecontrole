@@ -149,6 +149,7 @@ export interface Abastecimento {
   data: string; // YYYY-MM-DD
   hora: string; // HH:MM
   equipamentoId: string; // Frota (Equipamento)
+  prefixoInformado?: string; // Prefixo digitado/importado quando ainda não existe cadastro de equipamento
   horimetroInicial: number;
   kmInicial: number;
   bombaInicial: number;
@@ -393,6 +394,29 @@ export interface AppNotification {
   timestamp: string; // HH:MM
   read: boolean;
   source: 'Netlify App' | 'Sistema Local' | 'Firebase Cloud';
+}
+
+export interface PeriodoArquivado {
+  id: string;
+  nome: string;
+  dataInicio: string;
+  dataFim: string;
+  criadoEm: string;
+  criadoPor: string;
+  resumo: Record<string, number>;
+  dados: {
+    abastecimentos: Abastecimento[];
+    lubrificacoes: Lubrificacao[];
+    ticketsJazida: TicketJazida[];
+    rdos: RdoDiario[];
+    listasPresenca: ListaPresenca[];
+    ordensServico: OrdemServico[];
+    presencasLink: PresencaApontamento[];
+    historicoPresencas: HistoricoPresenca[];
+    apontamentoRamoRegistros: ApontamentoRamoRegistro[];
+    materiaisRegistros: MaterialRegistro[];
+    partesDiariasEquipamentos: ParteDiariaEquipamento[];
+  };
 }
 
 export type RespostaChecklistEquipamento = 'Sim' | 'Não' | 'N/A';

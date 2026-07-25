@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useState } from 'react';
-import { HistoryLog } from '../types';
+import React, { useMemo, useRef, useState } from 'react';
+import { HistoryLog, PeriodoArquivado } from '../types';
 import { 
   Settings, 
   Clock, 
@@ -20,16 +20,24 @@ import {
   CloudOff,
   RefreshCw,
   Wifi,
-  WifiOff
+  WifiOff,
+  Archive,
+  FolderOpen,
+  CalendarDays
 } from 'lucide-react';
 
 interface ConfiguracoesTabProps {
   historyLogs: HistoryLog[];
   onResetToDefault: () => void;
   onClearAllData: () => void;
+  onApplySelectiveReset: (scopeKeys: string[], mode: 'clear' | 'default') => { success: boolean; message: string };
   onImportFullData: (importedJson: string) => boolean;
   onImportFilteredByDate: (importedJson: string, dataInicio: string, dataFim: string) => { success: boolean; message: string };
   onExportFullData: () => string;
+  periodosArquivados: PeriodoArquivado[];
+  onArchivePeriod: (dataInicio: string, dataFim: string, nome?: string) => { success: boolean; message: string };
+  onRestoreArchivedPeriod: (id: string) => { success: boolean; message: string };
+  onDeleteArchivedPeriod: (id: string) => { success: boolean; message: string };
   isFirebaseConnected: boolean;
   isAutoSyncEnabled: boolean;
   lastCloudSync: string;
@@ -42,9 +50,14 @@ export default function ConfiguracoesTab({
   historyLogs,
   onResetToDefault,
   onClearAllData,
+  onApplySelectiveReset,
   onImportFullData,
   onImportFilteredByDate,
   onExportFullData,
+  periodosArquivados,
+  onArchivePeriod,
+  onRestoreArchivedPeriod,
+  onDeleteArchivedPeriod,
   isFirebaseConnected,
   isAutoSyncEnabled,
   lastCloudSync,
@@ -67,6 +80,23 @@ export default function ConfiguracoesTab({
   
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showSelectiveConfirm, setShowSelectiveConfirm] = useState(false);
+  const [selectiveResetMode, setSelectiveResetMode] = useState<'clear' | 'default'>('clear');
+  const [selectedResetScopes, setSelectedResetScopes] = useState<string[]>(['abastecimentos']);
+  const [selectiveResetStatus, setSelectiveResetStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [selectiveResetMsg, setSelectiveResetMsg] = useState('');
+  const [archiveDataInicio, setArchiveDataInicio] = useState('');
+  const [archiveDataFim, setArchiveDataFim] = useState('');
+  const [archiveNome, setArchiveNome] = useState('');
+  const [archiveStatus, setArchiveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [archiveMsg, setArchiveMsg] = useState('');
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [archiveDeleteConfirmId, setArchiveDeleteConfirmId] = useState<string | null>(null);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyTela, setHistoryTela] = useState('');
+  const [historyAcao, setHistoryAcao] = useState('');
+  const [historyStart, setHistoryStart] = useState('');
+  const [historyEnd, setHistoryEnd] = useState('');
 
   // Firebase Cloud Sync states
   const [isSyncing, setIsSyncing] = useState(false);
@@ -74,6 +104,144 @@ export default function ConfiguracoesTab({
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [syncMsg, setSyncMsg] = useState('');
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+
+  const historyDateToIso = (timestamp: string) => {
+    const match = String(timestamp || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return match ? `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}` : '';
+  };
+
+  const historyTelaOptions = useMemo(
+    () => Array.from(new Set(historyLogs.map(log => log.tela).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [historyLogs],
+  );
+
+  const filteredHistoryLogs = useMemo(() => {
+    const term = historySearch.trim().toLowerCase();
+    return historyLogs.filter(log => {
+      const iso = historyDateToIso(log.timestamp);
+      if (historyTela && log.tela !== historyTela) return false;
+      if (historyAcao && log.acao !== historyAcao) return false;
+      if (historyStart && iso && iso < historyStart) return false;
+      if (historyEnd && iso && iso > historyEnd) return false;
+      if (!term) return true;
+      return [log.acao, log.tela, log.usuario, log.descricao, log.timestamp]
+        .join(' ')
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [historyLogs, historySearch, historyTela, historyAcao, historyStart, historyEnd]);
+
+  const resetScopeOptions = [
+    { key: 'empresas', label: 'Empresas', description: 'Cadastro de empresas e fornecedores.' },
+    { key: 'obras', label: 'Obras/Locais', description: 'Canteiros, locais e frentes de serviço.' },
+    { key: 'equipamentos', label: 'Equipamentos', description: 'Frotas, máquinas, placas e status.' },
+    { key: 'funcionarios', label: 'Funcionários', description: 'Colaboradores, líderes e áreas.' },
+    { key: 'comboios', label: 'Comboios', description: 'Tanques, placas e responsáveis.' },
+    { key: 'combustiveis', label: 'Tipos de combustível', description: 'Diesel, gasolina, Arla e produtos importados.' },
+    { key: 'lubrificantes', label: 'Lubrificantes/Etapas', description: 'Produtos de lubrificação e etapas de serviço.' },
+    { key: 'abastecimentos', label: 'Abastecimentos', description: 'Histórico da aba Combustível.' },
+    { key: 'lubrificacoes', label: 'Lubrificações', description: 'Lançamentos de lubrificação.' },
+    { key: 'rdos', label: 'RDOs', description: 'Relatórios diários de obra.' },
+    { key: 'presenca', label: 'Presença', description: 'Listas, grupos, links e apontamentos.' },
+    { key: 'apontamentoRamos', label: 'Apontamento Ramos', description: 'Configuração dos ramos e registros externos.' },
+    { key: 'ticketsJazida', label: 'Tickets Jazida', description: 'Tickets de liberação e recebimento.' },
+    { key: 'materiais', label: 'Materiais', description: 'Cadastros e movimentações de materiais.' },
+    { key: 'partesDiarias', label: 'Partes Diárias', description: 'Partes diárias de equipamentos.' },
+    { key: 'manutencao', label: 'Manutenção', description: 'Ordens de serviço de equipamentos.' },
+    { key: 'periodosArquivados', label: 'Arquivos de períodos', description: 'Fechamentos guardados fora do dashboard.' },
+  ];
+
+  const allResetScopeKeys = resetScopeOptions.map(option => option.key);
+  const operationalResetScopeKeys = [
+    'abastecimentos',
+    'lubrificacoes',
+    'ticketsJazida',
+    'rdos',
+    'presenca',
+    'apontamentoRamos',
+    'materiais',
+    'partesDiarias',
+    'manutencao',
+  ];
+
+  const selectedResetLabels = resetScopeOptions
+    .filter(option => selectedResetScopes.includes(option.key))
+    .map(option => option.label);
+
+  const toggleResetScope = (key: string) => {
+    setSelectiveResetStatus('idle');
+    setSelectiveResetMsg('');
+    setShowSelectiveConfirm(false);
+    setSelectedResetScopes(current =>
+      current.includes(key)
+        ? current.filter(item => item !== key)
+        : [...current, key]
+    );
+  };
+
+  const setResetScopeSelection = (keys: string[]) => {
+    setSelectiveResetStatus('idle');
+    setSelectiveResetMsg('');
+    setShowSelectiveConfirm(false);
+    setSelectedResetScopes(Array.from(new Set(keys)));
+  };
+
+  const applySelectiveReset = () => {
+    const result = onApplySelectiveReset(selectedResetScopes, selectiveResetMode);
+    setSelectiveResetStatus(result.success ? 'success' : 'error');
+    setSelectiveResetMsg(result.message);
+    if (result.success) setShowSelectiveConfirm(false);
+  };
+
+  const toLocalIsoDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatIsoDate = (date: string) => date ? date.split('-').reverse().join('/') : '-';
+
+  const fillCurrentCycle21To20 = () => {
+    const today = new Date();
+    const end = new Date(today.getFullYear(), today.getMonth(), 20);
+    if (today.getDate() > 20) end.setMonth(end.getMonth() + 1);
+    const start = new Date(end.getFullYear(), end.getMonth() - 1, 21);
+    const startIso = toLocalIsoDate(start);
+    const endIso = toLocalIsoDate(end);
+    setArchiveDataInicio(startIso);
+    setArchiveDataFim(endIso);
+    setArchiveNome(`Fechamento ${formatIsoDate(startIso)} a ${formatIsoDate(endIso)}`);
+    setArchiveStatus('idle');
+    setArchiveMsg('');
+    setShowArchiveConfirm(false);
+  };
+
+  const archiveTotal = (archive: PeriodoArquivado) =>
+    Object.values(archive.resumo || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+
+  const applyArchivePeriod = () => {
+    const result = onArchivePeriod(archiveDataInicio, archiveDataFim, archiveNome);
+    setArchiveStatus(result.success ? 'success' : 'error');
+    setArchiveMsg(result.message);
+    if (result.success) {
+      setShowArchiveConfirm(false);
+      setArchiveNome('');
+    }
+  };
+
+  const restoreArchive = (id: string) => {
+    const result = onRestoreArchivedPeriod(id);
+    setArchiveStatus(result.success ? 'success' : 'error');
+    setArchiveMsg(result.message);
+  };
+
+  const deleteArchive = (id: string) => {
+    const result = onDeleteArchivedPeriod(id);
+    setArchiveStatus(result.success ? 'success' : 'error');
+    setArchiveMsg(result.message);
+    if (result.success) setArchiveDeleteConfirmId(null);
+  };
 
   // Trigger export download
   const handleExport = () => {
@@ -321,6 +489,128 @@ export default function ConfiguracoesTab({
                 <p className="text-[10px] text-slate-500 font-mono">Arquivo pronto: {pendingFileName}{(!filtroDataInicio && !filtroDataFim) ? ' — escolha ao menos uma data para liberar a importação.' : ''}</p>
               )}
             </div>
+
+            {/* Arquivo de períodos fora do dashboard */}
+            <div className="border-t border-slate-850 pt-4 space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-xs font-extrabold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                    <Archive className="w-4 h-4 text-emerald-400" />
+                    Arquivo de Períodos
+                  </h3>
+                  <p className="text-xxs text-slate-400 leading-relaxed mt-1">
+                    Guarde um fechamento e limpe esses lançamentos da operação ativa. O dashboard passa a calcular só o que ficar fora do arquivo.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fillCurrentCycle21To20}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 text-[10px] font-bold text-slate-300 hover:border-emerald-500 hover:text-white"
+                >
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  Ciclo 21→20
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1 sm:col-span-3">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Nome do arquivo</label>
+                  <input
+                    value={archiveNome}
+                    onChange={e => { setArchiveNome(e.target.value); setShowArchiveConfirm(false); }}
+                    placeholder="Ex: Fechamento Junho/Julho"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Início</label>
+                  <input
+                    type="date"
+                    value={archiveDataInicio}
+                    onChange={e => { setArchiveDataInicio(e.target.value); setShowArchiveConfirm(false); }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Fim</label>
+                  <input
+                    type="date"
+                    value={archiveDataFim}
+                    onChange={e => { setArchiveDataFim(e.target.value); setShowArchiveConfirm(false); }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowArchiveConfirm(true)}
+                    disabled={!archiveDataInicio || !archiveDataFim}
+                    className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Archive className="w-4 h-4" />
+                    Arquivar e limpar
+                  </button>
+                </div>
+              </div>
+
+              {showArchiveConfirm && (
+                <div className="rounded-xl border border-amber-500/20 bg-slate-950 p-3.5 space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400 font-mono">Confirmar fechamento?</p>
+                  <p className="text-xxs text-slate-400 leading-relaxed">
+                    Os registros datados de {formatIsoDate(archiveDataInicio)} até {formatIsoDate(archiveDataFim)} serão salvos no arquivo e retirados do dashboard.
+                  </p>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={applyArchivePeriod} className="flex-1 rounded-lg bg-amber-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-amber-500">Confirmar</button>
+                    <button type="button" onClick={() => setShowArchiveConfirm(false)} className="flex-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xxs font-bold text-slate-300">Cancelar</button>
+                  </div>
+                </div>
+              )}
+
+              {archiveStatus !== 'idle' && (
+                <div className={`p-3 rounded-xl border text-xs font-semibold ${archiveStatus === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'}`}>
+                  {archiveStatus === 'success' ? '✓' : '⚠️'} {archiveMsg}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {periodosArquivados.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950/40 p-4 text-center text-xxs text-slate-500">
+                    Nenhum período arquivado ainda.
+                  </div>
+                ) : (
+                  periodosArquivados.map(archive => (
+                    <div key={archive.id} className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <strong className="block text-xs text-white">{archive.nome}</strong>
+                          <span className="text-[10px] text-slate-500">
+                            {formatIsoDate(archive.dataInicio)} até {formatIsoDate(archive.dataFim)} • {archiveTotal(archive)} registro(s)
+                          </span>
+                        </div>
+                        <span className="rounded bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-400">{formatIsoDate(archive.criadoEm.slice(0, 10))}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => restoreArchive(archive.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-emerald-500">
+                          <FolderOpen className="w-3.5 h-3.5" />
+                          Puxar para operação
+                        </button>
+                        {archiveDeleteConfirmId === archive.id ? (
+                          <>
+                            <button type="button" onClick={() => deleteArchive(archive.id)} className="rounded-lg bg-rose-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-rose-500">Confirmar exclusão</button>
+                            <button type="button" onClick={() => setArchiveDeleteConfirmId(null)} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xxs font-bold text-slate-300">Cancelar</button>
+                          </>
+                        ) : (
+                          <button type="button" onClick={() => setArchiveDeleteConfirmId(archive.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/25 bg-rose-950/10 px-3 py-1.5 text-xxs font-bold text-rose-300 hover:border-rose-400">
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Excluir arquivo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Sincronização em Nuvem (Firebase) */}
@@ -498,7 +788,7 @@ export default function ConfiguracoesTab({
               {/* Reset Default */}
               {!showResetConfirm ? (
                 <button
-                  onClick={() => { setShowResetConfirm(true); setShowClearConfirm(false); }}
+                  onClick={() => { setShowResetConfirm(true); setShowClearConfirm(false); setShowSelectiveConfirm(false); }}
                   className="w-full py-2.5 bg-slate-950 hover:bg-slate-850 text-slate-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-800"
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -518,7 +808,7 @@ export default function ConfiguracoesTab({
               {/* Clear All */}
               {!showClearConfirm ? (
                 <button
-                  onClick={() => { setShowClearConfirm(true); setShowResetConfirm(false); }}
+                  onClick={() => { setShowClearConfirm(true); setShowResetConfirm(false); setShowSelectiveConfirm(false); }}
                   className="w-full py-2.5 bg-rose-950/20 hover:bg-rose-950/40 border border-rose-900/30 text-rose-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-4.5 h-4.5" />
@@ -534,6 +824,83 @@ export default function ConfiguracoesTab({
                   </div>
                 </div>
               )}
+
+              <div className="border-t border-slate-850 pt-4 space-y-3">
+                <div>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-white font-mono">Reset seletivo por aba</h3>
+                  <p className="mt-1 text-xxs text-slate-500 leading-relaxed">
+                    Escolha exatamente o que quer excluir ou restaurar. O que não estiver marcado fica como está.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectiveResetMode('clear'); setShowSelectiveConfirm(false); setSelectiveResetStatus('idle'); }}
+                    className={`rounded-xl border px-3 py-2 text-xxs font-bold ${selectiveResetMode === 'clear' ? 'border-rose-500/40 bg-rose-500/10 text-rose-300' : 'border-slate-800 bg-slate-950 text-slate-400'}`}
+                  >
+                    Zerar selecionados
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectiveResetMode('default'); setShowSelectiveConfirm(false); setSelectiveResetStatus('idle'); }}
+                    className={`rounded-xl border px-3 py-2 text-xxs font-bold ${selectiveResetMode === 'default' ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' : 'border-slate-800 bg-slate-950 text-slate-400'}`}
+                  >
+                    Restaurar padrão
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={() => setResetScopeSelection(allResetScopeKeys)} className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 hover:text-white">Marcar tudo</button>
+                  <button type="button" onClick={() => setResetScopeSelection(operationalResetScopeKeys)} className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 hover:text-white">Só operação</button>
+                  <button type="button" onClick={() => setResetScopeSelection([])} className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 hover:text-white">Desmarcar</button>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-850 bg-slate-950/45 p-2 space-y-1.5">
+                  {resetScopeOptions.map(option => (
+                    <label key={option.key} className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-850 bg-slate-950 p-2 hover:border-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={selectedResetScopes.includes(option.key)}
+                        onChange={() => toggleResetScope(option.key)}
+                        className="mt-0.5 h-4 w-4 accent-emerald-500"
+                      />
+                      <span>
+                        <span className="block text-xxs font-bold text-slate-200">{option.label}</span>
+                        <span className="block text-[10px] leading-snug text-slate-500">{option.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                {!showSelectiveConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => { setShowSelectiveConfirm(true); setShowResetConfirm(false); setShowClearConfirm(false); }}
+                    disabled={selectedResetScopes.length === 0}
+                    className="w-full rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Aplicar aos selecionados ({selectedResetScopes.length})
+                  </button>
+                ) : (
+                  <div className="rounded-xl border border-rose-500/20 bg-rose-950/10 p-3.5 space-y-2">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-rose-300 font-mono">Confirmar reset seletivo?</span>
+                    <p className="text-xxs leading-relaxed text-slate-400">
+                      Ação: {selectiveResetMode === 'clear' ? 'zerar' : 'restaurar padrão'} • Itens: {selectedResetLabels.join(', ') || 'nenhum'}.
+                    </p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={applySelectiveReset} className="flex-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-rose-500">Confirmar</button>
+                      <button type="button" onClick={() => setShowSelectiveConfirm(false)} className="flex-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xxs font-bold text-slate-300">Cancelar</button>
+                    </div>
+                  </div>
+                )}
+
+                {selectiveResetStatus !== 'idle' && (
+                  <div className={`rounded-xl border p-3 text-xs font-semibold ${selectiveResetStatus === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-rose-500/30 bg-rose-500/10 text-rose-400'}`}>
+                    {selectiveResetStatus === 'success' ? '✓' : '⚠️'} {selectiveResetMsg}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -547,11 +914,64 @@ export default function ConfiguracoesTab({
               Trilha de auditoria local de todas as alterações feitas na sessão.
             </p>
 
+            <div className="grid grid-cols-1 gap-2">
+              <input
+                value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)}
+                placeholder="Buscar no histórico"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={historyTela}
+                  onChange={e => setHistoryTela(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">Todas as abas</option>
+                  {historyTelaOptions.map(tela => <option key={tela} value={tela}>{tela}</option>)}
+                </select>
+                <select
+                  value={historyAcao}
+                  onChange={e => setHistoryAcao(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">Todas as ações</option>
+                  <option value="Criou">Criou</option>
+                  <option value="Editou">Editou</option>
+                  <option value="Excluiu">Excluiu</option>
+                </select>
+                <input
+                  type="date"
+                  value={historyStart}
+                  onChange={e => setHistoryStart(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+                />
+                <input
+                  type="date"
+                  value={historyEnd}
+                  onChange={e => setHistoryEnd(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-slate-500">
+                <span>{filteredHistoryLogs.length} de {historyLogs.length} evento(s)</span>
+                {(historySearch || historyTela || historyAcao || historyStart || historyEnd) && (
+                  <button
+                    type="button"
+                    onClick={() => { setHistorySearch(''); setHistoryTela(''); setHistoryAcao(''); setHistoryStart(''); setHistoryEnd(''); }}
+                    className="font-bold text-emerald-400 hover:underline"
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-3.5 max-h-72 overflow-y-auto pr-1">
-              {historyLogs.length === 0 ? (
+              {filteredHistoryLogs.length === 0 ? (
                 <span className="text-xxs text-slate-500 italic block py-4 text-center">Nenhum evento registrado ainda.</span>
               ) : (
-                historyLogs.map(log => {
+                filteredHistoryLogs.map(log => {
                   const acColor = log.acao === 'Criou' 
                     ? 'text-emerald-400' 
                     : log.acao === 'Editou' 

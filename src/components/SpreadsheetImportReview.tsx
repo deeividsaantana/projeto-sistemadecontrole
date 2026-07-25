@@ -1,6 +1,8 @@
 import React from 'react';
 import { AlertTriangle, Check, FileSpreadsheet, Loader2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import OperationalAnalysisPanel from './OperationalAnalysisPanel';
+import type { OperationalAnalysis } from '../utils/operationalAnalysis';
 
 export interface SpreadsheetPreviewRow {
   [column: string]: string | number | null | undefined;
@@ -15,6 +17,7 @@ interface SpreadsheetImportReviewProps {
   columns: string[];
   rows: SpreadsheetPreviewRow[];
   note?: string;
+  analysis?: OperationalAnalysis;
   confirming?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -34,6 +37,7 @@ export default function SpreadsheetImportReview({
   columns,
   rows,
   note,
+  analysis,
   confirming = false,
   onCancel,
   onConfirm
@@ -57,7 +61,7 @@ export default function SpreadsheetImportReview({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-            className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
+            className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
               <div className="flex min-w-0 items-start gap-3">
@@ -95,6 +99,12 @@ export default function SpreadsheetImportReview({
                 <div className="mt-4 flex items-start gap-2 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-semibold leading-relaxed text-sky-950">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" />
                   <span>{note}</span>
+                </div>
+              )}
+
+              {analysis && (
+                <div className="mt-4">
+                  <OperationalAnalysisPanel analysis={analysis} variant="light" />
                 </div>
               )}
 

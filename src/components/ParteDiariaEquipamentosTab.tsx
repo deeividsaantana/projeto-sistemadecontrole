@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import ExcelJS from 'exceljs';
 import {
   Activity,
   AlertTriangle,
@@ -13,6 +14,7 @@ import {
   Edit3,
   Eye,
   FileDown,
+  FileSpreadsheet,
   FilterX,
   Gauge,
   HardHat,
@@ -24,6 +26,7 @@ import {
   ShieldAlert,
   Trash2,
   Truck,
+  Upload,
   Wrench,
   X,
 } from 'lucide-react';
@@ -45,7 +48,11 @@ import {
   CODIGOS_PERDA_PARTE_DIARIA,
   downloadParteDiariaPdf,
 } from '../utils/parteDiariaPdf';
+import { configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import { cleanImportValue, getImportValue, normalizeImportText, parseDelimitedText, parseImportNumber, tableRowsToObjects, toImportIsoDate } from '../utils/importHelpers';
+import { buildParteDiariaOperationalAnalysis, type OperationalAnalysis } from '../utils/operationalAnalysis';
 import LegadoSgePanel from './LegadoSgePanel';
+import SpreadsheetImportReview from './SpreadsheetImportReview';
 
 interface ParteDiariaEquipamentosTabProps {
   registros: ParteDiariaEquipamento[];
@@ -58,6 +65,28 @@ interface ParteDiariaEquipamentosTabProps {
 }
 
 type ViewMode = 'dashboard' | 'lancamento' | 'registros' | 'deficiencias' | 'legado';
+const PARTE_DIARIA_IMPORT_COLUMNS = [
+  'Numero',
+  'Data',
+  'Obra',
+  'Prefixo',
+  'Operador',
+  'Matricula',
+  'Jornada',
+  'Horimetro inicial',
+  'Horimetro final',
+  'Servico',
+  'Centro de custo',
+  'Codigo perda',
+  'Horas',
+  'Destino',
+  'Material transportado',
+  'Viagens',
+  'Equipamento carga',
+  'Apontador',
+  'Encarregado',
+  'Observacao'
+];
 
 const today = () => {
   const date = new Date();
@@ -224,6 +253,10 @@ const ParteDiariaEquipamentosTab: React.FC<ParteDiariaEquipamentosTabProps> = ({
   const [equipmentFilter, setEquipmentFilter] = useState('');
   const [onlyDeficient, setOnlyDeficient] = useState(false);
   const [customChecklist, setCustomChecklist] = useState('');
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{ fileName: string; registros: ParteDiariaEquipamento[]; analysis: OperationalAnalysis } | null>(null);
+  const [isConfirmingImport, setIsConfirmingImport] = useState(false);
 
   const activeOperators = useMemo(() => funcionarios.filter(item => item.ativo && /operador|motorista|tratorista|motoniveladora|escavadeira/i.test(`${item.cargo} ${item.area || ''}`)).sort((a, b) => a.nome.localeCompare(b.nome)), [funcionarios]);
   const sortedEquipment = useMemo(() => [...equipamentos].sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR', { numeric: true })), [equipamentos]);
@@ -290,6 +323,206 @@ const ParteDiariaEquipamentosTab: React.FC<ParteDiariaEquipamentosTabProps> = ({
     return [...map.values()].sort((a, b) => b.deficiencies - a.deficiencies || b.stopped - a.stopped);
   }, [filtered]);
 
+  const matchWork = (value: string) => {
+    const target = normalizeImportText(value);
+    if (!target) return undefined;
+    return obras.find(item => {
+      const name = normalizeImportText(item.nome);
+      return name === target || name.includes(target) || target.includes(name);
+    });
+  };
+  const matchEquipment = (value: string) => {
+    const target = normalizeImportText(value);
+    if (!target) return undefined;
+    return equipamentos.find(item => [item.prefixo, item.nome, item.tipo, item.seriePlaca, item.placa || ''].some(field => {
+      const normalized = normalizeImportText(field);
+      return normalized && (normalized === target || normalized.includes(target) || target.includes(normalized));
+    }));
+  };
+  const matchOperator = (name: string, registration = '') => {
+    const targetName = normalizeImportText(name);
+    const targetRegistration = normalizeImportText(registration);
+    if (!targetName && !targetRegistration) return undefined;
+    return funcionarios.find(item => {
+      const employeeName = normalizeImportText(item.nome);
+      const employeeRegistration = normalizeImportText(item.matricula || item.id);
+      return (targetRegistration && employeeRegistration === targetRegistration)
+        || (targetName && (employeeName === targetName || employeeName.includes(targetName) || targetName.includes(employeeName)));
+    });
+  };
+
+  const buildRecordFromImportRow = (
+    row: Record<string, unknown>,
+    sourceName: string,
+    index: number
+  ): ParteDiariaEquipamento | null => {
+    const data = toImportIsoDate(getImportValue(row, ['data', 'dia', 'dt']));
+    const prefixoRaw = getImportValue(row, ['prefixo', 'frota', 'equipamento', 'veiculo', 'veículo', 'maquina', 'máquina']);
+    const equipment = matchEquipment(prefixoRaw);
+    const obra = matchWork(getImportValue(row, ['obra', 'local', 'frente', 'contrato']));
+    const operadorNomeRaw = getImportValue(row, ['operador', 'motorista', 'funcionario', 'funcionário', 'colaborador']);
+    const matriculaRaw = getImportValue(row, ['matricula', 'matrícula', 'registro']);
+    const operator = matchOperator(operadorNomeRaw, matriculaRaw);
+    if (!data && !prefixoRaw && !operadorNomeRaw) return null;
+
+    const horimetroInicial = parseImportNumber(getImportValue(row, ['horimetro inicial', 'horímetro inicial', 'h inicial', 'hm inicial']));
+    const horimetroFinal = parseImportNumber(getImportValue(row, ['horimetro final', 'horímetro final', 'h final', 'hm final']));
+    const importedHours = parseImportNumber(getImportValue(row, ['horas', 'total horas', 'horas trabalhadas', 'total trabalhado']));
+    const service = getImportValue(row, ['servico', 'serviço', 'atividade', 'descricao', 'descrição']);
+    const lossCode = getImportValue(row, ['codigo perda', 'código perda', 'cod perda', 'perda']).toUpperCase();
+    const now = new Date().toISOString();
+    const documentBase = Number(nextDocumentNumber(registros)) + index;
+
+    const atividade: ParteDiariaAtividade = {
+      id: uid('atividade-import'),
+      descricao: service || (lossCode ? 'Horas paradas importadas' : 'Serviço importado'),
+      centroCusto: getImportValue(row, ['centro custo', 'centro de custo', 'cc']),
+      codigoPerda: lossCode,
+      tipoMarcacao: 'Horímetro',
+      inicial: horimetroInicial ? String(horimetroInicial) : '',
+      final: horimetroFinal ? String(horimetroFinal) : '',
+      totalHoras: importedHours || (horimetroFinal > horimetroInicial ? Number((horimetroFinal - horimetroInicial).toFixed(2)) : 0),
+    };
+    const transporte: ParteDiariaTransporte = {
+      id: uid('transporte-import'),
+      descricao: getImportValue(row, ['transporte', 'servico transporte', 'serviço transporte']),
+      centroCusto: getImportValue(row, ['centro custo transporte', 'cc transporte']),
+      destino: getImportValue(row, ['destino', 'descarga', 'local destino']),
+      materialTransportado: getImportValue(row, ['material transportado', 'material', 'produto']),
+      quantidadeViagens: parseImportNumber(getImportValue(row, ['viagens', 'qtd viagens', 'quantidade viagens'])),
+      equipamentoCarga: getImportValue(row, ['equipamento carga', 'carga', 'carregadeira']),
+    };
+    const base: ParteDiariaEquipamento = {
+      id: uid('parte-import'),
+      numero: getImportValue(row, ['numero', 'número', 'num', 'n']) || String(documentBase).padStart(6, '0'),
+      data: data || today(),
+      obraId: obra?.id || '',
+      obraNome: obra?.nome || getImportValue(row, ['obra', 'local', 'frente', 'contrato']),
+      equipamentoId: equipment?.id || '',
+      prefixo: equipment?.prefixo || prefixoRaw.toUpperCase(),
+      tipoEquipamento: equipment?.tipo || equipment?.nome || getImportValue(row, ['tipo equipamento', 'tipo', 'modelo']),
+      jornada: parseImportNumber(getImportValue(row, ['jornada', 'turno', 'horas jornada'])) || 10,
+      operadorId: operator?.id || '',
+      operadorNome: operator?.nome || operadorNomeRaw,
+      matricula: operator?.matricula || matriculaRaw,
+      apontador: getImportValue(row, ['apontador', 'apropriador']),
+      encarregado: getImportValue(row, ['encarregado', 'lider', 'líder']),
+      horimetroInicial,
+      horimetroFinal,
+      totalHorasTrabalhadas: 0,
+      atividades: [atividade],
+      transportes: transporte.destino || transporte.materialTransportado || transporte.quantidadeViagens ? [transporte] : [createTransport()],
+      checklist: createChecklist(),
+      outrosProblemas: getImportValue(row, ['problemas', 'deficiencias', 'deficiências', 'outros problemas']),
+      status: 'Pendente',
+      observacao: [getImportValue(row, ['observacao', 'observação', 'obs']), `Importado de ${sourceName}`].filter(Boolean).join(' | '),
+      criadoEm: now,
+      atualizadoEm: now,
+    };
+    const withTotals = { ...base, totalHorasTrabalhadas: getWorkedHours(base) };
+    return { ...withTotals, status: deriveStatus(withTotals) };
+  };
+
+  const parseGenericWorksheetRows = (worksheet: ExcelJS.Worksheet): ParteDiariaEquipamento[] => {
+    let headerRowNumber = 0;
+    let headers: string[] = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (headerRowNumber) return;
+      const cells = Array.from({ length: Math.max(row.cellCount, 1) }, (_, index) => cleanImportValue(row.getCell(index + 1).value));
+      const normalized = cells.map(normalizeImportText);
+      const score = [
+        normalized.some(value => value.includes('data')),
+        normalized.some(value => value.includes('prefixo') || value.includes('frota') || value.includes('equipamento')),
+        normalized.some(value => value.includes('operador') || value.includes('motorista')),
+      ].filter(Boolean).length;
+      if (score >= 2) {
+        headerRowNumber = rowNumber;
+        headers = cells.map((cell, index) => cell || `Coluna ${index + 1}`);
+      }
+    });
+    if (!headerRowNumber) return [];
+    const imported: ParteDiariaEquipamento[] = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber <= headerRowNumber) return;
+      const objectRow = headers.reduce<Record<string, string>>((acc, header, index) => {
+        acc[header] = cleanImportValue(row.getCell(index + 1).value);
+        return acc;
+      }, {});
+      const record = buildRecordFromImportRow(objectRow, worksheet.name, imported.length);
+      if (record) imported.push(record);
+    });
+    return imported;
+  };
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setIsImporting(true);
+    setError('');
+    try {
+      const extension = file.name.toLowerCase().split('.').pop();
+      const imported = extension === 'csv' || extension === 'txt'
+        ? tableRowsToObjects(parseDelimitedText(await file.text()))
+          .map((row, index) => buildRecordFromImportRow(row, file.name, index))
+          .filter((item): item is ParteDiariaEquipamento => Boolean(item))
+        : (await loadValidatedWorkbook(file)).worksheets.flatMap(sheet => parseGenericWorksheetRows(sheet));
+      if (!imported.length) {
+        setError('Nenhuma parte diária válida foi encontrada. Confira se há cabeçalhos como Data, Prefixo/Frota e Operador.');
+        return;
+      }
+      setPendingImport({
+        fileName: file.name,
+        registros: imported,
+        analysis: buildParteDiariaOperationalAnalysis(imported),
+      });
+    } catch (error: any) {
+      setError(`Falha ao importar parte diária: ${error.message || error}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const confirmImport = () => {
+    if (!pendingImport || isConfirmingImport) return;
+    setIsConfirmingImport(true);
+    onImport(pendingImport.registros);
+    setPendingImport(null);
+    setIsConfirmingImport(false);
+    setView('registros');
+  };
+
+  const downloadImportTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    configureCorporateWorkbook(workbook, 'Modelo de Importação de Parte Diária');
+    const sheet = workbook.addWorksheet('IMPORTAR_PARTES');
+    sheet.addRow(PARTE_DIARIA_IMPORT_COLUMNS);
+    sheet.addRow([
+      nextDocumentNumber(registros),
+      today(),
+      obras[0]?.nome || 'Obra exemplo',
+      equipamentos[0]?.prefixo || 'EQ-01',
+      funcionarios[0]?.nome || 'Operador exemplo',
+      funcionarios[0]?.matricula || '',
+      10,
+      1200,
+      1208,
+      'Escavação / carga',
+      'CC-001',
+      '',
+      8,
+      'Frente A',
+      'Solo',
+      12,
+      '',
+      '',
+      '',
+      'Linha de exemplo'
+    ]);
+    styleCorporateWorksheet(sheet, { title: 'Modelo de Importação de Parte Diária', headerRow: 1, lastColumn: PARTE_DIARIA_IMPORT_COLUMNS.length, dataStartRow: 2, freezeRows: 1 });
+    await downloadCorporateWorkbook(workbook, 'modelo_importacao_parte_diaria.xlsx');
+  };
+
   const clearFilters = () => { setSearch(''); setStartDate(''); setEndDate(''); setStatusFilter('Todos'); setObraFilter(''); setEquipmentFilter(''); setOnlyDeficient(false); };
   const newRecord = () => { setForm(createEmptyRecord(registros)); setEditingId(null); setError(''); setView('lancamento'); };
   const editRecord = (record: ParteDiariaEquipamento) => { setForm(JSON.parse(JSON.stringify(record))); setEditingId(record.id); setError(''); setView('lancamento'); };
@@ -355,9 +588,29 @@ const ParteDiariaEquipamentosTab: React.FC<ParteDiariaEquipamentosTabProps> = ({
 
   return (
     <div className="space-y-5 text-slate-100">
+      <SpreadsheetImportReview
+        open={Boolean(pendingImport)}
+        title="Importar partes diárias"
+        fileName={pendingImport?.fileName || ''}
+        validCount={pendingImport?.registros.length || 0}
+        columns={['Número', 'Data', 'Prefixo', 'Operador', 'Obra', 'Horas']}
+        rows={(pendingImport?.registros || []).map(item => ({
+          Número: item.numero,
+          Data: formatDate(item.data),
+          Prefixo: item.prefixo,
+          Operador: item.operadorNome,
+          Obra: item.obraNome,
+          Horas: getWorkedHours(item)
+        }))}
+        note="As fichas importadas entram para conferência; cadastros não encontrados ficam pendentes para ajuste manual."
+        analysis={pendingImport?.analysis}
+        confirming={isConfirmingImport}
+        onCancel={() => setPendingImport(null)}
+        onConfirm={confirmImport}
+      />
       <header className="flex flex-col gap-4 border-b border-slate-800 pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-emerald-400"><CircleGauge size={16} /> Controle de frota</div><h1 className="text-2xl font-bold text-white md:text-3xl">Parte Diária de Equipamentos</h1><p className="mt-1 text-sm text-slate-400">{registros.length} ficha(s) cadastrada(s) | {stats.deficiencies} deficiência(s) no período filtrado</p></div>
-        <div className="flex flex-wrap gap-2"><button onClick={() => duplicateRecord()} className="inline-flex h-10 items-center gap-2 border border-slate-700 bg-slate-900 px-3 text-sm font-semibold hover:border-slate-500"><CopyPlus size={17} /> Duplicar última</button><button onClick={newRecord} className="inline-flex h-10 items-center gap-2 bg-emerald-500 px-4 text-sm font-bold text-slate-950 hover:bg-emerald-400"><Plus size={18} /> Nova parte diária</button></div>
+        <div className="flex flex-wrap gap-2"><input ref={importInputRef} type="file" accept=".xlsx,.xlsm,.csv,.txt" onChange={handleImportFile} className="hidden" /><button onClick={() => importInputRef.current?.click()} disabled={isImporting} className="inline-flex h-10 items-center gap-2 border border-slate-700 bg-slate-900 px-3 text-sm font-semibold hover:border-emerald-500 disabled:opacity-50"><Upload size={17} /> {isImporting ? 'Importando...' : 'Importar'}</button><button onClick={downloadImportTemplate} className="inline-flex h-10 items-center gap-2 border border-slate-700 bg-slate-900 px-3 text-sm font-semibold hover:border-sky-500"><FileSpreadsheet size={17} /> Modelo</button><button onClick={() => duplicateRecord()} className="inline-flex h-10 items-center gap-2 border border-slate-700 bg-slate-900 px-3 text-sm font-semibold hover:border-slate-500"><CopyPlus size={17} /> Duplicar última</button><button onClick={newRecord} className="inline-flex h-10 items-center gap-2 bg-emerald-500 px-4 text-sm font-bold text-slate-950 hover:bg-emerald-400"><Plus size={18} /> Nova parte diária</button></div>
       </header>
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-800 pb-px">{navItems.map(item => { const Icon = item.icon; return <button key={item.id} onClick={() => item.id === 'lancamento' && !editingId ? newRecord() : setView(item.id)} className={`inline-flex h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold ${view === item.id ? 'border-emerald-400 text-white' : 'border-transparent text-slate-400 hover:text-white'}`}><Icon size={17} />{item.label}</button>; })}</div>

@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useEquipamentosExternos } from '../hooks/useEquipamentosExternos';
-import { auditFuelDataset, getFuelQualityScore } from '../utils/combustivelValidation';
 
 import { 
   Empresa, 
@@ -50,7 +49,6 @@ import {
   TrendingUp, 
   ArrowUpRight,
   ShieldAlert,
-  ShieldCheck,
   MapPin
 } from 'lucide-react';
 
@@ -92,12 +90,7 @@ export default function Dashboard({
 
   // 1. Calculations & Metrics
   const totalLiters = abastecimentos.reduce((acc, curr) => acc + curr.quantidadeLitros, 0);
-  const auditedFuelRecords = auditFuelDataset(abastecimentos, equipamentos);
-  const fuelQualityScore = auditedFuelRecords.length
-    ? Math.round(auditedFuelRecords.reduce((sum, item) => sum + getFuelQualityScore(item.alertas || []), 0) / auditedFuelRecords.length)
-    : 100;
-  const fuelReviewCount = auditedFuelRecords.filter(item => item.alertas?.some(alert => alert.severidade !== 'info')).length;
-  const fuelCriticalCount = auditedFuelRecords.filter(item => item.alertas?.some(alert => alert.severidade === 'critico')).length;
+  const fuelLaunchCount = abastecimentos.length;
   
   const equipamentosExternos = useEquipamentosExternos();
   const activeEquipments = equipamentos.filter(e => e.status === 'Ativo' || e.status === 'Mobilizado').length;
@@ -106,16 +99,19 @@ export default function Dashboard({
   const maintenanceEquipments = equipamentosExternos.manutencao ?? localMaintenanceEquipments;
 
   // 2. Consumption by fleet (rank)
-  const consumptionByFleet = equipamentos.map(eq => {
-    const liters = abastecimentos
-      .filter(ab => ab.equipamentoId === eq.id)
-      .reduce((acc, curr) => acc + curr.quantidadeLitros, 0);
-    return {
-      prefixo: eq.prefixo,
-      nome: eq.nome,
-      liters
+  const consumptionByFleet = Array.from(abastecimentos.reduce((map, ab) => {
+    const eq = equipamentos.find(item => item.id === ab.equipamentoId);
+    const key = eq?.id || ab.prefixoInformado || 'sem-prefixo';
+    const current = map.get(key) || {
+      prefixo: eq?.prefixo || ab.prefixoInformado || 'Sem prefixo',
+      nome: eq?.nome || 'Pendente de cadastro',
+      liters: 0
     };
-  }).filter(item => item.liters > 0)
+    current.liters += ab.quantidadeLitros;
+    map.set(key, current);
+    return map;
+  }, new Map<string, { prefixo: string; nome: string; liters: number }>()).values())
+    .filter(item => item.liters > 0)
     .sort((a, b) => b.liters - a.liters)
     .slice(0, 5); // top 5
 
@@ -230,27 +226,206 @@ export default function Dashboard({
     count: osAbertas.filter(os => os.tipo === tipo).length
   })).filter(x => x.count > 0);
 
+  type BuilderSource = 'abastecimentos' | 'lubrificacoes' | 'rdos' | 'presenca' | 'manutencao' | 'equipamentos' | 'historico';
+  type BuilderMetric = 'count' | 'litros' | 'quantidade' | 'equipe' | 'custo';
+  type BuilderGroup = 'dia' | 'mes' | 'frota' | 'empresa' | 'obra' | 'status' | 'responsavel' | 'produto' | 'origem' | 'acao' | 'tela';
+
+  const [builderSource, setBuilderSource] = useState<BuilderSource>('abastecimentos');
+  const [builderMetric, setBuilderMetric] = useState<BuilderMetric>('litros');
+  const [builderGroup, setBuilderGroup] = useState<BuilderGroup>('dia');
+  const [builderStart, setBuilderStart] = useState('');
+  const [builderEnd, setBuilderEnd] = useState('');
+
+  const sourceOptions: Array<{ id: BuilderSource; label: string }> = [
+    { id: 'abastecimentos', label: 'Combustível' },
+    { id: 'lubrificacoes', label: 'Lubrificação' },
+    { id: 'rdos', label: 'RDO' },
+    { id: 'presenca', label: 'Presença' },
+    { id: 'manutencao', label: 'Manutenção' },
+    { id: 'equipamentos', label: 'Equipamentos' },
+    { id: 'historico', label: 'Histórico' },
+  ];
+
+  const metricOptions: Array<{ id: BuilderMetric; label: string }> = [
+    { id: 'count', label: 'Quantidade de registros' },
+    { id: 'litros', label: 'Litros' },
+    { id: 'quantidade', label: 'Quantidade operacional' },
+    { id: 'equipe', label: 'Equipe / presença' },
+    { id: 'custo', label: 'Custo' },
+  ];
+
+  const groupOptions: Array<{ id: BuilderGroup; label: string }> = [
+    { id: 'dia', label: 'Dia' },
+    { id: 'mes', label: 'Mês' },
+    { id: 'frota', label: 'Frota' },
+    { id: 'empresa', label: 'Empresa' },
+    { id: 'obra', label: 'Obra/local' },
+    { id: 'status', label: 'Status' },
+    { id: 'responsavel', label: 'Responsável' },
+    { id: 'produto', label: 'Produto' },
+    { id: 'origem', label: 'Origem' },
+    { id: 'acao', label: 'Ação' },
+    { id: 'tela', label: 'Aba/tela' },
+  ];
+
+  const historyDateToIso = (timestamp: string) => {
+    const match = String(timestamp || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return match ? `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}` : '';
+  };
+
+  const formatGroupDate = (date: string) => {
+    if (!date) return 'Sem data';
+    if (builderGroup === 'mes') return date.slice(0, 7);
+    return date.split('-').reverse().join('/');
+  };
+
+  const builderRecords = useMemo(() => {
+    type BuilderRecord = {
+      date: string;
+      value: number;
+      frota?: string;
+      empresa?: string;
+      obra?: string;
+      status?: string;
+      responsavel?: string;
+      produto?: string;
+      origem?: string;
+      acao?: string;
+      tela?: string;
+    };
+
+    const inRange = (date: string) => (!builderStart || date >= builderStart) && (!builderEnd || date <= builderEnd);
+    const equipmentInfo = (id: string, prefixoInformado?: string) => {
+      const eq = equipamentos.find(item => item.id === id);
+      const empresa = empresas.find(item => item.id === eq?.empresaId)?.nome;
+      const obra = obras.find(item => item.id === eq?.localAtualId)?.nome;
+      return { eq, empresa, obra, frota: eq?.prefixo || prefixoInformado || 'Sem prefixo' };
+    };
+
+    let records: BuilderRecord[] = [];
+    if (builderSource === 'abastecimentos') {
+      records = abastecimentos.map(item => {
+        const info = equipmentInfo(item.equipamentoId, item.prefixoInformado);
+        return {
+          date: item.data,
+          value: builderMetric === 'litros' ? Number(item.quantidadeLitros || 0) : 1,
+          frota: info.frota,
+          empresa: info.empresa || 'Sem empresa',
+          obra: info.obra || 'Sem obra',
+          status: item.status || 'OK',
+          responsavel: item.responsavel || 'Sem responsável',
+          produto: combustiveis.find(fuel => fuel.id === item.tipoCombustivelId)?.nome || 'Sem produto',
+          origem: item.origem || 'Manual',
+          tela: 'Combustível',
+        };
+      });
+    } else if (builderSource === 'lubrificacoes') {
+      records = lubrificacoes.map(item => {
+        const info = equipmentInfo(item.equipamentoId);
+        return {
+          date: item.data,
+          value: builderMetric === 'quantidade' || builderMetric === 'litros' ? Number(item.quantidade || 0) : 1,
+          frota: info.frota,
+          empresa: info.empresa || 'Sem empresa',
+          obra: info.obra || 'Sem obra',
+          status: item.status || 'OK',
+          responsavel: item.responsavel || 'Sem responsável',
+          produto: lubrificantes.find(prod => prod.id === item.produtoLubrificacaoId)?.nome || item.compartimento || 'Sem produto',
+          origem: 'Manual',
+          tela: 'Lubrificação',
+        };
+      });
+    } else if (builderSource === 'rdos') {
+      records = rdos.map(item => ({
+        date: item.data,
+        value: builderMetric === 'equipe' || builderMetric === 'quantidade' ? Number(item.quantidadeEquipe || 0) : 1,
+        empresa: empresas.find(emp => emp.id === item.empresaId)?.nome || 'Sem empresa',
+        obra: obras.find(obra => obra.id === item.obraLocalId)?.nome || 'Sem obra',
+        status: item.statusAtividade,
+        responsavel: item.servicoExecutado || 'Serviço',
+        produto: etapas.find(etapa => etapa.id === item.etapaServicoId)?.nome || 'Sem etapa',
+        origem: 'Manual',
+        tela: 'RDO',
+      }));
+    } else if (builderSource === 'presenca') {
+      records = listasPresenca.map(item => {
+        const presentes = item.funcionarios.filter(func => func.presente).length;
+        return {
+          date: item.data,
+          value: builderMetric === 'equipe' || builderMetric === 'quantidade' ? presentes : 1,
+          obra: obras.find(obra => obra.id === item.obraId)?.nome || 'Sem obra',
+          status: `${presentes}/${item.funcionarios.length} presentes`,
+          responsavel: item.responsavel || 'Sem responsável',
+          produto: 'Presença',
+          origem: 'Lista',
+          tela: 'Presença',
+        };
+      });
+    } else if (builderSource === 'manutencao') {
+      records = ordensServico.map(item => {
+        const info = equipmentInfo(item.equipamentoId);
+        return {
+          date: item.dataAbertura,
+          value: builderMetric === 'custo' ? Number(item.custoFinal || item.custoEstimado || 0) : 1,
+          frota: info.frota,
+          empresa: info.empresa || 'Sem empresa',
+          obra: info.obra || 'Sem obra',
+          status: item.status,
+          responsavel: item.responsavel || 'Sem responsável',
+          produto: item.tipo,
+          origem: item.prioridade,
+          tela: 'Manutenção',
+        };
+      });
+    } else if (builderSource === 'equipamentos') {
+      records = equipamentos.map(item => ({
+        date: todayStr,
+        value: builderMetric === 'quantidade' ? Number(item.horasDisponiveis || 0) : 1,
+        frota: item.prefixo,
+        empresa: empresas.find(emp => emp.id === item.empresaId)?.nome || 'Sem empresa',
+        obra: obras.find(obra => obra.id === item.localAtualId)?.nome || 'Sem obra',
+        status: item.status,
+        produto: item.tipo || 'Equipamento',
+        origem: item.marca || 'Cadastro',
+        tela: 'Equipamentos',
+      }));
+    } else {
+      records = historyLogs.map(item => ({
+        date: historyDateToIso(item.timestamp),
+        value: 1,
+        status: item.acao,
+        responsavel: item.usuario || 'Operador',
+        produto: item.tela,
+        origem: item.acao,
+        acao: item.acao,
+        tela: item.tela,
+      }));
+    }
+
+    return records.filter(item => inRange(item.date));
+  }, [builderSource, builderMetric, builderStart, builderEnd, abastecimentos, lubrificacoes, rdos, listasPresenca, ordensServico, equipamentos, empresas, obras, combustiveis, lubrificantes, etapas, historyLogs, todayStr]);
+
+  const builderData = useMemo(() => {
+    const map = new Map<string, number>();
+    builderRecords.forEach(record => {
+      const key = builderGroup === 'dia' || builderGroup === 'mes'
+        ? formatGroupDate(record.date)
+        : record[builderGroup] || 'Não informado';
+      map.set(key, (map.get(key) || 0) + record.value);
+    });
+    return Array.from(map.entries())
+      .map(([name, valor]) => ({ name, valor }))
+      .sort((a, b) => (builderGroup === 'dia' || builderGroup === 'mes' ? a.name.localeCompare(b.name) : b.valor - a.valor))
+      .slice(0, 20);
+  }, [builderRecords, builderGroup]);
+
+  const builderTotal = builderData.reduce((sum, item) => sum + item.valor, 0);
+
   // Recharts colors for fuel types (shades of green and dark gray)
   const PIE_COLORS = ['#10b981', '#34d399', '#059669', '#047857', '#6ee7b7'];
 
   // 6. Dynamic Alerts & Pendencies
   const pendingAlerts: { id: string; type: 'warning' | 'info' | 'danger'; text: string; details: string }[] = [];
-
-  if (fuelCriticalCount > 0) {
-    pendingAlerts.push({
-      id: 'alert-fuel-quality-critical',
-      type: 'danger',
-      text: `${fuelCriticalCount} abastecimento(s) com inconsistência crítica`,
-      details: 'Há divergência de bomba, duplicidade ou campo essencial que precisa de conferência no documento original.'
-    });
-  } else if (fuelReviewCount > 0) {
-    pendingAlerts.push({
-      id: 'alert-fuel-quality-review',
-      type: 'warning',
-      text: `${fuelReviewCount} abastecimento(s) aguardam conferência`,
-      details: 'Abra a Central de Combustível para revisar a qualidade e a sequência operacional.'
-    });
-  }
 
   // Maintenance equipment alerts
   equipamentos.filter(e => e.status === 'Manutenção').forEach(eq => {
@@ -314,6 +489,117 @@ export default function Dashboard({
         </div>
       </div>
 
+      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4" id="dashboard-builder">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-xs uppercase tracking-widest font-black text-slate-400 font-mono flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-emerald-400" />
+              Criar dashboard
+            </h2>
+            <p className="text-[10px] text-slate-500 mt-0.5">Monte um painel por fonte, métrica, agrupamento e período.</p>
+          </div>
+          <span className="text-[10px] font-bold text-emerald-300 font-mono">
+            {builderRecords.length} registro(s) | {builderTotal.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+          <label className="text-[10px] font-bold uppercase text-slate-500">
+            Fonte
+            <select
+              value={builderSource}
+              onChange={event => {
+                const source = event.target.value as BuilderSource;
+                setBuilderSource(source);
+                if (source === 'abastecimentos') setBuilderMetric('litros');
+                else if (source === 'rdos' || source === 'presenca') setBuilderMetric('equipe');
+                else if (source === 'manutencao') setBuilderMetric('count');
+                else setBuilderMetric('count');
+              }}
+              className="mt-1 h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-xs text-white outline-none focus:border-emerald-500"
+            >
+              {sourceOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="text-[10px] font-bold uppercase text-slate-500">
+            Métrica
+            <select
+              value={builderMetric}
+              onChange={event => setBuilderMetric(event.target.value as BuilderMetric)}
+              className="mt-1 h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-xs text-white outline-none focus:border-emerald-500"
+            >
+              {metricOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="text-[10px] font-bold uppercase text-slate-500">
+            Agrupar por
+            <select
+              value={builderGroup}
+              onChange={event => setBuilderGroup(event.target.value as BuilderGroup)}
+              className="mt-1 h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-xs text-white outline-none focus:border-emerald-500"
+            >
+              {groupOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="text-[10px] font-bold uppercase text-slate-500">
+            Data inicial
+            <input
+              type="date"
+              value={builderStart}
+              onChange={event => setBuilderStart(event.target.value)}
+              className="mt-1 h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-xs text-white outline-none focus:border-emerald-500"
+            />
+          </label>
+          <label className="text-[10px] font-bold uppercase text-slate-500">
+            Data final
+            <input
+              type="date"
+              value={builderEnd}
+              onChange={event => setBuilderEnd(event.target.value)}
+              className="mt-1 h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-xs text-white outline-none focus:border-emerald-500"
+            />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+          <div className="h-72 rounded-xl border border-slate-800 bg-slate-950 p-3">
+            {builderData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-slate-500">Sem dados para o filtro escolhido.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={builderData} margin={{ top: 10, right: 14, left: -20, bottom: 26 }}>
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={9} tickLine={false} interval={0} angle={-18} textAnchor="end" height={48} />
+                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} itemStyle={{ color: '#34d399', fontSize: '11px' }} />
+                  <Bar dataKey="valor" fill="#34d399" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <div className="max-h-72 overflow-auto rounded-xl border border-slate-800 bg-slate-950">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-slate-900 text-[10px] uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-2">Grupo</th>
+                  <th className="px-3 py-2 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {builderData.map(item => (
+                  <tr key={item.name}>
+                    <td className="px-3 py-2 text-slate-300">{item.name}</td>
+                    <td className="px-3 py-2 text-right font-mono font-bold text-white">{item.valor.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+                {!builderData.length && (
+                  <tr><td colSpan={2} className="px-3 py-8 text-center text-slate-500">Nada encontrado.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       {/* 2. KPI Scorecard Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4" id="kpi-grid">
         {/* KPI 1 */}
@@ -376,15 +662,15 @@ export default function Dashboard({
           className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 text-left shadow-sm transition-all hover:border-cyan-500/40"
         >
           <div className="p-3 bg-cyan-500/10 text-cyan-300 rounded-xl">
-            <ShieldCheck className="w-6 h-6" />
+            <Droplets className="w-6 h-6" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Qualidade do Diesel</span>
-            <span className={`text-xl font-black font-mono block mt-1 ${fuelQualityScore >= 90 ? 'text-emerald-300' : fuelQualityScore >= 65 ? 'text-amber-300' : 'text-rose-300'}`}>
-              {abastecimentos.length ? `${fuelQualityScore}%` : '--'}
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Registros Combustível</span>
+            <span className="text-xl font-black font-mono block mt-1 text-emerald-300">
+              {fuelLaunchCount}
             </span>
             <span className="text-[10px] text-slate-400 font-semibold block mt-0.5 truncate">
-              {fuelReviewCount ? `${fuelReviewCount} para conferir` : 'Base auditada'}
+              {fuelLaunchCount ? `${totalLiters.toLocaleString('pt-BR')} L lançados` : 'Sem lançamentos'}
             </span>
           </div>
         </button>

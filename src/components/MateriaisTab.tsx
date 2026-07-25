@@ -6,6 +6,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import { getImportValue, parseDelimitedText, parseImportNumber, tableRowsToObjects, toImportIsoDate } from '../utils/importHelpers';
+import { buildMaterialOperationalAnalysis, type OperationalAnalysis } from '../utils/operationalAnalysis';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import {
   Archive,
@@ -47,6 +49,22 @@ type SortMode = 'data_desc' | 'data_asc' | 'valor_desc' | 'quantidade_desc';
 const CATEGORIAS: MaterialCategoria[] = ['Agregado', 'Solo', 'Bota fora', 'Resíduo', 'Operacional', 'Outros'];
 const STATUS_REGISTRO: MaterialStatus[] = ['Conferido', 'Pendente', 'Divergência', 'Cancelado'];
 const EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const MATERIAL_IMPORT_COLUMNS = [
+  'Data',
+  'Material',
+  'Unidade',
+  'Quantidade',
+  'Fornecedor',
+  'Placa',
+  'Prefixo',
+  'Nota',
+  'Origem',
+  'Destino',
+  'Valor unitário',
+  'Total',
+  'Status',
+  'Observação'
+];
 
 const todayInput = () => {
   const now = new Date();
@@ -184,6 +202,52 @@ const buildCatalogFromRegistros = (items: MaterialRegistro[]): MaterialCadastro[
     });
 };
 
+const materialStatusFromImport = (value: string): MaterialStatus => {
+  const normalized = normalize(value);
+  return STATUS_REGISTRO.find(status => normalize(status) === normalized) || 'Conferido';
+};
+
+const buildRegistroFromGenericRow = (
+  row: Record<string, unknown>,
+  sourceName: string,
+  index: number
+): MaterialRegistro | null => {
+  const data = toImportIsoDate(getImportValue(row, ['data', 'dia', 'dt', 'emissao', 'emissão']));
+  const material = getImportValue(row, ['material', 'produto', 'insumo', 'descricao', 'descrição']);
+  const quantidade = parseImportNumber(getImportValue(row, ['quantidade', 'qtd', 'qtde', 'peso', 'volume', 'm3', 'm³', 'total m3', 'total m³']));
+  const totalM3 = parseImportNumber(getImportValue(row, ['total m3', 'total m³', 'volume total', 'm3 total', 'm³ total']));
+  if (!data || !material || (quantidade === 0 && totalM3 === 0)) return null;
+
+  const valorUnitario = parseImportNumber(getImportValue(row, ['valor unitario', 'valor unitário', 'vl unitario', 'vl unitário', 'preco', 'preço']));
+  const total = parseImportNumber(getImportValue(row, ['total', 'valor total', 'vl total']));
+  const volumeCacamba = parseImportNumber(getImportValue(row, ['volume cacamba', 'cacamba', 'caçamba']));
+  const unidade = getImportValue(row, ['unidade', 'un', 'und', 'medida']) || (totalM3 > 0 ? 'M³' : 'TON');
+
+  return compact({
+    id: `mat-import-${Date.now()}-${sourceName.replace(/\W+/g, '-')}-${index}-${Math.floor(Math.random() * 10000)}`,
+    data,
+    aba: sourceName || 'Importação',
+    material,
+    unidade,
+    quantidade: quantidade || totalM3,
+    suporte: parseImportNumber(getImportValue(row, ['suporte', 'ticket', 'romaneio', 'vale'])),
+    fornecedor: getImportValue(row, ['fornecedor', 'empresa', 'origem fornecedor']),
+    placa: getImportValue(row, ['placa', 'veiculo', 'veículo', 'caminhao', 'caminhão']),
+    prefixo: getImportValue(row, ['prefixo', 'frota', 'equipamento']),
+    nota: getImportValue(row, ['nota', 'nf', 'nota fiscal', 'documento']),
+    origem: getImportValue(row, ['origem', 'local origem', 'retirada', 'jazida']),
+    destino: getImportValue(row, ['destino', 'descarga', 'local', 'obra']),
+    valorUnitario,
+    total,
+    volumeCacamba,
+    totalM3,
+    status: materialStatusFromImport(getImportValue(row, ['status', 'situacao', 'situação'])),
+    observacao: getImportValue(row, ['observacao', 'observação', 'obs']),
+    criadoEm: new Date().toISOString(),
+    atualizadoEm: new Date().toISOString()
+  });
+};
+
 const downloadBlob = (blob: Blob, fileName: string) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -253,7 +317,7 @@ export default function MateriaisTab({
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [pendingImport, setPendingImport] = useState<{ fileName: string; registros: MaterialRegistro[]; materiais: MaterialCadastro[] } | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ fileName: string; registros: MaterialRegistro[]; materiais: MaterialCadastro[]; analysis: OperationalAnalysis } | null>(null);
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -419,8 +483,41 @@ export default function MateriaisTab({
     setFeedback({ type: 'success', message: 'Lançamento de material salvo com sucesso.' });
   };
 
-  const parseWorksheetRows = (worksheet: ExcelJS.Worksheet): MaterialRegistro[] => {
+  const parseGenericWorksheetRows = (worksheet: ExcelJS.Worksheet): MaterialRegistro[] => {
+    let headerRowNumber = 0;
+    let headers: string[] = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (headerRowNumber) return;
+      const cells = Array.from({ length: Math.max(row.cellCount, 1) }, (_, index) => cleanText(row.getCell(index + 1).value));
+      const normalized = cells.map(normalize);
+      const score = [
+        normalized.some(value => value.includes('data') || value === 'dt'),
+        normalized.some(value => value.includes('material') || value.includes('produto') || value.includes('insumo')),
+        normalized.some(value => value.includes('quant') || value.includes('qtd') || value.includes('volume') || value.includes('peso')),
+      ].filter(Boolean).length;
+      if (score >= 2) {
+        headerRowNumber = rowNumber;
+        headers = cells.map((cell, index) => cell || `Coluna ${index + 1}`);
+      }
+    });
+
+    if (!headerRowNumber) return [];
+
     const imported: MaterialRegistro[] = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber <= headerRowNumber) return;
+      const objectRow = headers.reduce<Record<string, string>>((acc, header, index) => {
+        acc[header] = cleanText(row.getCell(index + 1).value);
+        return acc;
+      }, {});
+      const registro = buildRegistroFromGenericRow(objectRow, worksheet.name, rowNumber);
+      if (registro) imported.push(registro);
+    });
+    return imported;
+  };
+
+  const parseWorksheetRows = (worksheet: ExcelJS.Worksheet): MaterialRegistro[] => {
+    const legacyImported: MaterialRegistro[] = [];
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       const date = toIsoDate(row.getCell(2).value);
       if (!date) return;
@@ -430,7 +527,7 @@ export default function MateriaisTab({
         const quantidade = toNumber(row.getCell(6).value);
         const totalM3 = toNumber(row.getCell(8).value);
         if (!material || (quantidade === 0 && totalM3 === 0)) return;
-        imported.push(compact({
+        legacyImported.push(compact({
           id,
           data: date,
           aba: worksheet.name,
@@ -453,7 +550,7 @@ export default function MateriaisTab({
       if (!material || quantidade === 0) return;
       const noUnitValue = worksheet.name === 'BOTA FORA (ITAQUAREIA)' || worksheet.name === 'Q.E.SÃO BENTO SPE LTDA';
       const local = cleanText(row.getCell(10).value);
-      imported.push(compact({
+      legacyImported.push(compact({
         id,
         data: date,
         aba: worksheet.name,
@@ -471,7 +568,8 @@ export default function MateriaisTab({
         status: 'Conferido'
       }));
     });
-    return imported;
+    if (legacyImported.length > 0) return legacyImported;
+    return parseGenericWorksheetRows(worksheet);
   };
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -481,16 +579,25 @@ export default function MateriaisTab({
     setIsImporting(true);
     setFeedback(null);
     try {
-      const workbook = await loadValidatedWorkbook(file);
-      const imported = workbook.worksheets
-        .filter(sheet => !['RES_GERAL', 'Planilha1'].includes(sheet.name))
-        .flatMap(sheet => parseWorksheetRows(sheet));
+      const extension = file.name.toLowerCase().split('.').pop();
+      const imported = extension === 'csv' || extension === 'txt'
+        ? tableRowsToObjects(parseDelimitedText(await file.text()))
+          .map((row, index) => buildRegistroFromGenericRow(row, file.name, index))
+          .filter((item): item is MaterialRegistro => Boolean(item))
+        : (await loadValidatedWorkbook(file)).worksheets
+          .filter(sheet => !['RES_GERAL', 'Planilha1'].includes(sheet.name))
+          .flatMap(sheet => parseWorksheetRows(sheet));
       if (imported.length === 0) {
         setFeedback({ type: 'error', message: 'Nenhum lançamento válido foi encontrado na planilha.' });
         return;
       }
       const importedMateriais = buildCatalogFromRegistros(imported);
-      setPendingImport({ fileName: file.name, registros: imported, materiais: importedMateriais });
+      setPendingImport({
+        fileName: file.name,
+        registros: imported,
+        materiais: importedMateriais,
+        analysis: buildMaterialOperationalAnalysis(imported, importedMateriais)
+      });
     } catch (error: any) {
       setFeedback({ type: 'error', message: `Falha ao importar planilha: ${error.message || error}` });
     } finally {
@@ -505,6 +612,37 @@ export default function MateriaisTab({
     setFeedback({ type: result.success ? 'success' : 'error', message: result.message });
     setPendingImport(null);
     setIsConfirmingImport(false);
+  };
+
+  const downloadImportTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    configureCorporateWorkbook(workbook, 'Modelo de Importação de Materiais');
+    const sheet = workbook.addWorksheet('IMPORTAR_MATERIAIS');
+    sheet.addRow(MATERIAL_IMPORT_COLUMNS);
+    sheet.addRow([
+      todayInput(),
+      'Brita 1',
+      'TON',
+      32.5,
+      'Fornecedor exemplo',
+      'ABC1D23',
+      'CAM-01',
+      'NF 0001',
+      'Jazida',
+      'Obra',
+      85,
+      2762.5,
+      'Conferido',
+      'Linha de exemplo'
+    ]);
+    styleCorporateWorksheet(sheet, {
+      title: 'Modelo de Importação de Materiais',
+      headerRow: 1,
+      lastColumn: MATERIAL_IMPORT_COLUMNS.length,
+      dataStartRow: 2,
+      freezeRows: 1
+    });
+    await downloadCorporateWorkbook(workbook, 'modelo_importacao_materiais.xlsx');
   };
 
   const exportExcel = async () => {
@@ -629,6 +767,7 @@ export default function MateriaisTab({
           Placa: item.placa
         }))}
         note="A planilha foi validada e os materiais novos serão adicionados ao catálogo junto com os lançamentos."
+        analysis={pendingImport?.analysis}
         confirming={isConfirmingImport}
         onCancel={() => setPendingImport(null)}
         onConfirm={confirmSpreadsheetImport}
@@ -643,10 +782,14 @@ export default function MateriaisTab({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportFile} className="hidden" />
+          <input ref={importInputRef} type="file" accept=".xlsx,.xlsm,.csv,.txt" onChange={handleImportFile} className="hidden" />
           <button onClick={() => importInputRef.current?.click()} disabled={isImporting} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
             <Upload className="w-4 h-4" />
             {isImporting ? 'Importando...' : 'Importar planilha'}
+          </button>
+          <button onClick={downloadImportTemplate} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-sky-500 hover:text-white">
+            <FileSpreadsheet className="w-4 h-4" />
+            Modelo
           </button>
           <button onClick={exportExcel} disabled={isExporting || filteredRegistros.length === 0} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-black flex items-center gap-2">
             <Download className="w-4 h-4" />

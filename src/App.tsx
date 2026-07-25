@@ -32,7 +32,8 @@ import {
   TicketJazida,
   MaterialCadastro,
   MaterialRegistro,
-  ParteDiariaEquipamento
+  ParteDiariaEquipamento,
+  PeriodoArquivado
 } from './types';
 
 import { 
@@ -77,8 +78,6 @@ import ApontamentoRamoLinkExterno from './components/ApontamentoRamoLinkExterno'
 import MateriaisTab from './components/MateriaisTab';
 import TicketLinkExterno from './components/TicketLinkExterno';
 import ParteDiariaEquipamentosTab from './components/ParteDiariaEquipamentosTab';
-import { auditFuelDataset } from './utils/combustivelValidation';
-
 // Motion and Logo Import
 import { motion, AnimatePresence } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-branco.svg';
@@ -343,6 +342,7 @@ export default function App() {
   const [materiaisCadastro, setMateriaisCadastro] = useState<MaterialCadastro[]>([]);
   const [materiaisRegistros, setMateriaisRegistros] = useState<MaterialRegistro[]>([]);
   const [partesDiariasEquipamentos, setPartesDiariasEquipamentos] = useState<ParteDiariaEquipamento[]>([]);
+  const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
@@ -383,6 +383,7 @@ export default function App() {
       localStorage.setItem('renea_materiais_cadastro', JSON.stringify(INITIAL_MATERIAIS_CADASTRO));
       localStorage.setItem('renea_materiais_registros', JSON.stringify(INITIAL_MATERIAIS_REGISTROS));
       localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
+      localStorage.setItem('renea_periodos_arquivados', JSON.stringify([]));
       localStorage.setItem('renea_history_logs', JSON.stringify(INITIAL_HISTORY_LOGS));
       localStorage.setItem('renea_notifications', JSON.stringify(getInitialNotifications()));
       localStorage.setItem('renea_data_loaded_v2', 'true');
@@ -412,6 +413,7 @@ export default function App() {
       setMateriaisCadastro(INITIAL_MATERIAIS_CADASTRO);
       setMateriaisRegistros(INITIAL_MATERIAIS_REGISTROS);
       setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
+      setPeriodosArquivados([]);
       setHistoryLogs(INITIAL_HISTORY_LOGS);
       setNotifications(getInitialNotifications());
     } else {
@@ -437,6 +439,7 @@ export default function App() {
       const savedMateriaisCadastro = localStorage.getItem('renea_materiais_cadastro');
       const savedMateriaisRegistros = localStorage.getItem('renea_materiais_registros');
       const savedPartesDiariasEquipamentos = localStorage.getItem('renea_partes_diarias_equipamentos');
+      const savedPeriodosArquivados = localStorage.getItem('renea_periodos_arquivados');
       const savedHistory = localStorage.getItem('renea_history_logs');
       const savedNotifications = localStorage.getItem('renea_notifications');
       const shouldMigratePresencePeople = localStorage.getItem('renea_colaboradores_planilha_v1') !== 'true';
@@ -493,6 +496,7 @@ export default function App() {
       setMateriaisCadastro(loadedMateriaisCadastro);
       setMateriaisRegistros(loadedMateriaisRegistros);
       setPartesDiariasEquipamentos(savedPartesDiariasEquipamentos ? JSON.parse(savedPartesDiariasEquipamentos) : INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
+      setPeriodosArquivados(savedPeriodosArquivados ? JSON.parse(savedPeriodosArquivados) : []);
       setHistoryLogs(savedHistory ? JSON.parse(savedHistory) : INITIAL_HISTORY_LOGS);
       setNotifications(savedNotifications ? JSON.parse(savedNotifications) : getInitialNotifications());
 
@@ -512,6 +516,9 @@ export default function App() {
       }
       if (!savedPartesDiariasEquipamentos) {
         localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
+      }
+      if (!savedPeriodosArquivados) {
+        localStorage.setItem('renea_periodos_arquivados', JSON.stringify([]));
       }
       if (shouldMigrateSpreadsheetSeed) {
         localStorage.setItem('renea_equipamentos', JSON.stringify(loadedEquipamentos));
@@ -594,7 +601,8 @@ export default function App() {
     customApontamentoRamoRegistros = apontamentoRamoRegistros,
     customMateriaisCadastro = materiaisCadastro,
     customMateriaisRegistros = materiaisRegistros,
-    customPartesDiariasEquipamentos = partesDiariasEquipamentos
+    customPartesDiariasEquipamentos = partesDiariasEquipamentos,
+    customPeriodosArquivados = periodosArquivados
   ): Promise<{ success: boolean; message: string }> => {
     try {
       const data = {
@@ -620,6 +628,7 @@ export default function App() {
         materiaisCadastro: customMateriaisCadastro,
         materiaisRegistros: customMateriaisRegistros,
         partesDiariasEquipamentos: customPartesDiariasEquipamentos,
+        periodosArquivados: customPeriodosArquivados,
         notifications: customNotifications,
         historyLogs: customHistory,
       };
@@ -736,6 +745,10 @@ export default function App() {
         if (data.partesDiariasEquipamentos) {
           setPartesDiariasEquipamentos(data.partesDiariasEquipamentos);
           localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(data.partesDiariasEquipamentos));
+        }
+        if (data.periodosArquivados) {
+          setPeriodosArquivados(data.periodosArquivados);
+          localStorage.setItem('renea_periodos_arquivados', JSON.stringify(data.periodosArquivados));
         }
         if (data.notifications) {
           setNotifications(data.notifications);
@@ -950,7 +963,8 @@ export default function App() {
           getLS('renea_apontamento_ramo_registros', INITIAL_APONTAMENTO_RAMO_REGISTROS),
           getLS('renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO),
           getLS('renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS),
-          getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS)
+          getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS),
+          getLS('renea_periodos_arquivados', [])
         ).then(res => {
           if (res.success) {
             console.log("Auto-sync completed successfully.");
@@ -1366,52 +1380,54 @@ export default function App() {
 
     if (target === 'empresas') {
       const incoming = validRows.map((row, index): Empresa | null => {
-        const nome = getImportValue(row, ['nome', 'empresa', 'nome fantasia', 'razao social', 'razão social']);
-        if (!nome) return null;
+        const cnpj = getImportValue(row, ['cnpj', 'documento']);
+        const nome = getImportValue(row, ['nome', 'empresa', 'nome fantasia', 'razao social', 'razão social']) || cnpj || `Empresa ${index + 1}`;
         return {
           id: `emp-import-${now}-${index}`,
           nome,
-          cnpj: getImportValue(row, ['cnpj', 'documento']),
+          cnpj,
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'gestor'])
         };
       }).filter(Boolean) as Empresa[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhuma empresa com nome foi encontrada na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhuma empresa foi encontrada na planilha.' };
       const result = mergeImportedRecords(empresas, incoming, item => normalizeImportText(item.cnpj || item.nome));
       return persistImport('Empresas', 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'obras') {
       const incoming = validRows.map((row, index): ObraLocal | null => {
-        const nome = getImportValue(row, ['nome', 'obra', 'local', 'canteiro']);
-        if (!nome) return null;
+        const endereco = getImportValue(row, ['endereco', 'endereço', 'cidade', 'localizacao', 'localização']);
+        const nome = getImportValue(row, ['nome', 'obra', 'local', 'canteiro']) || endereco || `Obra ${index + 1}`;
         return {
           id: `obr-import-${now}-${index}`,
           nome,
-          endereco: getImportValue(row, ['endereco', 'endereço', 'cidade', 'localizacao', 'localização']),
+          endereco,
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'engenheiro', 'gestor']),
           status: statusObra(getImportValue(row, ['status', 'situacao', 'situação']))
         };
       }).filter(Boolean) as ObraLocal[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhuma obra/local com nome foi encontrada na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhuma obra/local foi encontrada na planilha.' };
       const result = mergeImportedRecords(obras, incoming, item => normalizeImportText(item.nome));
       return persistImport('Obras/Locais', 'renea_obras', setObras, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'equipamentos') {
       const incoming = validRows.map((row, index): Equipamento | null => {
-        const prefixo = getImportValue(row, ['prefixo', 'frota', 'codigo', 'código', 'id frota']).toUpperCase();
-        const nome = getImportValue(row, ['nome', 'equipamento', 'descricao', 'descrição', 'maquina', 'máquina']);
-        if (!prefixo || !nome) return null;
+        const seriePlaca = getImportValue(row, ['serie', 'série', 'numero serie', 'número série', 'numero de serie', 'número de série', 'serie placa', 'série placa']).toUpperCase();
+        const placa = getImportValue(row, ['placa', 'placa veiculo', 'placa veículo']).toUpperCase();
+        const prefixo = (getImportValue(row, ['prefixo', 'frota', 'codigo', 'código', 'id frota']) || placa || seriePlaca || `EQ-${index + 1}`).toUpperCase();
+        const tipo = getImportValue(row, ['tipo', 'tipo equipamento', 'categoria']) || 'Outro';
+        const nome = getImportValue(row, ['nome', 'equipamento', 'descricao', 'descrição', 'maquina', 'máquina']) || tipo || prefixo;
         return {
           id: `eq-import-${now}-${index}`,
           prefixo,
           nome,
-          tipo: getImportValue(row, ['tipo', 'tipo equipamento', 'categoria']) || 'Outro',
+          tipo,
           marca: getImportValue(row, ['marca']),
           modelo: getImportValue(row, ['modelo']),
-          seriePlaca: getImportValue(row, ['serie', 'série', 'numero serie', 'número série', 'numero de serie', 'número de série', 'serie placa', 'série placa']).toUpperCase(),
-          placa: getImportValue(row, ['placa', 'placa veiculo', 'placa veículo']).toUpperCase() || undefined,
+          seriePlaca,
+          placa: placa || undefined,
           empresaId: findEmpresaId(getImportValue(row, ['empresa', 'proprietario', 'proprietário', 'empresa proprietaria', 'empresa proprietária'])),
           status: statusEquipamento(getImportValue(row, ['status', 'situacao', 'situação'])),
           localAtualId: findObraId(getImportValue(row, ['obra', 'local', 'canteiro', 'local atual', 'obra atual'])),
@@ -1420,19 +1436,19 @@ export default function App() {
           horasIndisponiveis: numberFromImport(getImportValue(row, ['horas indisponiveis', 'horas indisponíveis', 'horas manutencao', 'horas manutenção']))
         };
       }).filter(Boolean) as Equipamento[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhum equipamento com prefixo e nome foi encontrado na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhum equipamento foi encontrado na planilha.' };
       const result = mergeImportedRecords(equipamentos, incoming, item => normalizeImportText(item.prefixo));
       return persistImport('Equipamentos', 'renea_equipamentos', setEquipamentos, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'funcionarios') {
       const incoming = validRows.map((row, index): Funcionario | null => {
-        const nome = getImportValue(row, ['nome', 'funcionario', 'funcionário', 'colaborador']);
-        if (!nome) return null;
+        const matricula = getImportValue(row, ['matricula', 'matrícula']);
+        const nome = getImportValue(row, ['nome', 'funcionario', 'funcionário', 'colaborador']) || matricula || `Colaborador ${index + 1}`;
         const ativoValue = normalizeImportText(getImportValue(row, ['ativo', 'status', 'situacao', 'situação']));
         return {
-          id: getImportValue(row, ['matricula', 'matrícula']) || `fun-import-${now}-${index}`,
-          matricula: getImportValue(row, ['matricula', 'matrícula']) || undefined,
+          id: matricula || `fun-import-${now}-${index}`,
+          matricula: matricula || undefined,
           nome,
           cargo: getImportValue(row, ['cargo', 'funcao', 'função']) || 'A definir',
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
@@ -1444,24 +1460,24 @@ export default function App() {
           responsavelArea: getImportValue(row, ['responsavel area', 'responsável área']) || undefined
         };
       }).filter(Boolean) as Funcionario[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhum funcionário com nome foi encontrado na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhum funcionário foi encontrado na planilha.' };
       const result = mergeImportedRecords(funcionarios, incoming, item => normalizeImportText(item.matricula || item.nome));
       return persistImport('Funcionários', 'renea_funcionarios', setFuncionarios, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'comboios') {
       const incoming = validRows.map((row, index): Comboio | null => {
-        const nome = getImportValue(row, ['nome', 'comboio', 'identificacao', 'identificação']);
-        if (!nome) return null;
+        const placa = getImportValue(row, ['placa']).toUpperCase();
+        const nome = getImportValue(row, ['nome', 'comboio', 'identificacao', 'identificação']) || placa || `Comboio ${index + 1}`;
         return {
           id: `com-import-${now}-${index}`,
           nome,
-          placa: getImportValue(row, ['placa']).toUpperCase(),
+          placa,
           capacidadeLitros: numberFromImport(getImportValue(row, ['capacidade', 'capacidade litros', 'litros'])) || 3000,
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'motorista'])
         };
       }).filter(Boolean) as Comboio[];
-      if (incoming.length === 0) return { success: false, message: 'Nenhum comboio com identificação foi encontrado na planilha.' };
+      if (incoming.length === 0) return { success: false, message: 'Nenhum comboio foi encontrado na planilha.' };
       const result = mergeImportedRecords(comboios, incoming, item => normalizeImportText(item.placa || item.nome));
       return persistImport('Comboios', 'renea_comboios', setComboios, result.next, incoming.length, result.created, result.updated);
     }
@@ -1492,10 +1508,10 @@ export default function App() {
     return persistImport('Etapas de Serviço', 'renea_etapas', setEtapas, result.next, incoming.length, result.created, result.updated);
   };
 
-  // Mantém o que foi digitado e aponta inconsistências. Dados operacionais nunca
-  // são silenciosamente reescritos para parecer que a sequência da bomba fechou.
+  // Mantém exatamente o que foi digitado/importado. A operação de combustível
+  // agora fica livre de travas de qualidade ou recálculo de conferência.
   const auditarBaseCombustivel = (lista: Abastecimento[]): Abastecimento[] =>
-    auditFuelDataset(lista, equipamentos);
+    lista;
 
   // Transaction Handlers
   const handleSaveAbastecimento = (item: Abastecimento, isNew: boolean) => {
@@ -1507,10 +1523,11 @@ export default function App() {
     }
     updated = auditarBaseCombustivel(updated);
     const eq = equipamentos.find(e => e.id === item.equipamentoId);
+    const prefixoLog = eq?.prefixo || item.prefixoInformado || 'Frota sem cadastro';
     saveAndLog(
       'Abastecimentos', 
       isNew ? 'Criou' : 'Editou', 
-      `${isNew ? 'Lançou' : 'Editou'} abastecimento de ${item.quantidadeLitros}L para ${eq ? eq.prefixo : 'Frota'}.`,
+      `${isNew ? 'Lançou' : 'Editou'} abastecimento de ${item.quantidadeLitros}L para ${prefixoLog}.`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -1537,18 +1554,28 @@ export default function App() {
   };
 
   // Importação de planilha — Prioridade 3: grava em lote (um único registro de histórico)
-  const handleImportAbastecimentos = (novosItens: Abastecimento[]) => {
-    if (!novosItens || novosItens.length === 0) return;
+  const handleImportAbastecimentos = (novosItens: Abastecimento[], combustiveisImportados: TipoCombustivel[] = []) => {
+    if ((!novosItens || novosItens.length === 0) && combustiveisImportados.length === 0) return;
+    const fuelMerge = combustiveisImportados.length
+      ? mergeImportedRecords(combustiveis, combustiveisImportados, item => normalizeImportText(item.nome))
+      : null;
     let updated = [...abastecimentos, ...novosItens];
     updated = auditarBaseCombustivel(updated);
     const origens = new Set(novosItens.map(item => item.origem || 'Planilha'));
     const origemDescricao = origens.size === 1 ? [...origens][0] : 'fontes combinadas';
+    const fuelMessage = fuelMerge && fuelMerge.created > 0
+      ? ` Também cadastrou ${fuelMerge.created} tipo(s) de combustível novo(s).`
+      : '';
     saveAndLog(
       'Abastecimentos',
       'Criou',
-      `Importou ${novosItens.length} registro(s) de combustível via ${origemDescricao}.`,
+      `Importou ${novosItens.length} registro(s) de combustível via ${origemDescricao}.${fuelMessage}`,
       historyLogs,
       () => {
+        if (fuelMerge) {
+          setCombustiveis(fuelMerge.next);
+          localStorage.setItem('renea_combustiveis', JSON.stringify(fuelMerge.next));
+        }
         setAbastecimentos(updated);
         localStorage.setItem('renea_abastecimentos', JSON.stringify(updated));
       }
@@ -1883,7 +1910,8 @@ export default function App() {
       getLS('renea_apontamento_ramo_registros', INITIAL_APONTAMENTO_RAMO_REGISTROS),
       getLS('renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO),
       getLS('renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS),
-      getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS)
+      getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS),
+      getLS('renea_periodos_arquivados', [])
     );
   };
 
@@ -2261,18 +2289,20 @@ export default function App() {
 
   const handleImportPartesDiariasEquipamentos = (registros: ParteDiariaEquipamento[]) => {
     if (!registros.length) return;
-    const existingIds = new Set(partesDiariasEquipamentos.map(item => item.id));
-    const novos = registros.filter(item => !existingIds.has(item.id));
-    if (!novos.length) return;
-    const updated = [...novos, ...partesDiariasEquipamentos];
+    const key = (item: ParteDiariaEquipamento) =>
+      item.numero
+        ? normalizeImportText(`numero-${item.numero}`)
+        : normalizeImportText(`${item.data}-${item.equipamentoId || item.prefixo}-${item.operadorNome}`);
+    const result = mergeImportedRecords(partesDiariasEquipamentos, registros, key);
+    if (!result.created && !result.updated) return;
     saveAndLog(
       'Parte Diária de Equipamentos',
       'Criou',
-      `Migrou ${novos.length} ficha(s) do legado SGE para conferência.`,
+      `Importou partes diárias: ${result.created} nova(s), ${result.updated} atualizada(s).`,
       historyLogs,
       () => {
-        setPartesDiariasEquipamentos(updated);
-        localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(updated));
+        setPartesDiariasEquipamentos(result.next);
+        localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(result.next));
       }
     );
     setTimeout(() => uploadLocalSnapshotToFirebase(), 120);
@@ -2429,6 +2459,7 @@ export default function App() {
     materiaisCadastro?: MaterialCadastro[];
     materiaisRegistros?: MaterialRegistro[];
     partesDiariasEquipamentos?: ParteDiariaEquipamento[];
+    periodosArquivados?: PeriodoArquivado[];
     notifications?: AppNotification[];
     historyLogs?: HistoryLog[];
   }) => {
@@ -2454,6 +2485,7 @@ export default function App() {
     setMateriaisCadastro(imported.materiaisCadastro || []);
     setMateriaisRegistros(imported.materiaisRegistros || []);
     setPartesDiariasEquipamentos(imported.partesDiariasEquipamentos || []);
+    setPeriodosArquivados(imported.periodosArquivados || []);
     setNotifications(imported.notifications || []);
     
     const logs = imported.historyLogs || [{
@@ -2488,6 +2520,7 @@ export default function App() {
     localStorage.setItem('renea_materiais_cadastro', JSON.stringify(imported.materiaisCadastro || []));
     localStorage.setItem('renea_materiais_registros', JSON.stringify(imported.materiaisRegistros || []));
     localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(imported.partesDiariasEquipamentos || []));
+    localStorage.setItem('renea_periodos_arquivados', JSON.stringify(imported.periodosArquivados || []));
     localStorage.setItem('renea_notifications', JSON.stringify(imported.notifications || []));
     localStorage.setItem('renea_history_logs', JSON.stringify(logs));
   };
@@ -2503,6 +2536,7 @@ export default function App() {
     setEtapas(INITIAL_ETAPAS_SERVICO);
     setAbastecimentos(INITIAL_ABASTECIMENTOS);
     setLubrificacoes(INITIAL_LUBRIFICACOES);
+    setTicketsJazida(INITIAL_TICKETS_JAZIDA);
     setRdos(INITIAL_RDOS);
     setListasPresenca(INITIAL_PRESENCAS);
     setOrdensServico(INITIAL_ORDENS_SERVICO);
@@ -2514,6 +2548,7 @@ export default function App() {
     setMateriaisCadastro(INITIAL_MATERIAIS_CADASTRO);
     setMateriaisRegistros(INITIAL_MATERIAIS_REGISTROS);
     setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
+    setPeriodosArquivados([]);
     setHistoryLogs(INITIAL_HISTORY_LOGS);
 
     localStorage.setItem('renea_empresas', JSON.stringify(INITIAL_EMPRESAS));
@@ -2526,6 +2561,7 @@ export default function App() {
     localStorage.setItem('renea_etapas', JSON.stringify(INITIAL_ETAPAS_SERVICO));
     localStorage.setItem('renea_abastecimentos', JSON.stringify(INITIAL_ABASTECIMENTOS));
     localStorage.setItem('renea_lubrificacoes', JSON.stringify(INITIAL_LUBRIFICACOES));
+    localStorage.setItem('renea_tickets_jazida', JSON.stringify(INITIAL_TICKETS_JAZIDA));
     localStorage.setItem('renea_rdos', JSON.stringify(INITIAL_RDOS));
     localStorage.setItem('renea_listas_presenca', JSON.stringify(INITIAL_PRESENCAS));
     localStorage.setItem('renea_ordens_servico', JSON.stringify(INITIAL_ORDENS_SERVICO));
@@ -2537,8 +2573,10 @@ export default function App() {
     localStorage.setItem('renea_materiais_cadastro', JSON.stringify(INITIAL_MATERIAIS_CADASTRO));
     localStorage.setItem('renea_materiais_registros', JSON.stringify(INITIAL_MATERIAIS_REGISTROS));
     localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
+    localStorage.setItem('renea_periodos_arquivados', JSON.stringify([]));
     localStorage.setItem('renea_history_logs', JSON.stringify(INITIAL_HISTORY_LOGS));
     localStorage.setItem('renea_colaboradores_planilha_v1', 'true');
+    localStorage.setItem('renea_planilhas_operacionais_v1', 'true');
     localStorage.setItem('renea_materiais_planilha_v1', 'true');
   };
 
@@ -2565,6 +2603,7 @@ export default function App() {
     setMateriaisCadastro([]);
     setMateriaisRegistros([]);
     setPartesDiariasEquipamentos([]);
+    setPeriodosArquivados([]);
     setHistoryLogs([{
       id: `log-${Date.now()}`,
       timestamp: new Date().toLocaleString('pt-BR'),
@@ -2596,7 +2635,296 @@ export default function App() {
     localStorage.setItem('renea_materiais_cadastro', JSON.stringify([]));
     localStorage.setItem('renea_materiais_registros', JSON.stringify([]));
     localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify([]));
+    localStorage.setItem('renea_periodos_arquivados', JSON.stringify([]));
     localStorage.setItem('renea_history_logs', JSON.stringify([]));
+    localStorage.setItem('renea_colaboradores_planilha_v1', 'true');
+    localStorage.setItem('renea_planilhas_operacionais_v1', 'true');
+    localStorage.setItem('renea_materiais_planilha_v1', 'true');
+  };
+
+  const handleApplySelectiveReset = (
+    scopeKeys: string[],
+    mode: 'clear' | 'default'
+  ): { success: boolean; message: string } => {
+    const uniqueScopes = Array.from(new Set(scopeKeys)).filter(Boolean);
+    if (uniqueScopes.length === 0) {
+      return { success: false, message: 'Selecione ao menos uma aba ou grupo de dados para excluir.' };
+    }
+
+    const labels: Record<string, string> = {
+      empresas: 'Empresas',
+      obras: 'Obras/Locais',
+      equipamentos: 'Equipamentos',
+      funcionarios: 'Funcionários',
+      comboios: 'Comboios',
+      combustiveis: 'Tipos de combustível',
+      lubrificantes: 'Lubrificantes/Etapas',
+      abastecimentos: 'Abastecimentos',
+      lubrificacoes: 'Lubrificações',
+      rdos: 'RDOs',
+      presenca: 'Presença',
+      apontamentoRamos: 'Apontamento Ramos',
+      ticketsJazida: 'Tickets Jazida',
+      materiais: 'Materiais',
+      partesDiarias: 'Partes Diárias',
+      manutencao: 'Manutenção',
+      periodosArquivados: 'Arquivos de períodos',
+    };
+
+    const nextValue = <T,>(defaultValue: T[]): T[] => (mode === 'default' ? defaultValue : []);
+    const persist = <T,>(key: string, value: T[], setter: (items: T[]) => void) => {
+      setter(value);
+      localStorage.setItem(key, JSON.stringify(value));
+    };
+
+    saveAndLog(
+      'Banco de Dados',
+      mode === 'clear' ? 'Excluiu' : 'Editou',
+      `${mode === 'clear' ? 'Zerou' : 'Restaurou para o padrão'} os dados selecionados: ${uniqueScopes.map(key => labels[key] || key).join(', ')}.`,
+      historyLogs,
+      () => {
+        uniqueScopes.forEach(scope => {
+          switch (scope) {
+            case 'empresas':
+              persist('renea_empresas', nextValue(INITIAL_EMPRESAS), setEmpresas);
+              break;
+            case 'obras':
+              persist('renea_obras', nextValue(INITIAL_OBRAS), setObras);
+              break;
+            case 'equipamentos':
+              persist('renea_equipamentos', nextValue(INITIAL_EQUIPAMENTOS), setEquipamentos);
+              break;
+            case 'funcionarios':
+              persist('renea_funcionarios', nextValue(INITIAL_FUNCIONARIOS), setFuncionarios);
+              break;
+            case 'comboios':
+              persist('renea_comboios', nextValue(INITIAL_COMBOIOS), setComboios);
+              break;
+            case 'combustiveis':
+              persist('renea_combustiveis', nextValue(INITIAL_TIPOS_COMBUSTIVEL), setCombustiveis);
+              break;
+            case 'lubrificantes':
+              persist('renea_lubrificantes', nextValue(INITIAL_PRODUTOS_LUBRIFICACAO), setLubrificantes);
+              persist('renea_etapas', nextValue(INITIAL_ETAPAS_SERVICO), setEtapas);
+              break;
+            case 'abastecimentos':
+              persist('renea_abastecimentos', nextValue(INITIAL_ABASTECIMENTOS), setAbastecimentos);
+              break;
+            case 'lubrificacoes':
+              persist('renea_lubrificacoes', nextValue(INITIAL_LUBRIFICACOES), setLubrificacoes);
+              break;
+            case 'rdos':
+              persist('renea_rdos', nextValue(INITIAL_RDOS), setRdos);
+              break;
+            case 'presenca':
+              persist('renea_listas_presenca', nextValue(INITIAL_PRESENCAS), setListasPresenca);
+              persist('renea_grupos_equipes', nextValue(INITIAL_GRUPOS_EQUIPES), setGruposEquipe);
+              persist('renea_presencas_link', nextValue(INITIAL_PRESENCAS_LINK), setPresencasLink);
+              persist('renea_historico_presencas', nextValue(INITIAL_HISTORICO_PRESENCAS), setHistoricoPresencas);
+              break;
+            case 'apontamentoRamos':
+              persist('renea_apontamento_ramos', nextValue(INITIAL_APONTAMENTO_RAMOS), setApontamentoRamos);
+              persist('renea_apontamento_ramo_registros', nextValue(INITIAL_APONTAMENTO_RAMO_REGISTROS), setApontamentoRamoRegistros);
+              break;
+            case 'ticketsJazida':
+              persist('renea_tickets_jazida', nextValue(INITIAL_TICKETS_JAZIDA), setTicketsJazida);
+              break;
+            case 'materiais':
+              persist('renea_materiais_cadastro', nextValue(INITIAL_MATERIAIS_CADASTRO), setMateriaisCadastro);
+              persist('renea_materiais_registros', nextValue(INITIAL_MATERIAIS_REGISTROS), setMateriaisRegistros);
+              break;
+            case 'partesDiarias':
+              persist('renea_partes_diarias_equipamentos', nextValue(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS), setPartesDiariasEquipamentos);
+              break;
+            case 'manutencao':
+              persist('renea_ordens_servico', nextValue(INITIAL_ORDENS_SERVICO), setOrdensServico);
+              break;
+            case 'periodosArquivados':
+              persist('renea_periodos_arquivados', [], setPeriodosArquivados);
+              break;
+            default:
+              break;
+          }
+        });
+        localStorage.setItem('renea_colaboradores_planilha_v1', 'true');
+        localStorage.setItem('renea_planilhas_operacionais_v1', 'true');
+        localStorage.setItem('renea_materiais_planilha_v1', 'true');
+      }
+    );
+
+    return {
+      success: true,
+      message: `${mode === 'clear' ? 'Dados zerados' : 'Padrões restaurados'} para: ${uniqueScopes.map(key => labels[key] || key).join(', ')}.`,
+    };
+  };
+
+  const isDateInRange = (date: string | undefined, start: string, end: string) => (
+    Boolean(date) && (!start || String(date) >= start) && (!end || String(date) <= end)
+  );
+
+  const splitByArchivePeriod = <T,>(
+    items: T[],
+    getDate: (item: T) => string | undefined,
+    start: string,
+    end: string
+  ) => {
+    const selected: T[] = [];
+    const remaining: T[] = [];
+    items.forEach(item => {
+      if (isDateInRange(getDate(item), start, end)) selected.push(item);
+      else remaining.push(item);
+    });
+    return { selected, remaining };
+  };
+
+  const mergeByIdKeepingLatest = <T extends { id: string }>(current: T[], incoming: T[]) => {
+    const map = new Map(current.map(item => [item.id, item]));
+    incoming.forEach(item => map.set(item.id, item));
+    return Array.from(map.values());
+  };
+
+  const persistArchivedOperationData = (data: PeriodoArquivado['dados']) => {
+    const nextAbastecimentos = mergeByIdKeepingLatest(abastecimentos, data.abastecimentos);
+    const nextLubrificacoes = mergeByIdKeepingLatest(lubrificacoes, data.lubrificacoes);
+    const nextTicketsJazida = mergeByIdKeepingLatest(ticketsJazida, data.ticketsJazida);
+    const nextRdos = mergeByIdKeepingLatest(rdos, data.rdos);
+    const nextListasPresenca = mergeByIdKeepingLatest(listasPresenca, data.listasPresenca);
+    const nextOrdensServico = mergeByIdKeepingLatest(ordensServico, data.ordensServico);
+    const nextPresencasLink = mergeByIdKeepingLatest(presencasLink, data.presencasLink);
+    const nextHistoricoPresencas = mergeByIdKeepingLatest(historicoPresencas, data.historicoPresencas);
+    const nextApontamentoRamoRegistros = mergeByIdKeepingLatest(apontamentoRamoRegistros, data.apontamentoRamoRegistros);
+    const nextMateriaisRegistros = mergeByIdKeepingLatest(materiaisRegistros, data.materiaisRegistros);
+    const nextPartesDiariasEquipamentos = mergeByIdKeepingLatest(partesDiariasEquipamentos, data.partesDiariasEquipamentos);
+
+    setAbastecimentos(nextAbastecimentos); localStorage.setItem('renea_abastecimentos', JSON.stringify(nextAbastecimentos));
+    setLubrificacoes(nextLubrificacoes); localStorage.setItem('renea_lubrificacoes', JSON.stringify(nextLubrificacoes));
+    setTicketsJazida(nextTicketsJazida); localStorage.setItem('renea_tickets_jazida', JSON.stringify(nextTicketsJazida));
+    setRdos(nextRdos); localStorage.setItem('renea_rdos', JSON.stringify(nextRdos));
+    setListasPresenca(nextListasPresenca); localStorage.setItem('renea_listas_presenca', JSON.stringify(nextListasPresenca));
+    setOrdensServico(nextOrdensServico); localStorage.setItem('renea_ordens_servico', JSON.stringify(nextOrdensServico));
+    setPresencasLink(nextPresencasLink); localStorage.setItem('renea_presencas_link', JSON.stringify(nextPresencasLink));
+    setHistoricoPresencas(nextHistoricoPresencas); localStorage.setItem('renea_historico_presencas', JSON.stringify(nextHistoricoPresencas));
+    setApontamentoRamoRegistros(nextApontamentoRamoRegistros); localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(nextApontamentoRamoRegistros));
+    setMateriaisRegistros(nextMateriaisRegistros); localStorage.setItem('renea_materiais_registros', JSON.stringify(nextMateriaisRegistros));
+    setPartesDiariasEquipamentos(nextPartesDiariasEquipamentos); localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(nextPartesDiariasEquipamentos));
+  };
+
+  const handleArchivePeriod = (
+    dataInicio: string,
+    dataFim: string,
+    nome?: string
+  ): { success: boolean; message: string } => {
+    if (!dataInicio || !dataFim) {
+      return { success: false, message: 'Informe data inicial e data final para arquivar o período.' };
+    }
+    if (dataInicio > dataFim) {
+      return { success: false, message: 'A data inicial não pode ser maior que a data final.' };
+    }
+
+    const splitAbastecimentos = splitByArchivePeriod<Abastecimento>(abastecimentos, item => item.data, dataInicio, dataFim);
+    const splitLubrificacoes = splitByArchivePeriod<Lubrificacao>(lubrificacoes, item => item.data, dataInicio, dataFim);
+    const splitTicketsJazida = splitByArchivePeriod<TicketJazida>(ticketsJazida, item => item.data, dataInicio, dataFim);
+    const splitRdos = splitByArchivePeriod<RdoDiario>(rdos, item => item.data, dataInicio, dataFim);
+    const splitListasPresenca = splitByArchivePeriod<ListaPresenca>(listasPresenca, item => item.data, dataInicio, dataFim);
+    const splitOrdensServico = splitByArchivePeriod<OrdemServico>(ordensServico, item => item.dataAbertura, dataInicio, dataFim);
+    const splitPresencasLink = splitByArchivePeriod<PresencaApontamento>(presencasLink, item => item.data, dataInicio, dataFim);
+    const splitHistoricoPresencas = splitByArchivePeriod<HistoricoPresenca>(historicoPresencas, item => item.data, dataInicio, dataFim);
+    const splitApontamentoRamoRegistros = splitByArchivePeriod<ApontamentoRamoRegistro>(apontamentoRamoRegistros, item => item.data, dataInicio, dataFim);
+    const splitMateriaisRegistros = splitByArchivePeriod<MaterialRegistro>(materiaisRegistros, item => item.data, dataInicio, dataFim);
+    const splitPartesDiariasEquipamentos = splitByArchivePeriod<ParteDiariaEquipamento>(partesDiariasEquipamentos, item => item.data, dataInicio, dataFim);
+
+    const dados: PeriodoArquivado['dados'] = {
+      abastecimentos: splitAbastecimentos.selected,
+      lubrificacoes: splitLubrificacoes.selected,
+      ticketsJazida: splitTicketsJazida.selected,
+      rdos: splitRdos.selected,
+      listasPresenca: splitListasPresenca.selected,
+      ordensServico: splitOrdensServico.selected,
+      presencasLink: splitPresencasLink.selected,
+      historicoPresencas: splitHistoricoPresencas.selected,
+      apontamentoRamoRegistros: splitApontamentoRamoRegistros.selected,
+      materiaisRegistros: splitMateriaisRegistros.selected,
+      partesDiariasEquipamentos: splitPartesDiariasEquipamentos.selected,
+    };
+
+    const resumo: Record<string, number> = Object.fromEntries(
+      Object.entries(dados).map(([key, value]) => [key, value.length])
+    );
+    const total = Object.values(resumo).reduce((sum, value) => sum + Number(value || 0), 0);
+    if (total === 0) {
+      return { success: false, message: 'Nenhum lançamento datado foi encontrado nesse período.' };
+    }
+
+    const archive: PeriodoArquivado = {
+      id: `periodo-${Date.now()}`,
+      nome: nome?.trim() || `Fechamento ${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')}`,
+      dataInicio,
+      dataFim,
+      criadoEm: new Date().toISOString(),
+      criadoPor: activeUserName,
+      resumo,
+      dados,
+    };
+    const nextArchives = [archive, ...periodosArquivados];
+
+    saveAndLog(
+      'Arquivo de Períodos',
+      'Criou',
+      `Arquivou ${total} registro(s) de ${dataInicio} a ${dataFim}. Os dados saíram da operação ativa e não entram no dashboard até serem puxados de volta.`,
+      historyLogs,
+      () => {
+        setAbastecimentos(splitAbastecimentos.remaining); localStorage.setItem('renea_abastecimentos', JSON.stringify(splitAbastecimentos.remaining));
+        setLubrificacoes(splitLubrificacoes.remaining); localStorage.setItem('renea_lubrificacoes', JSON.stringify(splitLubrificacoes.remaining));
+        setTicketsJazida(splitTicketsJazida.remaining); localStorage.setItem('renea_tickets_jazida', JSON.stringify(splitTicketsJazida.remaining));
+        setRdos(splitRdos.remaining); localStorage.setItem('renea_rdos', JSON.stringify(splitRdos.remaining));
+        setListasPresenca(splitListasPresenca.remaining); localStorage.setItem('renea_listas_presenca', JSON.stringify(splitListasPresenca.remaining));
+        setOrdensServico(splitOrdensServico.remaining); localStorage.setItem('renea_ordens_servico', JSON.stringify(splitOrdensServico.remaining));
+        setPresencasLink(splitPresencasLink.remaining); localStorage.setItem('renea_presencas_link', JSON.stringify(splitPresencasLink.remaining));
+        setHistoricoPresencas(splitHistoricoPresencas.remaining); localStorage.setItem('renea_historico_presencas', JSON.stringify(splitHistoricoPresencas.remaining));
+        setApontamentoRamoRegistros(splitApontamentoRamoRegistros.remaining); localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(splitApontamentoRamoRegistros.remaining));
+        setMateriaisRegistros(splitMateriaisRegistros.remaining); localStorage.setItem('renea_materiais_registros', JSON.stringify(splitMateriaisRegistros.remaining));
+        setPartesDiariasEquipamentos(splitPartesDiariasEquipamentos.remaining); localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(splitPartesDiariasEquipamentos.remaining));
+        setPeriodosArquivados(nextArchives);
+        localStorage.setItem('renea_periodos_arquivados', JSON.stringify(nextArchives));
+      }
+    );
+
+    return { success: true, message: `Período arquivado com ${total} registro(s). O dashboard ficou limpo para o próximo lançamento.` };
+  };
+
+  const handleRestoreArchivedPeriod = (id: string): { success: boolean; message: string } => {
+    const archive = periodosArquivados.find(item => item.id === id);
+    if (!archive) return { success: false, message: 'Arquivo de período não encontrado.' };
+    const total = (Object.values(archive.resumo || {}) as number[]).reduce((sum, value) => sum + Number(value || 0), 0);
+
+    saveAndLog(
+      'Arquivo de Períodos',
+      'Criou',
+      `Puxou ${total} registro(s) do arquivo "${archive.nome}" para a operação ativa. O arquivo continua guardado.`,
+      historyLogs,
+      () => persistArchivedOperationData(archive.dados)
+    );
+
+    return { success: true, message: `Período "${archive.nome}" puxado para a operação ativa. Ele continua salvo no arquivo.` };
+  };
+
+  const handleDeleteArchivedPeriod = (id: string): { success: boolean; message: string } => {
+    const archive = periodosArquivados.find(item => item.id === id);
+    if (!archive) return { success: false, message: 'Arquivo de período não encontrado.' };
+    const nextArchives = periodosArquivados.filter(item => item.id !== id);
+
+    saveAndLog(
+      'Arquivo de Períodos',
+      'Excluiu',
+      `Excluiu permanentemente o arquivo de período "${archive.nome}".`,
+      historyLogs,
+      () => {
+        setPeriodosArquivados(nextArchives);
+        localStorage.setItem('renea_periodos_arquivados', JSON.stringify(nextArchives));
+      }
+    );
+
+    return { success: true, message: `Arquivo "${archive.nome}" excluído.` };
   };
 
   const handleExportFullData = (): string => {
@@ -2623,6 +2951,7 @@ export default function App() {
       materiaisCadastro,
       materiaisRegistros,
       partesDiariasEquipamentos,
+      periodosArquivados,
       notifications,
       historyLogs
     }, null, 2);
@@ -3021,6 +3350,16 @@ export default function App() {
         />
 
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => navigateTo('cadastros', true)}
+            title="Abrir cadastros auxiliares"
+            aria-label="Abrir cadastros auxiliares"
+            className={`p-2 rounded-md border transition-colors cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}
+          >
+            <FolderPlus className="w-5 h-5" />
+          </button>
+
           {/* Notification Bell Mobile */}
           <div className="relative">
             <button 
@@ -3087,7 +3426,17 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigateTo('cadastros')}
+              title="Abrir cadastros auxiliares"
+              className={`h-10 px-3 rounded-md border text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-700'}`}
+            >
+              <FolderPlus className="w-4 h-4" />
+              <span>Cadastros</span>
+            </button>
+
             {/* Notification Bell Dropdown Button */}
             <div className="relative">
               <button 
@@ -3287,6 +3636,7 @@ export default function App() {
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onSaveRdo={handleSaveRdo}
                 onDeleteRdo={handleDeleteRdo}
+                onOpenCadastros={() => setActiveTab('cadastros')}
               />
             )}
 
@@ -3392,9 +3742,14 @@ export default function App() {
                 historyLogs={historyLogs}
                 onResetToDefault={handleResetData}
                 onClearAllData={handleClearData}
+                onApplySelectiveReset={handleApplySelectiveReset}
                 onImportFullData={handleImportFullData}
                 onImportFilteredByDate={handleImportFilteredByDate}
                 onExportFullData={handleExportFullData}
+                periodosArquivados={periodosArquivados}
+                onArchivePeriod={handleArchivePeriod}
+                onRestoreArchivedPeriod={handleRestoreArchivedPeriod}
+                onDeleteArchivedPeriod={handleDeleteArchivedPeriod}
                 isFirebaseConnected={isFirebaseConnected}
                 isAutoSyncEnabled={isAutoSyncEnabled}
                 lastCloudSync={lastCloudSync}

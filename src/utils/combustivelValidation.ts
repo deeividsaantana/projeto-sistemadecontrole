@@ -81,6 +81,18 @@ const getPreviousRecord = (
   .filter(item => item.id !== current.id && predicate(item) && toTimestamp(item) < toTimestamp(current))
   .sort((a, b) => toTimestamp(b).localeCompare(toTimestamp(a)))[0];
 
+const getCompatiblePreviousMeterRecord = (
+  current: Abastecimento,
+  records: Abastecimento[],
+  predicate: (item: Abastecimento) => boolean,
+  field: 'horimetroInicial' | 'kmInicial',
+) => records
+  .filter(item => item.id !== current.id
+    && predicate(item)
+    && Number(item[field] || 0) > 0
+    && Number(item[field] || 0) < Number(current[field] || 0))
+  .sort((a, b) => Number(b[field] || 0) - Number(a[field] || 0))[0];
+
 const addAlert = (
   list: AlertaCombustivel[],
   codigo: string,
@@ -113,6 +125,7 @@ export const validateFueling = (
 ): AlertaCombustivel[] => {
   const alerts: AlertaCombustivel[] = [];
   const equipment = equipamentos.find(item => item.id === current.equipamentoId);
+  const informedPrefix = String(current.prefixoInformado || '').trim();
   const quickTime = normalizeQuickTime(current.hora);
 
   if (!current.data) {
@@ -123,7 +136,11 @@ export const validateFueling = (
     addAlert(alerts, 'DATA_FUTURA', 'data', 'aviso', 'A data está no futuro. Confirme antes de gravar.');
   }
   if (!quickTime.valid) addAlert(alerts, 'HORA_INVALIDA', 'hora', 'critico', 'Hora inválida. Use o formato HH:MM.');
-  if (!equipment) addAlert(alerts, 'FROTA_NAO_ENCONTRADA', 'equipamentoId', 'critico', 'Prefixo não localizado no cadastro de frota.');
+  if (!equipment && informedPrefix) {
+    addAlert(alerts, 'FROTA_NAO_CADASTRADA', 'prefixoInformado', 'aviso', `Prefixo "${informedPrefix}" ainda não existe no cadastro. O lançamento foi preservado para conferência.`);
+  } else if (!equipment) {
+    addAlert(alerts, 'FROTA_NAO_INFORMADA', 'equipamentoId', 'aviso', 'Prefixo/frota não informado. O lançamento foi preservado para conferência.');
+  }
   if (!current.tipoCombustivelId) addAlert(alerts, 'COMBUSTIVEL_OBRIGATORIO', 'tipoCombustivelId', 'critico', 'Tipo de combustível não informado.');
   if (!current.comboioId) addAlert(alerts, 'COMBOIO_OBRIGATORIO', 'comboioId', 'aviso', 'Comboio ou posto abastecedor não informado.');
   if (!current.responsavel?.trim()) addAlert(alerts, 'RESPONSAVEL_OBRIGATORIO', 'responsavel', 'critico', 'Responsável não informado.');
@@ -149,32 +166,45 @@ export const validateFueling = (
     : undefined;
   if (previousEquipment) {
     if (current.horimetroInicial > 0 && previousEquipment.horimetroInicial > 0 && current.horimetroInicial < previousEquipment.horimetroInicial) {
-      addAlert(alerts, 'HORIMETRO_REGREDIU', 'horimetroInicial', 'critico', 'Horímetro menor que a última leitura desta frota.', previousEquipment.horimetroInicial.toLocaleString('pt-BR'));
+      addAlert(alerts, 'HORIMETRO_REGREDIU', 'horimetroInicial', 'aviso', 'Horímetro menor que a leitura anterior por data. Confirme se é lançamento retroativo, troca/reinício de medidor ou data aproximada.', previousEquipment.horimetroInicial.toLocaleString('pt-BR'));
     } else if (current.horimetroInicial > 0 && previousEquipment.horimetroInicial > 0 && current.horimetroInicial === previousEquipment.horimetroInicial && current.quantidadeLitros > 0) {
       addAlert(alerts, 'HORIMETRO_NAO_AVANCOU', 'horimetroInicial', 'aviso', 'Horímetro repetido mesmo com novo abastecimento. Confirme a leitura.');
     }
     if (current.kmInicial > 0 && previousEquipment.kmInicial > 0 && current.kmInicial < previousEquipment.kmInicial) {
-      addAlert(alerts, 'KM_REGREDIU', 'kmInicial', 'critico', 'Quilometragem menor que a última leitura desta frota.', previousEquipment.kmInicial.toLocaleString('pt-BR'));
+      addAlert(alerts, 'KM_REGREDIU', 'kmInicial', 'aviso', 'Quilometragem menor que a leitura anterior por data. Confirme se é lançamento retroativo, troca/reinício de medidor ou data aproximada.', previousEquipment.kmInicial.toLocaleString('pt-BR'));
     } else if (current.kmInicial > 0 && previousEquipment.kmInicial > 0 && current.kmInicial === previousEquipment.kmInicial && current.quantidadeLitros > 0) {
       addAlert(alerts, 'KM_NAO_AVANCOU', 'kmInicial', 'aviso', 'Quilometragem repetida mesmo com novo abastecimento. Confirme a leitura.');
     }
+  }
 
-    if (current.horimetroInicial > 0 && previousEquipment.horimetroInicial > 0 && current.quantidadeLitros > 0) {
-      const deltaHours = current.horimetroInicial - previousEquipment.horimetroInicial;
-      if (deltaHours > 0) {
-        const litersPerHour = current.quantidadeLitros / deltaHours;
-        if (litersPerHour < 0.5 || litersPerHour > 120) {
-          addAlert(alerts, 'CONSUMO_HORA_FORA_PADRAO', 'horimetroInicial', 'aviso', `Consumo calculado de ${litersPerHour.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L/h fora da faixa ampla de conferência.`, '0,5 a 120 L/h');
-        }
+  const previousEquipmentHour = Number(previousEquipment?.horimetroInicial || 0);
+  const previousEquipmentKm = Number(previousEquipment?.kmInicial || 0);
+  const previousHourMeter = equipment && current.horimetroInicial > 0
+    ? (previousEquipment && previousEquipmentHour > 0 && current.horimetroInicial > previousEquipmentHour
+      ? previousEquipment
+      : getCompatiblePreviousMeterRecord(current, records, item => item.equipamentoId === current.equipamentoId, 'horimetroInicial'))
+    : undefined;
+  const previousKmMeter = equipment && current.kmInicial > 0
+    ? (previousEquipment && previousEquipmentKm > 0 && current.kmInicial > previousEquipmentKm
+      ? previousEquipment
+      : getCompatiblePreviousMeterRecord(current, records, item => item.equipamentoId === current.equipamentoId, 'kmInicial'))
+    : undefined;
+
+  if (current.horimetroInicial > 0 && previousHourMeter?.horimetroInicial > 0 && current.quantidadeLitros > 0) {
+    const deltaHours = current.horimetroInicial - previousHourMeter.horimetroInicial;
+    if (deltaHours > 0) {
+      const litersPerHour = current.quantidadeLitros / deltaHours;
+      if (litersPerHour < 0.5 || litersPerHour > 120) {
+        addAlert(alerts, 'CONSUMO_HORA_FORA_PADRAO', 'horimetroInicial', 'aviso', `Consumo calculado de ${litersPerHour.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L/h fora da faixa ampla de conferência.`, '0,5 a 120 L/h');
       }
-    } else if (current.kmInicial > 0 && previousEquipment.kmInicial > 0 && current.quantidadeLitros > 0) {
-      const deltaKm = current.kmInicial - previousEquipment.kmInicial;
-      if (deltaKm > 0) {
-        const kmPerLiter = deltaKm / current.quantidadeLitros;
-        const [min, max] = getKmConsumptionRange(equipment);
-        if (kmPerLiter < min || kmPerLiter > max) {
-          addAlert(alerts, 'CONSUMO_KM_FORA_PADRAO', 'kmInicial', 'aviso', `Média calculada de ${kmPerLiter.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} km/L fora da faixa da família.`, `${min} a ${max} km/L`);
-        }
+    }
+  } else if (current.kmInicial > 0 && previousKmMeter?.kmInicial > 0 && current.quantidadeLitros > 0) {
+    const deltaKm = current.kmInicial - previousKmMeter.kmInicial;
+    if (deltaKm > 0) {
+      const kmPerLiter = deltaKm / current.quantidadeLitros;
+      const [min, max] = getKmConsumptionRange(equipment);
+      if (kmPerLiter < min || kmPerLiter > max) {
+        addAlert(alerts, 'CONSUMO_KM_FORA_PADRAO', 'kmInicial', 'aviso', `Média calculada de ${kmPerLiter.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} km/L fora da faixa da família.`, `${min} a ${max} km/L`);
       }
     }
   }
@@ -189,7 +219,7 @@ export const validateFueling = (
   const duplicate = records.some(item => item.id !== current.id
     && item.data === current.data
     && item.hora === quickTime.value
-    && item.equipamentoId === current.equipamentoId
+    && (item.equipamentoId || item.prefixoInformado || '') === (current.equipamentoId || current.prefixoInformado || '')
     && Math.abs(Number(item.quantidadeLitros) - Number(current.quantidadeLitros)) < 0.01
     && item.tipoCombustivelId === current.tipoCombustivelId);
   if (duplicate) addAlert(alerts, 'REGISTRO_DUPLICADO', 'registro', 'critico', 'Já existe um abastecimento com a mesma data, hora, frota, produto e quantidade.');
@@ -206,7 +236,7 @@ export const validateFueling = (
       alerts,
       'BAIXA_CONFIANCA_IA',
       'documento',
-      reviewed ? 'info' : Number(current.confiancaExtracao || 0) < 0.5 ? 'critico' : 'aviso',
+      reviewed ? 'info' : 'aviso',
       `Extração automática com ${Math.round(Number(current.confiancaExtracao || 0) * 100)}% de confiança; ${reviewed ? 'linha conferida manualmente.' : 'confira com o documento original.'}`,
     );
   }
@@ -252,15 +282,16 @@ export const auditFuelDataset = (records: Abastecimento[], equipamentos: Equipam
   chronological.forEach(record => {
     const normalizedTime = normalizeQuickTime(record.hora);
     const current = { ...record, hora: normalizedTime.valid ? normalizedTime.value : record.hora };
-    const duplicateKey = `${current.data}|${current.hora}|${current.equipamentoId}|${current.quantidadeLitros}|${current.tipoCombustivelId}`;
+    const equipmentKey = current.equipamentoId || current.prefixoInformado || '';
+    const duplicateKey = `${current.data}|${current.hora}|${equipmentKey}|${current.quantidadeLitros}|${current.tipoCombustivelId}`;
     const context = [
-      previousEquipment.get(current.equipamentoId),
+      previousEquipment.get(equipmentKey),
       current.comboioId ? previousPump.get(current.comboioId) : undefined,
       duplicateKeys.get(duplicateKey),
     ].filter((item, index, array): item is Abastecimento => Boolean(item) && array.findIndex(other => other?.id === item?.id) === index);
     const alertas = validateFueling(current, context, equipamentos);
     audited.set(current.id, { ...current, alertas, status: getFuelStatusFromAlerts(alertas) });
-    previousEquipment.set(current.equipamentoId, current);
+    if (equipmentKey) previousEquipment.set(equipmentKey, current);
     if (current.comboioId) previousPump.set(current.comboioId, current);
     if (!duplicateKeys.has(duplicateKey)) duplicateKeys.set(duplicateKey, current);
   });

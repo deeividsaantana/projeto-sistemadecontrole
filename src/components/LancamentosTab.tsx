@@ -61,11 +61,12 @@ interface LancamentosTabProps {
 
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
-  onImportAbastecimentos: (items: Abastecimento[]) => void;
+  onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
   onDeleteLubrificacao: (id: string) => void;
   onSaveRdo: (item: RdoDiario, isNew: boolean) => void;
   onDeleteRdo: (id: string) => void;
+  onOpenCadastros?: () => void;
 }
 
 type Mode = 'abastecimentos' | 'lubrificacoes' | 'rdos';
@@ -88,7 +89,8 @@ export default function LancamentosTab({
   onSaveLubrificacao,
   onDeleteLubrificacao,
   onSaveRdo,
-  onDeleteRdo
+  onDeleteRdo,
+  onOpenCadastros
 }: LancamentosTabProps) {
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
@@ -120,6 +122,7 @@ export default function LancamentosTab({
 
   // --- Importação de Planilhas — Prioridade 3 ---
   interface ImportRow {
+    aba: string;
     linha: number;
     valido: boolean;
     duplicado: boolean;
@@ -134,24 +137,76 @@ export default function LancamentosTab({
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
   const [importFileName, setImportFileName] = useState('');
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
+  const [importedFuelTypes, setImportedFuelTypes] = useState<TipoCombustivel[]>([]);
 
   const normalizeHeader = (s: string) =>
     (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
   const COLUMN_SYNONYMS: Record<string, string[]> = {
-    data: ['data', 'data abastecimento', 'data do abastecimento'],
-    frota: ['frota', 'prefixo', 'equipamento', 'frota prefixo', 'equipamento frota', 'cb', 'codigo equipamento', 'n frota', 'numero frota', 'prefixo placa', 'placa'],
+    data: ['data', 'data abastecimento', 'data do abastecimento', 'dt', 'dia'],
+    frota: ['frota', 'prefixo', 'equipamento', 'frota prefixo', 'equipamento frota', 'cb', 'codigo equipamento', 'código equipamento', 'cod equipamento', 'n frota', 'numero frota', 'número frota', 'prefixo placa', 'placa', 'veiculo', 'veículo', 'maquina', 'máquina'],
     kmInicial: ['km inicial', 'kminicial', 'km', 'hodometro', 'odometro'],
     horimetroInicial: ['horimetro inicial', 'horimetro', 'hm inicial', 'hm'],
-    bombaInicial: ['bomba inicial', 'inicio bomba', 'inicial bomba', 'bico inicial', 'marcador inicial'],
-    quantidadeLitros: ['qtde de litros', 'quantidade de litros', 'quantidade', 'litros', 'qtd litros', 'litros abastecidos', 'volume', 'abastecido', 'qtd l', 'qtde l', 'volume abastecido'],
-    bombaFinal: ['bomba final', 'fim bomba', 'final bomba', 'bico final', 'marcador final'],
+    bombaInicial: ['bomba inicial', 'inicio bomba', 'inicial bomba', 'bico inicial', 'marcador inicial', 'encerrante inicial', 'enc inicial'],
+    quantidadeLitros: ['qtde de litros', 'quantidade de litros', 'quantidade', 'litros', 'qtd litros', 'qtde litros', 'qtd', 'qtde', 'litragem', 'litros abastecidos', 'volume', 'abastecido', 'qtd l', 'qtde l', 'volume abastecido', 'diesel', 'oleo diesel', 'óleo diesel'],
+    bombaFinal: ['bomba final', 'fim bomba', 'final bomba', 'bico final', 'marcador final', 'encerrante final', 'enc final'],
     hora: ['hora', 'hora abastecimento', 'hora do abastecimento', 'horario', 'horário'],
     comboio: ['comboio', 'tanque', 'comboio tanque', 'bomba', 'caminhao comboio', 'caminhao tanque'],
-    tipoCombustivel: ['tipo do combustivel', 'tipo combustivel', 'tipo de combustivel', 'combustivel', 'produto'],
+    tipoCombustivel: ['tipo do combustivel', 'tipo combustivel', 'tipo de combustivel', 'combustivel', 'combustível', 'produto', 'diesel'],
     empresa: ['empresa'],
-    observacao: ['observacao', 'obs', 'observacoes'],
-    responsavel: ['responsavel', 'operador', 'frentista', 'apontador'],
+    observacao: ['observacao', 'observação', 'obs', 'observacoes', 'observações'],
+    responsavel: ['responsavel', 'responsável', 'operador', 'frentista', 'apontador'],
+  };
+
+  const FALLBACK_COLUMN_MAP: Record<string, number> = {
+    data: 1,
+    frota: 2,
+    hora: 3,
+    tipoCombustivel: 4,
+    quantidadeLitros: 5,
+    bombaInicial: 6,
+    bombaFinal: 7,
+    comboio: 8,
+    responsavel: 9,
+    kmInicial: 10,
+    horimetroInicial: 11,
+    empresa: 12,
+    observacao: 13,
+  };
+
+  const normalizeCompact = (value: string) => normalizeHeader(value).replace(/\s+/g, '');
+
+  const unwrapCellValue = (value: any): any => {
+    if (value === null || value === undefined) return '';
+    if (value instanceof Date) return value;
+    if (typeof value === 'object') {
+      if (value.result !== undefined) return unwrapCellValue(value.result);
+      if (value.text !== undefined) return unwrapCellValue(value.text);
+      if (Array.isArray(value.richText)) return value.richText.map((part: any) => part.text || '').join('');
+      if (value.hyperlink && value.text) return unwrapCellValue(value.text);
+    }
+    return value;
+  };
+
+  const cellToText = (value: any) => {
+    const raw = unwrapCellValue(value);
+    if (raw === null || raw === undefined) return '';
+    if (raw instanceof Date) {
+      const y = raw.getFullYear();
+      const m = String(raw.getMonth() + 1).padStart(2, '0');
+      const d = String(raw.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    return String(raw).trim().replace(/\s+/g, ' ');
+  };
+
+  const rowToRawText = (row: ExcelJS.Row) => {
+    const values: string[] = [];
+    row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      const text = cellToText(cell.value);
+      if (text) values.push(`${colNumber}: ${text}`);
+    });
+    return values.join(' | ');
   };
 
   const parseDateValue = (val: any): string => {
@@ -227,20 +282,16 @@ export default function LancamentosTab({
     setImportFileName(file.name);
     setIsParsingImport(true);
     setValidationError('');
+    setImportedFuelTypes([]);
     try {
       const wb = await loadValidatedWorkbook(file);
-      const targetSheets = wb.worksheets.filter(sheet => {
-        const name = normalizeHeader(sheet.name);
-        return name.includes('combustivel') || name.includes('nao cadastrados') || name.includes('naocadastrados');
-      });
-      const worksheetsToRead = targetSheets.length ? targetSheets : wb.worksheets;
+      const worksheetsToRead = wb.worksheets;
       if (worksheetsToRead.length === 0) throw new Error('Planilha vazia ou aba não encontrada.');
 
       const buildColMap = (row: ExcelJS.Row) => {
         const map: Record<string, number> = {};
         row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-          const value = cell.value as any;
-          const norm = normalizeHeader(value?.text || value?.result || String(value || ''));
+          const norm = normalizeHeader(cellToText(cell.value));
           for (const [canonical, synonyms] of Object.entries(COLUMN_SYNONYMS)) {
             if (!map[canonical] && synonyms.some(s => normalizeHeader(s) === norm)) {
               map[canonical] = colNumber;
@@ -253,51 +304,98 @@ export default function LancamentosTab({
       const findHeaderRow = (ws: ExcelJS.Worksheet) => {
         let bestRow = 0;
         let bestScore = 0;
+        let bestMap: Record<string, number> = {};
         for (let rowNumber = 1; rowNumber <= Math.min(ws.rowCount, 20); rowNumber += 1) {
           const map = buildColMap(ws.getRow(rowNumber));
-          const score = ['data', 'frota', 'quantidadeLitros', 'hora', 'tipoCombustivel'].filter(key => map[key]).length;
+          const score = ['data', 'frota', 'quantidadeLitros', 'hora', 'tipoCombustivel', 'bombaInicial', 'bombaFinal'].filter(key => map[key]).length;
           if (score > bestScore) {
             bestScore = score;
             bestRow = rowNumber;
+            bestMap = map;
           }
         }
-        return bestScore >= 3 ? bestRow : 0;
+        return { rowNumber: bestScore > 0 ? bestRow : 0, score: bestScore, map: bestMap };
       };
 
       const rows: ImportRow[] = [];
       const seenInBatch = new Set<string>();
+      const createdFuelTypes = new Map<string, TipoCombustivel>();
+      const referenceSheetNames = new Set(['equipamentos', 'combustiveis', 'comboios']);
+
+      const resolveFuelType = (rawText: string) => {
+        const nomePlanilha = rawText.trim();
+        const normalized = normalizeCompact(nomePlanilha);
+        const knownFuelTypes = [...combustiveis, ...Array.from(createdFuelTypes.values())];
+        const dieselPadrao = knownFuelTypes.find(c => normalizeCompact(c.nome).includes('diesel'));
+
+        if (!normalized) {
+          return {
+            fuel: dieselPadrao || knownFuelTypes[0],
+            created: false,
+            ambiguous: false,
+            missing: true,
+          };
+        }
+
+        const exact = knownFuelTypes.find(c => normalizeCompact(c.nome) === normalized);
+        if (exact) return { fuel: exact, created: false, ambiguous: false, missing: false };
+
+        const partials = knownFuelTypes.filter(c => {
+          const candidate = normalizeCompact(c.nome);
+          return candidate && (candidate.includes(normalized) || normalized.includes(candidate));
+        });
+        if (partials.length === 1) return { fuel: partials[0], created: false, ambiguous: false, missing: false };
+
+        const existingCreated = createdFuelTypes.get(normalized);
+        if (existingCreated) return { fuel: existingCreated, created: true, ambiguous: partials.length > 1, missing: false };
+
+        const suffix = normalized.replace(/[^a-z0-9]+/g, '-') || `linha-${Date.now()}`;
+        const existingIds = new Set(knownFuelTypes.map(item => item.id));
+        let id = `tc-import-${suffix}`;
+        let counter = 2;
+        while (existingIds.has(id)) {
+          id = `tc-import-${suffix}-${counter}`;
+          counter += 1;
+        }
+        const fuel: TipoCombustivel = { id, nome: nomePlanilha };
+        createdFuelTypes.set(normalized, fuel);
+        return { fuel, created: true, ambiguous: partials.length > 1, missing: false };
+      };
 
       worksheetsToRead.forEach(ws => {
-        const headerRowNumber = findHeaderRow(ws);
-        if (!headerRowNumber) return;
-        const colMap = buildColMap(ws.getRow(headerRowNumber));
+        const headerCandidate = findHeaderRow(ws);
+        const normalizedSheetName = normalizeCompact(ws.name);
+        if (headerCandidate.score < 2 && referenceSheetNames.has(normalizedSheetName)) return;
+
+        const colMap = headerCandidate.rowNumber
+          ? { ...FALLBACK_COLUMN_MAP, ...headerCandidate.map }
+          : FALLBACK_COLUMN_MAP;
+        const dataStartRow = headerCandidate.rowNumber ? headerCandidate.rowNumber + 1 : 1;
+        const fallbackMode = headerCandidate.score < 2;
         const getCell = (row: ExcelJS.Row, key: string) => {
           const idx = colMap[key];
-          const value = idx ? row.getCell(idx).value as any : undefined;
-          if (value && typeof value === 'object') {
-            if (value.result !== undefined) return value.result;
-            if (value.text !== undefined) return value.text;
-            if (Array.isArray(value.richText)) return value.richText.map((part: any) => part.text || '').join('');
-          }
-          return value;
+          return idx ? unwrapCellValue(row.getCell(idx).value as any) : undefined;
         };
 
         ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-          if (rowNumber <= headerRowNumber) return;
+          if (rowNumber < dataStartRow) return;
+          const rawRowText = rowToRawText(row);
+          if (!rawRowText) return;
+
           const rawFrota = getCell(row, 'frota');
           const rawData = getCell(row, 'data');
           const rawQtd = getCell(row, 'quantidadeLitros');
-
-          // Ignora linhas totalmente vazias
-          const isEmptyRow = !rawFrota && !rawData && !rawQtd;
-          if (isEmptyRow) return;
+          const rawBombaInicial = getCell(row, 'bombaInicial');
+          const rawBombaFinal = getCell(row, 'bombaFinal');
+          const rawHora = getCell(row, 'hora');
+          const rawResponsavel = getCell(row, 'responsavel');
 
           const dataStr = parseDateValue(rawData);
           const frotaTexto = String(rawFrota || '').trim();
-          const horaStr = parseTimeValue(getCell(row, 'hora'));
+          const horaStr = parseTimeValue(rawHora);
           const quantidadeLida = parseNumberValue(rawQtd);
-          const bombaInicialLida = parseNumberValue(getCell(row, 'bombaInicial'));
-          const bombaFinalPlanilha = parseNumberValue(getCell(row, 'bombaFinal'));
+          const bombaInicialLida = parseNumberValue(rawBombaInicial);
+          const bombaFinalPlanilha = parseNumberValue(rawBombaFinal);
           const bombaInicial = Number.isFinite(bombaInicialLida) ? bombaInicialLida : 0;
           const quantidadeCalculada = Number.isFinite(bombaFinalPlanilha) && bombaFinalPlanilha > bombaInicial
             ? bombaFinalPlanilha - bombaInicial
@@ -311,20 +409,18 @@ export default function LancamentosTab({
           const comboioTexto = String(getCell(row, 'comboio') || '').trim();
           const empresaTexto = String(getCell(row, 'empresa') || '').trim();
           const observacao = String(getCell(row, 'observacao') || '').trim();
-          const responsavel = String(getCell(row, 'responsavel') || '').trim();
-          const kmInicial = parseNumberValue(getCell(row, 'kmInicial')) || 0;
-          const horimetroInicial = parseNumberValue(getCell(row, 'horimetroInicial')) || 0;
+          const responsavel = String(rawResponsavel || '').trim();
+          const kmInicialLido = parseNumberValue(getCell(row, 'kmInicial'));
+          const horimetroInicialLido = parseNumberValue(getCell(row, 'horimetroInicial'));
+          const kmInicial = Number.isFinite(kmInicialLido) ? kmInicialLido : 0;
+          const horimetroInicial = Number.isFinite(horimetroInicialLido) ? horimetroInicialLido : 0;
 
           const frotaNorm = frotaTexto.toLowerCase();
-          const combustivelNorm = tipoCombustivelTexto.toLowerCase();
           const comboioNorm = comboioTexto.toLowerCase();
           const eq = findEquipmentByPrefix(frotaTexto, equipamentos)
             || equipamentos.find(e => e.nome.toLowerCase() === frotaNorm);
-          const combExato = combustiveis.find(c => c.nome.toLowerCase() === combustivelNorm);
-          const combParciais = combustivelNorm
-            ? combustiveis.filter(c => combustivelNorm.includes(c.nome.toLowerCase()) || c.nome.toLowerCase().includes(combustivelNorm))
-            : [];
-          const comb = combExato || (combParciais.length === 1 ? combParciais[0] : undefined);
+          const fuelResolution = resolveFuelType(tipoCombustivelTexto);
+          const comb = fuelResolution.fuel;
           const comboioExato = comboios.find(c => c.nome.toLowerCase() === comboioNorm);
           const comboiosParciais = comboioNorm
             ? comboios.filter(c => comboioNorm.includes(c.nome.toLowerCase()) || c.nome.toLowerCase().includes(comboioNorm))
@@ -333,24 +429,28 @@ export default function LancamentosTab({
 
           const preview: Record<string, string> = {
             Aba: ws.name, Data: dataStr || String(rawData || ''), Frota: frotaTexto, Hora: horaStr,
-            Litros: String(quantidade || ''), Combustível: tipoCombustivelTexto, Comboio: comboioTexto, Empresa: empresaTexto,
+            Litros: Number.isFinite(quantidade) ? String(quantidade) : '', Combustível: tipoCombustivelTexto || comb?.nome || '', Comboio: comboioTexto, Empresa: empresaTexto,
             Responsável: responsavel || 'Não informado na planilha',
             Leitura: horimetroInicial > 0 ? `H ${horimetroInicial}` : kmInicial > 0 ? `KM ${kmInicial}` : '',
             Bomba: `${bombaInicial || ''} → ${bombaFinal || ''}`,
+            Original: rawRowText,
           };
 
-          // Validações
-          let motivo = '';
-          if (!dataStr) motivo = 'Data inválida.';
-          else if (!frotaTexto) motivo = 'Frota vazia.';
-          else if (!eq) motivo = `Frota "${frotaTexto}" não encontrada no cadastro.`;
-          else if (!horaStr || !normalizeQuickTime(horaStr).valid) motivo = 'Hora vazia ou inválida.';
-          else if (isNaN(quantidade) || quantidade === undefined) motivo = 'Quantidade vazia.';
-          else if (quantidade <= 0) motivo = 'Quantidade menor ou igual a zero.';
-          else if (!tipoCombustivelTexto) motivo = 'Tipo de combustível vazio.';
-          else if (!comb) motivo = `Tipo de combustível "${tipoCombustivelTexto}" não localizado de forma única no cadastro.`;
-          else if (!comboioTexto) motivo = 'Comboio vazio.';
-          else if (!combVeic) motivo = `Comboio "${comboioTexto}" não localizado de forma única no cadastro.`;
+          const importAlerts = [
+            fallbackMode ? 'Cabeçalho não reconhecido com segurança; linha importada por posição para conferência.' : '',
+            !dataStr ? 'Data não reconhecida na planilha; foi usada a data da importação.' : '',
+            !frotaTexto ? 'Prefixo/frota não informado na planilha.' : '',
+            frotaTexto && !eq ? `Prefixo "${frotaTexto}" ainda não está cadastrado.` : '',
+            (!horaStr || !normalizeQuickTime(horaStr).valid) ? 'Hora vazia ou inválida; foi usado 00:00.' : '',
+            (isNaN(quantidade) || quantidade === undefined) ? 'Quantidade vazia ou ilegível; conferir litros.' : '',
+            quantidade <= 0 ? 'Quantidade menor ou igual a zero; conferir litros.' : '',
+            fuelResolution.missing && comb ? `Tipo de combustível vazio; foi usado "${comb.nome}" para manter o registro importável.` : '',
+            fuelResolution.missing && !comb ? 'Tipo de combustível vazio; registro ficou sem vínculo de combustível.' : '',
+            fuelResolution.created && fuelResolution.ambiguous ? `Tipo "${tipoCombustivelTexto}" estava ambíguo; foi criado novo cadastro com o texto da planilha.` : '',
+            fuelResolution.created && !fuelResolution.ambiguous ? `Tipo "${tipoCombustivelTexto}" não existia; cadastro criado pela importação.` : '',
+            comboioTexto && !combVeic ? `Comboio "${comboioTexto}" não localizado de forma única; registro ficou sem vínculo de comboio.` : '',
+            !comboioTexto ? 'Comboio vazio; conferir abastecedor.' : '',
+          ].filter(Boolean);
 
           // Checagem de bomba final (Prioridade 4)
           let statusFinal: string = 'OK';
@@ -360,51 +460,63 @@ export default function LancamentosTab({
           }
 
           // Duplicidade: Data + Frota + Hora + Quantidade + Tipo Combustível
-          const dupKey = `${dataStr}|${eq?.id || frotaTexto}|${horaStr}|${quantidade}|${comb?.id || tipoCombustivelTexto}`;
-          const dupNoSistema = abastecimentos.some(a => `${a.data}|${a.equipamentoId}|${a.hora}|${a.quantidadeLitros}|${a.tipoCombustivelId}` === dupKey);
+          const dataFinal = dataStr || new Date().toISOString().slice(0, 10);
+          const horaFinal = normalizeQuickTime(horaStr).valid ? horaStr : '00:00';
+          const quantidadeFinal = Number.isFinite(quantidade) ? Number(quantidade.toFixed(4)) : 0;
+          const dupKey = `${dataFinal}|${eq?.id || frotaTexto}|${horaFinal}|${quantidadeFinal}|${comb?.id || tipoCombustivelTexto}`;
+          const dupNoSistema = abastecimentos.some(a => `${a.data}|${a.equipamentoId || a.prefixoInformado || ''}|${a.hora}|${a.quantidadeLitros}|${a.tipoCombustivelId}` === dupKey);
           const dupNoLote = seenInBatch.has(dupKey);
           seenInBatch.add(dupKey);
-          const isDuplicado = !motivo && (dupNoSistema || dupNoLote);
-          if (isDuplicado) motivo = 'Registro duplicado.';
+          const isDuplicado = dupNoSistema || dupNoLote;
+          if (isDuplicado) importAlerts.push('Possível duplicidade: a linha foi preservada e marcada para conferência.');
 
-          const valido = !motivo;
+          const valido = true;
+          const motivo = importAlerts.join(' | ');
 
           rows.push({
+            aba: ws.name,
             linha: rowNumber,
             valido,
             duplicado: isDuplicado,
             motivo,
             preview,
-            item: valido ? {
+            item: {
               id: `import-${Date.now()}-${ws.name}-${rowNumber}`,
-              data: dataStr,
-              hora: horaStr,
-              equipamentoId: eq!.id,
+              data: dataFinal,
+              hora: horaFinal,
+              equipamentoId: eq?.id || '',
+              prefixoInformado: frotaTexto.toUpperCase(),
               horimetroInicial,
               kmInicial,
               bombaInicial,
-              quantidadeLitros: quantidade,
+              quantidadeLitros: quantidadeFinal,
               bombaFinal,
-              tipoCombustivelId: comb!.id,
+              tipoCombustivelId: comb?.id || '',
               comboioId: combVeic?.id || '',
               responsavel,
               observacao: [
                 observacao || `Fonte: ${ws.name}`,
+                `Linha original ${ws.name}:${rowNumber}: ${rawRowText}.`,
                 empresaTexto ? `Empresa informada na planilha: ${empresaTexto}.` : '',
+                frotaTexto && !eq ? `Prefixo informado sem cadastro: ${frotaTexto}.` : '',
+                tipoCombustivelTexto ? `Combustível informado na planilha: ${tipoCombustivelTexto}.` : '',
+                comboioTexto ? `Comboio informado na planilha: ${comboioTexto}.` : '',
                 !responsavel ? 'Responsável não informado na planilha; conferir no registro.' : '',
                 quantidadeFoiCalculada ? 'Quantidade calculada pela diferença entre bomba final e inicial.' : '',
+                motivo,
               ].filter(Boolean).join(' | '),
-              status: (!responsavel && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal) as any,
+              status: (isDuplicado ? 'Duplicado' : motivo && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal) as any,
               origem: 'Planilha',
               documentoOrigemNome: file.name,
               criadoEm: new Date().toISOString(),
               atualizadoEm: new Date().toISOString(),
-            } : undefined,
+            },
           });
         });
       });
 
       setImportRows(rows);
+      setImportedFuelTypes(Array.from(createdFuelTypes.values()));
       setIsImportModalOpen(true);
     } catch (err: any) {
       console.error('Erro ao ler planilha:', err);
@@ -420,23 +532,26 @@ export default function LancamentosTab({
     const validas = importRows.filter(r => r.valido).length;
     const duplicadas = importRows.filter(r => r.duplicado).length;
     const comErro = importRows.filter(r => !r.valido && !r.duplicado).length;
-    return { total, validas, duplicadas, comErro };
+    const conferencia = importRows.filter(r => r.motivo).length;
+    return { total, validas, duplicadas, comErro, conferencia };
   }, [importRows]);
 
   const handleConfirmImport = () => {
     setIsConfirmingImport(true);
-    const validItems = importRows.filter(r => r.valido && r.item).map(r => r.item!) as Abastecimento[];
-    onImportAbastecimentos(validItems);
+    const validItems = importRows.filter(r => r.item).map(r => r.item!) as Abastecimento[];
+    onImportAbastecimentos(validItems, importedFuelTypes);
     setIsConfirmingImport(false);
     setIsImportModalOpen(false);
     setImportRows([]);
     setImportFileName('');
+    setImportedFuelTypes([]);
   };
 
   const handleCancelImport = () => {
     setIsImportModalOpen(false);
     setImportRows([]);
     setImportFileName('');
+    setImportedFuelTypes([]);
   };
 
   // 1. Form Temporary States
@@ -949,6 +1064,7 @@ export default function LancamentosTab({
             setSearchQuery('');
             resetFormFields();
           }}
+          onOpenCadastros={onOpenCadastros}
           onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
           isParsingSpreadsheet={isParsingImport}
         />
@@ -964,10 +1080,14 @@ export default function LancamentosTab({
           title="Importar abastecimentos"
           fileName={importFileName}
           validCount={importSummary.validas}
-          ignoredCount={importSummary.comErro + importSummary.duplicadas}
-          columns={['Linha', 'Data', 'Hora', 'Frota', 'Leitura', 'Bomba', 'Litros', 'Combustível', 'Comboio', 'Empresa', 'Responsável', 'Status']}
+          ignoredCount={0}
+          columns={['Linha', 'Aba', 'Status', 'Data', 'Frota', 'Litros', 'Hora', 'Leitura', 'Bomba', 'Combustível', 'Comboio', 'Empresa', 'Responsável']}
           rows={importRows.map(row => ({
             Linha: row.linha,
+            Aba: row.aba,
+            Status: row.valido
+              ? row.duplicado ? 'Importável • possível duplicidade' : row.motivo ? 'Importável • conferir' : 'Válido'
+              : row.motivo || 'Erro',
             Data: row.preview.Data,
             Hora: row.preview.Hora,
             Frota: row.preview.Frota,
@@ -977,12 +1097,9 @@ export default function LancamentosTab({
             Combustível: row.preview['Combustível'],
             Comboio: row.preview.Comboio,
             Empresa: row.preview.Empresa,
-            Responsável: row.preview['Responsável'],
-            Status: row.valido
-              ? row.item?.status === 'Conferência necessária' ? 'Importável • conferir responsável' : 'Válido'
-              : row.duplicado ? 'Duplicado' : row.motivo || 'Erro'
+            Responsável: row.preview['Responsável']
           }))}
-          note={`${importSummary.total} linha(s) analisada(s). Registros duplicados ou com campos obrigatórios ausentes não serão gravados.`}
+          note={`${importSummary.total} linha(s) analisada(s), ${importSummary.validas} importável(is) e 0 ignorada(s). ${importSummary.conferencia} linha(s) irão para conferência sem serem descartadas.${importedFuelTypes.length ? ` ${importedFuelTypes.length} tipo(s) de combustível novo(s) serão cadastrados junto com a importação.` : ''}`}
           confirming={isConfirmingImport}
           onCancel={handleCancelImport}
           onConfirm={handleConfirmImport}
@@ -1805,10 +1922,14 @@ export default function LancamentosTab({
         title="Importar abastecimentos"
         fileName={importFileName}
         validCount={importSummary.validas}
-        ignoredCount={importSummary.comErro + importSummary.duplicadas}
-        columns={['Linha', 'Data', 'Hora', 'Frota', 'Leitura', 'Bomba', 'Litros', 'Combustível', 'Comboio', 'Empresa', 'Responsável', 'Status']}
+        ignoredCount={0}
+        columns={['Linha', 'Aba', 'Status', 'Data', 'Frota', 'Litros', 'Hora', 'Leitura', 'Bomba', 'Combustível', 'Comboio', 'Empresa', 'Responsável']}
         rows={importRows.map(row => ({
           Linha: row.linha,
+          Aba: row.aba,
+          Status: row.valido
+            ? row.duplicado ? 'Importável • possível duplicidade' : row.motivo ? 'Importável • conferir' : 'Válido'
+            : row.motivo || 'Erro',
           Data: row.preview.Data,
           Hora: row.preview.Hora,
           Frota: row.preview.Frota,
@@ -1818,12 +1939,9 @@ export default function LancamentosTab({
           Combustível: row.preview['Combustível'],
           Comboio: row.preview.Comboio,
           Empresa: row.preview.Empresa,
-          Responsável: row.preview['Responsável'],
-          Status: row.valido
-            ? row.item?.status === 'Conferência necessária' ? 'Importável • conferir responsável' : 'Válido'
-            : row.duplicado ? 'Duplicado' : row.motivo || 'Erro'
+          Responsável: row.preview['Responsável']
         }))}
-        note={`${importSummary.total} linha(s) analisada(s). Registros duplicados ou com campos obrigatórios ausentes não serão gravados.`}
+        note={`${importSummary.total} linha(s) analisada(s), ${importSummary.validas} importável(is) e 0 ignorada(s). ${importSummary.conferencia} linha(s) irão para conferência sem serem descartadas.${importedFuelTypes.length ? ` ${importedFuelTypes.length} tipo(s) de combustível novo(s) serão cadastrados junto com a importação.` : ''}`}
         confirming={isConfirmingImport}
         onCancel={handleCancelImport}
         onConfirm={handleConfirmImport}

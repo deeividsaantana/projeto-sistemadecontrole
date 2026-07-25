@@ -472,22 +472,30 @@ export default function CadastrosTab({
     }
 
     const workbook = await loadValidatedWorkbook(file);
-    const worksheet = workbook.worksheets[0];
-    if (!worksheet) return [];
-
-    const headers: string[] = [];
-    worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-      headers[colNumber - 1] = cellToText(cell.value) || `coluna_${colNumber}`;
-    });
-
     const rows: Record<string, string>[] = [];
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const record: Record<string, string> = {};
-      headers.forEach((header, idx) => {
-        record[header] = cellToText(row.getCell(idx + 1).value);
+    workbook.worksheets.forEach(worksheet => {
+      const headerRowNumber = Math.max(1, Array.from({ length: Math.min(10, worksheet.rowCount) }, (_, index) => index + 1)
+        .find(rowNumber => {
+          let filled = 0;
+          worksheet.getRow(rowNumber).eachCell({ includeEmpty: false }, cell => {
+            if (cellToText(cell.value)) filled += 1;
+          });
+          return filled >= 2;
+        }) || 1);
+
+      const headers: string[] = [];
+      worksheet.getRow(headerRowNumber).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        headers[colNumber - 1] = cellToText(cell.value) || `coluna_${colNumber}`;
       });
-      if (Object.values(record).some(Boolean)) rows.push(record);
+
+      worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        if (rowNumber <= headerRowNumber) return;
+        const record: Record<string, string> = { Aba: worksheet.name };
+        headers.forEach((header, idx) => {
+          record[header] = cellToText(row.getCell(idx + 1).value);
+        });
+        if (Object.values(record).some(Boolean)) rows.push(record);
+      });
     });
     return rows;
   };
