@@ -11,7 +11,6 @@ const LOCAL_CONFIG_PATH = path.join(ROOT, '.publicar-tudo.local.json');
 const TEMP_ENV_PATH = path.join(ROOT, '.env.publicar-tudo.local');
 const LOCAL_SECRET_DIR = path.join(process.env.LOCALAPPDATA || ROOT, 'RENEA');
 const INITIAL_PASSWORD_PATH = path.join(LOCAL_SECRET_DIR, 'senha-inicial-administrador.txt');
-const ONEDRIVE_SYNC_CONFIG_PATH = path.join(LOCAL_SECRET_DIR, 'onedrive-combustivel-sync.json');
 const FIREBASE_PROJECT_ID = 'sistemarenea';
 const FIREBASE_DATABASE_URL = 'https://sistemarenea-default-rtdb.firebaseio.com';
 const FIREBASE_WEB_API_KEY = 'AIzaSyDGN9xLkhgsqDIMXSTU9G03LEeC4Jmjpo4';
@@ -20,7 +19,6 @@ const EXPECTED_REMOTE = 'deeividsaantana/projeto-sistemadecontrole';
 const EXPECTED_REMOTE_URL = `https://github.com/${EXPECTED_REMOTE}.git`;
 const LEGACY_REMOTE = 'deeividsaantana/teste-70';
 const NETLIFY_SITE_ID = 'a3c3fe0a-be7c-4cf1-8157-af735d8abcc8';
-const NETLIFY_SITE_URL = 'https://fluffy-gecko-609e90.netlify.app';
 const LOCAL_TOOLS_DIR = path.join(ROOT, '.publicar-tudo-tools');
 const LOCAL_NPM_CLI = path.join(LOCAL_TOOLS_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const LOCAL_NPM_VERSION = '11.18.0';
@@ -316,34 +314,6 @@ const configureFirstRun = async () => {
   ok('Configuração inicial concluída e marcada somente neste computador.');
 };
 
-const ensureOneDriveFuelSync = () => {
-  if (process.platform !== 'win32') {
-    warn('O agente automático do OneDrive será instalado somente no computador Windows de produção.');
-    return;
-  }
-  let localSyncConfig = {};
-  try {
-    localSyncConfig = JSON.parse(fs.readFileSync(ONEDRIVE_SYNC_CONFIG_PATH, 'utf8'));
-  } catch {}
-  const syncToken = String(localSyncConfig.token || crypto.randomBytes(32).toString('base64url'));
-  try {
-    fs.writeFileSync(TEMP_ENV_PATH, `${dotenvLine('RENEA_ONEDRIVE_SYNC_TOKEN', syncToken)}\n`, { encoding: 'utf8', mode: 0o600 });
-    const importResult = runDlx('netlify-cli', ['env:import', path.basename(TEMP_ENV_PATH)], {
-      allowFailure: true,
-      capture: true,
-    });
-    if (importResult.status !== 0) throw new Error('Falha ao configurar o token protegido no Netlify.');
-  } finally {
-    if (fs.existsSync(TEMP_ENV_PATH)) fs.rmSync(TEMP_ENV_PATH, { force: true });
-  }
-  commandResult(process.execPath, ['scripts/instalar-sync-combustivel-onedrive.mjs'], {
-    env: {
-      RENEA_ONEDRIVE_SYNC_TOKEN: syncToken,
-      RENEA_ONEDRIVE_SYNC_ENDPOINT: `${NETLIFY_SITE_URL}/.netlify/functions/sync-combustivel-onedrive`,
-    },
-  });
-};
-
 const ensureRepositoryReady = () => {
   const hasRepository = fs.existsSync(path.join(ROOT, '.git'));
   if (!hasRepository) {
@@ -414,8 +384,6 @@ const runCheck = () => {
     'netlify/functions/public-presenca.js',
     'netlify/functions/public-apontamento.js',
     'netlify/functions/public-tickets.js',
-    'netlify/functions/sync-combustivel-onedrive.js',
-    'scripts/sync-combustivel-onedrive.mjs',
   ];
   required.forEach(file => {
     if (!fs.existsSync(path.join(ROOT, file))) throw new Error(`Arquivo obrigatório ausente: ${file}`);
@@ -445,7 +413,6 @@ const publish = async () => {
   }
 
   if (forceSetup || !fs.existsSync(LOCAL_CONFIG_PATH)) await configureFirstRun();
-  ensureOneDriveFuelSync();
 
   runProjectValidation();
 

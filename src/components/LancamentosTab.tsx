@@ -44,7 +44,6 @@ import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporate
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
-import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -68,7 +67,6 @@ interface LancamentosTabProps {
   onSaveRdo: (item: RdoDiario, isNew: boolean) => void;
   onDeleteRdo: (id: string) => void;
   onOpenCadastros?: () => void;
-  oneDriveFuelSyncStatus?: OneDriveFuelSyncStatus | null;
 }
 
 type Mode = 'abastecimentos' | 'lubrificacoes' | 'rdos';
@@ -92,8 +90,7 @@ export default function LancamentosTab({
   onDeleteLubrificacao,
   onSaveRdo,
   onDeleteRdo,
-  onOpenCadastros,
-  oneDriveFuelSyncStatus,
+  onOpenCadastros
 }: LancamentosTabProps) {
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
@@ -902,7 +899,7 @@ export default function LancamentosTab({
       ];
 
       ws.getColumn(1).numFmt = 'dd/mm/yyyy';
-      [5, 6, 7, 10, 11].forEach(col => { ws.getColumn(col).numFmt = '#,##0.##'; });
+      [5, 6, 7, 10, 11].forEach(col => { ws.getColumn(col).numFmt = '#,##0.00'; });
       ws.eachRow((row, rowNumber) => {
         row.eachCell({ includeEmpty: true }, cell => {
           cell.border = {
@@ -1070,7 +1067,6 @@ export default function LancamentosTab({
           onOpenCadastros={onOpenCadastros}
           onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
           isParsingSpreadsheet={isParsingImport}
-          oneDriveFuelSyncStatus={oneDriveFuelSyncStatus}
         />
         <input
           ref={fileInputRef}

@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
-  Cloud,
   CopyPlus,
   Database,
   Download,
@@ -46,7 +45,6 @@ import {
   styleCorporateWorksheet,
 } from '../utils/excelCorporate';
 import { auth } from '../firebase';
-import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 
 interface CombustivelInteligenteTabProps {
@@ -62,7 +60,6 @@ interface CombustivelInteligenteTabProps {
   onOpenCadastros?: () => void;
   onOpenSpreadsheetImport: () => void;
   isParsingSpreadsheet: boolean;
-  oneDriveFuelSyncStatus?: OneDriveFuelSyncStatus | null;
 }
 
 type WorkspaceView = 'painel' | 'digitacao' | 'documento' | 'registros';
@@ -118,18 +115,8 @@ const today = () => {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 };
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const normalizeFuelNumber = (value: number, decimalPlaces = 2) => {
-  const numericValue = Number(value || 0);
-  if (!Number.isFinite(numericValue)) return 0;
-  const factor = 10 ** decimalPlaces;
-  return Math.round((numericValue + Number.EPSILON) * factor) / factor;
-};
-
-const formatNumber = (value: number, maximumFractionDigits = 2) =>
-  normalizeFuelNumber(value).toLocaleString('pt-BR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits,
-  });
+const formatNumber = (value: number, digits = 1) =>
+  Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 const formatDate = (value: string) => (value ? new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR') : '-');
 const normalize = (value: string) =>
   String(value || '')
@@ -159,7 +146,6 @@ const statusTone: Record<string, string> = {
 const sourceTone: Record<string, string> = {
   Manual: 'bg-sky-500/10 text-sky-300',
   Planilha: 'bg-violet-500/10 text-violet-300',
-  OneDrive: 'bg-emerald-500/10 text-emerald-300',
   'PDF/Foto IA': 'bg-cyan-500/10 text-cyan-300',
   'Legado Access': 'bg-slate-700 text-slate-300',
 };
@@ -214,7 +200,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   onOpenCadastros,
   onOpenSpreadsheetImport,
   isParsingSpreadsheet,
-  oneDriveFuelSyncStatus,
 }) => {
   const [view, setView] = useState<WorkspaceView>('painel');
   const [filterStart, setFilterStart] = useState('');
@@ -370,8 +355,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     hora: '',
     horimetroInicial: 0,
     kmInicial: 0,
-    bombaInicial: normalizeFuelNumber(pumpStart),
-    bombaFinal: normalizeFuelNumber(pumpStart),
+    bombaInicial: pumpStart,
+    bombaFinal: pumpStart,
     quantidadeLitros: 0,
     observacao: '',
   });
@@ -394,9 +379,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     const start = getLastPump(comboioId, entryDate);
     setQuickRows((rows) =>
       rows.map((row, index) =>
-        index === 0
-          ? { ...row, bombaInicial: normalizeFuelNumber(start), bombaFinal: normalizeFuelNumber(start + row.quantidadeLitros) }
-          : row,
+        index === 0 ? { ...row, bombaInicial: start, bombaFinal: start + row.quantidadeLitros } : row,
       ),
     );
   };
@@ -409,11 +392,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setQuickRows((rows) =>
       rows.map((row, index) =>
         index === 0 && (row.bombaInicial === 0 || row.bombaInicial === previousSuggestion)
-          ? {
-              ...row,
-              bombaInicial: normalizeFuelNumber(nextSuggestion),
-              bombaFinal: normalizeFuelNumber(nextSuggestion + row.quantidadeLitros),
-            }
+          ? { ...row, bombaInicial: nextSuggestion, bombaFinal: nextSuggestion + row.quantidadeLitros }
           : row,
       ),
     );
@@ -430,10 +409,10 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           const equipment = findEquipmentByPrefix(String(value), equipamentos);
           next = { ...next, equipamentoId: equipment?.id || '', prefixo: String(value).toUpperCase() };
         }
-        if (field === 'quantidadeLitros') next.bombaFinal = normalizeFuelNumber(Number(next.bombaInicial || 0) + Number(value || 0));
-        if (field === 'bombaInicial') next.bombaFinal = normalizeFuelNumber(Number(value || 0) + Number(next.quantidadeLitros || 0));
+        if (field === 'quantidadeLitros') next.bombaFinal = Number(next.bombaInicial || 0) + Number(value || 0);
+        if (field === 'bombaInicial') next.bombaFinal = Number(value || 0) + Number(next.quantidadeLitros || 0);
         if (field === 'bombaFinal')
-          next.quantidadeLitros = normalizeFuelNumber(Math.max(0, Number(value || 0) - Number(next.bombaInicial || 0)));
+          next.quantidadeLitros = Math.max(0, Number(value || 0) - Number(next.bombaInicial || 0));
         return next;
       });
       const index = rows.findIndex((row) => row.id === id);
@@ -445,7 +424,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         rows[index + 1] = {
           ...rows[index + 1],
           bombaInicial: rows[index].bombaFinal,
-          bombaFinal: normalizeFuelNumber(rows[index].bombaFinal + rows[index + 1].quantidadeLitros),
+          bombaFinal: rows[index].bombaFinal + rows[index + 1].quantidadeLitros,
         };
       }
       return rows;
@@ -466,11 +445,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         hora: normalizeQuickTime(row.hora).value || row.hora,
         equipamentoId: row.equipamentoId,
         prefixoInformado: row.prefixo.trim().toUpperCase(),
-        horimetroInicial: normalizeFuelNumber(row.horimetroInicial),
-        kmInicial: normalizeFuelNumber(row.kmInicial),
-        bombaInicial: normalizeFuelNumber(row.bombaInicial),
-        quantidadeLitros: normalizeFuelNumber(row.quantidadeLitros),
-        bombaFinal: normalizeFuelNumber(row.bombaFinal),
+        horimetroInicial: Number(row.horimetroInicial || 0),
+        kmInicial: Number(row.kmInicial || 0),
+        bombaInicial: Number(row.bombaInicial || 0),
+        quantidadeLitros: Number(row.quantidadeLitros || 0),
+        bombaFinal: Number(row.bombaFinal || 0),
         tipoCombustivelId: entryFuel,
         comboioId: entryComboio,
         responsavel: entryResponsible.trim(),
@@ -595,9 +574,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       const fuel = findCatalogItem<TipoCombustivel>(String(raw.tipoCombustivel || ''), combustiveis, (item) => item.nome);
       const comboio = findCatalogItem<Comboio>(String(raw.comboio || ''), comboios, (item) => item.nome);
       const normalizedTime = normalizeQuickTime(String(raw.hora || ''));
-      const pumpStart = normalizeFuelNumber(Number(raw.bombaInicial || 0));
-      const pumpEnd = normalizeFuelNumber(Number(raw.bombaFinal || 0));
-      const liters = normalizeFuelNumber(Number(raw.quantidadeLitros ?? (pumpEnd > pumpStart ? pumpEnd - pumpStart : 0)));
+      const pumpStart = Number(raw.bombaInicial || 0);
+      const pumpEnd = Number(raw.bombaFinal || 0);
+      const liters = Number(raw.quantidadeLitros ?? (pumpEnd > pumpStart ? pumpEnd - pumpStart : 0));
       return {
         id: uid(`ai-${index}`),
         selected: true,
@@ -608,10 +587,10 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         equipamentoId: equipment?.id || '',
         data: String(raw.data || analysis.dataDocumento || ''),
         hora: normalizedTime.valid ? normalizedTime.value : String(raw.hora || ''),
-        horimetroInicial: normalizeFuelNumber(Number(raw.horimetroInicial || 0)),
-        kmInicial: normalizeFuelNumber(Number(raw.kmInicial || 0)),
+        horimetroInicial: Number(raw.horimetroInicial || 0),
+        kmInicial: Number(raw.kmInicial || 0),
         bombaInicial: pumpStart,
-        bombaFinal: pumpEnd || normalizeFuelNumber(pumpStart + liters),
+        bombaFinal: pumpEnd || pumpStart + liters,
         quantidadeLitros: liters,
         tipoCombustivelId: fuel?.id || '',
         comboioId: comboio?.id || '',
@@ -742,10 +721,10 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           const equipment = equipamentos.find((item) => item.id === value);
           next.prefixo = equipment?.prefixo || next.prefixo;
         }
-        if (field === 'quantidadeLitros') next.bombaFinal = normalizeFuelNumber(Number(next.bombaInicial || 0) + Number(value || 0));
+        if (field === 'quantidadeLitros') next.bombaFinal = Number(next.bombaInicial || 0) + Number(value || 0);
         if (field === 'bombaFinal')
-          next.quantidadeLitros = normalizeFuelNumber(Math.max(0, Number(value || 0) - Number(next.bombaInicial || 0)));
-        if (field === 'bombaInicial') next.bombaFinal = normalizeFuelNumber(Number(value || 0) + Number(next.quantidadeLitros || 0));
+          next.quantidadeLitros = Math.max(0, Number(value || 0) - Number(next.bombaInicial || 0));
+        if (field === 'bombaInicial') next.bombaFinal = Number(value || 0) + Number(next.quantidadeLitros || 0);
         return next;
       }),
     );
@@ -759,11 +738,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           data: row.data,
           hora: normalizeQuickTime(row.hora).value || row.hora,
           equipamentoId: row.equipamentoId,
-          horimetroInicial: normalizeFuelNumber(row.horimetroInicial),
-          kmInicial: normalizeFuelNumber(row.kmInicial),
-          bombaInicial: normalizeFuelNumber(row.bombaInicial),
-          bombaFinal: normalizeFuelNumber(row.bombaFinal),
-          quantidadeLitros: normalizeFuelNumber(row.quantidadeLitros),
+          horimetroInicial: row.horimetroInicial,
+          kmInicial: row.kmInicial,
+          bombaInicial: row.bombaInicial,
+          bombaFinal: row.bombaFinal,
+          quantidadeLitros: row.quantidadeLitros,
           tipoCombustivelId: row.tipoCombustivelId,
           comboioId: row.comboioId,
           responsavel: row.responsavel,
@@ -934,25 +913,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           </button>
         </div>
       </header>
-
-      <section className={`flex flex-col gap-3 border p-4 md:flex-row md:items-center md:justify-between ${oneDriveFuelSyncStatus?.state === 'error' ? 'border-rose-500/30 bg-rose-500/10' : oneDriveFuelSyncStatus?.state === 'ready' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
-        <div className="flex items-start gap-3">
-          <Cloud className={oneDriveFuelSyncStatus?.state === 'ready' ? 'text-emerald-300' : oneDriveFuelSyncStatus?.state === 'error' ? 'text-rose-300' : 'text-slate-500'} size={20} />
-          <div>
-            <h2 className="text-sm font-bold text-white">OneDrive automático • a cada 10 minutos</h2>
-            <p className="mt-1 text-xs text-slate-400">
-              {oneDriveFuelSyncStatus?.state === 'ready'
-                ? `${oneDriveFuelSyncStatus.fileName || 'Planilha localizada'} • ${oneDriveFuelSyncStatus.rowCount || 0} linha(s) • ${oneDriveFuelSyncStatus.warningCount || 0} para conferir`
-                : oneDriveFuelSyncStatus?.message || 'Aguardando a primeira leitura do computador sincronizador.'}
-            </p>
-          </div>
-        </div>
-        <span className="text-xs font-mono text-slate-400">
-          {oneDriveFuelSyncStatus?.syncedAt
-            ? `Última leitura: ${new Date(oneDriveFuelSyncStatus.syncedAt).toLocaleString('pt-BR')}`
-            : 'Ainda não sincronizado'}
-        </span>
-      </section>
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-800 pb-px">
         {navItems.map((item) => {

@@ -30,12 +30,10 @@ const nextNumberFromTickets = (tickets: TicketJazida[]) => {
   return highest + 1;
 };
 
-export const reservePublicTicketNumbers = async (
+export const reservePublicTicketNumber = async (
   database: Firestore,
   knownTickets: TicketJazida[],
-  requestedCount = 1,
-): Promise<string[]> => {
-  const count = Math.max(1, Math.min(200, Math.floor(Number(requestedCount) || 1)));
+): Promise<string> => {
   const counterRef = doc(database, META_COLLECTION, COUNTER_DOCUMENT_ID);
   return runTransaction(database, async transaction => {
     const counterSnapshot = await transaction.get(counterRef);
@@ -44,17 +42,12 @@ export const reservePublicTicketNumbers = async (
 
     transaction.set(counterRef, {
       updatedAtIso: new Date().toISOString(),
-      nextNumber: nextNumber + count,
+      nextNumber: nextNumber + 1,
     });
 
-    return Array.from({ length: count }, (_, index) => String(nextNumber + index));
+    return String(nextNumber);
   });
 };
-
-export const reservePublicTicketNumber = async (
-  database: Firestore,
-  knownTickets: TicketJazida[],
-): Promise<string> => (await reservePublicTicketNumbers(database, knownTickets, 1))[0];
 
 export const savePublicTicket = async (
   database: Firestore,

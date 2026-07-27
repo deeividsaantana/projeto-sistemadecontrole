@@ -435,7 +435,7 @@ export default function ConfiguracoesTab({
             <div className="border-t border-slate-850 pt-4 space-y-3">
               <h3 className="text-xs font-extrabold text-white uppercase tracking-wider font-mono">Importar Apenas um Período Específico</h3>
               <p className="text-xxs text-slate-400 leading-relaxed">
-                Escolha um arquivo de backup e selecione a data inicial e final desejada. Apenas os abastecimentos, lubrificações e listas de presença daquele intervalo serão trazidos — nada do que já está salvo é apagado.
+                Escolha um arquivo de backup e selecione a data inicial e final desejada. Apenas os abastecimentos, lubrificações, RDOs e listas de presença daquele intervalo serão trazidos — nada do que já está salvo é apagado.
               </p>
 
               <div className="flex flex-wrap items-end gap-3">
@@ -636,7 +636,7 @@ export default function ConfiguracoesTab({
             </div>
 
             <p className="text-xxs text-slate-400 leading-relaxed">
-              Integração ativa com o banco de dados em nuvem Google Firebase. Salve suas frotas e relatórios de forma segura para acesso compartilhado e restauração instantânea.
+              Integração ativa com o banco de dados em nuvem Google Firebase. Salve suas frotas, RDOs e relatórios de forma segura para acesso compartilhado e restauração instantânea.
             </p>
 
             {/* Sync Info Grid */}
@@ -817,7 +817,7 @@ export default function ConfiguracoesTab({
               ) : (
                 <div className="bg-rose-950/10 border border-rose-500/20 p-3.5 rounded-xl text-center space-y-2">
                   <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block font-mono">⚠️ APAGAR TODO O BANCO?</span>
-                  <p className="text-xxs text-slate-500">Essa ação esvaziará todas as tabelas operacionais, incluindo equipamentos e abastecimentos.</p>
+                  <p className="text-xxs text-slate-500">Essa ação esvaziará todas as tabelas (Equipamentos, RDOs, Abastecimentos).</p>
                   <div className="flex gap-2">
                     <button onClick={() => { onClearAllData(); setShowClearConfirm(false); }} className="flex-1 py-1.5 bg-rose-600 text-white font-bold text-xxs rounded-lg hover:bg-rose-500">Sim, Zerar</button>
                     <button onClick={() => setShowClearConfirm(false)} className="flex-1 py-1.5 bg-slate-800 text-slate-300 font-bold text-xxs rounded-lg">Voltar</button>
