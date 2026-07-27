@@ -122,6 +122,9 @@ export default function RelatoriosTab({
 
   const normalizeKey = (value: string) =>
     value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const isWithinSelectedPeriod = (date: string) =>
+    (!dataInicio || date >= dataInicio) && (!dataFim || date <= dataFim);
+  const invalidDateRange = Boolean(dataInicio && dataFim && dataInicio > dataFim);
   const apontamentoCanteiros = Array.from(new Set(apontamentoRamoRegistros.map(reg => reg.canteiroNome))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const clearReportFilters = () => {
     const nextRange = getCurrentMonthRange();
@@ -157,7 +160,7 @@ export default function RelatoriosTab({
         };
 
         abastecimentos.forEach(ab => {
-          if (ab.data < dataInicio || ab.data > dataFim) return;
+          if (!isWithinSelectedPeriod(ab.data)) return;
           if (filtroCombustivelId && ab.tipoCombustivelId !== filtroCombustivelId) return;
           if (filtroResponsavel && !ab.responsavel.toLowerCase().includes(filtroResponsavel.toLowerCase())) return;
 
@@ -180,7 +183,7 @@ export default function RelatoriosTab({
         });
 
         lubrificacoes.forEach(lub => {
-          if (lub.data < dataInicio || lub.data > dataFim) return;
+          if (!isWithinSelectedPeriod(lub.data)) return;
           if (filtroResponsavel && !lub.responsavel.toLowerCase().includes(filtroResponsavel.toLowerCase())) return;
 
           const eq = equipamentos.find(e => e.id === lub.equipamentoId);
@@ -208,14 +211,16 @@ export default function RelatoriosTab({
         const grouped: { [name: string]: { companyName: string; liters: number; vehiclesCount: number; countAbas: number } } = {};
 
         abastecimentos.forEach(ab => {
-          if (ab.data < dataInicio || ab.data > dataFim) return;
+          if (!isWithinSelectedPeriod(ab.data)) return;
           if (filtroCombustivelId && ab.tipoCombustivelId !== filtroCombustivelId) return;
+          if (filtroResponsavel && !ab.responsavel.toLowerCase().includes(filtroResponsavel.toLowerCase())) return;
 
           const eq = equipamentos.find(e => e.id === ab.equipamentoId);
           if (!eq && (filtroEmpresaId || filtroEquipamentoId || filtroObraId)) return;
 
           if (eq && filtroEmpresaId && eq.empresaId !== filtroEmpresaId) return;
           if (eq && filtroEquipamentoId && eq.id !== filtroEquipamentoId) return;
+          if (eq && filtroObraId && eq.localAtualId !== filtroObraId) return;
 
           const company = eq ? empresas.find(em => em.id === eq.empresaId) : undefined;
           const cName = company ? company.nome : 'Sem cadastro de frota';
@@ -236,7 +241,7 @@ export default function RelatoriosTab({
       case 'consumo_periodo': {
         // Timeline of abastecimentos
         return abastecimentos.filter(ab => {
-          if (ab.data < dataInicio || ab.data > dataFim) return false;
+          if (!isWithinSelectedPeriod(ab.data)) return false;
           
           if (filtroCombustivelId && ab.tipoCombustivelId !== filtroCombustivelId) return false;
           if (filtroResponsavel && !ab.responsavel.toLowerCase().includes(filtroResponsavel.toLowerCase())) return false;
@@ -260,7 +265,7 @@ export default function RelatoriosTab({
       case 'lubrificacao_frota': {
         // Filter lubrication logs
         return lubrificacoes.filter(lub => {
-          if (lub.data < dataInicio || lub.data > dataFim) return false;
+          if (!isWithinSelectedPeriod(lub.data)) return false;
           if (filtroResponsavel && !lub.responsavel.toLowerCase().includes(filtroResponsavel.toLowerCase())) return false;
 
           const eq = equipamentos.find(e => e.id === lub.equipamentoId);
@@ -278,7 +283,7 @@ export default function RelatoriosTab({
       case 'rdo_data': {
         // Daily Report list
         return rdos.filter(r => {
-          if (r.data < dataInicio || r.data > dataFim) return false;
+          if (!isWithinSelectedPeriod(r.data)) return false;
           if (filtroEmpresaId && r.empresaId !== filtroEmpresaId) return false;
           if (filtroObraId && r.obraLocalId !== filtroObraId) return false;
           if (filtroEtapaId && r.etapaServicoId !== filtroEtapaId) return false;
@@ -314,7 +319,8 @@ export default function RelatoriosTab({
         const summary: { [id: string]: { site: ObraLocal; rdoCount: number; averageWorkers: number; doneServices: string[] } } = {};
 
         rdos.forEach(r => {
-          if (r.data < dataInicio || r.data > dataFim) return;
+          if (!isWithinSelectedPeriod(r.data)) return;
+          if (filtroEmpresaId && r.empresaId !== filtroEmpresaId) return;
           if (filtroObraId && r.obraLocalId !== filtroObraId) return;
 
           const site = obras.find(o => o.id === r.obraLocalId);
@@ -343,7 +349,7 @@ export default function RelatoriosTab({
         const linhas: LinhaPresenca[] = [];
 
         listasPresenca.forEach(lista => {
-          if (lista.data < dataInicio || lista.data > dataFim) return;
+          if (!isWithinSelectedPeriod(lista.data)) return;
           if (filtroObraId && lista.obraId !== filtroObraId) return;
 
           const obra = obras.find(o => o.id === lista.obraId);
@@ -371,7 +377,7 @@ export default function RelatoriosTab({
 
       case 'apontamentos_ramos': {
         return apontamentoRamoRegistros.filter(reg => {
-          if (reg.data < dataInicio || reg.data > dataFim) return false;
+          if (!isWithinSelectedPeriod(reg.data)) return false;
           if (filtroObraId && normalizeKey(reg.canteiroNome) !== filtroObraId) return false;
           if (filtroEmpresaId) {
             const empresaNome = empresas.find(empresa => empresa.id === filtroEmpresaId)?.nome || '';
@@ -387,12 +393,16 @@ export default function RelatoriosTab({
     }
   };
 
-  const results = getFilteredData();
+  const results = invalidDateRange ? [] : getFilteredData();
 
   // Colunas de produto dinâmicas (combustíveis + lubrificantes), na ordem cadastrada,
   // usadas no relatório "Consumo por Frota" no padrão de planilha RENEA/SPMAR
   const produtoColunas = reportType === 'consumo_frota'
-    ? Array.from(new Set([...combustiveis.map(c => c.nome), ...lubrificantes.map(p => p.nome)]))
+    ? Array.from(new Set([
+        ...combustiveis.map(c => c.nome),
+        ...lubrificantes.map(p => p.nome),
+        ...(results as any[]).flatMap(r => Object.keys(r.produtos || {})),
+      ]))
         .filter(nome => (results as any[]).some(r => r.produtos && r.produtos[nome] !== undefined))
     : [];
 
@@ -1150,6 +1160,17 @@ export default function RelatoriosTab({
               </div>
 
               {/* Conditional site/obra filter */}
+              {['consumo_frota', 'consumo_empresa', 'consumo_periodo', 'lubrificacao_frota', 'equipamentos_mobilizados', 'equipamentos_manutencao'].includes(reportType) && (
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-500">Frota / Equipamento</label>
+                  <select value={filtroEquipamentoId} onChange={e => setFiltroEquipamentoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+                    <option value="">Todos</option>
+                    {equipamentos.map(eq => <option key={eq.id} value={eq.id} className="bg-slate-900 text-slate-200">{eq.prefixo} — {eq.nome}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Conditional site/obra filter */}
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-500">Canteiro de Obra</label>
                 <select value={filtroObraId} onChange={e => setFiltroObraId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
@@ -1188,7 +1209,7 @@ export default function RelatoriosTab({
               )}
 
               {/* Conditional operator / technical filter */}
-              {['consumo_periodo', 'lubrificacao_frota', 'apontamentos_ramos'].includes(reportType) && (
+              {['consumo_frota', 'consumo_empresa', 'consumo_periodo', 'lubrificacao_frota', 'presenca_lista', 'apontamentos_ramos'].includes(reportType) && (
                 <div className="space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-500">Responsável / Operador</label>
                   <input type="text" placeholder="Pesquise por nome..." value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
@@ -1248,7 +1269,7 @@ export default function RelatoriosTab({
                   {reportType === 'rdo_data' && `Planilha de RDO - Diários de Obra`}
                   {reportType === 'equipamentos_mobilizados' && `Frota Ativa Mobilizada em Canteiros`}
                   {reportType === 'equipamentos_manutencao' && `Equipamentos Parados em Oficina`}
-                  {reportType === 'resumo_obra' && `Resolidado Estatístico de Mão de Obra por Canteiro`}
+                  {reportType === 'resumo_obra' && `Consolidado Estatístico de Mão de Obra por Canteiro`}
                   {reportType === 'presenca_lista' && `Lista de Presença (${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')})`}
                   {reportType === 'apontamentos_ramos' && `Apontamentos por Ramo (${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')})`}
                 </h2>
@@ -1261,7 +1282,11 @@ export default function RelatoriosTab({
             </div>
 
             {/* Results Output Rendering */}
-            {results.length === 0 ? (
+            {invalidDateRange ? (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-8 text-center text-sm font-bold text-rose-300">
+                A data inicial não pode ser posterior à data final.
+              </div>
+            ) : results.length === 0 ? (
               <div className="py-16 text-center text-slate-500 italic">
                 Nenhum resultado correspondente para os filtros selecionados. Altere o período de datas ou termos para buscar.
               </div>
@@ -1479,7 +1504,7 @@ export default function RelatoriosTab({
                         <th className="pb-3 px-3">Endereço</th>
                         <th className="pb-3 px-3 text-center">Frentes de Serviço</th>
                         <th className="pb-3 px-3 text-center">Média de Trabalhadores</th>
-                        <th className="pb-3 px-3 text-right">Diários Entregues</th>
+                        <th className="pb-3 px-3 text-right">Registros Históricos</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-850">
@@ -1489,7 +1514,7 @@ export default function RelatoriosTab({
                           <td className="py-4 px-3 text-slate-400">{item.site.endereco}</td>
                           <td className="py-4 px-3 text-center text-slate-300 font-mono font-bold">{item.rdoCount} frentes</td>
                           <td className="py-4 px-3 text-center text-emerald-400 font-mono font-black">{item.averageWorkers} pessoas</td>
-                          <td className="py-4 px-3 text-right text-slate-300 font-mono">{item.rdoCount} RDOs</td>
+                          <td className="py-4 px-3 text-right text-slate-300 font-mono">{item.rdoCount} registros</td>
                         </tr>
                       ))}
                     </tbody>

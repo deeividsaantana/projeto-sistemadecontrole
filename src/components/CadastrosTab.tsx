@@ -25,7 +25,6 @@ import {
   Users, 
   Fuel, 
   Droplets, 
-  Layers, 
   Search, 
   Plus, 
   Edit, 
@@ -587,8 +586,7 @@ export default function CadastrosTab({
           { id: 'obras', label: 'Obras / Locais', icon: MapPin },
           { id: 'comboios', label: 'Comboios', icon: Fuel },
           { id: 'combustiveis', label: 'Combustíveis', icon: Fuel },
-          { id: 'lubrificantes', label: 'Lubrificantes', icon: Droplets },
-          { id: 'etapas', label: 'Etapas RDO', icon: Layers }
+          { id: 'lubrificantes', label: 'Lubrificantes', icon: Droplets }
         ].map(tab => {
           const Icon = tab.icon;
           const active = subTab === tab.id;

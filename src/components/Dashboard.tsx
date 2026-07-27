@@ -239,7 +239,6 @@ export default function Dashboard({
   const sourceOptions: Array<{ id: BuilderSource; label: string }> = [
     { id: 'abastecimentos', label: 'Combustível' },
     { id: 'lubrificacoes', label: 'Lubrificação' },
-    { id: 'rdos', label: 'RDO' },
     { id: 'presenca', label: 'Presença' },
     { id: 'manutencao', label: 'Manutenção' },
     { id: 'equipamentos', label: 'Equipamentos' },

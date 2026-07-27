@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 
 const FIREBASE_SERVICE_ACCOUNT_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64
@@ -26,6 +27,28 @@ export const getAdminDb = () => {
     });
   }
   return getFirestore();
+};
+
+export const getAdminAuth = () => {
+  getAdminDb();
+  return getAuth();
+};
+
+export const requireStaffUser = async event => {
+  const authorization = String(event.headers?.authorization || event.headers?.Authorization || '');
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
+    const error = new Error('Faça login no sistema para consultar a integração.');
+    error.statusCode = 401;
+    throw error;
+  }
+  const decoded = await getAdminAuth().verifyIdToken(match[1], true);
+  if (decoded.staff !== true) {
+    const error = new Error('Sua conta não possui autorização de equipe.');
+    error.statusCode = 403;
+    throw error;
+  }
+  return decoded;
 };
 
 export const serverTimestamp = () => FieldValue.serverTimestamp();

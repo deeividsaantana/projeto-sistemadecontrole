@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
+  Cloud,
   CopyPlus,
   Database,
   Download,
@@ -45,6 +46,7 @@ import {
   styleCorporateWorksheet,
 } from '../utils/excelCorporate';
 import { auth } from '../firebase';
+import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 
 interface CombustivelInteligenteTabProps {
@@ -60,6 +62,7 @@ interface CombustivelInteligenteTabProps {
   onOpenCadastros?: () => void;
   onOpenSpreadsheetImport: () => void;
   isParsingSpreadsheet: boolean;
+  oneDriveFuelSyncStatus?: OneDriveFuelSyncStatus | null;
 }
 
 type WorkspaceView = 'painel' | 'digitacao' | 'documento' | 'registros';
@@ -146,6 +149,7 @@ const statusTone: Record<string, string> = {
 const sourceTone: Record<string, string> = {
   Manual: 'bg-sky-500/10 text-sky-300',
   Planilha: 'bg-violet-500/10 text-violet-300',
+  OneDrive: 'bg-emerald-500/10 text-emerald-300',
   'PDF/Foto IA': 'bg-cyan-500/10 text-cyan-300',
   'Legado Access': 'bg-slate-700 text-slate-300',
 };
@@ -200,6 +204,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   onOpenCadastros,
   onOpenSpreadsheetImport,
   isParsingSpreadsheet,
+  oneDriveFuelSyncStatus,
 }) => {
   const [view, setView] = useState<WorkspaceView>('painel');
   const [filterStart, setFilterStart] = useState('');
@@ -913,6 +918,25 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           </button>
         </div>
       </header>
+
+      <section className={`flex flex-col gap-3 border p-4 md:flex-row md:items-center md:justify-between ${oneDriveFuelSyncStatus?.state === 'error' ? 'border-rose-500/30 bg-rose-500/10' : oneDriveFuelSyncStatus?.state === 'ready' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
+        <div className="flex items-start gap-3">
+          <Cloud className={oneDriveFuelSyncStatus?.state === 'ready' ? 'text-emerald-300' : oneDriveFuelSyncStatus?.state === 'error' ? 'text-rose-300' : 'text-slate-500'} size={20} />
+          <div>
+            <h2 className="text-sm font-bold text-white">OneDrive automático • a cada 10 minutos</h2>
+            <p className="mt-1 text-xs text-slate-400">
+              {oneDriveFuelSyncStatus?.state === 'ready'
+                ? `${oneDriveFuelSyncStatus.fileName || 'Planilha localizada'} • ${oneDriveFuelSyncStatus.rowCount || 0} linha(s) • ${oneDriveFuelSyncStatus.warningCount || 0} para conferir`
+                : oneDriveFuelSyncStatus?.message || 'Aguardando a primeira leitura do computador sincronizador.'}
+            </p>
+          </div>
+        </div>
+        <span className="text-xs font-mono text-slate-400">
+          {oneDriveFuelSyncStatus?.syncedAt
+            ? `Última leitura: ${new Date(oneDriveFuelSyncStatus.syncedAt).toLocaleString('pt-BR')}`
+            : 'Ainda não sincronizado'}
+        </span>
+      </section>
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-800 pb-px">
         {navItems.map((item) => {

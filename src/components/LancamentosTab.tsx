@@ -44,6 +44,7 @@ import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporate
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
+import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -67,6 +68,7 @@ interface LancamentosTabProps {
   onSaveRdo: (item: RdoDiario, isNew: boolean) => void;
   onDeleteRdo: (id: string) => void;
   onOpenCadastros?: () => void;
+  oneDriveFuelSyncStatus?: OneDriveFuelSyncStatus | null;
 }
 
 type Mode = 'abastecimentos' | 'lubrificacoes' | 'rdos';
@@ -90,7 +92,8 @@ export default function LancamentosTab({
   onDeleteLubrificacao,
   onSaveRdo,
   onDeleteRdo,
-  onOpenCadastros
+  onOpenCadastros,
+  oneDriveFuelSyncStatus,
 }: LancamentosTabProps) {
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
@@ -1067,6 +1070,7 @@ export default function LancamentosTab({
           onOpenCadastros={onOpenCadastros}
           onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
           isParsingSpreadsheet={isParsingImport}
+          oneDriveFuelSyncStatus={oneDriveFuelSyncStatus}
         />
         <input
           ref={fileInputRef}

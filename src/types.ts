@@ -133,7 +133,7 @@ export type StatusRegistroCombustivel =
   | 'Conferência necessária'
   | 'Erro de importação';
 
-export type OrigemRegistroCombustivel = 'Manual' | 'Planilha' | 'PDF/Foto IA' | 'Legado Access';
+export type OrigemRegistroCombustivel = 'Manual' | 'Planilha' | 'OneDrive' | 'PDF/Foto IA' | 'Legado Access';
 export type SeveridadeAlertaCombustivel = 'info' | 'aviso' | 'critico';
 
 export interface AlertaCombustivel {
@@ -165,6 +165,9 @@ export interface Abastecimento {
   confiancaExtracao?: number;
   documentoOrigemNome?: string;
   documentoOrigemHash?: string;
+  integracaoOrigemId?: string;
+  integracaoAba?: string;
+  integracaoLinha?: number;
   camposRevisados?: string[];
   criadoEm?: string; // ISO timestamp
   atualizadoEm?: string; // ISO timestamp
@@ -329,6 +332,8 @@ export interface TicketJazida {
   enviadoEm?: string;
   criadoEm?: string;
   atualizadoEm?: string;
+  impressaoEmBranco?: boolean;
+  ocultarNumeroImpressao?: boolean;
 }
 
 export interface OrdemServico {
