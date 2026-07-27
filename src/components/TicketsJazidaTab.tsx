@@ -94,7 +94,7 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
       </div>
 
       <div className="grid grid-cols-[1fr_1.4fr_.8fr] border-l border-slate-500">
-        {field('Quantidade', `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`)}
+        {field('Quantidade', ticket.quantidadeM3 ? `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}` : '')}
         {field(isReceipt ? 'Ramo de descarga' : 'Destino / obra', destination)}
         {field('Estaca', ticket.estaca || '—')}
       </div>
@@ -261,6 +261,17 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [batchQuantidadeM3, setBatchQuantidadeM3] = useState<number>(1);
   const [batchDestinoObra, setBatchDestinoObra] = useState<DestinoObraJazida>('Marginal');
   const [batchEmpresa, setBatchEmpresa] = useState<EmpresaTicketJazida>('RENEA');
+  const [batchBlankFields, setBatchBlankFields] = useState({
+    prefixo: false,
+    placa: false,
+    quantidade: false,
+    material: false,
+    destino: false,
+    empresa: false,
+  });
+  const toggleBatchBlankField = (field: keyof typeof batchBlankFields) => {
+    setBatchBlankFields(prev => ({ ...prev, [field]: !prev[field] }));
+  };
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
@@ -588,19 +599,19 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     data: batchDate,
     tipoTicket: type,
     ticketNumero: number,
-    prefixo: batchPrefixo.trim().toUpperCase(),
-    placa: batchPlaca.trim().toUpperCase(),
+    prefixo: batchBlankFields.prefixo ? '' : batchPrefixo.trim().toUpperCase(),
+    placa: batchBlankFields.placa ? '' : batchPlaca.trim().toUpperCase(),
     familiaEquipamento: '',
     equipamentoNome: '',
     horaSaida: type === 'Liberação' ? '08:00' : '',
     horaChegada: type === 'Recebimento' ? '' : undefined,
-    tipoMaterial: batchTipoMaterial,
-    quantidadeM3: Number(batchQuantidadeM3) || 1,
-    destinoObra: batchDestinoObra,
+    tipoMaterial: batchBlankFields.material ? ('' as TipoMaterialJazida) : batchTipoMaterial,
+    quantidadeM3: batchBlankFields.quantidade ? 0 : (Number(batchQuantidadeM3) || 1),
+    destinoObra: batchBlankFields.destino ? ('' as DestinoObraJazida) : batchDestinoObra,
     destinoOutro: '',
     responsavelLiberacao: '',
     nomeLegivel: '',
-    empresa: batchEmpresa,
+    empresa: batchBlankFields.empresa ? ('' as EmpresaTicketJazida) : batchEmpresa,
     estaca: '',
     observacao: 'Gerado em lote para impressão sequencial.',
     status: 'OK',
@@ -621,6 +632,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setBatchQuantidadeM3(1);
     setBatchDestinoObra('Marginal');
     setBatchEmpresa('RENEA');
+    setBatchBlankFields({ prefixo: false, placa: false, quantidade: false, material: false, destino: false, empresa: false });
     setValidationError('');
     setImportMessage('');
     setIsBatchModalOpen(true);
@@ -1709,36 +1721,73 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                 <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
-                <input value={batchPrefixo} onChange={e => setBatchPrefixo(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
+                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
+                    <input type="checkbox" checked={batchBlankFields.prefixo} onChange={() => toggleBatchBlankField('prefixo')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
+                    Deixar em branco
+                  </label>
+                </div>
+                <input value={batchPrefixo} disabled={batchBlankFields.prefixo} onChange={e => setBatchPrefixo(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
-                <input value={batchPlaca} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
+                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
+                    <input type="checkbox" checked={batchBlankFields.placa} onChange={() => toggleBatchBlankField('placa')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
+                    Deixar em branco
+                  </label>
+                </div>
+                <input value={batchPlaca} disabled={batchBlankFields.placa} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³)</label>
-                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³)</label>
+                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
+                    <input type="checkbox" checked={batchBlankFields.quantidade} onChange={() => toggleBatchBlankField('quantidade')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
+                    Deixar em branco
+                  </label>
+                </div>
+                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} disabled={batchBlankFields.quantidade} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Material</label>
-                <select value={batchTipoMaterial} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Material</label>
+                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
+                    <input type="checkbox" checked={batchBlankFields.material} onChange={() => toggleBatchBlankField('material')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
+                    Deixar em branco
+                  </label>
+                </div>
+                <select value={batchTipoMaterial} disabled={batchBlankFields.material} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
                   {TIPOS_MATERIAL.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / obra</label>
-                <select value={batchDestinoObra} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / obra</label>
+                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
+                    <input type="checkbox" checked={batchBlankFields.destino} onChange={() => toggleBatchBlankField('destino')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
+                    Deixar em branco
+                  </label>
+                </div>
+                <select value={batchDestinoObra} disabled={batchBlankFields.destino} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
                   {DESTINOS_OBRA.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
-                <select value={batchEmpresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
+                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
+                    <input type="checkbox" checked={batchBlankFields.empresa} onChange={() => toggleBatchBlankField('empresa')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
+                    Deixar em branco
+                  </label>
+                </div>
+                <select value={batchEmpresa} disabled={batchBlankFields.empresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
                   {EMPRESAS_TICKET.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
             </div>
+            <p className="text-[10px] text-slate-500 -mt-1">Marque "Deixar em branco" nos campos que devem ser preenchidos à mão no papel. O número do ticket inicial da sequência (acima) continua editável manualmente.</p>
 
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-[10px] text-slate-400">
               Sequência: {batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até {batchStartNumber ? formatSequentialNumber(batchStartNumber, Math.max(0, Math.min(200, Number(batchQuantity) || 1) - 1)) : '-'}.
