@@ -40,6 +40,7 @@ interface TicketsJazidaTabProps {
   onDeleteTicket: (id: string) => void;
   onImportTickets: (items: TicketJazida[]) => void;
   onReserveTicketNumber: () => Promise<string>;
+  onReserveTicketNumbers: (count: number) => Promise<string[]>;
 }
 
 const TIPOS_MATERIAL: TipoMaterialJazida[] = ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Argila', 'Mataco', 'Solo mole', 'Outros'];
@@ -53,13 +54,14 @@ const EMPRESAS_TICKET: EmpresaTicketJazida[] = ['RENEA', 'Terceiro', 'Outros'];
 
 const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
   const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
-  const material = ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
-  const destination = ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
+  const blankPrint = ticket.impressaoEmBranco === true;
+  const material = blankPrint ? '' : ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
+  const destination = blankPrint ? '' : ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
   const materials = ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Outros'];
   const field = (label: string, value: React.ReactNode, className = '') => (
     <div className={`min-h-14 border-r border-b border-slate-500 p-2 ${className}`}>
       <div className="text-[9px] font-bold uppercase text-slate-600">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-slate-950">{value || '—'}</div>
+      <div className="mt-2 text-sm font-semibold text-slate-950">{value || (blankPrint ? '' : '—')}</div>
     </div>
   );
 
@@ -74,46 +76,46 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
         </div>
         <div className="h-24 border-r border-b border-slate-500 p-2">
           <div className="text-[9px] font-bold uppercase text-slate-600">Ticket Nº</div>
-          <div className="mt-3 border-b border-slate-500 pb-1 text-center text-2xl font-bold">{ticket.ticketNumero}</div>
+          <div className="mt-3 border-b border-slate-500 pb-1 text-center text-2xl font-bold">{ticket.ocultarNumeroImpressao ? '' : ticket.ticketNumero}</div>
         </div>
       </div>
 
       <div className="grid grid-cols-4 border-l border-slate-500">
-        {field('Prefixo', ticket.prefixo)}
-        {field('Placa', ticket.placa)}
-        {field('Data', ticket.data.split('-').reverse().join('/'))}
-        {field(isReceipt ? 'Hora de chegada' : 'Hora de saída', isReceipt ? ticket.horaChegada || ticket.horaSaida : ticket.horaSaida)}
+        {field('Prefixo', blankPrint ? '' : ticket.prefixo)}
+        {field('Placa', blankPrint ? '' : ticket.placa)}
+        {field('Data', blankPrint ? '' : ticket.data.split('-').reverse().join('/'))}
+        {field(isReceipt ? 'Hora de chegada' : 'Hora de saída', blankPrint ? '' : isReceipt ? ticket.horaChegada || ticket.horaSaida : ticket.horaSaida)}
       </div>
 
       <div className="border-l border-r border-b border-slate-500 p-3 min-h-20">
         <div className="text-[9px] font-bold uppercase text-slate-600">Tipo de material</div>
         <div className="mt-4 grid grid-cols-6 gap-3">
-          {materials.map(option => <div key={option} className="flex items-center gap-2 text-xs"><span className={`h-4 w-4 border border-slate-600 grid place-items-center font-bold ${material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros') ? 'bg-slate-900 text-white' : ''}`}>{material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros') ? 'X' : ''}</span>{option}</div>)}
+          {materials.map(option => <div key={option} className="flex items-center gap-2 text-xs"><span className={`h-4 w-4 border border-slate-600 grid place-items-center font-bold ${!blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')) ? 'bg-slate-900 text-white' : ''}`}>{!blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')) ? 'X' : ''}</span>{option}</div>)}
         </div>
-        {ticket.tipoMaterial === 'Outros' && <div className="mt-2 text-xs">Especificação: <strong>{material}</strong></div>}
+        {!blankPrint && ticket.tipoMaterial === 'Outros' && <div className="mt-2 text-xs">Especificação: <strong>{material}</strong></div>}
       </div>
 
       <div className="grid grid-cols-[1fr_1.4fr_.8fr] border-l border-slate-500">
-        {field('Quantidade', ticket.quantidadeM3 ? `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}` : '')}
+        {field('Quantidade', blankPrint ? '' : `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`)}
         {field(isReceipt ? 'Ramo de descarga' : 'Destino / obra', destination)}
-        {field('Estaca', ticket.estaca || '—')}
+        {field('Estaca', blankPrint ? '' : ticket.estaca || '—')}
       </div>
 
       <div className="border-l border-r border-b border-slate-500 p-3 min-h-16">
         <div className="text-[9px] font-bold uppercase text-slate-600">Carga conforme?</div>
-        <div className="mt-3 flex gap-12 text-xs"><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-slate-600 grid place-items-center font-bold ${ticket.cargaConforme === true ? 'bg-slate-900 text-white' : ''}`}>{ticket.cargaConforme === true ? 'X' : ''}</i>Sim</span><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-slate-600 grid place-items-center font-bold ${ticket.cargaConforme === false ? 'bg-slate-900 text-white' : ''}`}>{ticket.cargaConforme === false ? 'X' : ''}</i>Não</span></div>
+        <div className="mt-3 flex gap-12 text-xs"><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-slate-600 grid place-items-center font-bold ${!blankPrint && ticket.cargaConforme === true ? 'bg-slate-900 text-white' : ''}`}>{!blankPrint && ticket.cargaConforme === true ? 'X' : ''}</i>Sim</span><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-slate-600 grid place-items-center font-bold ${!blankPrint && ticket.cargaConforme === false ? 'bg-slate-900 text-white' : ''}`}>{!blankPrint && ticket.cargaConforme === false ? 'X' : ''}</i>Não</span></div>
       </div>
 
       <div className="border-l border-r border-b border-slate-500 p-3 min-h-24">
         <div className="text-[9px] font-bold uppercase text-slate-600">Divergências / observações</div>
-        <p className="mt-3 text-xs leading-relaxed">{ticket.observacao || 'Sem observações.'}</p>
+        <p className="mt-3 text-xs leading-relaxed">{blankPrint ? '' : ticket.observacao || 'Sem observações.'}</p>
       </div>
 
       <div className="grid grid-cols-2 border-l border-slate-500">
         <div className="min-h-28 border-r border-b border-slate-500 p-3">
           <div className="text-[9px] font-bold uppercase text-slate-600">Assinatura - {isReceipt ? 'Recebedor' : 'Responsável pela liberação'}</div>
-          {ticket.assinaturaDigital && <img src={ticket.assinaturaDigital} alt="Assinatura digital" className="mx-auto h-14 max-w-[80%] object-contain" />}
-          <div className="mt-1 border-t border-slate-500 pt-1 text-center text-[10px]">{ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível'}</div>
+          {!blankPrint && ticket.assinaturaDigital && <img src={ticket.assinaturaDigital} alt="Assinatura digital" className="mx-auto h-14 max-w-[80%] object-contain" />}
+          <div className="mt-1 border-t border-slate-500 pt-1 text-center text-[10px]">{blankPrint ? '' : ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível'}</div>
         </div>
         <div className="min-h-28 border-r border-b border-slate-500 p-3 flex flex-col justify-end">
           <div className="border-t border-slate-500 pt-1 text-center text-[10px]">Assinatura - Conferente da obra / Nome legível</div>
@@ -151,13 +153,14 @@ const loadTicketLogo = async () => {
 const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTicket: TicketJazida, logo: string) => {
   const drawCopy = (ticket: TicketJazida, top: number, copyLabel: string) => {
     const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
-    const material = ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
-    const destination = ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
+    const blankPrint = ticket.impressaoEmBranco === true;
+    const material = blankPrint ? '' : ticket.tipoMaterial === 'Outros' ? ticket.materialOutro || 'Outros' : ticket.tipoMaterial;
+    const destination = blankPrint ? '' : ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
     const left = 8;
     const width = 194;
     const line = (x1: number, y1: number, x2: number, y2: number) => doc.line(x1, y1, x2, y2);
     const label = (text: string, x: number, y: number) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(6); doc.setTextColor(71, 85, 105); doc.text(text.toUpperCase(), x, y); };
-    const value = (text: string, x: number, y: number, maxWidth?: number) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(15, 23, 42); doc.text(String(text || '—'), x, y, maxWidth ? { maxWidth } : undefined); };
+    const value = (text: string, x: number, y: number, maxWidth?: number) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(15, 23, 42); doc.text(String(text || (blankPrint ? '' : '—')), x, y, maxWidth ? { maxWidth } : undefined); };
     const box = (x: number, y: number, checked: boolean) => { doc.rect(x, y, 4, 4); if (checked) { doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('X', x + 0.8, y + 3.3); } };
 
     doc.setDrawColor(100, 116, 139);
@@ -171,40 +174,40 @@ const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTic
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42);
     doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO' : 'LIBERAÇÃO'} - OBRA`, left + 60, top + 8);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.text('Complexo Alto Tietê', left + 60, top + 13);
-    label('Ticket Nº', left + 169, top + 5); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text(ticket.ticketNumero, left + 179.5, top + 14, { align: 'center' });
+    label('Ticket Nº', left + 169, top + 5); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text(ticket.ocultarNumeroImpressao ? '' : ticket.ticketNumero, left + 179.5, top + 14, { align: 'center' });
 
     const vehicleTop = top + 20;
     [0, 48, 96, 142, 194].forEach(offset => line(left + offset, vehicleTop, left + offset, vehicleTop + 14));
-    [['Prefixo', ticket.prefixo], ['Placa', ticket.placa], ['Data', ticket.data.split('-').reverse().join('/')], [isReceipt ? 'Hora de chegada' : 'Hora de saída', isReceipt ? ticket.horaChegada || ticket.horaSaida : ticket.horaSaida]].forEach(([name, content], index) => { const x = left + [3, 51, 99, 145][index]; label(name, x, vehicleTop + 4); value(content, x, vehicleTop + 10); });
+    [['Prefixo', blankPrint ? '' : ticket.prefixo], ['Placa', blankPrint ? '' : ticket.placa], ['Data', blankPrint ? '' : ticket.data.split('-').reverse().join('/')], [isReceipt ? 'Hora de chegada' : 'Hora de saída', blankPrint ? '' : isReceipt ? ticket.horaChegada || ticket.horaSaida : ticket.horaSaida]].forEach(([name, content], index) => { const x = left + [3, 51, 99, 145][index]; label(name, x, vehicleTop + 4); value(content, x, vehicleTop + 10); });
     line(left, vehicleTop + 14, left + width, vehicleTop + 14);
 
     const materialTop = vehicleTop + 14;
     label('Tipo de material', left + 3, materialTop + 4);
-    ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Outros'].forEach((option, index) => { const x = left + 5 + index * 31; box(x, materialTop + 8, material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')); value(option, x + 6, materialTop + 11.5); });
+    ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Outros'].forEach((option, index) => { const x = left + 5 + index * 31; box(x, materialTop + 8, !blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros'))); value(option, x + 6, materialTop + 11.5); });
     line(left, materialTop + 18, left + width, materialTop + 18);
 
     const detailTop = materialTop + 18;
     line(left + 55, detailTop, left + 55, detailTop + 14); line(left + 145, detailTop, left + 145, detailTop + 14);
-    label('Quantidade (m³ / caçamba)', left + 3, detailTop + 4); value(`${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`, left + 3, detailTop + 10);
+    label('Quantidade (m³ / caçamba)', left + 3, detailTop + 4); value(blankPrint ? '' : `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`, left + 3, detailTop + 10);
     label(isReceipt ? 'Ramo de descarga' : 'Destino / obra', left + 58, detailTop + 4); value(destination, left + 58, detailTop + 10, 82);
-    label('Estaca', left + 148, detailTop + 4); value(ticket.estaca || '—', left + 148, detailTop + 10);
+    label('Estaca', left + 148, detailTop + 4); value(blankPrint ? '' : ticket.estaca || '—', left + 148, detailTop + 10);
     line(left, detailTop + 14, left + width, detailTop + 14);
 
     const conformTop = detailTop + 14;
-    label('Carga conforme?', left + 3, conformTop + 4); box(left + 78, conformTop + 5, ticket.cargaConforme === true); value('SIM', left + 84, conformTop + 8.5); box(left + 110, conformTop + 5, ticket.cargaConforme === false); value('NÃO', left + 116, conformTop + 8.5);
+    label('Carga conforme?', left + 3, conformTop + 4); box(left + 78, conformTop + 5, !blankPrint && ticket.cargaConforme === true); value('SIM', left + 84, conformTop + 8.5); box(left + 110, conformTop + 5, !blankPrint && ticket.cargaConforme === false); value('NÃO', left + 116, conformTop + 8.5);
     line(left, conformTop + 14, left + width, conformTop + 14);
 
     const obsTop = conformTop + 14;
     label('Divergências / observações', left + 3, obsTop + 4);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(15, 23, 42);
-    doc.text(doc.splitTextToSize(ticket.observacao || '', width - 8).slice(0, 4), left + 3, obsTop + 10);
+    doc.text(doc.splitTextToSize(blankPrint ? '' : ticket.observacao || '', width - 8).slice(0, 4), left + 3, obsTop + 10);
     line(left, obsTop + 29, left + width, obsTop + 29);
 
     const signatureTop = obsTop + 29;
     line(left + width / 2, signatureTop, left + width / 2, signatureTop + 22);
     label(`Assinatura - ${isReceipt ? 'Recebedor' : 'Responsável pela liberação'}`, left + 3, signatureTop + 4);
-    if (ticket.assinaturaDigital) { try { doc.addImage(ticket.assinaturaDigital, 'PNG', left + 8, signatureTop + 4, 70, 11); } catch { /* assinatura inválida não interrompe */ } }
-    line(left + 4, signatureTop + 16, left + width / 2 - 4, signatureTop + 16); value(ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível', left + 4, signatureTop + 20);
+    if (!blankPrint && ticket.assinaturaDigital) { try { doc.addImage(ticket.assinaturaDigital, 'PNG', left + 8, signatureTop + 4, 70, 11); } catch { /* assinatura inválida não interrompe */ } }
+    line(left + 4, signatureTop + 16, left + width / 2 - 4, signatureTop + 16); value(blankPrint ? '' : ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível', left + 4, signatureTop + 20);
     label('Assinatura - Conferente / Fiscal', left + width / 2 + 3, signatureTop + 4); line(left + width / 2 + 4, signatureTop + 16, left + width - 4, signatureTop + 16); value('Nome legível', left + width / 2 + 4, signatureTop + 20);
     line(left, signatureTop + 22, left + width, signatureTop + 22);
     doc.setFontSize(5); doc.setTextColor(100, 116, 139); doc.text(`VIA DE ${copyLabel} | DOCUMENTO DIGITAL RENEA`, left + width / 2, signatureTop + 25, { align: 'center' });
@@ -236,7 +239,7 @@ const generateTicketBookPdf = async (
   doc.save(fileName);
 };
 
-export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber }: TicketsJazidaTabProps) {
+export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber, onReserveTicketNumbers }: TicketsJazidaTabProps) {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -261,17 +264,9 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [batchQuantidadeM3, setBatchQuantidadeM3] = useState<number>(1);
   const [batchDestinoObra, setBatchDestinoObra] = useState<DestinoObraJazida>('Marginal');
   const [batchEmpresa, setBatchEmpresa] = useState<EmpresaTicketJazida>('RENEA');
-  const [batchBlankFields, setBatchBlankFields] = useState({
-    prefixo: false,
-    placa: false,
-    quantidade: false,
-    material: false,
-    destino: false,
-    empresa: false,
-  });
-  const toggleBatchBlankField = (field: keyof typeof batchBlankFields) => {
-    setBatchBlankFields(prev => ({ ...prev, [field]: !prev[field] }));
-  };
+  const [batchBlankForm, setBatchBlankForm] = useState(true);
+  const [batchPrintNumber, setBatchPrintNumber] = useState(true);
+  const [batchSaveDrafts, setBatchSaveDrafts] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
@@ -599,27 +594,29 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     data: batchDate,
     tipoTicket: type,
     ticketNumero: number,
-    prefixo: batchBlankFields.prefixo ? '' : batchPrefixo.trim().toUpperCase(),
-    placa: batchBlankFields.placa ? '' : batchPlaca.trim().toUpperCase(),
+    prefixo: batchPrefixo.trim().toUpperCase(),
+    placa: batchPlaca.trim().toUpperCase(),
     familiaEquipamento: '',
     equipamentoNome: '',
     horaSaida: type === 'Liberação' ? '08:00' : '',
     horaChegada: type === 'Recebimento' ? '' : undefined,
-    tipoMaterial: batchBlankFields.material ? ('' as TipoMaterialJazida) : batchTipoMaterial,
-    quantidadeM3: batchBlankFields.quantidade ? 0 : (Number(batchQuantidadeM3) || 1),
-    destinoObra: batchBlankFields.destino ? ('' as DestinoObraJazida) : batchDestinoObra,
+    tipoMaterial: batchTipoMaterial,
+    quantidadeM3: Number(batchQuantidadeM3) || 1,
+    destinoObra: batchDestinoObra,
     destinoOutro: '',
     responsavelLiberacao: '',
     nomeLegivel: '',
-    empresa: batchBlankFields.empresa ? ('' as EmpresaTicketJazida) : batchEmpresa,
+    empresa: batchEmpresa,
     estaca: '',
-    observacao: 'Gerado em lote para impressão sequencial.',
+    observacao: batchBlankForm ? '' : 'Gerado em lote para impressão sequencial.',
     status: 'OK',
     statusFluxo: type === 'Liberação' ? 'Rascunho' : undefined,
     unidadeQuantidade: 'm³',
     origemRegistro: 'Admin',
     criadoEm: now,
     atualizadoEm: now,
+    impressaoEmBranco: batchBlankForm,
+    ocultarNumeroImpressao: !batchPrintNumber,
   });
 
   const openBatchModal = () => {
@@ -632,7 +629,9 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setBatchQuantidadeM3(1);
     setBatchDestinoObra('Marginal');
     setBatchEmpresa('RENEA');
-    setBatchBlankFields({ prefixo: false, placa: false, quantidade: false, material: false, destino: false, empresa: false });
+    setBatchBlankForm(true);
+    setBatchPrintNumber(true);
+    setBatchSaveDrafts(false);
     setValidationError('');
     setImportMessage('');
     setIsBatchModalOpen(true);
@@ -642,19 +641,22 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setValidationError('');
     setImportMessage('');
     const quantity = Math.max(1, Math.min(200, Math.floor(Number(batchQuantity) || 0)));
-    if (!batchStartNumber.trim()) { setValidationError('Informe o primeiro número da sequência.'); return; }
-    if (!batchDate) { setValidationError('Informe a data dos tickets.'); return; }
-
-    const numbers = Array.from({ length: quantity }, (_, index) => formatSequentialNumber(batchStartNumber, index));
-    const existing = new Set(tickets.map(ticket => `${ticket.tipoTicket || 'Liberação'}|${ticket.ticketNumero}`.toLowerCase()));
-    const duplicate = numbers.find(number => existing.has(`liberação|${number}`.toLowerCase()));
-    if (duplicate) {
-      setValidationError(`O Ticket Nº ${duplicate} já existe em liberação. Ajuste o início da sequência.`);
-      return;
-    }
+    if (!batchBlankForm && (batchPrintNumber || batchSaveDrafts) && !batchStartNumber.trim()) { setValidationError('Informe o primeiro número da sequência.'); return; }
+    if (!batchBlankForm && !batchDate) { setValidationError('Informe a data dos tickets.'); return; }
 
     setIsBatchPrinting(true);
     try {
+      const sequenceStart = batchStartNumber.trim() || '1';
+      const numbers = batchBlankForm
+        ? await onReserveTicketNumbers(quantity)
+        : Array.from({ length: quantity }, (_, index) => formatSequentialNumber(sequenceStart, index));
+      const existing = new Set(tickets.map(ticket => `${ticket.tipoTicket || 'Liberação'}|${ticket.ticketNumero}`.toLowerCase()));
+      const duplicate = batchSaveDrafts ? numbers.find(number => existing.has(`liberação|${number}`.toLowerCase())) : undefined;
+      if (duplicate) {
+        setValidationError(`O Ticket Nº ${duplicate} já existe em liberação. Ajuste o início da sequência.`);
+        return;
+      }
+
       const now = new Date().toISOString();
       const releaseTickets = numbers.map(number => buildBatchTicket(number, 'Liberação', now));
       const pairs = releaseTickets.map(releaseTicket => ({
@@ -665,9 +667,14 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           statusFluxo: undefined,
         },
       }));
-      onImportTickets(releaseTickets);
-      await generateTicketBookPdf(pairs, `tickets_sequenciais_${numbers[0]}_${numbers[numbers.length - 1]}.pdf`);
-      setImportMessage(`${releaseTickets.length} ticket(s) criados em ordem crescente e enviados para PDF.`);
+      if (batchSaveDrafts) onImportTickets(releaseTickets);
+      const fileName = !batchPrintNumber
+        ? `${batchBlankForm ? 'tickets_em_branco' : 'tickets_sem_numero'}_${quantity}.pdf`
+        : `tickets_sequenciais_${numbers[0]}_${numbers[numbers.length - 1]}.pdf`;
+      await generateTicketBookPdf(pairs, fileName);
+      setImportMessage(batchSaveDrafts
+        ? `${releaseTickets.length} ticket(s) salvos como rascunho e enviados para PDF.`
+        : `${releaseTickets.length} formulário(s) enviados para PDF sem criar registros no sistema.`);
       setIsBatchModalOpen(false);
     } catch (err) {
       console.error('Erro ao gerar tickets sequenciais:', err);
@@ -1169,6 +1176,49 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     }
   };
 
+  const handlePrintBlankForm = async () => {
+    setValidationError('');
+    setIsBatchPrinting(true);
+    try {
+      const now = new Date().toISOString();
+      const reservedNumber = await onReserveTicketNumber();
+      const releaseTicket: TicketJazida = {
+        id: `ticket-em-branco-lib-${Date.now()}`,
+        data: '',
+        tipoTicket: 'Liberação',
+        ticketNumero: reservedNumber,
+        prefixo: '',
+        placa: '',
+        horaSaida: '',
+        tipoMaterial: 'Solo',
+        quantidadeM3: 0,
+        destinoObra: 'Marginal',
+        responsavelLiberacao: '',
+        nomeLegivel: '',
+        empresa: 'RENEA',
+        observacao: '',
+        unidadeQuantidade: 'm³',
+        criadoEm: now,
+        atualizadoEm: now,
+        impressaoEmBranco: true,
+        ocultarNumeroImpressao: false,
+      };
+      const receiptTicket: TicketJazida = {
+        ...releaseTicket,
+        id: `ticket-em-branco-rec-${Date.now()}`,
+        tipoTicket: 'Recebimento',
+        horaChegada: '',
+      };
+      await generateTicketBookPdf([{ releaseTicket, receiptTicket }], `ticket_em_branco_${reservedNumber}.pdf`);
+      setImportMessage(`Ticket Nº ${reservedNumber} gerado com apenas a numeração preenchida.`);
+    } catch (err) {
+      console.error('Erro ao gerar formulário de ticket em branco:', err);
+      setValidationError('Não foi possível gerar o formulário em branco.');
+    } finally {
+      setIsBatchPrinting(false);
+    }
+  };
+
   const viewingPair = viewingTicket ? getTicketPair(viewingTicket) : null;
 
   return (
@@ -1205,6 +1255,16 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           <p className="text-xs text-slate-400 mt-1">Tickets de liberação e recebimento com hora de saída ou chegada.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handlePrintBlankForm}
+            disabled={isBatchPrinting}
+            title="Gerar uma folha apenas com o próximo número sequencial preenchido"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-xs font-black text-emerald-300 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50"
+          >
+            <Printer className="w-4 h-4" />
+            Imprimir em branco
+          </button>
           <button
             type="button"
             onClick={() => importInputRef.current?.click()}
@@ -1700,97 +1760,90 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                   <Printer className="w-4 h-4 text-emerald-400" />
                   Imprimir tickets em sequência
                 </h3>
-                <p className="text-[10px] text-slate-500 mt-1">Cria liberações em rascunho e gera um PDF em ordem crescente.</p>
+                <p className="text-[10px] text-slate-500 mt-1">Gera até 200 folhas; o modo em branco vem seleccionado e não cria registros automaticamente.</p>
               </div>
               <button type="button" disabled={isBatchPrinting} onClick={() => setIsBatchModalOpen(false)} className="h-8 w-8 grid place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white disabled:opacity-50">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchBlankForm ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
+                <input
+                  type="checkbox"
+                  checked={batchBlankForm}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setBatchBlankForm(checked);
+                    if (checked) setBatchPrintNumber(true);
+                  }}
+                  className="mt-0.5 accent-emerald-500"
+                />
+                <span><strong className="block text-[11px] text-slate-100">Somente a numeração</strong><small className="block text-[9px] text-slate-500">Todos os demais campos ficam vazios para preencher à caneta.</small></span>
+              </label>
+              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchPrintNumber ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
+                <input type="checkbox" checked={batchPrintNumber} disabled={batchBlankForm} onChange={e => setBatchPrintNumber(e.target.checked)} className="mt-0.5 accent-emerald-500 disabled:cursor-not-allowed" />
+                <span><strong className="block text-[11px] text-slate-100">Imprimir número sequencial</strong><small className="block text-[9px] text-slate-500">Obrigatório quando os demais campos estão em branco.</small></span>
+              </label>
+              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchSaveDrafts ? 'border-amber-500/50 bg-amber-500/10' : 'border-slate-800 bg-slate-950'}`}>
+                <input type="checkbox" checked={batchSaveDrafts} onChange={e => setBatchSaveDrafts(e.target.checked)} className="mt-0.5 accent-amber-500" />
+                <span><strong className="block text-[11px] text-slate-100">Salvar como rascunho</strong><small className="block text-[9px] text-slate-500">Opcional; desligado não polui a lista de tickets.</small></span>
+              </label>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Primeiro ticket</label>
-                <input value={batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <input value={batchBlankForm ? 'Automático' : batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} disabled={batchBlankForm || (!batchPrintNumber && !batchSaveDrafts)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40" />
+              </div>
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade</label>
                 <input type="number" min="1" max="200" value={batchQuantity} onChange={e => setBatchQuantity(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="space-y-1">
+              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data</label>
-                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
-                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
-                    <input type="checkbox" checked={batchBlankFields.prefixo} onChange={() => toggleBatchBlankField('prefixo')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
-                    Deixar em branco
-                  </label>
-                </div>
-                <input value={batchPrefixo} disabled={batchBlankFields.prefixo} onChange={e => setBatchPrefixo(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed" />
+              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
+                <input value={batchPrefixo} onChange={e => setBatchPrefixo(e.target.value.toUpperCase())} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
-                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
-                    <input type="checkbox" checked={batchBlankFields.placa} onChange={() => toggleBatchBlankField('placa')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
-                    Deixar em branco
-                  </label>
-                </div>
-                <input value={batchPlaca} disabled={batchBlankFields.placa} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed" />
+              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
+                <input value={batchPlaca} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³)</label>
-                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
-                    <input type="checkbox" checked={batchBlankFields.quantidade} onChange={() => toggleBatchBlankField('quantidade')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
-                    Deixar em branco
-                  </label>
-                </div>
-                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} disabled={batchBlankFields.quantidade} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed" />
+              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³)</label>
+                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Material</label>
-                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
-                    <input type="checkbox" checked={batchBlankFields.material} onChange={() => toggleBatchBlankField('material')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
-                    Deixar em branco
-                  </label>
-                </div>
-                <select value={batchTipoMaterial} disabled={batchBlankFields.material} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
+              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Material</label>
+                <select value={batchTipoMaterial} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   {TIPOS_MATERIAL.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / obra</label>
-                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
-                    <input type="checkbox" checked={batchBlankFields.destino} onChange={() => toggleBatchBlankField('destino')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
-                    Deixar em branco
-                  </label>
-                </div>
-                <select value={batchDestinoObra} disabled={batchBlankFields.destino} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
+              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / obra</label>
+                <select value={batchDestinoObra} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   {DESTINOS_OBRA.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
-                  <label className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 cursor-pointer select-none">
-                    <input type="checkbox" checked={batchBlankFields.empresa} onChange={() => toggleBatchBlankField('empresa')} className="h-3 w-3 accent-emerald-500 cursor-pointer" />
-                    Deixar em branco
-                  </label>
-                </div>
-                <select value={batchEmpresa} disabled={batchBlankFields.empresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
+              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
+                <select value={batchEmpresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                  {EMPRESAS_TICKET.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
                   {EMPRESAS_TICKET.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
             </div>
-            <p className="text-[10px] text-slate-500 -mt-1">Marque "Deixar em branco" nos campos que devem ser preenchidos à mão no papel. O número do ticket inicial da sequência (acima) continua editável manualmente.</p>
-
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-[10px] text-slate-400">
-              Sequência: {batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até {batchStartNumber ? formatSequentialNumber(batchStartNumber, Math.max(0, Math.min(200, Number(batchQuantity) || 1) - 1)) : '-'}.
+              {batchBlankForm
+                ? `${Math.max(1, Math.min(200, Number(batchQuantity) || 1))} ticket(s) somente com a numeração sequencial automática; demais campos vazios.`
+                : <>Sequência: {batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até {batchStartNumber ? formatSequentialNumber(batchStartNumber, Math.max(0, Math.min(200, Number(batchQuantity) || 1) - 1)) : '-'}.</>}
+            </div>
             </div>
 
             {validationError && (
@@ -1802,7 +1855,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setIsBatchModalOpen(false)} disabled={isBatchPrinting} className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-750 disabled:opacity-50">Cancelar</button>
               <button type="button" onClick={handleGenerateBatchTickets} disabled={isBatchPrinting} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-60">
-                {isBatchPrinting ? 'Gerando PDF...' : 'Criar e imprimir'}
+                {isBatchPrinting ? 'Gerando PDF...' : batchSaveDrafts ? 'Salvar e gerar PDF' : batchBlankForm ? 'Gerar PDF em branco' : 'Gerar PDF'}
               </button>
             </div>
           </div>

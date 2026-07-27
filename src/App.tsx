@@ -100,6 +100,7 @@ import {
   deletePublicTicket,
   loadPublicTickets,
   reservePublicTicketNumber,
+  reservePublicTicketNumbers,
   savePublicTicket,
 } from './firebaseTickets';
 import {
@@ -116,6 +117,8 @@ import {
   submitPublicPresence,
   type PublicApontamentoPayload,
 } from './publicApi';
+import { loadOneDriveFuelPayload, type OneDriveFuelSyncStatus } from './oneDriveFuelSync';
+import { materializeOneDriveFuelRows } from './utils/oneDriveFuelImport';
 
 // Icons Import
 import { 
@@ -343,6 +346,7 @@ export default function App() {
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(false);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
+  const [oneDriveFuelSyncStatus, setOneDriveFuelSyncStatus] = useState<OneDriveFuelSyncStatus | null>(null);
 
   // Database States
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -1576,7 +1580,7 @@ export default function App() {
     const fuelMerge = combustiveisImportados.length
       ? mergeImportedRecords(combustiveis, combustiveisImportados, item => normalizeImportText(item.nome))
       : null;
-    let updated = [...abastecimentos, ...novosItens];
+    let updated = mergeRecordsById(abastecimentos, novosItens);
     updated = auditarBaseCombustivel(updated);
     const origens = new Set(novosItens.map(item => item.origem || 'Planilha'));
     const origemDescricao = origens.size === 1 ? [...origens][0] : 'fontes combinadas';
@@ -1699,6 +1703,7 @@ export default function App() {
   };
 
   const handleReserveTicketNumber = () => reservePublicTicketNumber(db, ticketsJazida);
+  const handleReserveTicketNumbers = (count: number) => reservePublicTicketNumbers(db, ticketsJazida, count);
 
   const handleSaveTicketLink = async (
     item: TicketJazida,
@@ -1935,6 +1940,82 @@ export default function App() {
     let cancelled = false;
     let running = false;
 
+    const ingestOneDriveFuel = async () => {
+      if (cancelled || running) return;
+      running = true;
+      try {
+        const payload = await loadOneDriveFuelPayload();
+        if (cancelled) return;
+        setOneDriveFuelSyncStatus(payload.status);
+        const batchId = payload.status.batchId || '';
+        if (!batchId || payload.rows.length === 0 || localStorage.getItem('renea_onedrive_fuel_batch') === batchId) return;
+
+        // Quando a sincronização automática está ativa, parte sempre da versão mais
+        // recente do banco para não sobrescrever alterações feitas em outro navegador.
+        if (isAutoSyncEnabled) {
+          const remoteResult = await handleDownloadFromFirebase();
+          if (!remoteResult.success && !remoteResult.message.includes('Nenhum backup')) {
+            throw new Error(remoteResult.message);
+          }
+        }
+
+        const storedEquipment = parseStoredJson<Equipamento[]>(localStorage.getItem('renea_equipamentos'), 'renea_equipamentos', INITIAL_EQUIPAMENTOS);
+        const storedConvoys = parseStoredJson<Comboio[]>(localStorage.getItem('renea_comboios'), 'renea_comboios', INITIAL_COMBOIOS);
+        const storedFuelTypes = parseStoredJson<TipoCombustivel[]>(localStorage.getItem('renea_combustiveis'), 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL);
+        const storedFuelRecords = parseStoredJson<Abastecimento[]>(localStorage.getItem('renea_abastecimentos'), 'renea_abastecimentos', INITIAL_ABASTECIMENTOS);
+        const materialized = materializeOneDriveFuelRows(
+          payload.rows,
+          storedEquipment,
+          storedConvoys,
+          storedFuelTypes,
+          storedFuelRecords,
+          payload.status.fileName || '',
+        );
+        const nextFuelTypes = mergeRecordsById(storedFuelTypes, materialized.fuelTypes);
+        const nextFuelRecords = mergeRecordsById(storedFuelRecords, materialized.records);
+        const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
+        const nextHistory = mergeRecordsById(storedHistory, [{
+          id: `log-onedrive-${batchId}`,
+          timestamp: new Date(payload.status.syncedAt || Date.now()).toLocaleString('pt-BR'),
+          usuario: 'Agente OneDrive',
+          acao: 'Criou' as const,
+          tela: 'Abastecimentos',
+          descricao: `Sincronizou ${materialized.records.length} linha(s) de ${payload.status.fileName || 'planilha do OneDrive'}; ${payload.status.warningCount || 0} linha(s) para conferência.`,
+        }]);
+
+        localStorage.setItem('renea_combustiveis', JSON.stringify(nextFuelTypes));
+        localStorage.setItem('renea_abastecimentos', JSON.stringify(nextFuelRecords));
+        localStorage.setItem('renea_history_logs', JSON.stringify(nextHistory));
+        setCombustiveis(nextFuelTypes);
+        setAbastecimentos(nextFuelRecords);
+        setHistoryLogs(nextHistory);
+
+        const syncResult = await uploadLocalSnapshotToFirebase();
+        if (!syncResult.success) throw new Error(syncResult.message);
+        localStorage.setItem('renea_onedrive_fuel_batch', batchId);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Falha ao incorporar a planilha do OneDrive:', error);
+          setOneDriveFuelSyncStatus(current => ({
+            state: 'error',
+            intervalMinutes: 10,
+            ...current,
+            message: error instanceof Error ? error.message : 'Falha ao consultar o OneDrive.',
+          }));
+        }
+      } finally {
+        running = false;
+      }
+    };
+
+    const initial = window.setTimeout(ingestOneDriveFuel, 3_000);
+    const interval = window.setInterval(ingestOneDriveFuel, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
+  }, [isLoggedIn, currentUser, isAutoSyncEnabled, externalTicketLink, externalPresenceToken, externalApontamentoToken]);
     const ingestPublicSubmissions = async () => {
       if (cancelled || running) return;
       running = true;
@@ -3518,6 +3599,7 @@ export default function App() {
                 onSaveAbastecimento={handleSaveAbastecimento}
                 onDeleteAbastecimento={handleDeleteAbastecimento}
                 onImportAbastecimentos={handleImportAbastecimentos}
+                oneDriveFuelSyncStatus={oneDriveFuelSyncStatus}
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onSaveRdo={handleSaveRdo}
@@ -3590,6 +3672,7 @@ export default function App() {
                 onDeleteTicket={handleDeleteTicketJazida}
                 onImportTickets={handleImportTicketsJazida}
                 onReserveTicketNumber={handleReserveTicketNumber}
+                onReserveTicketNumbers={handleReserveTicketNumbers}
               />
             )}
 
