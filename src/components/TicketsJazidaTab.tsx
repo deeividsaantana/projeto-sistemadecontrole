@@ -70,7 +70,7 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
           <img src={reneaLogoFull} alt="RENEA" className="max-h-14 max-w-44 object-contain" />
         </div>
         <div className="h-24 border-r border-b border-slate-500 grid place-items-center text-center px-3">
-          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento' : 'Liberação'} - Obra</h2><p className="mt-1 text-[10px] text-slate-600">Complexo Alto Tietê</p></div>
+          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento' : 'Liberação'} - Jazida</h2><p className="mt-1 text-[10px] text-slate-600">Complexo Alto Tietê</p></div>
         </div>
         <div className="h-24 border-r border-b border-slate-500 p-2">
           <div className="text-[9px] font-bold uppercase text-slate-600">Ticket Nº</div>
@@ -169,7 +169,7 @@ const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTic
     if (logo) doc.addImage(logo, 'PNG', left + 10, top + 1, 32.2, 18);
     else { doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('RENEA', left + 5, top + 13); }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42);
-    doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO' : 'LIBERAÇÃO'} - OBRA`, left + 60, top + 8);
+    doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO' : 'LIBERAÇÃO'} - JAZIDA`, left + 60, top + 8);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.text('Complexo Alto Tietê', left + 60, top + 13);
     label('Ticket Nº', left + 169, top + 5); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text(ticket.ticketNumero, left + 179.5, top + 14, { align: 'center' });
 
