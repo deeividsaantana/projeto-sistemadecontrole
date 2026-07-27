@@ -278,15 +278,6 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   });
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    tickets.forEach(ticket => {
-      const normalized = normalizeTicketNumber(ticket.ticketNumero);
-      if (normalized && normalized !== ticket.ticketNumero) {
-        onSaveTicket({ ...ticket, ticketNumero: normalized, atualizadoEm: new Date().toISOString() }, false);
-      }
-    });
-  }, [tickets, onSaveTicket]);
-
   // Form fields
   const [tipoTicket, setTipoTicket] = useState<TipoTicketJazida>('Liberação');
   const [data, setData] = useState(new Date().toISOString().split('T')[0]);

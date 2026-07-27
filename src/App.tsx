@@ -1862,23 +1862,28 @@ export default function App() {
       return updated;
     });
 
-    // Add to active toasts
-    setActiveToasts(prev => [...prev, newNotif]);
-    setTimeout(() => {
-      setActiveToasts(prev => prev.filter(t => t.id !== newNotif.id));
-    }, 6000);
+    // Exibe no máximo um aviso discreto por vez para não bloquear a navegação.
+    // Alterações em Tickets Jazida continuam registradas no sino/histórico, sem popup.
+    if (title.indexOf('Tickets Jazida') === -1) {
+      setActiveToasts([newNotif]);
+      setTimeout(() => {
+        setActiveToasts(prev => prev.filter(t => t.id !== newNotif.id));
+      }, 2500);
+    }
   };
 
   const persistPresenceNotifications = (newItems: AppNotification[]) => {
     const updated = [...newItems, ...notifications].slice(0, 50);
     setNotifications(updated);
     localStorage.setItem('renea_notifications', JSON.stringify(updated));
-    setActiveToasts(prev => [...prev, ...newItems]);
-    newItems.forEach(item => {
+    // Mostra somente o alerta mais recente, evitando uma pilha cobrindo a tela.
+    const latestItem = newItems[0];
+    if (latestItem) {
+      setActiveToasts([latestItem]);
       setTimeout(() => {
-        setActiveToasts(prev => prev.filter(t => t.id !== item.id));
-      }, 6000);
-    });
+        setActiveToasts(prev => prev.filter(t => t.id !== latestItem.id));
+      }, 2500);
+    }
     return updated;
   };
 
