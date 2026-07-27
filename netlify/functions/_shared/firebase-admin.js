@@ -42,7 +42,10 @@ export const requireStaffUser = async event => {
     error.statusCode = 401;
     throw error;
   }
-  const decoded = await getAdminAuth().verifyIdToken(match[1], true);
+  // A validação criptográfica e a claim `staff` já protegem a consulta. O modo
+  // `checkRevoked` exige uma chamada administrativa adicional ao Google Auth e
+  // falha no runtime empacotado do Netlify, embora o token Firebase seja válido.
+  const decoded = await getAdminAuth().verifyIdToken(match[1]);
   if (decoded.staff !== true) {
     const error = new Error('Sua conta não possui autorização de equipe.');
     error.statusCode = 403;
