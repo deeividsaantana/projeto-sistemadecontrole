@@ -27,6 +27,7 @@ interface TicketLinkExternoProps {
   loadError?: string;
   onReserveNumber: () => Promise<string>;
   onSaveTicket: (ticket: TicketJazida) => Promise<{ success: boolean; message: string }>;
+  onSearchPendingReceipts: (query: string) => Promise<TicketJazida[]>;
 }
 
 const MATERIALS: TipoMaterialJazida[] = ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Outros'];
@@ -170,6 +171,7 @@ export default function TicketLinkExterno({
   loadError = '',
   onReserveNumber,
   onSaveTicket,
+  onSearchPendingReceipts,
 }: TicketLinkExternoProps) {
   const [deviceId] = useState(getDeviceId);
   const [screen, setScreen] = useState<'home' | 'form' | 'success'>('home');
@@ -185,27 +187,45 @@ export default function TicketLinkExterno({
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [remotePendingReceipts, setRemotePendingReceipts] = useState<TicketJazida[]>([]);
+  const [isSearchingReceipts, setIsSearchingReceipts] = useState(false);
 
-  const pendingReceipts = useMemo(() => {
-    const sentReceipts = new Set(
-      tickets
-        .filter(ticket => ticket.tipoTicket === 'Recebimento' && ticket.statusFluxo !== 'Rascunho')
-        .map(ticket => ticket.ticketNumero),
-    );
-    const normalizedSearch = search.trim().toLowerCase();
-    if (normalizedSearch.length < 2) return [];
-    return tickets
-      .filter(ticket => (ticket.tipoTicket || 'Liberação') === 'Liberação')
-      .filter(ticket => ticket.statusFluxo !== 'Rascunho' && !sentReceipts.has(ticket.ticketNumero))
-      .filter(ticket => !normalizedSearch || [ticket.ticketNumero, ticket.placa, ticket.prefixo]
-        .some(value => value.toLowerCase().includes(normalizedSearch)))
-      .sort((a, b) => Number(b.ticketNumero) - Number(a.ticketNumero));
-  }, [tickets, search]);
+  useEffect(() => {
+    const normalizedSearch = search.trim();
+    if (normalizedSearch.length < 2) {
+      setRemotePendingReceipts([]);
+      setIsSearchingReceipts(false);
+      return;
+    }
+    let cancelled = false;
+    setIsSearchingReceipts(true);
+    const timer = window.setTimeout(() => {
+      onSearchPendingReceipts(normalizedSearch)
+        .then(results => {
+          if (!cancelled) setRemotePendingReceipts(results);
+        })
+        .catch(searchError => {
+          console.error('Falha ao pesquisar liberações pendentes:', searchError);
+          if (!cancelled) {
+            setRemotePendingReceipts([]);
+            setError('Não foi possível pesquisar as liberações agora.');
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsSearchingReceipts(false);
+        });
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [onSearchPendingReceipts, search]);
 
   const ownHistoryPairs = useMemo(() => {
     const grouped = new Map<string, { number: string; release?: TicketJazida; receipt?: TicketJazida; updatedAt: string }>();
     ownHistory.forEach(ticket => {
-      const pair = grouped.get(ticket.ticketNumero) || { number: ticket.ticketNumero, updatedAt: '' };
+      const pair: { number: string; release?: TicketJazida; receipt?: TicketJazida; updatedAt: string } =
+        grouped.get(ticket.ticketNumero) || { number: ticket.ticketNumero, updatedAt: '' };
       if ((ticket.tipoTicket || 'Liberação') === 'Liberação') pair.release = ticket;
       else pair.receipt = ticket;
       pair.updatedAt = [pair.updatedAt, ticket.enviadoEm || ticket.atualizadoEm || ''].sort().at(-1) || '';
@@ -220,7 +240,7 @@ export default function TicketLinkExterno({
     );
     if (remoteOwnDrafts.length === 0) return;
     setDrafts(current => {
-      const indexed = new Map(remoteOwnDrafts.map(item => [item.id, item]));
+      const indexed = new Map<string, TicketJazida>(remoteOwnDrafts.map(item => [item.id, item]));
       current.forEach(item => {
         const remote = indexed.get(item.id);
         if (!remote || String(item.atualizadoEm || '') > String(remote.atualizadoEm || '')) {
@@ -241,7 +261,7 @@ export default function TicketLinkExterno({
     );
     if (remoteOwnSent.length === 0) return;
     setOwnHistory(current => {
-      const indexed = new Map(current.map(item => [item.id, item]));
+      const indexed = new Map<string, TicketJazida>(current.map(item => [item.id, item]));
       remoteOwnSent.forEach(item => indexed.set(item.id, item));
       const merged = Array.from(indexed.values())
         .sort((a, b) => String(b.enviadoEm || b.atualizadoEm || '').localeCompare(String(a.enviadoEm || a.atualizadoEm || '')))
@@ -517,9 +537,11 @@ export default function TicketLinkExterno({
               <div className="grid gap-2">
                 {search.trim().length < 2 ? (
                   <div className="rounded-md border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Digite pelo menos dois caracteres para pesquisar.</div>
-                ) : pendingReceipts.length === 0 ? (
+                ) : isSearchingReceipts ? (
+                  <div className="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white p-5 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Pesquisando com segurança...</div>
+                ) : remotePendingReceipts.length === 0 ? (
                   <div className="rounded-md border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Nenhuma liberação pendente encontrada. Tickets concluídos não aparecem aqui.</div>
-                ) : pendingReceipts.slice(0, 20).map(release => (
+                ) : remotePendingReceipts.slice(0, 20).map(release => (
                   <button key={release.id} type="button" onClick={() => beginReceipt(release)} className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-emerald-400">
                     <span><b className="block text-sm text-slate-900">Ticket {release.ticketNumero} · {release.placa}</b><small className="text-slate-500">{release.prefixo} · {release.tipoMaterial} · {release.quantidadeM3} {release.unidadeQuantidade || 'm³'}</small></span>
                     <ArrowRight className="h-5 w-5 shrink-0 text-emerald-600" />

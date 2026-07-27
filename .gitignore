@@ -9,6 +9,10 @@ dist-ssr/
 .env
 .env.local
 .env.*.local
+.publicar-tudo.local.json
+.env.publicar-tudo.local
+.publicar-tudo-tools/
+pnpm-workspace.yaml
 
 # Editor / SO
 .vscode/*
@@ -26,6 +30,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+firebase-debug.log*
 
 # Netlify
 .netlify/

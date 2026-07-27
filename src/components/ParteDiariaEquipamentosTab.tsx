@@ -52,6 +52,7 @@ import { configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWor
 import { cleanImportValue, getImportValue, normalizeImportText, parseDelimitedText, parseImportNumber, tableRowsToObjects, toImportIsoDate } from '../utils/importHelpers';
 import { buildParteDiariaOperationalAnalysis, type OperationalAnalysis } from '../utils/operationalAnalysis';
 import LegadoSgePanel from './LegadoSgePanel';
+import SgeIndicadoresPanel from './SgeIndicadoresPanel';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 
 interface ParteDiariaEquipamentosTabProps {
@@ -64,7 +65,7 @@ interface ParteDiariaEquipamentosTabProps {
   onImport: (registros: ParteDiariaEquipamento[]) => void;
 }
 
-type ViewMode = 'dashboard' | 'lancamento' | 'registros' | 'deficiencias' | 'legado';
+type ViewMode = 'dashboard' | 'lancamento' | 'registros' | 'deficiencias' | 'indicadores-sge' | 'legado';
 const PARTE_DIARIA_IMPORT_COLUMNS = [
   'Numero',
   'Data',
@@ -583,6 +584,7 @@ const ParteDiariaEquipamentosTab: React.FC<ParteDiariaEquipamentosTabProps> = ({
     { id: 'lancamento', label: editingId ? 'Editar parte' : 'Novo lançamento', icon: Plus },
     { id: 'registros', label: 'Partes diárias', icon: ClipboardCheck },
     { id: 'deficiencias', label: 'Deficiências', icon: ShieldAlert },
+    { id: 'indicadores-sge', label: 'Indicadores SGE', icon: BarChart3 },
     { id: 'legado', label: 'Legado SGE', icon: Archive },
   ];
 
@@ -615,7 +617,7 @@ const ParteDiariaEquipamentosTab: React.FC<ParteDiariaEquipamentosTabProps> = ({
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-800 pb-px">{navItems.map(item => { const Icon = item.icon; return <button key={item.id} onClick={() => item.id === 'lancamento' && !editingId ? newRecord() : setView(item.id)} className={`inline-flex h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold ${view === item.id ? 'border-emerald-400 text-white' : 'border-transparent text-slate-400 hover:text-white'}`}><Icon size={17} />{item.label}</button>; })}</div>
 
-      {view !== 'lancamento' && <section className="grid gap-3 border-b border-slate-800 pb-5 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(5,1fr)_auto]">
+      {!['lancamento', 'indicadores-sge', 'legado'].includes(view) && <section className="grid gap-3 border-b border-slate-800 pb-5 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(5,1fr)_auto]">
         <label className="relative"><span className="sr-only">Pesquisar</span><Search className="absolute left-3 top-3 text-slate-500" size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar nº, frota, operador..." className="h-11 w-full border border-slate-700 bg-slate-950 pl-10 pr-3 text-sm outline-none focus:border-emerald-500" /></label>
         <label className="relative"><span className="sr-only">Data inicial</span><CalendarDays className="absolute left-3 top-3 text-slate-500" size={17} /><input type="date" value={startDate} onChange={event => setStartDate(event.target.value)} className="h-11 w-full border border-slate-700 bg-slate-950 pl-10 pr-2 text-sm outline-none focus:border-emerald-500" /></label>
         <label className="relative"><span className="sr-only">Data final</span><CalendarDays className="absolute left-3 top-3 text-slate-500" size={17} /><input type="date" value={endDate} onChange={event => setEndDate(event.target.value)} className="h-11 w-full border border-slate-700 bg-slate-950 pl-10 pr-2 text-sm outline-none focus:border-emerald-500" /></label>
@@ -675,6 +677,7 @@ const ParteDiariaEquipamentosTab: React.FC<ParteDiariaEquipamentosTabProps> = ({
       {view === 'deficiencias' && <div className="grid gap-5 xl:grid-cols-[1fr_1.3fr]"><section className="border border-slate-800 bg-slate-950"><div className="border-b border-slate-800 p-4"><h2 className="font-bold text-white">Mapa de deficiências</h2><span className="text-xs text-slate-500">Itens reprovados no checklist</span></div><div className="divide-y divide-slate-800">{deficiencyRanking.map(item => <div key={item.code} className="p-4"><div className="flex items-start justify-between gap-4"><div><strong className="text-rose-300">{item.code}</strong><span className="ml-2 text-sm text-white">{item.label}</span><span className="mt-1 block text-xs text-slate-500">Frota: {item.equipment.join(', ')}</span></div><span className="grid h-8 min-w-8 place-items-center bg-rose-500/15 px-2 text-sm font-bold text-rose-300">{item.count}</span></div></div>)}{!deficiencyRanking.length && <div className="grid min-h-64 place-items-center text-center text-sm text-slate-500"><div><CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={32} />Nenhuma deficiência encontrada.</div></div>}</div></section><section className="border border-slate-800 bg-slate-950"><div className="border-b border-slate-800 p-4"><h2 className="font-bold text-white">Fichas que exigem atenção</h2><span className="text-xs text-slate-500">Deficiência, pendência ou inconsistência</span></div><div className="divide-y divide-slate-800">{filtered.filter(item => item.status !== 'Conferido').map(item => <div key={item.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between"><div><div className="flex flex-wrap items-center gap-2"><strong className="text-white">#{item.numero} - {item.prefixo}</strong><span className={`border px-2 py-0.5 text-[11px] font-bold ${statusTone[item.status]}`}>{item.status}</span></div><span className="mt-1 block text-xs text-slate-500">{formatDate(item.data)} | {item.operadorNome} | {item.obraNome}</span><p className="mt-2 text-sm text-slate-300">{item.checklist.filter(check => check.resposta === 'Não').map(check => check.descricao).join('; ') || item.outrosProblemas || 'Cadastro pendente de conferência.'}</p></div><div className="flex shrink-0 gap-1"><button title="Visualizar" onClick={() => setPreviewRecord(item)} className="grid h-9 w-9 place-items-center border border-slate-700 text-slate-400 hover:text-white"><Eye size={16} /></button><button title="Editar" onClick={() => editRecord(item)} className="grid h-9 w-9 place-items-center border border-slate-700 text-slate-400 hover:text-sky-300"><Edit3 size={16} /></button></div></div>)}{!filtered.some(item => item.status !== 'Conferido') && <div className="grid min-h-64 place-items-center text-center text-sm text-slate-500">Nenhuma ficha exige atenção.</div>}</div></section></div>}
 
       {view === 'legado' && <LegadoSgePanel registros={registros} equipamentos={equipamentos} obras={obras} onImport={onImport} />}
+      {view === 'indicadores-sge' && <SgeIndicadoresPanel />}
 
       {previewRecord && <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95"><div className="flex items-center justify-between border-b border-slate-700 bg-slate-950 px-4 py-3"><div><strong className="text-white">Parte diária nº {previewRecord.numero}</strong><span className="ml-3 text-sm text-slate-500">{previewRecord.prefixo} | {formatDate(previewRecord.data)}</span></div><div className="flex gap-2"><button onClick={() => downloadParteDiariaPdf(previewRecord, reneaLogoFull)} className="inline-flex h-10 items-center gap-2 bg-emerald-500 px-4 text-sm font-bold text-slate-950"><FileDown size={17} /> Baixar PDF</button><button title="Fechar" onClick={() => setPreviewRecord(null)} className="grid h-10 w-10 place-items-center border border-slate-700 bg-slate-900"><X size={19} /></button></div></div><div className="flex-1 overflow-auto p-4"><DocumentPreview record={previewRecord} /></div></div>}
     </div>

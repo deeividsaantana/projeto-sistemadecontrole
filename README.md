@@ -34,7 +34,6 @@ O frontend e as funções estão preparados para Netlify. A leitura inteligente 
 
 Consulte:
 
-- `CONFIGURAR_IA_NETLIFY.md`
 - `INSTRUCOES_PUBLICACAO_NETLIFY.md`
 - `INSTRUCOES_CONTAS_FIREBASE.md`
 - `LEGADO_SGE_CONVERSAO.md`

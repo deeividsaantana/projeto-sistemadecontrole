@@ -243,6 +243,7 @@ export interface GrupoEquipe {
   funcionarioIds: string[];
   status: 'ativo' | 'inativo';
   token: string;
+  tokenGeral?: string;
   linkAtivo: boolean;
   createdAt: string;
   updatedAt: string;

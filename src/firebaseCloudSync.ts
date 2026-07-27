@@ -1,6 +1,7 @@
 import {
   doc,
   getDocFromServer,
+  runTransaction,
   setDoc,
   type Firestore,
 } from 'firebase/firestore';
@@ -269,6 +270,9 @@ export const formatFirebaseSyncError = (error: unknown): string => {
   if (normalized.includes('resource-exhausted') || normalized.includes('maximum size')) {
     return 'O Firebase recusou um documento por tamanho. Atualize o site para a versao com backup dividido em blocos.';
   }
+  if (normalized.includes('cloud_version_conflict')) {
+    return 'Outro computador publicou dados enquanto este envio estava em andamento. Baixe a versao mais recente antes de tentar novamente.';
+  }
   if (
     normalized.includes('excedeu')
     || normalized.includes('unavailable')
@@ -306,7 +310,7 @@ export const getFirebaseConnectionStatus = async (
   const legacySnapshot = await getDocumentFromServer(database, LEGACY_DOCUMENT_ID);
   const legacyData = legacySnapshot.exists() ? legacySnapshot.data() : null;
   return {
-    connected: true,
+    connected: legacySnapshot.exists(),
     updatedAt: typeof legacyData?.updatedAt === 'string' ? legacyData.updatedAt : '',
     schemaVersion: legacySnapshot.exists() ? 1 : 0,
   };
@@ -317,6 +321,7 @@ const performFirebaseBackupUpload = async (
   data: FirebaseCloudData,
 ): Promise<FirebaseUploadResult> => {
   const previousManifest = await readV2Manifest(database);
+  const expectedGeneration = previousManifest?.generation || '';
   const generation = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
   const updatedAt = new Date().toISOString();
   const chunks: Record<string, string[]> = {};
@@ -388,9 +393,22 @@ const performFirebaseBackupUpload = async (
     totalRecords,
   };
 
-  // O manifesto e escrito por ultimo. Assim, um backup incompleto nunca vira o backup ativo.
+  // O manifesto e escrito por ultimo e somente se a versao lida no inicio ainda for a ativa.
+  // Isso impede que dois computadores sobrescrevam silenciosamente o trabalho um do outro.
   await withTimeout(
-    setDoc(doc(database, CLOUD_COLLECTION, CLOUD_MANIFEST_ID), manifest),
+    runTransaction(database, async transaction => {
+      const manifestReference = doc(database, CLOUD_COLLECTION, CLOUD_MANIFEST_ID);
+      const currentSnapshot = await transaction.get(manifestReference);
+      const currentGeneration = currentSnapshot.exists()
+        ? String(currentSnapshot.data()?.generation || '')
+        : '';
+
+      if (currentGeneration !== expectedGeneration) {
+        throw new Error('CLOUD_VERSION_CONFLICT');
+      }
+
+      transaction.set(manifestReference, manifest);
+    }),
     'Publicacao do manifesto do backup',
     FIREBASE_WRITE_TIMEOUT_MS,
   );

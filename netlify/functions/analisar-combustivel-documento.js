@@ -137,7 +137,8 @@ const verifyFirebaseSession = async (event) => {
   const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
   if (!token) return null;
 
-  const firebaseApiKey = process.env.FIREBASE_WEB_API_KEY || 'AIzaSyDGN9xLkhgsqDIMXSTU9G03LEeC4Jmjpo4';
+  const firebaseApiKey = process.env.FIREBASE_WEB_API_KEY;
+  if (!firebaseApiKey) throw new Error('FIREBASE_WEB_API_KEY não configurada.');
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(firebaseApiKey)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -153,7 +154,14 @@ const verifyFirebaseSession = async (event) => {
     .split(',')
     .map(email => email.trim().toLowerCase())
     .filter(Boolean);
-  if (allowedEmails.length && !allowedEmails.includes(String(user.email || '').toLowerCase())) return null;
+  if (allowedEmails.length === 0) throw new Error('AI_ALLOWED_EMAILS não configurada.');
+  let claims = {};
+  try {
+    claims = JSON.parse(user.customAttributes || '{}');
+  } catch {
+    return null;
+  }
+  if (claims.staff !== true || !allowedEmails.includes(String(user.email || '').toLowerCase())) return null;
   return { uid: user.localId, email: user.email || '' };
 };
 
@@ -170,6 +178,17 @@ export const handler = async (event) => {
   }
   if (!authenticatedUser) {
     return jsonResponse(401, { success: false, code: 'AUTH_REQUIRED', message: 'Sessão inválida ou sem permissão para usar a análise inteligente.' });
+  }
+
+  try {
+    await enforceRateLimit(getAdminDb(), event, `fuel-ai-${authenticatedUser.uid}`, 20, 3600);
+  } catch (error) {
+    const statusCode = Number(error?.statusCode) || 503;
+    return jsonResponse(statusCode, {
+      success: false,
+      code: statusCode === 429 ? 'RATE_LIMITED' : 'RATE_LIMIT_UNAVAILABLE',
+      message: statusCode === 429 ? error.message : 'Não foi possível validar o limite de uso da IA agora.',
+    });
   }
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
@@ -227,6 +246,16 @@ export const handler = async (event) => {
     if (!text) throw new Error('A análise terminou sem retornar dados estruturados.');
 
     const analysis = JSON.parse(text.replace(/^```json\s*/i, '').replace(/\s*```$/, ''));
+    if (
+      !analysis || typeof analysis !== 'object'
+      || typeof analysis.tipoDocumento !== 'string'
+      || !Array.isArray(analysis.paginas)
+      || !Array.isArray(analysis.registros)
+      || !Array.isArray(analysis.avisosDocumento)
+      || !analysis.analiseOperacional || typeof analysis.analiseOperacional !== 'object'
+    ) {
+      throw new Error('A IA retornou dados fora do formato operacional esperado.');
+    }
     return jsonResponse(200, {
       success: true,
       model,
@@ -242,3 +271,4 @@ export const handler = async (event) => {
     });
   }
 };
+import { enforceRateLimit, getAdminDb } from './_shared/firebase-admin.js';
