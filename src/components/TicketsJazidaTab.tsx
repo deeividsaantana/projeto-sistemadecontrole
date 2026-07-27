@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Truck,
   Search,
@@ -50,6 +50,25 @@ const DESTINOS_OBRA: DestinoObraJazida[] = [
   'Ferradura', 'Coluna de Brita', 'Apoio', 'Jazida', 'Outros'
 ];
 const EMPRESAS_TICKET: EmpresaTicketJazida[] = ['RENEA', 'Terceiro', 'Outros'];
+
+type PrintedTicketBatch = {
+  id: string;
+  inicio: number;
+  fim: number;
+  criadoEm: string;
+};
+
+const TICKET_PREFIX = '100';
+const normalizeTicketNumber = (value: string | number) => {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.startsWith(TICKET_PREFIX) ? digits : `${TICKET_PREFIX}${digits}`;
+};
+const baseTicketNumber = (value: string | number) => {
+  const normalized = normalizeTicketNumber(value);
+  return normalized.startsWith(TICKET_PREFIX) ? Number(normalized.slice(TICKET_PREFIX.length)) : Number(normalized);
+};
+
 
 const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
   const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
@@ -254,7 +273,19 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [isBatchPrinting, setIsBatchPrinting] = useState(false);
   const [batchStartNumber, setBatchStartNumber] = useState('');
   const [batchSequenceRange, setBatchSequenceRange] = useState(10);
+  const [printedBatches, setPrintedBatches] = useState<PrintedTicketBatch[]>(() => {
+    try { return JSON.parse(localStorage.getItem('jazidaPrintedTicketBatches') || '[]'); } catch { return []; }
+  });
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    tickets.forEach(ticket => {
+      const normalized = normalizeTicketNumber(ticket.ticketNumero);
+      if (normalized && normalized !== ticket.ticketNumero) {
+        onSaveTicket({ ...ticket, ticketNumero: normalized, atualizadoEm: new Date().toISOString() }, false);
+      }
+    });
+  }, [tickets, onSaveTicket]);
 
   // Form fields
   const [tipoTicket, setTipoTicket] = useState<TipoTicketJazida>('Liberação');
@@ -313,16 +344,9 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setObservacao('');
   };
 
-  const handleOpenCreate = async () => {
+  const handleOpenCreate = () => {
     resetFormFields();
     setIsFormOpen(true);
-    if (ticketTab === 'Liberação') {
-      try {
-        setTicketNumero(await onReserveTicketNumber());
-      } catch {
-        setValidationError('Não foi possível gerar o número automático. Confira a conexão com o Firebase.');
-      }
-    }
   };
 
   const handleOpenEdit = (t: TicketJazida) => {
@@ -351,7 +375,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
   const findLiberacaoByTicketNumero = (numero: string) => tickets.find(t =>
     (t.tipoTicket || 'Liberação') === 'Liberação' &&
-    t.ticketNumero.trim().toLowerCase() === numero.trim().toLowerCase()
+    normalizeTicketNumber(t.ticketNumero) === normalizeTicketNumber(numero)
   );
 
   const applyLiberacaoCloneToForm = (numero: string, force = false) => {
@@ -371,7 +395,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const handleCloneRecebimentoFromLiberacao = (liberacao: TicketJazida) => {
     const alreadyExists = tickets.some(t =>
       (t.tipoTicket || 'Liberação') === 'Recebimento' &&
-      t.ticketNumero.trim().toLowerCase() === liberacao.ticketNumero.trim().toLowerCase()
+      normalizeTicketNumber(t.ticketNumero) === normalizeTicketNumber(liberacao.ticketNumero)
     );
     if (alreadyExists) {
       setTicketTab('Recebimento');
@@ -450,8 +474,16 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     if (!quantidadeM3 || quantidadeM3 <= 0) { setValidationError('Quantidade (m³) deve ser maior que zero.'); return; }
     if (destinoObra === 'Outros' && !destinoOutro.trim()) { setValidationError('Informe o destino ou ramo de descarga.'); return; }
 
+    const normalizedTicketNumber = normalizeTicketNumber(ticketNumero);
+    if (!normalizedTicketNumber) { setValidationError('Informe uma numeração válida para o ticket.'); return; }
+    const baseNumber = baseTicketNumber(normalizedTicketNumber);
+    if (printedBatches.length > 0 && !printedBatches.some(batch => baseNumber >= batch.inicio && baseNumber <= batch.fim)) {
+      setValidationError(`O Ticket Nº ${normalizedTicketNumber} não pertence a nenhuma sequência impressa registrada.`);
+      return;
+    }
+
     const duplicado = tickets.some(t =>
-      t.ticketNumero.trim().toLowerCase() === ticketNumero.trim().toLowerCase() &&
+      normalizeTicketNumber(t.ticketNumero) === normalizedTicketNumber &&
       (t.tipoTicket || 'Liberação') === tipoTicket &&
       t.id !== editingId
     );
@@ -466,7 +498,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       id: isNew ? `ticket-${Date.now()}` : editingId!,
       data,
       tipoTicket,
-      ticketNumero: ticketNumero.trim(),
+      ticketNumero: normalizedTicketNumber,
       prefixo: prefixo.trim(),
       placa: placa.trim().toUpperCase(),
       familiaEquipamento: familiaEquipamento.trim(),
@@ -562,11 +594,9 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
 
   const formatSequentialNumber = (start: string, offset: number) => {
-    const trimmed = start.trim();
-    const match = trimmed.match(/^(.*?)(\d+)(\D*)$/);
-    if (!match) return String(offset + 1);
-    const [, prefix, numeric, suffix] = match;
-    return `${prefix}${String(Number(numeric) + offset).padStart(numeric.length, '0')}${suffix}`;
+    const base = baseTicketNumber(start);
+    if (!Number.isFinite(base)) return '';
+    return normalizeTicketNumber(base + offset);
   };
 
   const buildBlankBatchTicket = (number: string, type: TipoTicketJazida): TicketJazida => ({
@@ -607,7 +637,13 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     if (!batchStartNumber.trim()) { setValidationError('Informe o primeiro número da sequência.'); return; }
     if (range < 1) { setValidationError('Informe uma sequência de pelo menos 1 número.'); return; }
 
-    // A sequência representa quantos números avançar. Ex.: 210 + 10 = 220,
+    const inicioBase = baseTicketNumber(batchStartNumber);
+    const fimBase = inicioBase + range;
+    if (!Number.isFinite(inicioBase)) { setValidationError('Informe um número inicial válido.'); return; }
+    const sobreposto = printedBatches.some(batch => inicioBase <= batch.fim && fimBase >= batch.inicio);
+    if (sobreposto) { setValidationError('Essa faixa se sobrepõe a uma sequência já impressa. Consulte o controle de tickets enviados.'); return; }
+
+    // A sequência representa quantos números avançar. Ex.: 370 + 40 = 410,
     // portanto o PDF inclui 210, 211, ... e 220.
     const numbers = Array.from({ length: range + 1 }, (_, index) => formatSequentialNumber(batchStartNumber, index));
 
@@ -618,6 +654,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         receiptTicket: buildBlankBatchTicket(number, 'Recebimento'),
       }));
       await generateTicketBookPdf(pairs, `tickets_em_branco_${numbers[0]}_${numbers[numbers.length - 1]}.pdf`);
+      const novoLote: PrintedTicketBatch = { id: `lote-${Date.now()}`, inicio: baseTicketNumber(numbers[0]), fim: baseTicketNumber(numbers[numbers.length - 1]), criadoEm: new Date().toISOString() };
+      setPrintedBatches(prev => { const next = [novoLote, ...prev]; localStorage.setItem('jazidaPrintedTicketBatches', JSON.stringify(next)); return next; });
       setImportMessage(`${numbers.length} ticket(s) em branco gerados, do Nº ${numbers[0]} ao Nº ${numbers[numbers.length - 1]}.`);
       setIsBatchModalOpen(false);
     } catch (err) {
@@ -626,6 +664,43 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     } finally {
       setIsBatchPrinting(false);
     }
+  };
+
+  const ticketControlRows = useMemo(() => printedBatches.map(batch => {
+    const numeros = Array.from({ length: batch.fim - batch.inicio + 1 }, (_, i) => batch.inicio + i);
+    let liberacoes = 0, recebimentos = 0, completas = 0;
+    numeros.forEach(numero => {
+      const full = normalizeTicketNumber(numero);
+      const hasLib = tickets.some(t => normalizeTicketNumber(t.ticketNumero) === full && (t.tipoTicket || 'Liberação') === 'Liberação');
+      const hasRec = tickets.some(t => normalizeTicketNumber(t.ticketNumero) === full && (t.tipoTicket || 'Liberação') === 'Recebimento');
+      if (hasLib) liberacoes += 1;
+      if (hasRec) recebimentos += 1;
+      if (hasLib && hasRec) completas += 1;
+    });
+    return { ...batch, total: numeros.length, liberacoes, recebimentos, completas, pendentes: numeros.length - completas };
+  }), [printedBatches, tickets]);
+
+  const exportTicketControlExcel = async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Controle de tickets');
+    ws.addRow(['Data da impressão', 'Numeração inicial', 'Numeração final', 'Tickets enviados', 'Liberações preenchidas', 'Recebimentos preenchidos', 'Viagens completas', 'Pendentes']);
+    ticketControlRows.forEach(r => ws.addRow([new Date(r.criadoEm).toLocaleString('pt-BR'), normalizeTicketNumber(r.inicio), normalizeTicketNumber(r.fim), r.total, r.liberacoes, r.recebimentos, r.completas, r.pendentes]));
+    ws.columns.forEach(c => { c.width = 24; });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'controle_tickets_jazida.xlsx'; a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  const exportTicketControlPdf = () => {
+    const doc = new jsPDF('l', 'mm', 'a4');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Controle de tickets enviados para preenchimento', 12, 15);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    const headers = ['Impressão', 'Inicial', 'Final', 'Enviados', 'Lib.', 'Rec.', 'Viagens completas', 'Pendentes'];
+    const xs = [12, 58, 88, 118, 150, 172, 194, 246];
+    headers.forEach((h,i) => doc.text(h, xs[i], 25));
+    let y=32;
+    ticketControlRows.forEach(r => { if (y > 190) { doc.addPage(); y=18; } const vals=[new Date(r.criadoEm).toLocaleString('pt-BR'),normalizeTicketNumber(r.inicio),normalizeTicketNumber(r.fim),r.total,r.liberacoes,r.recebimentos,r.completas,r.pendentes]; vals.forEach((v,i)=>doc.text(String(v),xs[i],y)); y+=7; });
+    doc.save('controle_tickets_jazida.pdf');
   };
 
   const copyPublicLink = async () => {
@@ -1459,18 +1534,17 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                 </div>
               )}
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ticket Nº {tipoTicket === 'Liberação' ? '(automático)' : '*'}</label>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ticket Nº *</label>
                 <input
                   type="text"
                   value={ticketNumero}
                   onChange={e => setTicketNumero(e.target.value)}
-                  readOnly={tipoTicket === 'Liberação' && editingId === null}
                   onBlur={() => {
                     if (tipoTicket === 'Recebimento' && ticketNumero.trim()) {
                       applyLiberacaoCloneToForm(ticketNumero);
                     }
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 read-only:text-emerald-400 read-only:cursor-not-allowed"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   required
                 />
               </div>
@@ -1642,6 +1716,21 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         </div>
       </div>
 
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h3 className="text-sm font-black text-white">Controle de tickets enviados</h3><p className="text-[10px] text-slate-500">Faixas impressas, preenchimento e viagens completas (liberação + recebimento).</p></div>
+          <div className="flex gap-2"><button onClick={exportTicketControlPdf} className="px-3 py-2 rounded-lg bg-slate-800 text-xs font-bold text-white">Exportar PDF</button><button onClick={exportTicketControlExcel} className="px-3 py-2 rounded-lg bg-emerald-600 text-xs font-bold text-white">Exportar Excel</button></div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Tickets enviados</p><p className="text-xl font-black text-white">{ticketControlRows.reduce((s,r)=>s+r.total,0)}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Viagens completas</p><p className="text-xl font-black text-emerald-400">{ticketControlRows.reduce((s,r)=>s+r.completas,0)}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Liberações preenchidas</p><p className="text-xl font-black text-white">{ticketControlRows.reduce((s,r)=>s+r.liberacoes,0)}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Recebimentos preenchidos</p><p className="text-xl font-black text-white">{ticketControlRows.reduce((s,r)=>s+r.recebimentos,0)}</p></div>
+        </div>
+        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-2">Impressão</th><th>Faixa</th><th>Enviados</th><th>Lib.</th><th>Rec.</th><th>Viagens completas</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-slate-800 text-slate-300"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.inicio)} a {normalizeTicketNumber(r.fim)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
+      </div>
+
       {isBatchModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
@@ -1661,12 +1750,12 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Número inicial</label>
-                <input value={batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} placeholder="Ex.: 210" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <input value={batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} placeholder="Ex.: 370" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Sequência</label>
                 <input type="number" min="1" max="200" value={batchSequenceRange} onChange={e => setBatchSequenceRange(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
-                <p className="text-[9px] text-slate-600">Exemplo: início 210 e sequência 10 imprime do 210 ao 220.</p>
+                <p className="text-[9px] text-slate-600">Exemplo: início 370 e sequência 40 imprime do 100370 ao 100410.</p>
               </div>
             </div>
 
