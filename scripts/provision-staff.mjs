@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
@@ -68,7 +69,16 @@ try {
   await auth.revokeRefreshTokens(user.uid);
   console.log(`Acesso administrativo concedido a ${email}. O usuário deve entrar novamente.`);
   if (createdPassword) {
-    console.log(`Usuário criado automaticamente. Senha inicial (anote agora): ${createdPassword}`);
+    const passwordOutputPath = process.env.FIREBASE_ADMIN_PASSWORD_OUTPUT_PATH;
+    if (passwordOutputPath) {
+      fs.mkdirSync(path.dirname(passwordOutputPath), { recursive: true });
+      fs.writeFileSync(passwordOutputPath, `${createdPassword}\n`, { encoding: 'utf8', mode: 0o600 });
+      console.log(`Usuário criado automaticamente. A senha inicial foi salva somente neste computador em: ${passwordOutputPath}`);
+    } else if (process.env.FIREBASE_ADMIN_REVEAL_PASSWORD === 'true') {
+      console.log(`Usuário criado automaticamente. Senha inicial: ${createdPassword}`);
+    } else {
+      console.log('Usuário criado automaticamente. A senha inicial não foi exibida por segurança.');
+    }
   }
 } catch (error) {
   console.error(`Não foi possível autorizar ${email}: ${error.message}`);

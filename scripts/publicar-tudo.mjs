@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LOCAL_CONFIG_PATH = path.join(ROOT, '.publicar-tudo.local.json');
 const TEMP_ENV_PATH = path.join(ROOT, '.env.publicar-tudo.local');
+const LOCAL_SECRET_DIR = path.join(process.env.LOCALAPPDATA || ROOT, 'RENEA');
+const INITIAL_PASSWORD_PATH = path.join(LOCAL_SECRET_DIR, 'senha-inicial-administrador.txt');
 const FIREBASE_PROJECT_ID = 'sistemarenea';
 const FIREBASE_DATABASE_URL = 'https://sistemarenea-default-rtdb.firebaseio.com';
 const FIREBASE_WEB_API_KEY = 'AIzaSyDGN9xLkhgsqDIMXSTU9G03LEeC4Jmjpo4';
@@ -275,7 +277,13 @@ const configureFirstRun = async () => {
 
   try {
     fs.writeFileSync(TEMP_ENV_PATH, `${environmentLines.join('\n')}\n`, { encoding: 'utf8', mode: 0o600 });
-    runDlx('netlify-cli', ['env:import', path.basename(TEMP_ENV_PATH)]);
+    const importResult = runDlx('netlify-cli', ['env:import', path.basename(TEMP_ENV_PATH)], {
+      allowFailure: true,
+      capture: true,
+    });
+    if (importResult.status !== 0) {
+      throw new Error('Não foi possível enviar as variáveis ao Netlify. Os valores secretos foram ocultados do terminal.');
+    }
     ok('Variáveis enviadas diretamente ao Netlify.');
   } finally {
     if (fs.existsSync(TEMP_ENV_PATH)) fs.rmSync(TEMP_ENV_PATH, { force: true });
@@ -283,12 +291,14 @@ const configureFirstRun = async () => {
 
   info('Criando ou autorizando a conta administrativa');
   const initialPassword = `Renea!${crypto.randomBytes(12).toString('base64url')}`;
+  fs.mkdirSync(LOCAL_SECRET_DIR, { recursive: true });
   commandResult(process.execPath, ['scripts/provision-staff.mjs', adminEmail], {
     env: {
       FIREBASE_SERVICE_ACCOUNT_KEY_BASE64: Buffer.from(serviceAccountRaw, 'utf8').toString('base64'),
       FIREBASE_ADMIN_CREATE_MISSING: 'true',
       FIREBASE_ADMIN_INITIAL_PASSWORD: initialPassword,
       FIREBASE_ADMIN_ENABLE_EMAIL_AUTH: 'true',
+      FIREBASE_ADMIN_PASSWORD_OUTPUT_PATH: INITIAL_PASSWORD_PATH,
     },
   });
 
