@@ -85,11 +85,9 @@ import reneaLogo from './assets/images/logo-renea-branco.svg';
 // Firebase Imports
 import { auth, db } from './firebase';
 import {
-  createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
-  updateProfile,
   type User,
 } from 'firebase/auth';
 import {
@@ -104,6 +102,20 @@ import {
   reservePublicTicketNumber,
   savePublicTicket,
 } from './firebaseTickets';
+import {
+  loadPendingPublicSubmissions,
+  markPublicSubmissionsProcessed,
+} from './firebasePublicSubmissions';
+import {
+  loadPublicApontamentoConfig,
+  loadPublicPresenceConfig,
+  reservePublicTicketNumberViaApi,
+  savePublicTicketViaApi,
+  searchPendingPublicTickets,
+  submitPublicApontamento,
+  submitPublicPresence,
+  type PublicApontamentoPayload,
+} from './publicApi';
 
 // Icons Import
 import { 
@@ -117,7 +129,6 @@ import {
   X,
   LogIn,
   LogOut,
-  UserPlus,
   Eye,
   EyeOff,
   Search,
@@ -289,15 +300,30 @@ const isTicketLinkUrl = () => {
     || new URLSearchParams(window.location.search).has('tickets');
 };
 
+const parseStoredJson = <T,>(rawValue: string | null, storageKey: string, fallback: T): T => {
+  if (!rawValue) return fallback;
+  try {
+    return JSON.parse(rawValue) as T;
+  } catch (error) {
+    // O valor original permanece no navegador para recuperação manual. A tela
+    // usa o fallback somente nesta execução para não ficar inutilizável.
+    console.error(`O dado local ${storageKey} está corrompido e foi preservado para recuperação.`, error);
+    return fallback;
+  }
+};
+
+const mergeRecordsById = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
+  const indexed = new Map(current.map(item => [item.id, item]));
+  incoming.forEach(item => indexed.set(item.id, item));
+  return Array.from(indexed.values());
+};
+
 export default function App() {
   // Login State
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [confirmPassword, setConfirmPassword] = useState<string>('');
-  const [registrationName, setRegistrationName] = useState<string>('');
-  const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(true);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
@@ -354,9 +380,9 @@ export default function App() {
 
   // Hydrate states from localstorage on mount
   useEffect(() => {
-    // O link público de tickets carrega somente os documentos públicos de
-    // tickets. Nenhum cadastro, relatório ou backup administrativo é hidratado.
-    if (externalTicketLink) return;
+    // Links públicos recebem somente projeções mínimas da API. Nenhum cadastro,
+    // relatório ou backup administrativo é hidratado no navegador público.
+    if (externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
 
     const isDataLoadedV2 = localStorage.getItem('renea_data_loaded_v2') === 'true';
 
@@ -445,11 +471,11 @@ export default function App() {
       const shouldMigratePresencePeople = localStorage.getItem('renea_colaboradores_planilha_v1') !== 'true';
       const shouldMigrateSpreadsheetSeed = localStorage.getItem('renea_planilhas_operacionais_v1') !== 'true';
       const shouldMigrateMateriaisSeed = localStorage.getItem('renea_materiais_planilha_v1') !== 'true';
-      const parsedEquipamentos = savedEquipamentos ? JSON.parse(savedEquipamentos) as Equipamento[] : INITIAL_EQUIPAMENTOS;
-      const parsedAbastecimentos = savedAbastecimentos ? JSON.parse(savedAbastecimentos) as Abastecimento[] : INITIAL_ABASTECIMENTOS;
-      const parsedTicketsJazida = savedTicketsJazida ? JSON.parse(savedTicketsJazida) as TicketJazida[] : INITIAL_TICKETS_JAZIDA;
-      const parsedMateriaisCadastro = savedMateriaisCadastro ? JSON.parse(savedMateriaisCadastro) as MaterialCadastro[] : INITIAL_MATERIAIS_CADASTRO;
-      const parsedMateriaisRegistros = savedMateriaisRegistros ? JSON.parse(savedMateriaisRegistros) as MaterialRegistro[] : INITIAL_MATERIAIS_REGISTROS;
+      const parsedEquipamentos = parseStoredJson(savedEquipamentos, 'renea_equipamentos', INITIAL_EQUIPAMENTOS);
+      const parsedAbastecimentos = parseStoredJson(savedAbastecimentos, 'renea_abastecimentos', INITIAL_ABASTECIMENTOS);
+      const parsedTicketsJazida = parseStoredJson(savedTicketsJazida, 'renea_tickets_jazida', INITIAL_TICKETS_JAZIDA);
+      const parsedMateriaisCadastro = parseStoredJson(savedMateriaisCadastro, 'renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO);
+      const parsedMateriaisRegistros = parseStoredJson(savedMateriaisRegistros, 'renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS);
       const loadedEquipamentos = shouldMigrateSpreadsheetSeed
         ? mergeSeedRecords(parsedEquipamentos, INITIAL_EQUIPAMENTOS, item => item.prefixo.trim().toLowerCase())
         : parsedEquipamentos;
@@ -466,24 +492,24 @@ export default function App() {
         ? mergeSeedRecords(parsedMateriaisRegistros, INITIAL_MATERIAIS_REGISTROS, materialRegistroKey)
         : parsedMateriaisRegistros;
 
-      setEmpresas(savedEmpresas ? JSON.parse(savedEmpresas) : INITIAL_EMPRESAS);
-      setObras(savedObras ? JSON.parse(savedObras) : INITIAL_OBRAS);
+      setEmpresas(parseStoredJson(savedEmpresas, 'renea_empresas', INITIAL_EMPRESAS));
+      setObras(parseStoredJson(savedObras, 'renea_obras', INITIAL_OBRAS));
       setEquipamentos(loadedEquipamentos);
-      setFuncionarios(shouldMigratePresencePeople ? INITIAL_FUNCIONARIOS : (savedFuncionarios ? JSON.parse(savedFuncionarios) : INITIAL_FUNCIONARIOS));
-      setComboios(savedComboios ? JSON.parse(savedComboios) : INITIAL_COMBOIOS);
-      setCombustiveis(savedCombustiveis ? JSON.parse(savedCombustiveis) : INITIAL_TIPOS_COMBUSTIVEL);
-      setLubrificantes(savedLubrificantes ? JSON.parse(savedLubrificantes) : INITIAL_PRODUTOS_LUBRIFICACAO);
-      setEtapas(savedEtapas ? JSON.parse(savedEtapas) : INITIAL_ETAPAS_SERVICO);
+      setFuncionarios(shouldMigratePresencePeople ? INITIAL_FUNCIONARIOS : parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS));
+      setComboios(parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS));
+      setCombustiveis(parseStoredJson(savedCombustiveis, 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL));
+      setLubrificantes(parseStoredJson(savedLubrificantes, 'renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO));
+      setEtapas(parseStoredJson(savedEtapas, 'renea_etapas', INITIAL_ETAPAS_SERVICO));
       setAbastecimentos(loadedAbastecimentos);
-      setLubrificacoes(savedLubrificacoes ? JSON.parse(savedLubrificacoes) : INITIAL_LUBRIFICACOES);
+      setLubrificacoes(parseStoredJson(savedLubrificacoes, 'renea_lubrificacoes', INITIAL_LUBRIFICACOES));
       setTicketsJazida(loadedTicketsJazida);
-      setRdos(savedRdos ? JSON.parse(savedRdos) : INITIAL_RDOS);
-      setListasPresenca(shouldMigratePresencePeople ? INITIAL_PRESENCAS : (savedListasPresenca ? JSON.parse(savedListasPresenca) : INITIAL_PRESENCAS));
-      setOrdensServico(savedOrdensServico ? JSON.parse(savedOrdensServico) : INITIAL_ORDENS_SERVICO);
-      setGruposEquipe(shouldMigratePresencePeople ? INITIAL_GRUPOS_EQUIPES : (savedGruposEquipe ? JSON.parse(savedGruposEquipe) : INITIAL_GRUPOS_EQUIPES));
-      setPresencasLink(savedPresencasLink ? JSON.parse(savedPresencasLink) : INITIAL_PRESENCAS_LINK);
-      setHistoricoPresencas(savedHistoricoPresencas ? JSON.parse(savedHistoricoPresencas) : INITIAL_HISTORICO_PRESENCAS);
-      const parsedApontamentoRamos = savedApontamentoRamos ? JSON.parse(savedApontamentoRamos) as ApontamentoRamo[] : INITIAL_APONTAMENTO_RAMOS;
+      setRdos(parseStoredJson(savedRdos, 'renea_rdos', INITIAL_RDOS));
+      setListasPresenca(shouldMigratePresencePeople ? INITIAL_PRESENCAS : parseStoredJson(savedListasPresenca, 'renea_listas_presenca', INITIAL_PRESENCAS));
+      setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
+      setGruposEquipe(shouldMigratePresencePeople ? INITIAL_GRUPOS_EQUIPES : parseStoredJson(savedGruposEquipe, 'renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES));
+      setPresencasLink(parseStoredJson(savedPresencasLink, 'renea_presencas_link', INITIAL_PRESENCAS_LINK));
+      setHistoricoPresencas(parseStoredJson(savedHistoricoPresencas, 'renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS));
+      const parsedApontamentoRamos = parseStoredJson(savedApontamentoRamos, 'renea_apontamento_ramos', INITIAL_APONTAMENTO_RAMOS);
       const shouldResetApontamentoRamos =
         !savedApontamentoRamos ||
         parsedApontamentoRamos.some(ramo => ramo.token !== INITIAL_APONTAMENTO_RAMOS[0]?.token) ||
@@ -492,13 +518,13 @@ export default function App() {
         );
       const loadedApontamentoRamos = shouldResetApontamentoRamos ? INITIAL_APONTAMENTO_RAMOS : parsedApontamentoRamos;
       setApontamentoRamos(loadedApontamentoRamos);
-      setApontamentoRamoRegistros(savedApontamentoRamoRegistros ? JSON.parse(savedApontamentoRamoRegistros) : INITIAL_APONTAMENTO_RAMO_REGISTROS);
+      setApontamentoRamoRegistros(parseStoredJson(savedApontamentoRamoRegistros, 'renea_apontamento_ramo_registros', INITIAL_APONTAMENTO_RAMO_REGISTROS));
       setMateriaisCadastro(loadedMateriaisCadastro);
       setMateriaisRegistros(loadedMateriaisRegistros);
-      setPartesDiariasEquipamentos(savedPartesDiariasEquipamentos ? JSON.parse(savedPartesDiariasEquipamentos) : INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
-      setPeriodosArquivados(savedPeriodosArquivados ? JSON.parse(savedPeriodosArquivados) : []);
-      setHistoryLogs(savedHistory ? JSON.parse(savedHistory) : INITIAL_HISTORY_LOGS);
-      setNotifications(savedNotifications ? JSON.parse(savedNotifications) : getInitialNotifications());
+      setPartesDiariasEquipamentos(parseStoredJson(savedPartesDiariasEquipamentos, 'renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
+      setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
+      setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', INITIAL_HISTORY_LOGS));
+      setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
 
       if (shouldMigratePresencePeople) {
         localStorage.setItem('renea_funcionarios', JSON.stringify(INITIAL_FUNCIONARIOS));
@@ -534,10 +560,32 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => onAuthStateChanged(auth, user => {
-    setCurrentUser(user);
-    setIsLoggedIn(Boolean(user));
-    setIsAuthenticating(false);
+  useEffect(() => onAuthStateChanged(auth, async user => {
+    if (!user) {
+      setCurrentUser(null);
+      setIsLoggedIn(false);
+      setIsAuthenticating(false);
+      return;
+    }
+    try {
+      const token = await user.getIdTokenResult(true);
+      if (token.claims.staff !== true) {
+        await signOut(auth);
+        setCurrentUser(null);
+        setIsLoggedIn(false);
+        setLoginError('Sua conta existe, mas ainda não foi autorizada para acessar o sistema.');
+        return;
+      }
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+    } catch (error) {
+      console.error('Falha ao validar a autorização do usuário:', error);
+      setCurrentUser(null);
+      setIsLoggedIn(false);
+      setLoginError('Não foi possível validar sua autorização. Tente entrar novamente.');
+    } finally {
+      setIsAuthenticating(false);
+    }
   }), []);
 
 
@@ -830,13 +878,23 @@ export default function App() {
   useEffect(() => {
     if (!externalPresenceToken) return;
     setIsExternalPresenceLoading(true);
-    handleDownloadFromFirebase().finally(() => setIsExternalPresenceLoading(false));
+    loadPublicPresenceConfig(externalPresenceToken)
+      .then(config => {
+        setGruposEquipe(config.gruposEquipe);
+        setFuncionarios(config.funcionarios);
+        setObras(config.obras);
+      })
+      .catch(error => console.error('Falha ao carregar link público de presença:', error))
+      .finally(() => setIsExternalPresenceLoading(false));
   }, [externalPresenceToken]);
 
   useEffect(() => {
     if (!externalApontamentoToken) return;
     setIsExternalApontamentoLoading(true);
-    handleDownloadFromFirebase().finally(() => setIsExternalApontamentoLoading(false));
+    loadPublicApontamentoConfig(externalApontamentoToken)
+      .then(config => setApontamentoRamos(config.ramos))
+      .catch(error => console.error('Falha ao carregar link público de apontamento:', error))
+      .finally(() => setIsExternalApontamentoLoading(false));
   }, [externalApontamentoToken]);
 
   const refreshPublicTickets = async () => {
@@ -851,15 +909,11 @@ export default function App() {
 
   useEffect(() => {
     if (!externalTicketLink) return;
-    setIsExternalTicketLoading(true);
+    // O link consulta liberações sob demanda pela API e mantém rascunhos e
+    // comprovantes do próprio aparelho no armazenamento local.
+    setExternalPublicTickets([]);
+    setIsExternalTicketLoading(false);
     setExternalTicketLoadError('');
-    loadPublicTickets(db)
-      .then(setExternalPublicTickets)
-      .catch(error => {
-        console.error('Falha técnica ao carregar tickets públicos:', error);
-        setExternalTicketLoadError('Não foi possível atualizar os tickets agora. Verifique a internet e tente novamente.');
-      })
-      .finally(() => setIsExternalTicketLoading(false));
   }, [externalTicketLink]);
 
   useEffect(() => {
@@ -994,49 +1048,12 @@ export default function App() {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    if (registrationName.trim().length < 3) {
-      setLoginError('Informe o nome completo do usuário.');
-      return;
-    }
-    if (password.length < 8) {
-      setLoginError('A senha deve ter pelo menos 8 caracteres.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setLoginError('As senhas não coincidem.');
-      return;
-    }
-    setIsAuthenticating(true);
-    try {
-      const credential = await createUserWithEmailAndPassword(auth, username.trim().toLowerCase(), password);
-      await updateProfile(credential.user, { displayName: registrationName.trim() });
-      setCurrentUser(credential.user);
-    } catch (error: any) {
-      const code = String(error?.code || '');
-      setLoginError(code.includes('email-already-in-use')
-        ? 'Este e-mail já possui uma conta.'
-        : code.includes('invalid-email')
-          ? 'Informe um e-mail válido.'
-          : code.includes('weak-password')
-            ? 'Escolha uma senha mais forte.'
-            : code.includes('operation-not-allowed')
-              ? 'O cadastro por e-mail precisa ser habilitado no Firebase Authentication.'
-            : 'Não foi possível criar a conta. Tente novamente.');
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
-
   const handleLogout = async () => {
     await signOut(auth);
     setIsLoggedIn(false);
     setCurrentUser(null);
     setUsername('');
     setPassword('');
-    setConfirmPassword('');
   };
 
   // CRUD State Handlers
@@ -1687,13 +1704,11 @@ export default function App() {
     item: TicketJazida,
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      await savePublicTicket(db, item);
-      setExternalPublicTickets(current => mergeTicketCollections(current, [item]));
+      const result = await savePublicTicketViaApi(item);
+      setExternalPublicTickets(current => mergeTicketCollections(current, [result.ticket]));
       return {
         success: true,
-        message: item.statusFluxo === 'Rascunho'
-          ? 'Rascunho salvo com sucesso.'
-          : `Ticket ${item.ticketNumero} enviado com sucesso.`,
+        message: result.message,
       };
     } catch (error) {
       console.error('Falha técnica ao salvar ticket público:', error);
@@ -1884,7 +1899,7 @@ export default function App() {
   const uploadLocalSnapshotToFirebase = () => {
     const getLS = (key: string, def: any) => {
       const val = localStorage.getItem(key);
-      return val ? JSON.parse(val) : def;
+      return parseStoredJson(val, key, def);
     };
     return handleUploadToFirebase(
       getLS('renea_empresas', INITIAL_EMPRESAS),
@@ -1914,6 +1929,78 @@ export default function App() {
       getLS('renea_periodos_arquivados', [])
     );
   };
+
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
+    let cancelled = false;
+    let running = false;
+
+    const ingestPublicSubmissions = async () => {
+      if (cancelled || running) return;
+      running = true;
+      try {
+        const submissions = await loadPendingPublicSubmissions(db);
+        if (cancelled || submissions.length === 0) return;
+
+        const incomingPresence = submissions.flatMap(item => item.kind === 'presence' ? (item.payload.records || []) : []);
+        const incomingPointing = submissions.flatMap(item => item.kind === 'apontamento' && item.payload.record ? [item.payload.record] : []);
+        const storedPresence = parseStoredJson<PresencaApontamento[]>(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', []);
+        const storedPointing = parseStoredJson<ApontamentoRamoRegistro[]>(localStorage.getItem('renea_apontamento_ramo_registros'), 'renea_apontamento_ramo_registros', []);
+        const nextPresence = mergeRecordsById(storedPresence, incomingPresence);
+        const nextPointing = mergeRecordsById(storedPointing, incomingPointing);
+
+        const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
+        const nextHistory = mergeRecordsById(storedHistory, submissions.map(item => ({
+          id: `log-public-${item.id}`,
+          timestamp: new Date(item.createdAtIso || Date.now()).toLocaleString('pt-BR'),
+          usuario: item.kind === 'presence' ? (item.payload.grupoNome || 'Link de presença') : (item.payload.record?.responsavel || 'Link de apontamento'),
+          acao: 'Criou' as const,
+          tela: item.kind === 'presence' ? 'Controle de Presença' : 'Apontamentos',
+          descricao: item.kind === 'presence'
+            ? `Recebeu presença pública do grupo ${item.payload.grupoNome || item.payload.grupoId} em ${item.payload.data}.`
+            : `Recebeu apontamento público de ${item.payload.record?.ramoNome || item.payload.ramoId} em ${item.payload.data}.`,
+        })));
+
+        const storedNotifications = parseStoredJson<AppNotification[]>(localStorage.getItem('renea_notifications'), 'renea_notifications', []);
+        const nextNotifications = mergeRecordsById(storedNotifications, submissions.map(item => ({
+          id: `notification-public-${item.id}`,
+          type: 'success' as const,
+          title: item.kind === 'presence' ? 'Presença recebida' : 'Apontamento recebido',
+          message: item.kind === 'presence'
+            ? `${item.payload.grupoNome || 'Equipe'} enviou ${item.payload.records?.length || 0} registro(s) de presença.`
+            : `${item.payload.record?.ramoNome || 'Ramo'} enviou um apontamento de campo.`,
+          timestamp: new Date(item.createdAtIso || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          read: false,
+          source: 'Firebase Cloud' as const,
+        })));
+
+        localStorage.setItem('renea_presencas_link', JSON.stringify(nextPresence));
+        localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(nextPointing));
+        localStorage.setItem('renea_history_logs', JSON.stringify(nextHistory));
+        localStorage.setItem('renea_notifications', JSON.stringify(nextNotifications));
+        setPresencasLink(nextPresence);
+        setApontamentoRamoRegistros(nextPointing);
+        setHistoryLogs(nextHistory);
+        setNotifications(nextNotifications);
+
+        const syncResult = await uploadLocalSnapshotToFirebase();
+        if (!syncResult.success) throw new Error(syncResult.message);
+        await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
+      } catch (error) {
+        if (!cancelled) console.warn('Falha ao incorporar a fila pública; os itens permanecerão pendentes:', error);
+      } finally {
+        running = false;
+      }
+    };
+
+    const initial = window.setTimeout(ingestPublicSubmissions, 2_000);
+    const interval = window.setInterval(ingestPublicSubmissions, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
+  }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken, externalApontamentoToken]);
 
   const handleSaveGrupoEquipe = (grupo: GrupoEquipe, isNew: boolean) => {
     const updated = isNew
@@ -1956,94 +2043,11 @@ export default function App() {
     data: string,
     items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>
   ): Promise<{ success: boolean; message: string }> => {
-    const isDuplicateSubmission = presencasLink.some(item => item.grupoId === grupo.id && item.data === data);
-
-    const now = new Date();
-    const horaEnvio = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const createdAt = now.toISOString();
-    const newRecords: PresencaApontamento[] = items.map(item => {
-      const funcionario = funcionarios.find(func => func.id === item.funcionarioId);
-      return {
-        id: `plink-${grupo.id}-${item.funcionarioId}-${data}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        data,
-        horaEnvio,
-        grupoId: grupo.id,
-        grupoNome: grupo.nome,
-        responsavel: grupo.responsavel,
-        frenteServico: grupo.frenteServico,
-        funcionarioId: item.funcionarioId,
-        funcionarioNome: funcionario?.nome || item.funcionarioId,
-        funcao: funcionario?.cargo || '',
-        status: item.status,
-        observacao: item.observacao,
-        tokenUsado: grupo.token,
-        createdAt
-      };
-    });
-
-    const updatedPresencas = [...presencasLink, ...newRecords];
-    setPresencasLink(updatedPresencas);
-    localStorage.setItem('renea_presencas_link', JSON.stringify(updatedPresencas));
-
-    const logMessage = `O grupo ${grupo.nome} enviou a presença do dia ${data} às ${horaEnvio}.`;
-    const newLog: HistoryLog = {
-      id: `log-pres-${Date.now()}`,
-      timestamp: new Date().toLocaleString('pt-BR'),
-      usuario: grupo.responsavel,
-      acao: 'Criou',
-      tela: 'Controle de Presença',
-      descricao: logMessage
-    };
-    const updatedHistory = [newLog, ...historyLogs];
-    setHistoryLogs(updatedHistory);
-    localStorage.setItem('renea_history_logs', JSON.stringify(updatedHistory));
-
-    const absentCount = newRecords.filter(item => item.status === 'Ausente').length;
-    const notificationsToAdd: AppNotification[] = [
-      createPresenceNotification('Presença enviada', logMessage, 'success')
-    ];
-    if (isDuplicateSubmission) {
-      notificationsToAdd.push(createPresenceNotification(
-        'Presença duplicada para conferência',
-        `O grupo ${grupo.nome} enviou novamente a presença de ${data}. Os dois envios foram mantidos no painel administrativo.`,
-        'warning'
-      ));
+    try {
+      return await submitPublicPresence(externalPresenceToken, grupo.id, data, items);
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível enviar a presença.' };
     }
-    if (absentCount > 0) {
-      notificationsToAdd.push(createPresenceNotification(
-        'Funcionário ausente',
-        `${absentCount} funcionário(s) foram marcados como ausentes no grupo ${grupo.nome}.`,
-        'warning'
-      ));
-    }
-    if (absentCount >= 3 || (newRecords.length > 0 && absentCount / newRecords.length >= 0.3)) {
-      notificationsToAdd.push(createPresenceNotification(
-        'Muitas ausências',
-        `O grupo ${grupo.nome} registrou volume elevado de ausências.`,
-        'warning'
-      ));
-    }
-    if (horaEnvio < '06:00' || horaEnvio > '09:00') {
-      notificationsToAdd.push(createPresenceNotification(
-        'Envio fora do horário',
-        `O grupo ${grupo.nome} enviou presença às ${horaEnvio}.`,
-        'warning'
-      ));
-    }
-
-    const updatedNotifications = persistPresenceNotifications(notificationsToAdd);
-    const syncResult = await handleUploadToFirebase(
-      empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
-      abastecimentos, lubrificacoes, ticketsJazida, rdos, updatedHistory, listasPresenca, ordensServico,
-      gruposEquipe, updatedPresencas, historicoPresencas, updatedNotifications
-    );
-
-    return {
-      success: true,
-      message: syncResult.success
-        ? 'Presença enviada e sincronizada com sucesso.'
-        : 'Presença salva neste dispositivo. A sincronização Firebase não respondeu agora.'
-    };
   };
 
   const handleUpdatePresencaLink = (id: string, status: PresencaStatus, observacao: string, motivo: string) => {
@@ -2329,109 +2333,13 @@ export default function App() {
 
   const handleSubmitApontamentoRamoLink = async (
     ramo: ApontamentoRamo,
-    payload: {
-      data: string;
-      empresa: string;
-      responsavel: string;
-      funcaoApontador: string;
-      funcoes: ApontamentoQuantidadeItem[];
-      equipamentos: ApontamentoQuantidadeItem[];
-      clima: Record<TurnoApontamento, ClimaApontamento>;
-      condicao: Record<TurnoApontamento, CondicaoApontamento>;
-      descricaoAtividade: string;
-      observacao: string;
-    }
+    payload: PublicApontamentoPayload
   ): Promise<{ success: boolean; message: string }> => {
-    const responsavelApontador = payload.responsavel.trim();
-    if (!responsavelApontador) {
-      return { success: false, message: 'Informe o nome do apontador antes de enviar.' };
+    try {
+      return await submitPublicApontamento(externalApontamentoToken, ramo.id, payload);
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível enviar o apontamento.' };
     }
-
-    const isDuplicateSubmission = apontamentoRamoRegistros.some(item => item.ramoId === ramo.id && item.data === payload.data);
-
-    const now = new Date();
-    const horaEnvio = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const cleanQuantidade = (items: ApontamentoQuantidadeItem[]) =>
-      items.map(item => ({ ...item, quantidade: Math.max(0, Number(item.quantidade) || 0) }));
-
-    const newRegistro: ApontamentoRamoRegistro = {
-      id: `apramo-${ramo.id}-${payload.data}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      data: payload.data,
-      horaEnvio,
-      ramoId: ramo.id,
-      canteiroNome: ramo.canteiroNome,
-      ramoNome: ramo.ramoNome,
-      empresa: payload.empresa,
-      responsavel: responsavelApontador,
-      funcaoApontador: payload.funcaoApontador || 'Apontador',
-      funcoes: cleanQuantidade(payload.funcoes),
-      equipamentos: cleanQuantidade(payload.equipamentos),
-      clima: payload.clima,
-      condicao: payload.condicao,
-      descricaoAtividade: payload.descricaoAtividade,
-      observacao: payload.observacao,
-      tokenUsado: ramo.token,
-      createdAt: now.toISOString()
-    };
-
-    const updatedRegistros = [newRegistro, ...apontamentoRamoRegistros];
-    setApontamentoRamoRegistros(updatedRegistros);
-    localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(updatedRegistros));
-
-    const logMessage = `O ramo ${ramo.ramoNome} (${ramo.canteiroNome}) enviou apontamento do dia ${payload.data} às ${horaEnvio}.`;
-    const newLog: HistoryLog = {
-      id: `log-apramo-${Date.now()}`,
-      timestamp: new Date().toLocaleString('pt-BR'),
-      usuario: responsavelApontador,
-      acao: 'Criou',
-      tela: 'Apontamentos',
-      descricao: logMessage
-    };
-    const updatedHistory = [newLog, ...historyLogs];
-    setHistoryLogs(updatedHistory);
-    localStorage.setItem('renea_history_logs', JSON.stringify(updatedHistory));
-
-    const totalFuncoes = newRegistro.funcoes.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalEquipamentos = newRegistro.equipamentos.reduce((sum, item) => sum + item.quantidade, 0);
-    const notificationsToAdd: AppNotification[] = [
-      createPresenceNotification('Apontamento enviado', logMessage, 'success')
-    ];
-    if (isDuplicateSubmission) {
-      notificationsToAdd.push(createPresenceNotification(
-        'Apontamento duplicado para conferência',
-        `O ramo ${ramo.ramoNome} recebeu outro apontamento para ${payload.data}. Os dois envios foram mantidos no painel administrativo.`,
-        'warning'
-      ));
-    }
-    if (Object.values(newRegistro.condicao).includes('Impraticável')) {
-      notificationsToAdd.push(createPresenceNotification(
-        'Condição impraticável',
-        `O ramo ${ramo.ramoNome} registrou condição impraticável em pelo menos um turno.`,
-        'warning'
-      ));
-    }
-    if (totalFuncoes === 0 && totalEquipamentos === 0) {
-      notificationsToAdd.push(createPresenceNotification(
-        'Apontamento sem quantidade',
-        `O ramo ${ramo.ramoNome} enviou apontamento sem mão de obra ou equipamento informado.`,
-        'warning'
-      ));
-    }
-
-    const updatedNotifications = persistPresenceNotifications(notificationsToAdd);
-    const syncResult = await handleUploadToFirebase(
-      empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
-      abastecimentos, lubrificacoes, ticketsJazida, rdos, updatedHistory, listasPresenca, ordensServico,
-      gruposEquipe, presencasLink, historicoPresencas, updatedNotifications,
-      apontamentoRamos, updatedRegistros
-    );
-
-    return {
-      success: true,
-      message: syncResult.success
-        ? 'Apontamento enviado e sincronizado com sucesso.'
-        : 'Apontamento salvo neste dispositivo. A sincronização Firebase não respondeu agora.'
-    };
   };
 
 
@@ -2705,7 +2613,6 @@ export default function App() {
               break;
             case 'lubrificantes':
               persist('renea_lubrificantes', nextValue(INITIAL_PRODUTOS_LUBRIFICACAO), setLubrificantes);
-              persist('renea_etapas', nextValue(INITIAL_ETAPAS_SERVICO), setEtapas);
               break;
             case 'abastecimentos':
               persist('renea_abastecimentos', nextValue(INITIAL_ABASTECIMENTOS), setAbastecimentos);
@@ -3086,8 +2993,9 @@ export default function App() {
         tickets={externalPublicTickets}
         isLoadingCloud={isExternalTicketLoading}
         loadError={externalTicketLoadError}
-        onReserveNumber={() => reservePublicTicketNumber(db, externalPublicTickets)}
+        onReserveNumber={reservePublicTicketNumberViaApi}
         onSaveTicket={handleSaveTicketLink}
+        onSearchPendingReceipts={searchPendingPublicTickets}
       />
     );
   }
@@ -3147,22 +3055,7 @@ export default function App() {
             <p className="text-xs text-slate-400 mt-2">Sistema Integrado de Gestão Operacional</p>
           </div>
 
-          <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-lg mb-6" role="tablist" aria-label="Acesso ao sistema">
-            <button type="button" role="tab" aria-selected={!isRegistering} onClick={() => { setIsRegistering(false); setLoginError(''); }} className={`py-2 text-xs font-bold rounded-md transition-colors ${!isRegistering ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}>
-              Entrar
-            </button>
-            <button type="button" role="tab" aria-selected={isRegistering} onClick={() => { setIsRegistering(true); setLoginError(''); }} className={`py-2 text-xs font-bold rounded-md transition-colors ${isRegistering ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}>
-              Criar conta
-            </button>
-          </div>
-
-          <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4 relative">
-            {isRegistering && (
-              <div className="space-y-1.5">
-                <label htmlFor="registration-name" className="text-xs font-bold text-slate-300 uppercase">Nome completo</label>
-                <input id="registration-name" name="name" type="text" autoComplete="name" placeholder="Nome do colaborador" value={registrationName} onChange={(e) => setRegistrationName(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-emerald-500" required />
-              </div>
-            )}
+          <form onSubmit={handleLogin} className="space-y-4 relative">
             <div className="space-y-1.5">
               <label htmlFor="login-email" className="text-xs font-bold text-slate-300 uppercase">E-mail corporativo</label>
               <input 
@@ -3181,19 +3074,12 @@ export default function App() {
             <div className="space-y-1.5">
               <label htmlFor="login-password" className="text-xs font-bold text-slate-300 uppercase">Senha de acesso</label>
               <div className="relative">
-                <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete={isRegistering ? 'new-password' : 'current-password'} placeholder="Mínimo de 8 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 pr-12 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500" required />
+                <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Senha corporativa" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 pr-12 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500" required />
                 <button type="button" onClick={() => setShowPassword(value => !value)} title={showPassword ? 'Ocultar senha' : 'Mostrar senha'} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-
-            {isRegistering && (
-              <div className="space-y-1.5">
-                <label htmlFor="confirm-password" className="text-xs font-bold text-slate-300 uppercase">Confirmar senha</label>
-                <input id="confirm-password" name="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-emerald-500" required />
-              </div>
-            )}
 
             {loginError && (
                 <div role="alert" className="text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-md px-3.5 py-2">
@@ -3206,14 +3092,14 @@ export default function App() {
               disabled={isAuthenticating}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-extrabold text-sm uppercase rounded-md shadow-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              {isRegistering ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
-              {isRegistering ? 'Criar conta e entrar' : 'Entrar no sistema'}
+              <LogIn className="w-4 h-4" />
+              Entrar no sistema
             </button>
           </form>
 
           <div className="mt-6 pt-4 border-t border-slate-800 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            Acesso protegido pelo Firebase Authentication
+            Acesso somente para contas autorizadas pela administração
           </div>
         </div>
       </div>

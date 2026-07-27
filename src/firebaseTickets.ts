@@ -11,7 +11,8 @@ import {
 } from 'firebase/firestore';
 import { TicketJazida } from './types';
 
-const CLOUD_COLLECTION = 'sistemarenea_cloud';
+const CLOUD_COLLECTION = 'sistemarenea_public_tickets';
+const META_COLLECTION = 'sistemarenea_public_meta';
 const COUNTER_DOCUMENT_ID = 'ticket_counter';
 const TICKET_DOCUMENT_PREFIX = 'ticket_public_';
 
@@ -33,16 +34,15 @@ export const reservePublicTicketNumber = async (
   database: Firestore,
   knownTickets: TicketJazida[],
 ): Promise<string> => {
-  const counterRef = doc(database, CLOUD_COLLECTION, COUNTER_DOCUMENT_ID);
+  const counterRef = doc(database, META_COLLECTION, COUNTER_DOCUMENT_ID);
   return runTransaction(database, async transaction => {
     const counterSnapshot = await transaction.get(counterRef);
-    const storedNext = Number(counterSnapshot.data()?.value?.nextNumber || 0);
+    const storedNext = Number(counterSnapshot.data()?.nextNumber || 0);
     const nextNumber = Math.max(storedNext, nextNumberFromTickets(knownTickets), 1);
 
     transaction.set(counterRef, {
-      updatedAt: new Date().toISOString(),
-      kind: 'ticket_counter',
-      value: { nextNumber: nextNumber + 1 },
+      updatedAtIso: new Date().toISOString(),
+      nextNumber: nextNumber + 1,
     });
 
     return String(nextNumber);

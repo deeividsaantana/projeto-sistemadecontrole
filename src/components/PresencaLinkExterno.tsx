@@ -5,10 +5,9 @@ import { Funcionario, GrupoEquipe, ObraLocal, PresencaApontamento, PresencaStatu
 import reneaLogo from '../assets/images/logo-renea-branco.svg';
 import './publicLinks.css';
 
-// Token especial usado pelo "link único" de presença. Quando o token recebido
-// na URL for este valor, em vez de buscar um grupo específico, exibimos uma
-// tela para a pessoa escolher a aba/grupo da sua equipe antes de apontar.
-export const GENERAL_PRESENCE_TOKEN = 'geral';
+// O prefixo identifica o modo de seleção de equipe. A autorização continua
+// dependendo do valor aleatório completo salvo no cadastro, nunca do prefixo.
+export const isGeneralPresenceToken = (value: string) => value.startsWith('geral-');
 
 const STATUS_OPTIONS: PresencaStatus[] = [
   'Presente',
@@ -55,7 +54,7 @@ export default function PresencaLinkExterno({
 
   // Modo "link único": a pessoa escolhe a aba do grupo dela em vez de
   // depender de um link individual por equipe.
-  const isGeneralLink = token === GENERAL_PRESENCE_TOKEN;
+  const isGeneralLink = isGeneralPresenceToken(token);
   const [selectedGrupoId, setSelectedGrupoId] = useState<string>('');
   const [grupoSearch, setGrupoSearch] = useState('');
 
@@ -216,7 +215,8 @@ export default function PresencaLinkExterno({
     );
   }
 
-  const presentCount = Object.values(items).filter(item => item.status === 'Presente').length;
+  const presentCount = (Object.values(items) as Array<{ status: PresencaStatus; observacao: string }>)
+    .filter(item => item.status === 'Presente').length;
 
   return (
     <div id="presenca-publica" className="public-link-light antialiased">

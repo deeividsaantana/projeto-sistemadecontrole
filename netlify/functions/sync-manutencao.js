@@ -1,13 +1,15 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const FIREBASE_SERVICE_ACCOUNT_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+const FIREBASE_SERVICE_ACCOUNT_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64
+  ? Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf8')
+  : process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '';
 const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || 'https://sistemarenea-default-rtdb.firebaseio.com';
 const MANUTENCAO_SOURCE_URL = process.env.MANUTENCAO_SOURCE_URL || 'https://dynamic-manatee-66561d.netlify.app/';
 
 function getServiceAccount() {
   if (!FIREBASE_SERVICE_ACCOUNT_KEY) {
-    throw new Error('Variável FIREBASE_SERVICE_ACCOUNT_KEY não configurada no Netlify.');
+    throw new Error('Conta de serviço Firebase não configurada no Netlify. Execute PUBLICAR_TUDO.cmd.');
   }
 
   try {
@@ -44,26 +46,13 @@ function numberFromNearbyLabel(html, labels) {
   return null;
 }
 
-function safeNumbers(html) {
-  const values = [];
-  const matches = html.matchAll(/>(\d{1,5})</g);
-
-  for (const match of matches) {
-    const value = Number.parseInt(match[1], 10);
-    if (Number.isFinite(value) && value >= 0 && value <= 99999) {
-      values.push(value);
-    }
-  }
-
-  return values;
-}
-
 async function fetchDados() {
   const response = await fetch(MANUTENCAO_SOURCE_URL, {
     headers: {
       'User-Agent': 'SistemaRenea-Sync/1.0',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     },
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
@@ -71,21 +60,16 @@ async function fetchDados() {
   }
 
   const html = await response.text();
-  const fallbackNumbers = safeNumbers(html);
   const disponibilidadeMatch = html.match(/(?:>|\s)(\d{1,3})%/);
 
-  let total = numberFromNearbyLabel(html, ['TOTAL', 'EQUIPAMENTOS', 'FROTA']);
-  let operando = numberFromNearbyLabel(html, ['OPERANDO', 'OPERAÇÃO', 'OPERACAO', 'ATIVO']);
-  let mobilizacao = numberFromNearbyLabel(html, ['MOBILIZAÇÃO', 'MOBILIZACAO', 'DESLOCAMENTO']);
-  let manutencao = numberFromNearbyLabel(html, ['MANUTENÇÃO', 'MANUTENCAO', 'OFICINA', 'REPARO']);
-  let paradas = numberFromNearbyLabel(html, ['PARADAS', 'PARADO', 'INATIVO', 'SEM OPERAÇÃO', 'SEM OPERACAO']);
+  const total = numberFromNearbyLabel(html, ['TOTAL', 'EQUIPAMENTOS', 'FROTA']);
+  const operando = numberFromNearbyLabel(html, ['OPERANDO', 'OPERAÇÃO', 'OPERACAO', 'ATIVO']);
+  const mobilizacao = numberFromNearbyLabel(html, ['MOBILIZAÇÃO', 'MOBILIZACAO', 'DESLOCAMENTO']);
+  const manutencao = numberFromNearbyLabel(html, ['MANUTENÇÃO', 'MANUTENCAO', 'OFICINA', 'REPARO']);
+  const paradas = numberFromNearbyLabel(html, ['PARADAS', 'PARADO', 'INATIVO', 'SEM OPERAÇÃO', 'SEM OPERACAO']);
 
-  if (fallbackNumbers.length >= 5) {
-    total ??= fallbackNumbers[0];
-    operando ??= fallbackNumbers[1];
-    mobilizacao ??= fallbackNumbers[2];
-    manutencao ??= fallbackNumbers[3];
-    paradas ??= fallbackNumbers[4];
+  if (total === null || [operando, mobilizacao, manutencao, paradas].every(value => value === null)) {
+    throw new Error('A estrutura da fonte mudou e os indicadores não puderam ser identificados com segurança.');
   }
 
   return {

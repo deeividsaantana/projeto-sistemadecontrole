@@ -1,11 +1,22 @@
 # Publicação no GitHub + Netlify
+# Publicação do Sistema RENEA no Netlify
+
+## Forma automática recomendada
+
+Execute `PUBLICAR_TUDO.cmd` na raiz do projeto. Na primeira vez, o assistente
+solicita somente os logins, o e-mail administrativo e o arquivo JSON da conta de
+serviço. Ele vincula o Netlify, envia as variáveis, autoriza o usuário, testa,
+sincroniza o Git e publica as regras. Consulte `PUBLICAR_TUDO.md`.
+
+As instruções manuais abaixo ficam como alternativa e referência de recuperação.
 
 ## O que foi alterado
 
 - Criada a função `netlify/functions/sync-manutencao.js`.
 - Criado o hook `src/hooks/useEquipamentosExternos.ts`.
 - O card **Em Manutenção** do dashboard agora usa o número externo salvo no Firestore quando existir.
-- Criado `netlify.toml` com build do Vite e agendamento da função a cada 2 minutos.
+- Criado `netlify.toml` com build do Vite, sincronização a cada 10 minutos e
+  limpeza diária segura de blocos de backup que não estão mais em uso.
 - Mantidas as correções da exportação de planilhas com visual técnico/operacional.
 
 ## Importante sobre segurança
@@ -59,12 +70,27 @@ troca futura de projeto Firebase, também pode configurar a chave pública web:
 FIREBASE_WEB_API_KEY=SUA_CHAVE_PUBLICA_DO_FIREBASE
 ```
 
-Para restringir a análise a administradores específicos, informe os e-mails
+Para liberar a análise somente a administradores específicos, informe os e-mails
 separados por vírgula:
 
 ```txt
 AI_ALLOWED_EMAILS=admin@empresa.com.br,gestor@empresa.com.br
 ```
+
+`AI_ALLOWED_EMAILS` passou a ser obrigatório. Sem essa lista a função recusa a
+análise para evitar uso indevido da cota da IA.
+
+## Links públicos seguros
+
+Presença, apontamentos e tickets agora usam funções Netlify intermediárias. Os
+links não leem mais o backup administrativo do Firestore. As funções exigem a
+mesma `FIREBASE_SERVICE_ACCOUNT_KEY` e aplicam validação, limite de requisições
+e projeção mínima dos dados.
+
+Após a primeira publicação, entre em **Controle de presença > Grupos** e use
+**Gerar** no cartão de link único. O endereço antigo `/presenca-link/geral` foi
+intencionalmente invalidado: o novo link contém uma chave aleatória que pode ser
+trocada pela administração caso seja compartilhada com a pessoa errada.
 
 Depois de criar ou alterar essas variáveis, execute um novo deploy no Netlify.
 A chave nunca deve ser escrita no código, no GitHub ou em uma tela pública.
@@ -83,12 +109,15 @@ git push
 
 O Netlify deve publicar automaticamente após o push.
 
-## Testar a função
+## Testar a sincronização de manutenção
 
-Depois do deploy, acesse:
+Funções agendadas não aceitam acesso direto por URL em produção. Use **Run
+now** na página da função no painel Netlify ou `netlify functions:invoke` no
+ambiente local. A rotina executa a cada dez minutos e mantém o último valor
+válido quando a estrutura da fonte externa não puder ser reconhecida.
 
 ```txt
-https://SEU-SITE.netlify.app/.netlify/functions/sync-manutencao
+netlify functions:invoke sync-manutencao
 ```
 
 Se retornar `success: true`, a sincronização está funcionando.

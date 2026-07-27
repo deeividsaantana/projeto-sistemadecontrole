@@ -1,0 +1,158 @@
+import crypto from 'node:crypto';
+import {
+  cleanString,
+  enforceRateLimit,
+  functionErrorResponse,
+  getAdminDb,
+  isIsoDate,
+  jsonResponse,
+  parseJsonBody,
+  requestIpHash,
+  serverTimestamp,
+  stableHash,
+} from './_shared/firebase-admin.js';
+import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
+
+const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
+const isGeneralToken = token => token.startsWith('geral-');
+
+const activeGroupsForToken = (snapshot, token) => {
+  const active = (snapshot.gruposEquipe || []).filter(group => group?.status === 'ativo' && group?.linkAtivo);
+  if (isGeneralToken(token)) return active.some(group => group.tokenGeral === token) ? active : [];
+  return active.filter(group => group.token === token);
+};
+
+const sanitizeGroup = (group, exposedToken = '') => ({
+  id: cleanString(group.id, 160),
+  nome: cleanString(group.nome, 160),
+  responsavel: cleanString(group.responsavel, 160),
+  frenteServico: cleanString(group.frenteServico, 200),
+  obraId: cleanString(group.obraId, 160) || undefined,
+  funcionarioIds: Array.isArray(group.funcionarioIds) ? group.funcionarioIds.map(id => cleanString(id, 160)).filter(Boolean) : [],
+  status: 'ativo',
+  token: exposedToken,
+  linkAtivo: true,
+  createdAt: '',
+  updatedAt: '',
+});
+
+const getPublicConfig = (snapshot, token) => {
+  const groups = activeGroupsForToken(snapshot, token);
+  if (groups.length === 0) return null;
+  const employeeIds = new Set(groups.flatMap(group => Array.isArray(group.funcionarioIds) ? group.funcionarioIds : []));
+  const employees = (snapshot.funcionarios || [])
+    .filter(employee => employee?.ativo && employeeIds.has(employee.id))
+    .map(employee => ({
+      id: cleanString(employee.id, 160),
+      nome: cleanString(employee.nome, 180),
+      cargo: cleanString(employee.cargo, 120),
+      telefone: '',
+      empresaId: '',
+      ativo: true,
+    }));
+  const workIds = new Set(groups.map(group => group.obraId).filter(Boolean));
+  const works = (snapshot.obras || [])
+    .filter(work => workIds.has(work.id))
+    .map(work => ({
+      id: cleanString(work.id, 160),
+      nome: cleanString(work.nome, 180),
+      endereco: cleanString(work.endereco || work.local, 180),
+      responsavel: '',
+      status: ['Ativa', 'Concluída', 'Planejada'].includes(work.status) ? work.status : 'Ativa',
+    }));
+  return {
+    gruposEquipe: groups.map(group => sanitizeGroup(group, isGeneralToken(token) ? '' : token)),
+    funcionarios: employees,
+    obras: works,
+  };
+};
+
+const buildPresenceRecords = ({ group, employees, date, items, token }) => {
+  const employeeMap = new Map(employees.map(employee => [employee.id, employee]));
+  const allowedIds = new Set(group.funcionarioIds || []);
+  const expectedIds = new Set([...allowedIds].filter(id => employeeMap.has(id)));
+  const submittedIds = items.map(item => cleanString(item?.funcionarioId, 160));
+  if (expectedIds.size === 0 || submittedIds.length !== expectedIds.size || new Set(submittedIds).size !== submittedIds.length || submittedIds.some(id => !expectedIds.has(id))) {
+    const error = new Error('A lista da equipe mudou ou está incompleta. Recarregue o link antes de enviar.');
+    error.statusCode = 409;
+    throw error;
+  }
+  const now = new Date();
+  const submissionId = crypto.randomUUID();
+  const horaEnvio = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const records = items.map((item, index) => {
+    const funcionarioId = cleanString(item.funcionarioId, 160);
+    if (!allowedIds.has(funcionarioId) || !employeeMap.has(funcionarioId)) {
+      const error = new Error('A equipe foi atualizada. Recarregue o link antes de enviar.');
+      error.statusCode = 409;
+      throw error;
+    }
+    const status = cleanString(item.status, 40);
+    if (!VALID_STATUSES.has(status)) {
+      const error = new Error('Existe uma situação de presença inválida.');
+      error.statusCode = 400;
+      throw error;
+    }
+    const employee = employeeMap.get(funcionarioId);
+    return {
+      id: `plink-${submissionId}-${index + 1}`,
+      data: date,
+      horaEnvio,
+      grupoId: group.id,
+      grupoNome: cleanString(group.nome, 160),
+      responsavel: cleanString(group.responsavel, 160),
+      frenteServico: cleanString(group.frenteServico, 200),
+      funcionarioId,
+      funcionarioNome: cleanString(employee.nome, 180),
+      funcao: cleanString(employee.cargo, 120),
+      status,
+      observacao: cleanString(item.observacao, 500),
+      tokenUsado: `validado-${stableHash(token).slice(0, 12)}`,
+      createdAt: now.toISOString(),
+    };
+  });
+  return { records, submissionId, createdAtIso: now.toISOString() };
+};
+
+export const handler = async event => {
+  try {
+    const database = getAdminDb();
+    const method = String(event.httpMethod || 'GET').toUpperCase();
+    await enforceRateLimit(database, event, `public-presenca-${method}`, method === 'GET' ? 120 : 30, method === 'GET' ? 300 : 3600);
+
+    if (method === 'GET') {
+      const token = cleanString(event.queryStringParameters?.token, 180);
+      if (!token) return jsonResponse(400, { success: false, message: 'Token de presença não informado.' });
+      const snapshot = await loadCloudSnapshot(database);
+      const config = getPublicConfig(snapshot, token);
+      if (!config) return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
+      return jsonResponse(200, { success: true, data: config });
+    }
+
+    if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST' });
+    const body = parseJsonBody(event);
+    const token = cleanString(body.token, 180);
+    const groupId = cleanString(body.grupoId, 160);
+    const date = cleanString(body.data, 10);
+    if (!token || !groupId || !isIsoDate(date) || !Array.isArray(body.items) || body.items.length === 0 || body.items.length > 500) {
+      return jsonResponse(400, { success: false, message: 'Dados de presença incompletos ou inválidos.' });
+    }
+    const snapshot = await loadCloudSnapshot(database);
+    const authorizedGroups = activeGroupsForToken(snapshot, token);
+    const group = authorizedGroups.find(item => item.id === groupId);
+    if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
+    const employees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
+    const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token });
+    await database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`).set({
+      kind: 'presence',
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      createdAtIso,
+      sourceIpHash: requestIpHash(event),
+      payload: { grupoId: group.id, grupoNome: cleanString(group.nome, 160), data: date, records },
+    });
+    return jsonResponse(201, { success: true, submissionId, message: `Presença de ${group.nome} enviada com segurança.` });
+  } catch (error) {
+    return functionErrorResponse(error);
+  }
+};

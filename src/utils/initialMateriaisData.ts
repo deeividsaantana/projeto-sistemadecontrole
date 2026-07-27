@@ -146,6 +146,8 @@ export const INITIAL_MATERIAIS_CADASTRO: MaterialCadastro[] = [
   }
 ];
 
+// @ts-expect-error A planilha gerada contém milhares de literais; o TypeScript
+// excede o limite interno de representação da união, embora cada item siga MaterialRegistro.
 export const INITIAL_MATERIAIS_REGISTROS: MaterialRegistro[] = [
   {
     "id": "mat-1",

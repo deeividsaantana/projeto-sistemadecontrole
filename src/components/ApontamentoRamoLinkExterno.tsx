@@ -83,7 +83,9 @@ export default function ApontamentoRamoLinkExterno({
   );
 
   const canteiros = useMemo(
-    () => Array.from(new Set(activeRamos.map(item => item.canteiroNome))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    () => Array.from(new Set<string>(activeRamos.map(item => String(item.canteiroNome || ''))))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR')),
     [activeRamos]
   );
 

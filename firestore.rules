@@ -12,6 +12,14 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    // Contas administrativas são provisionadas no Firebase Authentication.
+    // Links públicos nunca acessam o Firestore diretamente; usam funções
+    // Netlify com validação e projeção mínima dos dados.
+    function isStaff() {
+      return request.auth != null
+        && request.auth.token.staff == true;
+    }
+
     function hasBaseFields(data) {
       return data != null
         && data.keys().hasAll(['updatedAt', 'empresas', 'obras', 'equipamentos'])
@@ -119,11 +127,8 @@ service cloud.firestore {
 
     // Matches the cloud backup path for the Renea Infraestrutura system
     match /sistemarenea_cloud/{docId} {
-      allow get: if isValidId(docId);
-      // A consulta do link usa where('kind', '==', 'ticket_public'). O Firestore
-      // comprova esta condição antes de liberar somente os tickets públicos.
-      allow list: if resource.data.kind == 'ticket_public';
-      allow create, update: if isValidId(docId)
+      allow get, list: if isStaff() && isValidId(docId);
+      allow create, update: if isStaff() && isValidId(docId)
         && (
           isValidLegacyCloudState(request.resource.data)
           || isValidIntermediateCloudState(docId, request.resource.data)
@@ -132,7 +137,30 @@ service cloud.firestore {
           || isValidTicketCounter(docId, request.resource.data)
           || isValidPublicTicket(docId, request.resource.data)
         );
-      allow delete: if isValidId(docId);
+      allow delete: if isStaff() && isValidId(docId);
+    }
+
+    // Espelho operacional de tickets. O público grava e pesquisa somente pelas
+    // funções Netlify; usuários autenticados administram o acervo pelo painel.
+    match /sistemarenea_public_tickets/{docId} {
+      allow read, create, update, delete: if isStaff() && isValidId(docId);
+    }
+
+    match /sistemarenea_public_meta/{docId} {
+      allow read, create, update: if isStaff() && isValidId(docId);
+      allow delete: if false;
+    }
+
+    // A fila é criada exclusivamente pelo Admin SDK. O painel autenticado pode
+    // ler e marcar itens processados, sem expor a coleção na internet.
+    match /sistemarenea_public_submissions/{docId} {
+      allow read, update: if isStaff() && isValidId(docId);
+      allow create, delete: if false;
+    }
+
+    // Contadores de proteção contra abuso são internos às funções serverless.
+    match /sistemarenea_rate_limits/{docId} {
+      allow read, write: if false;
     }
   }
 }

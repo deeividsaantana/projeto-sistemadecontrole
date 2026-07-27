@@ -24,7 +24,6 @@ import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { GENERAL_PRESENCE_TOKEN } from './PresencaLinkExterno';
 import {
   Funcionario,
   GrupoEquipe,
@@ -150,6 +149,10 @@ export default function ControlePresencaTab({
   const activeGroups = useMemo(
     () => gruposEquipe.filter(grupo => grupo.status === 'ativo' && grupo.linkAtivo),
     [gruposEquipe]
+  );
+  const generalPresenceToken = useMemo(
+    () => activeGroups.find(grupo => grupo.tokenGeral)?.tokenGeral || '',
+    [activeGroups]
   );
 
   const recordsForReferenceDate = useMemo(
@@ -308,7 +311,8 @@ export default function ControlePresencaTab({
   };
 
   const handleCopyGeneralLink = async () => {
-    const link = buildPresenceLink(GENERAL_PRESENCE_TOKEN);
+    if (!generalPresenceToken) return;
+    const link = buildPresenceLink(generalPresenceToken);
     try {
       await navigator.clipboard.writeText(link);
       setFeedback('Link único copiado para a área de transferência.');
@@ -318,9 +322,22 @@ export default function ControlePresencaTab({
   };
 
   const handleShareGeneralWhatsApp = () => {
-    const link = buildPresenceLink(GENERAL_PRESENCE_TOKEN);
+    if (!generalPresenceToken) return;
+    const link = buildPresenceLink(generalPresenceToken);
     const text = `Olá, preencha a presença da sua equipe selecionando o grupo no link: ${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleGenerateGeneralLink = () => {
+    const hostGroup = activeGroups.find(grupo => grupo.tokenGeral) || activeGroups[0];
+    if (!hostGroup) {
+      setFeedback('Crie ou ative pelo menos um grupo antes de gerar o link único.');
+      return;
+    }
+    if (generalPresenceToken && !window.confirm('Trocar o link tornará o endereço anterior inválido. Deseja continuar?')) return;
+    const tokenGeral = `geral-${generateToken()}`;
+    onSaveGrupoEquipe({ ...hostGroup, tokenGeral, updatedAt: new Date().toISOString() }, false);
+    setFeedback(generalPresenceToken ? 'Link único seguro trocado. Compartilhe o novo endereço.' : 'Link único seguro gerado.');
   };
 
   const handleShareWhatsApp = (grupo: GrupoEquipe) => {
@@ -559,29 +576,36 @@ export default function ControlePresencaTab({
             </div>
             <p className="text-xs text-slate-400">
               Compartilhe este único link com todos os responsáveis. Ao abrir, a pessoa escolhe a aba do grupo dela
-              antes de apontar a presença — não é preciso gerar um link por equipe.
+              antes de apontar a presença. O endereço usa uma chave aleatória e pode ser trocado quando necessário.
             </p>
             <div className="flex items-center gap-2">
               <input
                 readOnly
-                value={buildPresenceLink(GENERAL_PRESENCE_TOKEN)}
+                value={generalPresenceToken ? buildPresenceLink(generalPresenceToken) : ''}
+                placeholder="Gere o link único seguro"
                 className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 font-mono"
               />
-              <button onClick={handleCopyGeneralLink} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200" title="Copiar link único">
+              <button onClick={handleCopyGeneralLink} disabled={!generalPresenceToken} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:cursor-not-allowed disabled:opacity-40" title="Copiar link único">
                 <ClipboardCopy className="w-4 h-4" />
               </button>
-              <button onClick={handleShareGeneralWhatsApp} className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white" title="Compartilhar no WhatsApp">
+              <button onClick={handleShareGeneralWhatsApp} disabled={!generalPresenceToken} className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:cursor-not-allowed disabled:opacity-40" title="Compartilhar no WhatsApp">
                 <MessageCircle className="w-4 h-4" />
               </button>
-              <a
-                href={buildPresenceLink(GENERAL_PRESENCE_TOKEN)}
-                target="_blank"
-                rel="noreferrer"
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200"
-                title="Abrir link único"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
+              {generalPresenceToken && (
+                <a
+                  href={buildPresenceLink(generalPresenceToken)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200"
+                  title="Abrir link único"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+              <button onClick={handleGenerateGeneralLink} className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-amber-400" title={generalPresenceToken ? 'Trocar e invalidar o link atual' : 'Gerar link único seguro'}>
+                <RotateCcw className="w-4 h-4" />
+                {generalPresenceToken ? 'Trocar' : 'Gerar'}
+              </button>
             </div>
           </div>
 
