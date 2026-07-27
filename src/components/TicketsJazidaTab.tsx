@@ -666,19 +666,45 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     }
   };
 
-  const ticketControlRows = useMemo(() => printedBatches.map(batch => {
-    const numeros = Array.from({ length: batch.fim - batch.inicio + 1 }, (_, i) => batch.inicio + i);
-    let liberacoes = 0, recebimentos = 0, completas = 0;
-    numeros.forEach(numero => {
-      const full = normalizeTicketNumber(numero);
-      const hasLib = tickets.some(t => normalizeTicketNumber(t.ticketNumero) === full && (t.tipoTicket || 'Liberação') === 'Liberação');
-      const hasRec = tickets.some(t => normalizeTicketNumber(t.ticketNumero) === full && (t.tipoTicket || 'Liberação') === 'Recebimento');
-      if (hasLib) liberacoes += 1;
-      if (hasRec) recebimentos += 1;
-      if (hasLib && hasRec) completas += 1;
+  // Índice calculado uma única vez por alteração da lista. Antes, cada número de cada
+  // lote percorria todos os tickets duas vezes, o que deixava a tela muito pesada.
+  const ticketCompletionIndex = useMemo(() => {
+    const index = new Map<number, { liberacao: boolean; recebimento: boolean }>();
+    tickets.forEach(ticket => {
+      const numero = baseTicketNumber(ticket.ticketNumero);
+      if (!Number.isFinite(numero)) return;
+      const status = index.get(numero) || { liberacao: false, recebimento: false };
+      if ((ticket.tipoTicket || 'Liberação') === 'Liberação') status.liberacao = true;
+      else status.recebimento = true;
+      index.set(numero, status);
     });
-    return { ...batch, total: numeros.length, liberacoes, recebimentos, completas, pendentes: numeros.length - completas };
-  }), [printedBatches, tickets]);
+    return index;
+  }, [tickets]);
+
+  const ticketControlRows = useMemo(() => printedBatches.map(batch => {
+    const total = Math.max(0, batch.fim - batch.inicio + 1);
+    let liberacoes = 0;
+    let recebimentos = 0;
+    let completas = 0;
+
+    for (let numero = batch.inicio; numero <= batch.fim; numero += 1) {
+      const status = ticketCompletionIndex.get(numero);
+      if (!status) continue;
+      if (status.liberacao) liberacoes += 1;
+      if (status.recebimento) recebimentos += 1;
+      if (status.liberacao && status.recebimento) completas += 1;
+    }
+
+    return { ...batch, total, liberacoes, recebimentos, completas, pendentes: total - completas };
+  }), [printedBatches, ticketCompletionIndex]);
+
+  const ticketControlTotals = useMemo(() => ticketControlRows.reduce((totals, row) => ({
+    total: totals.total + row.total,
+    liberacoes: totals.liberacoes + row.liberacoes,
+    recebimentos: totals.recebimentos + row.recebimentos,
+    completas: totals.completas + row.completas,
+    pendentes: totals.pendentes + row.pendentes,
+  }), { total: 0, liberacoes: 0, recebimentos: 0, completas: 0, pendentes: 0 }), [ticketControlRows]);
 
   const exportTicketControlExcel = async () => {
     const wb = new ExcelJS.Workbook();
@@ -1723,10 +1749,10 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           <div className="flex gap-2"><button onClick={exportTicketControlPdf} className="px-3 py-2 rounded-lg bg-slate-800 text-xs font-bold text-white">Exportar PDF</button><button onClick={exportTicketControlExcel} className="px-3 py-2 rounded-lg bg-emerald-600 text-xs font-bold text-white">Exportar Excel</button></div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Tickets enviados</p><p className="text-xl font-black text-white">{ticketControlRows.reduce((s,r)=>s+r.total,0)}</p></div>
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Viagens completas</p><p className="text-xl font-black text-emerald-400">{ticketControlRows.reduce((s,r)=>s+r.completas,0)}</p></div>
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Liberações preenchidas</p><p className="text-xl font-black text-white">{ticketControlRows.reduce((s,r)=>s+r.liberacoes,0)}</p></div>
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Recebimentos preenchidos</p><p className="text-xl font-black text-white">{ticketControlRows.reduce((s,r)=>s+r.recebimentos,0)}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Tickets enviados</p><p className="text-xl font-black text-white">{ticketControlTotals.total}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Viagens completas</p><p className="text-xl font-black text-emerald-400">{ticketControlTotals.completas}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Liberações preenchidas</p><p className="text-xl font-black text-white">{ticketControlTotals.liberacoes}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Recebimentos preenchidos</p><p className="text-xl font-black text-white">{ticketControlTotals.recebimentos}</p></div>
         </div>
         <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-2">Impressão</th><th>Faixa</th><th>Enviados</th><th>Lib.</th><th>Rec.</th><th>Viagens completas</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-slate-800 text-slate-300"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.inicio)} a {normalizeTicketNumber(r.fim)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
       </div>
