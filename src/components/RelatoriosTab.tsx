@@ -63,6 +63,12 @@ interface RelatoriosTabProps {
   apontamentoRamoRegistros: ApontamentoRamoRegistro[];
 }
 
+const formatFuelReportNumber = (value: number) =>
+  Number(value || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+
 type ReportType = 
   | 'consumo_frota' 
   | 'consumo_empresa' 
@@ -467,14 +473,14 @@ export default function RelatoriosTab({
         tableHeaders = ['Frota', 'Descrição', 'Empresa', ...produtoColunas, 'Localização'];
         const totaisRow = [
           'TOTAIS', '', '',
-          ...produtoColunas.map(nome => produtoTotais[nome].toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+          ...produtoColunas.map(nome => formatFuelReportNumber(produtoTotais[nome])),
           ''
         ];
         const dataRows = (results as any[]).map(r => [
           r.eq.prefixo,
           r.eq.nome,
           r.company,
-          ...produtoColunas.map(nome => r.produtos[nome] !== undefined ? r.produtos[nome].toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '-'),
+          ...produtoColunas.map(nome => r.produtos[nome] !== undefined ? formatFuelReportNumber(r.produtos[nome]) : '-'),
           r.localizacao
         ]);
         tableRows = [totaisRow, ...dataRows];
@@ -750,14 +756,14 @@ export default function RelatoriosTab({
         headers = ['Frota', 'Descrição', 'Empresa', ...produtoColunas, 'Localização'];
         totalsRow = [
           'TOTAIS', '', '',
-          ...produtoColunas.map(nome => produtoTotais[nome].toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+          ...produtoColunas.map(nome => formatFuelReportNumber(produtoTotais[nome])),
           ''
         ];
         rows = (results as any[]).map(r => [
           r.eq.prefixo,
           r.eq.nome,
           r.company,
-          ...produtoColunas.map(nome => r.produtos[nome] !== undefined ? r.produtos[nome].toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '-'),
+          ...produtoColunas.map(nome => r.produtos[nome] !== undefined ? formatFuelReportNumber(r.produtos[nome]) : '-'),
           r.localizacao
         ]);
       } else if (reportType === 'consumo_empresa') {
@@ -1310,7 +1316,7 @@ export default function RelatoriosTab({
                       <tr className="bg-slate-950/40 font-black">
                         <td className="py-2.5 px-3" colSpan={3}>TOTAIS</td>
                         {produtoColunas.map(nome => (
-                          <td key={nome} className="py-2.5 px-3 text-right text-emerald-400 font-mono">{produtoTotais[nome].toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                          <td key={nome} className="py-2.5 px-3 text-right text-emerald-400 font-mono">{formatFuelReportNumber(produtoTotais[nome])}</td>
                         ))}
                         <td className="py-2.5 px-3" />
                       </tr>
@@ -1321,7 +1327,7 @@ export default function RelatoriosTab({
                           <td className="py-3 px-3 text-slate-400">{r.company}</td>
                           {produtoColunas.map(nome => (
                             <td key={nome} className="py-3 px-3 text-right text-white font-mono">
-                              {r.produtos[nome] !== undefined ? r.produtos[nome].toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '-'}
+                              {r.produtos[nome] !== undefined ? formatFuelReportNumber(r.produtos[nome]) : '-'}
                             </td>
                           ))}
                           <td className="py-3 px-3 text-slate-300">{r.localizacao}</td>

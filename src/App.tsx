@@ -100,6 +100,7 @@ import {
   deletePublicTicket,
   loadPublicTickets,
   reservePublicTicketNumber,
+  reservePublicTicketNumbers,
   savePublicTicket,
 } from './firebaseTickets';
 import {
@@ -1702,6 +1703,7 @@ export default function App() {
   };
 
   const handleReserveTicketNumber = () => reservePublicTicketNumber(db, ticketsJazida);
+  const handleReserveTicketNumbers = (count: number) => reservePublicTicketNumbers(db, ticketsJazida, count);
 
   const handleSaveTicketLink = async (
     item: TicketJazida,
@@ -3676,6 +3678,7 @@ export default function App() {
                 onDeleteTicket={handleDeleteTicketJazida}
                 onImportTickets={handleImportTicketsJazida}
                 onReserveTicketNumber={handleReserveTicketNumber}
+                onReserveTicketNumbers={handleReserveTicketNumbers}
               />
             )}
 

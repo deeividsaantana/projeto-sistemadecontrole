@@ -40,6 +40,7 @@ interface TicketsJazidaTabProps {
   onDeleteTicket: (id: string) => void;
   onImportTickets: (items: TicketJazida[]) => void;
   onReserveTicketNumber: () => Promise<string>;
+  onReserveTicketNumbers: (count: number) => Promise<string[]>;
 }
 
 const TIPOS_MATERIAL: TipoMaterialJazida[] = ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Argila', 'Mataco', 'Solo mole', 'Outros'];
@@ -238,7 +239,7 @@ const generateTicketBookPdf = async (
   doc.save(fileName);
 };
 
-export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber }: TicketsJazidaTabProps) {
+export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber, onReserveTicketNumbers }: TicketsJazidaTabProps) {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -264,7 +265,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [batchDestinoObra, setBatchDestinoObra] = useState<DestinoObraJazida>('Marginal');
   const [batchEmpresa, setBatchEmpresa] = useState<EmpresaTicketJazida>('RENEA');
   const [batchBlankForm, setBatchBlankForm] = useState(true);
-  const [batchPrintNumber, setBatchPrintNumber] = useState(false);
+  const [batchPrintNumber, setBatchPrintNumber] = useState(true);
   const [batchSaveDrafts, setBatchSaveDrafts] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -629,7 +630,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setBatchDestinoObra('Marginal');
     setBatchEmpresa('RENEA');
     setBatchBlankForm(true);
-    setBatchPrintNumber(false);
+    setBatchPrintNumber(true);
     setBatchSaveDrafts(false);
     setValidationError('');
     setImportMessage('');
@@ -640,20 +641,22 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setValidationError('');
     setImportMessage('');
     const quantity = Math.max(1, Math.min(200, Math.floor(Number(batchQuantity) || 0)));
-    if ((batchPrintNumber || batchSaveDrafts) && !batchStartNumber.trim()) { setValidationError('Informe o primeiro número da sequência.'); return; }
+    if (!batchBlankForm && (batchPrintNumber || batchSaveDrafts) && !batchStartNumber.trim()) { setValidationError('Informe o primeiro número da sequência.'); return; }
     if (!batchBlankForm && !batchDate) { setValidationError('Informe a data dos tickets.'); return; }
-
-    const sequenceStart = batchStartNumber.trim() || '1';
-    const numbers = Array.from({ length: quantity }, (_, index) => formatSequentialNumber(sequenceStart, index));
-    const existing = new Set(tickets.map(ticket => `${ticket.tipoTicket || 'Liberação'}|${ticket.ticketNumero}`.toLowerCase()));
-    const duplicate = batchSaveDrafts ? numbers.find(number => existing.has(`liberação|${number}`.toLowerCase())) : undefined;
-    if (duplicate) {
-      setValidationError(`O Ticket Nº ${duplicate} já existe em liberação. Ajuste o início da sequência.`);
-      return;
-    }
 
     setIsBatchPrinting(true);
     try {
+      const sequenceStart = batchStartNumber.trim() || '1';
+      const numbers = batchBlankForm
+        ? await onReserveTicketNumbers(quantity)
+        : Array.from({ length: quantity }, (_, index) => formatSequentialNumber(sequenceStart, index));
+      const existing = new Set(tickets.map(ticket => `${ticket.tipoTicket || 'Liberação'}|${ticket.ticketNumero}`.toLowerCase()));
+      const duplicate = batchSaveDrafts ? numbers.find(number => existing.has(`liberação|${number}`.toLowerCase())) : undefined;
+      if (duplicate) {
+        setValidationError(`O Ticket Nº ${duplicate} já existe em liberação. Ajuste o início da sequência.`);
+        return;
+      }
+
       const now = new Date().toISOString();
       const releaseTickets = numbers.map(number => buildBatchTicket(number, 'Liberação', now));
       const pairs = releaseTickets.map(releaseTicket => ({
@@ -1178,11 +1181,12 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setIsBatchPrinting(true);
     try {
       const now = new Date().toISOString();
+      const reservedNumber = await onReserveTicketNumber();
       const releaseTicket: TicketJazida = {
         id: `ticket-em-branco-lib-${Date.now()}`,
         data: '',
         tipoTicket: 'Liberação',
-        ticketNumero: '',
+        ticketNumero: reservedNumber,
         prefixo: '',
         placa: '',
         horaSaida: '',
@@ -1197,7 +1201,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         criadoEm: now,
         atualizadoEm: now,
         impressaoEmBranco: true,
-        ocultarNumeroImpressao: true,
+        ocultarNumeroImpressao: false,
       };
       const receiptTicket: TicketJazida = {
         ...releaseTicket,
@@ -1205,8 +1209,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         tipoTicket: 'Recebimento',
         horaChegada: '',
       };
-      await generateTicketBookPdf([{ releaseTicket, receiptTicket }], 'ticket_em_branco.pdf');
-      setImportMessage('Formulário totalmente em branco enviado para PDF sem criar registro no sistema.');
+      await generateTicketBookPdf([{ releaseTicket, receiptTicket }], `ticket_em_branco_${reservedNumber}.pdf`);
+      setImportMessage(`Ticket Nº ${reservedNumber} gerado com apenas a numeração preenchida.`);
     } catch (err) {
       console.error('Erro ao gerar formulário de ticket em branco:', err);
       setValidationError('Não foi possível gerar o formulário em branco.');
@@ -1255,7 +1259,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             type="button"
             onClick={handlePrintBlankForm}
             disabled={isBatchPrinting}
-            title="Gerar uma folha sem número, data, marcações ou valores preenchidos"
+            title="Gerar uma folha apenas com o próximo número sequencial preenchido"
             className="inline-flex min-h-10 items-center gap-2 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-xs font-black text-emerald-300 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50"
           >
             <Printer className="w-4 h-4" />
@@ -1765,12 +1769,21 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
             <div className="grid gap-2 sm:grid-cols-3">
               <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchBlankForm ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
-                <input type="checkbox" checked={batchBlankForm} onChange={e => setBatchBlankForm(e.target.checked)} className="mt-0.5 accent-emerald-500" />
-                <span><strong className="block text-[11px] text-slate-100">Formulário totalmente em branco</strong><small className="block text-[9px] text-slate-500">Sem data, veículo, material, quantidade, destino ou marcações.</small></span>
+                <input
+                  type="checkbox"
+                  checked={batchBlankForm}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setBatchBlankForm(checked);
+                    if (checked) setBatchPrintNumber(true);
+                  }}
+                  className="mt-0.5 accent-emerald-500"
+                />
+                <span><strong className="block text-[11px] text-slate-100">Somente a numeração</strong><small className="block text-[9px] text-slate-500">Todos os demais campos ficam vazios para preencher à caneta.</small></span>
               </label>
               <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchPrintNumber ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
-                <input type="checkbox" checked={batchPrintNumber} onChange={e => setBatchPrintNumber(e.target.checked)} className="mt-0.5 accent-emerald-500" />
-                <span><strong className="block text-[11px] text-slate-100">Imprimir número sequencial</strong><small className="block text-[9px] text-slate-500">Desmarcado deixa também o Ticket Nº vazio.</small></span>
+                <input type="checkbox" checked={batchPrintNumber} disabled={batchBlankForm} onChange={e => setBatchPrintNumber(e.target.checked)} className="mt-0.5 accent-emerald-500 disabled:cursor-not-allowed" />
+                <span><strong className="block text-[11px] text-slate-100">Imprimir número sequencial</strong><small className="block text-[9px] text-slate-500">Obrigatório quando os demais campos estão em branco.</small></span>
               </label>
               <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchSaveDrafts ? 'border-amber-500/50 bg-amber-500/10' : 'border-slate-800 bg-slate-950'}`}>
                 <input type="checkbox" checked={batchSaveDrafts} onChange={e => setBatchSaveDrafts(e.target.checked)} className="mt-0.5 accent-amber-500" />
@@ -1781,7 +1794,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Primeiro ticket</label>
-                <input value={batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} disabled={!batchPrintNumber && !batchSaveDrafts} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40" />
+                <input value={batchBlankForm ? 'Automático' : batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} disabled={batchBlankForm || (!batchPrintNumber && !batchSaveDrafts)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40" />
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade</label>
@@ -1824,8 +1837,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-[10px] text-slate-400">
-              {batchBlankForm && !batchPrintNumber
-                ? `${Math.max(1, Math.min(200, Number(batchQuantity) || 1))} formulário(s) com todos os campos e o número em branco.`
+              {batchBlankForm
+                ? `${Math.max(1, Math.min(200, Number(batchQuantity) || 1))} ticket(s) somente com a numeração sequencial automática; demais campos vazios.`
                 : <>Sequência: {batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até {batchStartNumber ? formatSequentialNumber(batchStartNumber, Math.max(0, Math.min(200, Number(batchQuantity) || 1) - 1)) : '-'}.</>}
             </div>
 

@@ -902,7 +902,7 @@ export default function LancamentosTab({
       ];
 
       ws.getColumn(1).numFmt = 'dd/mm/yyyy';
-      [5, 6, 7, 10, 11].forEach(col => { ws.getColumn(col).numFmt = '#,##0.00'; });
+      [5, 6, 7, 10, 11].forEach(col => { ws.getColumn(col).numFmt = '#,##0.##'; });
       ws.eachRow((row, rowNumber) => {
         row.eachCell({ includeEmpty: true }, cell => {
           cell.border = {
