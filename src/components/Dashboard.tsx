@@ -399,7 +399,39 @@ export default function Dashboard({
   const PIE_COLORS = ['#10b981', '#34d399', '#059669', '#047857', '#6ee7b7'];
 
   // 6. Dynamic Alerts & Pendencies
-  const pendingAlerts: { id: string; type: 'warning' | 'info' | 'danger'; text: string; details: string }[] = [];
+  const pendingAlerts: { id: string; type: 'warning' | 'info' | 'danger'; text: string; details: string; tab?: string }[] = [];
+
+  const fuelRecordsForReview = abastecimentos.filter(item =>
+    (item.status && item.status !== 'OK') ||
+    !item.equipamentoId ||
+    (item.alertas || []).some(alert => alert.severidade === 'critico' || alert.severidade === 'aviso')
+  );
+  if (fuelRecordsForReview.length > 0) {
+    const unknownPrefixes = fuelRecordsForReview.filter(item => !item.equipamentoId).length;
+    pendingAlerts.push({
+      id: 'alert-fuel-review',
+      type: fuelRecordsForReview.some(item => item.status === 'Erro de importação') ? 'danger' : 'warning',
+      text: `${fuelRecordsForReview.length} abastecimento(s) para conferir`,
+      details: unknownPrefixes
+        ? `${unknownPrefixes} lançamento(s) têm prefixo ainda não vinculado. Os dados foram preservados.`
+        : 'Há divergências de bomba, leitura, quantidade ou possível duplicidade aguardando revisão.',
+      tab: 'lancamentos',
+    });
+  }
+
+  const activeSites = obras.filter(site => site.status === 'Ativa');
+  const sitesWithoutAttendanceToday = activeSites.filter(site =>
+    !listasPresenca.some(list => list.obraId === site.id && list.data === todayStr)
+  );
+  if (sitesWithoutAttendanceToday.length > 0) {
+    pendingAlerts.push({
+      id: 'alert-attendance-today',
+      type: 'info',
+      text: `${sitesWithoutAttendanceToday.length} obra(s) sem presença hoje`,
+      details: sitesWithoutAttendanceToday.slice(0, 3).map(site => site.nome).join(', '),
+      tab: 'presenca',
+    });
+  }
 
   // Maintenance equipment alerts
   equipamentos.filter(e => e.status === 'Manutenção').forEach(eq => {
@@ -1043,12 +1075,12 @@ export default function Dashboard({
                   : 'border-blue-500/20 bg-blue-500/5 text-blue-400';
 
                 return (
-                  <div key={alert.id} className={`border p-3 rounded-xl space-y-1 ${borderClass}`}>
+                  <button key={alert.id} type="button" onClick={() => alert.tab && onNavigate(alert.tab)} className={`block w-full border p-3 rounded-xl space-y-1 text-left ${borderClass} ${alert.tab ? 'cursor-pointer hover:brightness-125' : 'cursor-default'}`}>
                     <div className="flex items-start gap-1.5 justify-between">
                       <span className="text-xxs font-black uppercase tracking-wider block">{alert.text}</span>
                     </div>
                     <p className="text-xxs text-slate-400 leading-relaxed">{alert.details}</p>
-                  </div>
+                  </button>
                 );
               })
             )}

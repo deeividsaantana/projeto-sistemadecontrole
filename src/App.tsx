@@ -57,8 +57,7 @@ import {
   INITIAL_APONTAMENTO_RAMOS,
   INITIAL_APONTAMENTO_RAMO_REGISTROS,
   INITIAL_TICKETS_JAZIDA,
-  INITIAL_MATERIAIS_CADASTRO,
-  INITIAL_MATERIAIS_REGISTROS,
+  loadInitialMateriaisData,
   INITIAL_PARTES_DIARIAS_EQUIPAMENTOS
 } from './utils/initialData';
 
@@ -78,6 +77,11 @@ const ApontamentoRamoLinkExterno = lazy(() => import('./components/ApontamentoRa
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ParteDiariaEquipamentosTab = lazy(() => import('./components/ParteDiariaEquipamentosTab'));
+
+// A base histórica de materiais fica em um chunk separado para não pesar no
+// login e nas demais telas. Ela é carregada antes da hidratação dos dados.
+let INITIAL_MATERIAIS_CADASTRO: MaterialCadastro[] = [];
+let INITIAL_MATERIAIS_REGISTROS: MaterialRegistro[] = [];
 // Motion and Logo Import
 import { motion, AnimatePresence } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-branco.svg';
@@ -198,10 +202,19 @@ const NAVIGATION_GROUPS = [
   },
 ] as const;
 
+type NavigationItem = {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+};
+const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
+  .map(group => group.items as readonly NavigationItem[])
+  .reduce<NavigationItem[]>((items, groupItems) => items.concat(groupItems), []);
+
 type UserRole = 'admin' | 'gestor' | 'operador' | 'leitura';
 const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
-  admin: NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id)),
-  gestor: NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id)).filter(id => id !== 'configuracoes'),
+  admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
+  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => id !== 'configuracoes'),
   operador: ['dashboard', 'reports', 'partes-diarias', 'lancamentos', 'tickets-jazida', 'materiais', 'manutencao', 'presenca', 'controle-presenca', 'apontamentos'],
   leitura: ['dashboard', 'reports'],
 };
@@ -408,7 +421,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
-    const navigationItem = NAVIGATION_GROUPS.flatMap(group => group.items).find(item => item.id === activeTab);
+    const navigationItem = ALL_NAVIGATION_ITEMS.find(item => item.id === activeTab);
     if (!navigationItem) return;
     const timer = window.setTimeout(() => {
       void recordTabUsage(navigationItem.id, navigationItem.label);
@@ -422,9 +435,19 @@ export default function App() {
 
   // Hydrate states from localstorage on mount
   useEffect(() => {
-    // Links públicos recebem somente projeções mínimas da API. Nenhum cadastro,
-    // relatório ou backup administrativo é hidratado no navegador público.
-    if (externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
+    let cancelled = false;
+    const hydrateLocalData = async () => {
+      // Links públicos usam projeções mínimas e não precisam baixar a base
+      // histórica administrativa de materiais.
+      if (externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
+      try {
+        const materialData = await loadInitialMateriaisData();
+        if (cancelled) return;
+        INITIAL_MATERIAIS_CADASTRO = materialData.cadastro;
+        INITIAL_MATERIAIS_REGISTROS = materialData.registros;
+      } catch (error) {
+        console.error('Falha ao carregar a base histórica de materiais:', error);
+      }
 
     const isDataLoadedV2 = localStorage.getItem('renea_data_loaded_v2') === 'true';
 
@@ -600,6 +623,9 @@ export default function App() {
         localStorage.setItem('renea_materiais_planilha_v1', 'true');
       }
     }
+    };
+    void hydrateLocalData();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => onAuthStateChanged(auth, async user => {
@@ -2024,7 +2050,9 @@ export default function App() {
     };
 
     const initial = window.setTimeout(ingestOneDriveFuel, 3_000);
-    const interval = window.setInterval(ingestOneDriveFuel, 60_000);
+    // A origem é atualizada pelo agente a cada 10 minutos; consultar o mesmo
+    // payload a cada minuto apenas gerava tráfego e processamento repetido.
+    const interval = window.setInterval(ingestOneDriveFuel, 10 * 60_000);
     return () => {
       cancelled = true;
       window.clearTimeout(initial);

@@ -30,6 +30,7 @@ import {
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
+import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } from '../utils/ticketNumberSequence';
 import { jsPDF } from 'jspdf';
 import { TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
@@ -60,18 +61,6 @@ type PrintedTicketBatch = {
   numeros?: string[];
   modo?: 'Em branco' | 'Pré-preenchido';
 };
-
-const TICKET_PREFIX = '100';
-const normalizeTicketNumber = (value: string | number) => {
-  const digits = String(value ?? '').replace(/\D/g, '');
-  if (!digits) return '';
-  return digits.startsWith(TICKET_PREFIX) ? digits : `${TICKET_PREFIX}${digits}`;
-};
-const baseTicketNumber = (value: string | number) => {
-  const normalized = normalizeTicketNumber(value);
-  return normalized.startsWith(TICKET_PREFIX) ? Number(normalized.slice(TICKET_PREFIX.length)) : Number(normalized);
-};
-
 
 const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
   const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
@@ -278,6 +267,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [isBatchPrinting, setIsBatchPrinting] = useState(false);
   const [batchStartNumber, setBatchStartNumber] = useState('');
   const [batchQuantity, setBatchQuantity] = useState(10);
+  const [batchStep, setBatchStep] = useState(10);
   const [batchNumberMode, setBatchNumberMode] = useState<'automatico' | 'manual'>('manual');
   const [batchDirection, setBatchDirection] = useState<'crescente' | 'decrescente'>('crescente');
   const [batchFillMode, setBatchFillMode] = useState<'em-branco' | 'pre-preenchido'>('em-branco');
@@ -520,12 +510,14 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       empresa,
       observacao: observacao.trim(),
       status: 'OK',
-      statusFluxo: existing?.statusFluxo || 'Enviado',
+      statusFluxo: existing?.statusFluxo === 'Rascunho' ? 'Enviado' : existing?.statusFluxo || 'Enviado',
       unidadeQuantidade: existing?.unidadeQuantidade || 'm³',
       origemRegistro: existing?.origemRegistro || 'Admin',
       enviadoEm: existing?.enviadoEm || (isNew ? now : undefined),
       criadoEm: existing?.criadoEm || now,
       atualizadoEm: now,
+      impressaoEmBranco: false,
+      ocultarNumeroImpressao: false,
     }, isNew);
 
     setIsFormOpen(false);
@@ -643,6 +635,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const openBatchModal = () => {
     setBatchStartNumber('');
     setBatchQuantity(10);
+    setBatchStep(10);
     setBatchNumberMode('manual');
     setBatchDirection('crescente');
     setBatchFillMode('em-branco');
@@ -663,6 +656,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setValidationError('');
     setImportMessage('');
     const quantity = Math.max(1, Math.min(200, Math.floor(Number(batchQuantity) || 0)));
+    const step = Math.max(1, Math.floor(Number(batchStep) || 1));
     if (batchNumberMode === 'manual' && !batchStartNumber.trim()) {
       setValidationError('Informe o primeiro número da sequência.');
       return;
@@ -676,10 +670,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     try {
       const reserved = batchNumberMode === 'automatico'
         ? await onReserveTicketNumbers(quantity)
-        : Array.from({ length: quantity }, (_, index) => formatSequentialNumber(
-            batchStartNumber,
-            batchDirection === 'crescente' ? index : -index,
-          ));
+        : buildTicketNumberSequence(batchStartNumber, quantity, step, batchDirection);
       const numbers = reserved.filter(Boolean);
       if (numbers.length !== quantity) throw new Error('Faixa de numeração inválida.');
       const batchId = `lote-${Date.now()}`;
@@ -740,12 +731,15 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   }, [tickets]);
 
   const ticketControlRows = useMemo(() => printedBatches.map(batch => {
-    const total = Math.max(0, batch.fim - batch.inicio + 1);
+    const numbers = batch.numeros?.length
+      ? batch.numeros.map(baseTicketNumber).filter(Number.isFinite)
+      : Array.from({ length: Math.max(0, batch.fim - batch.inicio + 1) }, (_, index) => batch.inicio + index);
+    const total = numbers.length;
     let liberacoes = 0;
     let recebimentos = 0;
     let completas = 0;
 
-    for (let numero = batch.inicio; numero <= batch.fim; numero += 1) {
+    for (const numero of numbers) {
       const status = ticketCompletionIndex.get(numero);
       if (!status) continue;
       if (status.liberacao) liberacoes += 1;
@@ -753,7 +747,16 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       if (status.liberacao && status.recebimento) completas += 1;
     }
 
-    return { ...batch, total, liberacoes, recebimentos, completas, pendentes: total - completas };
+    return {
+      ...batch,
+      displayStart: numbers[0] ?? batch.inicio,
+      displayEnd: numbers.at(-1) ?? batch.fim,
+      total,
+      liberacoes,
+      recebimentos,
+      completas,
+      pendentes: total - completas,
+    };
   }), [printedBatches, ticketCompletionIndex]);
 
   const ticketControlTotals = useMemo(() => ticketControlRows.reduce((totals, row) => ({
@@ -768,7 +771,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Controle de tickets');
     ws.addRow(['Data da impressão', 'Numeração inicial', 'Numeração final', 'Tickets enviados', 'Liberações preenchidas', 'Recebimentos preenchidos', 'Viagens completas', 'Pendentes']);
-    ticketControlRows.forEach(r => ws.addRow([new Date(r.criadoEm).toLocaleString('pt-BR'), normalizeTicketNumber(r.inicio), normalizeTicketNumber(r.fim), r.total, r.liberacoes, r.recebimentos, r.completas, r.pendentes]));
+    ticketControlRows.forEach(r => ws.addRow([new Date(r.criadoEm).toLocaleString('pt-BR'), normalizeTicketNumber(r.displayStart), normalizeTicketNumber(r.displayEnd), r.total, r.liberacoes, r.recebimentos, r.completas, r.pendentes]));
     ws.columns.forEach(c => { c.width = 24; });
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -783,7 +786,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     const xs = [12, 58, 88, 118, 150, 172, 194, 246];
     headers.forEach((h,i) => doc.text(h, xs[i], 25));
     let y=32;
-    ticketControlRows.forEach(r => { if (y > 190) { doc.addPage(); y=18; } const vals=[new Date(r.criadoEm).toLocaleString('pt-BR'),normalizeTicketNumber(r.inicio),normalizeTicketNumber(r.fim),r.total,r.liberacoes,r.recebimentos,r.completas,r.pendentes]; vals.forEach((v,i)=>doc.text(String(v),xs[i],y)); y+=7; });
+    ticketControlRows.forEach(r => { if (y > 190) { doc.addPage(); y=18; } const vals=[new Date(r.criadoEm).toLocaleString('pt-BR'),normalizeTicketNumber(r.displayStart),normalizeTicketNumber(r.displayEnd),r.total,r.liberacoes,r.recebimentos,r.completas,r.pendentes]; vals.forEach((v,i)=>doc.text(String(v),xs[i],y)); y+=7; });
     doc.save('controle_tickets_jazida.pdf');
   };
 
@@ -959,37 +962,52 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           const prefixoImportado = String(getValue(row, 'prefixo') || '').trim().toUpperCase();
           const placaImportada = String(getValue(row, 'placa') || '').trim().toUpperCase();
           const quantidadeImportada = parseNumberValue(getValue(row, 'quantidadeM3'));
-          if (!dataImportada || !ticketImportado || !prefixoImportado || !quantidadeImportada) {
+          const materialImportado = getValue(row, 'tipoMaterial');
+          const destinoImportado = getValue(row, tipo === 'Recebimento' ? 'ramoDescarga' : 'destinoObra');
+          const hasRecognizedValue = Boolean(
+            dataImportada || ticketImportado || prefixoImportado || placaImportada || quantidadeImportada || materialImportado || destinoImportado
+          );
+          if (!hasRecognizedValue) {
             ignored += 1;
             return;
           }
           const key = `${tipo}|${dataImportada}|${ticketImportado}|${prefixoImportado}`.toLowerCase();
-          if (seen.has(key)) {
-            ignored += 1;
-            return;
-          }
+          const duplicate = Boolean(ticketImportado && seen.has(key));
           seen.add(key);
           const hora = parseTimeValue(getValue(row, tipo === 'Recebimento' ? 'horaChegada' : 'horaSaida')) || '00:00';
+          const missingFields = [
+            !dataImportada && 'data',
+            !ticketImportado && 'número',
+            !prefixoImportado && 'prefixo',
+            !quantidadeImportada && 'quantidade',
+          ].filter(Boolean) as string[];
+          const reviewNotes = [
+            `Importado de ${file.name} / ${ws.name} / linha ${rowNumber}`,
+            duplicate ? 'Possível duplicidade preservada para conferência.' : '',
+            missingFields.length ? `Campos pendentes: ${missingFields.join(', ')}.` : '',
+          ].filter(Boolean);
           imported.push({
             id: `ticket-import-${Date.now()}-${rowNumber}-${imported.length}`,
-            data: dataImportada,
+            data: dataImportada || '',
             tipoTicket: tipo,
-            ticketNumero: ticketImportado,
+            ticketNumero: ticketImportado ? normalizeTicketNumber(ticketImportado) : '',
             prefixo: prefixoImportado,
             placa: placaImportada,
             familiaEquipamento: String(getValue(row, 'familiaEquipamento') || '').trim(),
             equipamentoNome: String(getValue(row, 'equipamentoNome') || '').trim(),
             horaChegada: tipo === 'Recebimento' ? hora : undefined,
             horaSaida: tipo === 'Liberação' ? hora : '',
-            tipoMaterial: normalizeMaterialValue(getValue(row, 'tipoMaterial')),
+            tipoMaterial: normalizeMaterialValue(materialImportado),
             quantidadeM3: quantidadeImportada,
-            destinoObra: normalizeDestinoValue(getValue(row, tipo === 'Recebimento' ? 'ramoDescarga' : 'destinoObra')),
+            destinoObra: normalizeDestinoValue(destinoImportado),
             estaca: tipo === 'Recebimento' ? String(getValue(row, 'estaca') || '').trim() : '',
             responsavelLiberacao: '',
             nomeLegivel: '',
             empresa: normalizeEmpresaValue(getValue(row, 'empresa')),
-            observacao: `Importado de ${file.name} / ${ws.name}`,
-            status: normalizeStatusValue(getValue(row, 'status')),
+            observacao: reviewNotes.join(' | '),
+            status: duplicate ? 'Duplicado' : missingFields.length ? 'Erro de importação' : normalizeStatusValue(getValue(row, 'status')),
+            statusFluxo: missingFields.length ? 'Rascunho' : 'Enviado',
+            origemRegistro: 'Importação',
             criadoEm: new Date().toISOString(),
             atualizadoEm: new Date().toISOString(),
           });
@@ -997,7 +1015,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       });
 
       if (imported.length === 0) {
-        setValidationError(`Nenhum ticket novo foi encontrado. ${ignored ? `${ignored} linha(s) foram ignoradas por erro ou duplicidade.` : 'Confira se a planilha tem as abas LIBERAÇÃO e RECEBIMENTO.'}`);
+        setValidationError(`Nenhum dado de ticket foi reconhecido. ${ignored ? `${ignored} linha(s) estavam vazias ou sem qualquer coluna reconhecível.` : 'Confira se a planilha tem as abas LIBERAÇÃO e RECEBIMENTO.'}`);
         return;
       }
       setPendingImport({ fileName: file.name, items: imported, ignored });
@@ -1014,7 +1032,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     if (!pendingImport || isConfirmingImport) return;
     setIsConfirmingImport(true);
     onImportTickets(pendingImport.items);
-    setImportMessage(`${pendingImport.items.length} ticket(s) importado(s) de ${pendingImport.fileName}.${pendingImport.ignored ? ` ${pendingImport.ignored} linha(s) ignorada(s).` : ''}`);
+    setImportMessage(`${pendingImport.items.length} ticket(s) importado(s) de ${pendingImport.fileName}.${pendingImport.ignored ? ` ${pendingImport.ignored} linha(s) sem dados reconhecíveis não foram importadas.` : ''}`);
     setPendingImport(null);
     setIsConfirmingImport(false);
   };
@@ -1342,7 +1360,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           Material: item.tipoMaterial,
           Quantidade: item.quantidadeM3
         }))}
-        note="As abas LIBERAÇÃO e RECEBIMENTO são lidas juntas. Tickets repetidos ou incompletos ficam fora da importação."
+        note="As abas LIBERAÇÃO e RECEBIMENTO são lidas juntas. Linhas incompletas e possíveis duplicidades são preservadas como rascunho/conferência para você corrigir, sem sumirem silenciosamente."
         confirming={isConfirmingImport}
         onCancel={() => setPendingImport(null)}
         onConfirm={confirmTicketsImport}
@@ -1865,7 +1883,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Liberações preenchidas</p><p className="text-xl font-black text-white">{ticketControlTotals.liberacoes}</p></div>
           <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Recebimentos preenchidos</p><p className="text-xl font-black text-white">{ticketControlTotals.recebimentos}</p></div>
         </div>
-        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-2">Impressão</th><th>Faixa</th><th>Enviados</th><th>Lib.</th><th>Rec.</th><th>Viagens completas</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-slate-800 text-slate-300"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.inicio)} a {normalizeTicketNumber(r.fim)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
+        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-2">Impressão</th><th>Faixa</th><th>Enviados</th><th>Lib.</th><th>Rec.</th><th>Viagens completas</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-slate-800 text-slate-300"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.displayStart)} a {normalizeTicketNumber(r.displayEnd)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
       </div>
 
       {isBatchModalOpen && (
@@ -1899,7 +1917,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               </label>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Numeração</label>
                 <select value={batchNumberMode} onChange={e => setBatchNumberMode(e.target.value as 'automatico' | 'manual')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
@@ -1921,6 +1939,10 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                   <option value="crescente">Crescente</option>
                   <option value="decrescente">Decrescente</option>
                 </select>
+              </div>
+              <div className={`space-y-1 ${batchNumberMode === 'automatico' ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Intervalo</label>
+                <input type="number" min="1" max="1000" value={batchStep} onChange={e => setBatchStep(Number(e.target.value))} disabled={batchNumberMode === 'automatico'} title="Ex.: 10 gera 100320, 100310, 100300" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data</label>
@@ -1964,7 +1986,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               {batchFillMode === 'em-branco' ? 'apenas com a numeração' : 'com os campos escolhidos pré-preenchidos'}.
               {batchNumberMode === 'automatico'
                 ? ' A próxima faixa será reservada automaticamente.'
-                : ` Faixa ${batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até ${batchStartNumber ? formatSequentialNumber(batchStartNumber, (batchDirection === 'crescente' ? 1 : -1) * (Math.max(1, Math.min(200, Number(batchQuantity) || 1)) - 1)) : '-'}.`}
+                : ` Faixa ${batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até ${batchStartNumber ? formatSequentialNumber(batchStartNumber, (batchDirection === 'crescente' ? 1 : -1) * Math.max(1, Number(batchStep) || 1) * (Math.max(1, Math.min(200, Number(batchQuantity) || 1)) - 1)) : '-'}, em intervalos de ${Math.max(1, Number(batchStep) || 1)}.`}
             </div>
 
             {validationError && (

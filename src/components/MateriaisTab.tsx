@@ -216,7 +216,19 @@ const buildRegistroFromGenericRow = (
   const material = getImportValue(row, ['material', 'produto', 'insumo', 'descricao', 'descrição']);
   const quantidade = parseImportNumber(getImportValue(row, ['quantidade', 'qtd', 'qtde', 'peso', 'volume', 'm3', 'm³', 'total m3', 'total m³']));
   const totalM3 = parseImportNumber(getImportValue(row, ['total m3', 'total m³', 'volume total', 'm3 total', 'm³ total']));
-  if (!data || !material || (quantidade === 0 && totalM3 === 0)) return null;
+  const fornecedor = getImportValue(row, ['fornecedor', 'empresa', 'origem fornecedor']);
+  const placa = getImportValue(row, ['placa', 'veiculo', 'veículo', 'caminhao', 'caminhão']);
+  const prefixo = getImportValue(row, ['prefixo', 'frota', 'equipamento']);
+  const nota = getImportValue(row, ['nota', 'nf', 'nota fiscal', 'documento']);
+  const origem = getImportValue(row, ['origem', 'local origem', 'retirada', 'jazida']);
+  const destino = getImportValue(row, ['destino', 'descarga', 'local', 'obra']);
+  const hasRecognizedValue = Boolean(data || material || quantidade || totalM3 || fornecedor || placa || prefixo || nota || origem || destino);
+  if (!hasRecognizedValue) return null;
+  const missingFields = [
+    !data && 'data',
+    !material && 'material',
+    quantidade === 0 && totalM3 === 0 && 'quantidade',
+  ].filter(Boolean) as string[];
 
   const valorUnitario = parseImportNumber(getImportValue(row, ['valor unitario', 'valor unitário', 'vl unitario', 'vl unitário', 'preco', 'preço']));
   const total = parseImportNumber(getImportValue(row, ['total', 'valor total', 'vl total']));
@@ -225,24 +237,27 @@ const buildRegistroFromGenericRow = (
 
   return compact({
     id: `mat-import-${Date.now()}-${sourceName.replace(/\W+/g, '-')}-${index}-${Math.floor(Math.random() * 10000)}`,
-    data,
+    data: data || todayInput(),
     aba: sourceName || 'Importação',
-    material,
+    material: material || 'PENDENTE DE IDENTIFICAÇÃO',
     unidade,
     quantidade: quantidade || totalM3,
     suporte: parseImportNumber(getImportValue(row, ['suporte', 'ticket', 'romaneio', 'vale'])),
-    fornecedor: getImportValue(row, ['fornecedor', 'empresa', 'origem fornecedor']),
-    placa: getImportValue(row, ['placa', 'veiculo', 'veículo', 'caminhao', 'caminhão']),
-    prefixo: getImportValue(row, ['prefixo', 'frota', 'equipamento']),
-    nota: getImportValue(row, ['nota', 'nf', 'nota fiscal', 'documento']),
-    origem: getImportValue(row, ['origem', 'local origem', 'retirada', 'jazida']),
-    destino: getImportValue(row, ['destino', 'descarga', 'local', 'obra']),
+    fornecedor,
+    placa,
+    prefixo,
+    nota,
+    origem,
+    destino,
     valorUnitario,
     total,
     volumeCacamba,
     totalM3,
-    status: materialStatusFromImport(getImportValue(row, ['status', 'situacao', 'situação'])),
-    observacao: getImportValue(row, ['observacao', 'observação', 'obs']),
+    status: missingFields.length ? 'Pendente' : materialStatusFromImport(getImportValue(row, ['status', 'situacao', 'situação'])),
+    observacao: [
+      getImportValue(row, ['observacao', 'observação', 'obs']),
+      missingFields.length ? `Importação preservada para revisão. Campos pendentes: ${missingFields.join(', ')}.` : '',
+    ].filter(Boolean).join(' | '),
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString()
   });

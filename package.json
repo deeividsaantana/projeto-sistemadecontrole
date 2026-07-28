@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "node scripts/clean.mjs",
     "lint": "tsc --noEmit",
+    "test": "tsx tests/run.ts",
     "provision:staff": "node scripts/provision-staff.mjs",
     "publicar": "node scripts/publicar-tudo.mjs",
     "publicar:check": "node scripts/publicar-tudo.mjs --check"

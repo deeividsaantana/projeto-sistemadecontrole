@@ -37,6 +37,7 @@ import {
   findEquipmentByPrefix,
   normalizeQuickTime,
 } from '../utils/combustivelValidation';
+import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { analyzeFuelDocumentLocally, buildFuelOperationalAnalysis } from '../utils/fuelDocumentParsing';
 import type { OperationalAnalysis } from '../utils/operationalAnalysis';
 import {
@@ -352,10 +353,18 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setSearch('');
   };
 
-  const getLastPump = (comboioId: string, referenceDate = today()) =>
-    auditedRecords
-      .filter((item) => item.comboioId === comboioId && item.data <= referenceDate)
-      .sort((a, b) => `${b.data}T${b.hora}`.localeCompare(`${a.data}T${a.hora}`))[0]?.bombaFinal || 0;
+  const getLastPump = (
+    comboioId: string,
+    referenceDate = today(),
+    referenceTime = '',
+    excludeId = editingId || '',
+  ) => findPreviousPumpForConvoy(
+    auditedRecords,
+    comboioId,
+    referenceDate,
+    referenceTime,
+    excludeId,
+  )?.bombaFinal || 0;
 
   const [entryDate, setEntryDate] = useState(today());
   const [entryFuel, setEntryFuel] = useState(combustiveis[0]?.id || '');
@@ -434,6 +443,17 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         if (field === 'bombaInicial') next.bombaFinal = normalizeFuelNumber(Number(value || 0) + Number(next.quantidadeLitros || 0));
         if (field === 'bombaFinal')
           next.quantidadeLitros = normalizeFuelNumber(Math.max(0, Number(value || 0) - Number(next.bombaInicial || 0)));
+        if (field === 'hora' && originalIndex === 0 && !editingId) {
+          const normalizedTime = normalizeQuickTime(String(value));
+          if (normalizedTime.valid) {
+            const previousSuggestion = getLastPump(entryComboio, entryDate, current[0].hora);
+            const nextSuggestion = getLastPump(entryComboio, entryDate, normalizedTime.value);
+            if (next.bombaInicial === 0 || next.bombaInicial === previousSuggestion) {
+              next.bombaInicial = normalizeFuelNumber(nextSuggestion);
+              next.bombaFinal = normalizeFuelNumber(nextSuggestion + next.quantidadeLitros);
+            }
+          }
+        }
         return next;
       });
       const index = rows.findIndex((row) => row.id === id);

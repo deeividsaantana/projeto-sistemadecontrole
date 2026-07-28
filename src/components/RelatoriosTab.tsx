@@ -298,32 +298,61 @@ export default function RelatoriosTab({
       }
 
       case 'resumo_obra': {
-        // RDO summaries by site
-        const summary: { [id: string]: { site: ObraLocal; rdoCount: number; averageWorkers: number; doneServices: string[] } } = {};
+        const normalized = (value: string) => value.trim().toLocaleLowerCase('pt-BR');
+        const selectedCompanyName = empresas.find(empresa => empresa.id === filtroEmpresaId)?.nome || '';
 
-        rdos.forEach(r => {
-          if (!isWithinSelectedPeriod(r.data)) return;
-          if (filtroEmpresaId && r.empresaId !== filtroEmpresaId) return;
-          if (filtroObraId && r.obraLocalId !== filtroObraId) return;
+        return obras
+          .filter(site => !filtroObraId || site.id === filtroObraId)
+          .map(site => {
+            const siteEquipment = equipamentos.filter(eq => {
+              if (eq.localAtualId !== site.id) return false;
+              if (filtroEmpresaId && eq.empresaId !== filtroEmpresaId) return false;
+              if (filtroEquipamentoId && eq.id !== filtroEquipamentoId) return false;
+              return true;
+            });
+            const siteEquipmentIds = new Set(siteEquipment.map(eq => eq.id));
+            const fuelRecords = abastecimentos.filter(ab =>
+              isWithinSelectedPeriod(ab.data) && siteEquipmentIds.has(ab.equipamentoId)
+            );
+            const lubricationRecords = lubrificacoes.filter(lub =>
+              isWithinSelectedPeriod(lub.data) && siteEquipmentIds.has(lub.equipamentoId)
+            );
+            const presenceRecords = listasPresenca
+              .filter(lista => lista.obraId === site.id && isWithinSelectedPeriod(lista.data))
+              .flatMap(lista => lista.funcionarios)
+              .filter(item => {
+                if (!filtroEmpresaId) return true;
+                return funcionarios.find(funcionario => funcionario.id === item.funcionarioId)?.empresaId === filtroEmpresaId;
+              });
+            const pointingRecords = apontamentoRamoRegistros.filter(registro => {
+              if (!isWithinSelectedPeriod(registro.data)) return false;
+              if (normalized(registro.canteiroNome) !== normalized(site.nome)) return false;
+              if (selectedCompanyName && normalized(registro.empresa) !== normalized(selectedCompanyName)) return false;
+              return true;
+            });
 
-          const site = obras.find(o => o.id === r.obraLocalId);
-          if (!site) return;
-
-          if (!summary[site.id]) {
-            summary[site.id] = { site, rdoCount: 0, averageWorkers: 0, doneServices: [] };
-          }
-          summary[site.id].rdoCount += 1;
-          summary[site.id].averageWorkers += r.quantidadeEquipe;
-          summary[site.id].doneServices.push(`${r.data.split('-').reverse().join('/')}: ${r.servicoExecutado}`);
-        });
-
-        // Compute actual average
-        Object.keys(summary).forEach(id => {
-          const item = summary[id];
-          item.averageWorkers = Math.round(item.averageWorkers / item.rdoCount);
-        });
-
-        return Object.values(summary);
+            return {
+              site,
+              activeEquipment: siteEquipment.filter(eq => eq.status === 'Ativo' || eq.status === 'Mobilizado').length,
+              maintenanceEquipment: siteEquipment.filter(eq => eq.status === 'Manutenção' || eq.status === 'Parado').length,
+              fuelLiters: fuelRecords.reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0),
+              lubricationQuantity: lubricationRecords.reduce((sum, item) => sum + Number(item.quantidade || 0), 0),
+              presenceRecords: presenceRecords.length,
+              presentPeople: presenceRecords.filter(item => item.presente).length,
+              pointingRecords: pointingRecords.length,
+              pointedWorkers: pointingRecords.reduce((sum, item) => sum + totalQuantidade(item.funcoes), 0),
+              pointedEquipment: pointingRecords.reduce((sum, item) => sum + totalQuantidade(item.equipamentos), 0),
+            };
+          })
+          .filter(item =>
+            item.activeEquipment > 0 ||
+            item.maintenanceEquipment > 0 ||
+            item.fuelLiters > 0 ||
+            item.lubricationQuantity > 0 ||
+            item.presenceRecords > 0 ||
+            item.pointingRecords > 0
+          )
+          .sort((a, b) => b.fuelLiters - a.fuelLiters || a.site.nome.localeCompare(b.site.nome));
       }
 
       case 'presenca_lista': {
@@ -532,14 +561,19 @@ export default function RelatoriosTab({
           ];
         });
       } else if (reportType === 'resumo_obra') {
-        reportTitle = 'Consolidado e Resumo Geral por Canteiro de Obra';
-        reportDescription = 'Relatório integrado com volume de frentes de serviço e estimativa média de headcount por canteiro.';
-        tableHeaders = ['Canteiro de Obra', 'Frentes Lançadas', 'Média Headcount', 'Localização / Endereço'];
+        reportTitle = 'Consolidado Operacional por Canteiro de Obra';
+        reportDescription = 'Visão integrada de frota, abastecimento, lubrificação, presença e apontamentos por canteiro.';
+        tableHeaders = ['Canteiro', 'Frota ativa', 'Parados/manutenção', 'Combustível (L)', 'Lubrificação', 'Presentes', 'Apontamentos', 'Mão de obra apontada', 'Equipamentos apontados'];
         tableRows = (results as any[]).map(r => [
           r.site.nome,
-          r.rdoCount.toString(),
-          `${r.averageWorkers.toFixed(1)} pessoas`,
-          r.site.endereco
+          r.activeEquipment.toString(),
+          r.maintenanceEquipment.toString(),
+          formatFuelReportNumber(r.fuelLiters),
+          formatFuelReportNumber(r.lubricationQuantity),
+          `${r.presentPeople}/${r.presenceRecords}`,
+          r.pointingRecords.toString(),
+          r.pointedWorkers.toString(),
+          r.pointedEquipment.toString(),
         ]);
       } else if (reportType === 'presenca_lista') {
         reportTitle = 'Lista de Presença';
@@ -791,13 +825,18 @@ export default function RelatoriosTab({
           ];
         });
       } else if (reportType === 'resumo_obra') {
-        title = 'Resumo Geral por Obra';
-        headers = ['Canteiro de Obra', 'Frentes de Trabalho Lançadas', 'Média de Trabalhadores Ativos', 'Localização / Endereço'];
+        title = 'Consolidado Operacional por Obra';
+        headers = ['Canteiro', 'Frota ativa', 'Parados/manutenção', 'Combustível (L)', 'Lubrificação', 'Presentes', 'Apontamentos', 'Mão de obra apontada', 'Equipamentos apontados'];
         rows = (results as any[]).map(r => [
           r.site.nome,
-          r.rdoCount.toString(),
-          r.averageWorkers.toString(),
-          r.site.endereco
+          r.activeEquipment.toString(),
+          r.maintenanceEquipment.toString(),
+          r.fuelLiters,
+          r.lubricationQuantity,
+          `${r.presentPeople}/${r.presenceRecords}`,
+          r.pointingRecords.toString(),
+          r.pointedWorkers.toString(),
+          r.pointedEquipment.toString(),
         ]);
       } else if (reportType === 'presenca_lista') {
         title = 'Lista de Presença';
@@ -1043,7 +1082,7 @@ export default function RelatoriosTab({
             { id: 'lubrificacao_frota', label: 'Lubrificações da Frota', icon: Droplets, desc: 'Relatório de trocas de óleos e graxas.' },
             { id: 'equipamentos_mobilizados', label: 'Equipamentos Ativos', icon: Truck, desc: 'Frota ativa operando nas frentes de obra.' },
             { id: 'equipamentos_manutencao', label: 'Frota em Manutenção', icon: AlertTriangle, desc: 'Inventário sob custódia da oficina.' },
-            { id: 'resumo_obra', label: 'Resumo Geral por Obra', icon: MapPin, desc: 'Consolidado de trabalhadores e frentes.' },
+            { id: 'resumo_obra', label: 'Resumo Geral por Obra', icon: MapPin, desc: 'Frota, combustível, presença e apontamentos.' },
             { id: 'presenca_lista', label: 'Lista de Presença', icon: CheckCircle, desc: 'Relação de funcionários presentes/ausentes por dia e obra.' },
             { id: 'apontamentos_ramos', label: 'Apontamentos por Ramo', icon: BarChart3, desc: 'Quantitativos diários de mão de obra e equipamentos por ramo.' }
           ].map(r => {
@@ -1057,8 +1096,6 @@ export default function RelatoriosTab({
                   if (r.id === 'apontamentos_ramos') {
                     setFiltroObraId('');
                     setFiltroEmpresaId('');
-                    setFiltroEtapaId('');
-                    setFiltroStatus('');
                   }
                 }}
                 className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer block space-y-1 ${active ? 'bg-emerald-600/10 border-emerald-500 text-white' : 'bg-slate-905 border-transparent text-slate-400 hover:bg-slate-950/20 hover:text-slate-200'}`}
@@ -1189,7 +1226,7 @@ export default function RelatoriosTab({
                   {reportType === 'lubrificacao_frota' && `Intervenções de Lubrificação e Óleos aplicados`}
                   {reportType === 'equipamentos_mobilizados' && `Frota Ativa Mobilizada em Canteiros`}
                   {reportType === 'equipamentos_manutencao' && `Equipamentos Parados em Oficina`}
-                  {reportType === 'resumo_obra' && `Consolidado Estatístico de Mão de Obra por Canteiro`}
+                  {reportType === 'resumo_obra' && `Consolidado Operacional por Canteiro`}
                   {reportType === 'presenca_lista' && `Lista de Presença (${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')})`}
                   {reportType === 'apontamentos_ramos' && `Apontamentos por Ramo (${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')})`}
                 </h2>
@@ -1382,21 +1419,27 @@ export default function RelatoriosTab({
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
-                        <th className="pb-3 px-3">Canteiro de Obra / Local</th>
-                        <th className="pb-3 px-3">Endereço</th>
-                        <th className="pb-3 px-3 text-center">Frentes de Serviço</th>
-                        <th className="pb-3 px-3 text-center">Média de Trabalhadores</th>
-                        <th className="pb-3 px-3 text-right">Registros Históricos</th>
+                        <th className="pb-3 px-3">Canteiro</th>
+                        <th className="pb-3 px-3 text-center">Frota ativa</th>
+                        <th className="pb-3 px-3 text-center">Parados</th>
+                        <th className="pb-3 px-3 text-right">Combustível</th>
+                        <th className="pb-3 px-3 text-right">Lubrificação</th>
+                        <th className="pb-3 px-3 text-center">Presença</th>
+                        <th className="pb-3 px-3 text-center">Apontamentos</th>
+                        <th className="pb-3 px-3 text-center">M.O.</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-850">
                       {(results as any[]).map(item => (
                         <tr key={item.site.id} className="hover:bg-slate-950/20">
                           <td className="py-4 px-3 font-bold text-slate-100 text-sm">{item.site.nome}</td>
-                          <td className="py-4 px-3 text-slate-400">{item.site.endereco}</td>
-                          <td className="py-4 px-3 text-center text-slate-300 font-mono font-bold">{item.rdoCount} frentes</td>
-                          <td className="py-4 px-3 text-center text-emerald-400 font-mono font-black">{item.averageWorkers} pessoas</td>
-                          <td className="py-4 px-3 text-right text-slate-300 font-mono">{item.rdoCount} registros</td>
+                          <td className="py-4 px-3 text-center text-emerald-400 font-mono font-black">{item.activeEquipment}</td>
+                          <td className="py-4 px-3 text-center text-amber-300 font-mono font-bold">{item.maintenanceEquipment}</td>
+                          <td className="py-4 px-3 text-right text-slate-200 font-mono font-bold">{formatFuelReportNumber(item.fuelLiters)} L</td>
+                          <td className="py-4 px-3 text-right text-slate-300 font-mono">{formatFuelReportNumber(item.lubricationQuantity)}</td>
+                          <td className="py-4 px-3 text-center text-slate-300 font-mono">{item.presentPeople}/{item.presenceRecords}</td>
+                          <td className="py-4 px-3 text-center text-slate-300 font-mono">{item.pointingRecords}</td>
+                          <td className="py-4 px-3 text-center text-slate-300 font-mono">{item.pointedWorkers}</td>
                         </tr>
                       ))}
                     </tbody>

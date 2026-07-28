@@ -6,6 +6,7 @@ import type {
   TipoCombustivel,
 } from '../types';
 import type { OneDriveFuelRow } from '../oneDriveFuelSync';
+import { auditPumpContinuityByConvoy } from './fuelPumpSequence';
 
 const normalize = (value: unknown) => String(value ?? '')
   .normalize('NFD')
@@ -113,5 +114,29 @@ export const materializeOneDriveFuelRows = (
     } satisfies Abastecimento;
   });
 
-  return { records, fuelTypes: Array.from(createdFuelTypes.values()) };
+  const incomingIds = new Set(records.map(record => record.id));
+  const continuityIssues = new Map(
+    auditPumpContinuityByConvoy([
+      ...existing.filter(record => !incomingIds.has(record.id)),
+      ...records,
+    ]).map(issue => [issue.recordId, issue] as const),
+  );
+  const reviewedRecords = records.map(record => {
+    const issue = continuityIssues.get(record.id);
+    if (!issue) return record;
+    const alert: AlertaCombustivel = {
+      codigo: 'SEQUENCIA_BOMBA',
+      campo: 'bombaInicial',
+      severidade: 'aviso',
+      mensagem: 'A bomba inicial difere da última bomba final deste mesmo comboio. O registro foi mantido porque pode ser retroativo, reinício de medidor ou leitura informada na planilha.',
+      valorEsperado: issue.expectedStart.toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
+    };
+    return {
+      ...record,
+      alertas: [...(record.alertas || []).filter(item => item.codigo !== 'SEQUENCIA_BOMBA'), alert],
+      status: record.status === 'OK' ? 'Verificar sequência' as const : record.status,
+    };
+  });
+
+  return { records: reviewedRecords, fuelTypes: Array.from(createdFuelTypes.values()) };
 };

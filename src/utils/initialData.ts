@@ -33,10 +33,6 @@ import {
   IMPORTED_SEED_EQUIPAMENTOS,
   IMPORTED_SEED_TICKETS_JAZIDA
 } from './importedSpreadsheetSeed';
-import {
-  INITIAL_MATERIAIS_CADASTRO as IMPORTED_INITIAL_MATERIAIS_CADASTRO,
-  INITIAL_MATERIAIS_REGISTROS as IMPORTED_INITIAL_MATERIAIS_REGISTROS
-} from './initialMateriaisData';
 
 const mergeByKey = <T,>(base: T[], imported: T[], getKey: (item: T) => string) => {
   const keys = new Set(base.map(item => getKey(item)).filter(Boolean));
@@ -50,8 +46,16 @@ const mergeByKey = <T,>(base: T[], imported: T[], getKey: (item: T) => string) =
   return merged;
 };
 
-export const INITIAL_MATERIAIS_CADASTRO: MaterialCadastro[] = IMPORTED_INITIAL_MATERIAIS_CADASTRO;
-export const INITIAL_MATERIAIS_REGISTROS: MaterialRegistro[] = IMPORTED_INITIAL_MATERIAIS_REGISTROS;
+export const loadInitialMateriaisData = async (): Promise<{
+  cadastro: MaterialCadastro[];
+  registros: MaterialRegistro[];
+}> => {
+  const data = await import('./initialMateriaisData');
+  return {
+    cadastro: data.INITIAL_MATERIAIS_CADASTRO,
+    registros: data.INITIAL_MATERIAIS_REGISTROS,
+  };
+};
 
 export const INITIAL_EMPRESAS: Empresa[] = [
   { id: 'emp-1', nome: 'RENEA INFRAESTRUTURA S.A.', cnpj: '12.345.678/0001-90', telefone: '(11) 3214-9900', responsavel: 'Eng. Ricardo Renea' },
