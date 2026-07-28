@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { HistoryLog, PeriodoArquivado } from '../types';
+import { loadUsageSummary, type UsageSummary } from '../usageTelemetry';
 import { 
   Settings, 
   Clock, 
@@ -13,7 +14,6 @@ import {
   Download, 
   Upload, 
   BookOpen, 
-  Key, 
   Check, 
   AlertTriangle,
   Cloud,
@@ -23,7 +23,9 @@ import {
   WifiOff,
   Archive,
   FolderOpen,
-  CalendarDays
+  CalendarDays,
+  BarChart3,
+  ShieldCheck
 } from 'lucide-react';
 
 interface ConfiguracoesTabProps {
@@ -104,6 +106,25 @@ export default function ConfiguracoesTab({
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [syncMsg, setSyncMsg] = useState('');
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
+  const [usageLoading, setUsageLoading] = useState(true);
+  const [usageError, setUsageError] = useState('');
+
+  const refreshUsageSummary = async () => {
+    setUsageLoading(true);
+    setUsageError('');
+    try {
+      setUsageSummary(await loadUsageSummary(30));
+    } catch (error) {
+      setUsageError(error instanceof Error ? error.message : 'Não foi possível carregar o uso real.');
+    } finally {
+      setUsageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshUsageSummary();
+  }, []);
 
   const historyDateToIso = (timestamp: string) => {
     const match = String(timestamp || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -333,27 +354,62 @@ export default function ConfiguracoesTab({
         {/* Left 2 Columns: Credentials, Manuals and Backup actions */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Default Credentials Notice */}
+          {/* Secure access status */}
           <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-3 relative overflow-hidden">
             <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl w-fit">
-              <Key className="w-5 h-5" />
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Usuário e Senha Padrão (Administrador)</h2>
+              <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Acesso corporativo protegido</h2>
               <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                O sistema é protegido localmente com credenciais corporativas padrão para os comboistas e supervisores de engenharia.
+                O acesso usa contas individuais do Firebase e autorização de equipe. Senhas nunca são exibidas ou armazenadas nesta tela.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
-              <div>
-                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">Usuário de Acesso</span>
-                <span className="text-xs font-black text-emerald-400 font-mono block mt-0.5">admin</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">Senha de Acesso</span>
-                <span className="text-xs font-black text-white font-mono block mt-0.5">renea123</span>
-              </div>
+            <div className="flex items-center gap-2 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-bold text-emerald-300">
+              <Check className="h-4 w-4" /> Sessão autenticada e protegida por credencial individual
             </div>
+          </div>
+
+          {/* Real usage telemetry */}
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-3 bg-cyan-500/10 text-cyan-300 rounded-xl"><BarChart3 className="w-5 h-5" /></div>
+                <div>
+                  <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Uso real das abas</h2>
+                  <p className="text-xxs text-slate-400 mt-1">Contagem dos últimos 30 dias para decidir o que manter, simplificar ou retirar.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => void refreshUsageSummary()} disabled={usageLoading} className="h-9 px-3 rounded-lg border border-slate-700 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-50 flex items-center gap-1.5">
+                <RefreshCw className={`h-3.5 w-3.5 ${usageLoading ? 'animate-spin' : ''}`} /> Atualizar
+              </button>
+            </div>
+            {usageError ? (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{usageError}</div>
+            ) : usageLoading ? (
+              <div className="h-20 grid place-items-center text-xs text-slate-500">Carregando medição...</div>
+            ) : usageSummary && usageSummary.tabs.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><span className="block text-[9px] uppercase font-bold text-slate-500">Aberturas de abas</span><strong className="text-xl text-white">{usageSummary.totalViews.toLocaleString('pt-BR')}</strong></div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><span className="block text-[9px] uppercase font-bold text-slate-500">Usuários ativos</span><strong className="text-xl text-white">{usageSummary.activeUsers.toLocaleString('pt-BR')}</strong></div>
+                </div>
+                <div className="space-y-2">
+                  {usageSummary.tabs.map(item => {
+                    const percentage = usageSummary.totalViews ? Math.max(4, Math.round((item.count / usageSummary.totalViews) * 100)) : 0;
+                    return (
+                      <div key={item.id} className="grid grid-cols-[minmax(130px,1fr)_2fr_52px] items-center gap-3 text-xs">
+                        <span className="truncate text-slate-300">{item.label}</span>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${percentage}%` }} /></div>
+                        <strong className="text-right font-mono text-white">{item.count}</strong>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-5 text-xs text-slate-400">A medição começou agora. Os dados aparecerão conforme as abas forem abertas.</div>
+            )}
           </div>
 
           {/* User Operating Manual (Perfect answers for user requests) */}

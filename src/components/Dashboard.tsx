@@ -14,10 +14,8 @@ import {
   Comboio, 
   TipoCombustivel, 
   ProdutoLubrificacao, 
-  EtapaServico, 
   Abastecimento, 
   Lubrificacao, 
-  RdoDiario,
   HistoryLog,
   ListaPresenca,
   OrdemServico
@@ -44,12 +42,10 @@ import {
   Activity, 
   AlertTriangle, 
   Wrench, 
-  ClipboardList, 
   Clock, 
   TrendingUp, 
   ArrowUpRight,
-  ShieldAlert,
-  MapPin
+  ShieldAlert
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -60,10 +56,8 @@ interface DashboardProps {
   comboios: Comboio[];
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
-  etapas: EtapaServico[];
   abastecimentos: Abastecimento[];
   lubrificacoes: Lubrificacao[];
-  rdos: RdoDiario[];
   historyLogs: HistoryLog[];
   listasPresenca?: ListaPresenca[];
   ordensServico?: OrdemServico[];
@@ -78,10 +72,8 @@ export default function Dashboard({
   comboios,
   combustiveis,
   lubrificantes,
-  etapas,
   abastecimentos,
   lubrificacoes,
-  rdos,
   historyLogs,
   listasPresenca = [],
   ordensServico = [],
@@ -186,11 +178,6 @@ export default function Dashboard({
     if (siteLists.length > 0) {
       const latest = [...siteLists].sort((a, b) => b.data.localeCompare(a.data))[0];
       presentCount = latest.funcionarios.filter(f => f.presente).length;
-    } else {
-      const siteRdos = rdos.filter(r => r.obraLocalId === site.id);
-      if (siteRdos.length > 0) {
-        presentCount = Math.round(siteRdos.reduce((acc, curr) => acc + curr.quantidadeEquipe, 0) / siteRdos.length);
-      }
     }
     return {
       nome: site.nome,
@@ -226,7 +213,7 @@ export default function Dashboard({
     count: osAbertas.filter(os => os.tipo === tipo).length
   })).filter(x => x.count > 0);
 
-  type BuilderSource = 'abastecimentos' | 'lubrificacoes' | 'rdos' | 'presenca' | 'manutencao' | 'equipamentos' | 'historico';
+  type BuilderSource = 'abastecimentos' | 'lubrificacoes' | 'presenca' | 'manutencao' | 'equipamentos' | 'historico';
   type BuilderMetric = 'count' | 'litros' | 'quantidade' | 'equipe' | 'custo';
   type BuilderGroup = 'dia' | 'mes' | 'frota' | 'empresa' | 'obra' | 'status' | 'responsavel' | 'produto' | 'origem' | 'acao' | 'tela';
 
@@ -334,18 +321,6 @@ export default function Dashboard({
           tela: 'Lubrificação',
         };
       });
-    } else if (builderSource === 'rdos') {
-      records = rdos.map(item => ({
-        date: item.data,
-        value: builderMetric === 'equipe' || builderMetric === 'quantidade' ? Number(item.quantidadeEquipe || 0) : 1,
-        empresa: empresas.find(emp => emp.id === item.empresaId)?.nome || 'Sem empresa',
-        obra: obras.find(obra => obra.id === item.obraLocalId)?.nome || 'Sem obra',
-        status: item.statusAtividade,
-        responsavel: item.servicoExecutado || 'Serviço',
-        produto: etapas.find(etapa => etapa.id === item.etapaServicoId)?.nome || 'Sem etapa',
-        origem: 'Manual',
-        tela: 'RDO',
-      }));
     } else if (builderSource === 'presenca') {
       records = listasPresenca.map(item => {
         const presentes = item.funcionarios.filter(func => func.presente).length;
@@ -402,7 +377,7 @@ export default function Dashboard({
     }
 
     return records.filter(item => inRange(item.date));
-  }, [builderSource, builderMetric, builderStart, builderEnd, abastecimentos, lubrificacoes, rdos, listasPresenca, ordensServico, equipamentos, empresas, obras, combustiveis, lubrificantes, etapas, historyLogs, todayStr]);
+  }, [builderSource, builderMetric, builderStart, builderEnd, abastecimentos, lubrificacoes, listasPresenca, ordensServico, equipamentos, empresas, obras, combustiveis, lubrificantes, historyLogs, todayStr]);
 
   const builderData = useMemo(() => {
     const map = new Map<string, number>();
@@ -511,7 +486,7 @@ export default function Dashboard({
                 const source = event.target.value as BuilderSource;
                 setBuilderSource(source);
                 if (source === 'abastecimentos') setBuilderMetric('litros');
-                else if (source === 'rdos' || source === 'presenca') setBuilderMetric('equipe');
+                else if (source === 'presenca') setBuilderMetric('equipe');
                 else if (source === 'manutencao') setBuilderMetric('count');
                 else setBuilderMetric('count');
               }}
@@ -1082,62 +1057,8 @@ export default function Dashboard({
 
       </div>
 
-      {/* 5. Recent RDO & Audit Log row */}
+      {/* 5. Operational audit log */}
       <div className="grid grid-cols-1 gap-6" id="operational-audit-row">
-        {/* Left Column: Recent RDOs logged */}
-        <div className="hidden">
-          <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
-            <h3 className="text-xs uppercase tracking-widest font-black text-slate-400 font-mono flex items-center gap-1.5">
-              <ClipboardList className="w-4 h-4 text-emerald-400" />
-              RDOs Diários Recentes
-            </h3>
-            <button 
-              onClick={() => onNavigate('lancamentos')}
-              className="text-[10px] font-bold text-emerald-400 hover:underline cursor-pointer"
-            >
-              Lançar RDO
-            </button>
-          </div>
-
-          <div className="space-y-3.5">
-            {rdos.length === 0 ? (
-              <p className="text-xs text-slate-500 italic py-4 text-center">Nenhum RDO lançado até o momento.</p>
-            ) : (
-              rdos.slice(0, 3).map(rdo => {
-                const ob = obras.find(o => o.id === rdo.obraLocalId);
-                const et = etapas.find(e => e.id === rdo.etapaServicoId);
-                const statusColor = rdo.statusAtividade === 'Concluído' 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                  : rdo.statusAtividade === 'Andamento' 
-                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
-                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-
-                return (
-                  <div key={rdo.id} className="border border-slate-800/80 rounded-xl p-3.5 bg-slate-950/30 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xxs font-bold text-slate-400 font-mono flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-slate-500" />
-                        {ob ? ob.nome : 'Obra Geral'}
-                      </span>
-                      <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 px-2 py-0.5 rounded-md">
-                        {rdo.data.split('-').reverse().join('/')}
-                      </span>
-                    </div>
-                    <p className="text-xs font-semibold text-slate-200 line-clamp-1">{rdo.servicoExecutado}</p>
-                    <div className="flex items-center justify-between pt-1 text-xxs text-slate-400">
-                      <span>Equipe: {rdo.quantidadeEquipe} pessoas</span>
-                      <span className={`px-2 py-0.5 border text-[9px] font-bold rounded-full ${statusColor}`}>
-                        {rdo.statusAtividade}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Audit Logs timeline */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
             <h3 className="text-xs uppercase tracking-widest font-black text-slate-400 font-mono flex items-center gap-1.5">

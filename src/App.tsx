@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { 
   Empresa, 
   ObraLocal, 
@@ -63,21 +63,21 @@ import {
 } from './utils/initialData';
 
 // Subcomponents Imports
-import Dashboard from './components/Dashboard';
-import CadastrosTab from './components/CadastrosTab';
-import LancamentosTab from './components/LancamentosTab';
-import RelatoriosTab from './components/RelatoriosTab';
-import ConfiguracoesTab from './components/ConfiguracoesTab';
-import PresencaTab from './components/PresencaTab';
-import ManutencaoEquipamentosTab from './components/ManutencaoEquipamentosTab';
-import ControlePresencaTab from './components/ControlePresencaTab';
-import TicketsJazidaTab from './components/TicketsJazidaTab';
-import PresencaLinkExterno from './components/PresencaLinkExterno';
-import ApontamentoRamosTab from './components/ApontamentoRamosTab';
-import ApontamentoRamoLinkExterno from './components/ApontamentoRamoLinkExterno';
-import MateriaisTab from './components/MateriaisTab';
-import TicketLinkExterno from './components/TicketLinkExterno';
-import ParteDiariaEquipamentosTab from './components/ParteDiariaEquipamentosTab';
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
+const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
+const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
+const ConfiguracoesTab = lazy(() => import('./components/ConfiguracoesTab'));
+const PresencaTab = lazy(() => import('./components/PresencaTab'));
+const ManutencaoEquipamentosTab = lazy(() => import('./components/ManutencaoEquipamentosTab'));
+const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
+const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
+const PresencaLinkExterno = lazy(() => import('./components/PresencaLinkExterno'));
+const ApontamentoRamosTab = lazy(() => import('./components/ApontamentoRamosTab'));
+const ApontamentoRamoLinkExterno = lazy(() => import('./components/ApontamentoRamoLinkExterno'));
+const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
+const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
+const ParteDiariaEquipamentosTab = lazy(() => import('./components/ParteDiariaEquipamentosTab'));
 // Motion and Logo Import
 import { motion, AnimatePresence } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-branco.svg';
@@ -119,6 +119,7 @@ import {
 } from './publicApi';
 import { loadOneDriveFuelPayload, type OneDriveFuelSyncStatus } from './oneDriveFuelSync';
 import { materializeOneDriveFuelRows } from './utils/oneDriveFuelImport';
+import { recordTabUsage } from './usageTelemetry';
 
 // Icons Import
 import { 
@@ -196,6 +197,19 @@ const NAVIGATION_GROUPS = [
     ],
   },
 ] as const;
+
+type UserRole = 'admin' | 'gestor' | 'operador' | 'leitura';
+const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
+  admin: NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id)),
+  gestor: NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id)).filter(id => id !== 'configuracoes'),
+  operador: ['dashboard', 'reports', 'partes-diarias', 'lancamentos', 'tickets-jazida', 'materiais', 'manutencao', 'presenca', 'controle-presenca', 'apontamentos'],
+  leitura: ['dashboard', 'reports'],
+};
+const normalizeUserRole = (value: unknown): UserRole => (
+  value === 'gestor' || value === 'operador' || value === 'leitura' || value === 'admin'
+    ? value
+    : 'admin'
+);
 
 type CadastroImportTarget = 'empresas' | 'obras' | 'equipamentos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
 type CadastroImportRow = Record<string, string>;
@@ -321,10 +335,20 @@ const mergeRecordsById = <T extends { id: string }>(current: T[], incoming: T[])
   return Array.from(indexed.values());
 };
 
+const ScreenLoadingFallback = ({ label = 'Carregando módulo...' }: { label?: string }) => (
+  <div className="min-h-[240px] w-full grid place-items-center bg-slate-950 text-slate-300">
+    <div className="flex items-center gap-3 text-sm font-semibold">
+      <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-500" />
+      {label}
+    </div>
+  </div>
+);
+
 export default function App() {
   // Login State
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<UserRole>('admin');
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(true);
@@ -381,6 +405,20 @@ export default function App() {
   const externalPresenceToken = getPresenceTokenFromUrl();
   const externalApontamentoToken = getApontamentoTokenFromUrl();
   const externalTicketLink = isTicketLinkUrl();
+
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
+    const navigationItem = NAVIGATION_GROUPS.flatMap(group => group.items).find(item => item.id === activeTab);
+    if (!navigationItem) return;
+    const timer = window.setTimeout(() => {
+      void recordTabUsage(navigationItem.id, navigationItem.label);
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, isLoggedIn, currentUser, externalTicketLink, externalPresenceToken, externalApontamentoToken]);
+
+  useEffect(() => {
+    if (isLoggedIn && !ROLE_ACCESS[currentUserRole].includes(activeTab)) setActiveTab('dashboard');
+  }, [activeTab, currentUserRole, isLoggedIn]);
 
   // Hydrate states from localstorage on mount
   useEffect(() => {
@@ -580,6 +618,7 @@ export default function App() {
         setLoginError('Sua conta existe, mas ainda não foi autorizada para acessar o sistema.');
         return;
       }
+      setCurrentUserRole(normalizeUserRole(token.claims.role));
       setCurrentUser(user);
       setIsLoggedIn(true);
     } catch (error) {
@@ -3076,40 +3115,46 @@ export default function App() {
 
   if (externalTicketLink) {
     return (
-      <TicketLinkExterno
-        tickets={externalPublicTickets}
-        isLoadingCloud={isExternalTicketLoading}
-        loadError={externalTicketLoadError}
-        onReserveNumber={reservePublicTicketNumberViaApi}
-        onSaveTicket={handleSaveTicketLink}
-        onSearchPendingReceipts={searchPendingPublicTickets}
-      />
+      <Suspense fallback={<ScreenLoadingFallback label="Abrindo tickets..." />}>
+        <TicketLinkExterno
+          tickets={externalPublicTickets}
+          isLoadingCloud={isExternalTicketLoading}
+          loadError={externalTicketLoadError}
+          onReserveNumber={reservePublicTicketNumberViaApi}
+          onSaveTicket={handleSaveTicketLink}
+          onSearchPendingReceipts={searchPendingPublicTickets}
+        />
+      </Suspense>
     );
   }
 
   if (externalPresenceToken) {
     return (
-      <PresencaLinkExterno
-        token={externalPresenceToken}
-        gruposEquipe={gruposEquipe}
-        funcionarios={funcionarios}
-        obras={obras}
-        presencasLink={presencasLink}
-        isLoadingCloud={isExternalPresenceLoading}
-        onSubmitPresenca={handleSubmitPresencaLink}
-      />
+      <Suspense fallback={<ScreenLoadingFallback label="Abrindo presença..." />}>
+        <PresencaLinkExterno
+          token={externalPresenceToken}
+          gruposEquipe={gruposEquipe}
+          funcionarios={funcionarios}
+          obras={obras}
+          presencasLink={presencasLink}
+          isLoadingCloud={isExternalPresenceLoading}
+          onSubmitPresenca={handleSubmitPresencaLink}
+        />
+      </Suspense>
     );
   }
 
   if (externalApontamentoToken) {
     return (
-      <ApontamentoRamoLinkExterno
-        token={externalApontamentoToken}
-        ramos={apontamentoRamos}
-        registros={apontamentoRamoRegistros}
-        isLoadingCloud={isExternalApontamentoLoading}
-        onSubmitApontamento={handleSubmitApontamentoRamoLink}
-      />
+      <Suspense fallback={<ScreenLoadingFallback label="Abrindo apontamento..." />}>
+        <ApontamentoRamoLinkExterno
+          token={externalApontamentoToken}
+          ramos={apontamentoRamos}
+          registros={apontamentoRamoRegistros}
+          isLoadingCloud={isExternalApontamentoLoading}
+          onSubmitApontamento={handleSubmitApontamentoRamoLink}
+        />
+      </Suspense>
     );
   }
 
@@ -3207,15 +3252,17 @@ export default function App() {
   };
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase('pt-BR');
+  const allowedTabs = ROLE_ACCESS[currentUserRole];
   const filteredNavigationGroups = NAVIGATION_GROUPS
     .map(group => ({
       ...group,
-      items: group.items.filter(item => !normalizedMenuSearch || item.label.toLocaleLowerCase('pt-BR').includes(normalizedMenuSearch)),
+      items: group.items.filter(item => allowedTabs.includes(item.id)
+        && (!normalizedMenuSearch || item.label.toLocaleLowerCase('pt-BR').includes(normalizedMenuSearch))),
     }))
     .filter(group => group.items.length > 0);
 
   const navigateTo = (tab: string, closeMobile = false) => {
-    setActiveTab(tab);
+    setActiveTab(allowedTabs.includes(tab) ? tab : 'dashboard');
     if (closeMobile) setIsMobileMenuOpen(false);
   };
 
@@ -3532,13 +3579,14 @@ export default function App() {
 
         {/* Dynamic Inner Tab Viewport */}
         <div className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto print:p-0 print:m-0">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="w-full h-full"
-          >
+          <Suspense fallback={<ScreenLoadingFallback />}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full h-full"
+            >
             {activeTab === 'dashboard' && (
               <Dashboard 
                 empresas={empresas}
@@ -3548,18 +3596,16 @@ export default function App() {
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
-                etapas={etapas}
                 abastecimentos={abastecimentos}
                 lubrificacoes={lubrificacoes}
-                rdos={rdos}
                 historyLogs={historyLogs}
                 listasPresenca={listasPresenca}
                 ordensServico={ordensServico}
-                onNavigate={(tab) => setActiveTab(tab)}
+                onNavigate={navigateTo}
               />
             )}
 
-            {activeTab === 'cadastros' && (
+            {activeTab === 'cadastros' && allowedTabs.includes('cadastros') && (
               <CadastrosTab 
                 empresas={empresas}
                 obras={obras}
@@ -3592,25 +3638,19 @@ export default function App() {
             {activeTab === 'lancamentos' && (
               <LancamentosTab 
                 empresas={empresas}
-                obras={obras}
                 equipamentos={equipamentos}
-                funcionarios={funcionarios}
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
-                etapas={etapas}
                 abastecimentos={abastecimentos}
                 lubrificacoes={lubrificacoes}
-                rdos={rdos}
                 onSaveAbastecimento={handleSaveAbastecimento}
                 onDeleteAbastecimento={handleDeleteAbastecimento}
                 onImportAbastecimentos={handleImportAbastecimentos}
                 oneDriveFuelSyncStatus={oneDriveFuelSyncStatus}
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}
-                onSaveRdo={handleSaveRdo}
-                onDeleteRdo={handleDeleteRdo}
-                onOpenCadastros={() => setActiveTab('cadastros')}
+                onOpenCadastros={allowedTabs.includes('cadastros') ? () => navigateTo('cadastros') : undefined}
               />
             )}
 
@@ -3703,16 +3743,14 @@ export default function App() {
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
-                etapas={etapas}
                 abastecimentos={abastecimentos}
                 lubrificacoes={lubrificacoes}
-                rdos={rdos}
                 listasPresenca={listasPresenca}
                 apontamentoRamoRegistros={apontamentoRamoRegistros}
               />
             )}
 
-            {activeTab === 'configuracoes' && (
+            {activeTab === 'configuracoes' && allowedTabs.includes('configuracoes') && (
               <ConfiguracoesTab 
                 historyLogs={historyLogs}
                 onResetToDefault={handleResetData}
@@ -3746,7 +3784,8 @@ export default function App() {
                 onDownloadFromFirebase={handleDownloadFromFirebase}
               />
             )}
-          </motion.div>
+            </motion.div>
+          </Suspense>
         </div>
       </main>
 

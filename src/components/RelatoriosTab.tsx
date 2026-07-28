@@ -12,10 +12,8 @@ import {
   Comboio, 
   TipoCombustivel, 
   ProdutoLubrificacao, 
-  EtapaServico, 
   Abastecimento, 
   Lubrificacao, 
-  RdoDiario,
   ListaPresenca,
   ApontamentoRamoRegistro
 } from '../types';
@@ -54,11 +52,9 @@ interface RelatoriosTabProps {
   comboios: Comboio[];
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
-  etapas: EtapaServico[];
 
   abastecimentos: Abastecimento[];
   lubrificacoes: Lubrificacao[];
-  rdos: RdoDiario[];
   listasPresenca: ListaPresenca[];
   apontamentoRamoRegistros: ApontamentoRamoRegistro[];
 }
@@ -74,7 +70,6 @@ type ReportType =
   | 'consumo_empresa' 
   | 'consumo_periodo' 
   | 'lubrificacao_frota' 
-  | 'rdo_data' 
   | 'equipamentos_mobilizados' 
   | 'equipamentos_manutencao' 
   | 'resumo_obra'
@@ -102,10 +97,8 @@ export default function RelatoriosTab({
   comboios,
   combustiveis,
   lubrificantes,
-  etapas,
   abastecimentos,
   lubrificacoes,
-  rdos,
   listasPresenca,
   apontamentoRamoRegistros
 }: RelatoriosTabProps) {
@@ -122,8 +115,6 @@ export default function RelatoriosTab({
   const [filtroObraId, setFiltroObraId] = useState('');
   const [filtroCombustivelId, setFiltroCombustivelId] = useState('');
   const [filtroResponsavel, setFiltroResponsavel] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('');
-  const [filtroEtapaId, setFiltroEtapaId] = useState('');
   const [fuelSort, setFuelSort] = useState<'data_desc' | 'litros_desc' | 'litros_asc'>('litros_desc');
 
   const normalizeKey = (value: string) =>
@@ -141,8 +132,6 @@ export default function RelatoriosTab({
     setFiltroObraId('');
     setFiltroCombustivelId('');
     setFiltroResponsavel('');
-    setFiltroStatus('');
-    setFiltroEtapaId('');
     setFuelSort('litros_desc');
   };
 
@@ -282,18 +271,6 @@ export default function RelatoriosTab({
           } else {
             if (filtroEmpresaId || filtroEquipamentoId || filtroObraId) return false;
           }
-          return true;
-        }).sort((a,b) => b.data.localeCompare(a.data));
-      }
-
-      case 'rdo_data': {
-        // Daily Report list
-        return rdos.filter(r => {
-          if (!isWithinSelectedPeriod(r.data)) return false;
-          if (filtroEmpresaId && r.empresaId !== filtroEmpresaId) return false;
-          if (filtroObraId && r.obraLocalId !== filtroObraId) return false;
-          if (filtroEtapaId && r.etapaServicoId !== filtroEtapaId) return false;
-          if (filtroStatus && r.statusAtividade !== filtroStatus) return false;
           return true;
         }).sort((a,b) => b.data.localeCompare(a.data));
       }
@@ -531,24 +508,6 @@ export default function RelatoriosTab({
             r.quantidade.toString(),
             r.horimetro.toString(),
             r.responsavel
-          ];
-        });
-      } else if (reportType === 'rdo_data') {
-        reportTitle = 'Extrato de RDOs Diários por Obra';
-        reportDescription = `Diário de Atividades Físicas e operacionais de ${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')}.`;
-        tableHeaders = ['Data', 'Canteiro Obra', 'Empresa', 'Etapa Trabalho', 'Serviço Concluído', 'Headcount', 'Status'];
-        tableRows = (results as any[]).map(r => {
-          const ob = obras.find(o => o.id === r.obraLocalId)?.nome || '—';
-          const emp = empresas.find(e => e.id === r.empresaId)?.nome || '—';
-          const et = etapas.find(e => e.id === r.etapaServicoId)?.nome || '—';
-          return [
-            r.data.split('-').reverse().join('/'),
-            ob,
-            emp,
-            et,
-            r.servicoExecutado,
-            `${r.quantidadeEquipe} pessoas`,
-            r.statusAtividade
           ];
         });
       } else if (reportType === 'equipamentos_mobilizados' || reportType === 'equipamentos_manutencao') {
@@ -812,24 +771,6 @@ export default function RelatoriosTab({
             r.horimetro.toString(),
             r.responsavel,
             r.observacao
-          ];
-        });
-      } else if (reportType === 'rdo_data') {
-        title = 'RDO Diário por Obra';
-        headers = ['Data', 'Canteiro Obra', 'Empresa Executor', 'Etapa Trabalho', 'Serviço Concluído', 'Equipe Headcount', 'Status da Atividade', 'Pendências'];
-        rows = (results as any[]).map(r => {
-          const ob = obras.find(o => o.id === r.obraLocalId)?.nome || '—';
-          const emp = empresas.find(e => e.id === r.empresaId)?.nome || '—';
-          const et = etapas.find(e => e.id === r.etapaServicoId)?.nome || '—';
-          return [
-            r.data.split('-').reverse().join('/'),
-            ob,
-            emp,
-            et,
-            r.servicoExecutado,
-            r.quantidadeEquipe.toString(),
-            r.statusAtividade,
-            r.pendencias || 'Nenhuma'
           ];
         });
       } else if (reportType === 'equipamentos_mobilizados' || reportType === 'equipamentos_manutencao') {
@@ -1222,32 +1163,6 @@ export default function RelatoriosTab({
                 </div>
               )}
 
-              {/* Conditional RDO Work phase filter */}
-              {reportType === 'rdo_data' && (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-500">Fase / Ramo do Serviço</label>
-                    <select value={filtroEtapaId} onChange={e => setFiltroEtapaId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                      <option value="">Todas</option>
-                      {etapas.map(et => (
-                        <option key={et.id} value={et.id} className="bg-slate-900 text-slate-200">{et.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-500">Situação do Serviço</label>
-                    <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                      <option value="">Todos</option>
-                      <option value="Andamento" className="bg-slate-900 text-slate-200">Andamento</option>
-                      <option value="Concluído" className="bg-slate-900 text-slate-200">Concluído</option>
-                      <option value="Paralisado Chuva" className="bg-slate-900 text-slate-200">Paralisado Chuva</option>
-                      <option value="Paralisado Quebrado" className="bg-slate-900 text-slate-200">Paralisado Quebrado</option>
-                    </select>
-                  </div>
-                </>
-              )}
-
             </div>
             <div className="flex justify-end">
               <button
@@ -1272,7 +1187,6 @@ export default function RelatoriosTab({
                   {reportType === 'consumo_empresa' && `Volume Segregado por Empresa Proprietária`}
                   {reportType === 'consumo_periodo' && `Extrato Cronológico Geral de Abastecimentos`}
                   {reportType === 'lubrificacao_frota' && `Intervenções de Lubrificação e Óleos aplicados`}
-                  {reportType === 'rdo_data' && `Planilha de RDO - Diários de Obra`}
                   {reportType === 'equipamentos_mobilizados' && `Frota Ativa Mobilizada em Canteiros`}
                   {reportType === 'equipamentos_manutencao' && `Equipamentos Parados em Oficina`}
                   {reportType === 'resumo_obra' && `Consolidado Estatístico de Mão de Obra por Canteiro`}
@@ -1424,44 +1338,6 @@ export default function RelatoriosTab({
                             <td className="py-3.5 px-3 text-slate-300">{lub.compartimento}</td>
                             <td className="py-3.5 px-3 text-center text-emerald-400 font-mono font-bold">{lub.quantidade} L/kg</td>
                             <td className="py-3.5 px-3 text-slate-400">{lub.responsavel}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-
-                {reportType === 'rdo_data' && (
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
-                        <th className="pb-3 px-3">Data RDO</th>
-                        <th className="pb-3 px-3">Canteiro de Obra</th>
-                        <th className="pb-3 px-3">Executor</th>
-                        <th className="pb-3 px-3">Descrição Atividades</th>
-                        <th className="pb-3 px-3 text-center">Efetivo</th>
-                        <th className="pb-3 px-3 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-850">
-                      {(results as any[]).map(r => {
-                        const ob = obras.find(o => o.id === r.obraLocalId)?.nome || 'Obra';
-                        const emp = empresas.find(e => e.id === r.empresaId)?.nome || 'Executor';
-                        return (
-                          <tr key={r.id} className="hover:bg-slate-950/20">
-                            <td className="py-4 px-3 font-mono font-bold text-slate-100">{r.data.split('-').reverse().join('/')}</td>
-                            <td className="py-4 px-3 font-semibold text-slate-200">{ob}</td>
-                            <td className="py-4 px-3 text-slate-400 text-xxs">{emp}</td>
-                            <td className="py-4 px-3">
-                              <p className="text-slate-300 line-clamp-2 max-w-sm">{r.servicoExecutado}</p>
-                              {r.pendencias && <span className="text-[9px] text-rose-400 font-bold block mt-1">Pendência: {r.pendencias}</span>}
-                            </td>
-                            <td className="py-4 px-3 text-center font-mono font-bold text-slate-300">{r.quantidadeEquipe} colab.</td>
-                            <td className="py-4 px-3 text-right">
-                              <span className="text-xxs px-2 py-0.5 border border-slate-800 rounded bg-slate-950 text-slate-300">
-                                {r.statusAtividade}
-                              </span>
-                            </td>
                           </tr>
                         );
                       })}

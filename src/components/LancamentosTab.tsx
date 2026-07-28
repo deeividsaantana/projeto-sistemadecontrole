@@ -6,16 +6,12 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { 
   Empresa, 
-  ObraLocal, 
   Equipamento, 
-  Funcionario, 
   Comboio, 
   TipoCombustivel, 
   ProdutoLubrificacao, 
-  EtapaServico, 
   Abastecimento, 
-  Lubrificacao, 
-  RdoDiario 
+  Lubrificacao
 } from '../types';
 
 import { 
@@ -48,50 +44,38 @@ import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
-  obras: ObraLocal[];
   equipamentos: Equipamento[];
-  funcionarios: Funcionario[];
   comboios: Comboio[];
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
-  etapas: EtapaServico[];
 
   abastecimentos: Abastecimento[];
   lubrificacoes: Lubrificacao[];
-  rdos: RdoDiario[];
 
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
   onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
   onDeleteLubrificacao: (id: string) => void;
-  onSaveRdo: (item: RdoDiario, isNew: boolean) => void;
-  onDeleteRdo: (id: string) => void;
   onOpenCadastros?: () => void;
   oneDriveFuelSyncStatus?: OneDriveFuelSyncStatus | null;
 }
 
-type Mode = 'abastecimentos' | 'lubrificacoes' | 'rdos';
+type Mode = 'abastecimentos' | 'lubrificacoes';
 
 export default function LancamentosTab({
   empresas,
-  obras,
   equipamentos,
-  funcionarios,
   comboios,
   combustiveis,
   lubrificantes,
-  etapas,
   abastecimentos,
   lubrificacoes,
-  rdos,
   onSaveAbastecimento,
   onDeleteAbastecimento,
   onImportAbastecimentos,
   onSaveLubrificacao,
   onDeleteLubrificacao,
-  onSaveRdo,
-  onDeleteRdo,
   onOpenCadastros,
   oneDriveFuelSyncStatus,
 }: LancamentosTabProps) {
@@ -580,17 +564,6 @@ export default function LancamentosTab({
   const [compartimento, setCompartimento] = useState('Pinos do Braço / Caçamba');
   const [lubQuantidade, setLubQuantidade] = useState<number>(1);
 
-  // RDO Specific
-  const [rdoEmpresaId, setRdoEmpresaId] = useState('');
-  const [rdoObraId, setRdoObraId] = useState('');
-  const [rdoEtapaId, setRdoEtapaId] = useState('');
-  const [servicoExecutado, setServicoExecutado] = useState('');
-  const [quantidadeEquipe, setQuantidadeEquipe] = useState<number>(1);
-  const [selectedEqIds, setSelectedEqIds] = useState<string[]>([]);
-  const [statusAtividade, setStatusAtividade] = useState<RdoDiario['statusAtividade']>('Andamento');
-  const [pendencias, setPendencias] = useState('');
-  const [proximasEtapas, setProximasEtapas] = useState('');
-
   // Helper to get derived info
   const selectedEquipment = equipamentos.find(e => e.id === equipamentoId);
   const derivedEquipmentDesc = selectedEquipment ? `${selectedEquipment.marca} ${selectedEquipment.modelo}` : '';
@@ -633,15 +606,6 @@ export default function LancamentosTab({
     setCompartimento('Pinos do Braço / Caçamba');
     setLubQuantidade(1);
 
-    setRdoEmpresaId(empresas[0]?.id || '');
-    setRdoObraId(obras[0]?.id || '');
-    setRdoEtapaId(etapas[0]?.id || '');
-    setServicoExecutado('');
-    setQuantidadeEquipe(1);
-    setSelectedEqIds([]);
-    setStatusAtividade('Andamento');
-    setPendencias('');
-    setProximasEtapas('');
   };
 
   // Open forms
@@ -672,13 +636,6 @@ export default function LancamentosTab({
       setCompartimento(x.compartimento); setLubQuantidade(x.quantidade);
       setResponsavel(x.responsavel); setObservacao(x.observacao);
 
-    } else if (mode === 'rdos') {
-      const x = item as RdoDiario;
-      setDate(x.data); setRdoEmpresaId(x.empresaId); setRdoObraId(x.obraLocalId);
-      setRdoEtapaId(x.etapaServicoId); setServicoExecutado(x.servicoExecutado);
-      setQuantidadeEquipe(x.quantidadeEquipe); setSelectedEqIds(x.equipamentosUtilizadosIds || []);
-      setStatusAtividade(x.statusAtividade); setObservacao(x.observacao);
-      setPendencias(x.pendencias); setProximasEtapas(x.proximasEtapas);
     }
     setIsFormOpen(true);
   };
@@ -742,25 +699,6 @@ export default function LancamentosTab({
         observacao: observacao.trim()
       }, isNew);
 
-    } else if (mode === 'rdos') {
-      if (!rdoEmpresaId || !rdoObraId || !servicoExecutado.trim()) {
-        setValidationError('Empresa, Canteiro de Obra e Serviço Executado são obrigatórios!');
-        return;
-      }
-      onSaveRdo({
-        id: currentId,
-        data: date,
-        empresaId: rdoEmpresaId,
-        obraLocalId: rdoObraId,
-        etapaServicoId: rdoEtapaId || (etapas[0] ? etapas[0].id : ''),
-        servicoExecutado: servicoExecutado.trim(),
-        quantidadeEquipe: Number(quantidadeEquipe) || 1,
-        equipamentosUtilizadosIds: selectedEqIds,
-        statusAtividade,
-        observacao: observacao.trim(),
-        pendencias: pendencias.trim(),
-        proximasEtapas: proximasEtapas.trim()
-      }, isNew);
     }
 
     setIsFormOpen(false);
@@ -775,18 +713,8 @@ export default function LancamentosTab({
   const executeDeletion = (id: string) => {
     if (mode === 'abastecimentos') onDeleteAbastecimento(id);
     else if (mode === 'lubrificacoes') onDeleteLubrificacao(id);
-    else if (mode === 'rdos') onDeleteRdo(id);
 
     setDeleteConfirmId(null);
-  };
-
-  // Checkbox multi-select list for used equipments
-  const handleToggleEqSelection = (eqId: string) => {
-    if (selectedEqIds.includes(eqId)) {
-      setSelectedEqIds(selectedEqIds.filter(id => id !== eqId));
-    } else {
-      setSelectedEqIds([...selectedEqIds, eqId]);
-    }
   };
 
   // Search filter
@@ -1036,11 +964,6 @@ export default function LancamentosTab({
   const filteredLubrificacoes = lubrificacoes.filter(lub => {
     const eq = equipamentos.find(e => e.id === lub.equipamentoId);
     return lub.data.includes(q) || lub.compartimento.toLowerCase().includes(q) || (eq && eq.prefixo.toLowerCase().includes(q));
-  }).sort((a,b) => b.data.localeCompare(a.data));
-
-  const filteredRdos = rdos.filter(r => {
-    const ob = obras.find(o => o.id === r.obraLocalId);
-    return r.data.includes(q) || r.servicoExecutado.toLowerCase().includes(q) || (ob && ob.nome.toLowerCase().includes(q));
   }).sort((a,b) => b.data.localeCompare(a.data));
 
   if (String(mode) === 'abastecimentos') {
@@ -1348,7 +1271,7 @@ export default function LancamentosTab({
           </button>
 
           <h3 className="text-xs uppercase tracking-widest font-black text-emerald-400 font-mono mb-5 flex items-center gap-2">
-            {editingId ? '✏️ Editando Lançamento' : '➕ Novo Lançamento'} • {mode === 'abastecimentos' ? 'Abastecimento de Combustível' : mode === 'lubrificacoes' ? 'Manutenção / Lubrificação de Máquina' : 'Relatório Diário de Obra (RDO)'}
+            {editingId ? '✏️ Editando Lançamento' : '➕ Novo Lançamento'} • {mode === 'abastecimentos' ? 'Abastecimento de Combustível' : 'Manutenção / Lubrificação de Máquina'}
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -1529,109 +1452,6 @@ export default function LancamentosTab({
               </div>
             )}
 
-            {/* 3. RDO FORM FIELDS */}
-            {mode === 'rdos' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data do RDO *</label>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa Responsável *</label>
-                    <select value={rdoEmpresaId} onChange={e => setRdoEmpresaId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                      <option value="">Selecione...</option>
-                      {empresas.map(emp => (
-                        <option key={emp.id} value={emp.id} className="bg-slate-900 text-white">{emp.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Canteiro de Obra / Local *</label>
-                    <select value={rdoObraId} onChange={e => setRdoObraId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                      <option value="">Selecione...</option>
-                      {obras.map(ob => (
-                        <option key={ob.id} value={ob.id} className="bg-slate-900 text-white">{ob.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ramo / Etapa do Serviço</label>
-                    <select value={rdoEtapaId} onChange={e => setRdoEtapaId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
-                      <option value="">Selecione...</option>
-                      {etapas.map(et => (
-                        <option key={et.id} value={et.id} className="bg-slate-900 text-white">{et.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="md:col-span-3 space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Descrição do Serviço Executado *</label>
-                    <textarea value={servicoExecutado} onChange={e => setServicoExecutado(e.target.value)} placeholder="Descreva os trabalhos concluídos hoje, trecho, etc..." rows={3} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 resize-none" required />
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade de Equipe (Pessoas) *</label>
-                      <input type="number" value={quantidadeEquipe} onChange={e => setQuantidadeEquipe(Number(e.target.value))} placeholder="1" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" required />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status da Atividade</label>
-                      <select value={statusAtividade} onChange={e => setStatusAtividade(e.target.value as any)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
-                        <option value="Andamento" className="bg-slate-900 text-white">Andamento</option>
-                        <option value="Concluído" className="bg-slate-900 text-white">Concluído</option>
-                        <option value="Paralisado Chuva" className="bg-slate-900 text-white">Paralisado Chuva</option>
-                        <option value="Paralisado Quebrado" className="bg-slate-900 text-white">Paralisado Quebrado</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Equipments utilized multi-select grid */}
-                <div className="space-y-1.5">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400 block">Equipamentos Utilizados hoje (Selecione todos os aplicados):</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 p-3.5 bg-slate-950 border border-slate-800 rounded-xl max-h-40 overflow-y-auto">
-                    {equipamentos.length === 0 ? (
-                      <span className="text-xxs text-slate-500 italic">Cadastre equipamentos primeiro.</span>
-                    ) : (
-                      equipamentos.map(eq => {
-                        const checked = selectedEqIds.includes(eq.id);
-                        return (
-                          <label key={eq.id} className={`flex items-center gap-2 p-2 rounded-lg border text-xxs cursor-pointer select-none transition-all ${checked ? 'bg-emerald-600/10 border-emerald-500 text-emerald-400 font-bold' : 'bg-slate-900 border-slate-850 text-slate-400'}`}>
-                            <input 
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => handleToggleEqSelection(eq.id)}
-                              className="accent-emerald-500 shrink-0 cursor-pointer rounded"
-                            />
-                            <span className="font-mono truncate">{eq.prefixo}</span>
-                          </label>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observações Gerais</label>
-                    <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Clima, eventos, etc..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Pendências encontradas</label>
-                    <input type="text" value={pendencias} onChange={e => setPendencias(e.target.value)} placeholder="Peças, frentes de obra embargadas, etc..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Próximas etapas do planejamento</label>
-                    <input type="text" value={proximasEtapas} onChange={e => setProximasEtapas(e.target.value)} placeholder="Próximas frentes de serviço..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {validationError && (
               <div className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
                 ⚠️ {validationError}
@@ -1801,82 +1621,6 @@ export default function LancamentosTab({
                           <div className="flex items-center justify-end gap-2">
                             <button onClick={() => handleOpenEdit(lub)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
                             <button onClick={() => handleDeleteTrigger(lub.id)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* RDOS TABLE */}
-        {mode === 'rdos' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-850 text-slate-400 uppercase text-[10px] font-bold bg-slate-950/20 font-mono">
-                  <th className="py-3.5 px-5">Data RDO</th>
-                  <th className="py-3.5 px-5">Canteiro de Obra</th>
-                  <th className="py-3.5 px-5">Empresa</th>
-                  <th className="py-3.5 px-5">Serviço Diário Executado</th>
-                  <th className="py-3.5 px-5 text-center">Efetivo (Pess.)</th>
-                  <th className="py-3.5 px-5">Status Trabalho</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {filteredRdos.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-500 italic">Nenhum RDO encontrado.</td>
-                  </tr>
-                ) : (
-                  filteredRdos.map(rdo => {
-                    const ob = obras.find(o => o.id === rdo.obraLocalId);
-                    const emp = empresas.find(e => e.id === rdo.empresaId);
-                    
-                    const statusColor = rdo.statusAtividade === 'Concluído' 
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                      : rdo.statusAtividade === 'Andamento' 
-                      ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
-                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-
-                    return (
-                      <tr key={rdo.id} className="hover:bg-slate-950/20 transition-colors">
-                        <td className="py-4 px-5">
-                          <span className="font-mono font-black text-slate-100 bg-slate-950 border border-slate-850 px-2.5 py-1 rounded-md">
-                            {rdo.data.split('-').reverse().join('/')}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5">
-                          <span className="font-bold text-slate-200 block">{ob ? ob.nome : 'Obra Geral'}</span>
-                          <span className="text-[10px] text-slate-500 font-mono uppercase">{ob ? ob.endereco : '—'}</span>
-                        </td>
-                        <td className="py-4 px-5 text-slate-400 truncate max-w-[120px]" title={emp ? emp.nome : ''}>
-                          {emp ? emp.nome : '—'}
-                        </td>
-                        <td className="py-4 px-5">
-                          <p className="text-xs text-slate-300 font-semibold max-w-xs line-clamp-2" title={rdo.servicoExecutado}>
-                            {rdo.servicoExecutado}
-                          </p>
-                          {rdo.pendencias && (
-                            <span className="text-[9px] font-bold text-rose-400 block mt-1">⚠️ Pendência: {rdo.pendencias}</span>
-                          )}
-                        </td>
-                        <td className="py-4 px-5 text-center font-mono font-bold text-slate-200">
-                          {rdo.quantidadeEquipe} colab.
-                        </td>
-                        <td className="py-4 px-5">
-                          <span className={`px-2.5 py-0.5 border text-[9px] font-bold rounded-full ${statusColor}`}>
-                            {rdo.statusAtividade}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(rdo)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(rdo.id)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>

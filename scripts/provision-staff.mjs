@@ -6,8 +6,14 @@ import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
 const email = String(process.argv[2] || '').trim().toLowerCase();
+const role = String(process.argv[3] || 'admin').trim().toLowerCase();
+const allowedRoles = new Set(['admin', 'gestor', 'operador', 'leitura']);
 if (!email) {
-  console.error('Uso: npm run provision:staff -- usuario@empresa.com.br');
+  console.error('Uso: npm run provision:staff -- usuario@empresa.com.br [admin|gestor|operador|leitura]');
+  process.exit(1);
+}
+if (!allowedRoles.has(role)) {
+  console.error('Perfil inválido. Use admin, gestor, operador ou leitura.');
   process.exit(1);
 }
 
@@ -65,9 +71,9 @@ try {
     createdPassword = process.env.FIREBASE_ADMIN_INITIAL_PASSWORD || `Renea!${crypto.randomBytes(12).toString('base64url')}`;
     user = await auth.createUser({ email, password: createdPassword, emailVerified: true, disabled: false });
   }
-  await auth.setCustomUserClaims(user.uid, { ...user.customClaims, staff: true });
+  await auth.setCustomUserClaims(user.uid, { ...user.customClaims, staff: true, role });
   await auth.revokeRefreshTokens(user.uid);
-  console.log(`Acesso administrativo concedido a ${email}. O usuário deve entrar novamente.`);
+  console.log(`Acesso ${role} concedido a ${email}. O usuário deve entrar novamente.`);
   if (createdPassword) {
     const passwordOutputPath = process.env.FIREBASE_ADMIN_PASSWORD_OUTPUT_PATH;
     if (passwordOutputPath) {
