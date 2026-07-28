@@ -3718,6 +3718,7 @@ export default function App() {
             {activeTab === 'tickets-jazida' && (
               <TicketsJazidaTab 
                 tickets={ticketsJazida}
+                equipamentos={equipamentos}
                 onSaveTicket={handleSaveTicketJazida}
                 onDeleteTicket={handleDeleteTicketJazida}
                 onImportTickets={handleImportTicketsJazida}

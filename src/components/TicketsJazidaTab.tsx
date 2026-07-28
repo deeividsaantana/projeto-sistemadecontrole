@@ -32,11 +32,12 @@ import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporate
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } from '../utils/ticketNumberSequence';
 import { jsPDF } from 'jspdf';
-import { TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
+import { Equipamento, TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
 
 interface TicketsJazidaTabProps {
   tickets: TicketJazida[];
+  equipamentos: Equipamento[];
   onSaveTicket: (item: TicketJazida, isNew: boolean) => void;
   onDeleteTicket: (id: string) => void;
   onImportTickets: (items: TicketJazida[]) => void;
@@ -52,6 +53,9 @@ const DESTINOS_OBRA: DestinoObraJazida[] = [
   'Ferradura', 'Coluna de Brita', 'Apoio', 'Jazida', 'Outros'
 ];
 const EMPRESAS_TICKET: EmpresaTicketJazida[] = ['RENEA', 'Terceiro', 'Outros'];
+
+const normalizeEquipmentKey = (value: string) => value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+const equipmentPlate = (equipment: Equipamento) => (equipment.placa || equipment.seriePlaca || '').trim().toUpperCase();
 
 type PrintedTicketBatch = {
   id: string;
@@ -249,7 +253,7 @@ const generateTicketBookPdf = async (
   doc.save(fileName);
 };
 
-export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber, onReserveTicketNumbers }: TicketsJazidaTabProps) {
+export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber, onReserveTicketNumbers }: TicketsJazidaTabProps) {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -307,6 +311,55 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [estaca, setEstaca] = useState('');
   const [observacao, setObservacao] = useState('');
 
+  const equipmentByPrefix = useMemo(() => {
+    const priority = (item: Equipamento) => item.status === 'Ativo' || item.status === 'Mobilizado' ? 0 : 1;
+    const sorted = [...equipamentos].sort((a, b) => priority(a) - priority(b));
+    const index = new Map<string, Equipamento>();
+    sorted.forEach(item => {
+      const key = normalizeEquipmentKey(item.prefixo);
+      if (key && !index.has(key)) index.set(key, item);
+    });
+    return index;
+  }, [equipamentos]);
+
+  const equipmentOptions = useMemo(() => [...equipmentByPrefix.values()]
+    .sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR')), [equipmentByPrefix]);
+
+  const findEquipmentByPrefix = (value: string) => equipmentByPrefix.get(normalizeEquipmentKey(value));
+
+  const fillEquipmentFields = (equipment?: Equipamento) => {
+    if (!equipment) return false;
+    setPrefixo(equipment.prefixo.toUpperCase());
+    setPlaca(equipmentPlate(equipment));
+    setFamiliaEquipamento(equipment.tipo || '');
+    setEquipamentoNome(equipment.nome || '');
+    return true;
+  };
+
+  const handlePrefixChange = (value: string) => {
+    const normalizedValue = value.toUpperCase();
+    setPrefixo(normalizedValue);
+    const equipment = findEquipmentByPrefix(normalizedValue);
+    if (equipment) fillEquipmentFields(equipment);
+    else {
+      setPlaca('');
+      setFamiliaEquipamento('');
+      setEquipamentoNome('');
+    }
+  };
+
+  const handleBatchPrefixChange = (value: string) => {
+    const normalizedValue = value.toUpperCase();
+    setBatchPrefixo(normalizedValue);
+    const equipment = findEquipmentByPrefix(normalizedValue);
+    if (equipment) {
+      setBatchPrefixo(equipment.prefixo.toUpperCase());
+      setBatchPlaca(equipmentPlate(equipment));
+    } else {
+      setBatchPlaca('');
+    }
+  };
+
   // Filters
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -350,15 +403,16 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   };
 
   const handleOpenEdit = (t: TicketJazida) => {
+    const registeredEquipment = findEquipmentByPrefix(t.prefixo);
     setEditingId(t.id);
     setValidationError('');
     setTipoTicket(t.tipoTicket || 'Liberação');
     setData(t.data);
     setTicketNumero(t.ticketNumero);
     setPrefixo(t.prefixo);
-    setPlaca(t.placa);
-    setFamiliaEquipamento(t.familiaEquipamento || '');
-    setEquipamentoNome(t.equipamentoNome || '');
+    setPlaca(t.placa || (registeredEquipment ? equipmentPlate(registeredEquipment) : ''));
+    setFamiliaEquipamento(t.familiaEquipamento || registeredEquipment?.tipo || '');
+    setEquipamentoNome(t.equipamentoNome || registeredEquipment?.nome || '');
     setHoraChegada(t.horaChegada || t.horaSaida);
     setHoraSaida(t.horaSaida);
     setTipoMaterial(t.tipoMaterial);
@@ -381,11 +435,12 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const applyLiberacaoCloneToForm = (numero: string, force = false) => {
     const liberacao = findLiberacaoByTicketNumero(numero);
     if (!liberacao) return false;
+    const registeredEquipment = findEquipmentByPrefix(liberacao.prefixo);
 
     if (force || !prefixo.trim()) setPrefixo(liberacao.prefixo);
-    if (force || !placa.trim()) setPlaca(liberacao.placa);
-    if (force || !familiaEquipamento.trim()) setFamiliaEquipamento(liberacao.familiaEquipamento || '');
-    if (force || !equipamentoNome.trim()) setEquipamentoNome(liberacao.equipamentoNome || '');
+    if (force || !placa.trim()) setPlaca(liberacao.placa || (registeredEquipment ? equipmentPlate(registeredEquipment) : ''));
+    if (force || !familiaEquipamento.trim()) setFamiliaEquipamento(liberacao.familiaEquipamento || registeredEquipment?.tipo || '');
+    if (force || !equipamentoNome.trim()) setEquipamentoNome(liberacao.equipamentoNome || registeredEquipment?.nome || '');
     if (force || quantidadeM3 <= 1) setQuantidadeM3(liberacao.quantidadeM3 || 1);
     if (force || tipoMaterial === 'Solo') setTipoMaterial(liberacao.tipoMaterial);
     if (force || empresa === 'RENEA') setEmpresa(liberacao.empresa);
@@ -599,6 +654,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const buildBatchTicket = (number: string, type: TipoTicketJazida, batchId: string): TicketJazida => {
     const now = new Date().toISOString();
     const blank = batchFillMode === 'em-branco';
+    const selectedEquipment = findEquipmentByPrefix(batchPrefixo);
     return {
       id: `ticket-lote-${type === 'Liberação' ? 'lib' : 'rec'}-${number}-${Date.now()}`,
       data: blank ? '' : batchDate,
@@ -606,8 +662,8 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       ticketNumero: number,
       prefixo: blank ? '' : batchPrefixo.trim().toUpperCase(),
       placa: blank ? '' : batchPlaca.trim().toUpperCase(),
-      familiaEquipamento: '',
-      equipamentoNome: '',
+      familiaEquipamento: blank ? '' : selectedEquipment?.tipo || '',
+      equipamentoNome: blank ? '' : selectedEquipment?.nome || '',
       horaSaida: '',
       horaChegada: '',
       tipoMaterial: blank ? '' as TipoMaterialJazida : batchTipoMaterial,
@@ -961,6 +1017,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           const ticketImportado = String(getValue(row, 'ticketNumero') || '').trim();
           const prefixoImportado = String(getValue(row, 'prefixo') || '').trim().toUpperCase();
           const placaImportada = String(getValue(row, 'placa') || '').trim().toUpperCase();
+          const equipamentoEncontrado = findEquipmentByPrefix(prefixoImportado);
           const quantidadeImportada = parseNumberValue(getValue(row, 'quantidadeM3'));
           const materialImportado = getValue(row, 'tipoMaterial');
           const destinoImportado = getValue(row, tipo === 'Recebimento' ? 'ramoDescarga' : 'destinoObra');
@@ -992,9 +1049,9 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             tipoTicket: tipo,
             ticketNumero: ticketImportado ? normalizeTicketNumber(ticketImportado) : '',
             prefixo: prefixoImportado,
-            placa: placaImportada,
-            familiaEquipamento: String(getValue(row, 'familiaEquipamento') || '').trim(),
-            equipamentoNome: String(getValue(row, 'equipamentoNome') || '').trim(),
+            placa: placaImportada || (equipamentoEncontrado ? equipmentPlate(equipamentoEncontrado) : ''),
+            familiaEquipamento: String(getValue(row, 'familiaEquipamento') || equipamentoEncontrado?.tipo || '').trim(),
+            equipamentoNome: String(getValue(row, 'equipamentoNome') || equipamentoEncontrado?.nome || '').trim(),
             horaChegada: tipo === 'Recebimento' ? hora : undefined,
             horaSaida: tipo === 'Liberação' ? hora : '',
             tipoMaterial: normalizeMaterialValue(materialImportado),
@@ -1344,6 +1401,11 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
   return (
     <div className="space-y-6" id="tickets-jazida-tab">
+      <datalist id="ticket-equipment-prefixes">
+        {equipmentOptions.map(item => (
+          <option key={item.id} value={item.prefixo}>{item.nome}{equipmentPlate(item) ? ` · ${equipmentPlate(item)}` : ''}</option>
+        ))}
+      </datalist>
       <SpreadsheetImportReview
         open={Boolean(pendingImport)}
         title="Importar tickets de liberação e recebimento"
@@ -1709,7 +1771,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo *</label>
-                <input type="text" value={prefixo} onChange={e => setPrefixo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                <input type="text" list="ticket-equipment-prefixes" value={prefixo} onChange={e => handlePrefixChange(e.target.value)} onBlur={() => fillEquipmentFields(findEquipmentByPrefix(prefixo))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="Digite ou escolha o prefixo" required />
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa *</label>
@@ -1717,11 +1779,11 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Família do Equipamento</label>
-                <input type="text" value={familiaEquipamento} onChange={e => setFamiliaEquipamento(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <input type="text" value={familiaEquipamento} onChange={e => setFamiliaEquipamento(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="Preenchida pelo cadastro; edição livre" />
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Equipamento / Descrição</label>
-                <input type="text" value={equipamentoNome} onChange={e => setEquipamentoNome(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <input type="text" value={equipamentoNome} onChange={e => setEquipamentoNome(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="Preenchida pelo cadastro; edição livre" />
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Material *</label>
@@ -1950,7 +2012,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
-                <input value={batchPrefixo} onChange={e => setBatchPrefixo(e.target.value.toUpperCase())} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <input list="ticket-equipment-prefixes" value={batchPrefixo} onChange={e => handleBatchPrefixChange(e.target.value)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" placeholder="Digite ou escolha o prefixo" />
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
