@@ -28,12 +28,15 @@ import {
   CalendarDays
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
-import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import { downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } from '../utils/ticketNumberSequence';
+import { buildDuplicateTicketKeys, isDuplicateTicket, ticketDuplicateKey } from '../utils/ticketDuplicateDetection';
+import { buildTicketSpreadsheetWorkbook } from '../utils/ticketSpreadsheetExport';
 import { jsPDF } from 'jspdf';
 import { Equipamento, TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
+import spmarLogo from '../assets/images/spmar_logo.png';
 
 interface TicketsJazidaTabProps {
   tickets: TicketJazida[];
@@ -580,13 +583,14 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
   };
 
   const q = searchQuery.toLowerCase().trim();
+  const duplicateTicketKeys = useMemo(() => buildDuplicateTicketKeys(tickets), [tickets]);
 
   const filteredTickets = useMemo(() => {
     return tickets.filter(t => {
       const tipo = t.tipoTicket || 'Liberação';
       if (tipo !== ticketTab) return false;
       const flowStatus = t.statusFluxo || 'Enviado';
-      const qualityStatus = t.status || 'OK';
+      const qualityStatus = isDuplicateTicket(t, duplicateTicketKeys) ? 'Duplicado' : t.status || 'OK';
       if (fDataInicial && t.data < fDataInicial) return false;
       if (fDataFinal && t.data > fDataFinal) return false;
       if (fTicketNumero && !t.ticketNumero.toLowerCase().includes(fTicketNumero.toLowerCase())) return false;
@@ -607,7 +611,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       }
       return true;
     }).sort((a, b) => b.data.localeCompare(a.data) || (b.horaChegada || b.horaSaida).localeCompare(a.horaChegada || a.horaSaida));
-  }, [tickets, ticketTab, fDataInicial, fDataFinal, fTicketNumero, fPrefixo, fPlaca, fTipoMaterial, fDestinoObra, fEmpresa, fStatus, q]);
+  }, [tickets, ticketTab, fDataInicial, fDataFinal, fTicketNumero, fPrefixo, fPlaca, fTipoMaterial, fDestinoObra, fEmpresa, fStatus, q, duplicateTicketKeys]);
 
   const resumo = useMemo(() => {
     const totalTickets = filteredTickets.length;
@@ -617,11 +621,11 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     const totalCacambas = filteredTickets
       .filter(ticket => ticket.unidadeQuantidade === 'caçamba')
       .reduce((sum, ticket) => sum + (Number(ticket.quantidadeM3) || 0), 0);
-    const okCount = filteredTickets.filter(t => (t.status || 'OK') === 'OK').length;
-    const pendCount = filteredTickets.filter(t => (t.status || 'OK') === 'Pendente').length;
-    const dupCount = filteredTickets.filter(t => (t.status || 'OK') === 'Duplicado').length;
+    const okCount = filteredTickets.filter(t => !isDuplicateTicket(t, duplicateTicketKeys) && (t.status || 'OK') === 'OK').length;
+    const pendCount = filteredTickets.filter(t => !isDuplicateTicket(t, duplicateTicketKeys) && (t.status || 'OK') === 'Pendente').length;
+    const dupCount = filteredTickets.filter(t => isDuplicateTicket(t, duplicateTicketKeys)).length;
     return { totalTickets, totalM3, totalCacambas, okCount, pendCount, dupCount };
-  }, [filteredTickets]);
+  }, [filteredTickets, duplicateTicketKeys]);
 
   const flowDashboard = useMemo(() => {
     const grouped = new Map<string, { numero: string; liberacao?: TicketJazida; recebimento?: TicketJazida }>();
@@ -641,8 +645,8 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     const completed = pairs.filter(pair => pair.liberacao && pair.recebimento
       && pair.liberacao.statusFluxo !== 'Rascunho'
       && pair.recebimento.statusFluxo !== 'Rascunho').length;
-    return { pairs, drafts, pending, completed };
-  }, [tickets]);
+    return { pairs, drafts, pending, completed, duplicates: duplicateTicketKeys.size };
+  }, [tickets, duplicateTicketKeys]);
 
 
   const formatSequentialNumber = (start: string, offset: number) => {
@@ -1001,7 +1005,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       const targetSheets = worksheets.length ? worksheets : wb.worksheets;
       const imported: TicketJazida[] = [];
       let ignored = 0;
-      const seen = new Set(tickets.map(item => `${item.tipoTicket || 'Liberação'}|${item.data}|${item.ticketNumero}|${item.prefixo}`.toLowerCase()));
+      const seen = new Set(tickets.filter(item => normalizeTicketNumber(item.ticketNumero)).map(ticketDuplicateKey));
 
       targetSheets.forEach(ws => {
         const sheetName = normalizeImportHeader(ws.name);
@@ -1028,9 +1032,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             ignored += 1;
             return;
           }
-          const key = `${tipo}|${dataImportada}|${ticketImportado}|${prefixoImportado}`.toLowerCase();
-          const duplicate = Boolean(ticketImportado && seen.has(key));
-          seen.add(key);
+          const key = ticketImportado ? `${tipo}|${normalizeTicketNumber(ticketImportado)}` : '';
+          const duplicate = Boolean(key && seen.has(key));
+          if (key) seen.add(key);
           const hora = parseTimeValue(getValue(row, tipo === 'Recebimento' ? 'horaChegada' : 'horaSaida')) || '00:00';
           const missingFields = [
             !dataImportada && 'data',
@@ -1098,13 +1102,10 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
   const handleExportExcel = async () => {
     setIsExporting(true);
     try {
-      const wb = new ExcelJS.Workbook();
-      configureCorporateWorkbook(wb, 'Tickets de Liberação e Recebimento');
-
       const matchesExportFilters = (t: TicketJazida, tipo: TipoTicketJazida) => {
         if ((t.tipoTicket || 'Liberação') !== tipo) return false;
         const flowStatus = t.statusFluxo || 'Enviado';
-        const qualityStatus = t.status || 'OK';
+        const qualityStatus = isDuplicateTicket(t, duplicateTicketKeys) ? 'Duplicado' : t.status || 'OK';
         if (fDataInicial && t.data < fDataInicial) return false;
         if (fDataFinal && t.data > fDataFinal) return false;
         if (fTicketNumero && !t.ticketNumero.toLowerCase().includes(fTicketNumero.toLowerCase())) return false;
@@ -1124,96 +1125,19 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         }
         return true;
       };
-
-      const addTicketWorksheet = (tipo: TipoTicketJazida) => {
-        const isRecebimento = tipo === 'Recebimento';
-        const ws = wb.addWorksheet(isRecebimento ? 'RECEBIMENTO' : 'LIBERAÇÃO');
-        const headers = isRecebimento
-          ? ['Data', 'Ticket Nº', 'Prefixo', 'Família do Equipamento', 'Equipamento', 'Placa', 'Hora de chegada', 'Tipo de material', 'Quantidade', 'Unidade', 'Ramo de Descarga', 'Empresa', 'Estaca', 'Carga conforme', 'Responsável', 'Observações', 'Situação', 'Assinado digitalmente']
-          : ['Data', 'Ticket Nº', 'Prefixo', 'Família do Equipamento', 'Equipamento', 'Placa', 'Hora de saída', 'Tipo de material', 'Quantidade', 'Unidade', 'Destino / Obra', 'Empresa', 'Responsável', 'Situação', 'Assinado digitalmente'];
-
-        ws.columns = headers.map((header, index) => ({
-          key: `col${index + 1}`,
-          width: [12, 12, 12, 24, 24, 13, 16, 18, 16, 22, 16, 18, 22][index] || 16,
-        }));
-        ws.mergeCells(1, 1, 1, headers.length);
-        ws.getCell(1, 1).value = isRecebimento ? 'TICKET DE RECEBIMENTO - OBRA SABESP' : 'TICKET DE LIBERAÇÃO - JAZIDA SABESP';
-        ws.getRow(1).height = 24;
-        ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 13 };
-        ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
-        ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-
-        const headerRow = ws.getRow(4);
-        headerRow.values = [, ...headers];
-        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
-        headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-
-        tickets
-          .filter(item => matchesExportFilters(item, tipo))
-          .sort((a, b) => a.data.localeCompare(b.data) || Number(a.ticketNumero) - Number(b.ticketNumero))
-          .forEach(item => {
-            const values = isRecebimento
-              ? [
-                  item.data ? item.data.split('-').reverse().join('/') : '',
-                  item.ticketNumero,
-                  item.prefixo,
-                  item.familiaEquipamento || '',
-                  item.equipamentoNome || '',
-                  item.placa,
-                  item.horaChegada || item.horaSaida || '',
-                  item.tipoMaterial,
-                  item.quantidadeM3,
-                  item.unidadeQuantidade || 'm³',
-                  item.destinoObra === 'Outros' ? item.destinoOutro || 'Outros' : item.destinoObra,
-                  item.empresa,
-                  item.estaca || '',
-                  typeof item.cargaConforme === 'boolean' ? (item.cargaConforme ? 'Sim' : 'Não') : '',
-                  item.nomeLegivel || item.responsavelLiberacao,
-                  item.observacao || '',
-                  item.statusFluxo || item.status || 'Enviado',
-                  item.assinaturaDigital ? 'Sim' : 'Não',
-                ]
-              : [
-                  item.data ? item.data.split('-').reverse().join('/') : '',
-                  item.ticketNumero,
-                  item.prefixo,
-                  item.familiaEquipamento || '',
-                  item.equipamentoNome || '',
-                  item.placa,
-                  item.horaSaida || '',
-                  item.tipoMaterial,
-                  item.quantidadeM3,
-                  item.unidadeQuantidade || 'm³',
-                  item.destinoObra === 'Outros' ? item.destinoOutro || 'Outros' : item.destinoObra,
-                  item.empresa,
-                  item.nomeLegivel || item.responsavelLiberacao,
-                  item.statusFluxo || item.status || 'Enviado',
-                  item.assinaturaDigital ? 'Sim' : 'Não',
-                ];
-            ws.addRow(values);
-          });
-
-        styleCorporateWorksheet(ws, {
-          title: isRecebimento ? 'Tickets de Recebimento' : 'Tickets de Liberação',
-          headerRow: 4,
-          lastColumn: headers.length,
-          recordCount: Math.max(0, ws.rowCount - 4),
-          filters: [fDataInicial ? `Início: ${fDataInicial}` : '', fDataFinal ? `Fim: ${fDataFinal}` : '', fStatus ? `Situação: ${fStatus}` : ''],
-        });
-      };
-
-      addTicketWorksheet('Liberação');
-      addTicketWorksheet('Recebimento');
-      const exportados = tickets.filter(item => matchesExportFilters(item, item.tipoTicket || 'Liberação'));
-      addCorporateSummarySheet(wb, 'Tickets de Jazida', [
-        ['Total exportado', exportados.length],
-        ['Liberações', exportados.filter(item => (item.tipoTicket || 'Liberação') === 'Liberação').length],
-        ['Recebimentos', exportados.filter(item => item.tipoTicket === 'Recebimento').length],
-        ['Pendentes', exportados.filter(item => (item.statusFluxo || item.status) === 'Pendente').length],
+      const [reneaLogoBase64, spmarLogoBase64] = await Promise.all([
+        getBase64ImageFromUrl(reneaLogoFull),
+        getBase64ImageFromUrl(spmarLogo),
       ]);
+      const wb = buildTicketSpreadsheetWorkbook({
+        liberacoes: tickets.filter(item => matchesExportFilters(item, 'Liberação')),
+        recebimentos: tickets.filter(item => matchesExportFilters(item, 'Recebimento')),
+        duplicateKeys: duplicateTicketKeys,
+        reneaLogoBase64,
+        spmarLogoBase64,
+      });
       const sufixo = hasFiltrosAtivos ? '_filtrado' : '';
-      await downloadCorporateWorkbook(wb, `RENEA_tickets_jazida${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      await downloadCorporateWorkbook(wb, `CONTROLE DE VIAGEMS JAZIDA SABESP${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
       console.error('Erro ao exportar Excel de tickets jazida:', err);
       setValidationError('Não foi possível exportar o Excel. Tente novamente.');
@@ -1492,7 +1416,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-amber-500/20 bg-slate-900 p-4">
           <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Rascunhos</span><FilePenLine className="h-4 w-4 text-amber-400" /></div>
           <strong className="mt-2 block text-2xl text-white">{flowDashboard.drafts}</strong>
@@ -1508,6 +1432,15 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
           <strong className="mt-2 block text-2xl text-white">{flowDashboard.completed}</strong>
           <span className="text-[10px] text-slate-500">Liberação e recebimento enviados</span>
         </div>
+        <button
+          type="button"
+          onClick={() => setFStatus(flowDashboard.duplicates ? 'Duplicado' : '')}
+          className={`rounded-lg border p-4 text-left transition-colors ${flowDashboard.duplicates ? 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10' : 'border-slate-800 bg-slate-900'}`}
+        >
+          <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Números duplicados</span><CopyPlus className={`h-4 w-4 ${flowDashboard.duplicates ? 'text-rose-400' : 'text-slate-600'}`} /></div>
+          <strong className={`mt-2 block text-2xl ${flowDashboard.duplicates ? 'text-rose-300' : 'text-white'}`}>{flowDashboard.duplicates}</strong>
+          <span className="text-[10px] text-slate-500">Mesmo número repetido dentro da mesma aba</span>
+        </button>
       </div>
 
       {flowDashboard.pairs.length > 0 && (
@@ -1520,9 +1453,12 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             {flowDashboard.pairs.slice(0, 9).map(pair => {
               const releaseSent = pair.liberacao && pair.liberacao.statusFluxo !== 'Rascunho';
               const receiptSent = pair.recebimento && pair.recebimento.statusFluxo !== 'Rascunho';
+              const releaseDuplicate = duplicateTicketKeys.has(`Liberação|${normalizeTicketNumber(pair.numero)}`);
+              const receiptDuplicate = duplicateTicketKeys.has(`Recebimento|${normalizeTicketNumber(pair.numero)}`);
               return (
-                <div key={pair.numero} className="rounded-md border border-slate-800 bg-slate-950/60 p-3">
+                <div key={pair.numero} className={`rounded-md border bg-slate-950/60 p-3 ${releaseDuplicate || receiptDuplicate ? 'border-rose-500/40' : 'border-slate-800'}`}>
                   <div className="flex items-center justify-between"><b className="text-xs text-white">Ticket {pair.numero}</b><span className="text-[10px] text-slate-500">{pair.liberacao?.placa || pair.recebimento?.placa || 'Sem placa'}</span></div>
+                  {(releaseDuplicate || receiptDuplicate) && <p className="mt-1 text-[9px] font-black uppercase text-rose-300">Duplicado em {releaseDuplicate && receiptDuplicate ? 'liberação e recebimento' : releaseDuplicate ? 'liberação' : 'recebimento'}</p>}
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <span className={`rounded px-2 py-1.5 text-center text-[10px] font-black ${releaseSent ? 'bg-emerald-500/10 text-emerald-300' : pair.liberacao ? 'bg-amber-500/10 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>Liberação {releaseSent ? 'enviada' : pair.liberacao ? 'rascunho' : 'pendente'}</span>
                     <span className={`rounded px-2 py-1.5 text-center text-[10px] font-black ${receiptSent ? 'bg-emerald-500/10 text-emerald-300' : pair.recebimento ? 'bg-amber-500/10 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>Recebimento {receiptSent ? 'enviado' : pair.recebimento ? 'rascunho' : 'pendente'}</span>
@@ -1877,7 +1813,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
                 </tr>
               ) : (
                 filteredTickets.map(t => {
-                  const status = t.statusFluxo || t.status || 'Enviado';
+                  const status = isDuplicateTicket(t, duplicateTicketKeys) ? 'Duplicado' : t.statusFluxo || t.status || 'Enviado';
                   const hasRecebimentoClone = tickets.some(item =>
                     (item.tipoTicket || 'Liberação') === 'Recebimento' &&
                     item.ticketNumero.trim().toLowerCase() === t.ticketNumero.trim().toLowerCase()
