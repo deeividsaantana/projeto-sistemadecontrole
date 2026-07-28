@@ -334,6 +334,8 @@ export interface TicketJazida {
   atualizadoEm?: string;
   impressaoEmBranco?: boolean;
   ocultarNumeroImpressao?: boolean;
+  loteImpressaoId?: string;
+  loteImpressaoCriadoEm?: string;
 }
 
 export interface OrdemServico {

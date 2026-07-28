@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Truck,
   Search,
@@ -52,6 +52,27 @@ const DESTINOS_OBRA: DestinoObraJazida[] = [
 ];
 const EMPRESAS_TICKET: EmpresaTicketJazida[] = ['RENEA', 'Terceiro', 'Outros'];
 
+type PrintedTicketBatch = {
+  id: string;
+  inicio: number;
+  fim: number;
+  criadoEm: string;
+  numeros?: string[];
+  modo?: 'Em branco' | 'Pré-preenchido';
+};
+
+const TICKET_PREFIX = '100';
+const normalizeTicketNumber = (value: string | number) => {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.startsWith(TICKET_PREFIX) ? digits : `${TICKET_PREFIX}${digits}`;
+};
+const baseTicketNumber = (value: string | number) => {
+  const normalized = normalizeTicketNumber(value);
+  return normalized.startsWith(TICKET_PREFIX) ? Number(normalized.slice(TICKET_PREFIX.length)) : Number(normalized);
+};
+
+
 const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
   const isReceipt = (ticket.tipoTicket || 'Liberação') === 'Recebimento';
   const blankPrint = ticket.impressaoEmBranco === true;
@@ -72,7 +93,7 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
           <img src={reneaLogoFull} alt="RENEA" className="max-h-14 max-w-44 object-contain" />
         </div>
         <div className="h-24 border-r border-b border-slate-500 grid place-items-center text-center px-3">
-          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento' : 'Liberação'} - Obra</h2><p className="mt-1 text-[10px] text-slate-600">Complexo Alto Tietê</p></div>
+          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-[10px] text-slate-600">Complexo Alto Tietê</p></div>
         </div>
         <div className="h-24 border-r border-b border-slate-500 p-2">
           <div className="text-[9px] font-bold uppercase text-slate-600">Ticket Nº</div>
@@ -172,7 +193,7 @@ const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTic
     if (logo) doc.addImage(logo, 'PNG', left + 10, top + 1, 32.2, 18);
     else { doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('RENEA', left + 5, top + 13); }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42);
-    doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO' : 'LIBERAÇÃO'} - OBRA`, left + 60, top + 8);
+    doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO - OBRA' : 'LIBERAÇÃO - JAZIDA'}`, left + 60, top + 8);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.text('Complexo Alto Tietê', left + 60, top + 13);
     label('Ticket Nº', left + 169, top + 5); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text(ticket.ocultarNumeroImpressao ? '' : ticket.ticketNumero, left + 179.5, top + 14, { align: 'center' });
 
@@ -188,7 +209,7 @@ const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTic
 
     const detailTop = materialTop + 18;
     line(left + 55, detailTop, left + 55, detailTop + 14); line(left + 145, detailTop, left + 145, detailTop + 14);
-    label('Quantidade (m³ / caçamba)', left + 3, detailTop + 4); value(blankPrint ? '' : `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`, left + 3, detailTop + 10);
+    label('Quantidade (m³ / caçamba)', left + 3, detailTop + 4); value(blankPrint || ticket.quantidadeM3 <= 0 ? '' : `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`, left + 3, detailTop + 10);
     label(isReceipt ? 'Ramo de descarga' : 'Destino / obra', left + 58, detailTop + 4); value(destination, left + 58, detailTop + 10, 82);
     label('Estaca', left + 148, detailTop + 4); value(blankPrint ? '' : ticket.estaca || '—', left + 148, detailTop + 10);
     line(left, detailTop + 14, left + width, detailTop + 14);
@@ -257,6 +278,10 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [isBatchPrinting, setIsBatchPrinting] = useState(false);
   const [batchStartNumber, setBatchStartNumber] = useState('');
   const [batchQuantity, setBatchQuantity] = useState(10);
+  const [batchNumberMode, setBatchNumberMode] = useState<'automatico' | 'manual'>('manual');
+  const [batchDirection, setBatchDirection] = useState<'crescente' | 'decrescente'>('crescente');
+  const [batchFillMode, setBatchFillMode] = useState<'em-branco' | 'pre-preenchido'>('em-branco');
+  const [batchSaveDrafts, setBatchSaveDrafts] = useState(true);
   const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
   const [batchPrefixo, setBatchPrefixo] = useState('');
   const [batchPlaca, setBatchPlaca] = useState('');
@@ -264,9 +289,12 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const [batchQuantidadeM3, setBatchQuantidadeM3] = useState<number>(1);
   const [batchDestinoObra, setBatchDestinoObra] = useState<DestinoObraJazida>('Marginal');
   const [batchEmpresa, setBatchEmpresa] = useState<EmpresaTicketJazida>('RENEA');
-  const [batchBlankForm, setBatchBlankForm] = useState(true);
-  const [batchPrintNumber, setBatchPrintNumber] = useState(true);
-  const [batchSaveDrafts, setBatchSaveDrafts] = useState(false);
+  const [printedBatches, setPrintedBatches] = useState<PrintedTicketBatch[]>(() => {
+    try {
+      const saved = localStorage.getItem('renea_jazida_printed_batches') || localStorage.getItem('jazidaPrintedTicketBatches') || '[]';
+      return JSON.parse(saved);
+    } catch { return []; }
+  });
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
@@ -326,16 +354,9 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setObservacao('');
   };
 
-  const handleOpenCreate = async () => {
+  const handleOpenCreate = () => {
     resetFormFields();
     setIsFormOpen(true);
-    if (ticketTab === 'Liberação') {
-      try {
-        setTicketNumero(await onReserveTicketNumber());
-      } catch {
-        setValidationError('Não foi possível gerar o número automático. Confira a conexão com o Firebase.');
-      }
-    }
   };
 
   const handleOpenEdit = (t: TicketJazida) => {
@@ -364,7 +385,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
 
   const findLiberacaoByTicketNumero = (numero: string) => tickets.find(t =>
     (t.tipoTicket || 'Liberação') === 'Liberação' &&
-    t.ticketNumero.trim().toLowerCase() === numero.trim().toLowerCase()
+    normalizeTicketNumber(t.ticketNumero) === normalizeTicketNumber(numero)
   );
 
   const applyLiberacaoCloneToForm = (numero: string, force = false) => {
@@ -384,7 +405,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
   const handleCloneRecebimentoFromLiberacao = (liberacao: TicketJazida) => {
     const alreadyExists = tickets.some(t =>
       (t.tipoTicket || 'Liberação') === 'Recebimento' &&
-      t.ticketNumero.trim().toLowerCase() === liberacao.ticketNumero.trim().toLowerCase()
+      normalizeTicketNumber(t.ticketNumero) === normalizeTicketNumber(liberacao.ticketNumero)
     );
     if (alreadyExists) {
       setTicketTab('Recebimento');
@@ -463,8 +484,11 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     if (!quantidadeM3 || quantidadeM3 <= 0) { setValidationError('Quantidade (m³) deve ser maior que zero.'); return; }
     if (destinoObra === 'Outros' && !destinoOutro.trim()) { setValidationError('Informe o destino ou ramo de descarga.'); return; }
 
+    const normalizedTicketNumber = normalizeTicketNumber(ticketNumero);
+    if (!normalizedTicketNumber) { setValidationError('Informe uma numeração válida para o ticket.'); return; }
+
     const duplicado = tickets.some(t =>
-      t.ticketNumero.trim().toLowerCase() === ticketNumero.trim().toLowerCase() &&
+      normalizeTicketNumber(t.ticketNumero) === normalizedTicketNumber &&
       (t.tipoTicket || 'Liberação') === tipoTicket &&
       t.id !== editingId
     );
@@ -479,7 +503,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
       id: isNew ? `ticket-${Date.now()}` : editingId!,
       data,
       tipoTicket,
-      ticketNumero: ticketNumero.trim(),
+      ticketNumero: normalizedTicketNumber,
       prefixo: prefixo.trim(),
       placa: placa.trim().toUpperCase(),
       familiaEquipamento: familiaEquipamento.trim(),
@@ -573,65 +597,63 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     return { pairs, drafts, pending, completed };
   }, [tickets]);
 
-  const nextTicketNumber = useMemo(() => {
-    const maxNumber = tickets.reduce((max, ticket) => {
-      const parsed = Number(String(ticket.ticketNumero || '').match(/\d+/)?.[0] || 0);
-      return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
-    }, 0);
-    return String(maxNumber + 1);
-  }, [tickets]);
 
   const formatSequentialNumber = (start: string, offset: number) => {
-    const trimmed = start.trim();
-    const match = trimmed.match(/^(.*?)(\d+)(\D*)$/);
-    if (!match) return String(offset + 1);
-    const [, prefix, numeric, suffix] = match;
-    return `${prefix}${String(Number(numeric) + offset).padStart(numeric.length, '0')}${suffix}`;
+    const base = baseTicketNumber(start);
+    if (!Number.isFinite(base)) return '';
+    return normalizeTicketNumber(base + offset);
   };
 
-  const buildBatchTicket = (number: string, type: TipoTicketJazida, now: string): TicketJazida => ({
-    id: `ticket-lote-${type === 'Liberação' ? 'lib' : 'rec'}-${number}-${Date.now()}`,
-    data: batchDate,
-    tipoTicket: type,
-    ticketNumero: number,
-    prefixo: batchPrefixo.trim().toUpperCase(),
-    placa: batchPlaca.trim().toUpperCase(),
-    familiaEquipamento: '',
-    equipamentoNome: '',
-    horaSaida: type === 'Liberação' ? '08:00' : '',
-    horaChegada: type === 'Recebimento' ? '' : undefined,
-    tipoMaterial: batchTipoMaterial,
-    quantidadeM3: Number(batchQuantidadeM3) || 1,
-    destinoObra: batchDestinoObra,
-    destinoOutro: '',
-    responsavelLiberacao: '',
-    nomeLegivel: '',
-    empresa: batchEmpresa,
-    estaca: '',
-    observacao: batchBlankForm ? '' : 'Gerado em lote para impressão sequencial.',
-    status: 'OK',
-    statusFluxo: type === 'Liberação' ? 'Rascunho' : undefined,
-    unidadeQuantidade: 'm³',
-    origemRegistro: 'Admin',
-    criadoEm: now,
-    atualizadoEm: now,
-    impressaoEmBranco: batchBlankForm,
-    ocultarNumeroImpressao: !batchPrintNumber,
-  });
+  const buildBatchTicket = (number: string, type: TipoTicketJazida, batchId: string): TicketJazida => {
+    const now = new Date().toISOString();
+    const blank = batchFillMode === 'em-branco';
+    return {
+      id: `ticket-lote-${type === 'Liberação' ? 'lib' : 'rec'}-${number}-${Date.now()}`,
+      data: blank ? '' : batchDate,
+      tipoTicket: type,
+      ticketNumero: number,
+      prefixo: blank ? '' : batchPrefixo.trim().toUpperCase(),
+      placa: blank ? '' : batchPlaca.trim().toUpperCase(),
+      familiaEquipamento: '',
+      equipamentoNome: '',
+      horaSaida: '',
+      horaChegada: '',
+      tipoMaterial: blank ? '' as TipoMaterialJazida : batchTipoMaterial,
+      quantidadeM3: blank ? 0 : Number(batchQuantidadeM3) || 0,
+      destinoObra: blank ? '' as DestinoObraJazida : batchDestinoObra,
+      destinoOutro: '',
+      responsavelLiberacao: '',
+      nomeLegivel: '',
+      empresa: blank ? '' as EmpresaTicketJazida : batchEmpresa,
+      estaca: '',
+      observacao: '',
+      unidadeQuantidade: 'm³',
+      status: 'Pendente',
+      statusFluxo: 'Rascunho',
+      origemRegistro: 'Admin',
+      criadoEm: now,
+      atualizadoEm: now,
+      impressaoEmBranco: blank,
+      ocultarNumeroImpressao: false,
+      loteImpressaoId: batchId,
+      loteImpressaoCriadoEm: now,
+    };
+  };
 
   const openBatchModal = () => {
-    setBatchStartNumber(nextTicketNumber);
-    setBatchDate(new Date().toISOString().split('T')[0]);
+    setBatchStartNumber('');
     setBatchQuantity(10);
+    setBatchNumberMode('manual');
+    setBatchDirection('crescente');
+    setBatchFillMode('em-branco');
+    setBatchSaveDrafts(true);
+    setBatchDate(new Date().toISOString().split('T')[0]);
     setBatchPrefixo('');
     setBatchPlaca('');
     setBatchTipoMaterial('Solo');
     setBatchQuantidadeM3(1);
     setBatchDestinoObra('Marginal');
     setBatchEmpresa('RENEA');
-    setBatchBlankForm(true);
-    setBatchPrintNumber(true);
-    setBatchSaveDrafts(false);
     setValidationError('');
     setImportMessage('');
     setIsBatchModalOpen(true);
@@ -641,47 +663,128 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
     setValidationError('');
     setImportMessage('');
     const quantity = Math.max(1, Math.min(200, Math.floor(Number(batchQuantity) || 0)));
-    if (!batchBlankForm && (batchPrintNumber || batchSaveDrafts) && !batchStartNumber.trim()) { setValidationError('Informe o primeiro número da sequência.'); return; }
-    if (!batchBlankForm && !batchDate) { setValidationError('Informe a data dos tickets.'); return; }
+    if (batchNumberMode === 'manual' && !batchStartNumber.trim()) {
+      setValidationError('Informe o primeiro número da sequência.');
+      return;
+    }
+    if (batchFillMode === 'pre-preenchido' && !batchDate) {
+      setValidationError('Informe a data dos tickets.');
+      return;
+    }
 
     setIsBatchPrinting(true);
     try {
-      const sequenceStart = batchStartNumber.trim() || '1';
-      const numbers = batchBlankForm
+      const reserved = batchNumberMode === 'automatico'
         ? await onReserveTicketNumbers(quantity)
-        : Array.from({ length: quantity }, (_, index) => formatSequentialNumber(sequenceStart, index));
-      const existing = new Set(tickets.map(ticket => `${ticket.tipoTicket || 'Liberação'}|${ticket.ticketNumero}`.toLowerCase()));
-      const duplicate = batchSaveDrafts ? numbers.find(number => existing.has(`liberação|${number}`.toLowerCase())) : undefined;
-      if (duplicate) {
-        setValidationError(`O Ticket Nº ${duplicate} já existe em liberação. Ajuste o início da sequência.`);
-        return;
+        : Array.from({ length: quantity }, (_, index) => formatSequentialNumber(
+            batchStartNumber,
+            batchDirection === 'crescente' ? index : -index,
+          ));
+      const numbers = reserved.filter(Boolean);
+      if (numbers.length !== quantity) throw new Error('Faixa de numeração inválida.');
+      const batchId = `lote-${Date.now()}`;
+      const pairs = numbers.map(number => ({
+        releaseTicket: buildBatchTicket(number, 'Liberação', batchId),
+        receiptTicket: buildBatchTicket(number, 'Recebimento', batchId),
+      }));
+      const fileMode = batchFillMode === 'em-branco' ? 'em_branco' : 'pre_preenchidos';
+      await generateTicketBookPdf(pairs, `tickets_${fileMode}_${numbers[0]}_${numbers[numbers.length - 1]}.pdf`);
+
+      if (batchSaveDrafts) {
+        const existingKeys = new Set(tickets.map(ticket =>
+          `${normalizeTicketNumber(ticket.ticketNumero)}|${ticket.tipoTicket || 'Liberação'}`
+        ));
+        const drafts = pairs
+        .flatMap(pair => [pair.releaseTicket, pair.receiptTicket])
+        .filter(ticket => !existingKeys.has(`${ticket.ticketNumero}|${ticket.tipoTicket || 'Liberação'}`));
+        if (drafts.length > 0) onImportTickets(drafts);
       }
 
-      const now = new Date().toISOString();
-      const releaseTickets = numbers.map(number => buildBatchTicket(number, 'Liberação', now));
-      const pairs = releaseTickets.map(releaseTicket => ({
-        releaseTicket,
-        receiptTicket: {
-          ...buildBatchTicket(releaseTicket.ticketNumero, 'Recebimento', now),
-          id: `${releaseTicket.id}-receipt-preview`,
-          statusFluxo: undefined,
-        },
-      }));
-      if (batchSaveDrafts) onImportTickets(releaseTickets);
-      const fileName = !batchPrintNumber
-        ? `${batchBlankForm ? 'tickets_em_branco' : 'tickets_sem_numero'}_${quantity}.pdf`
-        : `tickets_sequenciais_${numbers[0]}_${numbers[numbers.length - 1]}.pdf`;
-      await generateTicketBookPdf(pairs, fileName);
-      setImportMessage(batchSaveDrafts
-        ? `${releaseTickets.length} ticket(s) salvos como rascunho e enviados para PDF.`
-        : `${releaseTickets.length} formulário(s) enviados para PDF sem criar registros no sistema.`);
+      const bases = numbers.map(baseTicketNumber).filter(Number.isFinite);
+      const novoLote: PrintedTicketBatch = {
+        id: batchId,
+        inicio: Math.min(...bases),
+        fim: Math.max(...bases),
+        numeros: numbers,
+        modo: batchFillMode === 'em-branco' ? 'Em branco' : 'Pré-preenchido',
+        criadoEm: new Date().toISOString(),
+      };
+      setPrintedBatches(prev => {
+        const next = [novoLote, ...prev];
+        localStorage.setItem('renea_jazida_printed_batches', JSON.stringify(next));
+        return next;
+      });
+      setImportMessage(`${numbers.length} número(s) impressos em duas vias${batchSaveDrafts ? ' e salvos como rascunhos editáveis' : ''}.`);
       setIsBatchModalOpen(false);
     } catch (err) {
       console.error('Erro ao gerar tickets sequenciais:', err);
-      setValidationError('Não foi possível gerar o PDF da sequência de tickets.');
+      setValidationError(err instanceof Error ? err.message : 'Não foi possível gerar o PDF da sequência.');
     } finally {
       setIsBatchPrinting(false);
     }
+  };
+
+  // Índice calculado uma única vez por alteração da lista. Antes, cada número de cada
+  // lote percorria todos os tickets duas vezes, o que deixava a tela muito pesada.
+  const ticketCompletionIndex = useMemo(() => {
+    const index = new Map<number, { liberacao: boolean; recebimento: boolean }>();
+    tickets.forEach(ticket => {
+      const numero = baseTicketNumber(ticket.ticketNumero);
+      if (!Number.isFinite(numero)) return;
+      const status = index.get(numero) || { liberacao: false, recebimento: false };
+      if ((ticket.tipoTicket || 'Liberação') === 'Liberação') status.liberacao = true;
+      else status.recebimento = true;
+      index.set(numero, status);
+    });
+    return index;
+  }, [tickets]);
+
+  const ticketControlRows = useMemo(() => printedBatches.map(batch => {
+    const total = Math.max(0, batch.fim - batch.inicio + 1);
+    let liberacoes = 0;
+    let recebimentos = 0;
+    let completas = 0;
+
+    for (let numero = batch.inicio; numero <= batch.fim; numero += 1) {
+      const status = ticketCompletionIndex.get(numero);
+      if (!status) continue;
+      if (status.liberacao) liberacoes += 1;
+      if (status.recebimento) recebimentos += 1;
+      if (status.liberacao && status.recebimento) completas += 1;
+    }
+
+    return { ...batch, total, liberacoes, recebimentos, completas, pendentes: total - completas };
+  }), [printedBatches, ticketCompletionIndex]);
+
+  const ticketControlTotals = useMemo(() => ticketControlRows.reduce((totals, row) => ({
+    total: totals.total + row.total,
+    liberacoes: totals.liberacoes + row.liberacoes,
+    recebimentos: totals.recebimentos + row.recebimentos,
+    completas: totals.completas + row.completas,
+    pendentes: totals.pendentes + row.pendentes,
+  }), { total: 0, liberacoes: 0, recebimentos: 0, completas: 0, pendentes: 0 }), [ticketControlRows]);
+
+  const exportTicketControlExcel = async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Controle de tickets');
+    ws.addRow(['Data da impressão', 'Numeração inicial', 'Numeração final', 'Tickets enviados', 'Liberações preenchidas', 'Recebimentos preenchidos', 'Viagens completas', 'Pendentes']);
+    ticketControlRows.forEach(r => ws.addRow([new Date(r.criadoEm).toLocaleString('pt-BR'), normalizeTicketNumber(r.inicio), normalizeTicketNumber(r.fim), r.total, r.liberacoes, r.recebimentos, r.completas, r.pendentes]));
+    ws.columns.forEach(c => { c.width = 24; });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'controle_tickets_jazida.xlsx'; a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  const exportTicketControlPdf = () => {
+    const doc = new jsPDF('l', 'mm', 'a4');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Controle de tickets enviados para preenchimento', 12, 15);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    const headers = ['Impressão', 'Inicial', 'Final', 'Enviados', 'Lib.', 'Rec.', 'Viagens completas', 'Pendentes'];
+    const xs = [12, 58, 88, 118, 150, 172, 194, 246];
+    headers.forEach((h,i) => doc.text(h, xs[i], 25));
+    let y=32;
+    ticketControlRows.forEach(r => { if (y > 190) { doc.addPage(); y=18; } const vals=[new Date(r.criadoEm).toLocaleString('pt-BR'),normalizeTicketNumber(r.inicio),normalizeTicketNumber(r.fim),r.total,r.liberacoes,r.recebimentos,r.completas,r.pendentes]; vals.forEach((v,i)=>doc.text(String(v),xs[i],y)); y+=7; });
+    doc.save('controle_tickets_jazida.pdf');
   };
 
   const copyPublicLink = async () => {
@@ -959,7 +1062,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
           width: [12, 12, 12, 24, 24, 13, 16, 18, 16, 22, 16, 18, 22][index] || 16,
         }));
         ws.mergeCells(1, 1, 1, headers.length);
-        ws.getCell(1, 1).value = isRecebimento ? 'TICKET DE RECEBIMENTO - JAZIDA SABESP' : 'TICKET DE LIBERAÇÃO - JAZIDA SABESP';
+        ws.getCell(1, 1).value = isRecebimento ? 'TICKET DE RECEBIMENTO - OBRA SABESP' : 'TICKET DE LIBERAÇÃO - JAZIDA SABESP';
         ws.getRow(1).height = 24;
         ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 13 };
         ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
@@ -1568,18 +1671,17 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                 </div>
               )}
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ticket Nº {tipoTicket === 'Liberação' ? '(automático)' : '*'}</label>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ticket Nº *</label>
                 <input
                   type="text"
                   value={ticketNumero}
                   onChange={e => setTicketNumero(e.target.value)}
-                  readOnly={tipoTicket === 'Liberação' && editingId === null}
                   onBlur={() => {
                     if (tipoTicket === 'Recebimento' && ticketNumero.trim()) {
                       applyLiberacaoCloneToForm(ticketNumero);
                     }
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 read-only:text-emerald-400 read-only:cursor-not-allowed"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   required
                 />
               </div>
@@ -1751,6 +1853,21 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
         </div>
       </div>
 
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h3 className="text-sm font-black text-white">Controle de tickets enviados</h3><p className="text-[10px] text-slate-500">Faixas impressas, preenchimento e viagens completas (liberação + recebimento).</p></div>
+          <div className="flex gap-2"><button onClick={exportTicketControlPdf} className="px-3 py-2 rounded-lg bg-slate-800 text-xs font-bold text-white">Exportar PDF</button><button onClick={exportTicketControlExcel} className="px-3 py-2 rounded-lg bg-emerald-600 text-xs font-bold text-white">Exportar Excel</button></div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Tickets enviados</p><p className="text-xl font-black text-white">{ticketControlTotals.total}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Viagens completas</p><p className="text-xl font-black text-emerald-400">{ticketControlTotals.completas}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Liberações preenchidas</p><p className="text-xl font-black text-white">{ticketControlTotals.liberacoes}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Recebimentos preenchidos</p><p className="text-xl font-black text-white">{ticketControlTotals.recebimentos}</p></div>
+        </div>
+        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-2">Impressão</th><th>Faixa</th><th>Enviados</th><th>Lib.</th><th>Rec.</th><th>Viagens completas</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-slate-800 text-slate-300"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.inicio)} a {normalizeTicketNumber(r.fim)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
+      </div>
+
       {isBatchModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
@@ -1760,7 +1877,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
                   <Printer className="w-4 h-4 text-emerald-400" />
                   Imprimir tickets em sequência
                 </h3>
-                <p className="text-[10px] text-slate-500 mt-1">Gera até 200 folhas; o modo em branco vem selecionado e não cria registros automaticamente.</p>
+                <p className="text-[10px] text-slate-500 mt-1">Configure a numeração, escolha o que já deve sair preenchido e salve as duas vias para editar depois.</p>
               </div>
               <button type="button" disabled={isBatchPrinting} onClick={() => setIsBatchModalOpen(false)} className="h-8 w-8 grid place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white disabled:opacity-50">
                 <X className="w-4 h-4" />
@@ -1768,78 +1885,86 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             </div>
 
             <div className="grid gap-2 sm:grid-cols-3">
-              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchBlankForm ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
-                <input
-                  type="checkbox"
-                  checked={batchBlankForm}
-                  onChange={e => {
-                    const checked = e.target.checked;
-                    setBatchBlankForm(checked);
-                    if (checked) setBatchPrintNumber(true);
-                  }}
-                  className="mt-0.5 accent-emerald-500"
-                />
+              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchFillMode === 'em-branco' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
+                <input type="radio" name="batch-fill-mode" checked={batchFillMode === 'em-branco'} onChange={() => setBatchFillMode('em-branco')} className="mt-0.5 accent-emerald-500" />
                 <span><strong className="block text-[11px] text-slate-100">Somente a numeração</strong><small className="block text-[9px] text-slate-500">Todos os demais campos ficam vazios para preencher à caneta.</small></span>
               </label>
-              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchPrintNumber ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
-                <input type="checkbox" checked={batchPrintNumber} disabled={batchBlankForm} onChange={e => setBatchPrintNumber(e.target.checked)} className="mt-0.5 accent-emerald-500 disabled:cursor-not-allowed" />
-                <span><strong className="block text-[11px] text-slate-100">Imprimir número sequencial</strong><small className="block text-[9px] text-slate-500">Obrigatório quando os demais campos estão em branco.</small></span>
+              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchFillMode === 'pre-preenchido' ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-slate-800 bg-slate-950'}`}>
+                <input type="radio" name="batch-fill-mode" checked={batchFillMode === 'pre-preenchido'} onChange={() => setBatchFillMode('pre-preenchido')} className="mt-0.5 accent-cyan-500" />
+                <span><strong className="block text-[11px] text-slate-100">Pré-preencher o lote</strong><small className="block text-[9px] text-slate-500">Você escolhe abaixo quais dados comuns já saem no PDF.</small></span>
               </label>
               <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchSaveDrafts ? 'border-amber-500/50 bg-amber-500/10' : 'border-slate-800 bg-slate-950'}`}>
                 <input type="checkbox" checked={batchSaveDrafts} onChange={e => setBatchSaveDrafts(e.target.checked)} className="mt-0.5 accent-amber-500" />
-                <span><strong className="block text-[11px] text-slate-100">Salvar como rascunho</strong><small className="block text-[9px] text-slate-500">Opcional; desligado não polui a lista de tickets.</small></span>
+                <span><strong className="block text-[11px] text-slate-100">Salvar para editar depois</strong><small className="block text-[9px] text-slate-500">Cria as duas vias como rascunhos editáveis no sistema.</small></span>
               </label>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Primeiro ticket</label>
-                <input value={batchBlankForm ? 'Automático' : batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} disabled={batchBlankForm || (!batchPrintNumber && !batchSaveDrafts)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Numeração</label>
+                <select value={batchNumberMode} onChange={e => setBatchNumberMode(e.target.value as 'automatico' | 'manual')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                  <option value="manual">Informar primeiro número</option>
+                  <option value="automatico">Próxima sequência automática</option>
+                </select>
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade</label>
                 <input type="number" min="1" max="200" value={batchQuantity} onChange={e => setBatchQuantity(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+              <div className={`space-y-1 ${batchNumberMode === 'automatico' ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Primeiro ticket</label>
+                <input value={batchNumberMode === 'automatico' ? 'Automático' : batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} disabled={batchNumberMode === 'automatico'} placeholder="Ex.: 100310" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+              </div>
+              <div className={`space-y-1 ${batchNumberMode === 'automatico' ? 'opacity-45' : ''}`}>
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ordem</label>
+                <select value={batchDirection} onChange={e => setBatchDirection(e.target.value as 'crescente' | 'decrescente')} disabled={batchNumberMode === 'automatico'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                  <option value="crescente">Crescente</option>
+                  <option value="decrescente">Decrescente</option>
+                </select>
+              </div>
+              <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data</label>
-                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+              <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
-                <input value={batchPrefixo} onChange={e => setBatchPrefixo(e.target.value.toUpperCase())} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <input value={batchPrefixo} onChange={e => setBatchPrefixo(e.target.value.toUpperCase())} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+              <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
-                <input value={batchPlaca} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <input value={batchPlaca} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+              <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³)</label>
-                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+              <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Material</label>
-                <select value={batchTipoMaterial} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                <select value={batchTipoMaterial} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   {TIPOS_MATERIAL.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
-              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+              <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / obra</label>
-                <select value={batchDestinoObra} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                <select value={batchDestinoObra} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   {DESTINOS_OBRA.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
-              <div className={`space-y-1 ${batchBlankForm ? 'opacity-45' : ''}`}>
+              <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
-                <select value={batchEmpresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} disabled={batchBlankForm} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                <select value={batchEmpresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   {EMPRESAS_TICKET.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-[10px] text-slate-400">
-              {batchBlankForm
-                ? `${Math.max(1, Math.min(200, Number(batchQuantity) || 1))} ticket(s) somente com a numeração sequencial automática; demais campos vazios.`
-                : <>Sequência: {batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até {batchStartNumber ? formatSequentialNumber(batchStartNumber, Math.max(0, Math.min(200, Number(batchQuantity) || 1) - 1)) : '-'}.</>}
+              <strong className="text-slate-200">Prévia:</strong>{' '}
+              {Math.max(1, Math.min(200, Number(batchQuantity) || 1))} ticket(s) em duas vias,{' '}
+              {batchFillMode === 'em-branco' ? 'apenas com a numeração' : 'com os campos escolhidos pré-preenchidos'}.
+              {batchNumberMode === 'automatico'
+                ? ' A próxima faixa será reservada automaticamente.'
+                : ` Faixa ${batchStartNumber ? formatSequentialNumber(batchStartNumber, 0) : '-'} até ${batchStartNumber ? formatSequentialNumber(batchStartNumber, (batchDirection === 'crescente' ? 1 : -1) * (Math.max(1, Math.min(200, Number(batchQuantity) || 1)) - 1)) : '-'}.`}
             </div>
 
             {validationError && (
@@ -1851,7 +1976,7 @@ export default function TicketsJazidaTab({ tickets, onSaveTicket, onDeleteTicket
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setIsBatchModalOpen(false)} disabled={isBatchPrinting} className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-750 disabled:opacity-50">Cancelar</button>
               <button type="button" onClick={handleGenerateBatchTickets} disabled={isBatchPrinting} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-60">
-                {isBatchPrinting ? 'Gerando PDF...' : batchSaveDrafts ? 'Salvar e gerar PDF' : batchBlankForm ? 'Gerar PDF em branco' : 'Gerar PDF'}
+                {isBatchPrinting ? 'Gerando PDF...' : batchSaveDrafts ? 'Gerar PDF e salvar para editar' : 'Gerar somente o PDF'}
               </button>
             </div>
           </div>

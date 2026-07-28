@@ -968,37 +968,8 @@ export default function App() {
     return () => window.clearInterval(interval);
   }, [isLoggedIn, externalTicketLink]);
 
-  useEffect(() => {
-    if (!isLoggedIn || externalTicketLink) return;
-    const legacyTickets = ticketsJazida.filter(ticket => !ticket.origemRegistro);
-    if (legacyTickets.length === 0) return;
-    const migrationKey = legacyTickets.map(ticket => ticket.id).sort().join('|');
-    if (localStorage.getItem('renea_ticket_public_migration_v3') === migrationKey) return;
-
-    let cancelled = false;
-    const migrateLegacyTickets = async () => {
-      for (let index = 0; index < legacyTickets.length; index += 5) {
-        const batch = legacyTickets.slice(index, index + 5);
-        await Promise.all(batch.map(ticket => savePublicTicket(
-          db,
-          { ...ticket, origemRegistro: 'Importação', statusFluxo: ticket.statusFluxo || 'Enviado' },
-          { allowOverwriteSent: true },
-        )));
-      }
-      if (cancelled) return;
-      const migratedIds = new Set(legacyTickets.map(ticket => ticket.id));
-      setTicketsJazida(current => {
-        const migrated = current.map(ticket => migratedIds.has(ticket.id)
-          ? { ...ticket, origemRegistro: 'Importação' as const, statusFluxo: ticket.statusFluxo || 'Enviado' as const }
-          : ticket);
-        localStorage.setItem('renea_tickets_jazida', JSON.stringify(migrated));
-        return migrated;
-      });
-      localStorage.setItem('renea_ticket_public_migration_v3', migrationKey);
-    };
-    migrateLegacyTickets().catch(error => console.warn('Falha ao preparar tickets antigos para o link:', error));
-    return () => { cancelled = true; };
-  }, [isLoggedIn, externalTicketLink, ticketsJazida]);
+  // Não altera nem migra tickets automaticamente ao abrir o sistema.
+  // Qualquer mudança nos tickets ocorre somente por ação manual do usuário.
 
   // Helper to save data and append to changes history
   const saveAndLog = (
@@ -1732,7 +1703,7 @@ export default function App() {
     saveAndLog(
       'Tickets Jazida',
       'Criou',
-      `Importou ${updated.length - ticketsJazida.length} ticket(s) de liberação/recebimento via planilha.`,
+      `Criou ${updated.length - ticketsJazida.length} via(s) de ticket em uma única operação.`,
       historyLogs,
       () => {
         setTicketsJazida(updated);
@@ -1906,23 +1877,28 @@ export default function App() {
       return updated;
     });
 
-    // Add to active toasts
-    setActiveToasts(prev => [...prev, newNotif]);
-    setTimeout(() => {
-      setActiveToasts(prev => prev.filter(t => t.id !== newNotif.id));
-    }, 6000);
+    // Exibe no máximo um aviso discreto por vez para não bloquear a navegação.
+    // Alterações em Tickets Jazida continuam registradas no sino/histórico, sem popup.
+    if (title.indexOf('Tickets Jazida') === -1) {
+      setActiveToasts([newNotif]);
+      setTimeout(() => {
+        setActiveToasts(prev => prev.filter(t => t.id !== newNotif.id));
+      }, 2500);
+    }
   };
 
   const persistPresenceNotifications = (newItems: AppNotification[]) => {
     const updated = [...newItems, ...notifications].slice(0, 50);
     setNotifications(updated);
     localStorage.setItem('renea_notifications', JSON.stringify(updated));
-    setActiveToasts(prev => [...prev, ...newItems]);
-    newItems.forEach(item => {
+    // Mostra somente o alerta mais recente, evitando uma pilha cobrindo a tela.
+    const latestItem = newItems[0];
+    if (latestItem) {
+      setActiveToasts([latestItem]);
       setTimeout(() => {
-        setActiveToasts(prev => prev.filter(t => t.id !== item.id));
-      }, 6000);
-    });
+        setActiveToasts(prev => prev.filter(t => t.id !== latestItem.id));
+      }, 2500);
+    }
     return updated;
   };
 
