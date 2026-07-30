@@ -5,6 +5,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useEquipamentosExternos } from '../hooks/useEquipamentosExternos';
+import reneaDashboardLogo from '../assets/images/logo-renea-branco.svg';
 
 import { 
   Empresa, 
@@ -470,13 +471,18 @@ export default function Dashboard({
       
       {/* 1. Header Greetings */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
-            Olá, Administrador
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Aqui está o resumo operacional das frentes de serviço da Renea Infraestrutura.
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 rounded-2xl border border-emerald-400/20 bg-slate-950/80 px-3 py-2 shadow-lg shadow-emerald-950/20">
+            <img src={reneaDashboardLogo} alt="RENEA Infraestrutura" className="h-8 w-auto object-contain sm:h-9" />
+          </div>
+          <div>
+            <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              Olá, Administrador
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Aqui está o resumo operacional das frentes de serviço da Renea Infraestrutura.
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-2">

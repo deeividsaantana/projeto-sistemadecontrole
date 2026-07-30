@@ -49,6 +49,7 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import reneaLogo from '../assets/images/renea_logo_new.png';
+import reneaDashboardLogo from '../assets/images/logo-renea-branco.svg';
 import spmarLogo from '../assets/images/spmar_logo.png';
 import {
   addCorporateSummarySheet,
@@ -146,6 +147,7 @@ function MetricCard({
   icon: Icon,
   tone = 'emerald',
 }: {
+  key?: React.Key;
   label: string;
   value: string;
   detail: string;
@@ -552,7 +554,7 @@ export default function OperationalReportsDashboard({
       <div className="overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 shadow-2xl shadow-emerald-950/20">
         <div className="flex flex-col gap-5 border-b border-slate-800 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="rounded-2xl border border-emerald-400/20 bg-white p-2.5 shadow-lg"><img src={reneaLogo} alt="RENEA" className="h-10 w-auto object-contain" /></div>
+            <div className="shrink-0 rounded-2xl border border-emerald-400/20 bg-slate-950/80 px-3 py-2.5 shadow-lg shadow-emerald-950/20"><img src={reneaDashboardLogo} alt="RENEA Infraestrutura" className="h-9 w-auto object-contain sm:h-10" /></div>
             <div>
               <span className="text-[9px] font-black uppercase tracking-[0.24em] text-emerald-400">Central de conferência operacional</span>
               <h2 className="mt-1 text-xl font-black text-white">Dashboards de Combustível e Jazida</h2>

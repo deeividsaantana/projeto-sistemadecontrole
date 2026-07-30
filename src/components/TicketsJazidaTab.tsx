@@ -37,6 +37,7 @@ import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } fr
 import { buildDuplicateTicketKeys, isDuplicateTicket, ticketDuplicateKey } from '../utils/ticketDuplicateDetection';
 import { buildTicketSpreadsheetWorkbook } from '../utils/ticketSpreadsheetExport';
 import { buildJazidaDailyControl, getTicketControlDate, isTicketReturned } from '../utils/jazidaDailyControl';
+import { isReneaStoredValueValid, parseReneaStoredJson } from '../utils/resilientStorage';
 import { jsPDF } from 'jspdf';
 import { Equipamento, TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
@@ -290,10 +291,11 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
   const [batchDestinoObra, setBatchDestinoObra] = useState<DestinoObraJazida>('Marginal');
   const [batchEmpresa, setBatchEmpresa] = useState<EmpresaTicketJazida>('RENEA');
   const [printedBatches, setPrintedBatches] = useState<PrintedTicketBatch[]>(() => {
-    try {
-      const saved = localStorage.getItem('renea_jazida_printed_batches') || localStorage.getItem('jazidaPrintedTicketBatches') || '[]';
-      return JSON.parse(saved);
-    } catch { return []; }
+    const key = 'renea_jazida_printed_batches';
+    const saved = localStorage.getItem(key) || localStorage.getItem('jazidaPrintedTicketBatches');
+    return isReneaStoredValueValid(key, saved)
+      ? parseReneaStoredJson<PrintedTicketBatch[]>(saved, [])
+      : [];
   });
   const [controlDate, setControlDate] = useState(new Date().toISOString().split('T')[0]);
   const [operationsOpen, setOperationsOpen] = useState(false);
