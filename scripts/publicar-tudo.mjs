@@ -19,10 +19,11 @@ const MANUTENCAO_SOURCE_URL = 'https://dynamic-manatee-66561d.netlify.app/';
 const EXPECTED_REMOTE = 'deeividsaantana/projeto-sistemadecontrole';
 const EXPECTED_REMOTE_URL = `https://github.com/${EXPECTED_REMOTE}.git`;
 const LEGACY_REMOTE = 'deeividsaantana/teste-70';
-const NETLIFY_SITE_ID = 'a3c3fe0a-be7c-4cf1-8157-af735d8abcc8';
-const NETLIFY_SITE_URL = 'https://fluffy-gecko-609e90.netlify.app';
+const NETLIFY_SITE_ID = 'ac4c8fb7-9c37-460e-a98e-4237da0ff46e';
+const NETLIFY_SITE_URL = 'https://controlereneaa.netlify.app';
 const LOCAL_TOOLS_DIR = path.join(ROOT, '.publicar-tudo-tools');
 const LOCAL_NPM_CLI = path.join(LOCAL_TOOLS_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
+const LOCAL_TOOLS_BIN = path.join(LOCAL_TOOLS_DIR, 'node_modules', '.bin');
 const LOCAL_NPM_VERSION = '11.18.0';
 const args = new Set(process.argv.slice(2));
 const checkOnly = args.has('--check');
@@ -100,7 +101,7 @@ let packageTools = detectPackageTools();
 const withPackageEnvironment = (options = {}) => ({
   ...options,
   env: {
-    PATH: `${path.dirname(process.execPath)}${path.delimiter}${process.env.PATH || ''}`,
+    PATH: [path.dirname(process.execPath), LOCAL_TOOLS_BIN, process.env.PATH || ''].filter(Boolean).join(path.delimiter),
     NPM_CONFIG_OFFLINE: 'false',
     ...(options.env || {}),
   },
@@ -344,6 +345,18 @@ const ensureOneDriveFuelSync = () => {
   });
 };
 
+const ensureNetlifyLink = () => {
+  const statePath = path.join(ROOT, '.netlify', 'state.json');
+  let linkedSiteId = '';
+  try {
+    linkedSiteId = String(JSON.parse(fs.readFileSync(statePath, 'utf8')).siteId || '');
+  } catch {}
+  if (linkedSiteId === NETLIFY_SITE_ID) return;
+  info('Vinculando esta pasta ao site Netlify de produção');
+  runDlx('netlify-cli', ['link', '--id', NETLIFY_SITE_ID]);
+  ok('Pasta vinculada ao site controlereneaa.');
+};
+
 const ensureRepositoryReady = () => {
   const hasRepository = fs.existsSync(path.join(ROOT, '.git'));
   if (!hasRepository) {
@@ -445,6 +458,7 @@ const publish = async () => {
   }
 
   if (forceSetup || !fs.existsSync(LOCAL_CONFIG_PATH)) await configureFirstRun();
+  ensureNetlifyLink();
   ensureOneDriveFuelSync();
 
   runProjectValidation();
@@ -466,7 +480,17 @@ const publish = async () => {
 
   info('Enviando para o GitHub');
   git(['push', 'origin', branch]);
-  ok('Push concluído; o Netlify iniciou o deploy automático.');
+  ok('Push concluído.');
+
+  info('Publicando site e funções no Netlify');
+  runDlx('netlify-cli', [
+    'deploy',
+    '--prod',
+    '--site', NETLIFY_SITE_ID,
+    '--message', `PUBLICAR_TUDO-${new Date().toISOString().slice(0, 10)}`,
+    '--json',
+  ]);
+  ok('Site e funções publicados no Netlify.');
 
   info('Publicando as regras do Firestore');
   runDlx('firebase-tools', ['deploy', '--only', 'firestore', '--project', FIREBASE_PROJECT_ID]);
@@ -474,7 +498,7 @@ const publish = async () => {
 
   console.log('\n============================================================');
   console.log('PUBLICAÇÃO CONCLUÍDA');
-  console.log('O Netlify está construindo a versão enviada para a branch main.');
+  console.log(`Site publicado em ${NETLIFY_SITE_URL}`);
   console.log('Nas próximas vezes, execute somente PUBLICAR_TUDO.cmd.');
   console.log('============================================================');
 };
