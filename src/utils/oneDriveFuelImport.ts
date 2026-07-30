@@ -34,6 +34,7 @@ export const materializeOneDriveFuelRows = (
   existing: Abastecimento[],
   fileName = '',
 ) => {
+  const existingOperationalRecords = existing.filter(item => item.origem !== 'OneDrive');
   const equipmentByPrefix = new Map(equipamentos.map(item => [normalize(item.prefixo), item]));
   const convoyByKey = new Map(comboios.flatMap(item => [
     [normalize(item.nome), item] as const,
@@ -42,7 +43,7 @@ export const materializeOneDriveFuelRows = (
   const fuelByName = new Map(combustiveis.map(item => [normalize(item.nome), item]));
   const createdFuelTypes = new Map<string, TipoCombustivel>();
   const naturalKeys = new Map<string, string>();
-  existing.forEach(item => {
+  existingOperationalRecords.forEach(item => {
     naturalKeys.set(`${item.data}|${normalize(item.prefixoInformado || equipamentos.find(eq => eq.id === item.equipamentoId)?.prefixo)}|${item.hora}|${Number(item.quantidadeLitros || 0)}|${Number(item.bombaInicial || 0)}`, item.id);
   });
   const now = new Date().toISOString();
@@ -79,6 +80,7 @@ export const materializeOneDriveFuelRows = (
     }
     naturalKeys.set(naturalKey, row.sourceRowId);
     const existingRecord = existing.find(item => item.id === row.sourceRowId);
+    const sourceFile = row.sourceFile || fileName;
     const notes = [
       row.observacao,
       row.descricaoEquipamento && `Equipamento na planilha: ${row.descricaoEquipamento}`,
@@ -105,8 +107,9 @@ export const materializeOneDriveFuelRows = (
         : duplicateId && duplicateId !== row.sourceRowId ? 'Duplicado' : alerts.length ? 'Conferência necessária' : 'OK',
       origem: 'OneDrive',
       alertas: alerts,
-      documentoOrigemNome: fileName,
+      documentoOrigemNome: sourceFile,
       integracaoOrigemId: row.sourceRowId,
+      integracaoArquivo: sourceFile,
       integracaoAba: row.sheet,
       integracaoLinha: row.rowNumber,
       criadoEm: existingRecord?.criadoEm || now,
@@ -117,7 +120,7 @@ export const materializeOneDriveFuelRows = (
   const incomingIds = new Set(records.map(record => record.id));
   const continuityIssues = new Map(
     auditPumpContinuityByConvoy([
-      ...existing.filter(record => !incomingIds.has(record.id)),
+      ...existingOperationalRecords.filter(record => !incomingIds.has(record.id)),
       ...records,
     ]).map(issue => [issue.recordId, issue] as const),
   );

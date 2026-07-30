@@ -24,6 +24,7 @@ export const findPreviousPumpForConvoy = (
       record.id !== excludeId &&
       record.comboioId === convoyId &&
       Number.isFinite(Number(record.bombaFinal)) &&
+      Number(record.bombaFinal) > 0 &&
       fuelRecordOrderKey(record) < limit
     )
     .sort((a, b) => fuelRecordOrderKey(b).localeCompare(fuelRecordOrderKey(a)) || b.id.localeCompare(a.id))[0];
@@ -55,7 +56,9 @@ export const auditPumpContinuityByConvoy = (
       if (
         previous &&
         Number.isFinite(informedStart) &&
+        informedStart > 0 &&
         Number.isFinite(expectedStart) &&
+        expectedStart > 0 &&
         Math.abs(informedStart - expectedStart) > tolerance
       ) {
         issues.push({
@@ -67,7 +70,7 @@ export const auditPumpContinuityByConvoy = (
           difference: informedStart - expectedStart,
         });
       }
-      previousByConvoy.set(record.comboioId, record);
+      if (Number(record.bombaFinal) > 0) previousByConvoy.set(record.comboioId, record);
     });
 
   return issues;

@@ -14,6 +14,7 @@ export interface OneDriveFuelSyncStatus {
 
 export interface OneDriveFuelRow {
   sourceRowId: string;
+  sourceFile?: string;
   rowNumber: number;
   sheet: string;
   data: string;

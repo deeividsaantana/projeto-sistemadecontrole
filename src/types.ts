@@ -166,6 +166,7 @@ export interface Abastecimento {
   documentoOrigemNome?: string;
   documentoOrigemHash?: string;
   integracaoOrigemId?: string;
+  integracaoArquivo?: string;
   integracaoAba?: string;
   integracaoLinha?: number;
   camposRevisados?: string[];

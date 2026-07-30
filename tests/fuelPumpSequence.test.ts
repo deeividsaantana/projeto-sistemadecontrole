@@ -24,3 +24,13 @@ test('auditoria não mistura sequências de comboios intercalados', () => {
   const inconsistent = records.map(record => record.id === 'b2' ? { ...record, bombaInicial: 1100 } : record);
   assert.deepEqual(auditPumpContinuityByConvoy(inconsistent).map(issue => issue.recordId), ['b2']);
 });
+
+test('leituras de bomba vazias não quebram a sequência conhecida do comboio', () => {
+  const withMissingReading = [
+    records[0],
+    { id: 'a-sem-bomba', data: '2026-07-01', hora: '08:30', comboioId: 'A', bombaInicial: 0, bombaFinal: 0, quantidadeLitros: 40 },
+    records[2],
+  ];
+  assert.equal(findPreviousPumpForConvoy(withMissingReading, 'A', '2026-07-01', '08:45')?.id, 'a1');
+  assert.deepEqual(auditPumpContinuityByConvoy(withMissingReading), []);
+});

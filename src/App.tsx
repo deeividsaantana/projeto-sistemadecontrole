@@ -2051,7 +2051,13 @@ export default function App() {
           payload.status.fileName || '',
         );
         const nextFuelTypes = mergeRecordsById(storedFuelTypes, materialized.fuelTypes);
-        const nextFuelRecords = mergeRecordsById(storedFuelRecords, materialized.records);
+        // O agente envia um retrato completo da pasta. Substituir somente os
+        // registros de origem OneDrive evita manter linhas removidas da planilha,
+        // sem tocar nos lançamentos manuais e nas demais importações.
+        const nextFuelRecords = mergeRecordsById(
+          storedFuelRecords.filter(record => record.origem !== 'OneDrive'),
+          materialized.records,
+        );
         const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
         const nextHistory = mergeRecordsById(storedHistory, [{
           id: `log-onedrive-${batchId}`,
@@ -2062,9 +2068,11 @@ export default function App() {
           descricao: `Sincronizou ${materialized.records.length} linha(s) de ${payload.status.fileName || 'planilha do OneDrive'}; ${payload.status.warningCount || 0} linha(s) para conferência.`,
         }]);
 
-        localStorage.setItem('renea_combustiveis', JSON.stringify(nextFuelTypes));
-        localStorage.setItem('renea_abastecimentos', JSON.stringify(nextFuelRecords));
-        localStorage.setItem('renea_history_logs', JSON.stringify(nextHistory));
+        commitStorageBatch(localStorage, [
+          { key: 'renea_combustiveis', value: JSON.stringify(nextFuelTypes) },
+          { key: 'renea_abastecimentos', value: JSON.stringify(nextFuelRecords) },
+          { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
+        ]);
         setCombustiveis(nextFuelTypes);
         setAbastecimentos(nextFuelRecords);
         setHistoryLogs(nextHistory);

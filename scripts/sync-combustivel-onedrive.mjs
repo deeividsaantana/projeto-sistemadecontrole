@@ -3,6 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { readFuelWorkbook } from './lib/fuel-workbook-reader.mjs';
+import {
+  buildFuelFileHashMap,
+  FUEL_SYNC_PARSER_VERSION,
+  selectChangedFuelFiles,
+  sortFuelFiles,
+} from './lib/fuel-sync-inventory.mjs';
 
 const args = process.argv.slice(2);
 const configIndex = args.indexOf('--config');
@@ -10,15 +16,8 @@ const CONFIG_PATH = path.resolve(configIndex >= 0 ? args[configIndex + 1] : path
 const CONFIG_DIR = path.dirname(CONFIG_PATH);
 const LOCK_PATH = path.join(CONFIG_DIR, 'onedrive-combustivel-sync.lock');
 const LOG_PATH = path.join(CONFIG_DIR, 'onedrive-combustivel-sync.log');
-const MONTHS = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
-
-const filePeriodKey = name => {
-  const normalized = String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const year = Number(normalized.match(/20\d{2}/)?.[0] || 0);
-  const month = MONTHS.findIndex(item => normalized.includes(item)) + 1;
-  return year && month ? year * 100 + month : 0;
-};
-
+const MAX_ROWS_PER_SYNC = 15_000;
+const MAX_REQUEST_BYTES = 5_000_000;
 fs.mkdirSync(CONFIG_DIR, { recursive: true });
 const log = message => {
   const line = `[${new Date().toISOString()}] ${message}\n`;
@@ -52,18 +51,45 @@ try {
     .filter(entry => entry.isFile() && !entry.name.startsWith('~$') && /^FORNECIMENTO DE COMBUSTIVEL - .+\.xlsx$/i.test(entry.name))
     .map(entry => {
       const filePath = path.join(config.folderPath, entry.name);
-      return { filePath, name: entry.name, stat: fs.statSync(filePath) };
+      const stat = fs.statSync(filePath);
+      const hash = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+      return { filePath, name: entry.name, stat, hash };
     })
-    .sort((left, right) => filePeriodKey(right.name) - filePeriodKey(left.name) || right.stat.mtimeMs - left.stat.mtimeMs);
+    .sort(sortFuelFiles);
   if (!files.length) throw new Error('Nenhuma planilha mensal de combustível foi encontrada na pasta configurada.');
 
-  const latest = files[0];
-  const fileBuffer = fs.readFileSync(latest.filePath);
-  const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
-  if (config.lastFileHash === fileHash) {
-    log(`Sem alterações em ${latest.name}.`);
+  const changedFiles = selectChangedFuelFiles(files, config);
+  if (!changedFiles.length) {
+    log(`Sem alterações nas ${files.length} planilha(s) mensal(is) acompanhada(s).`);
   } else {
-    const parsed = await readFuelWorkbook(latest.filePath);
+    // Cada envio é um retrato completo da pasta. Assim uma linha excluída ou
+    // corrigida em um mês antigo também desaparece/é substituída no site.
+    const parsedFiles = [];
+    for (const file of files) {
+      const parsed = await readFuelWorkbook(file.filePath);
+      parsedFiles.push({ file, parsed });
+    }
+    const rows = parsedFiles.flatMap(item => item.parsed.rows);
+    if (rows.length > MAX_ROWS_PER_SYNC) {
+      throw new Error(`As planilhas somam ${rows.length} linhas; o limite seguro por sincronização é ${MAX_ROWS_PER_SYNC.toLocaleString('pt-BR')}. Nenhuma linha foi enviada parcialmente.`);
+    }
+    const warningCount = parsedFiles.reduce((sum, item) => sum + item.parsed.warningCount, 0);
+    const fileName = files.length === 1
+      ? files[0].name
+      : `${files.length} planilhas mensais`;
+    const fileModifiedAt = new Date(Math.max(...files.map(file => file.stat.mtimeMs))).toISOString();
+    const detail = parsedFiles.map(item => `${item.file.name}: ${item.parsed.rows.length}`).join('; ');
+    const requestBody = JSON.stringify({
+      fileName,
+      fileModifiedAt,
+      rows,
+      warningCount,
+      message: `${rows.length} linha(s) no retrato completo de ${files.length} arquivo(s). ${detail}`,
+    });
+    const requestBytes = Buffer.byteLength(requestBody, 'utf8');
+    if (requestBytes > MAX_REQUEST_BYTES) {
+      throw new Error(`O retrato completo ocupa ${(requestBytes / 1_000_000).toFixed(2)} MB; o limite seguro é ${(MAX_REQUEST_BYTES / 1_000_000).toFixed(2)} MB. Nenhuma linha foi enviada parcialmente.`);
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60_000);
     let response;
@@ -74,13 +100,7 @@ try {
           Authorization: `Bearer ${config.token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          fileName: latest.name,
-          fileModifiedAt: latest.stat.mtime.toISOString(),
-          rows: parsed.rows,
-          warningCount: parsed.warningCount,
-          message: `${parsed.rows.length} linha(s) lida(s) da aba ${parsed.sheetName}.`,
-        }),
+        body: requestBody,
         signal: controller.signal,
       });
     } finally {
@@ -90,14 +110,16 @@ try {
     if (!response.ok || result.success !== true) throw new Error(result.message || `O site respondeu HTTP ${response.status}.`);
     writeConfig({
       ...config,
-      lastFileHash: fileHash,
-      lastFileName: latest.name,
+      parserVersion: FUEL_SYNC_PARSER_VERSION,
+      fileHashes: buildFuelFileHashMap(files),
+      lastFileHash: changedFiles.at(-1).hash,
+      lastFileName: fileName,
       lastBatchId: result.batchId,
-      lastRowCount: parsed.rows.length,
-      lastWarningCount: parsed.warningCount,
+      lastRowCount: rows.length,
+      lastWarningCount: warningCount,
       lastSyncAt: result.syncedAt || new Date().toISOString(),
     });
-    log(`${latest.name}: ${parsed.rows.length} linha(s) enviadas; ${parsed.warningCount} para conferência.`);
+    log(`${fileName}: ${rows.length} linha(s) enviadas; ${warningCount} para conferência.`);
   }
 } catch (error) {
   log(`ERRO: ${error instanceof Error ? error.message : String(error)}`);

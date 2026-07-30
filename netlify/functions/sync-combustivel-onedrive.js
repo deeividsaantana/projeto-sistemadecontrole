@@ -12,7 +12,7 @@ import {
 
 const COLLECTION = 'sistemarenea_fuel_onedrive';
 const MANIFEST_ID = 'current';
-const MAX_ROWS = 4_000;
+const MAX_ROWS = 15_000;
 const MAX_CHUNK_BYTES = 500_000;
 const SYNC_TOKEN = String(process.env.RENEA_ONEDRIVE_SYNC_TOKEN || '');
 

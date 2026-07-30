@@ -14,13 +14,13 @@ const aliases = {
   descricaoEquipamento: ['descricaodoequipamento', 'descricaoequipamento', 'descricao', 'equipamentodescricao'],
   kmInicial: ['kminicial', 'km', 'quilometragem'],
   horimetroInicial: ['horimetro', 'horimetroinicial', 'horainicial', 'leitura'],
-  quantidadeLitros: ['litros', 'quantidadelitros', 'quantidade', 'volume'],
+  quantidadeLitros: ['litros', 'quantidadelitros', 'qtdedelitros', 'qtdelitros', 'qtde', 'qtd', 'quantidade', 'volume'],
   hora: ['hora', 'horario'],
   comboio: ['comboio', 'prefixocomboio'],
-  tipoCombustivel: ['tipodecombustivel', 'tipocombustivel', 'combustivel', 'produto'],
+  tipoCombustivel: ['tipodecombustivel', 'tipodocombustivel', 'tipocombustivel', 'combustivel', 'produto'],
   empresa: ['empresa', 'contratada'],
-  bombaInicial: ['bombainicial', 'bomba'],
-  bombaFinal: ['bombafinal'],
+  bombaInicial: ['bombainicial', 'iniciobomba', 'leiturainicialbomba', 'bomba'],
+  bombaFinal: ['bombafinal', 'fimbomba', 'leiturafinalbomba'],
   responsavel: ['responsavel', 'operador', 'frentista'],
   observacao: ['observacao', 'observacoes', 'obs'],
 };
@@ -54,6 +54,17 @@ const numberValue = value => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const isNumericValue = value => {
+  const unwrapped = unwrapCellValue(value);
+  if (typeof unwrapped === 'number') return Number.isFinite(unwrapped);
+  const raw = String(unwrapped ?? '').trim();
+  if (!raw) return false;
+  const normalized = raw.includes(',')
+    ? raw.replace(/\./g, '').replace(',', '.')
+    : raw.replace(/[^0-9.+-]/g, '');
+  return normalized !== '' && Number.isFinite(Number(normalized));
+};
+
 const dateValue = value => {
   const unwrapped = unwrapCellValue(value);
   if (unwrapped instanceof Date && !Number.isNaN(unwrapped.getTime())) {
@@ -75,7 +86,10 @@ const dateValue = value => {
 const timeValue = value => {
   const unwrapped = unwrapCellValue(value);
   if (unwrapped instanceof Date && !Number.isNaN(unwrapped.getTime())) {
-    return `${String(unwrapped.getHours()).padStart(2, '0')}:${String(unwrapped.getMinutes()).padStart(2, '0')}`;
+    // Horas do Excel são armazenadas sobre a data-base de 1899. Usar o fuso
+    // local nessa data aplica o deslocamento histórico de São Paulo (03:06:28),
+    // transformando 07:00 em 03:53. A leitura em UTC preserva o valor da célula.
+    return `${String(unwrapped.getUTCHours()).padStart(2, '0')}:${String(unwrapped.getUTCMinutes()).padStart(2, '0')}`;
   }
   if (typeof unwrapped === 'number' && unwrapped >= 0 && unwrapped < 1) {
     const minutes = Math.round(unwrapped * 24 * 60) % (24 * 60);
@@ -87,9 +101,12 @@ const timeValue = value => {
     if (hours <= 23 && minutes <= 59) return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
   const raw = String(unwrapped ?? '').trim();
-  const match = raw.match(/^(\d{1,2})[:hH.]?(\d{2})?/);
+  const match = raw.match(/^(\d{1,2})(?:[:hH.]?(\d{2}))?(?::\d{2})?$/);
   if (!match) return raw;
-  return `${String(Math.min(23, Number(match[1]))).padStart(2, '0')}:${String(Math.min(59, Number(match[2] || 0))).padStart(2, '0')}`;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2] || 0);
+  if (hours > 23 || minutes > 59) return raw;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
 
 const findHeader = worksheet => {
@@ -113,12 +130,28 @@ const findHeader = worksheet => {
 
 const rawAt = (row, column) => column ? unwrapCellValue(row.getCell(column).value) : '';
 
+const selectFuelWorksheet = workbook => {
+  const preferredNames = new Set(['detalhe', 'dadoscombustivel']);
+  const candidates = workbook.worksheets
+    .filter(sheet => preferredNames.has(normalize(sheet.name)) || normalize(sheet.name).includes('combustivel'))
+    .flatMap(sheet => {
+      try {
+        return [{ worksheet: sheet, header: findHeader(sheet) }];
+      } catch {
+        return [];
+      }
+    })
+    .sort((left, right) => right.header.score - left.header.score
+      || Number(preferredNames.has(normalize(right.worksheet.name))) - Number(preferredNames.has(normalize(left.worksheet.name)))
+      || right.worksheet.rowCount - left.worksheet.rowCount);
+  if (!candidates.length) throw new Error('A planilha não possui uma aba de detalhes de combustível com cabeçalhos reconhecíveis.');
+  return candidates[0];
+};
+
 export const readFuelWorkbook = async filePath => {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
-  const worksheet = workbook.worksheets.find(sheet => normalize(sheet.name) === 'detalhe');
-  if (!worksheet) throw new Error('A planilha não possui a aba Detalhe.');
-  const header = findHeader(worksheet);
+  const { worksheet, header } = selectFuelWorksheet(workbook);
   const rows = [];
   let warningCount = 0;
   const fileKey = normalize(path.basename(filePath));
@@ -136,19 +169,31 @@ export const readFuelWorkbook = async filePath => {
     const prefixo = textValue(rawAt(source, header.map.prefixo)).toUpperCase();
     const litrosRaw = rawAt(source, header.map.quantidadeLitros);
     const data = dateValue(dataRaw);
+    const horaRaw = rawAt(source, header.map.hora);
+    const hora = timeValue(horaRaw);
     const quantidadeLitros = numberValue(litrosRaw);
+    const bombaInicialRaw = rawAt(source, header.map.bombaInicial);
+    const bombaFinalRaw = rawAt(source, header.map.bombaFinal);
+    const bombaInicial = numberValue(bombaInicialRaw);
+    const bombaFinal = numberValue(bombaFinalRaw);
     const rowWarnings = [];
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) rowWarnings.push('Data ausente ou inválida');
     if (!prefixo) rowWarnings.push('Prefixo ausente');
     if (!textValue(litrosRaw) || quantidadeLitros <= 0) rowWarnings.push('Quantidade ausente ou inválida');
+    if (textValue(horaRaw) && !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) rowWarnings.push('Hora inválida');
+    if (header.map.bombaInicial && textValue(bombaInicialRaw) && !isNumericValue(bombaInicialRaw)) rowWarnings.push('Bomba inicial inválida');
+    if (header.map.bombaFinal && textValue(bombaFinalRaw) && !isNumericValue(bombaFinalRaw)) rowWarnings.push('Bomba final inválida');
+    if (!textValue(rawAt(source, header.map.comboio))) rowWarnings.push('Comboio ausente');
+    if (!textValue(rawAt(source, header.map.tipoCombustivel))) rowWarnings.push('Tipo de combustível ausente');
     warningCount += rowWarnings.length > 0 ? 1 : 0;
 
     rows.push({
       sourceRowId: `onedrive-${crypto.createHash('sha256').update(`${fileKey}|${normalize(worksheet.name)}|${rowNumber}`).digest('hex').slice(0, 36)}`,
+      sourceFile: path.basename(filePath),
       rowNumber,
       sheet: worksheet.name,
       data,
-      hora: timeValue(rawAt(source, header.map.hora)),
+      hora,
       prefixo,
       descricaoEquipamento: textValue(rawAt(source, header.map.descricaoEquipamento)),
       kmInicial: numberValue(rawAt(source, header.map.kmInicial)),
@@ -158,8 +203,8 @@ export const readFuelWorkbook = async filePath => {
       comboio: textValue(rawAt(source, header.map.comboio)),
       tipoCombustivel: textValue(rawAt(source, header.map.tipoCombustivel)),
       empresa: textValue(rawAt(source, header.map.empresa)),
-      bombaInicial: numberValue(rawAt(source, header.map.bombaInicial)),
-      bombaFinal: numberValue(rawAt(source, header.map.bombaFinal)),
+      bombaInicial,
+      bombaFinal,
       responsavel: textValue(rawAt(source, header.map.responsavel)),
       observacao: textValue(rawAt(source, header.map.observacao)),
       avisos: rowWarnings.join(' | '),

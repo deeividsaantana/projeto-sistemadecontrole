@@ -40,6 +40,7 @@ import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporate
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
+import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 
 interface LancamentosTabProps {
@@ -179,9 +180,9 @@ export default function LancamentosTab({
     const raw = unwrapCellValue(value);
     if (raw === null || raw === undefined) return '';
     if (raw instanceof Date) {
-      const y = raw.getFullYear();
-      const m = String(raw.getMonth() + 1).padStart(2, '0');
-      const d = String(raw.getDate()).padStart(2, '0');
+      const y = raw.getUTCFullYear();
+      const m = String(raw.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(raw.getUTCDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
     }
     return String(raw).trim().replace(/\s+/g, ' ');
@@ -199,7 +200,7 @@ export default function LancamentosTab({
   const parseDateValue = (val: any): string => {
     if (!val) return '';
     if (val instanceof Date) {
-      const y = val.getFullYear(), m = String(val.getMonth() + 1).padStart(2, '0'), d = String(val.getDate()).padStart(2, '0');
+      const y = val.getUTCFullYear(), m = String(val.getUTCMonth() + 1).padStart(2, '0'), d = String(val.getUTCDate()).padStart(2, '0');
       const parsed = `${y}-${m}-${d}`;
       return isValidFuelDate(parsed) ? parsed : '';
     }
@@ -231,7 +232,7 @@ export default function LancamentosTab({
   const parseTimeValue = (val: any): string => {
     if (val === null || val === undefined || val === '') return '';
     if (val instanceof Date) {
-      return `${String(val.getHours()).padStart(2, '0')}:${String(val.getMinutes()).padStart(2, '0')}`;
+      return `${String(val.getUTCHours()).padStart(2, '0')}:${String(val.getUTCMinutes()).padStart(2, '0')}`;
     }
     if (typeof val === 'number') {
       if (val >= 0 && val < 1) {
@@ -553,10 +554,11 @@ export default function LancamentosTab({
   const [horimetroInicial, setHorimetroInicial] = useState<number>(0);
   const [kmInicial, setKmInicial] = useState<number>(0);
   const [bombaInicial, setBombaInicial] = useState<number>(0);
-  const [quantidadeLitros, setQuantidadeLitros] = useState<number>(100);
-  const [bombaFinal, setBombaFinal] = useState<number>(100);
+  const [quantidadeLitros, setQuantidadeLitros] = useState<number>(0);
+  const [bombaFinal, setBombaFinal] = useState<number>(0);
   const [tipoCombustivelId, setTipoCombustivelId] = useState('');
   const [comboioId, setComboioId] = useState('');
+  const pumpValuesManuallyEditedRef = useRef(false);
 
   // Lubrication specific
   const [lubHorimetro, setLubHorimetro] = useState<number>(0);
@@ -569,16 +571,36 @@ export default function LancamentosTab({
   const derivedEquipmentDesc = selectedEquipment ? `${selectedEquipment.marca} ${selectedEquipment.modelo}` : '';
   const derivedCompany = selectedEquipment ? empresas.find(em => em.id === selectedEquipment.empresaId)?.nome : '';
 
-  // Encontra a leitura "Bomba Final" mais recente já registrada para um comboio,
-  // ordenando do menor para o maior valor de bomba (a maior leitura = a mais recente).
-  // Essa leitura vira automaticamente a "Bomba Inicial" do próximo abastecimento daquele comboio.
-  const getUltimaBombaFinal = (comboioIdAlvo: string, excluirId: string | null = null): number => {
-    const registrosDoComboio = abastecimentos
-      .filter(ab => ab.comboioId === comboioIdAlvo && ab.id !== excluirId)
-      .sort((a, b) => a.bombaFinal - b.bombaFinal);
+  // A sugestão respeita data/hora e somente o comboio selecionado. Não usa a
+  // maior leitura, pois um medidor pode ser reiniciado e lançamentos retroativos
+  // precisam continuar a sequência que existia naquele momento.
+  const getUltimaBombaFinal = (
+    comboioIdAlvo: string,
+    excluirId: string | null = null,
+    dataReferencia = date,
+    horaReferencia = time,
+  ): number => findPreviousPumpForConvoy(
+    abastecimentos,
+    comboioIdAlvo,
+    dataReferencia,
+    horaReferencia,
+    excluirId || '',
+  )?.bombaFinal || 0;
 
-    if (registrosDoComboio.length === 0) return 1000; // valor inicial padrão quando o comboio ainda não tem histórico
-    return registrosDoComboio[registrosDoComboio.length - 1].bombaFinal;
+  const previousPumpForForm = comboioId
+    ? findPreviousPumpForConvoy(abastecimentos, comboioId, date, time, editingId || '')
+    : undefined;
+
+  const applyPumpSuggestion = (
+    nextComboioId: string,
+    nextDate = date,
+    nextTime = time,
+    force = false,
+  ) => {
+    if (editingId !== null || !nextComboioId || (pumpValuesManuallyEditedRef.current && !force)) return;
+    const suggested = getUltimaBombaFinal(nextComboioId, null, nextDate, nextTime);
+    setBombaInicial(suggested);
+    setBombaFinal(suggested + Number(quantidadeLitros));
   };
 
   // Reset fields helper
@@ -593,13 +615,12 @@ export default function LancamentosTab({
 
     setHorimetroInicial(0);
     setKmInicial(0);
-    const comboioPadrao = comboios[0]?.id || '';
-    const bombaInicialPadrao = comboioPadrao ? getUltimaBombaFinal(comboioPadrao) : 1000;
-    setBombaInicial(bombaInicialPadrao);
-    setQuantidadeLitros(100);
-    setBombaFinal(bombaInicialPadrao + 100);
-    setTipoCombustivelId(combustiveis[0]?.id || '');
-    setComboioId(comboioPadrao);
+    setBombaInicial(0);
+    setQuantidadeLitros(0);
+    setBombaFinal(0);
+    setTipoCombustivelId('');
+    setComboioId('');
+    pumpValuesManuallyEditedRef.current = false;
 
     setLubHorimetro(0);
     setProdutoLubrificacaoId(lubrificantes[0]?.id || '');
@@ -611,7 +632,6 @@ export default function LancamentosTab({
   // Open forms
   const handleOpenCreate = () => {
     resetFormFields();
-    if (equipamentos.length > 0) setEquipamentoId(equipamentos[0].id);
     setIsFormOpen(true);
   };
 
@@ -628,6 +648,7 @@ export default function LancamentosTab({
       setBombaFinal(x.bombaFinal);
       setTipoCombustivelId(x.tipoCombustivelId); setComboioId(x.comboioId);
       setResponsavel(x.responsavel); setObservacao(x.observacao);
+      pumpValuesManuallyEditedRef.current = true;
 
     } else if (mode === 'lubrificacoes') {
       const x = item as Lubrificacao;
@@ -645,11 +666,8 @@ export default function LancamentosTab({
   // (apenas em novos lançamentos; ao editar um já existente, o valor original é preservado).
   const handleComboioChange = (novoComboioId: string) => {
     setComboioId(novoComboioId);
-    if (editingId === null) {
-      const novaBombaInicial = getUltimaBombaFinal(novoComboioId);
-      setBombaInicial(novaBombaInicial);
-      setBombaFinal(novaBombaInicial + Number(quantidadeLitros));
-    }
+    pumpValuesManuallyEditedRef.current = false;
+    applyPumpSuggestion(novoComboioId, date, time, true);
   };
 
   // Form Submit Handler
@@ -661,8 +679,8 @@ export default function LancamentosTab({
     const currentId = isNew ? `txn-${Date.now()}` : editingId!;
 
     if (mode === 'abastecimentos') {
-      if (!equipamentoId || !responsavel.trim() || quantidadeLitros <= 0) {
-        setValidationError('Preencha todos os campos obrigatórios (Frota, Litros, Responsável)!');
+      if (!equipamentoId || !tipoCombustivelId || !responsavel.trim() || quantidadeLitros <= 0) {
+        setValidationError('Preencha todos os campos obrigatórios (Frota, Combustível, Litros e Responsável).');
         return;
       }
       onSaveAbastecimento({
@@ -675,8 +693,8 @@ export default function LancamentosTab({
         bombaInicial: Number(bombaInicial) || 0,
         quantidadeLitros: Number(quantidadeLitros),
         bombaFinal: Number(bombaFinal) || (Number(bombaInicial) + Number(quantidadeLitros)),
-        tipoCombustivelId: tipoCombustivelId || (combustiveis[0] ? combustiveis[0].id : ''),
-        comboioId: comboioId || (comboios[0] ? comboios[0].id : ''),
+        tipoCombustivelId,
+        comboioId,
         responsavel: responsavel.trim(),
         observacao: observacao.trim()
       }, isNew);
@@ -1282,11 +1300,11 @@ export default function LancamentosTab({
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de Registro *</label>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="date" value={date} onChange={e => { const nextDate = e.target.value; setDate(nextDate); applyPumpSuggestion(comboioId, nextDate, time); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Hora *</label>
-                    <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="time" value={time} onChange={e => { const nextTime = e.target.value; setTime(nextTime); applyPumpSuggestion(comboioId, date, nextTime); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento *</label>
@@ -1330,13 +1348,14 @@ export default function LancamentosTab({
                     <input type="number" value={kmInicial} onChange={e => setKmInicial(Number(e.target.value))} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Bomba Inicial (Litros) <span className="text-emerald-500 normal-case font-semibold">— auto (última leitura)</span></label>
+                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Bomba Inicial (Litros) <span className="text-emerald-500 normal-case font-semibold">— {previousPumpForForm ? 'sugerida pelo histórico' : 'informe a primeira leitura'}</span></label>
                     <input type="number" value={bombaInicial} onChange={e => {
                       const inicial = Number(e.target.value);
+                      pumpValuesManuallyEditedRef.current = true;
                       setBombaInicial(inicial);
                       setBombaFinal(inicial + Number(quantidadeLitros));
-                    }} placeholder="1000" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
-                    <span className="text-[9px] text-slate-500 font-mono block">Preenchido com a Bomba Final do último abastecimento deste comboio</span>
+                    }} placeholder="Leitura real da bomba" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <span className="text-[9px] text-slate-500 font-mono block">{previousPumpForForm ? `Último registro deste comboio: ${previousPumpForForm.data.split('-').reverse().join('/')} ${previousPumpForForm.hora} • ${previousPumpForForm.bombaFinal.toLocaleString('pt-BR')} L` : 'Nenhuma leitura anterior encontrada para este comboio e horário.'}</span>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade de Litros *</label>
@@ -1352,6 +1371,7 @@ export default function LancamentosTab({
                     <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block font-mono">Bomba Final (Litros)</label>
                     <input type="number" value={bombaFinal} onChange={e => {
                       const final = Number(e.target.value);
+                      pumpValuesManuallyEditedRef.current = true;
                       setBombaFinal(final);
                       setQuantidadeLitros(Math.max(0, final - Number(bombaInicial)));
                     }} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500" />
@@ -1541,8 +1561,8 @@ export default function LancamentosTab({
                           {ab.quantidadeLitros.toLocaleString('pt-BR')} L
                         </td>
                         <td className="py-4 px-5 font-mono text-slate-400 text-xxs">
-                          Início: {ab.bombaInicial.toLocaleString('pt-BR')} L<br />
-                          Final: {ab.bombaFinal.toLocaleString('pt-BR')} L
+                          {ab.bombaInicial > 0 ? <>Início: {ab.bombaInicial.toLocaleString('pt-BR')} L<br /></> : <>Início: —<br /></>}
+                          {ab.bombaFinal > 0 ? <>Final: {ab.bombaFinal.toLocaleString('pt-BR')} L</> : <>Final: —</>}
                         </td>
                         <td className="py-4 px-5 font-mono text-slate-300 text-xxs">
                           {ab.horimetroInicial > 0 && <span>Horím: {ab.horimetroInicial} h<br /></span>}
