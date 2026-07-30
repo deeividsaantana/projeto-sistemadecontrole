@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Truck,
   Search,
@@ -20,12 +20,15 @@ import {
   CopyPlus,
   Link2,
   ClipboardCheck,
-  Clock3,
-  CheckCircle2,
   FilePenLine,
   SlidersHorizontal,
   ChevronDown,
-  CalendarDays
+  CalendarDays,
+  ListChecks,
+  RotateCcw,
+  FileText,
+  Download,
+  Layers3
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
@@ -33,6 +36,7 @@ import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } from '../utils/ticketNumberSequence';
 import { buildDuplicateTicketKeys, isDuplicateTicket, ticketDuplicateKey } from '../utils/ticketDuplicateDetection';
 import { buildTicketSpreadsheetWorkbook } from '../utils/ticketSpreadsheetExport';
+import { buildJazidaDailyControl, getTicketControlDate, isTicketReturned } from '../utils/jazidaDailyControl';
 import { jsPDF } from 'jspdf';
 import { Equipamento, TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
@@ -278,7 +282,6 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
   const [batchNumberMode, setBatchNumberMode] = useState<'automatico' | 'manual'>('manual');
   const [batchDirection, setBatchDirection] = useState<'crescente' | 'decrescente'>('crescente');
   const [batchFillMode, setBatchFillMode] = useState<'em-branco' | 'pre-preenchido'>('em-branco');
-  const [batchSaveDrafts, setBatchSaveDrafts] = useState(true);
   const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
   const [batchPrefixo, setBatchPrefixo] = useState('');
   const [batchPlaca, setBatchPlaca] = useState('');
@@ -292,6 +295,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       return JSON.parse(saved);
     } catch { return []; }
   });
+  const [controlDate, setControlDate] = useState(new Date().toISOString().split('T')[0]);
+  const [operationsOpen, setOperationsOpen] = useState(false);
+  const [noteModalNumber, setNoteModalNumber] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
@@ -313,6 +319,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
   const [empresa, setEmpresa] = useState<EmpresaTicketJazida>('RENEA');
   const [estaca, setEstaca] = useState('');
   const [observacao, setObservacao] = useState('');
+  const [notaFiscalNumero, setNotaFiscalNumero] = useState('');
+  const [notaFiscalData, setNotaFiscalData] = useState('');
+  const [notaFiscalObservacao, setNotaFiscalObservacao] = useState('');
 
   const equipmentByPrefix = useMemo(() => {
     const priority = (item: Equipamento) => item.status === 'Ativo' || item.status === 'Mobilizado' ? 0 : 1;
@@ -398,10 +407,14 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     setEmpresa('RENEA');
     setEstaca('');
     setObservacao('');
+    setNotaFiscalNumero('');
+    setNotaFiscalData('');
+    setNotaFiscalObservacao('');
   };
 
   const handleOpenCreate = () => {
     resetFormFields();
+    setOperationsOpen(true);
     setIsFormOpen(true);
   };
 
@@ -427,6 +440,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     setEmpresa(t.empresa);
     setEstaca(t.estaca || '');
     setObservacao(t.observacao);
+    setNotaFiscalNumero(t.notaFiscalNumero || '');
+    setNotaFiscalData(t.notaFiscalData || '');
+    setNotaFiscalObservacao(t.notaFiscalObservacao || '');
     setIsFormOpen(true);
   };
 
@@ -574,6 +590,11 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       enviadoEm: existing?.enviadoEm || (isNew ? now : undefined),
       criadoEm: existing?.criadoEm || now,
       atualizadoEm: now,
+      devolvidoEm: existing?.devolvidoEm || now,
+      conferidoPor: existing?.conferidoPor || 'Admin',
+      notaFiscalNumero: notaFiscalNumero.trim(),
+      notaFiscalData,
+      notaFiscalObservacao: notaFiscalObservacao.trim(),
       impressaoEmBranco: false,
       ocultarNumeroImpressao: false,
     }, isNew);
@@ -605,7 +626,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         const haystack = [
           t.ticketNumero, t.prefixo, t.placa, t.familiaEquipamento, t.equipamentoNome,
           t.tipoMaterial, t.destinoObra, t.destinoOutro, t.estaca, t.empresa, t.responsavelLiberacao,
-          t.nomeLegivel, t.observacao, t.data
+          t.nomeLegivel, t.observacao, t.notaFiscalNumero, t.notaFiscalData, t.notaFiscalObservacao, t.data
         ].filter(Boolean).join(' ').toLowerCase();
         if (!haystack.includes(q)) return false;
       }
@@ -627,41 +648,18 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     return { totalTickets, totalM3, totalCacambas, okCount, pendCount, dupCount };
   }, [filteredTickets, duplicateTicketKeys]);
 
-  const flowDashboard = useMemo(() => {
-    const grouped = new Map<string, { numero: string; liberacao?: TicketJazida; recebimento?: TicketJazida }>();
-    [...tickets]
-      .sort((a, b) => String(a.atualizadoEm || a.criadoEm || '').localeCompare(String(b.atualizadoEm || b.criadoEm || '')))
-      .forEach(ticket => {
-        const pair: { numero: string; liberacao?: TicketJazida; recebimento?: TicketJazida } =
-          grouped.get(ticket.ticketNumero) || { numero: ticket.ticketNumero };
-        if ((ticket.tipoTicket || 'Liberação') === 'Liberação') pair.liberacao = ticket;
-        else pair.recebimento = ticket;
-        grouped.set(ticket.ticketNumero, pair);
-      });
-    const pairs = Array.from(grouped.values()).sort((a, b) => Number(b.numero) - Number(a.numero));
-    const drafts = tickets.filter(ticket => ticket.statusFluxo === 'Rascunho').length;
-    const pending = pairs.filter(pair => pair.liberacao?.statusFluxo !== 'Rascunho'
-      && pair.liberacao && (!pair.recebimento || pair.recebimento.statusFluxo === 'Rascunho')).length;
-    const completed = pairs.filter(pair => pair.liberacao && pair.recebimento
-      && pair.liberacao.statusFluxo !== 'Rascunho'
-      && pair.recebimento.statusFluxo !== 'Rascunho').length;
-    return { pairs, drafts, pending, completed, duplicates: duplicateTicketKeys.size };
-  }, [tickets, duplicateTicketKeys]);
-
-
   const formatSequentialNumber = (start: string, offset: number) => {
     const base = baseTicketNumber(start);
     if (!Number.isFinite(base)) return '';
     return normalizeTicketNumber(base + offset);
   };
 
-  const buildBatchTicket = (number: string, type: TipoTicketJazida, batchId: string): TicketJazida => {
-    const now = new Date().toISOString();
+  const buildBatchTicket = (number: string, type: TipoTicketJazida, batchId: string, createdAt: string): TicketJazida => {
     const blank = batchFillMode === 'em-branco';
     const selectedEquipment = findEquipmentByPrefix(batchPrefixo);
     return {
       id: `ticket-lote-${type === 'Liberação' ? 'lib' : 'rec'}-${number}-${Date.now()}`,
-      data: blank ? '' : batchDate,
+      data: batchDate,
       tipoTicket: type,
       ticketNumero: number,
       prefixo: blank ? '' : batchPrefixo.trim().toUpperCase(),
@@ -683,12 +681,12 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       status: 'Pendente',
       statusFluxo: 'Rascunho',
       origemRegistro: 'Admin',
-      criadoEm: now,
-      atualizadoEm: now,
+      criadoEm: createdAt,
+      atualizadoEm: createdAt,
       impressaoEmBranco: blank,
       ocultarNumeroImpressao: false,
       loteImpressaoId: batchId,
-      loteImpressaoCriadoEm: now,
+      loteImpressaoCriadoEm: createdAt,
     };
   };
 
@@ -699,7 +697,6 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     setBatchNumberMode('manual');
     setBatchDirection('crescente');
     setBatchFillMode('em-branco');
-    setBatchSaveDrafts(true);
     setBatchDate(new Date().toISOString().split('T')[0]);
     setBatchPrefixo('');
     setBatchPlaca('');
@@ -721,8 +718,8 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       setValidationError('Informe o primeiro número da sequência.');
       return;
     }
-    if (batchFillMode === 'pre-preenchido' && !batchDate) {
-      setValidationError('Informe a data dos tickets.');
+    if (!batchDate) {
+      setValidationError('Informe a data de controle do lote.');
       return;
     }
 
@@ -734,22 +731,21 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       const numbers = reserved.filter(Boolean);
       if (numbers.length !== quantity) throw new Error('Faixa de numeração inválida.');
       const batchId = `lote-${Date.now()}`;
+      const createdAt = new Date().toISOString();
       const pairs = numbers.map(number => ({
-        releaseTicket: buildBatchTicket(number, 'Liberação', batchId),
-        receiptTicket: buildBatchTicket(number, 'Recebimento', batchId),
+        releaseTicket: buildBatchTicket(number, 'Liberação', batchId, createdAt),
+        receiptTicket: buildBatchTicket(number, 'Recebimento', batchId, createdAt),
       }));
       const fileMode = batchFillMode === 'em-branco' ? 'em_branco' : 'pre_preenchidos';
       await generateTicketBookPdf(pairs, `tickets_${fileMode}_${numbers[0]}_${numbers[numbers.length - 1]}.pdf`);
 
-      if (batchSaveDrafts) {
-        const existingKeys = new Set(tickets.map(ticket =>
-          `${normalizeTicketNumber(ticket.ticketNumero)}|${ticket.tipoTicket || 'Liberação'}`
-        ));
-        const drafts = pairs
-        .flatMap(pair => [pair.releaseTicket, pair.receiptTicket])
-        .filter(ticket => !existingKeys.has(`${ticket.ticketNumero}|${ticket.tipoTicket || 'Liberação'}`));
-        if (drafts.length > 0) onImportTickets(drafts);
-      }
+      const existingKeys = new Set(tickets.map(ticket =>
+        `${normalizeTicketNumber(ticket.ticketNumero)}|${ticket.tipoTicket || 'Liberação'}`
+      ));
+      const drafts = pairs
+        .flatMap(pair => [pair.releaseTicket, pair.receiptTicket]);
+      const collisionCount = drafts.filter(ticket => existingKeys.has(`${ticket.ticketNumero}|${ticket.tipoTicket || 'Liberação'}`)).length;
+      onImportTickets(drafts);
 
       const bases = numbers.map(baseTicketNumber).filter(Number.isFinite);
       const novoLote: PrintedTicketBatch = {
@@ -758,14 +754,15 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         fim: Math.max(...bases),
         numeros: numbers,
         modo: batchFillMode === 'em-branco' ? 'Em branco' : 'Pré-preenchido',
-        criadoEm: new Date().toISOString(),
+        criadoEm: createdAt,
       };
       setPrintedBatches(prev => {
         const next = [novoLote, ...prev];
         localStorage.setItem('renea_jazida_printed_batches', JSON.stringify(next));
         return next;
       });
-      setImportMessage(`${numbers.length} número(s) impressos em duas vias${batchSaveDrafts ? ' e salvos como rascunhos editáveis' : ''}.`);
+      setControlDate(batchDate);
+      setImportMessage(`${numbers.length} número(s) impressos em duas vias e registrados automaticamente na conferência diária.${collisionCount ? ` ${collisionCount} via(s) repetida(s) foram preservadas e sinalizadas para conferência.` : ''}`);
       setIsBatchModalOpen(false);
     } catch (err) {
       console.error('Erro ao gerar tickets sequenciais:', err);
@@ -775,22 +772,59 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     }
   };
 
-  // Índice calculado uma única vez por alteração da lista. Antes, cada número de cada
-  // lote percorria todos os tickets duas vezes, o que deixava a tela muito pesada.
+  const synchronizedBatches = useMemo(() => {
+    const grouped = new Map<string, { criadoEm: string; numeros: Set<string>; modo: PrintedTicketBatch['modo'] }>();
+    tickets.forEach(ticket => {
+      if (!ticket.loteImpressaoId) return;
+      const current = grouped.get(ticket.loteImpressaoId) || {
+        criadoEm: ticket.loteImpressaoCriadoEm || ticket.criadoEm || new Date().toISOString(),
+        numeros: new Set<string>(),
+        modo: ticket.impressaoEmBranco ? 'Em branco' as const : 'Pré-preenchido' as const,
+      };
+      const numero = normalizeTicketNumber(ticket.ticketNumero);
+      if (numero) current.numeros.add(numero);
+      grouped.set(ticket.loteImpressaoId, current);
+    });
+    return Array.from(grouped.entries()).map(([id, batch]): PrintedTicketBatch => {
+      const numeros = Array.from(batch.numeros).sort((a, b) => Number(a) - Number(b));
+      const bases = numeros.map(baseTicketNumber).filter(Number.isFinite);
+      return {
+        id,
+        criadoEm: batch.criadoEm,
+        numeros,
+        inicio: bases.length ? Math.min(...bases) : 0,
+        fim: bases.length ? Math.max(...bases) : 0,
+        modo: batch.modo,
+      };
+    });
+  }, [tickets]);
+
+  const allPrintedBatches = useMemo(() => {
+    const grouped = new Map<string, PrintedTicketBatch>();
+    printedBatches.forEach(batch => grouped.set(batch.id, batch));
+    synchronizedBatches.forEach(batch => grouped.set(batch.id, batch));
+    return Array.from(grouped.values()).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
+  }, [printedBatches, synchronizedBatches]);
+
+  // O rascunho representa uma via impressa aguardando retorno. Só uma devolução
+  // conferida conta no painel, evitando o falso positivo da versão anterior.
   const ticketCompletionIndex = useMemo(() => {
-    const index = new Map<number, { liberacao: boolean; recebimento: boolean }>();
+    const index = new Map<string, { liberacao: boolean; recebimento: boolean }>();
     tickets.forEach(ticket => {
       const numero = baseTicketNumber(ticket.ticketNumero);
       if (!Number.isFinite(numero)) return;
-      const status = index.get(numero) || { liberacao: false, recebimento: false };
-      if ((ticket.tipoTicket || 'Liberação') === 'Liberação') status.liberacao = true;
-      else status.recebimento = true;
-      index.set(numero, status);
+      const keys = [`*|${numero}`, `${ticket.loteImpressaoId || '*'}|${numero}`];
+      keys.forEach(key => {
+        const status = index.get(key) || { liberacao: false, recebimento: false };
+        if ((ticket.tipoTicket || 'Liberação') === 'Liberação') status.liberacao ||= isTicketReturned(ticket);
+        else status.recebimento ||= isTicketReturned(ticket);
+        index.set(key, status);
+      });
     });
     return index;
   }, [tickets]);
 
-  const ticketControlRows = useMemo(() => printedBatches.map(batch => {
+  const ticketControlRows = useMemo(() => allPrintedBatches.map(batch => {
     const numbers = batch.numeros?.length
       ? batch.numeros.map(baseTicketNumber).filter(Number.isFinite)
       : Array.from({ length: Math.max(0, batch.fim - batch.inicio + 1) }, (_, index) => batch.inicio + index);
@@ -800,7 +834,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     let completas = 0;
 
     for (const numero of numbers) {
-      const status = ticketCompletionIndex.get(numero);
+      const status = ticketCompletionIndex.get(`${batch.id}|${numero}`) || ticketCompletionIndex.get(`*|${numero}`);
       if (!status) continue;
       if (status.liberacao) liberacoes += 1;
       if (status.recebimento) recebimentos += 1;
@@ -817,7 +851,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       completas,
       pendentes: total - completas,
     };
-  }), [printedBatches, ticketCompletionIndex]);
+  }), [allPrintedBatches, ticketCompletionIndex]);
 
   const ticketControlTotals = useMemo(() => ticketControlRows.reduce((totals, row) => ({
     total: totals.total + row.total,
@@ -827,27 +861,215 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     pendentes: totals.pendentes + row.pendentes,
   }), { total: 0, liberacoes: 0, recebimentos: 0, completas: 0, pendentes: 0 }), [ticketControlRows]);
 
+  const dailyControl = useMemo(() => buildJazidaDailyControl(tickets, controlDate), [tickets, controlDate]);
+  const dailyDuplicateCount = useMemo(() => tickets.filter(ticket =>
+    getTicketControlDate(ticket) === controlDate && isDuplicateTicket(ticket, duplicateTicketKeys)
+  ).length, [tickets, controlDate, duplicateTicketKeys]);
+
+  const formatEventDateTime = (value: string) => {
+    if (!value) return '—';
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString('pt-BR');
+  };
+
+  const buildMissingControlTicket = (numero: string, type: TipoTicketJazida): TicketJazida => {
+    const row = dailyControl.rows.find(item => item.numero === numero);
+    const shared = row?.liberacao || row?.recebimento;
+    const now = new Date().toISOString();
+    return {
+      ...(shared || {}),
+      id: `ticket-checklist-${type === 'Liberação' ? 'lib' : 'rec'}-${numero}-${Date.now()}`,
+      data: shared?.data || controlDate,
+      tipoTicket: type,
+      ticketNumero: numero,
+      prefixo: shared?.prefixo || '',
+      placa: shared?.placa || '',
+      horaSaida: shared?.horaSaida || '',
+      horaChegada: type === 'Recebimento' ? shared?.horaChegada || '' : undefined,
+      tipoMaterial: shared?.tipoMaterial || 'Solo',
+      quantidadeM3: shared?.quantidadeM3 || 0,
+      destinoObra: shared?.destinoObra || 'Jazida',
+      responsavelLiberacao: shared?.responsavelLiberacao || '',
+      nomeLegivel: shared?.nomeLegivel || '',
+      empresa: shared?.empresa || 'RENEA',
+      observacao: shared?.observacao || '',
+      status: 'Pendente',
+      statusFluxo: 'Rascunho',
+      origemRegistro: 'Admin',
+      criadoEm: row?.criadoEm || now,
+      atualizadoEm: now,
+      loteImpressaoId: row?.loteId,
+      loteImpressaoCriadoEm: row?.criadoEm,
+    };
+  };
+
+  const handleToggleTicketReturn = (numero: string, type: TipoTicketJazida) => {
+    const row = dailyControl.rows.find(item => item.numero === numero);
+    const current = type === 'Liberação' ? row?.liberacao : row?.recebimento;
+    const base = current || buildMissingControlTicket(numero, type);
+    const returned = isTicketReturned(current);
+    const now = new Date().toISOString();
+    onImportTickets([{
+      ...base,
+      status: returned ? 'Pendente' : 'OK',
+      statusFluxo: returned ? 'Rascunho' : 'Enviado',
+      devolvidoEm: returned ? undefined : now,
+      enviadoEm: returned ? base.enviadoEm : base.enviadoEm || now,
+      atualizadoEm: now,
+      conferidoPor: returned ? undefined : base.conferidoPor || 'Admin',
+    }]);
+  };
+
+  const handleSetAllReturns = (type: TipoTicketJazida, returned: boolean) => {
+    const now = new Date().toISOString();
+    const updates = dailyControl.rows.flatMap(row => {
+      const current = type === 'Liberação' ? row.liberacao : row.recebimento;
+      if (isTicketReturned(current) === returned) return [];
+      const base = current || buildMissingControlTicket(row.numero, type);
+      return [{
+        ...base,
+        status: returned ? 'OK' as const : 'Pendente' as const,
+        statusFluxo: returned ? 'Enviado' as const : 'Rascunho' as const,
+        devolvidoEm: returned ? now : undefined,
+        enviadoEm: returned ? base.enviadoEm || now : base.enviadoEm,
+        atualizadoEm: now,
+        conferidoPor: returned ? base.conferidoPor || 'Admin' : undefined,
+      }];
+    });
+    if (updates.length) onImportTickets(updates);
+  };
+
+  const handleClearAllReturns = () => {
+    const now = new Date().toISOString();
+    const updates = dailyControl.rows.flatMap(row => [row.liberacao, row.recebimento]
+      .filter((ticket): ticket is TicketJazida => Boolean(ticket && isTicketReturned(ticket)))
+      .map(ticket => ({
+        ...ticket,
+        status: 'Pendente' as const,
+        statusFluxo: 'Rascunho' as const,
+        devolvidoEm: undefined,
+        conferidoPor: undefined,
+        atualizadoEm: now,
+      })));
+    if (updates.length) onImportTickets(updates);
+  };
+
+  const handleOpenNoteModal = (numero: string) => {
+    const row = dailyControl.rows.find(item => item.numero === numero);
+    const source = row?.recebimento || row?.liberacao;
+    setNotaFiscalNumero(source?.notaFiscalNumero || '');
+    setNotaFiscalData(source?.notaFiscalData || '');
+    setNotaFiscalObservacao(source?.notaFiscalObservacao || '');
+    setNoteModalNumber(numero);
+  };
+
+  const handleSaveNoteModal = () => {
+    if (!noteModalNumber) return;
+    const row = dailyControl.rows.find(item => item.numero === noteModalNumber);
+    const now = new Date().toISOString();
+    const updates = [row?.liberacao, row?.recebimento]
+      .filter((ticket): ticket is TicketJazida => Boolean(ticket))
+      .map(ticket => ({
+        ...ticket,
+        notaFiscalNumero: notaFiscalNumero.trim(),
+        notaFiscalData,
+        notaFiscalObservacao: notaFiscalObservacao.trim(),
+        atualizadoEm: now,
+      }));
+    if (updates.length) onImportTickets(updates);
+    setNoteModalNumber(null);
+    setImportMessage(`Nota do Ticket Nº ${noteModalNumber} atualizada nas duas vias.`);
+  };
+
   const exportTicketControlExcel = async () => {
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Controle de tickets');
-    ws.addRow(['Data da impressão', 'Numeração inicial', 'Numeração final', 'Tickets enviados', 'Liberações preenchidas', 'Recebimentos preenchidos', 'Viagens completas', 'Pendentes']);
-    ticketControlRows.forEach(r => ws.addRow([new Date(r.criadoEm).toLocaleString('pt-BR'), normalizeTicketNumber(r.displayStart), normalizeTicketNumber(r.displayEnd), r.total, r.liberacoes, r.recebimentos, r.completas, r.pendentes]));
-    ws.columns.forEach(c => { c.width = 24; });
+    const summary = wb.addWorksheet('RESUMO DO DIA');
+    summary.addRow(['CONFERÊNCIA DIÁRIA DE TICKETS - JAZIDA']);
+    summary.addRow(['Data', controlDate.split('-').reverse().join('/')]);
+    summary.addRow(['Números criados / impressos', dailyControl.totalCriados]);
+    summary.addRow(['Vias de liberação devolvidas', dailyControl.liberacoesRecebidas]);
+    summary.addRow(['Vias de recebimento devolvidas', dailyControl.recebimentosRecebidos]);
+    summary.addRow(['Tickets completos (duas vias)', dailyControl.paresCompletos]);
+    summary.addRow(['Pendentes de liberação', dailyControl.pendentesLiberacao.join(', ') || 'Nenhum']);
+    summary.addRow(['Pendentes de recebimento', dailyControl.pendentesRecebimento.join(', ') || 'Nenhum']);
+    summary.getColumn(1).width = 34;
+    summary.getColumn(2).width = 70;
+    summary.getRow(1).font = { bold: true, size: 14 };
+
+    const ws = wb.addWorksheet('CHECKLIST DAS VIAS');
+    ws.addRow(['Ticket Nº', 'Criado / impresso em', 'Liberação', 'Devolução liberação', 'Recebimento', 'Devolução recebimento', 'Prefixo', 'Placa', 'Nota fiscal', 'Data NF', 'Observações da NF']);
+    dailyControl.rows.forEach(row => {
+      const ticket = row.liberacao || row.recebimento;
+      ws.addRow([
+        row.numero,
+        formatEventDateTime(row.criadoEm),
+        row.liberacaoRecebida ? 'DEVOLVIDA' : 'PENDENTE',
+        formatEventDateTime(row.liberacaoRecebidaEm),
+        row.recebimentoRecebido ? 'DEVOLVIDA' : 'PENDENTE',
+        formatEventDateTime(row.recebimentoRecebidoEm),
+        ticket?.prefixo || '',
+        ticket?.placa || '',
+        row.recebimento?.notaFiscalNumero || row.liberacao?.notaFiscalNumero || '',
+        row.recebimento?.notaFiscalData || row.liberacao?.notaFiscalData || '',
+        row.recebimento?.notaFiscalObservacao || row.liberacao?.notaFiscalObservacao || '',
+      ]);
+    });
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    ws.autoFilter = { from: 'A1', to: 'K1' };
+    ws.columns.forEach((column, index) => { column.width = index === 10 ? 38 : index < 6 ? 23 : 16; });
+    ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF008D4C' } };
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'controle_tickets_jazida.xlsx'; a.click(); URL.revokeObjectURL(a.href);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `conferencia_jazida_${controlDate}.xlsx`; a.click(); URL.revokeObjectURL(a.href);
   };
 
   const exportTicketControlPdf = () => {
     const doc = new jsPDF('l', 'mm', 'a4');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Controle de tickets enviados para preenchimento', 12, 15);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text(`Conferência diária da Jazida - ${controlDate.split('-').reverse().join('/')}`, 12, 14);
     doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    const headers = ['Impressão', 'Inicial', 'Final', 'Enviados', 'Lib.', 'Rec.', 'Viagens completas', 'Pendentes'];
-    const xs = [12, 58, 88, 118, 150, 172, 194, 246];
-    headers.forEach((h,i) => doc.text(h, xs[i], 25));
-    let y=32;
-    ticketControlRows.forEach(r => { if (y > 190) { doc.addPage(); y=18; } const vals=[new Date(r.criadoEm).toLocaleString('pt-BR'),normalizeTicketNumber(r.displayStart),normalizeTicketNumber(r.displayEnd),r.total,r.liberacoes,r.recebimentos,r.completas,r.pendentes]; vals.forEach((v,i)=>doc.text(String(v),xs[i],y)); y+=7; });
-    doc.save('controle_tickets_jazida.pdf');
+    doc.text(`Criados: ${dailyControl.totalCriados} | Liberações: ${dailyControl.liberacoesRecebidas} | Recebimentos: ${dailyControl.recebimentosRecebidos} | Completos: ${dailyControl.paresCompletos} | Progresso: ${dailyControl.percentualConferencia}%`, 12, 21);
+    doc.text(`Faltam liberações: ${dailyControl.pendentesLiberacao.join(', ') || 'nenhuma'}`, 12, 27, { maxWidth: 275 });
+    doc.text(`Faltam recebimentos: ${dailyControl.pendentesRecebimento.join(', ') || 'nenhum'}`, 12, 33, { maxWidth: 275 });
+    const headers = ['Ticket', 'Criação', 'Liberação', 'Hora devolução', 'Recebimento', 'Hora devolução', 'Prefixo', 'Placa', 'NF'];
+    const xs = [12, 35, 82, 111, 156, 190, 235, 253, 273];
+    headers.forEach((header, index) => { doc.setFont('helvetica', 'bold'); doc.text(header, xs[index], 43); });
+    let y = 50;
+    dailyControl.rows.forEach(row => {
+      if (y > 194) { doc.addPage(); y = 18; }
+      const ticket = row.liberacao || row.recebimento;
+      const values = [
+        row.numero,
+        formatEventDateTime(row.criadoEm),
+        row.liberacaoRecebida ? 'OK' : 'PENDENTE',
+        formatEventDateTime(row.liberacaoRecebidaEm),
+        row.recebimentoRecebido ? 'OK' : 'PENDENTE',
+        formatEventDateTime(row.recebimentoRecebidoEm),
+        ticket?.prefixo || '-',
+        ticket?.placa || '-',
+        row.recebimento?.notaFiscalNumero || row.liberacao?.notaFiscalNumero || '-',
+      ];
+      values.forEach((value, index) => { doc.setFont('helvetica', 'normal'); doc.text(String(value), xs[index], y, { maxWidth: index === 1 || index === 3 || index === 5 ? 42 : 20 }); });
+      y += 8;
+    });
+    doc.save(`conferencia_jazida_${controlDate}.pdf`);
+  };
+
+  const exportTicketControlCsv = () => {
+    const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows = [
+      ['Ticket Nº', 'Criado / impresso em', 'Liberação', 'Devolução liberação', 'Recebimento', 'Devolução recebimento', 'Prefixo', 'Placa', 'Nota fiscal', 'Data NF', 'Observações da NF'],
+      ...dailyControl.rows.map(row => {
+        const ticket = row.liberacao || row.recebimento;
+        return [row.numero, formatEventDateTime(row.criadoEm), row.liberacaoRecebida ? 'DEVOLVIDA' : 'PENDENTE', formatEventDateTime(row.liberacaoRecebidaEm), row.recebimentoRecebido ? 'DEVOLVIDA' : 'PENDENTE', formatEventDateTime(row.recebimentoRecebidoEm), ticket?.prefixo || '', ticket?.placa || '', row.recebimento?.notaFiscalNumero || row.liberacao?.notaFiscalNumero || '', row.recebimento?.notaFiscalData || row.liberacao?.notaFiscalData || '', row.recebimento?.notaFiscalObservacao || row.liberacao?.notaFiscalObservacao || ''];
+      }),
+    ];
+    const blob = new Blob([`\uFEFF${rows.map(row => row.map(escape).join(';')).join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+    const anchor = document.createElement('a');
+    anchor.href = URL.createObjectURL(blob);
+    anchor.download = `conferencia_jazida_${controlDate}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(anchor.href);
   };
 
   const copyPublicLink = async () => {
@@ -1119,7 +1341,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
           const haystack = [
             t.ticketNumero, t.prefixo, t.placa, t.familiaEquipamento, t.equipamentoNome,
             t.tipoMaterial, t.destinoObra, t.destinoOutro, t.estaca, t.empresa, t.responsavelLiberacao,
-            t.nomeLegivel, t.observacao, t.data
+            t.nomeLegivel, t.observacao, t.notaFiscalNumero, t.notaFiscalData, t.notaFiscalObservacao, t.data
           ].filter(Boolean).join(' ').toLowerCase();
           if (!haystack.includes(q)) return false;
         }
@@ -1284,9 +1506,10 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     try {
       const now = new Date().toISOString();
       const reservedNumber = await onReserveTicketNumber();
+      const batchId = `lote-unitario-${Date.now()}`;
       const releaseTicket: TicketJazida = {
         id: `ticket-em-branco-lib-${Date.now()}`,
-        data: '',
+        data: controlDate,
         tipoTicket: 'Liberação',
         ticketNumero: reservedNumber,
         prefixo: '',
@@ -1300,10 +1523,15 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         empresa: 'RENEA',
         observacao: '',
         unidadeQuantidade: 'm³',
+        status: 'Pendente',
+        statusFluxo: 'Rascunho',
+        origemRegistro: 'Admin',
         criadoEm: now,
         atualizadoEm: now,
         impressaoEmBranco: true,
         ocultarNumeroImpressao: false,
+        loteImpressaoId: batchId,
+        loteImpressaoCriadoEm: now,
       };
       const receiptTicket: TicketJazida = {
         ...releaseTicket,
@@ -1312,7 +1540,8 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         horaChegada: '',
       };
       await generateTicketBookPdf([{ releaseTicket, receiptTicket }], `ticket_em_branco_${reservedNumber}.pdf`);
-      setImportMessage(`Ticket Nº ${reservedNumber} gerado com apenas a numeração preenchida.`);
+      onImportTickets([releaseTicket, receiptTicket]);
+      setImportMessage(`Ticket Nº ${reservedNumber} gerado e incluído no checklist das duas vias.`);
     } catch (err) {
       console.error('Erro ao gerar formulário de ticket em branco:', err);
       setValidationError('Não foi possível gerar o formulário em branco.');
@@ -1357,9 +1586,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         <div>
           <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
             <Truck className="w-5 h-5 text-emerald-500" />
-            Controle de Tickets
+            Jazida • Controle diário
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Tickets de liberação e recebimento com hora de saída ou chegada.</p>
+          <p className="text-xs text-slate-400 mt-1">Impressão, devolução das duas vias e fechamento do dia em um único fluxo.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -1372,7 +1601,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             <Printer className="w-4 h-4" />
             Imprimir em branco
           </button>
-          <button
+          {operationsOpen && <button
             type="button"
             onClick={() => importInputRef.current?.click()}
             disabled={isImporting}
@@ -1381,7 +1610,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
           >
             <Upload className="w-4 h-4 text-emerald-400" />
             {isImporting ? 'Validando planilha...' : 'Importar tickets'}
-          </button>
+          </button>}
           <button
             type="button"
             onClick={openBatchModal}
@@ -1391,19 +1620,27 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             <Printer className="w-4 h-4 text-emerald-400" />
             Imprimir sequência
           </button>
-          <button
+          {operationsOpen && <button
             onClick={copyPublicLink}
             title="Copiar o link único para liberação e recebimento"
             className="px-4 py-2.5 bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Link2 className="w-4 h-4" /> Copiar link público
-          </button>
-          <button
+          </button>}
+          {operationsOpen && <button
             onClick={handleOpenCreate}
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             Novo Ticket de {ticketTab}
+          </button>}
+          <button
+            type="button"
+            onClick={() => { setOperationsOpen(value => !value); setIsFormOpen(false); }}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${operationsOpen ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-emerald-500'}`}
+          >
+            <FilePenLine className="h-4 w-4" />
+            {operationsOpen ? 'Ocultar lançamentos' : 'Lançamentos e notas'}
           </button>
           <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportTicketsFile} className="hidden" />
         </div>
@@ -1416,60 +1653,101 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border border-amber-500/20 bg-slate-900 p-4">
-          <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Rascunhos</span><FilePenLine className="h-4 w-4 text-amber-400" /></div>
-          <strong className="mt-2 block text-2xl text-white">{flowDashboard.drafts}</strong>
-          <span className="text-[10px] text-slate-500">Ainda podem ser editados e enviados</span>
+      <section className="overflow-hidden rounded-2xl border border-emerald-500/25 bg-slate-900 shadow-2xl shadow-emerald-950/10">
+        <div className="border-b border-slate-800 bg-gradient-to-r from-emerald-500/10 via-slate-900 to-slate-900 p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="flex items-center gap-2 text-base font-black text-white"><ListChecks className="h-5 w-5 text-emerald-400" /> Conferência das duas vias</h2>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-300"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Tempo real</span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">Cada número impresso gera uma pendência de Liberação e outra de Recebimento. Marque somente quando a via física voltar.</p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="space-y-1">
+                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-500">Dia da conferência</span>
+                <input type="date" value={controlDate} onChange={event => setControlDate(event.target.value)} className="h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-white outline-none focus:border-emerald-500" />
+              </label>
+              <button type="button" onClick={exportTicketControlPdf} className="h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-[10px] font-black text-slate-200 hover:border-emerald-500">PDF</button>
+              <button type="button" onClick={exportTicketControlCsv} className="h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-[10px] font-black text-slate-200 hover:border-emerald-500">CSV</button>
+              <button type="button" onClick={exportTicketControlExcel} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-[10px] font-black text-white hover:bg-emerald-500"><Download className="h-4 w-4" /> Excel detalhado</button>
+            </div>
+          </div>
         </div>
-        <div className="rounded-lg border border-sky-500/20 bg-slate-900 p-4">
-          <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Aguardando recebimento</span><Clock3 className="h-4 w-4 text-sky-400" /></div>
-          <strong className="mt-2 block text-2xl text-white">{flowDashboard.pending}</strong>
-          <span className="text-[10px] text-slate-500">Liberação enviada, chegada pendente</span>
+
+        <div className="space-y-5 p-5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
+            {[
+              { label: 'Tickets criados', value: dailyControl.totalCriados, detail: 'números no dia', color: 'text-white' },
+              { label: 'Vias devolvidas', value: dailyControl.liberacoesRecebidas + dailyControl.recebimentosRecebidos, detail: `de ${dailyControl.totalCriados * 2} vias`, color: 'text-cyan-300' },
+              { label: 'Liberações', value: dailyControl.liberacoesRecebidas, detail: `${dailyControl.pendentesLiberacao.length} faltando`, color: 'text-emerald-300' },
+              { label: 'Recebimentos', value: dailyControl.recebimentosRecebidos, detail: `${dailyControl.pendentesRecebimento.length} faltando`, color: 'text-sky-300' },
+              { label: 'Completos', value: dailyControl.paresCompletos, detail: 'duas vias devolvidas', color: 'text-emerald-300' },
+              { label: 'Com pendência', value: dailyControl.pendentesQualquerVia, detail: `${dailyControl.percentualConferencia}% conferido`, color: dailyControl.pendentesQualquerVia ? 'text-amber-300' : 'text-emerald-300' },
+            ].map(card => (
+              <div key={card.label} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{card.label}</p>
+                <strong className={`mt-2 block text-2xl font-black ${card.color}`}>{card.value}</strong>
+                <span className="text-[9px] text-slate-500">{card.detail}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+            <div className="mb-2 flex items-center justify-between text-[10px]"><span className="font-black uppercase tracking-wider text-slate-400">Fechamento do dia</span><b className="text-emerald-300">{dailyControl.percentualConferencia}%</b></div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-cyan-400 transition-all duration-500" style={{ width: `${dailyControl.percentualConferencia}%` }} /></div>
+          </div>
+
+          {dailyDuplicateCount > 0 && <button type="button" onClick={() => { setOperationsOpen(true); setFStatus('Duplicado'); }} className="flex w-full items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left"><span><b className="block text-xs text-rose-200">{dailyDuplicateCount} via(s) com numeração duplicada neste dia</b><small className="text-[9px] text-rose-300/70">Os dados foram preservados. Abra a área administrativa para revisar sem perder registros.</small></span><CopyPlus className="h-4 w-4 shrink-0 text-rose-300" /></button>}
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className={`rounded-xl border p-4 ${dailyControl.pendentesLiberacao.length ? 'border-amber-500/25 bg-amber-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-white">Faltam vias de Liberação</h3><span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black text-amber-300">{dailyControl.pendentesLiberacao.length}</span></div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesLiberacao.length ? dailyControl.pendentesLiberacao.map(numero => <span key={numero} className="rounded-md border border-amber-500/25 bg-slate-950 px-2 py-1 font-mono text-[10px] font-bold text-amber-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-300">Todas as liberações retornaram.</span>}</div>
+            </div>
+            <div className={`rounded-xl border p-4 ${dailyControl.pendentesRecebimento.length ? 'border-sky-500/25 bg-sky-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-white">Faltam vias de Recebimento</h3><span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black text-sky-300">{dailyControl.pendentesRecebimento.length}</span></div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-slate-950 px-2 py-1 font-mono text-[10px] font-bold text-sky-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-300">Todos os recebimentos retornaram.</span>}</div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-800">
+            <div className="flex flex-col gap-3 border-b border-slate-800 bg-slate-950/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div><h3 className="text-xs font-black text-white">Checklist do dia</h3><p className="mt-1 text-[9px] text-slate-500">O horário de devolução é registrado automaticamente ao marcar cada via.</p></div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Liberação', true)} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[9px] font-black text-emerald-300 disabled:opacity-40">Marcar todas as liberações</button>
+                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Recebimento', true)} className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[9px] font-black text-sky-300 disabled:opacity-40">Marcar todos os recebimentos</button>
+                <button type="button" disabled={!dailyControl.rows.length} onClick={handleClearAllReturns} className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-[9px] font-black text-slate-400 disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" /> Limpar checklist</button>
+              </div>
+            </div>
+            <div className="max-h-[520px] overflow-auto">
+              <table className="w-full min-w-[920px] text-left text-xs">
+                <thead className="sticky top-0 z-10 bg-slate-950 text-[9px] font-black uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Ticket</th><th className="px-4 py-3">Criado / impresso</th><th className="px-4 py-3">Via de liberação</th><th className="px-4 py-3">Via de recebimento</th><th className="px-4 py-3">Identificação</th><th className="px-4 py-3">Notas</th></tr></thead>
+                <tbody className="divide-y divide-slate-800">
+                  {!dailyControl.rows.length ? <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500"><Layers3 className="mx-auto mb-3 h-7 w-7 text-slate-700" />Nenhum ticket criado neste dia. Use “Imprimir sequência” para cadastrar a faixa.</td></tr> : dailyControl.rows.map(row => {
+                    const ticket = row.liberacao || row.recebimento;
+                    const note = row.recebimento?.notaFiscalNumero || row.liberacao?.notaFiscalNumero;
+                    return <tr key={row.numero} className="bg-slate-900/40 hover:bg-slate-800/40">
+                      <td className="px-4 py-3 font-mono text-sm font-black text-white">{row.numero}</td>
+                      <td className="px-4 py-3"><b className="block text-slate-200">{formatEventDateTime(row.criadoEm)}</b><span className="text-[9px] text-slate-600">{row.loteId.startsWith('avulso-') ? 'Cadastro avulso' : 'Lote impresso'}</span></td>
+                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Liberação')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.liberacaoRecebida ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-200 hover:border-amber-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.liberacaoRecebida ? '✓' : ''}</span>{row.liberacaoRecebida ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.liberacaoRecebidaEm)}</small></button></td>
+                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Recebimento')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.recebimentoRecebido ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-sky-500/30 bg-sky-500/10 text-sky-200 hover:border-sky-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.recebimentoRecebido ? '✓' : ''}</span>{row.recebimentoRecebido ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.recebimentoRecebidoEm)}</small></button></td>
+                      <td className="px-4 py-3"><b className="block text-slate-200">{ticket?.prefixo || '—'}</b><span className="text-[9px] text-slate-500">{ticket?.placa || 'Sem placa'}</span></td>
+                      <td className="px-4 py-3">{operationsOpen ? <button type="button" onClick={() => handleOpenNoteModal(row.numero)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}><FileText className="h-3 w-3" />{note || 'Lançar nota'}</button> : <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-300' : 'bg-slate-800 text-slate-500'}`}><FileText className="h-3 w-3" />{note || 'Área oculta'}</span>}</td>
+                    </tr>;
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div className="rounded-lg border border-emerald-500/20 bg-slate-900 p-4">
-          <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Pares concluídos</span><CheckCircle2 className="h-4 w-4 text-emerald-400" /></div>
-          <strong className="mt-2 block text-2xl text-white">{flowDashboard.completed}</strong>
-          <span className="text-[10px] text-slate-500">Liberação e recebimento enviados</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setFStatus(flowDashboard.duplicates ? 'Duplicado' : '')}
-          className={`rounded-lg border p-4 text-left transition-colors ${flowDashboard.duplicates ? 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10' : 'border-slate-800 bg-slate-900'}`}
-        >
-          <div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase text-slate-400">Números duplicados</span><CopyPlus className={`h-4 w-4 ${flowDashboard.duplicates ? 'text-rose-400' : 'text-slate-600'}`} /></div>
-          <strong className={`mt-2 block text-2xl ${flowDashboard.duplicates ? 'text-rose-300' : 'text-white'}`}>{flowDashboard.duplicates}</strong>
-          <span className="text-[10px] text-slate-500">Mesmo número repetido dentro da mesma aba</span>
-        </button>
+      </section>
+
+      {operationsOpen && <div className="space-y-5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.025] p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div><h2 className="text-sm font-black text-white">Área de lançamentos, edição e notas</h2><p className="text-[10px] text-slate-500">Área avançada mantida oculta para deixar a conferência diária mais rápida.</p></div>
+        <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase text-amber-200">Modo administrativo</span>
       </div>
-
-      {flowDashboard.pairs.length > 0 && (
-        <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div><h2 className="text-sm font-black text-white">Acompanhamento das duas vias</h2><p className="text-[10px] text-slate-500">Últimos caminhões registrados</p></div>
-            <span className="text-[10px] font-bold text-slate-500">{flowDashboard.pairs.length} números</span>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {flowDashboard.pairs.slice(0, 9).map(pair => {
-              const releaseSent = pair.liberacao && pair.liberacao.statusFluxo !== 'Rascunho';
-              const receiptSent = pair.recebimento && pair.recebimento.statusFluxo !== 'Rascunho';
-              const releaseDuplicate = duplicateTicketKeys.has(`Liberação|${normalizeTicketNumber(pair.numero)}`);
-              const receiptDuplicate = duplicateTicketKeys.has(`Recebimento|${normalizeTicketNumber(pair.numero)}`);
-              return (
-                <div key={pair.numero} className={`rounded-md border bg-slate-950/60 p-3 ${releaseDuplicate || receiptDuplicate ? 'border-rose-500/40' : 'border-slate-800'}`}>
-                  <div className="flex items-center justify-between"><b className="text-xs text-white">Ticket {pair.numero}</b><span className="text-[10px] text-slate-500">{pair.liberacao?.placa || pair.recebimento?.placa || 'Sem placa'}</span></div>
-                  {(releaseDuplicate || receiptDuplicate) && <p className="mt-1 text-[9px] font-black uppercase text-rose-300">Duplicado em {releaseDuplicate && receiptDuplicate ? 'liberação e recebimento' : releaseDuplicate ? 'liberação' : 'recebimento'}</p>}
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <span className={`rounded px-2 py-1.5 text-center text-[10px] font-black ${releaseSent ? 'bg-emerald-500/10 text-emerald-300' : pair.liberacao ? 'bg-amber-500/10 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>Liberação {releaseSent ? 'enviada' : pair.liberacao ? 'rascunho' : 'pendente'}</span>
-                    <span className={`rounded px-2 py-1.5 text-center text-[10px] font-black ${receiptSent ? 'bg-emerald-500/10 text-emerald-300' : pair.recebimento ? 'bg-amber-500/10 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>Recebimento {receiptSent ? 'enviado' : pair.recebimento ? 'rascunho' : 'pendente'}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="inline-flex bg-slate-950 p-1 rounded-xl border border-slate-800">
         {(['Liberação', 'Recebimento'] as TipoTicketJazida[]).map(tipo => (
           <button
@@ -1491,7 +1769,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             id="ticket-search"
             name="ticketSearch"
             type="text"
-            placeholder="Buscar ticket, placa, prefixo, material, destino ou responsável"
+            placeholder="Buscar ticket, placa, prefixo, material, destino, responsável ou nota fiscal"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-10 bg-slate-950 border border-slate-700 rounded-md pl-10 pr-4 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
@@ -1768,6 +2046,14 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observação</label>
               <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
             </div>
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+              <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan-300"><FileText className="h-4 w-4" /> Lançamento da nota fiscal</div>
+              <div className="grid gap-3 md:grid-cols-[1fr_180px_2fr]">
+                <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Número da nota</span><input type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" placeholder="Ex.: NF 15482" /></label>
+                <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" /></label>
+                <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Observações / referência</span><input type="text" value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" placeholder="Fornecedor, divergência ou referência da carga" /></label>
+              </div>
+            </div>
 
             {validationError && (
               <div className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
@@ -1799,7 +2085,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
                 <th className="py-3.5 px-5">Material</th>
                 <th className="py-3.5 px-5">Qtd (m³)</th>
                 <th className="py-3.5 px-5">Destino</th>
-                <th className="py-3.5 px-5">Empresa</th>
+                <th className="py-3.5 px-5">Empresa / Nota</th>
                 <th className="py-3.5 px-5">Status</th>
                 <th className="py-3.5 px-5 text-right">Ações</th>
               </tr>
@@ -1839,7 +2125,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-600" />{t.destinoObra === 'Outros' ? t.destinoOutro || 'Outros' : t.destinoObra}</span>
                         {t.estaca && <span className="block text-[10px] text-slate-500 mt-0.5">{t.estaca}</span>}
                       </td>
-                      <td className="py-4 px-5 text-slate-400">{t.empresa}</td>
+                      <td className="py-4 px-5 text-slate-400"><span className="block">{t.empresa}</span>{t.notaFiscalNumero && <span className="mt-1 block text-[10px] font-bold text-cyan-300">NF {t.notaFiscalNumero}</span>}</td>
                       <td className="py-4 px-5">
                         <span className={`inline-block px-2 py-1 rounded-lg border text-[10px] font-bold ${statusStyles[status] || statusStyles['OK']}`}>{status}</span>
                       </td>
@@ -1868,21 +2154,39 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
           </table>
         </div>
       </div>
+      </div>}
 
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h3 className="text-sm font-black text-white">Controle de tickets enviados</h3><p className="text-[10px] text-slate-500">Faixas impressas, preenchimento e viagens completas (liberação + recebimento).</p></div>
-          <div className="flex gap-2"><button onClick={exportTicketControlPdf} className="px-3 py-2 rounded-lg bg-slate-800 text-xs font-bold text-white">Exportar PDF</button><button onClick={exportTicketControlExcel} className="px-3 py-2 rounded-lg bg-emerald-600 text-xs font-bold text-white">Exportar Excel</button></div>
+          <div><h3 className="text-sm font-black text-white">Histórico de lotes impressos</h3><p className="text-[10px] text-slate-500">Faixas registradas no controle, inclusive após restauração do backup em nuvem.</p></div>
+          <span className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-[9px] font-black uppercase text-slate-400">{ticketControlRows.length} lote(s)</span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Tickets enviados</p><p className="text-xl font-black text-white">{ticketControlTotals.total}</p></div>
+          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Números impressos</p><p className="text-xl font-black text-white">{ticketControlTotals.total}</p></div>
           <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Viagens completas</p><p className="text-xl font-black text-emerald-400">{ticketControlTotals.completas}</p></div>
           <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Liberações preenchidas</p><p className="text-xl font-black text-white">{ticketControlTotals.liberacoes}</p></div>
           <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Recebimentos preenchidos</p><p className="text-xl font-black text-white">{ticketControlTotals.recebimentos}</p></div>
         </div>
-        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-2">Impressão</th><th>Faixa</th><th>Enviados</th><th>Lib.</th><th>Rec.</th><th>Viagens completas</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-slate-800 text-slate-300"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.displayStart)} a {normalizeTicketNumber(r.displayEnd)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
+        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-2">Impressão</th><th>Faixa</th><th>Números</th><th>Lib. devolvidas</th><th>Rec. devolvidas</th><th>Completos</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-slate-800 text-slate-300"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.displayStart)} a {normalizeTicketNumber(r.displayEnd)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
       </div>
+
+      {noteModalNumber && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setNoteModalNumber(null)}>
+          <div className="w-full max-w-2xl space-y-4 rounded-2xl border border-cyan-500/30 bg-slate-900 p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div><h3 className="flex items-center gap-2 text-sm font-black text-white"><FileText className="h-4 w-4 text-cyan-300" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-[10px] text-slate-500">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
+              <button type="button" onClick={() => setNoteModalNumber(null)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-slate-500">Número da nota</span><input autoFocus type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" /></label>
+              <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-slate-500">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" /></label>
+            </div>
+            <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-slate-500">Observações / referência</span><textarea rows={3} value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" /></label>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setNoteModalNumber(null)} className="rounded-lg bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300">Cancelar</button><button type="button" onClick={handleSaveNoteModal} className="rounded-lg bg-cyan-600 px-4 py-2.5 text-xs font-black text-white hover:bg-cyan-500">Salvar nas duas vias</button></div>
+          </div>
+        </div>
+      )}
 
       {isBatchModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
@@ -1909,10 +2213,10 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
                 <input type="radio" name="batch-fill-mode" checked={batchFillMode === 'pre-preenchido'} onChange={() => setBatchFillMode('pre-preenchido')} className="mt-0.5 accent-cyan-500" />
                 <span><strong className="block text-[11px] text-slate-100">Pré-preencher o lote</strong><small className="block text-[9px] text-slate-500">Você escolhe abaixo quais dados comuns já saem no PDF.</small></span>
               </label>
-              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchSaveDrafts ? 'border-amber-500/50 bg-amber-500/10' : 'border-slate-800 bg-slate-950'}`}>
-                <input type="checkbox" checked={batchSaveDrafts} onChange={e => setBatchSaveDrafts(e.target.checked)} className="mt-0.5 accent-amber-500" />
-                <span><strong className="block text-[11px] text-slate-100">Salvar para editar depois</strong><small className="block text-[9px] text-slate-500">Cria as duas vias como rascunhos editáveis no sistema.</small></span>
-              </label>
+              <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+                <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                <span><strong className="block text-[11px] text-slate-100">Controle automático obrigatório</strong><small className="block text-[9px] text-slate-500">As duas vias entram como pendentes no checklist e acompanham o backup em nuvem.</small></span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -1942,9 +2246,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Intervalo</label>
                 <input type="number" min="1" max="1000" value={batchStep} onChange={e => setBatchStep(Number(e.target.value))} disabled={batchNumberMode === 'automatico'} title="Ex.: 10 gera 100320, 100310, 100300" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
-              <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data</label>
-                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data do controle</label>
+                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
@@ -1996,7 +2300,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setIsBatchModalOpen(false)} disabled={isBatchPrinting} className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-750 disabled:opacity-50">Cancelar</button>
               <button type="button" onClick={handleGenerateBatchTickets} disabled={isBatchPrinting} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-60">
-                {isBatchPrinting ? 'Gerando PDF...' : batchSaveDrafts ? 'Gerar PDF e salvar para editar' : 'Gerar somente o PDF'}
+                {isBatchPrinting ? 'Gerando PDF...' : 'Gerar PDF e iniciar checklist'}
               </button>
             </div>
           </div>

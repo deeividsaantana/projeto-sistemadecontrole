@@ -1721,15 +1721,14 @@ export default function App() {
 
   const handleImportTicketsJazida = (novosItens: TicketJazida[]) => {
     if (!novosItens || novosItens.length === 0) return;
-    const updated = mergeSeedRecords(
-      ticketsJazida,
-      novosItens,
-      item => `${item.tipoTicket || 'Liberação'}|${item.data}|${item.ticketNumero}|${item.prefixo}`.toLowerCase()
-    );
+    const existingIds = new Set(ticketsJazida.map(item => item.id));
+    const createdCount = novosItens.filter(item => !existingIds.has(item.id)).length;
+    const updatedCount = novosItens.length - createdCount;
+    const updated = mergeTicketCollections(ticketsJazida, novosItens);
     saveAndLog(
       'Tickets Jazida',
-      'Criou',
-      `Criou ${updated.length - ticketsJazida.length} via(s) de ticket em uma única operação.`,
+      createdCount ? 'Criou' : 'Editou',
+      `${createdCount ? `Criou ${createdCount}` : ''}${createdCount && updatedCount ? ' e ' : ''}${updatedCount ? `atualizou ${updatedCount}` : ''} via(s) de ticket em uma única operação.`,
       historyLogs,
       () => {
         setTicketsJazida(updated);

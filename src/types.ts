@@ -336,6 +336,11 @@ export interface TicketJazida {
   ocultarNumeroImpressao?: boolean;
   loteImpressaoId?: string;
   loteImpressaoCriadoEm?: string;
+  devolvidoEm?: string;
+  conferidoPor?: string;
+  notaFiscalNumero?: string;
+  notaFiscalData?: string;
+  notaFiscalObservacao?: string;
 }
 
 export interface OrdemServico {
