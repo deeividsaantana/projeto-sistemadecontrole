@@ -3751,6 +3751,7 @@ export default function App() {
                 lubrificacoes={lubrificacoes}
                 listasPresenca={listasPresenca}
                 apontamentoRamoRegistros={apontamentoRamoRegistros}
+                ticketsJazida={ticketsJazida}
               />
             )}
 

@@ -15,7 +15,8 @@ import {
   Abastecimento, 
   Lubrificacao, 
   ListaPresenca,
-  ApontamentoRamoRegistro
+  ApontamentoRamoRegistro,
+  TicketJazida
 } from '../types';
 
 import { 
@@ -43,6 +44,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import OperationalReportsDashboard from './OperationalReportsDashboard';
 
 interface RelatoriosTabProps {
   empresas: Empresa[];
@@ -57,6 +59,7 @@ interface RelatoriosTabProps {
   lubrificacoes: Lubrificacao[];
   listasPresenca: ListaPresenca[];
   apontamentoRamoRegistros: ApontamentoRamoRegistro[];
+  ticketsJazida: TicketJazida[];
 }
 
 const formatFuelReportNumber = (value: number) =>
@@ -100,7 +103,8 @@ export default function RelatoriosTab({
   abastecimentos,
   lubrificacoes,
   listasPresenca,
-  apontamentoRamoRegistros
+  apontamentoRamoRegistros,
+  ticketsJazida
 }: RelatoriosTabProps) {
 
   // Selected report type
@@ -1037,6 +1041,15 @@ export default function RelatoriosTab({
 
   return (
     <div className="space-y-6" id="relatorios-tab">
+
+      <OperationalReportsDashboard
+        empresas={empresas}
+        equipamentos={equipamentos}
+        comboios={comboios}
+        combustiveis={combustiveis}
+        abastecimentos={abastecimentos}
+        ticketsJazida={ticketsJazida}
+      />
       
       {/* Tab Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4 print:hidden">

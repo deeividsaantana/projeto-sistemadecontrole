@@ -322,6 +322,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
   const [notaFiscalNumero, setNotaFiscalNumero] = useState('');
   const [notaFiscalData, setNotaFiscalData] = useState('');
   const [notaFiscalObservacao, setNotaFiscalObservacao] = useState('');
+  const [advancedFormOpen, setAdvancedFormOpen] = useState(false);
 
   const equipmentByPrefix = useMemo(() => {
     const priority = (item: Equipamento) => item.status === 'Ativo' || item.status === 'Mobilizado' ? 0 : 1;
@@ -410,6 +411,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     setNotaFiscalNumero('');
     setNotaFiscalData('');
     setNotaFiscalObservacao('');
+    setAdvancedFormOpen(false);
   };
 
   const handleOpenCreate = () => {
@@ -443,6 +445,8 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     setNotaFiscalNumero(t.notaFiscalNumero || '');
     setNotaFiscalData(t.notaFiscalData || '');
     setNotaFiscalObservacao(t.notaFiscalObservacao || '');
+    setAdvancedFormOpen(Boolean(t.observacao || t.notaFiscalNumero || t.notaFiscalData || t.notaFiscalObservacao));
+    setOperationsOpen(true);
     setIsFormOpen(true);
   };
 
@@ -538,15 +542,20 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     e.preventDefault();
     setValidationError('');
 
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const saveMode = submitter?.value === 'draft' ? 'draft' : 'complete';
+
     if (!ticketNumero.trim()) { setValidationError('Informe o Nº do Ticket.'); return; }
     if (!data) { setValidationError('Informe a Data.'); return; }
-    if (!prefixo.trim()) { setValidationError('Informe o Prefixo.'); return; }
-    if (!placa.trim()) { setValidationError('Informe a Placa.'); return; }
-    if (tipoTicket === 'Recebimento' && !horaChegada) { setValidationError('Informe a Hora de Chegada.'); return; }
-    if (tipoTicket === 'Liberação' && !horaSaida) { setValidationError('Informe a Hora de Saída.'); return; }
-    if (!tipoMaterial) { setValidationError('Selecione o Tipo de Material.'); return; }
-    if (!quantidadeM3 || quantidadeM3 <= 0) { setValidationError('Quantidade (m³) deve ser maior que zero.'); return; }
-    if (destinoObra === 'Outros' && !destinoOutro.trim()) { setValidationError('Informe o destino ou ramo de descarga.'); return; }
+    if (saveMode === 'complete') {
+      if (!prefixo.trim()) { setValidationError('Para concluir, informe o Prefixo. Se ainda não souber, use “Salvar rascunho”.'); return; }
+      if (!placa.trim()) { setValidationError('Para concluir, informe a Placa. Se ainda não souber, use “Salvar rascunho”.'); return; }
+      if (tipoTicket === 'Recebimento' && !horaChegada) { setValidationError('Para concluir, informe a Hora de Chegada.'); return; }
+      if (tipoTicket === 'Liberação' && !horaSaida) { setValidationError('Para concluir, informe a Hora de Saída.'); return; }
+      if (!tipoMaterial) { setValidationError('Para concluir, selecione o Tipo de Material.'); return; }
+      if (!quantidadeM3 || quantidadeM3 <= 0) { setValidationError('Para concluir, a quantidade deve ser maior que zero.'); return; }
+      if (destinoObra === 'Outros' && !destinoOutro.trim()) { setValidationError('Para concluir, informe o destino ou ramo de descarga.'); return; }
+    }
 
     const normalizedTicketNumber = normalizeTicketNumber(ticketNumero);
     if (!normalizedTicketNumber) { setValidationError('Informe uma numeração válida para o ticket.'); return; }
@@ -583,15 +592,15 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       nomeLegivel: nomeLegivel.trim(),
       empresa,
       observacao: observacao.trim(),
-      status: 'OK',
-      statusFluxo: existing?.statusFluxo === 'Rascunho' ? 'Enviado' : existing?.statusFluxo || 'Enviado',
+      status: saveMode === 'draft' ? 'Pendente' : 'OK',
+      statusFluxo: saveMode === 'draft' ? 'Rascunho' : 'Enviado',
       unidadeQuantidade: existing?.unidadeQuantidade || 'm³',
       origemRegistro: existing?.origemRegistro || 'Admin',
-      enviadoEm: existing?.enviadoEm || (isNew ? now : undefined),
+      enviadoEm: saveMode === 'draft' ? undefined : existing?.enviadoEm || now,
       criadoEm: existing?.criadoEm || now,
       atualizadoEm: now,
-      devolvidoEm: existing?.devolvidoEm || now,
-      conferidoPor: existing?.conferidoPor || 'Admin',
+      devolvidoEm: saveMode === 'draft' ? undefined : existing?.devolvidoEm || now,
+      conferidoPor: saveMode === 'draft' ? undefined : existing?.conferidoPor || 'Admin',
       notaFiscalNumero: notaFiscalNumero.trim(),
       notaFiscalData,
       notaFiscalObservacao: notaFiscalObservacao.trim(),
@@ -599,8 +608,25 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       ocultarNumeroImpressao: false,
     }, isNew);
 
+    setImportMessage(saveMode === 'draft'
+      ? `Ticket Nº ${normalizedTicketNumber} salvo como rascunho. Você pode continuar depois sem perder os dados.`
+      : `Ticket Nº ${normalizedTicketNumber} concluído e marcado como devolvido.`);
     setIsFormOpen(false);
     resetFormFields();
+  };
+
+  const handleMoveTicketToDraft = (ticket: TicketJazida) => {
+    const now = new Date().toISOString();
+    onSaveTicket({
+      ...ticket,
+      status: 'Pendente',
+      statusFluxo: 'Rascunho',
+      enviadoEm: undefined,
+      devolvidoEm: undefined,
+      conferidoPor: undefined,
+      atualizadoEm: now,
+    }, false);
+    setImportMessage(`Ticket Nº ${ticket.ticketNumero} voltou para rascunho e saiu da contagem de vias devolvidas.`);
   };
 
   const q = searchQuery.toLowerCase().trim();
@@ -1601,16 +1627,16 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             <Printer className="w-4 h-4" />
             Imprimir em branco
           </button>
-          {operationsOpen && <button
+          <button
             type="button"
             onClick={() => importInputRef.current?.click()}
             disabled={isImporting}
-            title="Importar tickets de uma planilha XLSX ou XLSM"
+            title="Escolher uma planilha XLSX ou XLSM, revisar as linhas e só depois confirmar"
             className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Upload className="w-4 h-4 text-emerald-400" />
-            {isImporting ? 'Validando planilha...' : 'Importar tickets'}
-          </button>}
+            {isImporting ? 'Lendo planilha...' : 'Importar planilha'}
+          </button>
           <button
             type="button"
             onClick={openBatchModal}
@@ -1627,20 +1653,20 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
           >
             <Link2 className="w-4 h-4" /> Copiar link público
           </button>}
-          {operationsOpen && <button
+          <button
             onClick={handleOpenCreate}
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
-            Novo Ticket de {ticketTab}
-          </button>}
+            Novo lançamento
+          </button>
           <button
             type="button"
             onClick={() => { setOperationsOpen(value => !value); setIsFormOpen(false); }}
             className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${operationsOpen ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-emerald-500'}`}
           >
             <FilePenLine className="h-4 w-4" />
-            {operationsOpen ? 'Ocultar lançamentos' : 'Lançamentos e notas'}
+            {operationsOpen ? 'Ocultar lista e notas' : 'Ver lista e notas'}
           </button>
           <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportTicketsFile} className="hidden" />
         </div>
@@ -1879,8 +1905,8 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status</label>
               <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
-                <option value="Rascunho">Rascunho</option>
-                <option value="Enviado">Enviado</option>
+                <option value="Rascunho">Rascunho (ainda editando)</option>
+                <option value="Enviado">Concluído / devolvido</option>
                 <option value="OK">OK</option>
                 <option value="Pendente">Pendente</option>
                 <option value="Duplicado">Duplicado</option>
@@ -1939,6 +1965,16 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
+                <b className="block text-[10px] font-black uppercase tracking-wider text-amber-200">Salvar rascunho</b>
+                <p className="mt-1 text-[9px] leading-relaxed text-slate-500">Exige apenas número e data. Mantém o ticket editável e não marca a via como devolvida.</p>
+              </div>
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
+                <b className="block text-[10px] font-black uppercase tracking-wider text-emerald-200">Concluir ticket</b>
+                <p className="mt-1 text-[9px] leading-relaxed text-slate-500">Valida os campos essenciais e registra a devolução da via na conferência diária.</p>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo do Ticket</label>
@@ -1985,11 +2021,11 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo *</label>
-                <input type="text" list="ticket-equipment-prefixes" value={prefixo} onChange={e => handlePrefixChange(e.target.value)} onBlur={() => fillEquipmentFields(findEquipmentByPrefix(prefixo))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="Digite ou escolha o prefixo" required />
+                <input type="text" list="ticket-equipment-prefixes" value={prefixo} onChange={e => handlePrefixChange(e.target.value)} onBlur={() => fillEquipmentFields(findEquipmentByPrefix(prefixo))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="Digite ou escolha o prefixo" />
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa *</label>
-                <input type="text" value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                <input type="text" value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Família do Equipamento</label>
@@ -2007,7 +2043,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³) *</label>
-                <input type="number" min="0.01" step="0.01" value={quantidadeM3} onChange={e => setQuantidadeM3(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                <input type="number" min="0" step="0.01" value={quantidadeM3} onChange={e => setQuantidadeM3(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">{tipoTicket === 'Recebimento' ? 'Ramo de Descarga *' : 'Destino / Obra *'}</label>
@@ -2042,18 +2078,24 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
                 <input type="text" value={nomeLegivel} onChange={e => setNomeLegivel(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observação</label>
-              <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
-            </div>
-            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-              <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan-300"><FileText className="h-4 w-4" /> Lançamento da nota fiscal</div>
-              <div className="grid gap-3 md:grid-cols-[1fr_180px_2fr]">
-                <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Número da nota</span><input type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" placeholder="Ex.: NF 15482" /></label>
-                <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" /></label>
-                <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Observações / referência</span><input type="text" value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" placeholder="Fornecedor, divergência ou referência da carga" /></label>
+            <button type="button" onClick={() => setAdvancedFormOpen(value => !value)} className="flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-left">
+              <span><b className="block text-[10px] font-black uppercase tracking-wider text-slate-300">Observações e nota fiscal</b><small className="mt-1 block text-[9px] text-slate-600">Opcional. Abra somente quando precisar lançar detalhes administrativos.</small></span>
+              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${advancedFormOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {advancedFormOpen && <div className="space-y-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observação</label>
+                <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
               </div>
-            </div>
+              <div>
+                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan-300"><FileText className="h-4 w-4" /> Nota fiscal</div>
+                <div className="grid gap-3 md:grid-cols-[1fr_180px_2fr]">
+                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Número da nota</span><input type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" placeholder="Ex.: NF 15482" /></label>
+                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" /></label>
+                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Observações / referência</span><input type="text" value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" placeholder="Fornecedor, divergência ou referência da carga" /></label>
+                </div>
+              </div>
+            </div>}
 
             {validationError && (
               <div className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
@@ -2061,9 +2103,12 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               </div>
             )}
 
-            <div className="flex gap-2.5">
-              <button type="submit" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
-                {editingId ? 'Salvar Ticket' : 'Registrar Ticket'}
+            <div className="flex flex-col gap-2.5 sm:flex-row">
+              <button type="submit" name="saveMode" value="draft" className="px-5 py-2.5 border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15 text-amber-200 font-bold text-xs rounded-xl transition-all cursor-pointer">
+                Salvar rascunho
+              </button>
+              <button type="submit" name="saveMode" value="complete" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
+                {editingId ? 'Concluir e salvar' : 'Concluir lançamento'}
               </button>
               <button type="button" onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="px-5 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer">
                 Cancelar
@@ -2100,6 +2145,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               ) : (
                 filteredTickets.map(t => {
                   const status = isDuplicateTicket(t, duplicateTicketKeys) ? 'Duplicado' : t.statusFluxo || t.status || 'Enviado';
+                  const statusLabel = status === 'Enviado' ? 'Concluído' : status;
                   const hasRecebimentoClone = tickets.some(item =>
                     (item.tipoTicket || 'Liberação') === 'Recebimento' &&
                     item.ticketNumero.trim().toLowerCase() === t.ticketNumero.trim().toLowerCase()
@@ -2127,12 +2173,12 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
                       </td>
                       <td className="py-4 px-5 text-slate-400"><span className="block">{t.empresa}</span>{t.notaFiscalNumero && <span className="mt-1 block text-[10px] font-bold text-cyan-300">NF {t.notaFiscalNumero}</span>}</td>
                       <td className="py-4 px-5">
-                        <span className={`inline-block px-2 py-1 rounded-lg border text-[10px] font-bold ${statusStyles[status] || statusStyles['OK']}`}>{status}</span>
+                        <span className={`inline-block px-2 py-1 rounded-lg border text-[10px] font-bold ${statusStyles[status] || statusStyles['OK']}`}>{statusLabel}</span>
                       </td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => setViewingTicket(t)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handlePrintTicket(t)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Printer className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setViewingTicket(t)} title="Visualizar ticket" className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handlePrintTicket(t)} title="Imprimir este ticket" className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Printer className="w-3.5 h-3.5" /></button>
                           {(t.tipoTicket || 'Liberação') === 'Liberação' && (
                             <button
                               onClick={() => handleCloneRecebimentoFromLiberacao(t)}
@@ -2142,8 +2188,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
                               <CopyPlus className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <button onClick={() => handleOpenEdit(t)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setDeleteConfirmId(t.id)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleOpenEdit(t)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 font-bold text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"><Edit className="w-3.5 h-3.5" />{(t.statusFluxo || 'Enviado') === 'Rascunho' ? 'Continuar' : 'Editar'}</button>
+                          {(t.statusFluxo || 'Enviado') === 'Enviado' && <button onClick={() => handleMoveTicketToDraft(t)} title="Retirar da conferência de devolvidos e continuar editando depois" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 font-bold text-amber-200 hover:bg-amber-500/20 cursor-pointer"><RotateCcw className="w-3.5 h-3.5" />Rascunho</button>}
+                          <button onClick={() => setDeleteConfirmId(t.id)} title="Excluir ticket" className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -2187,6 +2234,21 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
           </div>
         </div>
       )}
+
+      <section className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-3">
+        <button type="button" onClick={handleOpenCreate} className="group flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-left transition hover:border-emerald-400">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-black text-white">1</span>
+          <span><b className="block text-xs text-white">Cadastrar ou continuar</b><small className="mt-1 block text-[9px] leading-relaxed text-slate-500">Informe somente o que já sabe. Salve como rascunho e edite depois.</small></span>
+        </button>
+        <button type="button" onClick={() => importInputRef.current?.click()} className="group flex items-start gap-3 rounded-xl border border-sky-500/25 bg-sky-500/5 p-4 text-left transition hover:border-sky-400">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-500 text-xs font-black text-white">2</span>
+          <span><b className="block text-xs text-white">Importar sua planilha</b><small className="mt-1 block text-[9px] leading-relaxed text-slate-500">Veja uma prévia, confira erros e confirme. Linhas incompletas entram como rascunho.</small></span>
+        </button>
+        <button type="button" onClick={() => setOperationsOpen(true)} className="group flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-left transition hover:border-amber-400">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-500 text-xs font-black text-white">3</span>
+          <span><b className="block text-xs text-white">Revisar e concluir</b><small className="mt-1 block text-[9px] leading-relaxed text-slate-500">Rascunho não conta como devolvido. Concluído entra na conferência da via.</small></span>
+        </button>
+      </section>
 
       {isBatchModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
