@@ -8,12 +8,18 @@ import { getAuth } from 'firebase-admin/auth';
 const email = String(process.argv[2] || '').trim().toLowerCase();
 const role = String(process.argv[3] || 'admin').trim().toLowerCase();
 const allowedRoles = new Set(['admin', 'gestor', 'operador', 'leitura']);
+const organizationId = String(process.env.SUPABASE_DEFAULT_ORGANIZATION_ID || '').trim().toLowerCase();
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 if (!email) {
   console.error('Uso: npm run provision:staff -- usuario@empresa.com.br [admin|gestor|operador|leitura]');
   process.exit(1);
 }
 if (!allowedRoles.has(role)) {
   console.error('Perfil inválido. Use admin, gestor, operador ou leitura.');
+  process.exit(1);
+}
+if (organizationId && !uuidPattern.test(organizationId)) {
+  console.error('SUPABASE_DEFAULT_ORGANIZATION_ID deve ser um UUID válido.');
   process.exit(1);
 }
 
@@ -71,7 +77,12 @@ try {
     createdPassword = process.env.FIREBASE_ADMIN_INITIAL_PASSWORD || `Renea!${crypto.randomBytes(12).toString('base64url')}`;
     user = await auth.createUser({ email, password: createdPassword, emailVerified: true, disabled: false });
   }
-  await auth.setCustomUserClaims(user.uid, { ...user.customClaims, staff: true, role });
+  await auth.setCustomUserClaims(user.uid, {
+    ...user.customClaims,
+    staff: true,
+    role,
+    ...(organizationId ? { organization_id: organizationId } : {}),
+  });
   await auth.revokeRefreshTokens(user.uid);
   console.log(`Acesso ${role} concedido a ${email}. O usuário deve entrar novamente.`);
   if (createdPassword) {

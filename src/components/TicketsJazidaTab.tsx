@@ -37,15 +37,30 @@ import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } fr
 import { buildDuplicateTicketKeys, isDuplicateTicket, ticketDuplicateKey } from '../utils/ticketDuplicateDetection';
 import { buildTicketSpreadsheetWorkbook } from '../utils/ticketSpreadsheetExport';
 import { buildJazidaDailyControl, getTicketControlDate, isTicketReturned } from '../utils/jazidaDailyControl';
+import { buildTravelOperationControl, formatTravelDuration } from '../utils/travelOperations';
 import { isReneaStoredValueValid, parseReneaStoredJson } from '../utils/resilientStorage';
+import { stageTravelDataset } from '../services/masterDataApi';
 import { jsPDF } from 'jspdf';
-import { Equipamento, TicketJazida, TipoMaterialJazida, DestinoObraJazida, EmpresaTicketJazida, TipoTicketJazida } from '../types';
+import {
+  ApontamentoRamo,
+  Equipamento,
+  MaterialCadastro,
+  ObraLocal,
+  TicketJazida,
+  TipoMaterialJazida,
+  DestinoObraJazida,
+  EmpresaTicketJazida,
+  TipoTicketJazida,
+} from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
 
 interface TicketsJazidaTabProps {
   tickets: TicketJazida[];
   equipamentos: Equipamento[];
+  materiais: MaterialCadastro[];
+  obras: ObraLocal[];
+  ramos: ApontamentoRamo[];
   onSaveTicket: (item: TicketJazida, isNew: boolean) => void;
   onDeleteTicket: (id: string) => void;
   onImportTickets: (items: TicketJazida[]) => void;
@@ -61,6 +76,11 @@ const DESTINOS_OBRA: DestinoObraJazida[] = [
   'Ferradura', 'Coluna de Brita', 'Apoio', 'Jazida', 'Outros'
 ];
 const EMPRESAS_TICKET: EmpresaTicketJazida[] = ['RENEA', 'Terceiro', 'Outros'];
+const normalizeMasterLabel = (value: unknown) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .trim()
+  .toUpperCase();
 
 const normalizeEquipmentKey = (value: string) => value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 const equipmentPlate = (equipment: Equipamento) => (equipment.placa || equipment.seriePlaca || '').trim().toUpperCase();
@@ -261,7 +281,18 @@ const generateTicketBookPdf = async (
   doc.save(fileName);
 };
 
-export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, onDeleteTicket, onImportTickets, onReserveTicketNumber, onReserveTicketNumbers }: TicketsJazidaTabProps) {
+export default function TicketsJazidaTab({
+  tickets,
+  equipamentos,
+  materiais,
+  obras,
+  ramos,
+  onSaveTicket,
+  onDeleteTicket,
+  onImportTickets,
+  onReserveTicketNumber,
+  onReserveTicketNumbers,
+}: TicketsJazidaTabProps) {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -341,6 +372,37 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     .sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR')), [equipmentByPrefix]);
 
   const findEquipmentByPrefix = (value: string) => equipmentByPrefix.get(normalizeEquipmentKey(value));
+  const materialByName = useMemo(() => new Map(
+    materiais
+      .filter(item => item.status === 'Ativo')
+      .map(item => [normalizeMasterLabel(item.nome), item]),
+  ), [materiais]);
+  const locationByName = useMemo(() => new Map(
+    obras.map(item => [normalizeMasterLabel(item.nome), item]),
+  ), [obras]);
+  const branchByName = useMemo(() => new Map(
+    ramos
+      .filter(item => item.status === 'ativo')
+      .map(item => [normalizeMasterLabel(item.ramoNome), item]),
+  ), [ramos]);
+  const materialOptions = useMemo(() => [...new Set([
+    ...TIPOS_MATERIAL,
+    ...materiais.filter(item => item.status === 'Ativo').map(item => item.nome),
+  ])], [materiais]);
+  const destinationOptions = useMemo(() => [...new Set([
+    ...DESTINOS_OBRA,
+    ...obras.map(item => item.nome),
+    ...ramos.filter(item => item.status === 'ativo').map(item => item.ramoNome),
+  ])], [obras, ramos]);
+  const originLocationId = useMemo(() => obras.find(item =>
+    normalizeMasterLabel(item.nome).includes('JAZIDA')
+    && normalizeMasterLabel(item.nome).includes('SABESP')
+  )?.id, [obras]);
+  const resolveMaterialId = (value: string) => materialByName.get(normalizeMasterLabel(value))?.id;
+  const resolveDestinationIds = (value: string) => ({
+    localDestinoId: locationByName.get(normalizeMasterLabel(value))?.id,
+    ramoId: branchByName.get(normalizeMasterLabel(value))?.id,
+  });
 
   const fillEquipmentFields = (equipment?: Equipamento) => {
     if (!equipment) return false;
@@ -572,6 +634,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     const isNew = editingId === null;
     const now = new Date().toISOString();
     const existing = !isNew ? tickets.find(t => t.id === editingId) : undefined;
+    const selectedEquipment = findEquipmentByPrefix(prefixo);
+    const destinationLabel = destinoObra === 'Outros' ? destinoOutro.trim() : destinoObra;
+    const destinationIds = resolveDestinationIds(destinationLabel);
 
     onSaveTicket({
       ...(existing || {}),
@@ -608,6 +673,11 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       notaFiscalObservacao: notaFiscalObservacao.trim(),
       impressaoEmBranco: false,
       ocultarNumeroImpressao: false,
+      equipamentoId: selectedEquipment?.id || existing?.equipamentoId,
+      materialId: resolveMaterialId(tipoMaterial) || existing?.materialId,
+      localOrigemId: originLocationId || existing?.localOrigemId,
+      localDestinoId: destinationIds.localDestinoId || existing?.localDestinoId,
+      ramoId: destinationIds.ramoId || existing?.ramoId,
     }, isNew);
 
     setImportMessage(saveMode === 'draft'
@@ -685,6 +755,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
   const buildBatchTicket = (number: string, type: TipoTicketJazida, batchId: string, createdAt: string): TicketJazida => {
     const blank = batchFillMode === 'em-branco';
     const selectedEquipment = findEquipmentByPrefix(batchPrefixo);
+    const destinationIds = resolveDestinationIds(batchDestinoObra);
     return {
       id: `ticket-lote-${type === 'Liberação' ? 'lib' : 'rec'}-${number}-${Date.now()}`,
       data: batchDate,
@@ -715,6 +786,11 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
       ocultarNumeroImpressao: false,
       loteImpressaoId: batchId,
       loteImpressaoCriadoEm: createdAt,
+      equipamentoId: blank ? undefined : selectedEquipment?.id,
+      materialId: blank ? undefined : resolveMaterialId(batchTipoMaterial),
+      localOrigemId: blank ? undefined : originLocationId,
+      localDestinoId: blank ? undefined : destinationIds.localDestinoId,
+      ramoId: blank ? undefined : destinationIds.ramoId,
     };
   };
 
@@ -893,6 +969,15 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
   const dailyDuplicateCount = useMemo(() => tickets.filter(ticket =>
     getTicketControlDate(ticket) === controlDate && isDuplicateTicket(ticket, duplicateTicketKeys)
   ).length, [tickets, controlDate, duplicateTicketKeys]);
+  const travelControl = useMemo(() => buildTravelOperationControl(tickets), [tickets]);
+  const travelReviewRows = useMemo(() => travelControl.operations
+    .filter(operation => operation.status !== 'Conferido')
+    .sort((left, right) => {
+      const priority = ['Ticket duplicado', 'Divergência', 'Sem recebimento', 'Sem liberação'];
+      return priority.indexOf(left.status) - priority.indexOf(right.status)
+        || right.ticketNumber.localeCompare(left.ticketNumber, 'pt-BR', { numeric: true });
+    })
+    .slice(0, 12), [travelControl]);
 
   const formatEventDateTime = (value: string) => {
     if (!value) return '—';
@@ -1286,6 +1371,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
           const duplicate = Boolean(key && seen.has(key));
           if (key) seen.add(key);
           const hora = parseTimeValue(getValue(row, tipo === 'Recebimento' ? 'horaChegada' : 'horaSaida')) || '00:00';
+          const materialNormalizado = normalizeMaterialValue(materialImportado);
+          const destinoNormalizado = normalizeDestinoValue(destinoImportado);
+          const destinationIds = resolveDestinationIds(destinoNormalizado);
           const missingFields = [
             !dataImportada && 'data',
             !ticketImportado && 'número',
@@ -1308,9 +1396,9 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             equipamentoNome: String(getValue(row, 'equipamentoNome') || equipamentoEncontrado?.nome || '').trim(),
             horaChegada: tipo === 'Recebimento' ? hora : undefined,
             horaSaida: tipo === 'Liberação' ? hora : '',
-            tipoMaterial: normalizeMaterialValue(materialImportado),
+            tipoMaterial: materialNormalizado,
             quantidadeM3: quantidadeImportada,
-            destinoObra: normalizeDestinoValue(destinoImportado),
+            destinoObra: destinoNormalizado,
             estaca: tipo === 'Recebimento' ? String(getValue(row, 'estaca') || '').trim() : '',
             responsavelLiberacao: '',
             nomeLegivel: '',
@@ -1321,6 +1409,11 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
             origemRegistro: 'Importação',
             criadoEm: new Date().toISOString(),
             atualizadoEm: new Date().toISOString(),
+            equipamentoId: equipamentoEncontrado?.id,
+            materialId: resolveMaterialId(materialNormalizado),
+            localOrigemId: originLocationId,
+            localDestinoId: destinationIds.localDestinoId,
+            ramoId: destinationIds.ramoId,
           });
         });
       });
@@ -1339,13 +1432,26 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
     }
   };
 
-  const confirmTicketsImport = () => {
+  const confirmTicketsImport = async () => {
     if (!pendingImport || isConfirmingImport) return;
     setIsConfirmingImport(true);
     onImportTickets(pendingImport.items);
-    setImportMessage(`${pendingImport.items.length} ticket(s) importado(s) de ${pendingImport.fileName}.${pendingImport.ignored ? ` ${pendingImport.ignored} linha(s) sem dados reconhecíveis não foram importadas.` : ''}`);
-    setPendingImport(null);
-    setIsConfirmingImport(false);
+    const localMessage = `${pendingImport.items.length} ticket(s) importado(s) de ${pendingImport.fileName}.${pendingImport.ignored ? ` ${pendingImport.ignored} linha(s) sem dados reconhecíveis não foram importadas.` : ''}`;
+    try {
+      const batches = await stageTravelDataset(
+        pendingImport.fileName,
+        pendingImport.items,
+        { module: 'travel-v2.5', localStoragePreserved: true },
+      );
+      const stagedRows = batches.reduce((sum, batch) => sum + batch.preservedRows, 0);
+      setImportMessage(`${localMessage} ${stagedRows} linha(s) também foram preservadas na fila gradual do Supabase.`);
+    } catch (error) {
+      console.warn('A importação local foi concluída, mas a fila Supabase de viagens está indisponível:', error);
+      setImportMessage(`${localMessage} A cópia local foi mantida; a fila Supabase poderá ser sincronizada depois.`);
+    } finally {
+      setPendingImport(null);
+      setIsConfirmingImport(false);
+    }
   };
 
   // ---- Exportação Excel ----
@@ -1681,6 +1787,68 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
         </div>
       )}
 
+      <section className="overflow-hidden rounded-2xl border border-cyan-500/20 bg-slate-900">
+        <div className="border-b border-slate-800 bg-gradient-to-r from-cyan-500/10 via-slate-900 to-slate-900 p-5">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="flex items-center gap-2 text-base font-black text-white"><Layers3 className="h-5 w-5 text-cyan-400" /> Conferência automática das viagens</h2>
+                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-300">ERP v2.5</span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">Pareamento integral pelo Ticket Nº, sem limites fixos de linha. Prefixo, placa, material e quantidade seguem a mesma conferência da planilha.</p>
+            </div>
+            <div className="text-[10px] text-slate-500">
+              IDs vinculados: <b className="text-slate-300">{travelControl.linkedEquipment}</b> equipamentos · <b className="text-slate-300">{travelControl.linkedMaterials}</b> materiais · <b className="text-slate-300">{travelControl.linkedDestinations}</b> locais · <b className="text-slate-300">{travelControl.linkedBranches}</b> ramos
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4 p-5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
+            {[
+              { label: 'Tickets únicos', value: travelControl.totalTickets, detail: 'numeração consolidada', color: 'text-white' },
+              { label: 'Viagens conferidas', value: travelControl.completeTrips, detail: 'pares sem divergência', color: 'text-emerald-300' },
+              { label: 'Divergências', value: travelControl.divergentTrips, detail: 'dados diferentes', color: 'text-rose-300' },
+              { label: 'Sem recebimento', value: travelControl.releasesWithoutReceipt, detail: 'liberação pendente', color: 'text-amber-300' },
+              { label: 'Sem liberação', value: travelControl.receiptsWithoutRelease, detail: 'recebimento avulso', color: 'text-sky-300' },
+              { label: 'Duração média', value: formatTravelDuration(travelControl.averageDurationMinutes), detail: `${travelControl.duplicateTickets} ticket(s) duplicado(s)`, color: 'text-cyan-300' },
+            ].map(card => (
+              <div key={card.label} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{card.label}</p>
+                <strong className={`mt-2 block text-xl font-black ${card.color}`}>{card.value}</strong>
+                <span className="mt-1 block text-[9px] text-slate-600">{card.detail}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/60 px-4 py-3">
+              <div><h3 className="text-[11px] font-black uppercase tracking-wider text-slate-200">Fila de revisão</h3><p className="mt-1 text-[9px] text-slate-500">Linhas incompletas, divergentes ou duplicadas permanecem visíveis para correção.</p></div>
+              <span className="rounded-md bg-slate-800 px-2 py-1 text-[9px] font-black text-slate-300">{travelControl.totalTickets - travelControl.completeTrips} pendência(s)</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[820px] text-left text-[10px]">
+                <thead className="bg-slate-950/40 uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-2.5">Ticket</th><th className="px-4 py-2.5">Situação</th><th className="px-4 py-2.5">Liberação</th><th className="px-4 py-2.5">Recebimento</th><th className="px-4 py-2.5">Duração</th><th className="px-4 py-2.5">Revisar</th></tr></thead>
+                <tbody className="divide-y divide-slate-850">
+                  {travelReviewRows.length === 0 ? <tr><td colSpan={6} className="px-4 py-6 text-center text-emerald-300">Todas as viagens estão pareadas e conferidas.</td></tr> : travelReviewRows.map(operation => {
+                    const statusClass = operation.status === 'Divergência' || operation.status === 'Ticket duplicado'
+                      ? 'border-rose-500/25 bg-rose-500/10 text-rose-300'
+                      : 'border-amber-500/25 bg-amber-500/10 text-amber-200';
+                    return <tr key={operation.ticketNumber} className="text-slate-300">
+                      <td className="px-4 py-3 font-mono font-black text-emerald-300">{operation.ticketNumber}</td>
+                      <td className="px-4 py-3"><span className={`rounded-md border px-2 py-1 font-bold ${statusClass}`}>{operation.status}</span></td>
+                      <td className="px-4 py-3"><b className="block">{operation.release?.prefixo || '—'}</b><span className="text-slate-600">{operation.releaseEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
+                      <td className="px-4 py-3"><b className="block">{operation.receipt?.prefixo || '—'}</b><span className="text-slate-600">{operation.receiptEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
+                      <td className="px-4 py-3 font-bold text-cyan-300">{formatTravelDuration(operation.durationMinutes)}</td>
+                      <td className="px-4 py-3 text-slate-500">{operation.divergences.map(item => item.label).join(', ') || (operation.status === 'Ticket duplicado' ? `${operation.releases.length} lib. / ${operation.receipts.length} rec.` : 'Pareamento pendente')}</td>
+                    </tr>;
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="overflow-hidden rounded-2xl border border-emerald-500/25 bg-slate-900 shadow-2xl shadow-emerald-950/10">
         <div className="border-b border-slate-800 bg-gradient-to-r from-emerald-500/10 via-slate-900 to-slate-900 p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -1886,14 +2054,14 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Material</label>
               <select value={fTipoMaterial} onChange={e => setFTipoMaterial(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
-                {TIPOS_MATERIAL.map(m => <option key={m} value={m}>{m}</option>)}
+                {materialOptions.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / Obra</label>
               <select value={fDestinoObra} onChange={e => setFDestinoObra(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
-                {DESTINOS_OBRA.map(d => <option key={d} value={d}>{d}</option>)}
+                {destinationOptions.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div className="space-y-1">
@@ -2040,7 +2208,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Material *</label>
                 <select value={tipoMaterial} onChange={e => setTipoMaterial(e.target.value as TipoMaterialJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
-                  {TIPOS_MATERIAL.map(m => <option key={m} value={m}>{m}</option>)}
+                  {materialOptions.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
@@ -2050,7 +2218,7 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">{tipoTicket === 'Recebimento' ? 'Ramo de Descarga *' : 'Destino / Obra *'}</label>
                 <select value={destinoObra} onChange={e => setDestinoObra(e.target.value as DestinoObraJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
-                  {DESTINOS_OBRA.map(d => <option key={d} value={d}>{d}</option>)}
+                  {destinationOptions.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               {destinoObra === 'Outros' && (
@@ -2329,13 +2497,13 @@ export default function TicketsJazidaTab({ tickets, equipamentos, onSaveTicket, 
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Material</label>
                 <select value={batchTipoMaterial} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
-                  {TIPOS_MATERIAL.map(item => <option key={item} value={item}>{item}</option>)}
+                  {materialOptions.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / obra</label>
                 <select value={batchDestinoObra} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
-                  {DESTINOS_OBRA.map(item => <option key={item} value={item}>{item}</option>)}
+                  {destinationOptions.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>

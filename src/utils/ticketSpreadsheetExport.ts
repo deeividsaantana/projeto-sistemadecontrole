@@ -3,6 +3,7 @@ import { TicketJazida, TipoTicketJazida } from '../types';
 import { configureCorporateWorkbook } from './excelCorporate';
 import { isDuplicateTicket } from './ticketDuplicateDetection';
 import { normalizeTicketNumber } from './ticketNumberSequence';
+import { buildTravelOperationControl, formatTravelDuration } from './travelOperations';
 
 type TicketSpreadsheetOptions = {
   liberacoes: TicketJazida[];
@@ -46,10 +47,10 @@ export const getTicketSpreadsheetStatus = (
 };
 
 const statusStyle = (status: string) => {
-  if (status === 'DUPLICADO' || status === 'ERRO DE IMPORTAÇÃO') {
+  if (status.includes('DUPLICADO') || status === 'ERRO DE IMPORTAÇÃO' || status === 'DIVERGÊNCIA') {
     return { fill: 'FFFFC7CE', font: 'FF9C0006' };
   }
-  if (status === 'PENDENTE' || status.startsWith('VERIFICAR')) {
+  if (status === 'PENDENTE' || status.startsWith('VERIFICAR') || status.startsWith('SEM ')) {
     return { fill: 'FFFFEB9C', font: 'FF9C6500' };
   }
   if (status === 'RASCUNHO') return { fill: 'FFDDEBF7', font: 'FF1F4E78' };
@@ -222,10 +223,125 @@ const configureSheet = (
   return worksheet;
 };
 
+const styleControlSheet = (worksheet: ExcelJS.Worksheet, widths: number[]) => {
+  widths.forEach((width, index) => { worksheet.getColumn(index + 1).width = width; });
+  worksheet.views = [{ state: 'frozen', ySplit: 1, showGridLines: false }];
+  worksheet.autoFilter = { from: 'A1', to: `${worksheet.getColumn(widths.length).letter}${Math.max(1, worksheet.rowCount)}` };
+  worksheet.getRow(1).eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } };
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF222222' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  });
+};
+
+const addOperationalControlSheets = (
+  workbook: ExcelJS.Workbook,
+  tickets: TicketJazida[],
+) => {
+  const control = buildTravelOperationControl(tickets);
+  const reviewSheet = workbook.addWorksheet('CONFERÊNCIA VIAGENS', { views: [{ showGridLines: false }] });
+  reviewSheet.addRow([
+    'Ticket Nº',
+    'Situação',
+    'Data liberação',
+    'Hora saída',
+    'Data recebimento',
+    'Hora chegada',
+    'Duração',
+    'Prefixo liberação',
+    'Prefixo recebimento',
+    'Placa liberação',
+    'Placa recebimento',
+    'Material liberação',
+    'Material recebimento',
+    'Quantidade liberação',
+    'Quantidade recebimento',
+    'Divergências',
+    'Equipamento ID',
+    'Material ID',
+    'Local destino ID',
+    'Ramo ID',
+  ]);
+  control.operations.forEach(operation => {
+    reviewSheet.addRow([
+      ticketNumberValue(operation.ticketNumber),
+      operation.status.toUpperCase(),
+      operation.release ? parseExcelDate(operation.release.data) : null,
+      operation.release ? parseExcelTime(operation.release.horaSaida) : null,
+      operation.receipt ? parseExcelDate(operation.receipt.data) : null,
+      operation.receipt ? parseExcelTime(operation.receipt.horaChegada || operation.receipt.horaSaida) : null,
+      formatTravelDuration(operation.durationMinutes),
+      operation.release?.prefixo || '',
+      operation.receipt?.prefixo || '',
+      operation.release?.placa || '',
+      operation.receipt?.placa || '',
+      operation.release?.tipoMaterial || '',
+      operation.receipt?.tipoMaterial || '',
+      operation.release?.quantidadeM3 ?? '',
+      operation.receipt?.quantidadeM3 ?? '',
+      operation.divergences.map(item => item.label).join(', '),
+      operation.equipmentId || '',
+      operation.materialId || '',
+      operation.destinationLocationId || '',
+      operation.branchId || '',
+    ]);
+  });
+  styleControlSheet(reviewSheet, [12, 19, 14, 12, 16, 12, 14, 16, 16, 16, 16, 18, 18, 18, 18, 24, 24, 24, 24, 24]);
+  for (let rowNumber = 2; rowNumber <= reviewSheet.rowCount; rowNumber += 1) {
+    reviewSheet.getCell(rowNumber, 3).numFmt = 'dd/mm/yyyy';
+    reviewSheet.getCell(rowNumber, 4).numFmt = 'hh:mm';
+    reviewSheet.getCell(rowNumber, 5).numFmt = 'dd/mm/yyyy';
+    reviewSheet.getCell(rowNumber, 6).numFmt = 'hh:mm';
+    const statusCell = reviewSheet.getCell(rowNumber, 2);
+    const colors = statusStyle(String(statusCell.value || ''));
+    statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.fill } };
+    statusCell.font = { color: { argb: colors.font }, bold: true };
+  }
+
+  const ticketControlSheet = workbook.addWorksheet('CONTROLE TICKETS', { views: [{ showGridLines: false }] });
+  ticketControlSheet.addRow(['Ticket', 'Situação', 'Lote de impressão', 'Data de impressão', 'Liberação', 'Recebimento', 'Devoluções']);
+  control.operations.forEach(operation => {
+    const printedAt = operation.release?.loteImpressaoCriadoEm || operation.receipt?.loteImpressaoCriadoEm || '';
+    const used = operation.release?.statusFluxo === 'Enviado' || operation.receipt?.statusFluxo === 'Enviado';
+    ticketControlSheet.addRow([
+      ticketNumberValue(operation.ticketNumber),
+      used ? 'UTILIZADO' : operation.printedBatchId ? 'IMPRESSO' : 'CADASTRADO',
+      operation.printedBatchId || '',
+      printedAt ? new Date(printedAt) : null,
+      operation.release ? 'SIM' : 'NÃO',
+      operation.receipt ? 'SIM' : 'NÃO',
+      operation.returnEvents.length,
+    ]);
+  });
+  styleControlSheet(ticketControlSheet, [14, 15, 24, 20, 14, 14, 12]);
+  for (let rowNumber = 2; rowNumber <= ticketControlSheet.rowCount; rowNumber += 1) {
+    ticketControlSheet.getCell(rowNumber, 4).numFmt = 'dd/mm/yyyy hh:mm';
+  }
+
+  const indicators = workbook.addWorksheet('INDICADORES', { views: [{ showGridLines: false }] });
+  [
+    ['INDICADOR', 'VALOR'],
+    ['Tickets únicos', control.totalTickets],
+    ['Viagens conferidas', control.completeTrips],
+    ['Liberações sem recebimento', control.releasesWithoutReceipt],
+    ['Recebimentos sem liberação', control.receiptsWithoutRelease],
+    ['Tickets divergentes', control.divergentTrips],
+    ['Tickets duplicados', control.duplicateTickets],
+    ['Pares com duas devoluções', control.returnedPairs],
+    ['Tempo médio de viagem', formatTravelDuration(control.averageDurationMinutes)],
+    ['Equipamentos vinculados por ID', control.linkedEquipment],
+    ['Materiais vinculados por ID', control.linkedMaterials],
+    ['Destinos vinculados por ID', control.linkedDestinations],
+    ['Ramos vinculados por ID', control.linkedBranches],
+  ].forEach(row => indicators.addRow(row));
+  styleControlSheet(indicators, [38, 22]);
+};
+
 export const buildTicketSpreadsheetWorkbook = (options: TicketSpreadsheetOptions) => {
   const workbook = new ExcelJS.Workbook();
   configureCorporateWorkbook(workbook, 'Controle de viagens da jazida SABESP');
   configureSheet(workbook, 'Liberação', options.liberacoes, options.duplicateKeys, options.reneaLogoBase64, options.spmarLogoBase64);
   configureSheet(workbook, 'Recebimento', options.recebimentos, options.duplicateKeys, options.reneaLogoBase64, options.spmarLogoBase64);
+  addOperationalControlSheets(workbook, [...options.liberacoes, ...options.recebimentos]);
   return workbook;
 };

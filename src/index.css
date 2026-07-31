@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@layer components {
+  .input-dark {
+    @apply w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none transition-colors focus:border-emerald-500;
+  }
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Barlow Condensed", "Inter", ui-sans-serif, system-ui, sans-serif;

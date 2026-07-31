@@ -35,6 +35,18 @@ export interface Equipamento {
   foto?: string; // Imagem do equipamento em base64 (data URL)
   horasDisponiveis?: number; // Horas que o equipamento ficou disponível para operar no período
   horasIndisponiveis?: number; // Horas que o equipamento ficou indisponível (quebrado/manutenção) no período
+  categoriaFrota?: 'Equipamento' | 'Veículo' | 'Implemento';
+  codigoSge?: string;
+  familia?: string;
+  mobilizado?: boolean;
+  metaDisponibilidade?: number;
+  dataMobilizacao?: string;
+  dataDesmobilizacao?: string;
+  operadorResponsavelId?: string;
+  operadorResponsavelNome?: string;
+  combustivelId?: string;
+  capacidadeTanqueLitros?: number;
+  equipamentoVinculadoId?: string;
 }
 
 export interface Funcionario {
@@ -135,6 +147,7 @@ export type StatusRegistroCombustivel =
 
 export type OrigemRegistroCombustivel = 'Manual' | 'Planilha' | 'OneDrive' | 'PDF/Foto IA' | 'Legado Access';
 export type SeveridadeAlertaCombustivel = 'info' | 'aviso' | 'critico';
+export type StatusRevisaoCombustivel = 'Pendente' | 'Aprovado' | 'Reaberto';
 
 export interface AlertaCombustivel {
   codigo: string;
@@ -170,6 +183,15 @@ export interface Abastecimento {
   integracaoAba?: string;
   integracaoLinha?: number;
   camposRevisados?: string[];
+  competencia?: string; // YYYY-MM, sempre derivada da data real do lançamento
+  custoLitro?: number;
+  custoTotal?: number;
+  capacidadeTanqueLitros?: number;
+  percentualTanque?: number;
+  revisaoStatus?: StatusRevisaoCombustivel;
+  revisaoObservacao?: string;
+  revisadoPor?: string;
+  revisadoEm?: string;
   criadoEm?: string; // ISO timestamp
   atualizadoEm?: string; // ISO timestamp
 }
@@ -287,7 +309,8 @@ export interface HistoricoPresenca {
 }
 
 export type TipoMaterialJazida =
-  | 'Solo' | 'Rachão' | 'BGS' | 'Brita' | 'Areia' | 'Argila' | 'Mataco' | 'Solo mole' | 'Outros';
+  | 'Solo' | 'Rachão' | 'BGS' | 'Brita' | 'Areia' | 'Argila' | 'Mataco' | 'Solo mole' | 'Outros'
+  | (string & {});
 
 export type DestinoObraJazida =
   | 'Marginal' | 'Ramo 500' | 'Ramo 600' | 'Ramo 900' | 'Ramo 200' | 'Ramo 300' | 'Ramo 2000'
@@ -300,6 +323,16 @@ export type EmpresaTicketJazida = 'RENEA' | 'Terceiro' | 'Outros';
 export type TipoTicketJazida = 'Liberação' | 'Recebimento';
 export type StatusFluxoTicket = 'Rascunho' | 'Enviado';
 export type UnidadeQuantidadeTicket = 'm³' | 'caçamba';
+export type TipoEventoTicket = 'Liberação' | 'Recebimento' | 'Devolução' | 'Impressão' | 'Cancelamento';
+
+export interface EventoTicket {
+  id: string;
+  tipo: TipoEventoTicket;
+  ocorridoEm: string;
+  responsavel?: string;
+  origem?: 'Link' | 'Admin' | 'Importação' | 'Sistema';
+  observacao?: string;
+}
 
 export interface TicketJazida {
   id: string;
@@ -342,6 +375,14 @@ export interface TicketJazida {
   notaFiscalNumero?: string;
   notaFiscalData?: string;
   notaFiscalObservacao?: string;
+  equipamentoId?: string;
+  materialId?: string;
+  localOrigemId?: string;
+  localDestinoId?: string;
+  ramoId?: string;
+  ticketPareadoId?: string;
+  viagemId?: string;
+  eventos?: EventoTicket[];
 }
 
 export interface OrdemServico {
@@ -400,6 +441,67 @@ export interface ApontamentoRamoRegistro {
   createdAt: string;
 }
 
+export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
+export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
+
+export interface LoteEstaca {
+  id: string;
+  data: string;
+  hora: string;
+  movimento: MovimentoEstaca;
+  notaFiscal: string;
+  materialCodigo: string;
+  descricao: string;
+  tipo: string;
+  perfilModelo: string;
+  comprimentoM: number;
+  unidade: string;
+  pesoKg: number;
+  quantidadeFisica: number;
+  valorUnitario: number;
+  valorTotal: number;
+  placaCavalo: string;
+  placaCarreta: string;
+  transportadora: string;
+  obraLocalId?: string;
+  destino: string;
+  tipoCarregamento: string;
+  status: StatusEstaca;
+  nfConferida: boolean;
+  divergenciaNF: string;
+  responsavel: string;
+  observacao: string;
+  origem: 'Manual' | 'Planilha' | 'Documento assistido';
+  criadoEm: string;
+  atualizadoEm?: string;
+}
+
+export interface CravacaoEstaca {
+  id: string;
+  data: string;
+  item: string;
+  servico: string;
+  identificacao: string;
+  perfil: string;
+  comprimentoM: number;
+  comprimentoCravadoM: number;
+  sobraM: number;
+  perdaM: number;
+  loteId?: string;
+  obraLocalId?: string;
+  ramoId?: string;
+  responsavel: string;
+  observacao: string;
+  origem: 'Manual' | 'Planilha' | 'Documento assistido';
+  criadoEm: string;
+  atualizadoEm?: string;
+}
+
+export interface ControleEstacas {
+  lotes: LoteEstaca[];
+  cravacoes: CravacaoEstaca[];
+}
+
 export interface AppNotification {
   id: string;
   type: 'info' | 'success' | 'warning' | 'error';
@@ -417,6 +519,9 @@ export interface PeriodoArquivado {
   dataFim: string;
   criadoEm: string;
   criadoPor: string;
+  versao?: string;
+  checksum?: string;
+  status?: 'Fechado';
   resumo: Record<string, number>;
   dados: {
     abastecimentos: Abastecimento[];
@@ -430,6 +535,7 @@ export interface PeriodoArquivado {
     apontamentoRamoRegistros: ApontamentoRamoRegistro[];
     materiaisRegistros: MaterialRegistro[];
     partesDiariasEquipamentos: ParteDiariaEquipamento[];
+    estacas?: ControleEstacas;
   };
 }
 

@@ -30,6 +30,7 @@ export interface OneDriveFuelRow {
   empresa: string;
   bombaInicial: number;
   bombaFinal: number;
+  custoLitro: number;
   responsavel: string;
   observacao: string;
   avisos: string;

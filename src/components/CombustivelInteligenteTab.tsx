@@ -7,7 +7,9 @@ import {
   ChevronDown,
   ClipboardCheck,
   Cloud,
+  CloudUpload,
   CopyPlus,
+  CircleDollarSign,
   Database,
   Download,
   Droplets,
@@ -34,12 +36,22 @@ import {
 import ExcelJS from 'exceljs';
 import type { Abastecimento, AlertaCombustivel, Comboio, Empresa, Equipamento, TipoCombustivel } from '../types';
 import {
+  auditFuelDataset,
   findEquipmentByPrefix,
+  getFuelQualityScore,
   normalizeQuickTime,
+  normalizeFuelRecord,
 } from '../utils/combustivelValidation';
-import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
+import { findLastRecordedPumpForConvoy } from '../utils/fuelPumpSequence';
 import { analyzeFuelDocumentLocally, buildFuelOperationalAnalysis } from '../utils/fuelDocumentParsing';
 import type { OperationalAnalysis } from '../utils/operationalAnalysis';
+import {
+  enrichFuelDataset,
+  enrichFuelRecord,
+  getFuelCompetence,
+  getFuelCostTotal,
+  getFuelTankCapacity,
+} from '../utils/fuelOperations';
 import {
   addCorporateSummarySheet,
   configureCorporateWorkbook,
@@ -49,6 +61,7 @@ import {
 import { auth } from '../firebase';
 import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
+import { stageFuelDataset } from '../services/masterDataApi';
 
 interface CombustivelInteligenteTabProps {
   empresas: Empresa[];
@@ -66,7 +79,7 @@ interface CombustivelInteligenteTabProps {
   oneDriveFuelSyncStatus?: OneDriveFuelSyncStatus | null;
 }
 
-type WorkspaceView = 'painel' | 'digitacao' | 'documento' | 'registros';
+type WorkspaceView = 'painel' | 'digitacao' | 'documento' | 'registros' | 'conferencia';
 
 interface QuickFuelRow {
   id: string;
@@ -154,6 +167,7 @@ const statusTone: Record<string, string> = {
   'Verificar KM': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   'Verificar sequência': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   'Consumo fora do padrão': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
+  'Conferência necessária': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   'Erro de importação': 'border-rose-500/30 bg-rose-500/10 text-rose-300',
 };
 
@@ -225,12 +239,21 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const [filterSource, setFilterSource] = useState('');
   const [search, setSearch] = useState('');
   const [globalError, setGlobalError] = useState('');
+  const [supabaseSyncing, setSupabaseSyncing] = useState(false);
+  const [supabaseMessage, setSupabaseMessage] = useState('');
 
   const sortedEquipment = useMemo(
     () => [...equipamentos].sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR', { numeric: true })),
     [equipamentos],
   );
-  const auditedRecords = useMemo(() => abastecimentos, [abastecimentos]);
+  const enrichedRecords = useMemo(
+    () => enrichFuelDataset(abastecimentos, equipamentos),
+    [abastecimentos, equipamentos],
+  );
+  const auditedRecords = useMemo(
+    () => auditFuelDataset(enrichedRecords, equipamentos),
+    [enrichedRecords, equipamentos],
+  );
   const filteredRecords = useMemo(
     () =>
       auditedRecords
@@ -264,10 +287,17 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
   const dashboard = useMemo(() => {
     const totalLiters = filteredRecords.reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0);
+    const totalCost = filteredRecords.reduce((sum, item) => sum + Number(item.custoTotal || 0), 0);
+    const pendingReview = filteredRecords.filter(item =>
+      item.revisaoStatus !== 'Aprovado'
+      && item.alertas?.some(alert => alert.severidade !== 'info')
+    ).length;
     return {
       totalLiters,
-      alerts: 0,
-      critical: 0,
+      totalCost,
+      alerts: filteredRecords.reduce((sum, item) => sum + (item.alertas?.filter(alert => alert.severidade !== 'info').length || 0), 0),
+      critical: filteredRecords.reduce((sum, item) => sum + (item.alertas?.filter(alert => alert.severidade === 'critico').length || 0), 0),
+      pendingReview,
       uniqueEquipment: new Set(filteredRecords.map((item) => item.equipamentoId || item.prefixoInformado || item.id)).size,
     };
   }, [filteredRecords]);
@@ -301,7 +331,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         records: 0,
         alerts: 0,
         lastDate: '',
-        rates: [],
+        rates: [] as number[],
       };
       current.liters += Number(item.quantidadeLitros || 0);
       current.records += 1;
@@ -322,8 +352,32 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   }, [filteredRecords]);
 
   const issueRanking = useMemo(() => {
-    return [] as Array<{ code: string; label: string; count: number; severity: AlertaCombustivel['severidade'] }>;
-  }, []);
+    const issues = new Map<string, { code: string; label: string; count: number; severity: AlertaCombustivel['severidade'] }>();
+    filteredRecords.forEach(record => record.alertas?.forEach(alert => {
+      if (alert.severidade === 'info') return;
+      const current = issues.get(alert.codigo);
+      issues.set(alert.codigo, {
+        code: alert.codigo,
+        label: alert.mensagem,
+        count: (current?.count || 0) + 1,
+        severity: current?.severity === 'critico' || alert.severidade === 'critico' ? 'critico' : 'aviso',
+      });
+    }));
+    return [...issues.values()].sort((left, right) => right.count - left.count || left.code.localeCompare(right.code));
+  }, [filteredRecords]);
+
+  const reviewQueue = useMemo(
+    () => filteredRecords
+      .filter(record =>
+        record.revisaoStatus !== 'Aprovado'
+        && record.alertas?.some(alert => alert.severidade !== 'info')
+      )
+      .sort((left, right) => {
+        const scoreDifference = getFuelQualityScore(left.alertas || []) - getFuelQualityScore(right.alertas || []);
+        return scoreDifference || `${left.data}T${left.hora}`.localeCompare(`${right.data}T${right.hora}`);
+      }),
+    [filteredRecords],
+  );
 
   const sourceDistribution = useMemo(() => {
     const map = new Map<string, number>();
@@ -355,14 +409,12 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
   const getLastPump = (
     comboioId: string,
-    referenceDate = today(),
-    referenceTime = '',
+    _referenceDate = today(),
+    _referenceTime = '',
     excludeId = editingId || '',
-  ) => findPreviousPumpForConvoy(
+  ) => findLastRecordedPumpForConvoy(
     auditedRecords,
     comboioId,
-    referenceDate,
-    referenceTime,
     excludeId,
   )?.bombaFinal || 0;
 
@@ -370,6 +422,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const [entryFuel, setEntryFuel] = useState(combustiveis[0]?.id || '');
   const [entryComboio, setEntryComboio] = useState(comboios[0]?.id || '');
   const [entryResponsible, setEntryResponsible] = useState('');
+  const [entryCostPerLiter, setEntryCostPerLiter] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const createQuickRow = (pumpStart = getLastPump(entryComboio, entryDate)): QuickFuelRow => ({
@@ -392,6 +445,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setEntryFuel(combustiveis[0]?.id || '');
     setEntryComboio(defaultComboio);
     setEntryResponsible('');
+    setEntryCostPerLiter(0);
     setEditingId(null);
     setReviewOpen(false);
     setQuickRows([createQuickRow(getLastPump(defaultComboio, today()))]);
@@ -411,21 +465,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   };
 
   const handleEntryDateChange = (date: string) => {
-    const previousSuggestion = getLastPump(entryComboio, entryDate);
-    const nextSuggestion = getLastPump(entryComboio, date);
     setEntryDate(date);
-    if (editingId) return;
-    setQuickRows((rows) =>
-      rows.map((row, index) =>
-        index === 0 && (row.bombaInicial === 0 || row.bombaInicial === previousSuggestion)
-          ? {
-              ...row,
-              bombaInicial: normalizeFuelNumber(nextSuggestion),
-              bombaFinal: normalizeFuelNumber(nextSuggestion + row.quantidadeLitros),
-            }
-          : row,
-      ),
-    );
   };
 
   const updateQuickRow = (id: string, field: keyof QuickFuelRow, value: string | number) => {
@@ -495,20 +535,26 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         comboioId: entryComboio,
         responsavel: entryResponsible.trim(),
         observacao: row.observacao.trim(),
+        custoLitro: normalizeFuelNumber(entryCostPerLiter, 4),
         origem: 'Manual',
         criadoEm: new Date().toISOString(),
         atualizadoEm: new Date().toISOString(),
       };
-      const finalized = { ...record, alertas: [], status: 'OK' as const };
+      const equipment = equipamentos.find(item => item.id === record.equipamentoId);
+      const finalized = normalizeFuelRecord(
+        enrichFuelRecord(record, equipment),
+        [...auditedRecords, ...staged],
+        equipamentos,
+      );
       staged.push(finalized);
       return {
         row,
         record: finalized,
-        alertCount: 0,
+        alertCount: finalized.alertas?.filter(alert => alert.severidade !== 'info').length || 0,
         blocking: false,
       };
     });
-  }, [quickRows, editingId, entryDate, entryFuel, entryComboio, entryResponsible]);
+  }, [quickRows, editingId, entryDate, entryFuel, entryComboio, entryResponsible, entryCostPerLiter, equipamentos, auditedRecords]);
   const quickReady = quickEvaluated.filter(
     (item) => item.row.prefixo || item.row.quantidadeLitros || item.row.hora,
   );
@@ -538,6 +584,13 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           'comboio',
           'responsavel',
         ],
+        revisaoStatus: item.record.alertas?.some(alert => alert.severidade !== 'info') ? 'Pendente' as const : 'Aprovado' as const,
+        revisadoPor: item.record.alertas?.some(alert => alert.severidade !== 'info')
+          ? undefined
+          : auth.currentUser?.displayName || auth.currentUser?.email || 'Usuário autenticado',
+        revisadoEm: item.record.alertas?.some(alert => alert.severidade !== 'info')
+          ? undefined
+          : new Date().toISOString(),
       }));
     if (editingId && records.length === 1) onSaveAbastecimento(records[0], false);
     else onImportAbastecimentos(records);
@@ -551,6 +604,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setEntryFuel(record.tipoCombustivelId);
     setEntryComboio(record.comboioId);
     setEntryResponsible(record.responsavel);
+    setEntryCostPerLiter(Number(record.custoLitro || 0));
     setEditingId(record.id);
     setQuickRows([
       {
@@ -568,6 +622,47 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     ]);
     setGlobalError('');
     setView('digitacao');
+  };
+
+  const approveReview = (record: Abastecimento) => {
+    const reviewer = auth.currentUser?.displayName || auth.currentUser?.email || 'Usuário autenticado';
+    onSaveAbastecimento({
+      ...record,
+      revisaoStatus: 'Aprovado',
+      revisadoPor: reviewer,
+      revisadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
+    }, false);
+    setSupabaseMessage(`Registro ${getFuelRecordPrefix(record, equipamentos)} marcado como conferido por ${reviewer}.`);
+  };
+
+  const stageCurrentFuelDataset = async () => {
+    if (!filteredRecords.length) {
+      setSupabaseMessage('Não há registros no filtro atual para enviar à persistência gradual.');
+      return;
+    }
+    setSupabaseSyncing(true);
+    setSupabaseMessage('');
+    try {
+      const batches = await stageFuelDataset(
+        `Combustível RENEA ${today()}`,
+        filteredRecords.map(record => ({
+          ...record,
+          sourceRowId: record.integracaoOrigemId || record.id,
+        })),
+        {
+          filteredStart: filterStart || null,
+          filteredEnd: filterEnd || null,
+          source: 'combustivel-v2.4',
+        },
+      );
+      const preserved = batches.reduce((sum, batch) => sum + batch.preservedRows, 0);
+      setSupabaseMessage(`${preserved} registro(s) preservado(s) no Supabase em ${batches.length} lote(s), sem promoção automática.`);
+    } catch (error) {
+      setSupabaseMessage(error instanceof Error ? error.message : 'Não foi possível preservar a base no Supabase.');
+    } finally {
+      setSupabaseSyncing(false);
+    }
   };
 
   const documentInputRef = useRef<HTMLInputElement>(null);
@@ -831,12 +926,17 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     const sheet = workbook.addWorksheet('ABASTECIMENTOS');
     const headers = [
       'Data',
+      'Competência',
       'Hora',
       'Prefixo',
       'Equipamento',
       'Empresa',
       'Combustível',
       'Litros',
+      'Custo por Litro',
+      'Custo Total',
+      'Capacidade do Tanque',
+      '% do Tanque',
       'Bomba Inicial',
       'Bomba Final',
       'Horímetro',
@@ -845,6 +945,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       'Responsável',
       'Origem',
       'Status',
+      'Revisão',
+      'Revisado por',
       'Documento',
       'Observação',
     ];
@@ -856,12 +958,17 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       const company = empresas.find((item) => item.id === equipment?.empresaId);
       sheet.addRow([
         record.data,
+        record.competencia || getFuelCompetence(record.data),
         record.hora,
         getFuelRecordPrefix(record, equipamentos),
         equipment?.nome || '',
         company?.nome || '',
         combustiveis.find((item) => item.id === record.tipoCombustivelId)?.nome || '',
         record.quantidadeLitros,
+        record.custoLitro || 0,
+        record.custoTotal || getFuelCostTotal(record.quantidadeLitros, record.custoLitro),
+        record.capacidadeTanqueLitros || equipment?.capacidadeTanqueLitros || 0,
+        record.percentualTanque || 0,
         record.bombaInicial,
         record.bombaFinal,
         record.horimetroInicial,
@@ -870,6 +977,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         record.responsavel,
         record.origem || 'Manual',
         record.status || 'OK',
+        record.revisaoStatus || 'Pendente',
+        record.revisadoPor || '',
         record.documentoOrigemNome || '',
         record.observacao,
       ]);
@@ -888,6 +997,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       [
         ['Registros', filteredRecords.length],
         ['Litros', dashboard.totalLiters],
+        ['Custo informado', dashboard.totalCost],
+        ['Pendentes de conferência', dashboard.pendingReview],
         ['Frotas', dashboard.uniqueEquipment],
       ],
       [],
@@ -899,6 +1010,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     { id: 'painel', label: 'Painel', icon: LayoutDashboard },
     { id: 'digitacao', label: 'Digitação rápida', icon: Keyboard },
     { id: 'registros', label: 'Registros', icon: ListChecks },
+    { id: 'conferencia', label: `Conferência (${reviewQueue.length})`, icon: ClipboardCheck },
   ];
 
   const selectedAiEvaluation = aiEvaluated.find((item) => item.row.id === selectedAiRow);
@@ -1105,7 +1217,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
       {view === 'painel' && (
         <div className="space-y-5">
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             {[
               {
                 label: 'Volume',
@@ -1136,11 +1248,18 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 tone: 'text-amber-300',
               },
               {
-                label: 'Livre para lançar',
-                value: filteredRecords.length,
-                detail: 'Registro operacional',
-                icon: CheckCircle2,
-                tone: 'text-emerald-300',
+                label: 'Custo informado',
+                value: dashboard.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                detail: 'Somente registros com R$/L',
+                icon: CircleDollarSign,
+                tone: 'text-lime-300',
+              },
+              {
+                label: 'Conferência',
+                value: dashboard.pendingReview,
+                detail: `${dashboard.alerts} alerta(s), ${dashboard.critical} crítico(s)`,
+                icon: ClipboardCheck,
+                tone: dashboard.pendingReview ? 'text-amber-300' : 'text-emerald-300',
               },
             ].map((item) => {
               const Icon = item.icon;
@@ -1284,7 +1403,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
       {view === 'digitacao' && (
         <div className="space-y-5">
-          <section className="grid gap-4 border border-slate-800 bg-slate-950 p-4 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-4 border border-slate-800 bg-slate-950 p-4 md:grid-cols-2 xl:grid-cols-5">
             <label className="text-xs font-bold uppercase text-slate-400">
               Data
               <input
@@ -1293,6 +1412,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 onChange={(event) => handleEntryDateChange(event.target.value)}
                 className="mt-2 h-11 w-full border border-slate-700 bg-slate-900 px-3 text-base text-white outline-none focus:border-emerald-500"
               />
+              <span className="mt-1 block text-[10px] normal-case text-slate-500">
+                Competência: {getFuelCompetence(entryDate) || 'data inválida'}
+              </span>
             </label>
             <label className="text-xs font-bold uppercase text-slate-400">
               Comboio / posto
@@ -1323,6 +1445,18 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="text-xs font-bold uppercase text-slate-400">
+              Custo por litro
+              <input
+                type="number"
+                min="0"
+                step="0.0001"
+                value={entryCostPerLiter || ''}
+                onChange={(event) => setEntryCostPerLiter(Number(event.target.value))}
+                placeholder="R$ 0,0000"
+                className="mt-2 h-11 w-full border border-slate-700 bg-slate-900 px-3 text-base text-white outline-none focus:border-emerald-500"
+              />
             </label>
             <label className="text-xs font-bold uppercase text-slate-400">
               Responsável
@@ -1388,6 +1522,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 </div>
                 {quickRows.map((row, index) => {
                   const evaluation = quickEvaluated[index];
+                  const rowEquipment = equipamentos.find(item => item.id === row.equipamentoId);
+                  const tankCapacity = getFuelTankCapacity(evaluation.record, rowEquipment);
                   return (
                     <div
                       key={row.id}
@@ -1403,6 +1539,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           onBlur={(event) => updateQuickRow(row.id, 'prefixo', event.target.value)}
                           className={`h-10 w-full border bg-slate-900 px-2 font-mono text-sm font-bold outline-none ${row.equipamentoId ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-200'}`}
                         />
+                        <span className="mt-1 block text-[9px] text-slate-500">
+                          {tankCapacity > 0 ? `Tanque ${formatNumber(tankCapacity, 0)} L` : 'Tanque não cadastrado'}
+                        </span>
                       </div>
                       <input
                         value={row.hora}
@@ -1452,10 +1591,10 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         className="h-10 border border-slate-700 bg-slate-900 px-2 text-sm outline-none focus:border-emerald-500"
                       />
                       <button
-                        onClick={() => setGlobalError('Registro livre para lançamento.')}
-                        className="h-10 border border-emerald-500/30 bg-emerald-500/10 text-xs font-bold text-emerald-300"
+                        onClick={() => setGlobalError(evaluation.alertCount ? `${evaluation.alertCount} alerta(s) irão para conferência, sem bloquear o lançamento.` : 'Registro pronto para lançamento.')}
+                        className={`h-10 border text-xs font-bold ${evaluation.alertCount ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}
                       >
-                        OK
+                        {evaluation.alertCount || 'OK'}
                       </button>
                       <button
                         title="Excluir linha"
@@ -1481,6 +1620,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   )}{' '}
                   L
                 </strong>
+                {entryCostPerLiter > 0 && (
+                  <span className="ml-3">
+                    Custo: <strong className="text-lime-300">
+                      {getFuelCostTotal(
+                        quickRows.reduce((sum, row) => sum + row.quantidadeLitros, 0),
+                        entryCostPerLiter,
+                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </strong>
+                  </span>
+                )}
               </div>
               <button
                 onClick={openQuickReview}
@@ -1890,7 +2039,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
             <Fuel className="text-emerald-300" size={20} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px] text-left text-sm">
+            <table className="w-full min-w-[1280px] text-left text-sm">
               <thead className="bg-slate-900 text-xs uppercase text-slate-500">
                 <tr>
                   {[
@@ -1898,10 +2047,12 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     'Frota',
                     'Produto',
                     'Litros',
+                    'Tanque',
                     'Bomba',
                     'Leitura',
                     'Origem',
                     'Status',
+                    'Revisão',
                     'Ações',
                   ].map((label) => (
                     <th key={label} className="px-4 py-3">
@@ -1918,6 +2069,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       <td className="px-4 py-3">
                         <strong className="text-white">{formatDate(record.data)}</strong>
                         <span className="block text-xs text-slate-500">{record.hora}</span>
+                        <span className="block text-[10px] text-slate-600">{record.competencia || getFuelCompetence(record.data)}</span>
                       </td>
                       <td className="px-4 py-3">
                         <strong className="font-mono text-emerald-300">{getFuelRecordPrefix(record, equipamentos)}</strong>
@@ -1928,6 +2080,19 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       </td>
                       <td className="px-4 py-3 font-bold text-emerald-300">
                         {formatNumber(record.quantidadeLitros)} L
+                        {record.custoTotal ? (
+                          <span className="block text-[10px] font-normal text-lime-300">
+                            {record.custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3">
+                        {record.capacidadeTanqueLitros
+                          ? `${formatNumber(record.capacidadeTanqueLitros, 0)} L`
+                          : '-'}
+                        {record.percentualTanque ? (
+                          <span className="block text-[10px] text-slate-500">{formatNumber(record.percentualTanque)}%</span>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs text-slate-500">{formatNumber(record.bombaInicial)} →</span>
@@ -1960,6 +2125,14 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         </span>
                       </td>
                       <td className="px-4 py-3">
+                        <span className={`inline-flex border px-2 py-1 text-xs font-bold ${record.revisaoStatus === 'Aprovado' ? statusTone.OK : statusTone.Pendente}`}>
+                          {record.revisaoStatus || 'Pendente'}
+                        </span>
+                        {record.revisadoPor && (
+                          <span className="mt-1 block max-w-36 truncate text-[10px] text-slate-600">{record.revisadoPor}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <button
                             title="Editar"
@@ -1989,7 +2162,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 })}
                 {!filteredRecords.length && (
                   <tr>
-                    <td colSpan={10} className="px-4 py-14 text-center text-slate-500">
+                    <td colSpan={11} className="px-4 py-14 text-center text-slate-500">
                       Nenhum abastecimento encontrado.
                     </td>
                   </tr>
@@ -2000,8 +2173,26 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         </section>
       )}
 
-      {false && (
-        <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
+      {view === 'conferencia' && (
+        <div className="space-y-5">
+          <section className="flex flex-col gap-4 border border-sky-500/30 bg-sky-500/10 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="font-bold text-white">Persistência gradual no Supabase</h2>
+              <p className="mt-1 text-xs text-slate-300">
+                Preserva todos os registros do filtro na fila PostgreSQL. Nenhuma linha é promovida automaticamente.
+              </p>
+              {supabaseMessage && <p className="mt-2 text-xs font-semibold text-sky-200">{supabaseMessage}</p>}
+            </div>
+            <button
+              onClick={stageCurrentFuelDataset}
+              disabled={supabaseSyncing || !filteredRecords.length}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 bg-sky-500 px-5 text-sm font-bold text-slate-950 disabled:opacity-50"
+            >
+              {supabaseSyncing ? <LoaderCircle className="animate-spin" size={18} /> : <CloudUpload size={18} />}
+              {supabaseSyncing ? 'Preservando...' : `Preservar ${filteredRecords.length} registro(s)`}
+            </button>
+          </section>
+          <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
           <section className="border border-slate-800 bg-slate-950">
             <div className="border-b border-slate-800 p-4">
               <h2 className="font-bold text-white">Mapa de validações</h2>
@@ -2038,15 +2229,12 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           <section className="border border-slate-800 bg-slate-950">
             <div className="border-b border-slate-800 p-4">
               <h2 className="font-bold text-white">Registros para conferência</h2>
-              <span className="text-xs text-slate-500">Ordenados por quantidade de alertas</span>
+              <span className="text-xs text-slate-500">Ordenados pela menor qualidade, sem bloquear o lançamento</span>
             </div>
             <div className="divide-y divide-slate-800">
-              {[...filteredRecords]
-                .filter((item) => item.alertas?.length)
-                .sort((a, b) => (b.alertas?.length || 0) - (a.alertas?.length || 0))
+              {reviewQueue
                 .slice(0, 30)
                 .map((record) => {
-                  const equipment = equipamentos.find((item) => item.id === record.equipamentoId);
                   const alertCount = record.alertas?.filter((item) => item.severidade !== 'info').length || 0;
                   return (
                     <div
@@ -2064,6 +2252,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           <span className="text-xs text-slate-500">
                             {formatDate(record.data)} {record.hora}
                           </span>
+                          <span className="text-xs font-bold text-sky-300">
+                            Qualidade {getFuelQualityScore(record.alertas || [])}%
+                          </span>
                         </div>
                         <div className="mt-2 space-y-1">
                           {record.alertas?.map((alert) => (
@@ -2076,23 +2267,32 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           ))}
                         </div>
                       </div>
-                      <button
-                        title="Editar registro"
-                        onClick={() => editRecord(record)}
-                        className="grid h-9 w-9 shrink-0 place-items-center border border-slate-700 text-slate-400 hover:text-sky-300"
-                      >
-                        <Pencil size={16} />
-                      </button>
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          onClick={() => approveReview(record)}
+                          className="inline-flex h-9 items-center gap-2 border border-emerald-500/40 bg-emerald-500/10 px-3 text-xs font-bold text-emerald-200"
+                        >
+                          <CheckCircle2 size={15} /> Conferido
+                        </button>
+                        <button
+                          title="Editar registro"
+                          onClick={() => editRecord(record)}
+                          className="grid h-9 w-9 place-items-center border border-slate-700 text-slate-400 hover:text-sky-300"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
-              {!filteredRecords.some((item) => item.alertas?.length) && (
+              {!reviewQueue.length && (
                 <div className="grid min-h-64 place-items-center text-sm text-slate-500">
                   Nenhum registro exige conferência.
                 </div>
               )}
             </div>
           </section>
+          </div>
         </div>
       )}
 
@@ -2120,7 +2320,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               </button>
             </div>
             <div className="max-h-[60vh] overflow-auto">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full min-w-[940px] text-left text-sm">
                 <thead className="sticky top-0 bg-slate-900 text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-4 py-3">Frota</th>
@@ -2128,6 +2328,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     <th className="px-4 py-3">Leitura</th>
                     <th className="px-4 py-3">Bomba</th>
                     <th className="px-4 py-3">Litros</th>
+                    <th className="px-4 py-3">Custo</th>
+                    <th className="px-4 py-3">Tanque</th>
                     <th className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
@@ -2151,9 +2353,19 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       <td className="px-4 py-3 font-bold text-emerald-300">
                         {formatNumber(item.record.quantidadeLitros)} L
                       </td>
+                      <td className="px-4 py-3 text-lime-300">
+                        {item.record.custoTotal
+                          ? item.record.custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                          : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {item.record.capacidadeTanqueLitros
+                          ? `${formatNumber(item.record.capacidadeTanqueLitros, 0)} L`
+                          : '-'}
+                      </td>
                       <td className="px-4 py-3">
-                        <span className="border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-300">
-                          Livre
+                        <span className={`border px-2 py-1 text-xs font-bold ${item.alertCount ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
+                          {item.alertCount ? `${item.alertCount} para conferir` : 'Pronto'}
                         </span>
                       </td>
                     </tr>

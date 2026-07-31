@@ -113,6 +113,49 @@ const getQuantityLimit = (equipment?: Equipamento) => {
   return 1500;
 };
 
+const VALIDATION_ALERT_CODES = new Set([
+  'DATA_OBRIGATORIA',
+  'DATA_INVALIDA',
+  'DATA_FUTURA',
+  'HORA_INVALIDA',
+  'FROTA_NAO_CADASTRADA',
+  'FROTA_NAO_INFORMADA',
+  'COMBUSTIVEL_OBRIGATORIO',
+  'COMBOIO_OBRIGATORIO',
+  'RESPONSAVEL_OBRIGATORIO',
+  'QUANTIDADE_INVALIDA',
+  'QUANTIDADE_FORA_FAIXA',
+  'CAPACIDADE_TANQUE_EXCEDIDA',
+  'LEITURA_BOMBA_AUSENTE',
+  'BOMBA_DIVERGENTE',
+  'HORIMETRO_REGREDIU',
+  'HORIMETRO_NAO_AVANCOU',
+  'KM_REGREDIU',
+  'KM_NAO_AVANCOU',
+  'CONSUMO_HORA_FORA_PADRAO',
+  'CONSUMO_KM_FORA_PADRAO',
+  'SEQUENCIA_BOMBA',
+  'REGISTRO_DUPLICADO',
+  'LEITURA_AUSENTE',
+  'DUAS_LEITURAS_INFORMADAS',
+  'BAIXA_CONFIANCA_IA',
+]);
+
+const mergeFuelAlerts = (
+  persisted: AlertaCombustivel[] | undefined,
+  computed: AlertaCombustivel[],
+) => {
+  const sourceAlerts = (persisted || []).filter(alert => !VALIDATION_ALERT_CODES.has(alert.codigo));
+  const merged = [...sourceAlerts, ...computed];
+  return merged.filter((alert, index, list) =>
+    list.findIndex(item =>
+      item.codigo === alert.codigo
+      && item.campo === alert.campo
+      && item.mensagem === alert.mensagem
+    ) === index
+  );
+};
+
 const getKmConsumptionRange = (equipment?: Equipamento) => {
   const type = normalizeText(`${equipment?.tipo || ''} ${equipment?.nome || ''}`);
   return /automovel|veiculoleve|pickup|utilitario|van/.test(type) ? [3, 25] : [0.5, 8];
@@ -152,6 +195,17 @@ export const validateFueling = (
     if (current.quantidadeLitros > limit) {
       addAlert(alerts, 'QUANTIDADE_FORA_FAIXA', 'quantidadeLitros', 'aviso', `Volume de ${current.quantidadeLitros.toLocaleString('pt-BR')} L acima da faixa usual para esta família.`, `Até ${limit.toLocaleString('pt-BR')} L`);
     }
+    const tankCapacity = Number(current.capacidadeTanqueLitros || equipment?.capacidadeTanqueLitros || 0);
+    if (tankCapacity > 0 && current.quantidadeLitros > tankCapacity * 1.02) {
+      addAlert(
+        alerts,
+        'CAPACIDADE_TANQUE_EXCEDIDA',
+        'quantidadeLitros',
+        'aviso',
+        `O volume informado supera a capacidade de tanque cadastrada para a frota.`,
+        `${tankCapacity.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L`,
+      );
+    }
   }
 
   const calculatedFinal = Number(current.bombaInicial || 0) + Number(current.quantidadeLitros || 0);
@@ -190,16 +244,18 @@ export const validateFueling = (
       : getCompatiblePreviousMeterRecord(current, records, item => item.equipamentoId === current.equipamentoId, 'kmInicial'))
     : undefined;
 
-  if (current.horimetroInicial > 0 && previousHourMeter?.horimetroInicial > 0 && current.quantidadeLitros > 0) {
-    const deltaHours = current.horimetroInicial - previousHourMeter.horimetroInicial;
+  const previousHourReading = Number(previousHourMeter?.horimetroInicial || 0);
+  const previousKmReading = Number(previousKmMeter?.kmInicial || 0);
+  if (current.horimetroInicial > 0 && previousHourReading > 0 && current.quantidadeLitros > 0) {
+    const deltaHours = current.horimetroInicial - previousHourReading;
     if (deltaHours > 0) {
       const litersPerHour = current.quantidadeLitros / deltaHours;
       if (litersPerHour < 0.5 || litersPerHour > 120) {
         addAlert(alerts, 'CONSUMO_HORA_FORA_PADRAO', 'horimetroInicial', 'aviso', `Consumo calculado de ${litersPerHour.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L/h fora da faixa ampla de conferência.`, '0,5 a 120 L/h');
       }
     }
-  } else if (current.kmInicial > 0 && previousKmMeter?.kmInicial > 0 && current.quantidadeLitros > 0) {
-    const deltaKm = current.kmInicial - previousKmMeter.kmInicial;
+  } else if (current.kmInicial > 0 && previousKmReading > 0 && current.quantidadeLitros > 0) {
+    const deltaKm = current.kmInicial - previousKmReading;
     if (deltaKm > 0) {
       const kmPerLiter = deltaKm / current.quantidadeLitros;
       const [min, max] = getKmConsumptionRange(equipment);
@@ -268,7 +324,7 @@ export const normalizeFuelRecord = (
 ): Abastecimento => {
   const normalizedTime = normalizeQuickTime(record.hora);
   const normalized = { ...record, hora: normalizedTime.valid ? normalizedTime.value : record.hora };
-  const alertas = validateFueling(normalized, records, equipamentos);
+  const alertas = mergeFuelAlerts(record.alertas, validateFueling(normalized, records, equipamentos));
   return { ...normalized, alertas, status: getFuelStatusFromAlerts(alertas) };
 };
 
@@ -289,7 +345,7 @@ export const auditFuelDataset = (records: Abastecimento[], equipamentos: Equipam
       current.comboioId ? previousPump.get(current.comboioId) : undefined,
       duplicateKeys.get(duplicateKey),
     ].filter((item, index, array): item is Abastecimento => Boolean(item) && array.findIndex(other => other?.id === item?.id) === index);
-    const alertas = validateFueling(current, context, equipamentos);
+    const alertas = mergeFuelAlerts(record.alertas, validateFueling(current, context, equipamentos));
     audited.set(current.id, { ...current, alertas, status: getFuelStatusFromAlerts(alertas) });
     if (equipmentKey) previousEquipment.set(equipmentKey, current);
     if (current.comboioId) previousPump.set(current.comboioId, current);

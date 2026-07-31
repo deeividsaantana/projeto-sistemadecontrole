@@ -15,8 +15,16 @@ import {
   Comboio, 
   TipoCombustivel, 
   ProdutoLubrificacao, 
-  EtapaServico 
+  EtapaServico,
+  MaterialCadastro,
+  MaterialRegistro,
+  ApontamentoRamo,
+  OrdemServico,
+  ParteDiariaEquipamento,
 } from '../types';
+import MasterDataReviewCenter from './MasterDataReviewCenter';
+import EquipmentOperationsPanel from './EquipmentOperationsPanel';
+import { validateEquipmentMasterRecord } from '../utils/equipmentOperations';
 
 import { 
   Building2, 
@@ -46,6 +54,11 @@ interface CadastrosTabProps {
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
   etapas: EtapaServico[];
+  materiaisCadastro: MaterialCadastro[];
+  materiaisRegistros: MaterialRegistro[];
+  apontamentoRamos: ApontamentoRamo[];
+  ordensServico: OrdemServico[];
+  partesDiariasEquipamentos: ParteDiariaEquipamento[];
 
   onSaveEmpresa: (item: Empresa, isNew: boolean) => void;
   onDeleteEmpresa: (id: string) => void;
@@ -75,6 +88,11 @@ export default function CadastrosTab({
   combustiveis,
   lubrificantes,
   etapas,
+  materiaisCadastro,
+  materiaisRegistros,
+  apontamentoRamos,
+  ordensServico,
+  partesDiariasEquipamentos,
   onSaveEmpresa,
   onDeleteEmpresa,
   onSaveObra,
@@ -150,6 +168,17 @@ export default function CadastrosTab({
   const [eqFoto, setEqFoto] = useState<string>('');
   const [eqHorasDisponiveis, setEqHorasDisponiveis] = useState<number>(0);
   const [eqHorasIndisponiveis, setEqHorasIndisponiveis] = useState<number>(0);
+  const [eqCategoriaFrota, setEqCategoriaFrota] = useState<NonNullable<Equipamento['categoriaFrota']>>('Equipamento');
+  const [eqCodigoSge, setEqCodigoSge] = useState('');
+  const [eqFamilia, setEqFamilia] = useState('');
+  const [eqMobilizado, setEqMobilizado] = useState(false);
+  const [eqMetaDisponibilidade, setEqMetaDisponibilidade] = useState<number>(80);
+  const [eqDataMobilizacao, setEqDataMobilizacao] = useState('');
+  const [eqDataDesmobilizacao, setEqDataDesmobilizacao] = useState('');
+  const [eqOperadorResponsavelId, setEqOperadorResponsavelId] = useState('');
+  const [eqCombustivelId, setEqCombustivelId] = useState('');
+  const [eqCapacidadeTanque, setEqCapacidadeTanque] = useState<number>(0);
+  const [eqEquipamentoVinculadoId, setEqEquipamentoVinculadoId] = useState('');
 
   // Funcionario Fields
   const [funNome, setFunNome] = useState('');
@@ -174,6 +203,7 @@ export default function CadastrosTab({
     setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel('');
     setObrNome(''); setObrEndereco(''); setObrResponsavel(''); setObrStatus('Ativa');
     setEqPrefixo(''); setEqNome(''); setEqTipo(''); setEqMarca(''); setEqModelo(''); setEqSeriePlaca(''); setEqPlaca(''); setEqEmpresaId(''); setEqStatus('Ativo'); setEqLocalId(''); setEqObservacao(''); setEqFoto(''); setEqHorasDisponiveis(0); setEqHorasIndisponiveis(0);
+    setEqCategoriaFrota('Equipamento'); setEqCodigoSge(''); setEqFamilia(''); setEqMobilizado(false); setEqMetaDisponibilidade(80); setEqDataMobilizacao(''); setEqDataDesmobilizacao(''); setEqOperadorResponsavelId(''); setEqCombustivelId(''); setEqCapacidadeTanque(0); setEqEquipamentoVinculadoId('');
     setFunNome(''); setFunCargo(''); setFunTelefone(''); setFunEmpresaId(''); setFunAtivo(true);
     setComNome(''); setComPlaca(''); setComCapacidade(3000); setComResponsavel('');
     setSimpleName('');
@@ -207,6 +237,7 @@ export default function CadastrosTab({
       const x = item as Equipamento;
       setEqPrefixo(x.prefixo); setEqNome(x.nome); setEqTipo(x.tipo); setEqMarca(x.marca); setEqModelo(x.modelo); setEqSeriePlaca(x.seriePlaca); setEqEmpresaId(x.empresaId); setEqStatus(x.status); setEqLocalId(x.localAtualId); setEqObservacao(x.observacao);
       setEqPlaca(x.placa || ''); setEqFoto(x.foto || ''); setEqHorasDisponiveis(x.horasDisponiveis || 0); setEqHorasIndisponiveis(x.horasIndisponiveis || 0);
+      setEqCategoriaFrota(x.categoriaFrota || 'Equipamento'); setEqCodigoSge(x.codigoSge || ''); setEqFamilia(x.familia || ''); setEqMobilizado(Boolean(x.mobilizado)); setEqMetaDisponibilidade(x.metaDisponibilidade ?? 80); setEqDataMobilizacao(x.dataMobilizacao || ''); setEqDataDesmobilizacao(x.dataDesmobilizacao || ''); setEqOperadorResponsavelId(x.operadorResponsavelId || ''); setEqCombustivelId(x.combustivelId || ''); setEqCapacidadeTanque(x.capacidadeTanqueLitros || 0); setEqEquipamentoVinculadoId(x.equipamentoVinculadoId || '');
     } else if (subTab === 'funcionarios') {
       const x = item as Funcionario;
       setFunNome(x.nome); setFunCargo(x.cargo); setFunTelefone(x.telefone); setFunEmpresaId(x.empresaId); setFunAtivo(x.ativo);
@@ -254,11 +285,8 @@ export default function CadastrosTab({
       }, isNew);
 
     } else if (subTab === 'equipamentos') {
-      if (!eqPrefixo.trim() || !eqNome.trim() || !eqEmpresaId) {
-        setValidationError('Prefixo, Descrição do equipamento e Empresa proprietária são obrigatórios!');
-        return;
-      }
-      onSaveEquipamento({
+      const responsibleOperator = funcionarios.find(item => item.id === eqOperadorResponsavelId);
+      const equipmentToSave: Equipamento = {
         id: currentId,
         prefixo: eqPrefixo.trim().toUpperCase(),
         nome: eqNome.trim(),
@@ -273,8 +301,26 @@ export default function CadastrosTab({
         observacao: eqObservacao.trim(),
         foto: eqFoto || undefined,
         horasDisponiveis: Number(eqHorasDisponiveis) || 0,
-        horasIndisponiveis: Number(eqHorasIndisponiveis) || 0
-      }, isNew);
+        horasIndisponiveis: Number(eqHorasIndisponiveis) || 0,
+        categoriaFrota: eqCategoriaFrota,
+        codigoSge: eqCodigoSge.trim() || undefined,
+        familia: eqFamilia.trim() || undefined,
+        mobilizado: eqMobilizado,
+        metaDisponibilidade: Number(eqMetaDisponibilidade),
+        dataMobilizacao: eqDataMobilizacao || undefined,
+        dataDesmobilizacao: eqDataDesmobilizacao || undefined,
+        operadorResponsavelId: eqOperadorResponsavelId || undefined,
+        operadorResponsavelNome: responsibleOperator?.nome || undefined,
+        combustivelId: eqCombustivelId || undefined,
+        capacidadeTanqueLitros: Number(eqCapacidadeTanque) || undefined,
+        equipamentoVinculadoId: eqEquipamentoVinculadoId || undefined,
+      };
+      const validation = validateEquipmentMasterRecord(equipmentToSave);
+      if (validation.errors.length > 0) {
+        setValidationError(validation.errors.join(' '));
+        return;
+      }
+      onSaveEquipamento(equipmentToSave, isNew);
 
     } else if (subTab === 'funcionarios') {
       if (!funNome.trim() || !funCargo.trim() || !funEmpresaId) {
@@ -540,6 +586,16 @@ export default function CadastrosTab({
         confirming={isConfirmingImport}
         onCancel={() => setPendingImport(null)}
         onConfirm={confirmSpreadsheetImport}
+      />
+
+      <MasterDataReviewCenter
+        empresas={empresas}
+        obras={obras}
+        funcionarios={funcionarios}
+        materiais={materiaisCadastro}
+        registrosMateriais={materiaisRegistros}
+        ramos={apontamentoRamos}
+        equipamentos={equipamentos}
       />
       
       {/* Upper header */}
@@ -866,6 +922,70 @@ export default function CadastrosTab({
                     ))}
                   </select>
                 </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Categoria da Frota</label>
+                  <select value={eqCategoriaFrota} onChange={e => setEqCategoriaFrota(e.target.value as NonNullable<Equipamento['categoriaFrota']>)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                    <option value="Equipamento">Equipamento</option>
+                    <option value="Veículo">Veículo</option>
+                    <option value="Implemento">Implemento</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Código de Integração SGE</label>
+                  <input type="text" value={eqCodigoSge} onChange={e => setEqCodigoSge(e.target.value)} placeholder="Ex: 726" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Família</label>
+                  <input type="text" value={eqFamilia} onChange={e => setEqFamilia(e.target.value)} placeholder="Ex: Basculantes, Escavadeira" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <label className="flex min-h-[62px] items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5">
+                  <input type="checkbox" checked={eqMobilizado} onChange={e => setEqMobilizado(e.target.checked)} className="h-4 w-4 accent-emerald-500" />
+                  <span>
+                    <strong className="block text-xxs uppercase tracking-wider text-slate-300">Mobilizado</strong>
+                    <span className="text-[9px] text-slate-500">Mantém o histórico por período.</span>
+                  </span>
+                </label>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Meta de Disponibilidade (%)</label>
+                  <input type="number" min="0" max="100" step="0.1" value={eqMetaDisponibilidade} onChange={e => setEqMetaDisponibilidade(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de Mobilização</label>
+                  <input type="date" value={eqDataMobilizacao} onChange={e => setEqDataMobilizacao(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de Desmobilização</label>
+                  <input type="date" value={eqDataDesmobilizacao} onChange={e => setEqDataDesmobilizacao(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Operador / Responsável</label>
+                  <select value={eqOperadorResponsavelId} onChange={e => setEqOperadorResponsavelId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                    <option value="">Sem responsável fixo</option>
+                    {funcionarios.filter(item => item.ativo).map(item => (
+                      <option key={item.id} value={item.id}>{item.nome}{item.matricula ? ` - ${item.matricula}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Combustível Padrão</label>
+                  <select value={eqCombustivelId} onChange={e => setEqCombustivelId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                    <option value="">Não informado</option>
+                    {combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Capacidade do Tanque (L)</label>
+                  <input type="number" min="0" step="0.1" value={eqCapacidadeTanque || ''} onChange={e => setEqCapacidadeTanque(Number(e.target.value))} placeholder="Ex: 400" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Equipamento Vinculado</label>
+                  <select value={eqEquipamentoVinculadoId} onChange={e => setEqEquipamentoVinculadoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                    <option value="">Sem vínculo</option>
+                    {equipamentos.filter(item => item.id !== editingId).map(item => (
+                      <option key={item.id} value={item.id}>{item.prefixo} - {item.nome}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="md:col-span-2 space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observações Extras</label>
                   <input type="text" value={eqObservacao} onChange={e => setEqObservacao(e.target.value)} placeholder="Ex: Operador fixo: Roberto" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
@@ -1120,6 +1240,12 @@ export default function CadastrosTab({
         )}
 
         {subTab === 'equipamentos' && (
+          <>
+          <EquipmentOperationsPanel
+            equipamentos={equipamentos}
+            ordensServico={ordensServico}
+            partesDiarias={partesDiariasEquipamentos}
+          />
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -1172,6 +1298,9 @@ export default function CadastrosTab({
                           <span className="block font-semibold">{item.marca} • {item.modelo}</span>
                           <span className="text-[10px] text-slate-500 uppercase font-mono block">Série: {item.seriePlaca || 'SEM SÉRIE'}</span>
                           {item.placa && <span className="text-[10px] text-emerald-400 uppercase font-mono block">Placa: {item.placa}</span>}
+                          <span className="text-[10px] text-cyan-400 uppercase font-mono block">
+                            {item.categoriaFrota || 'Equipamento'} · SGE {item.codigoSge || '—'}
+                          </span>
                         </td>
                         <td className="py-4 px-5 text-slate-400 max-w-[150px] truncate" title={emp ? emp.nome : ''}>
                           {emp ? emp.nome : '—'}
@@ -1213,6 +1342,7 @@ export default function CadastrosTab({
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {subTab === 'funcionarios' && (

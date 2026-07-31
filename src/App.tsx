@@ -33,7 +33,8 @@ import {
   MaterialCadastro,
   MaterialRegistro,
   ParteDiariaEquipamento,
-  PeriodoArquivado
+  PeriodoArquivado,
+  ControleEstacas
 } from './types';
 
 import { 
@@ -60,6 +61,13 @@ import {
   loadInitialMateriaisData,
   INITIAL_PARTES_DIARIAS_EQUIPAMENTOS
 } from './utils/initialData';
+import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
+import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
+import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
+import {
+  inferFleetCategory,
+  normalizeAvailabilityTarget,
+} from './utils/equipmentOperations';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -77,6 +85,9 @@ const ApontamentoRamoLinkExterno = lazy(() => import('./components/ApontamentoRa
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ParteDiariaEquipamentosTab = lazy(() => import('./components/ParteDiariaEquipamentosTab'));
+const EstacasTab = lazy(() => import('./components/EstacasTab'));
+const DocumentIntelligenceTab = lazy(() => import('./components/DocumentIntelligenceTab'));
+import OfflineStatusV29 from './components/OfflineStatusV29';
 
 // A base histórica de materiais fica em um chunk separado para não pesar no
 // login e nas demais telas. Ela é carregada antes da hidratação dos dados.
@@ -123,19 +134,28 @@ import {
 } from './publicApi';
 import { loadOneDriveFuelPayload, type OneDriveFuelSyncStatus } from './oneDriveFuelSync';
 import { materializeOneDriveFuelRows } from './utils/oneDriveFuelImport';
+import { enrichFuelDataset } from './utils/fuelOperations';
 import { commitStorageBatch, isReneaStoredValueValid, parseReneaStoredJson } from './utils/resilientStorage';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
 import { recordTabUsage } from './usageTelemetry';
+import {
+  ALL_NAVIGATION_ITEMS,
+  NAVIGATION_GROUPS,
+  ROLE_ACCESS,
+  normalizeUserRole,
+  type UserRole,
+} from './app/navigation/navigation';
+import {
+  getApontamentoTokenFromUrl,
+  getPresenceTokenFromUrl,
+  isTicketLinkUrl,
+} from './app/routing/publicRoutes';
+import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
 
 // Icons Import
-import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  FileText, 
-  Settings, 
-  HardHat, 
-  Database, 
-  Menu, 
+import {
+  Database,
+  Menu,
   X,
   LogIn,
   LogOut,
@@ -145,8 +165,6 @@ import {
   ChevronRight,
   FolderPlus,
   ShieldCheck,
-  Calendar,
-  Users,
   Bell,
   BellRing,
   Wifi,
@@ -155,12 +173,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Clock,
-  Wrench,
-  Truck,
-  BarChart3,
-  Package,
-  CircleGauge
 } from 'lucide-react';
 
 import { AppNotification } from './types';
@@ -168,63 +180,6 @@ import { AppNotification } from './types';
 // Notificações reais começam vazias. Elas são preenchidas apenas por ações
 // genuínas do usuário (cadastros, edições, sincronizações com o Firebase etc.)
 const getInitialNotifications = (): AppNotification[] => [];
-
-const NAVIGATION_GROUPS = [
-  {
-    label: 'Visão geral',
-    items: [
-      { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
-      { id: 'reports', label: 'Relatórios Gerais', icon: FileText },
-    ],
-  },
-  {
-    label: 'Operação',
-    items: [
-      { id: 'partes-diarias', label: 'Parte Diária de Equipamentos', icon: CircleGauge },
-      { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
-      { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
-      { id: 'materiais', label: 'Materiais', icon: Package },
-      { id: 'manutencao', label: 'Manutenção', icon: Wrench },
-    ],
-  },
-  {
-    label: 'Equipes e campo',
-    items: [
-      { id: 'presenca', label: 'Presença', icon: Users },
-      { id: 'controle-presenca', label: 'Controle de Presença', icon: ShieldCheck },
-      { id: 'apontamentos', label: 'Apontamentos', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'Administração',
-    items: [
-      { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
-      { id: 'configuracoes', label: 'Apoio e Configuração', icon: Settings },
-    ],
-  },
-] as const;
-
-type NavigationItem = {
-  id: string;
-  label: string;
-  icon: React.ComponentType<any>;
-};
-const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
-  .map(group => group.items as readonly NavigationItem[])
-  .reduce<NavigationItem[]>((items, groupItems) => items.concat(groupItems), []);
-
-type UserRole = 'admin' | 'gestor' | 'operador' | 'leitura';
-const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
-  admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
-  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => id !== 'configuracoes'),
-  operador: ['dashboard', 'reports', 'partes-diarias', 'lancamentos', 'tickets-jazida', 'materiais', 'manutencao', 'presenca', 'controle-presenca', 'apontamentos'],
-  leitura: ['dashboard', 'reports'],
-};
-const normalizeUserRole = (value: unknown): UserRole => (
-  value === 'gestor' || value === 'operador' || value === 'leitura' || value === 'admin'
-    ? value
-    : 'admin'
-);
 
 type CadastroImportTarget = 'empresas' | 'obras' | 'equipamentos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
 type CadastroImportRow = Record<string, string>;
@@ -310,28 +265,6 @@ const mergeTicketCollections = (current: TicketJazida[], incoming: TicketJazida[
   return Array.from(indexed.values());
 };
 
-const getPresenceTokenFromUrl = () => {
-  if (typeof window === 'undefined') return '';
-  const byQuery = new URLSearchParams(window.location.search).get('presenca');
-  if (byQuery) return decodeURIComponent(byQuery);
-  const match = window.location.pathname.match(/\/presenca-link\/([^/?#]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-};
-
-const getApontamentoTokenFromUrl = () => {
-  if (typeof window === 'undefined') return '';
-  const byQuery = new URLSearchParams(window.location.search).get('apontamento');
-  if (byQuery) return decodeURIComponent(byQuery);
-  const match = window.location.pathname.match(/\/apontamento-link\/([^/?#]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-};
-
-const isTicketLinkUrl = () => {
-  if (typeof window === 'undefined') return false;
-  return window.location.pathname.startsWith('/ticket-link')
-    || new URLSearchParams(window.location.search).has('tickets');
-};
-
 const parseStoredJson = <T,>(rawValue: string | null, storageKey: string, fallback: T): T => {
   if (!rawValue) return fallback;
   if (!isReneaStoredValueValid(storageKey, rawValue)) {
@@ -351,15 +284,6 @@ const mergeRecordsById = <T extends { id: string }>(current: T[], incoming: T[])
   incoming.forEach(item => indexed.set(item.id, item));
   return Array.from(indexed.values());
 };
-
-const ScreenLoadingFallback = ({ label = 'Carregando módulo...' }: { label?: string }) => (
-  <div className="min-h-[240px] w-full grid place-items-center bg-slate-950 text-slate-300">
-    <div className="flex items-center gap-3 text-sm font-semibold">
-      <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-emerald-500" />
-      {label}
-    </div>
-  </div>
-);
 
 export default function App() {
   // Login State
@@ -413,6 +337,7 @@ export default function App() {
   const [materiaisCadastro, setMateriaisCadastro] = useState<MaterialCadastro[]>([]);
   const [materiaisRegistros, setMateriaisRegistros] = useState<MaterialRegistro[]>([]);
   const [partesDiariasEquipamentos, setPartesDiariasEquipamentos] = useState<ParteDiariaEquipamento[]>([]);
+  const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
   const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
@@ -479,6 +404,7 @@ export default function App() {
         { key: 'renea_materiais_cadastro', value: JSON.stringify(INITIAL_MATERIAIS_CADASTRO) },
         { key: 'renea_materiais_registros', value: JSON.stringify(INITIAL_MATERIAIS_REGISTROS) },
         { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS) },
+        { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
         { key: 'renea_periodos_arquivados', value: '[]' },
         { key: 'renea_history_logs', value: JSON.stringify(INITIAL_HISTORY_LOGS) },
         { key: 'renea_notifications', value: '[]' },
@@ -513,6 +439,7 @@ export default function App() {
       setMateriaisCadastro(INITIAL_MATERIAIS_CADASTRO);
       setMateriaisRegistros(INITIAL_MATERIAIS_REGISTROS);
       setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
+      setControleEstacas(INITIAL_CONTROLE_ESTACAS);
       setPeriodosArquivados([]);
       setHistoryLogs(INITIAL_HISTORY_LOGS);
       setNotifications(getInitialNotifications());
@@ -540,6 +467,7 @@ export default function App() {
       const savedMateriaisCadastro = localStorage.getItem('renea_materiais_cadastro');
       const savedMateriaisRegistros = localStorage.getItem('renea_materiais_registros');
       const savedPartesDiariasEquipamentos = localStorage.getItem('renea_partes_diarias_equipamentos');
+      const savedControleEstacas = localStorage.getItem('renea_controle_estacas');
       const savedPeriodosArquivados = localStorage.getItem('renea_periodos_arquivados');
       const savedHistory = localStorage.getItem('renea_history_logs');
       const savedNotifications = localStorage.getItem('renea_notifications');
@@ -597,6 +525,7 @@ export default function App() {
       setMateriaisCadastro(loadedMateriaisCadastro);
       setMateriaisRegistros(loadedMateriaisRegistros);
       setPartesDiariasEquipamentos(parseStoredJson(savedPartesDiariasEquipamentos, 'renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
+      setControleEstacas(parseStoredJson(savedControleEstacas, 'renea_controle_estacas', INITIAL_CONTROLE_ESTACAS));
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', INITIAL_HISTORY_LOGS));
       setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
@@ -617,6 +546,9 @@ export default function App() {
       }
       if (!savedPartesDiariasEquipamentos) {
         localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
+      }
+      if (!savedControleEstacas) {
+        localStorage.setItem('renea_controle_estacas', JSON.stringify(INITIAL_CONTROLE_ESTACAS));
       }
       if (!savedPeriodosArquivados) {
         localStorage.setItem('renea_periodos_arquivados', JSON.stringify([]));
@@ -729,7 +661,8 @@ export default function App() {
     customMateriaisCadastro = materiaisCadastro,
     customMateriaisRegistros = materiaisRegistros,
     customPartesDiariasEquipamentos = partesDiariasEquipamentos,
-    customPeriodosArquivados = periodosArquivados
+    customPeriodosArquivados = periodosArquivados,
+    customControleEstacas = controleEstacas
   ): Promise<{ success: boolean; message: string }> => {
     try {
       const data = {
@@ -756,6 +689,8 @@ export default function App() {
         materiaisRegistros: customMateriaisRegistros,
         partesDiariasEquipamentos: customPartesDiariasEquipamentos,
         periodosArquivados: customPeriodosArquivados,
+        estacaLotes: customControleEstacas.lotes,
+        estacaCravacoes: customControleEstacas.cravacoes,
         notifications: customNotifications,
         historyLogs: customHistory,
       };
@@ -781,6 +716,9 @@ export default function App() {
     } catch (error: unknown) {
       setIsFirebaseConnected(false);
       console.error('Falha ao sincronizar o backup no Firebase:', error);
+      if (!navigator.onLine) {
+        void enqueueOfflineCommand('firebase-backup', { requestedAt: new Date().toISOString() });
+      }
       return { success: false, message: formatFirebaseSyncError(error) };
     }
   };
@@ -834,6 +772,15 @@ export default function App() {
               ? [{ key: storageKey, value: JSON.stringify(data[dataKey]) }]
               : []
           )),
+          ...(Array.isArray(data.estacaLotes) || Array.isArray(data.estacaCravacoes)
+            ? [{
+                key: 'renea_controle_estacas',
+                value: JSON.stringify({
+                  lotes: Array.isArray(data.estacaLotes) ? data.estacaLotes : [],
+                  cravacoes: Array.isArray(data.estacaCravacoes) ? data.estacaCravacoes : [],
+                }),
+              }]
+            : []),
           { key: 'renea_last_cloud_sync', value: nowStr },
           { key: 'renea_last_cloud_sync_iso', value: syncIso },
         ]);
@@ -907,6 +854,12 @@ export default function App() {
         }
         if (data.periodosArquivados) {
           setPeriodosArquivados(data.periodosArquivados);
+        }
+        if (Array.isArray(data.estacaLotes) || Array.isArray(data.estacaCravacoes)) {
+          setControleEstacas({
+            lotes: Array.isArray(data.estacaLotes) ? data.estacaLotes : [],
+            cravacoes: Array.isArray(data.estacaCravacoes) ? data.estacaCravacoes : [],
+          });
         }
         if (data.notifications) {
           setNotifications(data.notifications);
@@ -1090,7 +1043,8 @@ export default function App() {
           getLS('renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO),
           getLS('renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS),
           getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS),
-          getLS('renea_periodos_arquivados', [])
+          getLS('renea_periodos_arquivados', []),
+          getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
         ).then(res => {
           if (res.success) {
             console.log("Auto-sync completed successfully.");
@@ -1515,6 +1469,19 @@ export default function App() {
         const prefixo = (getImportValue(row, ['prefixo', 'frota', 'codigo', 'código', 'id frota']) || placa || seriePlaca || `EQ-${index + 1}`).toUpperCase();
         const tipo = getImportValue(row, ['tipo', 'tipo equipamento', 'categoria']) || 'Outro';
         const nome = getImportValue(row, ['nome', 'equipamento', 'descricao', 'descrição', 'maquina', 'máquina']) || tipo || prefixo;
+        const familia = getImportValue(row, ['familia', 'família']);
+        const categoryText = normalizeImportText(getImportValue(row, ['categoria frota', 'categoria da frota', 'classe frota']));
+        const categoriaFrota: NonNullable<Equipamento['categoriaFrota']> = categoryText.includes('implement')
+          ? 'Implemento'
+          : categoryText.includes('veicul')
+            ? 'Veículo'
+            : inferFleetCategory(nome, familia, placa, 'equipment');
+        const operatorName = getImportValue(row, ['operador', 'responsavel', 'responsável', 'operador responsavel', 'operador responsável']);
+        const operator = funcionarios.find(item => normalizeImportText(item.nome) === normalizeImportText(operatorName));
+        const fuelName = getImportValue(row, ['combustivel', 'combustível', 'tipo combustivel', 'tipo combustível']);
+        const fuel = combustiveis.find(item => normalizeImportText(item.nome) === normalizeImportText(fuelName));
+        const mobilizedText = normalizeImportText(getImportValue(row, ['mobilizado', 'mobilizacao', 'mobilização']));
+        const targetAvailability = normalizeAvailabilityTarget(getImportValue(row, ['meta disponibilidade', 'metadispmec', 'disponibilidade meta']));
         return {
           id: `eq-import-${now}-${index}`,
           prefixo,
@@ -1529,7 +1496,18 @@ export default function App() {
           localAtualId: findObraId(getImportValue(row, ['obra', 'local', 'canteiro', 'local atual', 'obra atual'])),
           observacao: getImportValue(row, ['observacao', 'observação', 'obs']),
           horasDisponiveis: numberFromImport(getImportValue(row, ['horas disponiveis', 'horas disponíveis', 'horas disp'])),
-          horasIndisponiveis: numberFromImport(getImportValue(row, ['horas indisponiveis', 'horas indisponíveis', 'horas manutencao', 'horas manutenção']))
+          horasIndisponiveis: numberFromImport(getImportValue(row, ['horas indisponiveis', 'horas indisponíveis', 'horas manutencao', 'horas manutenção'])),
+          categoriaFrota,
+          codigoSge: getImportValue(row, ['codigo sge', 'código sge', 'dpara', 'sge']) || undefined,
+          familia: familia || undefined,
+          mobilizado: ['sim', 'true', '1', 'mobilizado'].includes(mobilizedText),
+          metaDisponibilidade: targetAvailability ?? undefined,
+          dataMobilizacao: getImportValue(row, ['data mobilizacao', 'data mobilização', 'datamob']) || undefined,
+          dataDesmobilizacao: getImportValue(row, ['data desmobilizacao', 'data desmobilização', 'datadesmob']) || undefined,
+          operadorResponsavelId: operator?.id,
+          operadorResponsavelNome: operator?.nome || operatorName || undefined,
+          combustivelId: fuel?.id,
+          capacidadeTanqueLitros: numberFromImport(getImportValue(row, ['capacidade tanque', 'capacidade tanque l', 'capacidade'])) || undefined,
         };
       }).filter(Boolean) as Equipamento[];
       if (incoming.length === 0) return { success: false, message: 'Nenhum equipamento foi encontrado na planilha.' };
@@ -1604,10 +1582,10 @@ export default function App() {
     return persistImport('Etapas de Serviço', 'renea_etapas', setEtapas, result.next, incoming.length, result.created, result.updated);
   };
 
-  // Mantém exatamente o que foi digitado/importado. A operação de combustível
-  // agora fica livre de travas de qualidade ou recálculo de conferência.
+  // Mantém exatamente o que foi digitado/importado e acrescenta somente campos
+  // derivados da v2.4. Alertas continuam não bloqueando nenhum lançamento.
   const auditarBaseCombustivel = (lista: Abastecimento[]): Abastecimento[] =>
-    lista;
+    enrichFuelDataset(lista, equipamentos);
 
   // Transaction Handlers
   const handleSaveAbastecimento = (item: Abastecimento, isNew: boolean) => {
@@ -2010,9 +1988,26 @@ export default function App() {
       getLS('renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO),
       getLS('renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS),
       getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS),
-      getLS('renea_periodos_arquivados', [])
+      getLS('renea_periodos_arquivados', []),
+      getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
     );
   };
+
+  useEffect(() => {
+    if (!isLoggedIn || externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
+    const flush = () => {
+      if (!navigator.onLine) return;
+      void flushOfflineCommands({
+        'firebase-backup': async () => {
+          const result = await uploadLocalSnapshotToFirebase();
+          if (!result.success) throw new Error(result.message);
+        },
+      });
+    };
+    window.addEventListener('online', flush);
+    flush();
+    return () => window.removeEventListener('online', flush);
+  }, [isLoggedIn, externalTicketLink, externalPresenceToken, externalApontamentoToken]);
 
   useEffect(() => {
     if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
@@ -2438,6 +2433,19 @@ export default function App() {
     return { success: true, message: logMsg };
   };
 
+  const handleChangeControleEstacas = (next: ControleEstacas, description: string) => {
+    saveAndLog(
+      'Controle de Estacas',
+      'Editou',
+      description,
+      historyLogs,
+      () => {
+        setControleEstacas(next);
+        localStorage.setItem('renea_controle_estacas', JSON.stringify(next));
+      }
+    );
+  };
+
   const handleSaveParteDiariaEquipamento = (registro: ParteDiariaEquipamento, isNew: boolean) => {
     const updated = isNew
       ? [registro, ...partesDiariasEquipamentos]
@@ -2529,6 +2537,7 @@ export default function App() {
     materiaisCadastro?: MaterialCadastro[];
     materiaisRegistros?: MaterialRegistro[];
     partesDiariasEquipamentos?: ParteDiariaEquipamento[];
+    controleEstacas?: ControleEstacas;
     periodosArquivados?: PeriodoArquivado[];
     notifications?: AppNotification[];
     historyLogs?: HistoryLog[];
@@ -2557,6 +2566,7 @@ export default function App() {
     const nextMateriaisCadastro = imported.materiaisCadastro ?? materiaisCadastro;
     const nextMateriaisRegistros = imported.materiaisRegistros ?? materiaisRegistros;
     const nextPartesDiariasEquipamentos = imported.partesDiariasEquipamentos ?? partesDiariasEquipamentos;
+    const nextControleEstacas = imported.controleEstacas ?? controleEstacas;
     const nextPeriodosArquivados = imported.periodosArquivados ?? periodosArquivados;
     const nextNotifications = imported.notifications ?? notifications;
     const restoreLog: HistoryLog = {
@@ -2592,6 +2602,7 @@ export default function App() {
       { key: 'renea_materiais_cadastro', value: JSON.stringify(nextMateriaisCadastro) },
       { key: 'renea_materiais_registros', value: JSON.stringify(nextMateriaisRegistros) },
       { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(nextPartesDiariasEquipamentos) },
+      { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
       { key: 'renea_periodos_arquivados', value: JSON.stringify(nextPeriodosArquivados) },
       { key: 'renea_notifications', value: JSON.stringify(nextNotifications) },
       { key: 'renea_history_logs', value: JSON.stringify(logs) },
@@ -2619,6 +2630,7 @@ export default function App() {
     setMateriaisCadastro(nextMateriaisCadastro);
     setMateriaisRegistros(nextMateriaisRegistros);
     setPartesDiariasEquipamentos(nextPartesDiariasEquipamentos);
+    setControleEstacas(nextControleEstacas);
     setPeriodosArquivados(nextPeriodosArquivados);
     setNotifications(nextNotifications);
     setHistoryLogs(logs);
@@ -2648,6 +2660,7 @@ export default function App() {
       { key: 'renea_materiais_cadastro', value: JSON.stringify(INITIAL_MATERIAIS_CADASTRO) },
       { key: 'renea_materiais_registros', value: JSON.stringify(INITIAL_MATERIAIS_REGISTROS) },
       { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS) },
+      { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
       { key: 'renea_periodos_arquivados', value: '[]' },
       { key: 'renea_notifications', value: '[]' },
       { key: 'renea_history_logs', value: JSON.stringify(INITIAL_HISTORY_LOGS) },
@@ -2678,6 +2691,7 @@ export default function App() {
     setMateriaisCadastro(INITIAL_MATERIAIS_CADASTRO);
     setMateriaisRegistros(INITIAL_MATERIAIS_REGISTROS);
     setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
+    setControleEstacas(INITIAL_CONTROLE_ESTACAS);
     setPeriodosArquivados([]);
     setNotifications([]);
     setHistoryLogs(INITIAL_HISTORY_LOGS);
@@ -2703,6 +2717,7 @@ export default function App() {
     ];
     commitStorageBatch(localStorage, [
       ...clearedArrayKeys.map(key => ({ key, value: '[]' })),
+      { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
       { key: 'renea_history_logs', value: JSON.stringify([clearLog]) },
       { key: 'renea_colaboradores_planilha_v1', value: 'true' },
       { key: 'renea_planilhas_operacionais_v1', value: 'true' },
@@ -2731,6 +2746,7 @@ export default function App() {
     setMateriaisCadastro([]);
     setMateriaisRegistros([]);
     setPartesDiariasEquipamentos([]);
+    setControleEstacas(INITIAL_CONTROLE_ESTACAS);
     setPeriodosArquivados([]);
     setNotifications([]);
     setHistoryLogs([clearLog]);
@@ -2760,6 +2776,7 @@ export default function App() {
       apontamentoRamos: 'Apontamento Ramos',
       ticketsJazida: 'Tickets Jazida',
       materiais: 'Materiais',
+      estacas: 'Estacas',
       partesDiarias: 'Partes Diárias',
       manutencao: 'Manutenção',
       periodosArquivados: 'Arquivos de períodos',
@@ -2826,6 +2843,12 @@ export default function App() {
               persist('renea_materiais_cadastro', nextValue(INITIAL_MATERIAIS_CADASTRO), setMateriaisCadastro);
               persist('renea_materiais_registros', nextValue(INITIAL_MATERIAIS_REGISTROS), setMateriaisRegistros);
               break;
+            case 'estacas': {
+              const next = mode === 'default' ? INITIAL_CONTROLE_ESTACAS : { lotes: [], cravacoes: [] };
+              setControleEstacas(next);
+              localStorage.setItem('renea_controle_estacas', JSON.stringify(next));
+              break;
+            }
             case 'partesDiarias':
               persist('renea_partes_diarias_equipamentos', nextValue(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS), setPartesDiariasEquipamentos);
               break;
@@ -2888,6 +2911,12 @@ export default function App() {
     const nextApontamentoRamoRegistros = mergeByIdKeepingLatest(apontamentoRamoRegistros, data.apontamentoRamoRegistros);
     const nextMateriaisRegistros = mergeByIdKeepingLatest(materiaisRegistros, data.materiaisRegistros);
     const nextPartesDiariasEquipamentos = mergeByIdKeepingLatest(partesDiariasEquipamentos, data.partesDiariasEquipamentos);
+    const nextControleEstacas: ControleEstacas = data.estacas
+      ? {
+          lotes: mergeByIdKeepingLatest(controleEstacas.lotes, data.estacas.lotes),
+          cravacoes: mergeByIdKeepingLatest(controleEstacas.cravacoes, data.estacas.cravacoes),
+        }
+      : controleEstacas;
 
     commitStorageBatch(localStorage, [
       { key: 'renea_abastecimentos', value: JSON.stringify(nextAbastecimentos) },
@@ -2901,6 +2930,7 @@ export default function App() {
       { key: 'renea_apontamento_ramo_registros', value: JSON.stringify(nextApontamentoRamoRegistros) },
       { key: 'renea_materiais_registros', value: JSON.stringify(nextMateriaisRegistros) },
       { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(nextPartesDiariasEquipamentos) },
+      { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
     ]);
 
     setAbastecimentos(nextAbastecimentos);
@@ -2914,6 +2944,7 @@ export default function App() {
     setApontamentoRamoRegistros(nextApontamentoRamoRegistros);
     setMateriaisRegistros(nextMateriaisRegistros);
     setPartesDiariasEquipamentos(nextPartesDiariasEquipamentos);
+    setControleEstacas(nextControleEstacas);
   };
 
   const handleArchivePeriod = (
@@ -2939,6 +2970,8 @@ export default function App() {
     const splitApontamentoRamoRegistros = splitByArchivePeriod<ApontamentoRamoRegistro>(apontamentoRamoRegistros, item => item.data, dataInicio, dataFim);
     const splitMateriaisRegistros = splitByArchivePeriod<MaterialRegistro>(materiaisRegistros, item => item.data, dataInicio, dataFim);
     const splitPartesDiariasEquipamentos = splitByArchivePeriod<ParteDiariaEquipamento>(partesDiariasEquipamentos, item => item.data, dataInicio, dataFim);
+    const splitEstacasLotes = splitByArchivePeriod<ControleEstacas['lotes'][number]>(controleEstacas.lotes, item => item.data, dataInicio, dataFim);
+    const splitEstacasCravacoes = splitByArchivePeriod<ControleEstacas['cravacoes'][number]>(controleEstacas.cravacoes, item => item.data, dataInicio, dataFim);
 
     const dados: PeriodoArquivado['dados'] = {
       abastecimentos: splitAbastecimentos.selected,
@@ -2952,10 +2985,17 @@ export default function App() {
       apontamentoRamoRegistros: splitApontamentoRamoRegistros.selected,
       materiaisRegistros: splitMateriaisRegistros.selected,
       partesDiariasEquipamentos: splitPartesDiariasEquipamentos.selected,
+      estacas: {
+        lotes: splitEstacasLotes.selected,
+        cravacoes: splitEstacasCravacoes.selected,
+      },
     };
 
     const resumo: Record<string, number> = Object.fromEntries(
-      Object.entries(dados).map(([key, value]) => [key, value.length])
+      Object.entries(dados).map(([key, value]) => [
+        key,
+        Array.isArray(value) ? value.length : value.lotes.length + value.cravacoes.length,
+      ])
     );
     const total = Object.values(resumo).reduce((sum, value) => sum + Number(value || 0), 0);
     if (total === 0) {
@@ -2969,6 +3009,9 @@ export default function App() {
       dataFim,
       criadoEm: new Date().toISOString(),
       criadoPor: activeUserName,
+      versao: '3.0',
+      status: 'Fechado',
+      checksum: calculateSnapshotChecksum(dados),
       resumo,
       dados,
     };
@@ -2992,6 +3035,7 @@ export default function App() {
           { key: 'renea_apontamento_ramo_registros', value: JSON.stringify(splitApontamentoRamoRegistros.remaining) },
           { key: 'renea_materiais_registros', value: JSON.stringify(splitMateriaisRegistros.remaining) },
           { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(splitPartesDiariasEquipamentos.remaining) },
+          { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: splitEstacasLotes.remaining, cravacoes: splitEstacasCravacoes.remaining }) },
           { key: 'renea_periodos_arquivados', value: JSON.stringify(nextArchives) },
         ]);
         setAbastecimentos(splitAbastecimentos.remaining);
@@ -3005,6 +3049,7 @@ export default function App() {
         setApontamentoRamoRegistros(splitApontamentoRamoRegistros.remaining);
         setMateriaisRegistros(splitMateriaisRegistros.remaining);
         setPartesDiariasEquipamentos(splitPartesDiariasEquipamentos.remaining);
+        setControleEstacas({ lotes: splitEstacasLotes.remaining, cravacoes: splitEstacasCravacoes.remaining });
         setPeriodosArquivados(nextArchives);
       }
     );
@@ -3015,6 +3060,9 @@ export default function App() {
   const handleRestoreArchivedPeriod = (id: string): { success: boolean; message: string } => {
     const archive = periodosArquivados.find(item => item.id === id);
     if (!archive) return { success: false, message: 'Arquivo de período não encontrado.' };
+    if (!isSnapshotIntact(archive)) {
+      return { success: false, message: 'O snapshot foi alterado após o fechamento e precisa de revisão antes da restauração.' };
+    }
     const total = (Object.values(archive.resumo || {}) as number[]).reduce((sum, value) => sum + Number(value || 0), 0);
 
     saveAndLog(
@@ -3074,6 +3122,7 @@ export default function App() {
       materiaisCadastro,
       materiaisRegistros,
       partesDiariasEquipamentos,
+      controleEstacas,
       periodosArquivados,
       notifications,
       historyLogs
@@ -3142,6 +3191,8 @@ export default function App() {
       const incomingTicketsJazida = (parsed.ticketsJazida || []).filter((x: TicketJazida) => inRange(x.data));
       const incomingMateriaisRegistros = (parsed.materiaisRegistros || []).filter((x: MaterialRegistro) => inRange(x.data));
       const incomingPartesDiariasEquipamentos = (parsed.partesDiariasEquipamentos || []).filter((x: ParteDiariaEquipamento) => inRange(x.data));
+      const incomingEstacasLotes = (parsed.controleEstacas?.lotes || []).filter((x: ControleEstacas['lotes'][number]) => inRange(x.data));
+      const incomingEstacasCravacoes = (parsed.controleEstacas?.cravacoes || []).filter((x: ControleEstacas['cravacoes'][number]) => inRange(x.data));
 
       const newAbastecimentos = mergeById(abastecimentos, incomingAbastecimentos);
       const newLubrificacoes = mergeById(lubrificacoes, incomingLubrificacoes);
@@ -3153,8 +3204,12 @@ export default function App() {
       const newTicketsJazida = mergeById(ticketsJazida, incomingTicketsJazida);
       const newMateriaisRegistros = mergeById(materiaisRegistros, incomingMateriaisRegistros);
       const newPartesDiariasEquipamentos = mergeById(partesDiariasEquipamentos, incomingPartesDiariasEquipamentos);
+      const newControleEstacas: ControleEstacas = {
+        lotes: mergeById(controleEstacas.lotes, incomingEstacasLotes),
+        cravacoes: mergeById(controleEstacas.cravacoes, incomingEstacasCravacoes),
+      };
 
-      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingRdos.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingApontamentoRamoRegistros.length + incomingTicketsJazida.length + incomingMateriaisRegistros.length + incomingPartesDiariasEquipamentos.length;
+      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingRdos.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingApontamentoRamoRegistros.length + incomingTicketsJazida.length + incomingMateriaisRegistros.length + incomingPartesDiariasEquipamentos.length + incomingEstacasLotes.length + incomingEstacasCravacoes.length;
       const logMsg = `Importou seletivamente ${totalImportados} registro(s) datado(s) entre ${dataInicio || 'início'} e ${dataFim || 'fim'}, além dos cadastros base.`;
       const newLog: HistoryLog = {
         id: `log-${Date.now()}`,
@@ -3189,6 +3244,7 @@ export default function App() {
         { key: 'renea_materiais_cadastro', value: JSON.stringify(newMateriaisCadastro) },
         { key: 'renea_materiais_registros', value: JSON.stringify(newMateriaisRegistros) },
         { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(newPartesDiariasEquipamentos) },
+        { key: 'renea_controle_estacas', value: JSON.stringify(newControleEstacas) },
         { key: 'renea_history_logs', value: JSON.stringify(updatedHistory) },
       ]);
 
@@ -3214,6 +3270,7 @@ export default function App() {
       setMateriaisCadastro(newMateriaisCadastro);
       setMateriaisRegistros(newMateriaisRegistros);
       setPartesDiariasEquipamentos(newPartesDiariasEquipamentos);
+      setControleEstacas(newControleEstacas);
       setHistoryLogs(updatedHistory);
 
       addNotification('Importação por Período Concluída', logMsg, 'success', 'Sistema Local');
@@ -3715,6 +3772,14 @@ export default function App() {
                 historyLogs={historyLogs}
                 listasPresenca={listasPresenca}
                 ordensServico={ordensServico}
+                ticketsJazida={ticketsJazida}
+                estacas={controleEstacas}
+                rdos={rdos}
+                presencasLink={presencasLink}
+                apontamentoRamos={apontamentoRamos}
+                apontamentoRamoRegistros={apontamentoRamoRegistros}
+                materiaisRegistros={materiaisRegistros}
+                partesDiariasEquipamentos={partesDiariasEquipamentos}
                 onNavigate={navigateTo}
               />
             )}
@@ -3729,6 +3794,11 @@ export default function App() {
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
                 etapas={etapas}
+                materiaisCadastro={materiaisCadastro}
+                materiaisRegistros={materiaisRegistros}
+                apontamentoRamos={apontamentoRamos}
+                ordensServico={ordensServico}
+                partesDiariasEquipamentos={partesDiariasEquipamentos}
                 onSaveEmpresa={handleSaveEmpresa}
                 onDeleteEmpresa={handleDeleteEmpresa}
                 onSaveObra={handleSaveObra}
@@ -3829,6 +3899,9 @@ export default function App() {
               <TicketsJazidaTab 
                 tickets={ticketsJazida}
                 equipamentos={equipamentos}
+                materiais={materiaisCadastro}
+                obras={obras}
+                ramos={apontamentoRamos}
                 onSaveTicket={handleSaveTicketJazida}
                 onDeleteTicket={handleDeleteTicketJazida}
                 onImportTickets={handleImportTicketsJazida}
@@ -3849,6 +3922,19 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'estacas' && (
+              <EstacasTab
+                controle={controleEstacas}
+                obras={obras}
+                ramos={apontamentoRamos}
+                onChange={handleChangeControleEstacas}
+              />
+            )}
+
+            {activeTab === 'inteligencia' && (
+              <DocumentIntelligenceTab />
+            )}
+
             {activeTab === 'reports' && (
               <RelatoriosTab 
                 empresas={empresas}
@@ -3863,6 +3949,11 @@ export default function App() {
                 listasPresenca={listasPresenca}
                 apontamentoRamoRegistros={apontamentoRamoRegistros}
                 ticketsJazida={ticketsJazida}
+                controleEstacas={controleEstacas}
+                materiaisRegistros={materiaisRegistros}
+                presencasLink={presencasLink}
+                rdos={rdos}
+                partesDiariasEquipamentos={partesDiariasEquipamentos}
               />
             )}
 
@@ -3906,6 +3997,7 @@ export default function App() {
       </main>
 
       {/* Toast notifications container in the top right corner */}
+      <OfflineStatusV29 />
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 w-full max-w-sm pointer-events-none select-none">
         <AnimatePresence>
           {activeToasts.map(toast => {

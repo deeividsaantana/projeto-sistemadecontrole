@@ -32,6 +32,11 @@ const JSON_ARRAY_STORAGE_KEYS = new Set([
   'renea_jazida_printed_batches',
   'renea_ticket_link_drafts_v2',
   'renea_ticket_link_history_v1',
+  'renea_offline_queue_fallback',
+]);
+
+const JSON_OBJECT_STORAGE_KEYS = new Set([
+  'renea_controle_estacas',
 ]);
 
 interface MirroredValue {
@@ -86,9 +91,11 @@ export const isReneaJsonArrayStorageKey = (key: string) => JSON_ARRAY_STORAGE_KE
 
 export const isReneaStoredValueValid = (key: string, value: string | null): boolean => {
   if (value === null) return false;
-  if (!isReneaJsonArrayStorageKey(key)) return true;
+  if (!isReneaJsonArrayStorageKey(key) && !JSON_OBJECT_STORAGE_KEYS.has(key)) return true;
   try {
-    return Array.isArray(JSON.parse(value));
+    const parsed = JSON.parse(value);
+    if (isReneaJsonArrayStorageKey(key)) return Array.isArray(parsed);
+    return Boolean(parsed) && typeof parsed === 'object' && !Array.isArray(parsed);
   } catch {
     return false;
   }
@@ -135,7 +142,7 @@ export const mirrorReneaLocalStorage = async () => {
       if (!key?.startsWith(KEY_PREFIX)) continue;
       const value = localStorage.getItem(key);
       // Nunca troca a última cópia íntegra por um JSON quebrado.
-      if (!isReneaStoredValueValid(key, value)) continue;
+      if (value === null || !isReneaStoredValueValid(key, value)) continue;
       store.put({ key, value, updatedAt } satisfies MirroredValue);
     }
     await new Promise<void>((resolve, reject) => {

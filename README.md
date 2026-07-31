@@ -42,3 +42,40 @@ Consulte:
 ## Segurança dos documentos
 
 PDFs e fotos enviados para análise não são persistidos no banco. O sistema grava apenas os dados revisados, o nome do arquivo, a impressão digital SHA-256 e a trilha de conferência.
+
+
+## Sistema RENEA ERP v3.0
+
+A base oficial está sendo evoluída por versões, sem reescrita e sem remoção de funcionalidades.
+
+Documentação:
+
+- docs/AUDITORIA_TECNICA_V2_0.md
+- docs/AUDITORIA_PLANILHAS_OPERACIONAIS.md
+- docs/PLANO_TECNICO_ERP.md
+- docs/ALTERACOES_V2_0.md
+- docs/VALIDACAO_V2_0.md
+- docs/ARQUITETURA_DADOS_V2_1.md
+- docs/ALTERACOES_V2_1.md
+- docs/VALIDACAO_V2_1.md
+- docs/ARQUITETURA_CADASTROS_V2_2.md
+- docs/ALTERACOES_V2_2.md
+- docs/VALIDACAO_V2_2.md
+- docs/ARQUITETURA_EQUIPAMENTOS_V2_3.md
+- docs/ALTERACOES_V2_3.md
+- docs/VALIDACAO_V2_3.md
+- docs/ARQUITETURA_COMBUSTIVEL_V2_4.md
+- docs/ALTERACOES_V2_4.md
+- docs/VALIDACAO_V2_4.md
+- docs/ARQUITETURA_VIAGENS_V2_5.md
+- docs/ALTERACOES_V2_5.md
+- docs/VALIDACAO_V2_5.md
+- docs/ALTERACOES_V2_6.md
+- docs/ALTERACOES_V2_7.md
+- docs/ALTERACOES_V2_8.md
+- docs/ALTERACOES_V2_9.md
+- docs/ALTERACOES_V3_0.md
+- docs/ARQUITETURA_ERP_V3_0.md
+- docs/MATRIZ_PLANILHAS_PARA_MODULOS_V3_0.md
+- docs/VALIDACAO_V3_0.md
+- supabase/README.md

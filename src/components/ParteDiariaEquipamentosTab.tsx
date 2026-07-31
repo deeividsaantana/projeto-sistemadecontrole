@@ -537,7 +537,18 @@ const ParteDiariaEquipamentosTab: React.FC<ParteDiariaEquipamentosTabProps> = ({
 
   const updateEquipment = (id: string) => {
     const item = equipamentos.find(equipment => equipment.id === id);
-    setForm(current => ({ ...current, equipamentoId: id, prefixo: item?.prefixo || '', tipoEquipamento: item?.tipo || item?.nome || '', obraId: current.obraId || item?.localAtualId || '', obraNome: current.obraNome || obras.find(work => work.id === item?.localAtualId)?.nome || '' }));
+    const responsibleOperator = funcionarios.find(employee => employee.id === item?.operadorResponsavelId);
+    setForm(current => ({
+      ...current,
+      equipamentoId: id,
+      prefixo: item?.prefixo || '',
+      tipoEquipamento: item?.tipo || item?.nome || '',
+      obraId: current.obraId || item?.localAtualId || '',
+      obraNome: current.obraNome || obras.find(work => work.id === item?.localAtualId)?.nome || '',
+      operadorId: current.operadorId || responsibleOperator?.id || '',
+      operadorNome: current.operadorNome || responsibleOperator?.nome || item?.operadorResponsavelNome || '',
+      matricula: current.matricula || responsibleOperator?.matricula || '',
+    }));
   };
   const updateOperator = (id: string) => {
     const item = funcionarios.find(employee => employee.id === id);

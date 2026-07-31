@@ -7,6 +7,7 @@ import type {
 } from '../types';
 import type { OneDriveFuelRow } from '../oneDriveFuelSync';
 import { auditPumpContinuityByConvoy } from './fuelPumpSequence';
+import { enrichFuelRecord } from './fuelOperations';
 
 const normalize = (value: unknown) => String(value ?? '')
   .normalize('NFD')
@@ -87,7 +88,7 @@ export const materializeOneDriveFuelRows = (
       row.empresa && `Empresa na planilha: ${row.empresa}`,
     ].filter(Boolean).join(' | ');
 
-    return {
+    return enrichFuelRecord({
       id: row.sourceRowId,
       data,
       hora,
@@ -98,6 +99,7 @@ export const materializeOneDriveFuelRows = (
       bombaInicial: Number(row.bombaInicial || 0),
       quantidadeLitros: Number(row.quantidadeLitros || 0),
       bombaFinal: Number(row.bombaFinal || 0),
+      custoLitro: Number(row.custoLitro || 0),
       tipoCombustivelId: fuel?.id || '',
       comboioId: convoy?.id || '',
       responsavel: row.responsavel || 'Sincronização OneDrive',
@@ -114,7 +116,7 @@ export const materializeOneDriveFuelRows = (
       integracaoLinha: row.rowNumber,
       criadoEm: existingRecord?.criadoEm || now,
       atualizadoEm: now,
-    } satisfies Abastecimento;
+    } satisfies Abastecimento, equipment);
   });
 
   const incomingIds = new Set(records.map(record => record.id));

@@ -2,7 +2,7 @@ import type { Abastecimento } from '../types';
 
 type PumpRecord = Pick<
   Abastecimento,
-  'id' | 'data' | 'hora' | 'comboioId' | 'bombaInicial' | 'bombaFinal' | 'quantidadeLitros'
+  'id' | 'data' | 'hora' | 'comboioId' | 'bombaInicial' | 'bombaFinal' | 'quantidadeLitros' | 'criadoEm'
 >;
 
 const validTime = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || ''));
@@ -28,6 +28,28 @@ export const findPreviousPumpForConvoy = (
       fuelRecordOrderKey(record) < limit
     )
     .sort((a, b) => fuelRecordOrderKey(b).localeCompare(fuelRecordOrderKey(a)) || b.id.localeCompare(a.id))[0];
+};
+
+export const findLastRecordedPumpForConvoy = (
+  records: PumpRecord[],
+  convoyId: string,
+  excludeId = '',
+) => {
+  if (!convoyId) return undefined;
+  return [...records]
+    .map((record, index) => ({ record, index }))
+    .filter(({ record }) =>
+      record.id !== excludeId
+      && record.comboioId === convoyId
+      && Number.isFinite(Number(record.bombaFinal))
+      && Number(record.bombaFinal) > 0
+    )
+    .sort((left, right) => {
+      const leftCreated = String(left.record.criadoEm || '');
+      const rightCreated = String(right.record.criadoEm || '');
+      if (leftCreated && rightCreated && leftCreated !== rightCreated) return rightCreated.localeCompare(leftCreated);
+      return right.index - left.index;
+    })[0]?.record;
 };
 
 export interface PumpContinuityIssue {

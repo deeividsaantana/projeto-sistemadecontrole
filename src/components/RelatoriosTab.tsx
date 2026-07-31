@@ -16,7 +16,12 @@ import {
   Lubrificacao, 
   ListaPresenca,
   ApontamentoRamoRegistro,
-  TicketJazida
+  TicketJazida,
+  ControleEstacas,
+  MaterialRegistro,
+  PresencaApontamento,
+  RdoDiario,
+  ParteDiariaEquipamento
 } from '../types';
 
 import { 
@@ -45,6 +50,8 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import OperationalReportsDashboard from './OperationalReportsDashboard';
+import ReportCatalogV28 from './ReportCatalogV28';
+import ErpReportExportsV28 from './ErpReportExportsV28';
 
 interface RelatoriosTabProps {
   empresas: Empresa[];
@@ -60,6 +67,11 @@ interface RelatoriosTabProps {
   listasPresenca: ListaPresenca[];
   apontamentoRamoRegistros: ApontamentoRamoRegistro[];
   ticketsJazida: TicketJazida[];
+  controleEstacas: ControleEstacas;
+  materiaisRegistros: MaterialRegistro[];
+  presencasLink: PresencaApontamento[];
+  rdos: RdoDiario[];
+  partesDiariasEquipamentos: ParteDiariaEquipamento[];
 }
 
 const formatFuelReportNumber = (value: number) =>
@@ -104,7 +116,12 @@ export default function RelatoriosTab({
   lubrificacoes,
   listasPresenca,
   apontamentoRamoRegistros,
-  ticketsJazida
+  ticketsJazida,
+  controleEstacas,
+  materiaisRegistros,
+  presencasLink,
+  rdos,
+  partesDiariasEquipamentos
 }: RelatoriosTabProps) {
 
   // Selected report type
@@ -1041,6 +1058,16 @@ export default function RelatoriosTab({
 
   return (
     <div className="space-y-6" id="relatorios-tab">
+      <ReportCatalogV28 />
+      <ErpReportExportsV28
+        tickets={ticketsJazida}
+        estacas={controleEstacas}
+        materiais={materiaisRegistros}
+        presencas={presencasLink}
+        rdos={rdos}
+        equipamentos={equipamentos}
+        partes={partesDiariasEquipamentos}
+      />
 
       <OperationalReportsDashboard
         empresas={empresas}

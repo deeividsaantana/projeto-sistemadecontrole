@@ -19,8 +19,17 @@ import {
   Lubrificacao, 
   HistoryLog,
   ListaPresenca,
-  OrdemServico
+  OrdemServico,
+  TicketJazida,
+  ControleEstacas,
+  RdoDiario,
+  PresencaApontamento,
+  ApontamentoRamo,
+  ApontamentoRamoRegistro,
+  MaterialRegistro,
+  ParteDiariaEquipamento
 } from '../types';
+import ExecutiveOverviewV27 from './ExecutiveOverviewV27';
 
 import { 
   ResponsiveContainer, 
@@ -62,6 +71,14 @@ interface DashboardProps {
   historyLogs: HistoryLog[];
   listasPresenca?: ListaPresenca[];
   ordensServico?: OrdemServico[];
+  ticketsJazida?: TicketJazida[];
+  estacas?: ControleEstacas;
+  rdos?: RdoDiario[];
+  presencasLink?: PresencaApontamento[];
+  apontamentoRamos?: ApontamentoRamo[];
+  apontamentoRamoRegistros?: ApontamentoRamoRegistro[];
+  materiaisRegistros?: MaterialRegistro[];
+  partesDiariasEquipamentos?: ParteDiariaEquipamento[];
   onNavigate: (tab: string) => void;
 }
 
@@ -78,6 +95,14 @@ export default function Dashboard({
   historyLogs,
   listasPresenca = [],
   ordensServico = [],
+  ticketsJazida = [],
+  estacas = { lotes: [], cravacoes: [] },
+  rdos = [],
+  presencasLink = [],
+  apontamentoRamos = [],
+  apontamentoRamoRegistros = [],
+  materiaisRegistros = [],
+  partesDiariasEquipamentos = [],
   onNavigate
 }: DashboardProps) {
 
@@ -500,6 +525,23 @@ export default function Dashboard({
           </button>
         </div>
       </div>
+
+      <ExecutiveOverviewV27
+        empresas={empresas}
+        obras={obras}
+        equipamentos={equipamentos}
+        abastecimentos={abastecimentos}
+        ticketsJazida={ticketsJazida}
+        estacas={estacas}
+        rdos={rdos}
+        listasPresenca={listasPresenca}
+        presencasLink={presencasLink}
+        apontamentos={apontamentoRamoRegistros}
+        ramos={apontamentoRamos}
+        materiais={materiaisRegistros}
+        ordensServico={ordensServico}
+        partesDiarias={partesDiariasEquipamentos}
+      />
 
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4" id="dashboard-builder">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

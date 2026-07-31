@@ -21,6 +21,7 @@ const aliases = {
   empresa: ['empresa', 'contratada'],
   bombaInicial: ['bombainicial', 'iniciobomba', 'leiturainicialbomba', 'bomba'],
   bombaFinal: ['bombafinal', 'fimbomba', 'leiturafinalbomba'],
+  custoLitro: ['custolitro', 'custoporlitro', 'valorunitario', 'valorlitro', 'precolitro'],
   responsavel: ['responsavel', 'operador', 'frentista'],
   observacao: ['observacao', 'observacoes', 'obs'],
 };
@@ -205,6 +206,7 @@ export const readFuelWorkbook = async filePath => {
       empresa: textValue(rawAt(source, header.map.empresa)),
       bombaInicial,
       bombaFinal,
+      custoLitro: numberValue(rawAt(source, header.map.custoLitro)),
       responsavel: textValue(rawAt(source, header.map.responsavel)),
       observacao: textValue(rawAt(source, header.map.observacao)),
       avisos: rowWarnings.join(' | '),

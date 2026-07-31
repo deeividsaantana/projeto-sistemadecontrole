@@ -129,7 +129,7 @@ const inflatePdfStream = async (bytes: Uint8Array) => {
   const Decompression = (globalThis as any).DecompressionStream;
   if (!Decompression) return '';
   try {
-    const stream = new Blob([bytes]).stream().pipeThrough(new Decompression('deflate'));
+    const stream = new Blob([bytes as unknown as BlobPart]).stream().pipeThrough(new Decompression('deflate'));
     const inflated = new Uint8Array(await new Response(stream).arrayBuffer());
     return new TextDecoder('latin1').decode(inflated);
   } catch {
@@ -137,7 +137,7 @@ const inflatePdfStream = async (bytes: Uint8Array) => {
   }
 };
 
-const extractPdfText = async (file: File) => {
+export const extractPdfText = async (file: File) => {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const binary = bytesToBinaryString(bytes);
   const candidates = [binary];

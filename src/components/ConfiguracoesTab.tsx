@@ -5,7 +5,9 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { HistoryLog, PeriodoArquivado } from '../types';
+import { isSnapshotIntact } from '../utils/snapshotIntegrity';
 import { loadUsageSummary, type UsageSummary } from '../usageTelemetry';
+import { loadMasterDataGatewayStatus, type MasterDataGatewayStatus } from '../services/masterDataApi';
 import { 
   Settings, 
   Clock, 
@@ -25,7 +27,8 @@ import {
   FolderOpen,
   CalendarDays,
   BarChart3,
-  ShieldCheck
+  ShieldCheck,
+  Database
 } from 'lucide-react';
 
 interface ConfiguracoesTabProps {
@@ -109,6 +112,9 @@ export default function ConfiguracoesTab({
   const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
   const [usageError, setUsageError] = useState('');
+  const [masterDataStatus, setMasterDataStatus] = useState<MasterDataGatewayStatus | null>(null);
+  const [masterDataLoading, setMasterDataLoading] = useState(true);
+  const [masterDataError, setMasterDataError] = useState('');
 
   const refreshUsageSummary = async () => {
     setUsageLoading(true);
@@ -122,8 +128,22 @@ export default function ConfiguracoesTab({
     }
   };
 
+  const refreshMasterDataStatus = async () => {
+    setMasterDataLoading(true);
+    setMasterDataError('');
+    try {
+      setMasterDataStatus(await loadMasterDataGatewayStatus());
+    } catch (error) {
+      setMasterDataStatus(null);
+      setMasterDataError(error instanceof Error ? error.message : 'Não foi possível consultar o Supabase.');
+    } finally {
+      setMasterDataLoading(false);
+    }
+  };
+
   useEffect(() => {
     void refreshUsageSummary();
+    void refreshMasterDataStatus();
   }, []);
 
   const historyDateToIso = (timestamp: string) => {
@@ -166,6 +186,7 @@ export default function ConfiguracoesTab({
     { key: 'apontamentoRamos', label: 'Apontamento Ramos', description: 'Configuração dos ramos e registros externos.' },
     { key: 'ticketsJazida', label: 'Tickets Jazida', description: 'Tickets de liberação e recebimento.' },
     { key: 'materiais', label: 'Materiais', description: 'Cadastros e movimentações de materiais.' },
+    { key: 'estacas', label: 'Estacas', description: 'Lotes, notas fiscais, cravações, sobras e perdas.' },
     { key: 'partesDiarias', label: 'Partes Diárias', description: 'Partes diárias de equipamentos.' },
     { key: 'manutencao', label: 'Manutenção', description: 'Ordens de serviço de equipamentos.' },
     { key: 'periodosArquivados', label: 'Arquivos de períodos', description: 'Fechamentos guardados fora do dashboard.' },
@@ -179,6 +200,7 @@ export default function ConfiguracoesTab({
     'presenca',
     'apontamentoRamos',
     'materiais',
+    'estacas',
     'partesDiarias',
     'manutencao',
   ];
@@ -412,6 +434,38 @@ export default function ConfiguracoesTab({
             )}
           </div>
 
+          {/* PostgreSQL/Supabase gradual foundation */}
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-3 bg-emerald-500/10 text-emerald-300 rounded-xl"><Database className="w-5 h-5" /></div>
+                <div>
+                  <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Fundação PostgreSQL / Supabase</h2>
+                  <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
+                    Camada opcional para cadastros mestres, auditoria e importações. O Firebase continua ativo e nenhum fluxo atual é substituído.
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => void refreshMasterDataStatus()} disabled={masterDataLoading} className="h-9 px-3 rounded-lg border border-slate-700 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-50 flex items-center gap-1.5">
+                <RefreshCw className={`h-3.5 w-3.5 ${masterDataLoading ? 'animate-spin' : ''}`} /> Verificar
+              </button>
+            </div>
+            {masterDataLoading ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-5 text-xs text-slate-500">Verificando configuração segura...</div>
+            ) : masterDataStatus ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+                <div><span className="block text-[9px] uppercase font-bold text-slate-500">Status</span><strong className="text-xs text-emerald-300">✓ Gateway protegido</strong></div>
+                <div><span className="block text-[9px] uppercase font-bold text-slate-500">Organização</span><strong className="text-xs text-white">{masterDataStatus.organization.name}</strong></div>
+                <div><span className="block text-[9px] uppercase font-bold text-slate-500">Cadastros prontos</span><strong className="text-xs text-white">{masterDataStatus.supportedEntities.length}</strong></div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3">
+                <strong className="block text-xs text-amber-300">Modo opcional ainda não ativado</strong>
+                <span className="mt-1 block text-[10px] leading-relaxed text-slate-400">{masterDataError || 'Configure as variáveis do Supabase no Netlify quando iniciar a migração.'}</span>
+              </div>
+            )}
+          </div>
+
           {/* User Operating Manual (Perfect answers for user requests) */}
           <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
             <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono flex items-center gap-2">
@@ -639,6 +693,9 @@ export default function ConfiguracoesTab({
                           <strong className="block text-xs text-white">{archive.nome}</strong>
                           <span className="text-[10px] text-slate-500">
                             {formatIsoDate(archive.dataInicio)} até {formatIsoDate(archive.dataFim)} • {archiveTotal(archive)} registro(s)
+                          </span>
+                          <span className={`mt-1 block text-[9px] font-black uppercase tracking-wider ${isSnapshotIntact(archive) ? 'text-emerald-500' : 'text-rose-400'}`}>
+                            {isSnapshotIntact(archive) ? `Integridade confirmada${archive.checksum ? ` · ${archive.checksum}` : ''}` : 'Snapshot alterado após o fechamento'}
                           </span>
                         </div>
                         <span className="rounded bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-400">{formatIsoDate(archive.criadoEm.slice(0, 10))}</span>

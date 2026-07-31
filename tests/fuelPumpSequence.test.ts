@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { auditPumpContinuityByConvoy, findPreviousPumpForConvoy } from '../src/utils/fuelPumpSequence';
+import {
+  auditPumpContinuityByConvoy,
+  findLastRecordedPumpForConvoy,
+  findPreviousPumpForConvoy,
+} from '../src/utils/fuelPumpSequence';
 
 const records = [
   { id: 'a1', data: '2026-07-01', hora: '08:00', comboioId: 'A', bombaInicial: 1000, bombaFinal: 1100, quantidadeLitros: 100 },
@@ -33,4 +37,12 @@ test('leituras de bomba vazias não quebram a sequência conhecida do comboio', 
   ];
   assert.equal(findPreviousPumpForConvoy(withMissingReading, 'A', '2026-07-01', '08:45')?.id, 'a1');
   assert.deepEqual(auditPumpContinuityByConvoy(withMissingReading), []);
+});
+
+test('sugestão operacional usa o último lançamento gravado mesmo quando a data é retroativa', () => {
+  const outOfOrder = [
+    { ...records[2], criadoEm: '2026-07-20T10:00:00.000Z' },
+    { ...records[0], id: 'a-retroativo', bombaFinal: 1075, criadoEm: '2026-07-21T10:00:00.000Z' },
+  ];
+  assert.equal(findLastRecordedPumpForConvoy(outOfOrder, 'A')?.id, 'a-retroativo');
 });

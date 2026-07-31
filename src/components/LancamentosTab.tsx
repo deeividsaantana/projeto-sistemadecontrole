@@ -144,6 +144,7 @@ export default function LancamentosTab({
     empresa: ['empresa'],
     observacao: ['observacao', 'observação', 'obs', 'observacoes', 'observações'],
     responsavel: ['responsavel', 'responsável', 'operador', 'frentista', 'apontador'],
+    custoLitro: ['custo litro', 'custo por litro', 'valor unitario', 'valor unitário', 'valor litro', 'preco litro', 'preço litro'],
   };
 
   const FALLBACK_COLUMN_MAP: Record<string, number> = {
@@ -160,6 +161,7 @@ export default function LancamentosTab({
     horimetroInicial: 11,
     empresa: 12,
     observacao: 13,
+    custoLitro: 14,
   };
 
   const normalizeCompact = (value: string) => normalizeHeader(value).replace(/\s+/g, '');
@@ -402,6 +404,8 @@ export default function LancamentosTab({
           const horimetroInicialLido = parseNumberValue(getCell(row, 'horimetroInicial'));
           const kmInicial = Number.isFinite(kmInicialLido) ? kmInicialLido : 0;
           const horimetroInicial = Number.isFinite(horimetroInicialLido) ? horimetroInicialLido : 0;
+          const custoLitroLido = parseNumberValue(getCell(row, 'custoLitro'));
+          const custoLitro = Number.isFinite(custoLitroLido) && custoLitroLido > 0 ? custoLitroLido : 0;
 
           const frotaNorm = frotaTexto.toLowerCase();
           const comboioNorm = comboioTexto.toLowerCase();
@@ -421,6 +425,7 @@ export default function LancamentosTab({
             Responsável: responsavel || 'Não informado na planilha',
             Leitura: horimetroInicial > 0 ? `H ${horimetroInicial}` : kmInicial > 0 ? `KM ${kmInicial}` : '',
             Bomba: `${bombaInicial || ''} → ${bombaFinal || ''}`,
+            Custo: custoLitro > 0 ? `R$ ${custoLitro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/L` : '',
             Original: rawRowText,
           };
 
@@ -438,6 +443,7 @@ export default function LancamentosTab({
             fuelResolution.created && !fuelResolution.ambiguous ? `Tipo "${tipoCombustivelTexto}" não existia; cadastro criado pela importação.` : '',
             comboioTexto && !combVeic ? `Comboio "${comboioTexto}" não localizado de forma única; registro ficou sem vínculo de comboio.` : '',
             !comboioTexto ? 'Comboio vazio; conferir abastecedor.' : '',
+            getCell(row, 'custoLitro') && custoLitro <= 0 ? 'Custo por litro inválido; valor original preservado para conferência.' : '',
           ].filter(Boolean);
 
           // Checagem de bomba final (Prioridade 4)
@@ -479,6 +485,7 @@ export default function LancamentosTab({
               bombaInicial,
               quantidadeLitros: quantidadeFinal,
               bombaFinal,
+              custoLitro,
               tipoCombustivelId: comb?.id || '',
               comboioId: combVeic?.id || '',
               responsavel,
