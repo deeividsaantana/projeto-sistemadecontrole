@@ -33,6 +33,7 @@ const JSON_ARRAY_STORAGE_KEYS = new Set([
   'renea_ticket_link_drafts_v2',
   'renea_ticket_link_history_v1',
   'renea_offline_queue_fallback',
+  'renea_master_data_review_queue',
 ]);
 
 const JSON_OBJECT_STORAGE_KEYS = new Set([

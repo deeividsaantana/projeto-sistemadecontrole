@@ -24,6 +24,7 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'periodosArquivados',
   'notifications',
   'historyLogs',
+  'masterDataReviewQueue',
 ] as const;
 
 export type SystemBackupArrayKey = typeof SYSTEM_BACKUP_ARRAY_KEYS[number];

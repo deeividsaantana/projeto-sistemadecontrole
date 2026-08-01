@@ -15,6 +15,8 @@ import './masterDataContract.test';
 import './masterDataGateway.test';
 import './masterWorkbook.test';
 import './equipmentOperations.test';
+import './maintenanceOperations.test';
+import './materializeMasterData.test';
 import './supabaseSchema.test';
 import './supabaseMasterDataReview.test';
 import './supabaseEquipmentOperations.test';

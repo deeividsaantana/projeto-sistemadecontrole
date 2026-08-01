@@ -399,6 +399,23 @@ export interface OrdemServico {
   custoEstimado?: number;
   custoFinal?: number;
   observacao: string;
+  motivo?: string;
+  motoristaId?: string;
+  motoristaNome?: string;
+  horimetroEntrada?: number;
+  horimetroSaida?: number;
+  horasMaquina?: number;
+  horasEquipamento?: number;
+  horasParadas?: number;
+  disponibilidadePercentual?: number;
+  dataSaida?: string;
+  horaSaida?: string;
+  localSaida?: string;
+  dataChegada?: string;
+  horaChegada?: string;
+  localChegada?: string;
+  movimentacao?: 'Sem movimentação' | 'Mobilização' | 'Desmobilização';
+  saiuManutencaoEm?: string;
 }
 
 export type TurnoApontamento = 'Manhã' | 'Tarde' | 'Noite';

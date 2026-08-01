@@ -54,6 +54,7 @@ interface MasterDataReviewCenterProps {
   registrosMateriais: MaterialRegistro[];
   ramos: ApontamentoRamo[];
   equipamentos: Equipamento[];
+  onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
 }
 
 const stageSchema = z.object({
@@ -128,6 +129,7 @@ export default function MasterDataReviewCenter({
   registrosMateriais,
   ramos,
   equipamentos,
+  onApplyMasterWorkbook,
 }: MasterDataReviewCenterProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [analysis, setAnalysis] = useState<MasterWorkbookAnalysis | null>(null);
@@ -135,6 +137,8 @@ export default function MasterDataReviewCenter({
   const [globalFilter, setGlobalFilter] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyOutcome, setApplyOutcome] = useState<{ success: boolean; message: string } | null>(null);
 
   const existingIndex = useMemo(() => buildExistingMasterIndex({
     empresas,
@@ -232,6 +236,7 @@ export default function MasterDataReviewCenter({
     if (!file) return;
     setIsAnalyzing(true);
     setAnalysisError('');
+    setApplyOutcome(null);
     stageMutation.reset();
     try {
       const result = await analyzeMasterWorkbook(file, existingIndex);
@@ -271,18 +276,38 @@ export default function MasterDataReviewCenter({
     stageMutation.mutate(parsed.data);
   });
 
+  const applyMasterWorkbook = async () => {
+    if (!analysis || isApplying) return;
+    const confirmed = window.confirm(
+      'Atualizar os cadastros do ERP com as linhas novas e já correspondidas? Duplicidades e linhas inválidas continuarão guardadas para revisão.',
+    );
+    if (!confirmed) return;
+    setIsApplying(true);
+    setApplyOutcome(null);
+    try {
+      setApplyOutcome(await onApplyMasterWorkbook(analysis));
+    } catch (error) {
+      setApplyOutcome({
+        success: false,
+        message: error instanceof Error ? error.message : 'Não foi possível atualizar os cadastros mestres.',
+      });
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
   return (
     <section className="rounded-2xl border border-emerald-500/20 bg-slate-900 p-5 shadow-xl" id="master-data-review-center">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <div className="mb-2 flex items-center gap-2 text-emerald-300">
             <Database className="h-5 w-5" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Cadastros Mestres v2.3</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Cadastros Mestres v3.2</span>
           </div>
           <h2 className="text-lg font-extrabold text-white">Central de importação, aliases e duplicidades</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-400">
-            Analisa somente as abas mestre de empresas, fornecedores, materiais, locais, ramos e colaboradores.
-            Todas as linhas com conteúdo permanecem na revisão; equipamentos, veículos e identificadores SGE entram na fila sem promoção automática.
+            Analisa empresas, fornecedores, materiais, locais, ramos, colaboradores, equipamentos, veículos e identificadores SGE.
+            Depois da conferência, os cadastros válidos podem ser aplicados ao ERP; duplicidades e linhas inválidas continuam preservadas para revisão.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -330,6 +355,35 @@ export default function MasterDataReviewCenter({
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-amber-400">Duplicadas</span><strong className="text-xl text-white">{analysis.rows.filter(row => row.status === 'duplicate').length}</strong></div>
             <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-rose-400">Inválidas</span><strong className="text-xl text-white">{analysis.rows.filter(row => row.status === 'invalid').length}</strong></div>
           </div>
+
+          <div className="flex flex-col gap-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <strong className="text-sm text-emerald-100">Atualizar os cadastros usados pelo sistema</strong>
+              <p className="mt-1 max-w-3xl text-[10px] leading-relaxed text-slate-300">
+                Empresas, locais, colaboradores, materiais, ramos, equipamentos e veículos serão criados ou atualizados pela chave mestre.
+                Linhas incompletas, duplicadas e vínculos não localizados permanecem na fila de revisão, sem descarte.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={applyMasterWorkbook}
+              disabled={isApplying}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-xs font-black text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {isApplying ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+              {isApplying ? 'Atualizando...' : 'Aplicar Planilha Mestre'}
+            </button>
+          </div>
+
+          {applyOutcome && (
+            <div className={`rounded-xl border px-4 py-3 text-xs font-bold ${
+              applyOutcome.success
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                : 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+            }`}>
+              {applyOutcome.message}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
             {analysis.summaries.map(summary => (

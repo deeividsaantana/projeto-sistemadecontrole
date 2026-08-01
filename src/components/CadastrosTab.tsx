@@ -23,6 +23,7 @@ import {
   ParteDiariaEquipamento,
 } from '../types';
 import MasterDataReviewCenter from './MasterDataReviewCenter';
+import type { MasterWorkbookAnalysis } from '../masterData/masterWorkbook';
 import EquipmentOperationsPanel from './EquipmentOperationsPanel';
 import { validateEquipmentMasterRecord } from '../utils/equipmentOperations';
 
@@ -77,6 +78,7 @@ interface CadastrosTabProps {
   onSaveEtapaServico: (item: EtapaServico, isNew: boolean) => void;
   onDeleteEtapaServico: (id: string) => void;
   onImportCadastros: (target: SubTab, rows: Record<string, string>[]) => { success: boolean; message: string };
+  onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
 }
 
 export default function CadastrosTab({
@@ -109,7 +111,8 @@ export default function CadastrosTab({
   onDeleteProdutoLubrificacao,
   onSaveEtapaServico,
   onDeleteEtapaServico,
-  onImportCadastros
+  onImportCadastros,
+  onApplyMasterWorkbook
 }: CadastrosTabProps) {
 
   // Current subtab state
@@ -596,6 +599,7 @@ export default function CadastrosTab({
         registrosMateriais={materiaisRegistros}
         ramos={apontamentoRamos}
         equipamentos={equipamentos}
+        onApplyMasterWorkbook={onApplyMasterWorkbook}
       />
       
       {/* Upper header */}

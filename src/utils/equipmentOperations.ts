@@ -23,6 +23,25 @@ export interface EquipmentOperationalSummary {
   responsibleOperator: string;
 }
 
+export interface WorkOrderOperationalMetrics {
+  machineHours: number;
+  equipmentHours: number;
+  stoppedHours: number;
+  availabilityPercent: number | null;
+}
+
+export interface MaintenanceFleetSummary extends EquipmentOperationalSummary {
+  driverId: string;
+  driverName: string;
+  machineHours: number;
+  equipmentHours: number;
+  stoppedHours: number;
+  maintenanceAvailabilityPercent: number | null;
+  latestMaintenanceDate: string;
+  activeWorkOrder: OrdemServico | null;
+  workOrderCount: number;
+}
+
 const normalizeSearchText = (value: unknown) => String(value ?? '')
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
@@ -58,6 +77,35 @@ export const calculateAvailabilityPercent = (
   const unavailable = Math.max(0, Number(unavailableHours) || 0);
   const total = available + unavailable;
   return total > 0 ? Number(((available / total) * 100).toFixed(2)) : null;
+};
+
+const safePositiveNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+};
+
+export const deriveWorkOrderMetrics = (
+  workOrder: OrdemServico,
+): WorkOrderOperationalMetrics => {
+  const horimeterDifference = (
+    Number.isFinite(Number(workOrder.horimetroEntrada))
+    && Number.isFinite(Number(workOrder.horimetroSaida))
+  )
+    ? Math.max(0, Number(workOrder.horimetroSaida) - Number(workOrder.horimetroEntrada))
+    : 0;
+  const machineHours = safePositiveNumber(workOrder.horasMaquina) || horimeterDifference;
+  const equipmentHours = safePositiveNumber(workOrder.horasEquipamento) || machineHours;
+  const stoppedHours = safePositiveNumber(workOrder.horasParadas);
+  const availableHours = Math.max(0, equipmentHours - stoppedHours);
+  const calculatedAvailability = calculateAvailabilityPercent(availableHours, stoppedHours);
+  const explicitAvailability = normalizeAvailabilityTarget(workOrder.disponibilidadePercentual);
+
+  return {
+    machineHours: Number(machineHours.toFixed(2)),
+    equipmentHours: Number(equipmentHours.toFixed(2)),
+    stoppedHours: Number(stoppedHours.toFixed(2)),
+    availabilityPercent: equipmentHours > 0 ? calculatedAvailability : explicitAvailability,
+  };
 };
 
 export const validateEquipmentMasterRecord = (
@@ -154,3 +202,56 @@ export const buildEquipmentOperationalSummaries = (
     responsibleOperator: item.operadorResponsavelNome || latestPart?.operadorNome || '',
   };
 });
+
+export const buildMaintenanceFleetSummaries = (
+  equipment: Equipamento[],
+  dailyParts: ParteDiariaEquipamento[],
+  workOrders: OrdemServico[],
+): MaintenanceFleetSummary[] => {
+  const operationalSummaries = buildEquipmentOperationalSummaries(equipment, dailyParts, workOrders);
+
+  return operationalSummaries.map(summary => {
+    const equipmentOrders = workOrders
+      .filter(order => order.equipamentoId === summary.equipment.id)
+      .sort((first, second) => (
+        `${second.dataConclusao || second.dataAbertura}|${second.numero}`
+          .localeCompare(`${first.dataConclusao || first.dataAbertura}|${first.numero}`)
+      ));
+    const totals = equipmentOrders.reduce(
+      (accumulator, order) => {
+        const metrics = deriveWorkOrderMetrics(order);
+        return {
+          machineHours: accumulator.machineHours + metrics.machineHours,
+          equipmentHours: accumulator.equipmentHours + metrics.equipmentHours,
+          stoppedHours: accumulator.stoppedHours + metrics.stoppedHours,
+        };
+      },
+      { machineHours: 0, equipmentHours: 0, stoppedHours: 0 },
+    );
+    const maintenanceAvailabilityPercent = totals.equipmentHours > 0
+      ? calculateAvailabilityPercent(
+          Math.max(0, totals.equipmentHours - totals.stoppedHours),
+          totals.stoppedHours,
+        )
+      : summary.availabilityPercent;
+    const activeWorkOrder = equipmentOrders.find(order => (
+      order.status !== 'Concluída' && order.status !== 'Cancelada'
+    )) || null;
+
+    return {
+      ...summary,
+      belowTarget: maintenanceAvailabilityPercent !== null
+        && summary.targetPercent !== null
+        && maintenanceAvailabilityPercent < summary.targetPercent,
+      driverId: summary.equipment.operadorResponsavelId || summary.latestDailyPart?.operadorId || '',
+      driverName: summary.responsibleOperator || 'Sem motorista definido',
+      machineHours: Number(totals.machineHours.toFixed(2)),
+      equipmentHours: Number(totals.equipmentHours.toFixed(2)),
+      stoppedHours: Number(totals.stoppedHours.toFixed(2)),
+      maintenanceAvailabilityPercent,
+      latestMaintenanceDate: equipmentOrders[0]?.dataConclusao || equipmentOrders[0]?.dataAbertura || '',
+      activeWorkOrder,
+      workOrderCount: equipmentOrders.length,
+    };
+  });
+};

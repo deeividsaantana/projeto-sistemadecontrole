@@ -140,6 +140,8 @@ import { enrichFuelDataset } from './utils/fuelOperations';
 import { rotateWeakPublicLinkTokens } from './utils/publicLinkSecurity';
 import { commitStorageBatch, isReneaStoredValueValid, parseReneaStoredJson } from './utils/resilientStorage';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
+import { promoteMasterWorkbook } from './masterData/materializeMasterData';
+import type { MasterWorkbookAnalysis, MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
@@ -414,6 +416,7 @@ export default function App() {
         { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS) },
         { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
         { key: 'renea_periodos_arquivados', value: '[]' },
+        { key: 'renea_master_data_review_queue', value: '[]' },
         { key: 'renea_history_logs', value: JSON.stringify(INITIAL_HISTORY_LOGS) },
         { key: 'renea_notifications', value: '[]' },
       ].filter(entry => localStorage.getItem(entry.key) === null);
@@ -704,6 +707,11 @@ export default function App() {
         materiaisRegistros: customMateriaisRegistros,
         partesDiariasEquipamentos: customPartesDiariasEquipamentos,
         periodosArquivados: customPeriodosArquivados,
+        masterDataReviewQueue: parseStoredJson<MasterWorkbookReviewRow[]>(
+          localStorage.getItem('renea_master_data_review_queue'),
+          'renea_master_data_review_queue',
+          [],
+        ),
         estacaLotes: customControleEstacas.lotes,
         estacaCravacoes: customControleEstacas.cravacoes,
         notifications: customNotifications,
@@ -791,6 +799,7 @@ export default function App() {
           ['materiaisRegistros', 'renea_materiais_registros'],
           ['partesDiariasEquipamentos', 'renea_partes_diarias_equipamentos'],
           ['periodosArquivados', 'renea_periodos_arquivados'],
+          ['masterDataReviewQueue', 'renea_master_data_review_queue'],
           ['notifications', 'renea_notifications'],
           ['historyLogs', 'renea_history_logs'],
         ];
@@ -1615,6 +1624,76 @@ export default function App() {
     const incoming = incomingSimple as EtapaServico[];
     const result = mergeImportedRecords(etapas, incoming, item => normalizeImportText(item.nome));
     return persistImport('Etapas de Serviço', 'renea_etapas', setEtapas, result.next, incoming.length, result.created, result.updated);
+  };
+
+  const handleApplyMasterWorkbook = async (
+    analysis: MasterWorkbookAnalysis,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const promoted = promoteMasterWorkbook(analysis, {
+        empresas,
+        obras,
+        funcionarios,
+        materiais: materiaisCadastro,
+        ramos: apontamentoRamos,
+        equipamentos,
+      });
+      const previousReviewRows = parseStoredJson<MasterWorkbookReviewRow[]>(
+        localStorage.getItem('renea_master_data_review_queue'),
+        'renea_master_data_review_queue',
+        [],
+      );
+      const reviewIndex = new Map(previousReviewRows.map(row => [
+        `${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`,
+        row,
+      ]));
+      promoted.reviewRows.forEach(row => {
+        reviewIndex.set(`${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`, row);
+      });
+      const nextReviewRows = Array.from(reviewIndex.values());
+      const created = Object.values(promoted.counts).reduce((total, count) => total + count.created, 0);
+      const updated = Object.values(promoted.counts).reduce((total, count) => total + count.updated, 0);
+      const preserved = promoted.reviewRows.length;
+      const message = `Planilha Mestre aplicada: ${created} cadastro(s) criado(s), ${updated} atualizado(s) e ${preserved} linha(s) preservada(s) para revisão.`;
+      const nextHistory: HistoryLog[] = [{
+        id: `log-master-${Date.now()}`,
+        timestamp: new Date().toLocaleString('pt-BR'),
+        usuario: activeUserName,
+        acao: 'Criou',
+        tela: 'Cadastros Mestres',
+        descricao: `${message} Origem: ${analysis.sourceName}.`,
+      }, ...historyLogs];
+
+      commitStorageBatch(localStorage, [
+        { key: 'renea_empresas', value: JSON.stringify(promoted.empresas) },
+        { key: 'renea_obras', value: JSON.stringify(promoted.obras) },
+        { key: 'renea_funcionarios', value: JSON.stringify(promoted.funcionarios) },
+        { key: 'renea_materiais_cadastro', value: JSON.stringify(promoted.materiais) },
+        { key: 'renea_apontamento_ramos', value: JSON.stringify(promoted.ramos) },
+        { key: 'renea_equipamentos', value: JSON.stringify(promoted.equipamentos) },
+        { key: 'renea_master_data_review_queue', value: JSON.stringify(nextReviewRows) },
+        { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
+      ]);
+
+      setEmpresas(promoted.empresas);
+      setObras(promoted.obras);
+      setFuncionarios(promoted.funcionarios);
+      setMateriaisCadastro(promoted.materiais);
+      setApontamentoRamos(promoted.ramos);
+      setEquipamentos(promoted.equipamentos);
+      setHistoryLogs(nextHistory);
+      addNotification('Planilha Mestre atualizada', message, preserved > 0 ? 'warning' : 'success', 'Sistema Local');
+
+      if (isAutoSyncEnabled) {
+        window.setTimeout(() => void uploadLocalSnapshotToFirebase(), 150);
+      }
+      return { success: true, message };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Falha ao aplicar a Planilha Mestre.',
+      };
+    }
   };
 
   // Mantém exatamente o que foi digitado/importado e acrescenta somente campos
@@ -2608,6 +2687,7 @@ export default function App() {
     partesDiariasEquipamentos?: ParteDiariaEquipamento[];
     controleEstacas?: ControleEstacas;
     periodosArquivados?: PeriodoArquivado[];
+    masterDataReviewQueue?: MasterWorkbookReviewRow[];
     notifications?: AppNotification[];
     historyLogs?: HistoryLog[];
   }) => {
@@ -2637,6 +2717,11 @@ export default function App() {
     const nextPartesDiariasEquipamentos = imported.partesDiariasEquipamentos ?? partesDiariasEquipamentos;
     const nextControleEstacas = imported.controleEstacas ?? controleEstacas;
     const nextPeriodosArquivados = imported.periodosArquivados ?? periodosArquivados;
+    const nextMasterDataReviewQueue = imported.masterDataReviewQueue ?? parseStoredJson<MasterWorkbookReviewRow[]>(
+      localStorage.getItem('renea_master_data_review_queue'),
+      'renea_master_data_review_queue',
+      [],
+    );
     const nextNotifications = imported.notifications ?? notifications;
     const restoreLog: HistoryLog = {
       id: `log-${Date.now()}`,
@@ -2673,6 +2758,7 @@ export default function App() {
       { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(nextPartesDiariasEquipamentos) },
       { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
       { key: 'renea_periodos_arquivados', value: JSON.stringify(nextPeriodosArquivados) },
+      { key: 'renea_master_data_review_queue', value: JSON.stringify(nextMasterDataReviewQueue) },
       { key: 'renea_notifications', value: JSON.stringify(nextNotifications) },
       { key: 'renea_history_logs', value: JSON.stringify(logs) },
     ]);
@@ -2731,6 +2817,7 @@ export default function App() {
       { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS) },
       { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
       { key: 'renea_periodos_arquivados', value: '[]' },
+      { key: 'renea_master_data_review_queue', value: '[]' },
       { key: 'renea_notifications', value: '[]' },
       { key: 'renea_history_logs', value: JSON.stringify(INITIAL_HISTORY_LOGS) },
       { key: 'renea_colaboradores_planilha_v1', value: 'true' },
@@ -2783,6 +2870,7 @@ export default function App() {
       'renea_presencas_link', 'renea_historico_presencas', 'renea_apontamento_ramos',
       'renea_apontamento_ramo_registros', 'renea_materiais_cadastro', 'renea_materiais_registros',
       'renea_partes_diarias_equipamentos', 'renea_periodos_arquivados', 'renea_notifications',
+      'renea_master_data_review_queue',
     ];
     commitStorageBatch(localStorage, [
       ...clearedArrayKeys.map(key => ({ key, value: '[]' })),
@@ -3193,6 +3281,11 @@ export default function App() {
       partesDiariasEquipamentos,
       controleEstacas,
       periodosArquivados,
+      masterDataReviewQueue: parseStoredJson<MasterWorkbookReviewRow[]>(
+        localStorage.getItem('renea_master_data_review_queue'),
+        'renea_master_data_review_queue',
+        [],
+      ),
       notifications,
       historyLogs
     }, null, 2);
@@ -3248,6 +3341,24 @@ export default function App() {
       const newHistoricoPresencas = mergeById(historicoPresencas, parsed.historicoPresencas);
       const newApontamentoRamos = mergeById(apontamentoRamos, parsed.apontamentoRamos);
       const newMateriaisCadastro = mergeById(materiaisCadastro, parsed.materiaisCadastro);
+      const currentMasterReviewQueue = parseStoredJson<MasterWorkbookReviewRow[]>(
+        localStorage.getItem('renea_master_data_review_queue'),
+        'renea_master_data_review_queue',
+        [],
+      );
+      const reviewQueueIndex = new Map(currentMasterReviewQueue.map(row => [
+        `${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`,
+        row,
+      ]));
+      (Array.isArray(parsed.masterDataReviewQueue) ? parsed.masterDataReviewQueue : []).forEach(
+        (row: MasterWorkbookReviewRow) => {
+          reviewQueueIndex.set(
+            `${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`,
+            row,
+          );
+        },
+      );
+      const newMasterDataReviewQueue = Array.from(reviewQueueIndex.values());
 
       // Registros datados: só entram os que caem dentro do período escolhido
       const incomingAbastecimentos = (parsed.abastecimentos || []).filter((x: Abastecimento) => inRange(x.data));
@@ -3314,6 +3425,7 @@ export default function App() {
         { key: 'renea_materiais_registros', value: JSON.stringify(newMateriaisRegistros) },
         { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(newPartesDiariasEquipamentos) },
         { key: 'renea_controle_estacas', value: JSON.stringify(newControleEstacas) },
+        { key: 'renea_master_data_review_queue', value: JSON.stringify(newMasterDataReviewQueue) },
         { key: 'renea_history_logs', value: JSON.stringify(updatedHistory) },
       ]);
 
@@ -3885,6 +3997,7 @@ export default function App() {
                 onSaveEtapaServico={handleSaveEtapaServico}
                 onDeleteEtapaServico={handleDeleteEtapaServico}
                 onImportCadastros={handleImportCadastros}
+                onApplyMasterWorkbook={handleApplyMasterWorkbook}
               />
             )}
 
@@ -3957,9 +4070,14 @@ export default function App() {
             {activeTab === 'manutencao' && (
               <ManutencaoEquipamentosTab 
                 equipamentos={equipamentos}
+                funcionarios={funcionarios}
+                obras={obras}
+                empresas={empresas}
+                partesDiarias={partesDiariasEquipamentos}
                 ordensServico={ordensServico}
                 onSaveOrdemServico={handleSaveOrdemServico}
                 onDeleteOrdemServico={handleDeleteOrdemServico}
+                onSaveEquipamento={handleSaveEquipamento}
                 onUpdateEquipamentoStatus={handleUpdateEquipamentoStatus}
               />
             )}
