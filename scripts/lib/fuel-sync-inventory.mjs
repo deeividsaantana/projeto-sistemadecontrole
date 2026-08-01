@@ -1,4 +1,5 @@
-export const FUEL_SYNC_PARSER_VERSION = 2;
+export const FUEL_SYNC_PARSER_VERSION = 3;
+export const DEFAULT_FUEL_SYNC_PERIODS = Object.freeze([202608]);
 
 const MONTHS = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
 
@@ -16,6 +17,15 @@ export const fuelFilePeriodKey = name => {
 export const sortFuelFiles = (left, right) => fuelFilePeriodKey(left.name) - fuelFilePeriodKey(right.name)
   || left.name.localeCompare(right.name, 'pt-BR')
   || Number(left.stat?.mtimeMs || 0) - Number(right.stat?.mtimeMs || 0);
+
+export const filterFuelFilesByPeriods = (files, periods = DEFAULT_FUEL_SYNC_PERIODS) => {
+  const allowedPeriods = new Set(
+    (Array.isArray(periods) ? periods : [])
+      .map(Number)
+      .filter(period => Number.isInteger(period) && period >= 200001 && period <= 209912),
+  );
+  return files.filter(file => allowedPeriods.has(fuelFilePeriodKey(file.name)));
+};
 
 export const selectChangedFuelFiles = (files, config = {}) => {
   const previousHashes = Number(config.parserVersion) === FUEL_SYNC_PARSER_VERSION

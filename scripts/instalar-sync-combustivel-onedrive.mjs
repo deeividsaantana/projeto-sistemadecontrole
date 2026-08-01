@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { DEFAULT_FUEL_SYNC_PERIODS } from './lib/fuel-sync-inventory.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LOCAL_DIR = path.join(process.env.LOCALAPPDATA || ROOT, 'RENEA');
@@ -37,8 +38,9 @@ if (!folderPath || !fs.existsSync(folderPath)) {
 fs.mkdirSync(LOCAL_DIR, { recursive: true });
 fs.writeFileSync(CONFIG_PATH, `${JSON.stringify({
   ...previous,
-  version: 2,
+  version: 3,
   intervalMinutes: 10,
+  syncPeriods: [...DEFAULT_FUEL_SYNC_PERIODS],
   folderPath,
   endpoint,
   token,
@@ -64,4 +66,4 @@ if (create.status !== 0) throw new Error(`Não foi possível criar a tarefa auto
 
 spawnSync('schtasks.exe', ['/Run', '/TN', TASK_NAME], { encoding: 'utf8', windowsHide: true });
 console.log(`[OK] OneDrive encontrado em: ${folderPath}`);
-console.log('[OK] Sincronização de combustível instalada para executar a cada 10 minutos.');
+console.log('[OK] Sincronização exclusiva de Agosto/2026 instalada para executar a cada 10 minutos.');

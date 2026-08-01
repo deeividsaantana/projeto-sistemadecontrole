@@ -11,6 +11,13 @@
 - funcionamento completo sem serviço externo de IA;
 - trilha SQL para auditoria sem armazenar o documento bruto.
 
+## Ajuste operacional do OneDrive
+
+- sincronização automática restrita à planilha `FORNECIMENTO DE COMBUSTIVEL - AGOSTO2026.xlsx`;
+- alterações nas planilhas de junho e julho não geram novos lotes;
+- atualização do parser força um novo retrato somente de agosto;
+- registros manuais e importados fora do OneDrive permanecem preservados.
+
 ## Limite intencional
 
 Fotos e PDFs exclusivamente escaneados exigem texto OCR colado ou um provedor opcional. Nenhuma regra operacional depende desse provedor.

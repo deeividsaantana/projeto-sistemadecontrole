@@ -1071,7 +1071,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         <div className="flex items-start gap-3">
           <Cloud className={oneDriveFuelSyncStatus?.state === 'ready' ? 'text-emerald-300' : oneDriveFuelSyncStatus?.state === 'error' ? 'text-rose-300' : 'text-slate-500'} size={20} />
           <div>
-            <h2 className="text-sm font-bold text-white">OneDrive automático • a cada 10 minutos</h2>
+            <h2 className="text-sm font-bold text-white">OneDrive automático • somente Agosto/2026 • a cada 10 minutos</h2>
             <p className="mt-1 text-xs text-slate-400">
               {oneDriveFuelSyncStatus?.state === 'ready'
                 ? `${oneDriveFuelSyncStatus.fileName || 'Planilha localizada'} • ${oneDriveFuelSyncStatus.rowCount || 0} linha(s) • ${oneDriveFuelSyncStatus.warningCount || 0} para conferir`

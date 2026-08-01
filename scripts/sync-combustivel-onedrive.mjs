@@ -5,7 +5,9 @@ import process from 'node:process';
 import { readFuelWorkbook } from './lib/fuel-workbook-reader.mjs';
 import {
   buildFuelFileHashMap,
+  DEFAULT_FUEL_SYNC_PERIODS,
   FUEL_SYNC_PARSER_VERSION,
+  filterFuelFilesByPeriods,
   selectChangedFuelFiles,
   sortFuelFiles,
 } from './lib/fuel-sync-inventory.mjs';
@@ -47,16 +49,19 @@ try {
   if (!fs.existsSync(CONFIG_PATH)) throw new Error('Configuração local da sincronização não encontrada.');
   const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   if (!config.folderPath || !config.endpoint || !config.token) throw new Error('Configuração local da sincronização está incompleta.');
-  const files = fs.readdirSync(config.folderPath, { withFileTypes: true })
+  const monthlyFiles = fs.readdirSync(config.folderPath, { withFileTypes: true })
     .filter(entry => entry.isFile() && !entry.name.startsWith('~$') && /^FORNECIMENTO DE COMBUSTIVEL - .+\.xlsx$/i.test(entry.name))
     .map(entry => {
       const filePath = path.join(config.folderPath, entry.name);
       const stat = fs.statSync(filePath);
       const hash = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
       return { filePath, name: entry.name, stat, hash };
-    })
-    .sort(sortFuelFiles);
-  if (!files.length) throw new Error('Nenhuma planilha mensal de combustível foi encontrada na pasta configurada.');
+    });
+  const syncPeriods = Array.isArray(config.syncPeriods) && config.syncPeriods.length
+    ? config.syncPeriods.map(Number)
+    : [...DEFAULT_FUEL_SYNC_PERIODS];
+  const files = filterFuelFilesByPeriods(monthlyFiles, syncPeriods).sort(sortFuelFiles);
+  if (!files.length) throw new Error('A planilha FORNECIMENTO DE COMBUSTIVEL - AGOSTO2026.xlsx não foi encontrada na pasta configurada.');
 
   const changedFiles = selectChangedFuelFiles(files, config);
   if (!changedFiles.length) {
@@ -110,6 +115,8 @@ try {
     if (!response.ok || result.success !== true) throw new Error(result.message || `O site respondeu HTTP ${response.status}.`);
     writeConfig({
       ...config,
+      version: 3,
+      syncPeriods,
       parserVersion: FUEL_SYNC_PARSER_VERSION,
       fileHashes: buildFuelFileHashMap(files),
       lastFileHash: changedFiles.at(-1).hash,
