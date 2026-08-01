@@ -4,8 +4,9 @@ import {
   CondicaoApontamento,
   TurnoApontamento
 } from '../types';
+import { generateSecurePublicToken } from './publicLinkSecurity';
 
-export const APONTAMENTO_LINK_TOKEN = 'apontamentos-renea';
+export const APONTAMENTO_LINK_TOKEN = generateSecurePublicToken('apontamento');
 export const APONTAMENTO_EMPRESA_PADRAO = 'RENEA';
 
 export const APONTAMENTO_FUNCOES = [

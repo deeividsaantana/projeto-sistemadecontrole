@@ -25,10 +25,10 @@ import {
 import {
   APONTAMENTO_CLIMAS,
   APONTAMENTO_CONDICOES,
-  APONTAMENTO_LINK_TOKEN,
   APONTAMENTO_TURNOS,
   totalQuantidade
 } from '../utils/apontamentoRamosConfig';
+import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 
 interface ApontamentoRamosTabProps {
   ramos: ApontamentoRamo[];
@@ -47,7 +47,9 @@ const getTodayInput = () => {
   return local.toISOString().split('T')[0];
 };
 
-const buildApontamentoLink = () => `${window.location.origin}/apontamento-link/${encodeURIComponent(APONTAMENTO_LINK_TOKEN)}`;
+const buildApontamentoLink = (token: string) => token
+  ? `${window.location.origin}/apontamento-link/${encodeURIComponent(token)}`
+  : '';
 const apontamentoDuplicateKey = (registro: ApontamentoRamoRegistro) => `${registro.ramoId}|${registro.data}`;
 
 const downloadBlob = (blob: Blob, fileName: string) => {
@@ -72,6 +74,9 @@ export default function ApontamentoRamosTab({
   onSaveRegistro,
   onDeleteRegistro
 }: ApontamentoRamosTabProps) {
+  const currentLinkToken = ramos.find(ramo => ramo.status === 'ativo' && ramo.linkAtivo && ramo.token)?.token
+    || ramos.find(ramo => ramo.token)?.token
+    || generateSecurePublicToken('apontamento');
   const [subTab, setSubTab] = useState<SubTab>('dashboard');
   const [search, setSearch] = useState('');
   const [registroSearch, setRegistroSearch] = useState('');
@@ -87,14 +92,14 @@ export default function ApontamentoRamosTab({
     canteiroNome: '',
     ramoNome: '',
     responsavel: '',
-    token: APONTAMENTO_LINK_TOKEN,
+    token: currentLinkToken,
     status: 'ativo',
     linkAtivo: true,
     observacao: ''
   });
 
   const today = getTodayInput();
-  const generalLink = buildApontamentoLink();
+  const generalLink = buildApontamentoLink(currentLinkToken);
   const canteiros = useMemo(() => Array.from(new Set(ramos.map(item => item.canteiroNome))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [ramos]);
 
   const filteredRamos = useMemo(() => {
@@ -141,7 +146,7 @@ export default function ApontamentoRamosTab({
       canteiroNome: canteiros[0] || 'Rua Padre Eustáquio',
       ramoNome: '',
       responsavel: 'Apontador RENEA',
-      token: APONTAMENTO_LINK_TOKEN,
+      token: currentLinkToken,
       status: 'ativo',
       linkAtivo: true,
       observacao: ''
@@ -151,7 +156,7 @@ export default function ApontamentoRamosTab({
 
   const openEdit = (ramo: ApontamentoRamo) => {
     setEditingId(ramo.id);
-    setForm({ ...ramo, token: APONTAMENTO_LINK_TOKEN });
+    setForm({ ...ramo, token: ramo.token || currentLinkToken });
     setIsFormOpen(true);
   };
 
@@ -166,7 +171,7 @@ export default function ApontamentoRamosTab({
       canteiroNome: form.canteiroNome.trim(),
       ramoNome: form.ramoNome.trim(),
       responsavel: form.responsavel.trim(),
-      token: APONTAMENTO_LINK_TOKEN,
+      token: form.token || currentLinkToken,
       observacao: form.observacao?.trim()
     }, editingId === null);
     setIsFormOpen(false);
@@ -222,12 +227,12 @@ export default function ApontamentoRamosTab({
   };
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(buildApontamentoLink());
+    await navigator.clipboard.writeText(buildApontamentoLink(currentLinkToken));
     alert('Link copiado.');
   };
 
   const shareWhatsApp = () => {
-    const link = buildApontamentoLink();
+    const link = buildApontamentoLink(currentLinkToken);
     const message = `Apontamento RENEA - link geral por ramo\n\nAbra o link, escolha o ramo e preencha o apontamento diário:\n${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };

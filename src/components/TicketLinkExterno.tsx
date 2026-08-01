@@ -438,6 +438,19 @@ export default function TicketLinkExterno({
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white grid place-items-center p-6">
+        <div className="w-full max-w-lg rounded-xl border border-amber-500/30 bg-slate-900 p-6 text-center shadow-2xl">
+          <img src={reneaLogo} alt="RENEA" className="mx-auto h-9 w-auto" />
+          <h1 className="mt-6 text-xl font-black">Link de tickets indisponível</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-300">{loadError}</p>
+          <p className="mt-3 text-xs text-slate-500">Solicite ao responsável da obra o novo link protegido.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <header className="bg-slate-950 px-4 py-4 text-white shadow-lg">
@@ -463,7 +476,6 @@ export default function TicketLinkExterno({
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> {message}
               </div>
             )}
-            {loadError && <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">{loadError}</div>}
             {error && <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>}
 
             <div className="grid gap-3 sm:grid-cols-2">

@@ -40,6 +40,7 @@ import { buildJazidaDailyControl, getTicketControlDate, isTicketReturned } from 
 import { buildTravelOperationControl, formatTravelDuration } from '../utils/travelOperations';
 import { isReneaStoredValueValid, parseReneaStoredJson } from '../utils/resilientStorage';
 import { stageTravelDataset } from '../services/masterDataApi';
+import { getSecurePublicTicketLink } from '../publicApi';
 import { jsPDF } from 'jspdf';
 import {
   ApontamentoRamo,
@@ -718,7 +719,7 @@ export default function TicketsJazidaTab({
       if (fTipoMaterial && t.tipoMaterial !== fTipoMaterial) return false;
       if (fDestinoObra && t.destinoObra !== fDestinoObra) return false;
       if (fEmpresa && t.empresa !== fEmpresa) return false;
-      if (fStatus && !([flowStatus, qualityStatus].includes(fStatus))) return false;
+      if (fStatus && !([String(flowStatus), String(qualityStatus)].includes(fStatus))) return false;
 
       if (q) {
         const haystack = [
@@ -1186,12 +1187,12 @@ export default function TicketsJazidaTab({
   };
 
   const copyPublicLink = async () => {
-    const link = `${window.location.origin}/ticket-link/geral`;
     try {
+      const link = await getSecurePublicTicketLink();
       await navigator.clipboard.writeText(link);
-      setLinkMessage('Link copiado.');
-    } catch {
-      setLinkMessage(link);
+      setLinkMessage('Link protegido copiado.');
+    } catch (error) {
+      setLinkMessage(error instanceof Error ? error.message : 'Não foi possível gerar o link protegido.');
     }
     window.setTimeout(() => setLinkMessage(''), 3500);
   };
@@ -1470,7 +1471,7 @@ export default function TicketsJazidaTab({
         if (fTipoMaterial && t.tipoMaterial !== fTipoMaterial) return false;
         if (fDestinoObra && t.destinoObra !== fDestinoObra) return false;
         if (fEmpresa && t.empresa !== fEmpresa) return false;
-        if (fStatus && !([flowStatus, qualityStatus].includes(fStatus))) return false;
+        if (fStatus && !([String(flowStatus), String(qualityStatus)].includes(fStatus))) return false;
         if (q) {
           const haystack = [
             t.ticketNumero, t.prefixo, t.placa, t.familiaEquipamento, t.equipamentoNome,

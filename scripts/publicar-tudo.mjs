@@ -12,6 +12,7 @@ const TEMP_ENV_PATH = path.join(ROOT, '.env.publicar-tudo.local');
 const LOCAL_SECRET_DIR = path.join(process.env.LOCALAPPDATA || ROOT, 'RENEA');
 const INITIAL_PASSWORD_PATH = path.join(LOCAL_SECRET_DIR, 'senha-inicial-administrador.txt');
 const ONEDRIVE_SYNC_CONFIG_PATH = path.join(LOCAL_SECRET_DIR, 'onedrive-combustivel-sync.json');
+const PUBLIC_TICKET_TOKEN_PATH = path.join(LOCAL_SECRET_DIR, 'public-ticket-link-token.txt');
 const FIREBASE_PROJECT_ID = 'sistemarenea';
 const FIREBASE_DATABASE_URL = 'https://sistemarenea-default-rtdb.firebaseio.com';
 const FIREBASE_WEB_API_KEY = 'AIzaSyDGN9xLkhgsqDIMXSTU9G03LEeC4Jmjpo4';
@@ -345,6 +346,32 @@ const ensureOneDriveFuelSync = () => {
   });
 };
 
+const ensurePublicTicketAccess = () => {
+  fs.mkdirSync(LOCAL_SECRET_DIR, { recursive: true });
+  const ticketAccessToken = fs.existsSync(PUBLIC_TICKET_TOKEN_PATH)
+    ? fs.readFileSync(PUBLIC_TICKET_TOKEN_PATH, 'utf8').trim()
+    : crypto.randomBytes(32).toString('base64url');
+  if (ticketAccessToken.length < 24) throw new Error('O token local do link público de tickets é inválido.');
+  if (!fs.existsSync(PUBLIC_TICKET_TOKEN_PATH)) {
+    fs.writeFileSync(PUBLIC_TICKET_TOKEN_PATH, `${ticketAccessToken}\n`, { encoding: 'utf8', mode: 0o600 });
+  }
+  try {
+    fs.writeFileSync(
+      TEMP_ENV_PATH,
+      `${dotenvLine('RENEA_PUBLIC_TICKET_LINK_TOKEN', ticketAccessToken)}\n`,
+      { encoding: 'utf8', mode: 0o600 },
+    );
+    const importResult = runDlx('netlify-cli', ['env:import', path.basename(TEMP_ENV_PATH)], {
+      allowFailure: true,
+      capture: true,
+    });
+    if (importResult.status !== 0) throw new Error('Falha ao configurar o token protegido de tickets no Netlify.');
+  } finally {
+    if (fs.existsSync(TEMP_ENV_PATH)) fs.rmSync(TEMP_ENV_PATH, { force: true });
+  }
+  ok('Link público de tickets protegido por token rotacionável.');
+};
+
 const ensureNetlifyLink = () => {
   const statePath = path.join(ROOT, '.netlify', 'state.json');
   let linkedSiteId = '';
@@ -402,10 +429,13 @@ const runProjectValidation = () => {
   info('Validando TypeScript');
   if (packageTools.kind === 'pnpm') commandResult(process.execPath, ['node_modules/typescript/bin/tsc', '--noEmit']);
   else runPackage(['run', 'lint']);
+  info('Executando testes automatizados');
+  if (packageTools.kind === 'pnpm') commandResult(process.execPath, ['node_modules/tsx/dist/cli.mjs', 'tests/run.ts']);
+  else runPackage(['test']);
   info('Gerando o build de produção');
   if (packageTools.kind === 'pnpm') commandResult(process.execPath, ['node_modules/vite/bin/vite.js', 'build']);
   else runPackage(['run', 'build']);
-  ok('TypeScript e build aprovados.');
+  ok('TypeScript, testes e build aprovados.');
 };
 
 const runCheck = () => {
@@ -459,6 +489,7 @@ const publish = async () => {
 
   if (forceSetup || !fs.existsSync(LOCAL_CONFIG_PATH)) await configureFirstRun();
   ensureNetlifyLink();
+  ensurePublicTicketAccess();
   ensureOneDriveFuelSync();
 
   runProjectValidation();

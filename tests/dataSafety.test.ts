@@ -40,6 +40,25 @@ test('backup rejeita uma tabela conhecida com formato incorreto', () => {
   assert.match(describeInvalidBackup(validation), /ticketsJazida/);
 });
 
+test('backup restaurado preserva linhas operacionais sem descarte', () => {
+  const backup = {
+    empresas: [{ id: 1, nome: 'RENEA' }],
+    equipamentos: [{ id: 10, prefixo: 'CB-01' }],
+    abastecimentos: [
+      { id: 100, prefixo: '', quantidade: 0, status: 'Erro de importação' },
+      { id: 101, prefixo: 'CB-01', quantidade: 25, status: 'OK' },
+    ],
+    ticketsJazida: [{ id: 200, ticketNumero: '', status: 'Pendente' }],
+  };
+  const restored = JSON.parse(JSON.stringify(backup));
+  const validation = validateSystemBackup(restored);
+
+  assert.equal(validation.valid, true);
+  assert.deepEqual(restored, backup);
+  assert.equal(restored.abastecimentos.length, 2);
+  assert.equal(restored.ticketsJazida.length, 1);
+});
+
 test('gravação em lote reverte as chaves anteriores quando uma escrita falha', () => {
   const values = new Map<string, string>([['a', 'anterior-a'], ['b', 'anterior-b']]);
   const storage = {

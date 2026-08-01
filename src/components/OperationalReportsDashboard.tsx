@@ -646,7 +646,10 @@ export default function OperationalReportsDashboard({
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
             <PanelTitle title={mode === 'combustivel' ? 'Ranking por frota' : 'Materiais movimentados'} detail={mode === 'combustivel' ? 'Equipamentos com maior volume abastecido.' : 'Distribuição dos tickets por tipo de material.'} />
-            <div className="h-80"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={(mode === 'combustivel' ? fuelAnalytics.fleets : jazidaAnalytics.materials).slice(0, 8)} margin={{ top: 0, right: 12, left: 10, bottom: 0 }}><CartesianGrid stroke="#1e293b" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={{ fill: '#64748b', fontSize: 9 }} axisLine={false} tickLine={false} /><YAxis dataKey={mode === 'combustivel' ? 'name' : 'name'} type="category" width={86} tick={{ fill: '#94a3b8', fontSize: 9 }} axisLine={false} tickLine={false} /><Tooltip contentStyle={CHART_TOOLTIP} formatter={(value: number) => [mode === 'combustivel' ? `${number(value, 2)} L` : `${number(value)} ticket(s)`, 'Total']} /><Bar dataKey={mode === 'combustivel' ? 'liters' : 'tickets'} fill="#10b981" radius={[0, 6, 6, 0]} /></BarChart></ResponsiveContainer></div>
+            <div className="h-80"><ResponsiveContainer width="100%" height="100%"><BarChart layout="vertical" data={(mode === 'combustivel'
+              ? fuelAnalytics.fleets.map(row => ({ name: row.name, total: row.liters }))
+              : jazidaAnalytics.materials.map(row => ({ name: row.name, total: row.tickets }))
+            ).slice(0, 8)} margin={{ top: 0, right: 12, left: 10, bottom: 0 }}><CartesianGrid stroke="#1e293b" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={{ fill: '#64748b', fontSize: 9 }} axisLine={false} tickLine={false} /><YAxis dataKey="name" type="category" width={86} tick={{ fill: '#94a3b8', fontSize: 9 }} axisLine={false} tickLine={false} /><Tooltip contentStyle={CHART_TOOLTIP} formatter={(value: number) => [mode === 'combustivel' ? `${number(value, 2)} L` : `${number(value)} ticket(s)`, 'Total']} /><Bar dataKey="total" fill="#10b981" radius={[0, 6, 6, 0]} /></BarChart></ResponsiveContainer></div>
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 lg:col-span-2 xl:col-span-1">

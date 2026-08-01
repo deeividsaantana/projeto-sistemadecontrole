@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   getApontamentoTokenFromUrl,
   getPresenceTokenFromUrl,
+  getTicketAccessTokenFromUrl,
   isTicketLinkUrl,
 } from '../src/app/routing/publicRoutes';
 
@@ -28,4 +29,15 @@ test('reconhece links públicos de ticket por rota ou query string', () => {
   assert.equal(isTicketLinkUrl({ pathname: '/ticket-link/novo', search: '' }), true);
   assert.equal(isTicketLinkUrl({ pathname: '/', search: '?tickets=1' }), true);
   assert.equal(isTicketLinkUrl({ pathname: '/', search: '' }), false);
+});
+
+test('extrai o token protegido do link público de tickets', () => {
+  assert.equal(
+    getTicketAccessTokenFromUrl({ pathname: '/ticket-link/ticket%2Dseguro', search: '' }),
+    'ticket-seguro',
+  );
+  assert.equal(
+    getTicketAccessTokenFromUrl({ pathname: '/', search: '?tickets=convite%20obra' }),
+    'convite obra',
+  );
 });

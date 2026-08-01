@@ -20,7 +20,8 @@ test('perfis preservam as restrições atuais', () => {
   assert.equal(ROLE_ACCESS.operador.includes('configuracoes'), false);
 });
 
-test('claim desconhecida mantém compatibilidade administrativa', () => {
+test('claim desconhecida aplica privilégio mínimo', () => {
   assert.equal(normalizeUserRole('gestor'), 'gestor');
-  assert.equal(normalizeUserRole('perfil-antigo'), 'admin');
+  assert.equal(normalizeUserRole('perfil-antigo'), 'leitura');
+  assert.equal(normalizeUserRole(undefined), 'leitura');
 });

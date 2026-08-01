@@ -536,7 +536,10 @@ const cellToText = (value: ExcelJS.CellValue) => {
     if ('text' in value) return String(value.text ?? '').trim();
     if ('result' in value) return String(value.result ?? '').trim();
     if ('richText' in value) return value.richText.map(item => item.text).join('').trim();
-    if ('hyperlink' in value) return String(value.text || value.hyperlink || '').trim();
+    if ('hyperlink' in value) {
+      const hyperlink = value as unknown as ExcelJS.CellHyperlinkValue;
+      return String(hyperlink.text || hyperlink.hyperlink || '').trim();
+    }
   }
   return String(value).trim();
 };

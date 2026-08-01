@@ -33,3 +33,12 @@ export const isTicketLinkUrl = (location?: PublicLocation) => {
   return resolvedLocation.pathname.startsWith('/ticket-link')
     || new URLSearchParams(resolvedLocation.search).has('tickets');
 };
+
+export const getTicketAccessTokenFromUrl = (location?: PublicLocation) => {
+  const resolvedLocation = getLocation(location);
+  if (!resolvedLocation) return '';
+  const byQuery = new URLSearchParams(resolvedLocation.search).get('tickets');
+  if (byQuery) return decodeURIComponent(byQuery);
+  const match = resolvedLocation.pathname.match(/\/ticket-link\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+};

@@ -29,6 +29,7 @@ import {
   ParteDiariaEquipamento
 } from '../types';
 import { APONTAMENTO_LINK_TOKEN } from './apontamentoRamosConfig';
+import { generateSecurePublicToken } from './publicLinkSecurity';
 import {
   IMPORTED_SEED_EQUIPAMENTOS,
   IMPORTED_SEED_TICKETS_JAZIDA
@@ -506,7 +507,7 @@ export const INITIAL_PRESENCAS: ListaPresenca[] = [
   }
 ];
 
-export const INITIAL_GRUPOS_EQUIPES: GrupoEquipe[] = [
+const INITIAL_GRUPOS_EQUIPES_LEGACY: GrupoEquipe[] = [
   {
     id: "grp-renilson-dos-santos-terraplenagem-1",
     nome: "TERRAPLENAGEM - RENILSON DOS SANTOS",
@@ -911,6 +912,11 @@ export const INITIAL_GRUPOS_EQUIPES: GrupoEquipe[] = [
     updatedAt: '2026-06-30T07:00:00.000Z'
   }
 ];
+
+export const INITIAL_GRUPOS_EQUIPES: GrupoEquipe[] = INITIAL_GRUPOS_EQUIPES_LEGACY.map(group => ({
+  ...group,
+  token: generateSecurePublicToken('presenca'),
+}));
 
 export const INITIAL_PRESENCAS_LINK: PresencaApontamento[] = [];
 

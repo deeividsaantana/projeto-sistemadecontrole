@@ -110,6 +110,7 @@ import {
   formatFirebaseSyncError,
   getFirebaseConnectionStatus,
   uploadFirebaseBackup,
+  type FirebaseCloudData,
 } from './firebaseCloudSync';
 import {
   deletePublicTicket,
@@ -130,11 +131,13 @@ import {
   searchPendingPublicTickets,
   submitPublicApontamento,
   submitPublicPresence,
+  validatePublicTicketAccess,
   type PublicApontamentoPayload,
 } from './publicApi';
 import { loadOneDriveFuelPayload, type OneDriveFuelSyncStatus } from './oneDriveFuelSync';
 import { materializeOneDriveFuelRows } from './utils/oneDriveFuelImport';
 import { enrichFuelDataset } from './utils/fuelOperations';
+import { rotateWeakPublicLinkTokens } from './utils/publicLinkSecurity';
 import { commitStorageBatch, isReneaStoredValueValid, parseReneaStoredJson } from './utils/resilientStorage';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
 import { recordTabUsage } from './usageTelemetry';
@@ -148,6 +151,7 @@ import {
 import {
   getApontamentoTokenFromUrl,
   getPresenceTokenFromUrl,
+  getTicketAccessTokenFromUrl,
   isTicketLinkUrl,
 } from './app/routing/publicRoutes';
 import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
@@ -344,8 +348,12 @@ export default function App() {
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
   const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
   const [externalTicketLoadError, setExternalTicketLoadError] = useState('');
+  const [publicLinksRotationPending, setPublicLinksRotationPending] = useState(
+    () => localStorage.getItem('renea_public_links_rotation_pending_v31') === 'true',
+  );
   const externalPresenceToken = getPresenceTokenFromUrl();
   const externalApontamentoToken = getApontamentoTokenFromUrl();
+  const externalTicketAccessToken = getTicketAccessTokenFromUrl();
   const externalTicketLink = isTicketLinkUrl();
 
   useEffect(() => {
@@ -479,6 +487,16 @@ export default function App() {
       const parsedTicketsJazida = parseStoredJson(savedTicketsJazida, 'renea_tickets_jazida', INITIAL_TICKETS_JAZIDA);
       const parsedMateriaisCadastro = parseStoredJson(savedMateriaisCadastro, 'renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO);
       const parsedMateriaisRegistros = parseStoredJson(savedMateriaisRegistros, 'renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS);
+      const parsedGruposEquipe = shouldMigratePresencePeople
+        ? INITIAL_GRUPOS_EQUIPES
+        : parseStoredJson(savedGruposEquipe, 'renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES);
+      const parsedApontamentoRamos = parseStoredJson(savedApontamentoRamos, 'renea_apontamento_ramos', INITIAL_APONTAMENTO_RAMOS);
+      const mergedApontamentoRamos = mergeSeedRecords(
+        parsedApontamentoRamos,
+        INITIAL_APONTAMENTO_RAMOS,
+        ramo => `${ramo.canteiroNome.trim().toLowerCase()}|${ramo.ramoNome.trim().toLowerCase()}`,
+      );
+      const securedPublicLinks = rotateWeakPublicLinkTokens(parsedGruposEquipe, mergedApontamentoRamos);
       const loadedEquipamentos = shouldMigrateSpreadsheetSeed
         ? mergeSeedRecords(parsedEquipamentos, INITIAL_EQUIPAMENTOS, item => item.prefixo.trim().toLowerCase())
         : parsedEquipamentos;
@@ -509,18 +527,10 @@ export default function App() {
       setRdos(parseStoredJson(savedRdos, 'renea_rdos', INITIAL_RDOS));
       setListasPresenca(shouldMigratePresencePeople ? INITIAL_PRESENCAS : parseStoredJson(savedListasPresenca, 'renea_listas_presenca', INITIAL_PRESENCAS));
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
-      setGruposEquipe(shouldMigratePresencePeople ? INITIAL_GRUPOS_EQUIPES : parseStoredJson(savedGruposEquipe, 'renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES));
+      setGruposEquipe(securedPublicLinks.gruposEquipe);
       setPresencasLink(parseStoredJson(savedPresencasLink, 'renea_presencas_link', INITIAL_PRESENCAS_LINK));
       setHistoricoPresencas(parseStoredJson(savedHistoricoPresencas, 'renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS));
-      const parsedApontamentoRamos = parseStoredJson(savedApontamentoRamos, 'renea_apontamento_ramos', INITIAL_APONTAMENTO_RAMOS);
-      const shouldResetApontamentoRamos =
-        !savedApontamentoRamos ||
-        parsedApontamentoRamos.some(ramo => ramo.token !== INITIAL_APONTAMENTO_RAMOS[0]?.token) ||
-        !INITIAL_APONTAMENTO_RAMOS.every(initial =>
-          parsedApontamentoRamos.some(ramo => ramo.ramoNome === initial.ramoNome && ramo.canteiroNome === initial.canteiroNome)
-        );
-      const loadedApontamentoRamos = shouldResetApontamentoRamos ? INITIAL_APONTAMENTO_RAMOS : parsedApontamentoRamos;
-      setApontamentoRamos(loadedApontamentoRamos);
+      setApontamentoRamos(securedPublicLinks.apontamentoRamos);
       setApontamentoRamoRegistros(parseStoredJson(savedApontamentoRamoRegistros, 'renea_apontamento_ramo_registros', INITIAL_APONTAMENTO_RAMO_REGISTROS));
       setMateriaisCadastro(loadedMateriaisCadastro);
       setMateriaisRegistros(loadedMateriaisRegistros);
@@ -533,13 +543,18 @@ export default function App() {
       if (shouldMigratePresencePeople) {
         localStorage.setItem('renea_funcionarios', JSON.stringify(INITIAL_FUNCIONARIOS));
         localStorage.setItem('renea_listas_presenca', JSON.stringify(INITIAL_PRESENCAS));
-        localStorage.setItem('renea_grupos_equipes', JSON.stringify(INITIAL_GRUPOS_EQUIPES));
+        localStorage.setItem('renea_grupos_equipes', JSON.stringify(securedPublicLinks.gruposEquipe));
         localStorage.setItem('renea_presencas_link', JSON.stringify(INITIAL_PRESENCAS_LINK));
         localStorage.setItem('renea_historico_presencas', JSON.stringify(INITIAL_HISTORICO_PRESENCAS));
         localStorage.setItem('renea_colaboradores_planilha_v1', 'true');
       }
-      if (shouldResetApontamentoRamos) {
-        localStorage.setItem('renea_apontamento_ramos', JSON.stringify(loadedApontamentoRamos));
+      if (!savedApontamentoRamos || securedPublicLinks.changed || mergedApontamentoRamos.length !== parsedApontamentoRamos.length) {
+        localStorage.setItem('renea_apontamento_ramos', JSON.stringify(securedPublicLinks.apontamentoRamos));
+      }
+      if (securedPublicLinks.changed) {
+        localStorage.setItem('renea_grupos_equipes', JSON.stringify(securedPublicLinks.gruposEquipe));
+        localStorage.setItem('renea_public_links_rotation_pending_v31', 'true');
+        setPublicLinksRotationPending(true);
       }
       if (!savedApontamentoRamoRegistros) {
         localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(INITIAL_APONTAMENTO_RAMO_REGISTROS));
@@ -728,9 +743,22 @@ export default function App() {
     try {
       const backup = await downloadFirebaseBackup(db);
       if (backup.data) {
-        const data = backup.data;
-        const validation = validateSystemBackup(data, false);
+        const downloadedData = backup.data;
+        const validation = validateSystemBackup(downloadedData, false);
         if (!validation.valid) throw new Error(describeInvalidBackup(validation));
+        const securedPublicLinks = rotateWeakPublicLinkTokens(
+          Array.isArray(downloadedData.gruposEquipe) ? downloadedData.gruposEquipe : [],
+          Array.isArray(downloadedData.apontamentoRamos) ? downloadedData.apontamentoRamos : [],
+        );
+        const data: FirebaseCloudData = {
+          ...downloadedData,
+          gruposEquipe: securedPublicLinks.gruposEquipe,
+          apontamentoRamos: securedPublicLinks.apontamentoRamos,
+        };
+        if (securedPublicLinks.changed) {
+          localStorage.setItem('renea_public_links_rotation_pending_v31', 'true');
+          setPublicLinksRotationPending(true);
+        }
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
         const nowStr = Number.isNaN(syncDate.getTime())
@@ -963,12 +991,19 @@ export default function App() {
 
   useEffect(() => {
     if (!externalTicketLink) return;
-    // O link consulta liberações sob demanda pela API e mantém rascunhos e
-    // comprovantes do próprio aparelho no armazenamento local.
     setExternalPublicTickets([]);
-    setIsExternalTicketLoading(false);
     setExternalTicketLoadError('');
-  }, [externalTicketLink]);
+    setIsExternalTicketLoading(true);
+    validatePublicTicketAccess(externalTicketAccessToken)
+      .catch(error => {
+        setExternalTicketLoadError(
+          error instanceof Error
+            ? error.message
+            : 'Este link de tickets é inválido, expirou ou foi substituído.',
+        );
+      })
+      .finally(() => setIsExternalTicketLoading(false));
+  }, [externalTicketAccessToken, externalTicketLink]);
 
   useEffect(() => {
     if (!isLoggedIn || externalTicketLink) return;
@@ -1761,7 +1796,7 @@ export default function App() {
     item: TicketJazida,
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      const result = await savePublicTicketViaApi(item);
+      const result = await savePublicTicketViaApi(item, externalTicketAccessToken);
       setExternalPublicTickets(current => mergeTicketCollections(current, [result.ticket]));
       return {
         success: true,
@@ -1992,6 +2027,40 @@ export default function App() {
       getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
     );
   };
+
+  useEffect(() => {
+    if (!publicLinksRotationPending || !isLoggedIn || externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
+    let cancelled = false;
+    let running = false;
+    const publishRotation = async () => {
+      if (cancelled || running || !navigator.onLine) return;
+      running = true;
+      const result = await uploadLocalSnapshotToFirebase();
+      running = false;
+      if (cancelled || !result.success) return;
+      localStorage.removeItem('renea_public_links_rotation_pending_v31');
+      setPublicLinksRotationPending(false);
+      addNotification(
+        'Links públicos protegidos',
+        'Links antigos previsíveis foram substituídos. Compartilhe os novos endereços de presença e apontamento.',
+        'warning',
+        'Firebase Cloud',
+      );
+    };
+    const timer = window.setTimeout(() => void publishRotation(), 1_000);
+    window.addEventListener('online', publishRotation);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener('online', publishRotation);
+    };
+  }, [
+    publicLinksRotationPending,
+    isLoggedIn,
+    externalTicketLink,
+    externalPresenceToken,
+    externalApontamentoToken,
+  ]);
 
   useEffect(() => {
     if (!isLoggedIn || externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
@@ -3291,9 +3360,9 @@ export default function App() {
           tickets={externalPublicTickets}
           isLoadingCloud={isExternalTicketLoading}
           loadError={externalTicketLoadError}
-          onReserveNumber={reservePublicTicketNumberViaApi}
+          onReserveNumber={() => reservePublicTicketNumberViaApi(externalTicketAccessToken)}
           onSaveTicket={handleSaveTicketLink}
-          onSearchPendingReceipts={searchPendingPublicTickets}
+          onSearchPendingReceipts={query => searchPendingPublicTickets(query, externalTicketAccessToken)}
         />
       </Suspense>
     );

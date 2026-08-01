@@ -10,6 +10,7 @@ import type {
   TicketJazida,
   TurnoApontamento,
 } from './types';
+import { auth } from './firebase';
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -96,25 +97,52 @@ export const submitPublicApontamento = async (
   return { success: true, message: response.message || 'Apontamento enviado com segurança.' };
 };
 
-export const searchPendingPublicTickets = async (query: string): Promise<TicketJazida[]> => {
+const ticketAccessHeaders = (accessToken: string) => ({
+  'X-Renea-Ticket-Access': accessToken,
+});
+
+export const validatePublicTicketAccess = async (accessToken: string) => {
+  await callPublicApi<{ valid: true }>('/.netlify/functions/public-tickets?action=validate', {
+    headers: ticketAccessHeaders(accessToken),
+  });
+};
+
+export const getSecurePublicTicketLink = async () => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Faça login novamente para gerar o link público.');
+  const idToken = await user.getIdToken();
+  const response = await callPublicApi<{ path: string }>('/.netlify/functions/public-tickets?action=link', {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!response.data?.path) throw new Error('O servidor não retornou o link protegido.');
+  return `${window.location.origin}${response.data.path}`;
+};
+
+export const searchPendingPublicTickets = async (
+  query: string,
+  accessToken: string,
+): Promise<TicketJazida[]> => {
   const response = await callPublicApi<{ tickets: TicketJazida[] }>(
     `/.netlify/functions/public-tickets?q=${encodeURIComponent(query)}`,
+    { headers: ticketAccessHeaders(accessToken) },
   );
   return response.data?.tickets || [];
 };
 
-export const reservePublicTicketNumberViaApi = async (): Promise<string> => {
+export const reservePublicTicketNumberViaApi = async (accessToken: string): Promise<string> => {
   const response = await callPublicApi<{ ticketNumero: string }>('/.netlify/functions/public-tickets', {
     method: 'POST',
+    headers: ticketAccessHeaders(accessToken),
     body: JSON.stringify({ action: 'reserve' }),
   });
   if (!response.data?.ticketNumero) throw new Error('Número de ticket não retornado.');
   return response.data.ticketNumero;
 };
 
-export const savePublicTicketViaApi = async (ticket: TicketJazida) => {
+export const savePublicTicketViaApi = async (ticket: TicketJazida, accessToken: string) => {
   const response = await callPublicApi<{ ticket: TicketJazida }>('/.netlify/functions/public-tickets', {
     method: 'POST',
+    headers: ticketAccessHeaders(accessToken),
     body: JSON.stringify({ action: 'save', ticket }),
   });
   return {

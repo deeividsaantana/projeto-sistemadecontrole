@@ -18,7 +18,11 @@ interface ApplicationErrorBoundaryState {
   error: Error | null;
 }
 
-class ApplicationErrorBoundary extends Component<PropsWithChildren, ApplicationErrorBoundaryState> {
+interface ApplicationErrorBoundaryProps {
+  children?: ReactNode;
+}
+
+class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, ApplicationErrorBoundaryState> {
   state: ApplicationErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): ApplicationErrorBoundaryState {

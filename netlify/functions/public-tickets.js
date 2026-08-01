@@ -7,8 +7,13 @@ import {
   jsonResponse,
   parseJsonBody,
   requestIpHash,
+  requireStaffUser,
   serverTimestamp,
 } from './_shared/firebase-admin.js';
+import {
+  buildPublicTicketPath,
+  requirePublicTicketAccess,
+} from './_shared/public-access.js';
 
 const TICKETS_COLLECTION = 'sistemarenea_public_tickets';
 const META_COLLECTION = 'sistemarenea_public_meta';
@@ -17,6 +22,7 @@ const TICKET_DOCUMENT_PREFIX = 'ticket_public_';
 const VALID_TYPES = new Set(['Liberação', 'Recebimento']);
 const VALID_FLOW = new Set(['Rascunho', 'Enviado']);
 const VALID_UNITS = new Set(['m³', 'caçamba']);
+const PUBLIC_TICKET_ACCESS_TOKEN = String(process.env.RENEA_PUBLIC_TICKET_LINK_TOKEN || '');
 
 const safeDocumentId = value => cleanString(value, 160).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 140);
 
@@ -217,8 +223,23 @@ const saveTicket = async (database, event, rawTicket) => {
 
 export const handler = async event => {
   try {
-    const database = getAdminDb();
     const method = String(event.httpMethod || 'GET').toUpperCase();
+    const action = String(event.queryStringParameters?.action || '');
+    if (method === 'GET' && action === 'link') {
+      await requireStaffUser(event);
+      return jsonResponse(200, {
+        success: true,
+        data: { path: buildPublicTicketPath(PUBLIC_TICKET_ACCESS_TOKEN) },
+      });
+    }
+    if (method === 'GET' && action === 'validate') {
+      requirePublicTicketAccess(event, PUBLIC_TICKET_ACCESS_TOKEN);
+      return jsonResponse(200, { success: true, data: { valid: true } });
+    }
+
+    const body = method === 'POST' ? parseJsonBody(event, 2_000_000) : {};
+    requirePublicTicketAccess(event, PUBLIC_TICKET_ACCESS_TOKEN, body);
+    const database = getAdminDb();
     await enforceRateLimit(database, event, `public-tickets-${method}`, method === 'GET' ? 180 : 60, method === 'GET' ? 300 : 3600);
 
     if (method === 'GET') {
@@ -226,7 +247,6 @@ export const handler = async event => {
       return jsonResponse(200, { success: true, data: { tickets: results } });
     }
     if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST' });
-    const body = parseJsonBody(event, 2_000_000);
     if (body.action === 'reserve') {
       const number = await reserveNumber(database);
       return jsonResponse(201, { success: true, data: { ticketNumero: number } });

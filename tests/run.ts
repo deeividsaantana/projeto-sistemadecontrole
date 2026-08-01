@@ -9,6 +9,7 @@ import './dataSafety.test';
 import './fuelWorkbookReader.test';
 import './fuelSyncInventory.test';
 import './publicRoutes.test';
+import './publicLinkSecurity.test';
 import './navigation.test';
 import './masterDataContract.test';
 import './masterDataGateway.test';

@@ -88,5 +88,5 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
 export const normalizeUserRole = (value: unknown): UserRole => (
   value === 'gestor' || value === 'operador' || value === 'leitura' || value === 'admin'
     ? value
-    : 'admin'
+    : 'leitura'
 );
