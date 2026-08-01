@@ -9,6 +9,10 @@ export interface Empresa {
   cnpj: string;
   telefone: string;
   responsavel: string;
+  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA'>;
+  status?: 'ATIVO' | 'INATIVO';
+  criadoEm?: string;
+  atualizadoEm?: string;
 }
 
 export interface ObraLocal {
@@ -61,6 +65,15 @@ export interface Funcionario {
   liderNome?: string;
   area?: string;
   responsavelArea?: string;
+  divisao?: string;
+  secao?: string;
+  status?: 'ATIVO' | 'INATIVO' | 'FÉRIAS' | 'AFASTADO' | 'DESMOBILIZADO';
+  dataMobilizacao?: string;
+  dataDesmobilizacao?: string;
+  situacaoRh?: string;
+  observacao?: string;
+  criadoEm?: string;
+  atualizadoEm?: string;
 }
 
 export interface Comboio {
@@ -231,9 +244,13 @@ export interface HistoryLog {
   id: string;
   timestamp: string; // Data e hora da alteração
   usuario: string; // admin
-  acao: 'Criou' | 'Editou' | 'Excluiu';
+  acao: 'Criou' | 'Editou' | 'Excluiu' | 'Inativou' | 'Desmobilizou' | 'Sincronizou';
   tela: string; // ex: Empresas, Abastecimentos, etc.
   descricao: string; // Detalhes legíveis por humanos
+  registroId?: string;
+  valorAnterior?: unknown;
+  valorNovo?: unknown;
+  tipoOperacao?: 'CREATE' | 'UPDATE' | 'INACTIVATE' | 'DEMOBILIZE' | 'SYNC' | 'DELETE';
 }
 
 export interface PresencaItem {

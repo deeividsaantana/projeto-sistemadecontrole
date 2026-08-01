@@ -65,7 +65,7 @@ const promoted = promoteMasterWorkbook(analysis, {
   equipamentos: [],
 });
 
-assert.equal(promoted.empresas.length, 1);
+assert.equal(promoted.empresas.length, 2);
 assert.equal(promoted.funcionarios.length, 1);
 assert.equal(promoted.equipamentos.length, 1);
 assert.equal(promoted.equipamentos[0].empresaId, promoted.empresas[0].id);
@@ -73,5 +73,5 @@ assert.equal(promoted.equipamentos[0].operadorResponsavelId, promoted.funcionari
 assert.equal(promoted.equipamentos[0].metaDisponibilidade, 85);
 assert.equal(promoted.equipamentos[0].capacidadeTanqueLitros, 400);
 assert.equal(promoted.equipamentos[0].status, 'Mobilizado');
-assert.equal(promoted.reviewRows.length, 1);
-assert.equal(promoted.reviewRows[0].entity, 'suppliers');
+assert.equal(promoted.reviewRows.length, 0);
+assert.equal(promoted.empresas.find(item => item.nome === 'Fornecedor preservado')?.tipos?.includes('FORNECEDOR'), true);

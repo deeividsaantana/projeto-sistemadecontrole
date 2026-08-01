@@ -149,14 +149,6 @@ export const promoteMasterWorkbook = (
         countFor(row.entity).preservedForReview += 1;
         return false;
       }
-      if (row.entity === 'suppliers') {
-        reviewRows.push(appendReviewIssue(
-          row,
-          'Fornecedor preservado na revisão porque o ERP ainda não possui cadastro mestre separado de fornecedores.',
-        ));
-        countFor(row.entity).preservedForReview += 1;
-        return false;
-      }
       return true;
     })
     .sort((first, second) => promotionPriority[first.entity] - promotionPriority[second.entity]);
@@ -168,12 +160,43 @@ export const promoteMasterWorkbook = (
     if (row.entity === 'companies') {
       const existing = findCandidate(empresas, row)
         || empresas.find(item => normalizeMasterText(item.nome) === normalizeMasterText(normalized.name));
+      const importedCompanyTypes = text(normalized.company_type_text)
+        .split(',')
+        .map(item => item.trim().toUpperCase())
+        .filter((item): item is NonNullable<Empresa['tipos']>[number] => (
+          ['EMPRESA', 'FORNECEDOR', 'GERADOR', 'ACEITANTE', 'TRANSPORTADORA'].includes(item)
+        ));
       const value: Empresa = {
         id: existing?.id || deterministicId('empresa', row),
         nome: text(normalized.name),
         cnpj: text(normalized.tax_id) || existing?.cnpj || '',
         telefone: existing?.telefone || '',
         responsavel: existing?.responsavel || '',
+        tipos: existing?.tipos || (importedCompanyTypes.length > 0 ? importedCompanyTypes : ['EMPRESA']),
+        status: normalized.active === false ? 'INATIVO' : 'ATIVO',
+        criadoEm: existing?.criadoEm || new Date().toISOString(),
+        atualizadoEm: new Date().toISOString(),
+      };
+      empresas = upsertById(empresas, value, existing);
+      existing ? count.updated += 1 : count.created += 1;
+      continue;
+    }
+
+    if (row.entity === 'suppliers') {
+      const supplierName = text(normalized.company_name);
+      const existing = findCandidate(empresas, row)
+        || empresas.find(item => normalizeMasterText(item.nome) === normalizeMasterText(supplierName));
+      const now = new Date().toISOString();
+      const value: Empresa = {
+        id: existing?.id || deterministicId('fornecedor', row),
+        nome: supplierName,
+        cnpj: text(normalized.tax_id) || existing?.cnpj || '',
+        telefone: existing?.telefone || '',
+        responsavel: existing?.responsavel || '',
+        tipos: Array.from(new Set([...(existing?.tipos || []), 'FORNECEDOR' as const])),
+        status: normalized.active === false ? 'INATIVO' : 'ATIVO',
+        criadoEm: existing?.criadoEm || now,
+        atualizadoEm: now,
       };
       empresas = upsertById(empresas, value, existing);
       existing ? count.updated += 1 : count.created += 1;
@@ -215,6 +238,15 @@ export const promoteMasterWorkbook = (
         liderNome: text(normalized.leader_name) || existing?.liderNome,
         area: text(normalized.area) || existing?.area,
         responsavelArea: text(normalized.area_responsible) || existing?.responsavelArea,
+        divisao: text((normalized.metadata as Record<string, unknown> | undefined)?.division) || existing?.divisao,
+        secao: text((normalized.metadata as Record<string, unknown> | undefined)?.section) || existing?.secao,
+        status: normalized.active === false ? 'INATIVO' : existing?.status || 'ATIVO',
+        dataMobilizacao: optionalDate((normalized.metadata as Record<string, unknown> | undefined)?.mobilizationDate) || existing?.dataMobilizacao,
+        dataDesmobilizacao: optionalDate((normalized.metadata as Record<string, unknown> | undefined)?.demobilizationDate) || existing?.dataDesmobilizacao,
+        situacaoRh: text((normalized.metadata as Record<string, unknown> | undefined)?.hrStatus) || existing?.situacaoRh,
+        observacao: text((normalized.metadata as Record<string, unknown> | undefined)?.notes) || existing?.observacao,
+        criadoEm: existing?.criadoEm || new Date().toISOString(),
+        atualizadoEm: new Date().toISOString(),
       };
       funcionarios = upsertById(funcionarios, value, existing);
       existing ? count.updated += 1 : count.created += 1;

@@ -24,3 +24,5 @@ import './supabaseFuelOperations.test';
 import './supabaseTravelOperations.test';
 import './erpV30.test';
 import './supabaseErpV30.test';
+import './centralRegistry.test';
+import './centralWorkbookExport.test';

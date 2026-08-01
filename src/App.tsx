@@ -142,6 +142,7 @@ import { commitStorageBatch, isReneaStoredValueValid, parseReneaStoredJson } fro
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
 import { promoteMasterWorkbook } from './masterData/materializeMasterData';
 import type { MasterWorkbookAnalysis, MasterWorkbookReviewRow } from './masterData/masterWorkbook';
+import { validateCentralRecord } from './masterData/centralRegistry';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
@@ -187,7 +188,7 @@ import { AppNotification } from './types';
 // genuínas do usuário (cadastros, edições, sincronizações com o Firebase etc.)
 const getInitialNotifications = (): AppNotification[] => [];
 
-type CadastroImportTarget = 'empresas' | 'obras' | 'equipamentos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
+type CadastroImportTarget = 'empresas' | 'fornecedores' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
 type CadastroImportRow = Record<string, string>;
 
 const normalizeImportText = (value: string = '') =>
@@ -1029,10 +1030,11 @@ export default function App() {
   // Helper to save data and append to changes history
   const saveAndLog = (
     tableName: string,
-    action: 'Criou' | 'Editou' | 'Excluiu',
+    action: HistoryLog['acao'],
     description: string,
     newHistoryList: HistoryLog[],
-    stateUpdateFn: () => void
+    stateUpdateFn: () => void,
+    audit?: Pick<HistoryLog, 'registroId' | 'valorAnterior' | 'valorNovo' | 'tipoOperacao'>,
   ) => {
     stateUpdateFn();
     const newLog: HistoryLog = {
@@ -1041,7 +1043,8 @@ export default function App() {
       usuario: activeUserName,
       acao: action,
       tela: tableName,
-      descricao: description
+      descricao: description,
+      ...audit,
     };
     const updatedHistory = [newLog, ...newHistoryList];
     setHistoryLogs(updatedHistory);
@@ -1135,41 +1138,64 @@ export default function App() {
 
   // CRUD State Handlers
   const handleSaveEmpresa = (item: Empresa, isNew: boolean) => {
+    const now = new Date().toISOString();
+    const previous = empresas.find(x => x.id === item.id);
+    const normalizedItem: Empresa = {
+      ...item,
+      tipos: item.tipos?.length ? item.tipos : previous?.tipos || ['EMPRESA'],
+      status: item.status || previous?.status || 'ATIVO',
+      criadoEm: previous?.criadoEm || item.criadoEm || now,
+      atualizadoEm: now,
+    };
+    const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: normalizedItem });
+    if (errors.length > 0) {
+      window.alert(errors.join('\n'));
+      return;
+    }
     let updated;
     if (isNew) {
-      updated = [...empresas, item];
+      updated = [...empresas, normalizedItem];
     } else {
-      updated = empresas.map(x => x.id === item.id ? item : x);
+      updated = empresas.map(x => x.id === item.id ? normalizedItem : x);
     }
     saveAndLog(
       'Empresas', 
       isNew ? 'Criou' : 'Editou', 
-      `${isNew ? 'Cadastrou' : 'Editou'} a empresa "${item.nome}" com CNPJ ${item.cnpj}.`,
+      `${isNew ? 'Cadastrou' : 'Editou'} a empresa/fornecedor "${normalizedItem.nome}"${normalizedItem.cnpj ? ` com CNPJ ${normalizedItem.cnpj}` : ''}.`,
       historyLogs,
       () => {
         setEmpresas(updated);
         localStorage.setItem('renea_empresas', JSON.stringify(updated));
-      }
+      },
+      { registroId: normalizedItem.id, valorAnterior: previous, valorNovo: normalizedItem, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
     );
   };
 
   const handleDeleteEmpresa = (id: string) => {
     const item = empresas.find(x => x.id === id);
     if (!item) return;
-    const updated = empresas.filter(x => x.id !== id);
+    const inactive: Empresa = { ...item, status: 'INATIVO', atualizadoEm: new Date().toISOString() };
+    const updated = empresas.map(x => x.id === id ? inactive : x);
     saveAndLog(
       'Empresas', 
-      'Excluiu', 
-      `Excluiu a empresa "${item.nome}".`,
+      'Inativou',
+      `Inativou a empresa/fornecedor "${item.nome}" preservando o histórico.`,
       historyLogs,
       () => {
         setEmpresas(updated);
         localStorage.setItem('renea_empresas', JSON.stringify(updated));
-      }
+      },
+      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
     );
   };
 
   const handleSaveObra = (item: ObraLocal, isNew: boolean) => {
+    const previous = obras.find(x => x.id === item.id);
+    const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
+    if (errors.length > 0) {
+      window.alert(errors.join('\n'));
+      return;
+    }
     let updated;
     if (isNew) {
       updated = [...obras, item];
@@ -1184,27 +1210,36 @@ export default function App() {
       () => {
         setObras(updated);
         localStorage.setItem('renea_obras', JSON.stringify(updated));
-      }
+      },
+      { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
     );
   };
 
   const handleDeleteObra = (id: string) => {
     const item = obras.find(x => x.id === id);
     if (!item) return;
-    const updated = obras.filter(x => x.id !== id);
+    const inactive: ObraLocal = { ...item, status: 'Concluída' };
+    const updated = obras.map(x => x.id === id ? inactive : x);
     saveAndLog(
       'Obras/Locais', 
-      'Excluiu', 
-      `Excluiu a obra/local "${item.nome}".`,
+      'Inativou',
+      `Inativou a obra/local "${item.nome}" preservando vínculos existentes.`,
       historyLogs,
       () => {
         setObras(updated);
         localStorage.setItem('renea_obras', JSON.stringify(updated));
-      }
+      },
+      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
     );
   };
 
   const handleSaveEquipamento = (item: Equipamento, isNew: boolean) => {
+    const previous = equipamentos.find(x => x.id === item.id);
+    const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
+    if (errors.length > 0) {
+      window.alert(errors.join('\n'));
+      return;
+    }
     let updated;
     if (isNew) {
       updated = [...equipamentos, item];
@@ -1219,58 +1254,78 @@ export default function App() {
       () => {
         setEquipamentos(updated);
         localStorage.setItem('renea_equipamentos', JSON.stringify(updated));
-      }
+      },
+      { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
     );
   };
 
   const handleDeleteEquipamento = (id: string) => {
     const item = equipamentos.find(x => x.id === id);
     if (!item) return;
-    const updated = equipamentos.filter(x => x.id !== id);
+    const inactive: Equipamento = { ...item, status: 'Desmobilizado', mobilizado: false, dataDesmobilizacao: new Date().toISOString().slice(0, 10) };
+    const updated = equipamentos.map(x => x.id === id ? inactive : x);
     saveAndLog(
       'Equipamentos', 
-      'Excluiu', 
-      `Excluiu o equipamento "${item.prefixo} - ${item.nome}".`,
+      'Desmobilizou',
+      `Desmobilizou o equipamento/veículo "${item.prefixo} - ${item.nome}" preservando lançamentos vinculados.`,
       historyLogs,
       () => {
         setEquipamentos(updated);
         localStorage.setItem('renea_equipamentos', JSON.stringify(updated));
-      }
+      },
+      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'DEMOBILIZE' },
     );
   };
 
   const handleSaveFuncionario = (item: Funcionario, isNew: boolean) => {
+    const now = new Date().toISOString();
+    const previous = funcionarios.find(x => x.id === item.id);
+    const normalizedItem: Funcionario = {
+      ...item,
+      ativo: !['INATIVO', 'DESMOBILIZADO'].includes(item.status || (item.ativo ? 'ATIVO' : 'INATIVO')),
+      status: item.status || (item.ativo ? 'ATIVO' : 'INATIVO'),
+      criadoEm: previous?.criadoEm || item.criadoEm || now,
+      atualizadoEm: now,
+    };
+    const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: normalizedItem });
+    if (errors.length > 0) {
+      window.alert(errors.join('\n'));
+      return;
+    }
     let updated;
     if (isNew) {
-      updated = [...funcionarios, item];
+      updated = [...funcionarios, normalizedItem];
     } else {
-      updated = funcionarios.map(x => x.id === item.id ? item : x);
+      updated = funcionarios.map(x => x.id === item.id ? normalizedItem : x);
     }
     saveAndLog(
       'Funcionários', 
       isNew ? 'Criou' : 'Editou', 
-      `${isNew ? 'Cadastrou' : 'Editou'} o funcionário "${item.nome}" (${item.cargo}).`,
+      `${isNew ? 'Cadastrou' : 'Editou'} o colaborador "${normalizedItem.nome}" (${normalizedItem.cargo}).`,
       historyLogs,
       () => {
         setFuncionarios(updated);
         localStorage.setItem('renea_funcionarios', JSON.stringify(updated));
-      }
+      },
+      { registroId: normalizedItem.id, valorAnterior: previous, valorNovo: normalizedItem, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
     );
   };
 
   const handleDeleteFuncionario = (id: string) => {
     const item = funcionarios.find(x => x.id === id);
     if (!item) return;
-    const updated = funcionarios.filter(x => x.id !== id);
+    const inactive: Funcionario = { ...item, ativo: false, status: 'INATIVO', atualizadoEm: new Date().toISOString() };
+    const updated = funcionarios.map(x => x.id === id ? inactive : x);
     saveAndLog(
       'Funcionários', 
-      'Excluiu', 
-      `Excluiu o funcionário "${item.nome}".`,
+      'Inativou',
+      `Inativou o colaborador "${item.nome}" preservando efetivo, viagens e histórico.`,
       historyLogs,
       () => {
         setFuncionarios(updated);
         localStorage.setItem('renea_funcionarios', JSON.stringify(updated));
-      }
+      },
+      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
     );
   };
 
@@ -1472,7 +1527,7 @@ export default function App() {
       return { success: true, message };
     };
 
-    if (target === 'empresas') {
+    if (target === 'empresas' || target === 'fornecedores') {
       const incoming = validRows.map((row, index): Empresa | null => {
         const cnpj = getImportValue(row, ['cnpj', 'documento']);
         const nome = getImportValue(row, ['nome', 'empresa', 'nome fantasia', 'razao social', 'razão social']) || cnpj || `Empresa ${index + 1}`;
@@ -1481,12 +1536,16 @@ export default function App() {
           nome,
           cnpj,
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
-          responsavel: getImportValue(row, ['responsavel', 'responsável', 'gestor'])
+          responsavel: getImportValue(row, ['responsavel', 'responsável', 'gestor']),
+          tipos: [target === 'fornecedores' ? 'FORNECEDOR' : 'EMPRESA'],
+          status: normalizeImportText(getImportValue(row, ['status', 'situacao', 'situação'])).includes('inativo') ? 'INATIVO' : 'ATIVO',
+          criadoEm: new Date().toISOString(),
+          atualizadoEm: new Date().toISOString(),
         };
       }).filter(Boolean) as Empresa[];
       if (incoming.length === 0) return { success: false, message: 'Nenhuma empresa foi encontrada na planilha.' };
       const result = mergeImportedRecords(empresas, incoming, item => normalizeImportText(item.cnpj || item.nome));
-      return persistImport('Empresas', 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
+      return persistImport(target === 'fornecedores' ? 'Fornecedores' : 'Empresas', 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'obras') {
@@ -1506,7 +1565,7 @@ export default function App() {
       return persistImport('Obras/Locais', 'renea_obras', setObras, result.next, incoming.length, result.created, result.updated);
     }
 
-    if (target === 'equipamentos') {
+    if (target === 'equipamentos' || target === 'veiculos') {
       const incoming = validRows.map((row, index): Equipamento | null => {
         const seriePlaca = getImportValue(row, ['serie', 'série', 'numero serie', 'número série', 'numero de serie', 'número de série', 'serie placa', 'série placa']).toUpperCase();
         const placa = getImportValue(row, ['placa', 'placa veiculo', 'placa veículo']).toUpperCase();
@@ -1515,7 +1574,9 @@ export default function App() {
         const nome = getImportValue(row, ['nome', 'equipamento', 'descricao', 'descrição', 'maquina', 'máquina']) || tipo || prefixo;
         const familia = getImportValue(row, ['familia', 'família']);
         const categoryText = normalizeImportText(getImportValue(row, ['categoria frota', 'categoria da frota', 'classe frota']));
-        const categoriaFrota: NonNullable<Equipamento['categoriaFrota']> = categoryText.includes('implement')
+        const categoriaFrota: NonNullable<Equipamento['categoriaFrota']> = target === 'veiculos'
+          ? 'Veículo'
+          : categoryText.includes('implement')
           ? 'Implemento'
           : categoryText.includes('veicul')
             ? 'Veículo'
@@ -1556,7 +1617,7 @@ export default function App() {
       }).filter(Boolean) as Equipamento[];
       if (incoming.length === 0) return { success: false, message: 'Nenhum equipamento foi encontrado na planilha.' };
       const result = mergeImportedRecords(equipamentos, incoming, item => normalizeImportText(item.prefixo));
-      return persistImport('Equipamentos', 'renea_equipamentos', setEquipamentos, result.next, incoming.length, result.created, result.updated);
+      return persistImport(target === 'veiculos' ? 'Veículos' : 'Equipamentos', 'renea_equipamentos', setEquipamentos, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'funcionarios') {
@@ -1572,10 +1633,22 @@ export default function App() {
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
           empresaId: findEmpresaId(getImportValue(row, ['empresa', 'vinculo', 'vínculo'])),
           ativo: !ativoValue || !ativoValue.includes('inativo'),
+          status: ativoValue.includes('desmobil') ? 'DESMOBILIZADO'
+            : ativoValue.includes('inativo') ? 'INATIVO'
+              : ativoValue.includes('ferias') ? 'FÉRIAS'
+                : ativoValue.includes('afast') ? 'AFASTADO' : 'ATIVO',
           liderMatricula: getImportValue(row, ['matricula lider', 'matrícula líder']) || undefined,
           liderNome: getImportValue(row, ['lider', 'líder', 'encarregado']) || undefined,
           area: getImportValue(row, ['area', 'área']) || undefined,
-          responsavelArea: getImportValue(row, ['responsavel area', 'responsável área']) || undefined
+          responsavelArea: getImportValue(row, ['responsavel area', 'responsável área']) || undefined,
+          divisao: getImportValue(row, ['divisao', 'divisão']) || undefined,
+          secao: getImportValue(row, ['secao', 'seção']) || undefined,
+          dataMobilizacao: getImportValue(row, ['data mobilizacao', 'data mobilização']) || undefined,
+          dataDesmobilizacao: getImportValue(row, ['data desmobilizacao', 'data desmobilização']) || undefined,
+          situacaoRh: getImportValue(row, ['situacao rh', 'situação rh']) || undefined,
+          observacao: getImportValue(row, ['observacao', 'observação']) || undefined,
+          criadoEm: new Date().toISOString(),
+          atualizadoEm: new Date().toISOString(),
         };
       }).filter(Boolean) as Funcionario[];
       if (incoming.length === 0) return { success: false, message: 'Nenhum funcionário foi encontrado na planilha.' };
@@ -3998,6 +4071,7 @@ export default function App() {
                 onDeleteEtapaServico={handleDeleteEtapaServico}
                 onImportCadastros={handleImportCadastros}
                 onApplyMasterWorkbook={handleApplyMasterWorkbook}
+                onSyncCentralRegistry={uploadLocalSnapshotToFirebase}
               />
             )}
 
