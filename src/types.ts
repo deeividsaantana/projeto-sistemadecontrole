@@ -225,8 +225,76 @@ export interface Lubrificacao {
   atualizadoEm?: string;
 }
 
+export type StatusDocumentoRdo = 'Rascunho' | 'Em revisão' | 'Aprovado' | 'Fechado';
+
+export interface RdoFonteResumo {
+  presencasDiretas: number;
+  presencasLink: number;
+  pessoasApontadas: number;
+  partesDiarias: number;
+  viagens: number;
+  materiais: number;
+  apontamentos: number;
+}
+
+export interface RdoEquipamentoResumo {
+  equipamentoId: string;
+  prefixo: string;
+  nome: string;
+  operador: string;
+  horasTrabalhadas: number;
+  origem: 'Parte diária' | 'Apontamento';
+}
+
+export interface RdoViagemResumo {
+  ticketId: string;
+  ticketNumero: string;
+  prefixo: string;
+  material: string;
+  quantidadeM3: number;
+  destino: string;
+  status: string;
+}
+
+export interface RdoMaterialResumo {
+  registroId: string;
+  material: string;
+  unidade: string;
+  quantidade: number;
+  custo: number;
+  fornecedor: string;
+  status: string;
+}
+
+export interface RdoProducaoItem {
+  id: string;
+  origem: 'Apontamento' | 'Manual';
+  ramoId?: string;
+  ramoNome: string;
+  descricao: string;
+  quantidade: number;
+  unidade: string;
+}
+
+export interface RdoDivergencia {
+  codigo: string;
+  origem: string;
+  mensagem: string;
+  severidade: 'Informativa' | 'Atenção' | 'Crítica';
+}
+
+export interface RdoRevisao {
+  versao: number;
+  statusAnterior: StatusDocumentoRdo;
+  alteradoPor: string;
+  alteradoEm: string;
+  motivo: string;
+  resumoAnterior: string;
+}
+
 export interface RdoDiario {
   id: string;
+  numero?: string;
   data: string; // YYYY-MM-DD
   empresaId: string;
   obraLocalId: string;
@@ -238,6 +306,38 @@ export interface RdoDiario {
   observacao: string;
   pendencias: string;
   proximasEtapas: string;
+  statusDocumento?: StatusDocumentoRdo;
+  responsavelRdo?: string;
+  clima?: {
+    manha: ClimaApontamento;
+    tarde: ClimaApontamento;
+    noite: ClimaApontamento;
+  };
+  condicao?: {
+    manha: CondicaoApontamento;
+    tarde: CondicaoApontamento;
+    noite: CondicaoApontamento;
+  };
+  ocorrencias?: string;
+  fotos?: string[];
+  efetivoFuncionarioIds?: string[];
+  fontes?: RdoFonteResumo;
+  equipamentosResumo?: RdoEquipamentoResumo[];
+  viagensResumo?: RdoViagemResumo[];
+  materiaisResumo?: RdoMaterialResumo[];
+  producaoItens?: RdoProducaoItem[];
+  divergencias?: RdoDivergencia[];
+  custoMateriais?: number;
+  custoManutencao?: number;
+  custoTotal?: number;
+  versao?: number;
+  revisoes?: RdoRevisao[];
+  aprovadoPor?: string;
+  aprovadoEm?: string;
+  fechadoPor?: string;
+  fechadoEm?: string;
+  criadoEm?: string;
+  atualizadoEm?: string;
 }
 
 export interface HistoryLog {
