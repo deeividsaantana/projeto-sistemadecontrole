@@ -11,3 +11,8 @@
 
 - Mantida a Central de Manutenção ilustrada da v3.4, com foto por equipamento, motorista/operador, movimentações, horas, disponibilidade, histórico e exportações em Excel/PDF.
 - Atualizado o cache do aplicativo para garantir a entrega imediata da correção após o deploy.
+
+## Publicação
+
+- Destino de produção migrado para `gentle-liger-841eb6.netlify.app`, preservando o mesmo repositório e a configuração de Firebase.
+- O publicador oficial foi atualizado para reutilizar esse projeto Netlify nas próximas versões.

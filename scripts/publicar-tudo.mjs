@@ -20,8 +20,8 @@ const MANUTENCAO_SOURCE_URL = 'https://dynamic-manatee-66561d.netlify.app/';
 const EXPECTED_REMOTE = 'deeividsaantana/projeto-sistemadecontrole';
 const EXPECTED_REMOTE_URL = `https://github.com/${EXPECTED_REMOTE}.git`;
 const LEGACY_REMOTE = 'deeividsaantana/teste-70';
-const NETLIFY_SITE_ID = 'ac4c8fb7-9c37-460e-a98e-4237da0ff46e';
-const NETLIFY_SITE_URL = 'https://controlereneaa.netlify.app';
+const NETLIFY_SITE_ID = '1db36d0f-184f-4c44-952a-cdb3c92b0a5e';
+const NETLIFY_SITE_URL = 'https://gentle-liger-841eb6.netlify.app';
 const LOCAL_TOOLS_DIR = path.join(ROOT, '.publicar-tudo-tools');
 const LOCAL_NPM_CLI = path.join(LOCAL_TOOLS_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const LOCAL_TOOLS_BIN = path.join(LOCAL_TOOLS_DIR, 'node_modules', '.bin');
@@ -381,7 +381,7 @@ const ensureNetlifyLink = () => {
   if (linkedSiteId === NETLIFY_SITE_ID) return;
   info('Vinculando esta pasta ao site Netlify de produção');
   runDlx('netlify-cli', ['link', '--id', NETLIFY_SITE_ID]);
-  ok('Pasta vinculada ao site controlereneaa.');
+  ok('Pasta vinculada ao site gentle-liger-841eb6.');
 };
 
 const ensureRepositoryReady = () => {
