@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CircleGauge,
+  ClipboardCheck,
   ClipboardList,
   FileText,
   FolderPlus,
@@ -49,6 +50,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'presenca', label: 'Presença', icon: Users },
       { id: 'controle-presenca', label: 'Controle de Presença', icon: ShieldCheck },
       { id: 'apontamentos', label: 'Apontamentos', icon: BarChart3 },
+      { id: 'rdo', label: 'RDO Integrado', icon: ClipboardCheck },
     ],
   },
   {
@@ -80,6 +82,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'presenca',
     'controle-presenca',
     'apontamentos',
+    'rdo',
     'inteligencia',
   ],
   leitura: ['dashboard', 'reports'],

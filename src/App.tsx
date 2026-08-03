@@ -87,6 +87,7 @@ const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ParteDiariaEquipamentosTab = lazy(() => import('./components/ParteDiariaEquipamentosTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 const DocumentIntelligenceTab = lazy(() => import('./components/DocumentIntelligenceTab'));
+const RdoTab = lazy(() => import('./components/RdoTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
 // A base histórica de materiais fica em um chunk separado para não pesar no
@@ -1989,6 +1990,15 @@ export default function App() {
   const handleDeleteRdo = (id: string) => {
     const item = rdos.find(x => x.id === id);
     if (!item) return;
+    if (['Aprovado', 'Fechado'].includes(item.statusDocumento || 'Rascunho')) {
+      addNotification(
+        'RDO protegido',
+        'RDOs aprovados ou fechados não podem ser excluídos. Faça uma nova revisão para corrigir dados operacionais.',
+        'warning',
+        'Sistema Local',
+      );
+      return;
+    }
     const updated = rdos.filter(x => x.id !== id);
     saveAndLog(
       'RDO Diário', 
@@ -4138,6 +4148,28 @@ export default function App() {
                 onDeleteRamo={handleDeleteApontamentoRamo}
                 onSaveRegistro={handleSaveApontamentoRamoRegistro}
                 onDeleteRegistro={handleDeleteApontamentoRamoRegistro}
+              />
+            )}
+
+            {activeTab === 'rdo' && (
+              <RdoTab
+                rdos={rdos}
+                empresas={empresas}
+                obras={obras}
+                equipamentos={equipamentos}
+                funcionarios={funcionarios}
+                etapas={etapas}
+                listasPresenca={listasPresenca}
+                gruposEquipe={gruposEquipe}
+                presencasLink={presencasLink}
+                apontamentos={apontamentoRamoRegistros}
+                partesDiarias={partesDiariasEquipamentos}
+                tickets={ticketsJazida}
+                materiais={materiaisRegistros}
+                ordensServico={ordensServico}
+                activeUserName={activeUserName}
+                onSaveRdo={handleSaveRdo}
+                onDeleteRdo={handleDeleteRdo}
               />
             )}
 

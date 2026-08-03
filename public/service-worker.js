@@ -1,4 +1,4 @@
-const CACHE_NAME = 'renea-erp-shell-v32';
+const CACHE_NAME = 'renea-erp-shell-v34';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.png'];
 
 self.addEventListener('install', event => {
