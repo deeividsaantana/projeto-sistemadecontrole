@@ -13,6 +13,7 @@ import './publicLinkSecurity.test';
 import './navigation.test';
 import './masterDataContract.test';
 import './masterDataGateway.test';
+import './excelCorporateImport.test';
 import './masterWorkbook.test';
 import './equipmentOperations.test';
 import './maintenanceOperations.test';

@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 
 export const EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -183,14 +184,69 @@ export const validateExcelImportFile = (file: File, maxSizeMb = 25) => {
   if (file.size > maxSizeMb * 1024 * 1024) throw new Error(`O arquivo ultrapassa o limite de ${maxSizeMb} MB.`);
 };
 
+export const stripUnsupportedWorkbookVisuals = async (bytes: Uint8Array) => {
+  const zip = await JSZip.loadAsync(bytes);
+  const removablePrefixes = ['xl/drawings/', 'xl/charts/', 'xl/media/', 'xl/tables/'];
+  Object.keys(zip.files).forEach(path => {
+    if (removablePrefixes.some(prefix => path.startsWith(prefix))) zip.remove(path);
+  });
+
+  const textEntries = Object.keys(zip.files).filter(path => (
+    /^xl\/worksheets\/sheet\d+\.xml$/i.test(path)
+    || /^xl\/worksheets\/_rels\/sheet\d+\.xml\.rels$/i.test(path)
+    || path === '[Content_Types].xml'
+  ));
+
+  await Promise.all(textEntries.map(async path => {
+    const entry = zip.file(path);
+    if (!entry) return;
+    let xml = await entry.async('string');
+    if (/^xl\/worksheets\/sheet\d+\.xml$/i.test(path)) {
+      xml = xml
+        .replace(/<(?:drawing|legacyDrawing|legacyDrawingHF|picture)\b[^>]*\/>/gi, '')
+        .replace(/<(?:oleObjects|controls|tableParts)\b[^>]*>[\s\S]*?<\/(?:oleObjects|controls|tableParts)>/gi, '')
+        .replace(/<(?:oleObjects|controls|tableParts|tablePart)\b[^>]*\/>/gi, '');
+    } else if (/\.rels$/i.test(path)) {
+      xml = xml.replace(
+        /<Relationship\b(?=[^>]*(?:Type="[^"]*\/(?:drawing|vmlDrawing|image|chart|oleObject|table)"|Target="[^"]*(?:drawings|media|charts|embeddings|tables)\/))[^>]*\/>/gi,
+        '',
+      );
+    } else {
+      xml = xml.replace(
+        /<Override\b(?=[^>]*PartName="\/(?:xl\/)?(?:drawings|charts|media|tables)\/)[^>]*\/>/gi,
+        '',
+      );
+    }
+    zip.file(path, xml);
+  }));
+
+  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
+};
+
 export const loadValidatedWorkbook = async (file: File, maxSizeMb = 25) => {
   validateExcelImportFile(file, maxSizeMb);
-  const workbook = new ExcelJS.Workbook();
+  let workbook = new ExcelJS.Workbook();
   try {
     const buffer = await file.arrayBuffer();
-    await workbook.xlsx.load(buffer as any);
-  } catch {
-    throw new Error('Não foi possível abrir a planilha. Verifique se o arquivo não está corrompido ou protegido por senha.');
+    const bytes = new Uint8Array(buffer);
+    // ExcelJS espera uma visão binária. Entregar o ArrayBuffer diretamente
+    // funciona em alguns navegadores, mas falha em outros e fazia planilhas
+    // .xlsx válidas serem reportadas como corrompidas.
+    try {
+      await workbook.xlsx.load(bytes as any);
+    } catch (firstError) {
+      // Algumas planilhas válidas geradas pelo Excel contêm relações de
+      // desenhos que o ExcelJS 4.x não reconcilia. Como a importação usa só
+      // células, tentamos novamente sem imagens e gráficos, preservando dados,
+      // fórmulas, abas, estilos e validações da planilha original em disco.
+      console.info('Nova tentativa de leitura sem elementos visuais incompatíveis.', firstError);
+      workbook = new ExcelJS.Workbook();
+      const sanitizedBytes = await stripUnsupportedWorkbookVisuals(bytes);
+      await workbook.xlsx.load(sanitizedBytes as any);
+    }
+  } catch (error) {
+    console.warn('Falha técnica ao abrir a planilha:', error);
+    throw new Error('Não foi possível abrir a planilha. Confirme se ela está em .xlsx/.xlsm, sem senha, e tente novamente.');
   }
   if (!workbook.worksheets.length) throw new Error('A planilha não possui abas para importar.');
   return workbook;
