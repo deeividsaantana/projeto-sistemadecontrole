@@ -44,7 +44,7 @@ Consulte:
 PDFs e fotos enviados para análise não são persistidos no banco. O sistema grava apenas os dados revisados, o nome do arquivo, a impressão digital SHA-256 e a trilha de conferência.
 
 
-## Sistema RENEA ERP v3.4
+## Sistema RENEA ERP v3.2
 
 A base oficial está sendo evoluída por versões, sem reescrita e sem remoção de funcionalidades.
 
@@ -83,8 +83,4 @@ Documentação:
 - docs/VALIDACAO_V3_1.md
 - docs/ALTERACOES_V3_2.md
 - docs/VALIDACAO_V3_2.md
-- docs/ALTERACOES_V3_3.md
-- docs/VALIDACAO_V3_3.md
-- docs/ALTERACOES_V3_4.md
-- docs/VALIDACAO_V3_4.md
 - supabase/README.md

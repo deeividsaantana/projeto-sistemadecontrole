@@ -16,7 +16,6 @@ import './masterDataGateway.test';
 import './masterWorkbook.test';
 import './equipmentOperations.test';
 import './maintenanceOperations.test';
-import './rdoOperations.test';
 import './materializeMasterData.test';
 import './supabaseSchema.test';
 import './supabaseMasterDataReview.test';
