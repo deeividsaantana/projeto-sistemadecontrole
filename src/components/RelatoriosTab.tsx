@@ -20,7 +20,6 @@ import {
   ControleEstacas,
   MaterialRegistro,
   PresencaApontamento,
-  RdoDiario,
   ParteDiariaEquipamento
 } from '../types';
 
@@ -70,7 +69,6 @@ interface RelatoriosTabProps {
   controleEstacas: ControleEstacas;
   materiaisRegistros: MaterialRegistro[];
   presencasLink: PresencaApontamento[];
-  rdos: RdoDiario[];
   partesDiariasEquipamentos: ParteDiariaEquipamento[];
 }
 
@@ -120,7 +118,6 @@ export default function RelatoriosTab({
   controleEstacas,
   materiaisRegistros,
   presencasLink,
-  rdos,
   partesDiariasEquipamentos
 }: RelatoriosTabProps) {
 
@@ -1064,7 +1061,6 @@ export default function RelatoriosTab({
         estacas={controleEstacas}
         materiais={materiaisRegistros}
         presencas={presencasLink}
-        rdos={rdos}
         equipamentos={equipamentos}
         partes={partesDiariasEquipamentos}
       />

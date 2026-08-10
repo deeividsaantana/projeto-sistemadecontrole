@@ -1,13 +1,13 @@
 import {
   BarChart3,
   CircleGauge,
-  ClipboardCheck,
   ClipboardList,
   FileText,
   FolderPlus,
   Hammer,
   BrainCircuit,
   LayoutDashboard,
+  ListChecks,
   Package,
   Settings,
   ShieldCheck,
@@ -30,6 +30,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Visão geral',
     items: [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
+      { id: 'pendencias', label: 'Pendências', icon: ListChecks },
       { id: 'reports', label: 'Relatórios Gerais', icon: FileText },
     ],
   },
@@ -50,13 +51,14 @@ export const NAVIGATION_GROUPS = [
       { id: 'presenca', label: 'Presença', icon: Users },
       { id: 'controle-presenca', label: 'Controle de Presença', icon: ShieldCheck },
       { id: 'apontamentos', label: 'Apontamentos', icon: BarChart3 },
-      { id: 'rdo', label: 'RDO Integrado', icon: ClipboardCheck },
     ],
   },
   {
     label: 'Administração',
     items: [
       { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
+      { id: 'auditoria', label: 'Auditoria', icon: ShieldCheck },
+      { id: 'usuarios', label: 'Usuários', icon: Users },
       { id: 'inteligencia', label: 'Inteligência Documental', icon: BrainCircuit },
       { id: 'configuracoes', label: 'Apoio e Configuração', icon: Settings },
     ],
@@ -69,9 +71,10 @@ export const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
 
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
-  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => id !== 'configuracoes'),
+  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => id !== 'configuracoes' && id !== 'auditoria' && id !== 'usuarios'),
   operador: [
     'dashboard',
+    'pendencias',
     'reports',
     'partes-diarias',
     'lancamentos',
@@ -82,7 +85,6 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'presenca',
     'controle-presenca',
     'apontamentos',
-    'rdo',
     'inteligencia',
   ],
   leitura: ['dashboard', 'reports'],

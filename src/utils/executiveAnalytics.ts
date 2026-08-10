@@ -8,7 +8,6 @@ import type {
   OrdemServico,
   ParteDiariaEquipamento,
   PresencaApontamento,
-  RdoDiario,
   TicketJazida,
 } from '../types';
 import { buildStakeSummary } from './stakeOperations';
@@ -26,7 +25,6 @@ export type ExecutiveAnalyticsInput = {
   abastecimentos: Abastecimento[];
   ticketsJazida: TicketJazida[];
   estacas: ControleEstacas;
-  rdos: RdoDiario[];
   listasPresenca: ListaPresenca[];
   presencasLink: PresencaApontamento[];
   apontamentos: ApontamentoRamoRegistro[];
@@ -48,7 +46,6 @@ export const buildExecutiveAnalytics = ({
   abastecimentos,
   ticketsJazida,
   estacas,
-  rdos,
   listasPresenca,
   presencasLink,
   apontamentos,
@@ -69,10 +66,6 @@ export const buildExecutiveAnalytics = ({
   const filteredTickets = ticketsJazida
     .filter(item => inRange(item.data, filters))
     .filter(item => !filters.ramo || item.destinoObra === filters.ramo || item.ramoId === filters.ramo);
-  const filteredRdos = rdos
-    .filter(item => inRange(item.data, filters))
-    .filter(item => !filters.empresaId || item.empresaId === filters.empresaId)
-    .filter(item => !filters.obraId || item.obraLocalId === filters.obraId);
   const filteredPresenceLists = listasPresenca
     .filter(item => inRange(item.data, filters))
     .filter(item => !filters.obraId || item.obraId === filters.obraId);
@@ -127,8 +120,6 @@ export const buildExecutiveAnalytics = ({
     },
     estacas: stakeSummary,
     producao: {
-      rdos: filteredRdos.length,
-      concluidos: filteredRdos.filter(item => item.statusAtividade === 'Concluído').length,
       apontamentos: filteredPointings.length,
       pessoasApontadas: apontadoPeople,
       equipamentosApontados: apontadoEquipment,

@@ -45,10 +45,6 @@
           "type": "array",
           "description": "Histórico de lubrificações de campo"
         },
-        "rdos": {
-          "type": "array",
-          "description": "Relatórios Diários de Obra lançados"
-        },
         "historyLogs": {
           "type": "array",
           "description": "Histórico geral de trilhas de auditoria"

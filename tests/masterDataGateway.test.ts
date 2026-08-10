@@ -5,13 +5,19 @@ const gatewayUrl = new URL('../netlify/functions/master-data.js', import.meta.ur
 const gateway = readFileSync(gatewayUrl, 'utf8');
 
 assert.match(gateway, /const staff = await requireStaffUser\(event\)/);
-assert.match(gateway, /resolveOrganizationId\(staff, process\.env\.SUPABASE_DEFAULT_ORGANIZATION_ID\)/);
-assert.match(gateway, /organization_id: `eq\.\$\{context\.organizationId\}`/);
-assert.match(gateway, /organization_id: context\.organizationId/);
+assert.match(gateway, /resolveOrganizationId\(staff, process\.env\.FIREBASE_DEFAULT_ORGANIZATION_ID/);
+assert.match(gateway, /const ROOT_COLLECTION = 'sistemarenea_master_data'/);
+assert.match(gateway, /const AUDIT_COLLECTION = 'sistemarenea_audit_logs'/);
+assert.match(gateway, /const writeAudit = async/);
+assert.match(gateway, /const listAudits = async/);
+assert.match(gateway, /queryStringParameters\?\.action === 'audit'/);
+assert.match(gateway, /const createUser = async/);
+assert.match(gateway, /queryStringParameters\?\.action === 'users'/);
+assert.match(gateway, /body\.action === 'create-user'/);
+assert.match(gateway, /collection\(ROOT_COLLECTION\)/);
 assert.match(gateway, /assertRoleCan\(context\.role, 'archive'\)/);
-assert.match(gateway, /deleted_at: new Date\(\)\.toISOString\(\)/);
+assert.match(gateway, /deletedAt: new Date\(\)\.toISOString\(\)/);
 assert.match(gateway, /return await archiveRecord\(body, context\)/);
 assert.match(gateway, /body\.action === 'stage-master-import'/);
-assert.match(gateway, /rpc\/stage_master_data_import/);
+assert.match(gateway, /const preserveImport = async/);
 assert.doesNotMatch(gateway, /body\.organization/i);
-assert.doesNotMatch(gateway, /SUPABASE_SERVICE_ROLE_KEY/);

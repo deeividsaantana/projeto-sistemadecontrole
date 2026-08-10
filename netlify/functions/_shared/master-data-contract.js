@@ -275,16 +275,15 @@ export const resolveOrganizationId = (claims = {}, fallbackOrganizationId = '') 
   const claimValue = claims.organization_id || claims.organizationId || '';
   const candidate = String(claimValue || fallbackOrganizationId || '').trim();
   if (!candidate) {
-    throw contractError('A organização do Supabase ainda não foi configurada.', 424);
+    throw contractError('A organização do Firebase ainda não foi configurada.', 424);
   }
-  try {
-    return assertUuid(candidate, 'Organização');
-  } catch {
+  if (!/^[a-zA-Z0-9_-]{2,128}$/.test(candidate)) {
     throw contractError(
-      claimValue ? 'A organização vinculada ao usuário é inválida.' : 'A organização padrão do Supabase é inválida.',
+      claimValue ? 'A organização vinculada ao usuário é inválida.' : 'A organização padrão do Firebase é inválida.',
       claimValue ? 403 : 424,
     );
   }
+  return candidate;
 };
 
 const sanitizeMetadata = value => {

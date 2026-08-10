@@ -270,7 +270,7 @@ export default function MasterDataReviewCenter({
       return;
     }
     if (!gatewayQuery.data?.configured) {
-      setAnalysisError('O Supabase opcional precisa estar configurado para preservar a fila de revisão.');
+      setAnalysisError('A persistência protegida precisa estar disponível para preservar a fila de revisão.');
       return;
     }
     stageMutation.mutate(parsed.data);
@@ -317,7 +317,7 @@ export default function MasterDataReviewCenter({
               : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
           }`}>
             {gatewayQuery.isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}
-            {gatewayQuery.data?.configured ? 'Supabase pronto' : 'Modo local preservado'}
+                {gatewayQuery.data?.configured ? 'Firebase protegido pronto' : 'Modo local preservado'}
           </div>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xlsm" className="hidden" onChange={handleWorkbook} />
           <button
@@ -334,7 +334,7 @@ export default function MasterDataReviewCenter({
 
       {(analysisError || gatewayQuery.error) && (
         <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
-          {analysisError || (gatewayQuery.error instanceof Error ? gatewayQuery.error.message : 'Supabase opcional ainda não configurado.')}
+                {analysisError || (gatewayQuery.error instanceof Error ? gatewayQuery.error.message : 'Persistência protegida ainda não configurada.')}
         </div>
       )}
 
@@ -343,7 +343,7 @@ export default function MasterDataReviewCenter({
           <div>
             <FileSearch className="mx-auto h-8 w-8 text-slate-600" />
             <p className="mt-2 text-sm font-bold text-slate-300">Nenhuma planilha mestre em revisão</p>
-            <p className="mt-1 text-[10px] text-slate-500">A análise não altera os cadastros atuais e pode funcionar mesmo sem Supabase.</p>
+              <p className="mt-1 text-[10px] text-slate-500">A análise não altera os cadastros atuais e preserva a revisão no Firebase.</p>
           </div>
         </div>
       ) : (
@@ -478,7 +478,7 @@ export default function MasterDataReviewCenter({
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
               <div className="flex-1">
-                <strong className="text-sm text-white">Preservar fila de revisão no Supabase</strong>
+                <strong className="text-sm text-white">Preservar fila de revisão protegida</strong>
                 <p className="mt-1 text-[10px] leading-relaxed text-slate-400">Cria um lote por entidade. Duplicidades, inválidos, aliases e valores originais permanecem disponíveis para decisão; nenhum cadastro é promovido automaticamente.</p>
                 <textarea
                   {...register('operatorNote')}

@@ -22,7 +22,6 @@ import {
   OrdemServico,
   TicketJazida,
   ControleEstacas,
-  RdoDiario,
   PresencaApontamento,
   ApontamentoRamo,
   ApontamentoRamoRegistro,
@@ -73,7 +72,6 @@ interface DashboardProps {
   ordensServico?: OrdemServico[];
   ticketsJazida?: TicketJazida[];
   estacas?: ControleEstacas;
-  rdos?: RdoDiario[];
   presencasLink?: PresencaApontamento[];
   apontamentoRamos?: ApontamentoRamo[];
   apontamentoRamoRegistros?: ApontamentoRamoRegistro[];
@@ -97,7 +95,6 @@ export default function Dashboard({
   ordensServico = [],
   ticketsJazida = [],
   estacas = { lotes: [], cravacoes: [] },
-  rdos = [],
   presencasLink = [],
   apontamentoRamos = [],
   apontamentoRamoRegistros = [],
@@ -533,7 +530,6 @@ export default function Dashboard({
         abastecimentos={abastecimentos}
         ticketsJazida={ticketsJazida}
         estacas={estacas}
-        rdos={rdos}
         listasPresenca={listasPresenca}
         presencasLink={presencasLink}
         apontamentos={apontamentoRamoRegistros}

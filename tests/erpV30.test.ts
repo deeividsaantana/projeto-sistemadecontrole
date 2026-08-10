@@ -52,7 +52,7 @@ test('catálogo localiza relatório comercial', () => {
 
 test('snapshot detecta alteração posterior ao fechamento', () => {
   const dados: PeriodoArquivado['dados'] = {
-    abastecimentos: [], lubrificacoes: [], ticketsJazida: [], rdos: [], listasPresenca: [],
+    abastecimentos: [], lubrificacoes: [], ticketsJazida: [], listasPresenca: [],
     ordensServico: [], presencasLink: [], historicoPresencas: [], apontamentoRamoRegistros: [],
     materiaisRegistros: [], partesDiariasEquipamentos: [], estacas: control,
   };

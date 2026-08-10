@@ -30,7 +30,7 @@ npm run build
 
 ## Publicação
 
-O frontend e as funções estão preparados para Netlify. A leitura inteligente de documentos usa a variável secreta `GEMINI_API_KEY` somente no servidor; a chave não deve ser colocada no código do navegador.
+O frontend e as funções estão preparados para Netlify. A leitura de documentos de combustível funciona localmente e exige revisão humana antes da gravação.
 
 Consulte:
 
@@ -85,6 +85,3 @@ Documentação:
 - docs/VALIDACAO_V3_2.md
 - docs/ALTERACOES_V3_3.md
 - docs/VALIDACAO_V3_3.md
-- docs/ALTERACOES_V3_4.md
-- docs/VALIDACAO_V3_4.md
-- supabase/README.md

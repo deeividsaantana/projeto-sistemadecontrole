@@ -16,6 +16,12 @@ test('perfil administrador mantém acesso a todos os módulos atuais', () => {
 test('perfis preservam as restrições atuais', () => {
   assert.equal(ROLE_ACCESS.gestor.includes('configuracoes'), false);
   assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'reports']);
+  assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), true);
+  assert.equal(ROLE_ACCESS.gestor.includes('auditoria'), false);
+  assert.equal(ROLE_ACCESS.admin.includes('auditoria'), true);
+  assert.equal(ROLE_ACCESS.gestor.includes('usuarios'), false);
+  assert.equal(ROLE_ACCESS.admin.includes('usuarios'), true);
+  assert.equal(ROLE_ACCESS.operador.includes('pendencias'), true);
   assert.equal(ROLE_ACCESS.operador.includes('lancamentos'), true);
   assert.equal(ROLE_ACCESS.operador.includes('configuracoes'), false);
 });

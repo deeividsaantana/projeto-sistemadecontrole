@@ -14,7 +14,6 @@ import {
   EtapaServico, 
   Abastecimento, 
   Lubrificacao, 
-  RdoDiario,
   HistoryLog,
   ListaPresenca,
   OrdemServico,
@@ -465,23 +464,6 @@ export const INITIAL_LUBRIFICACOES: Lubrificacao[] = [
   { id: 'lub-9', data: '2026-06-23', hora: '06:05', equipamentoId: 'eq-ec010', horimetro: 1902, produtoLubrificacaoId: 'pl-2', compartimento: 'Sistema Hidráulico', quantidade: 28, responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
   { id: 'lub-10', data: '2026-06-23', hora: '07:40', equipamentoId: 'eq-ec077', horimetro: 1423, produtoLubrificacaoId: 'pl-1', compartimento: 'Pinos e Articulações', quantidade: 1, responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
   { id: 'lub-11', data: '2026-06-23', hora: '12:55', equipamentoId: 'eq-ec063', horimetro: 10882, produtoLubrificacaoId: 'pl-1', compartimento: 'Pinos e Articulações', quantidade: 1, responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-];
-
-export const INITIAL_RDOS: RdoDiario[] = [
-  { 
-    id: 'rdo-1', 
-    data: '2026-06-21', 
-    empresaId: 'emp-1', 
-    obraLocalId: 'obr-1', 
-    etapaServicoId: 'et-1', 
-    servicoExecutado: 'Escavação mecânica em terra firme e transporte de material de bota-fora.', 
-    quantidadeEquipe: 35, 
-    equipamentosUtilizadosIds: ['eq-cb765', 'eq-cb754', 'eq-cb789'], 
-    statusAtividade: 'Andamento', 
-    observacao: 'Trabalho rendeu bem. Clima seco favoreceu o andamento da terraplenagem.', 
-    pendencias: 'Nenhuma pendência crítica hoje.', 
-    proximasEtapas: 'Continuar escavação e iniciar compactação de subleito no trecho norte.' 
-  }
 ];
 
 export const INITIAL_HISTORY_LOGS: HistoryLog[] = [

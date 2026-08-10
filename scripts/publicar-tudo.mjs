@@ -20,8 +20,8 @@ const MANUTENCAO_SOURCE_URL = 'https://dynamic-manatee-66561d.netlify.app/';
 const EXPECTED_REMOTE = 'deeividsaantana/projeto-sistemadecontrole';
 const EXPECTED_REMOTE_URL = `https://github.com/${EXPECTED_REMOTE}.git`;
 const LEGACY_REMOTE = 'deeividsaantana/teste-70';
-const NETLIFY_SITE_ID = '1db36d0f-184f-4c44-952a-cdb3c92b0a5e';
-const NETLIFY_SITE_URL = 'https://gentle-liger-841eb6.netlify.app';
+const NETLIFY_SITE_ID = '5f1b5305-eaba-4387-9ade-6020fe1fd80c';
+const NETLIFY_SITE_URL = 'https://merry-crumble-98d743.netlify.app';
 const LOCAL_TOOLS_DIR = path.join(ROOT, '.publicar-tudo-tools');
 const LOCAL_NPM_CLI = path.join(LOCAL_TOOLS_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const LOCAL_TOOLS_BIN = path.join(LOCAL_TOOLS_DIR, 'node_modules', '.bin');
@@ -30,6 +30,7 @@ const args = new Set(process.argv.slice(2));
 const checkOnly = args.has('--check');
 const quickCheck = args.has('--quick');
 const forceSetup = args.has('--setup');
+const refreshNetlifyLogin = args.has('--relogin');
 
 process.chdir(ROOT);
 
@@ -123,7 +124,7 @@ const runDlx = (packageName, packageArgs, options = {}) => {
     const executable = packageName === 'netlify-cli'
       ? 'netlify'
       : packageName === 'firebase-tools' ? 'firebase' : packageName;
-    return commandResult(process.execPath, [
+    const localResult = commandResult(process.execPath, [
       LOCAL_NPM_CLI,
       'exec',
       '--offline=false',
@@ -133,7 +134,13 @@ const runDlx = (packageName, packageArgs, options = {}) => {
       '--',
       executable,
       ...packageArgs,
-    ], withPackageEnvironment(options));
+    ], withPackageEnvironment({ ...options, allowFailure: true }));
+    if (localResult.status === 0 || !fs.existsSync(bundledPnpmCli)) return localResult;
+    warn(`Ferramenta local não disponível para ${packageName}; tentando o runtime alternativo.`);
+    const fallbackArgs = packageName === 'netlify-cli'
+      ? [bundledPnpmCli, '--package=netlify-cli', 'dlx', 'netlify', ...packageArgs]
+      : [bundledPnpmCli, 'dlx', packageName, ...packageArgs];
+    return commandResult(process.execPath, fallbackArgs, withPackageEnvironment(options));
   }
   if (packageTools.kind === 'npm') {
     return shellTool(packageTools.dlx, ['--yes', packageName, ...packageArgs], withPackageEnvironment(options));
@@ -238,9 +245,12 @@ const configureFirstRun = async () => {
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
   let serviceAccountRaw;
   let adminEmail;
-  let geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
   try {
-    const defaultEmail = String(process.env.ADMIN_EMAIL || process.env.AI_ALLOWED_EMAILS || '').split(',')[0].trim();
+    const defaultEmail = String(process.env.ADMIN_EMAIL || '').split(',')[0].trim();
+    const nonInteractive = String(process.env.RENEA_NONINTERACTIVE || '').toLowerCase() === 'true';
+    if (nonInteractive && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(defaultEmail)) {
+      adminEmail = defaultEmail.toLowerCase();
+    }
     while (!adminEmail) {
       const answer = await prompt.question(`\nE-mail do administrador${defaultEmail ? ` [${defaultEmail}]` : ''}: `);
       adminEmail = String(answer || defaultEmail).trim().toLowerCase();
@@ -252,21 +262,20 @@ const configureFirstRun = async () => {
     serviceAccountRaw = await readServiceAccount(prompt);
     parseServiceAccount(serviceAccountRaw);
 
-    if (!geminiKey) {
-      const geminiPath = normalizePathInput(await prompt.question('\nArquivo TXT contendo a chave Gemini (Enter para manter a IA sem chave por enquanto): '));
-      if (geminiPath) {
-        if (!fs.existsSync(geminiPath)) throw new Error('Arquivo da chave Gemini não encontrado.');
-        geminiKey = fs.readFileSync(ensureSecretOutsideRepository(geminiPath), 'utf8').trim();
-      }
-    }
   } finally {
     prompt.close();
   }
 
   info('Autenticando e vinculando o Netlify');
+  if (refreshNetlifyLogin) {
+    info('Removendo a sessão Netlify antiga para conectar a equipe correta');
+    runDlx('netlify-cli', ['logout'], { allowFailure: true });
+  }
   runDlx('netlify-cli', ['login']);
   if (!fs.existsSync(path.join(ROOT, '.netlify', 'state.json'))) {
     runDlx('netlify-cli', ['link', '--id', NETLIFY_SITE_ID]);
+  } else {
+    info('Vínculo local do Netlify já encontrado; mantendo a sessão existente.');
   }
 
   const environmentLines = [
@@ -274,10 +283,8 @@ const configureFirstRun = async () => {
     dotenvLine('FIREBASE_DATABASE_URL', FIREBASE_DATABASE_URL),
     dotenvLine('MANUTENCAO_SOURCE_URL', MANUTENCAO_SOURCE_URL),
     dotenvLine('FIREBASE_WEB_API_KEY', FIREBASE_WEB_API_KEY),
-    dotenvLine('AI_ALLOWED_EMAILS', adminEmail),
-    dotenvLine('GEMINI_DOCUMENT_MODEL', 'gemini-2.5-flash'),
+    dotenvLine('ADMIN_EMAIL', adminEmail),
   ];
-  if (geminiKey) environmentLines.push(dotenvLine('GEMINI_API_KEY', geminiKey));
 
   try {
     fs.writeFileSync(TEMP_ENV_PATH, `${environmentLines.join('\n')}\n`, { encoding: 'utf8', mode: 0o600 });
@@ -306,8 +313,13 @@ const configureFirstRun = async () => {
     },
   });
 
-  info('Autenticando a ferramenta oficial do Firebase');
-  runDlx('firebase-tools', ['login']);
+  const hasApplicationCredentials = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+  if (hasApplicationCredentials) {
+    info('Usando a credencial local do Firebase para publicar regras, sem abrir login adicional.');
+  } else {
+    info('Autenticando a ferramenta oficial do Firebase');
+    runDlx('firebase-tools', ['login']);
+  }
 
   fs.writeFileSync(LOCAL_CONFIG_PATH, `${JSON.stringify({
     version: 1,
@@ -319,6 +331,10 @@ const configureFirstRun = async () => {
 };
 
 const ensureOneDriveFuelSync = () => {
+  if (String(process.env.RENEA_SKIP_ONEDRIVE_SYNC || '').toLowerCase() === 'true') {
+    warn('Sincronização automática do OneDrive adiada para este computador.');
+    return;
+  }
   if (process.platform !== 'win32') {
     warn('O agente automático do OneDrive será instalado somente no computador Windows de produção.');
     return;
@@ -338,12 +354,19 @@ const ensureOneDriveFuelSync = () => {
   } finally {
     if (fs.existsSync(TEMP_ENV_PATH)) fs.rmSync(TEMP_ENV_PATH, { force: true });
   }
-  commandResult(process.execPath, ['scripts/instalar-sync-combustivel-onedrive.mjs'], {
+  const installResult = commandResult(process.execPath, ['scripts/instalar-sync-combustivel-onedrive.mjs'], {
     env: {
       RENEA_ONEDRIVE_SYNC_TOKEN: syncToken,
       RENEA_ONEDRIVE_SYNC_ENDPOINT: `${NETLIFY_SITE_URL}/.netlify/functions/sync-combustivel-onedrive`,
     },
+    allowFailure: true,
+    capture: true,
   });
+  if (installResult.status !== 0) {
+    warn('Sincronização automática do OneDrive não instalada neste computador; ela permanece opcional e não bloqueia a publicação.');
+    return;
+  }
+  ok('Sincronização automática do OneDrive instalada neste computador.');
 };
 
 const ensurePublicTicketAccess = () => {

@@ -28,7 +28,7 @@ export type MasterDataReviewEntity =
 
 export interface MasterDataGatewayStatus {
   configured: boolean;
-  mode: 'firebase-auth-netlify-supabase';
+  mode: 'firebase-auth-netlify-firestore';
   organization: {
     id: string;
     code: string;
@@ -36,6 +36,29 @@ export interface MasterDataGatewayStatus {
   };
   role: 'admin' | 'gestor' | 'operador' | 'leitura';
   supportedEntities: MasterDataEntity[];
+}
+
+export interface PersistedAuditLog {
+  id: string;
+  module: string;
+  recordId: string;
+  action: string;
+  userId: string;
+  userEmail?: string | null;
+  createdAtIso: string;
+  details?: Record<string, unknown>;
+}
+
+export type ManagedUserRole = 'admin' | 'gestor' | 'operador' | 'leitura';
+
+export interface ManagedUser {
+  id: string;
+  firebaseUid: string;
+  email: string | null;
+  fullName: string;
+  role: ManagedUserRole;
+  active: boolean;
+  lastSeenAt?: unknown;
 }
 
 interface ApiEnvelope<T> {
@@ -66,13 +89,50 @@ const request = async <T>(url: string, init: RequestInit = {}): Promise<ApiEnvel
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success !== true) {
-    throw new Error(payload?.message || 'Não foi possível consultar a fundação PostgreSQL/Supabase.');
+    throw new Error(payload?.message || 'Não foi possível consultar a persistência protegida do Firebase.');
   }
   return payload as ApiEnvelope<T>;
 };
 
 export const loadMasterDataGatewayStatus = async (): Promise<MasterDataGatewayStatus> => {
   const response = await request<MasterDataGatewayStatus>(endpoint);
+  return response.data;
+};
+
+export const loadPersistedAuditTrail = async (limit = 100): Promise<PersistedAuditLog[]> => {
+  const query = new URLSearchParams({ action: 'audit', limit: String(limit) });
+  const response = await request<{ records: PersistedAuditLog[] }>(endpoint + '?' + query);
+  return response.data.records;
+};
+
+export const loadManagedUsers = async (limit = 100): Promise<ManagedUser[]> => {
+  const query = new URLSearchParams({ action: 'users', limit: String(limit) });
+  const response = await request<{ users: ManagedUser[] }>(endpoint + '?' + query);
+  return response.data.users;
+};
+
+export const createManagedUser = async (input: {
+  fullName: string;
+  email: string;
+  password: string;
+  role: ManagedUserRole;
+}) => {
+  const response = await request<{ uid: string; email: string; fullName: string; role: ManagedUserRole }>(endpoint, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'create-user', ...input }),
+  });
+  return response.data;
+};
+
+export const updateManagedUser = async (input: {
+  uid: string;
+  role: ManagedUserRole;
+  active: boolean;
+}) => {
+  const response = await request<{ uid: string; role: ManagedUserRole; active: boolean }>(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify({ action: 'update-user', ...input }),
+  });
   return response.data;
 };
 

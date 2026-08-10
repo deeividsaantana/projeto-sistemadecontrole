@@ -1,0 +1,32 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isStaff() {
+      return request.auth != null && request.auth.token.staff == true;
+    }
+
+    function canWrite() {
+      return isStaff() && request.auth.token.role != 'leitura';
+    }
+
+    function allowedContentType() {
+      return request.resource.contentType.matches('image/.*')
+        || request.resource.contentType == 'application/pdf'
+        || request.resource.contentType == 'text/csv'
+        || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        || request.resource.contentType == 'application/vnd.ms-excel';
+    }
+
+    // Arquivos operacionais usam sempre obra/modulo/registro/nome-do-arquivo.
+    // Links públicos não recebem acesso direto ao Storage.
+    match /obras/{obraId}/{modulo}/{registroId}/{arquivo} {
+      allow read: if isStaff();
+      allow create, update: if canWrite()
+        && request.resource.size < 10 * 1024 * 1024
+        && allowedContentType();
+      // Anexos operacionais fazem parte da trilha documental e não podem ser
+      // removidos diretamente pelo navegador.
+      allow delete: if false;
+    }
+  }
+}

@@ -1445,10 +1445,10 @@ export default function TicketsJazidaTab({
         { module: 'travel-v2.5', localStoragePreserved: true },
       );
       const stagedRows = batches.reduce((sum, batch) => sum + batch.preservedRows, 0);
-      setImportMessage(`${localMessage} ${stagedRows} linha(s) também foram preservadas na fila gradual do Supabase.`);
+        setImportMessage(`${localMessage} ${stagedRows} linha(s) também foram preservadas na fila gradual protegida.`);
     } catch (error) {
-      console.warn('A importação local foi concluída, mas a fila Supabase de viagens está indisponível:', error);
-      setImportMessage(`${localMessage} A cópia local foi mantida; a fila Supabase poderá ser sincronizada depois.`);
+        console.warn('A importação local foi concluída, mas a fila protegida de viagens está indisponível:', error);
+        setImportMessage(`${localMessage} A cópia local foi mantida; a fila protegida poderá ser sincronizada depois.`);
     } finally {
       setPendingImport(null);
       setIsConfirmingImport(false);

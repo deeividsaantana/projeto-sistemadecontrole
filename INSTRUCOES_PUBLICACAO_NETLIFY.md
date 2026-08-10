@@ -41,6 +41,7 @@ Também pode configurar:
 ```txt
 FIREBASE_DATABASE_URL=https://sistemarenea-default-rtdb.firebaseio.com
 MANUTENCAO_SOURCE_URL=https://dynamic-manatee-66561d.netlify.app/
+FIREBASE_DEFAULT_ORGANIZATION_ID=renea
 ```
 
 ## Ativar leitura de PDF e foto de combustível
@@ -108,6 +109,26 @@ git push
 ```
 
 O Netlify deve publicar automaticamente após o push.
+
+## Regras Firebase obrigatórias
+
+Antes do primeiro uso de anexos, usuários ou importações protegidas, publique
+as regras e a configuração de índices com:
+
+firebase deploy --only firestore:rules,firestore:indexes,storage
+
+O arquivo storage.rules aceita somente imagens, PDF, CSV e planilhas até
+10 MB no caminho obras/<obra>/<modulo>/<registro>/arquivo. Links públicos não
+possuem leitura direta no Storage.
+
+## Conferência antes de liberar a equipe
+
+1. Execute npm run verify.
+2. Publique em uma cópia de homologação da Netlify.
+3. Entre como administrador e crie um usuário de teste em Usuários.
+4. Valide recuperação de senha, inativação, auditoria, upload de anexo e uma
+   importação com linhas inválidas.
+5. Exporte um backup antes de publicar para a operação.
 
 ## Testar a sincronização de manutenção
 

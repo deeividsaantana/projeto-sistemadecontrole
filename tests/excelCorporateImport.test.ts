@@ -38,7 +38,8 @@ assert.equal(sanitizedZip.file('xl/drawings/_rels/drawing-missing.xml.rels'), nu
 assert.doesNotMatch(await sanitizedZip.file('xl/worksheets/sheet1.xml')!.async('string'), /<drawing\b/i);
 assert.doesNotMatch(await sanitizedZip.file('xl/worksheets/_rels/sheet1.xml.rels')!.async('string'), /relationships\/drawing/i);
 
-const workbook = await loadValidatedWorkbook(new File([brokenVisualBytes], 'planilha-mestre.xlsx'));
+const browserCompatibleFile = new File([brokenVisualBytes], 'planilha-mestre.xlsx') as unknown as Parameters<typeof loadValidatedWorkbook>[0];
+const workbook = await loadValidatedWorkbook(browserCompatibleFile);
 const importedSheet = workbook.getWorksheet('CAD_EQUIPAMENTOS');
 assert.ok(importedSheet);
 assert.equal(importedSheet.getCell('A2').text, 'EC001');

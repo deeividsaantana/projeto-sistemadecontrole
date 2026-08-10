@@ -3,13 +3,13 @@ import { Banknote, Fuel, Hammer, HardHat, Package, Truck, Wrench } from 'lucide-
 import type {
   Abastecimento, ApontamentoRamo, ApontamentoRamoRegistro, ControleEstacas, Empresa, Equipamento,
   ListaPresenca, MaterialRegistro, ObraLocal, OrdemServico, ParteDiariaEquipamento,
-  PresencaApontamento, RdoDiario, TicketJazida,
+  PresencaApontamento, TicketJazida,
 } from '../types';
 import { buildExecutiveAnalytics } from '../utils/executiveAnalytics';
 
 type Props = {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; abastecimentos: Abastecimento[];
-  ticketsJazida: TicketJazida[]; estacas: ControleEstacas; rdos: RdoDiario[]; listasPresenca: ListaPresenca[];
+  ticketsJazida: TicketJazida[]; estacas: ControleEstacas; listasPresenca: ListaPresenca[];
   presencasLink: PresencaApontamento[]; apontamentos: ApontamentoRamoRegistro[]; ramos: ApontamentoRamo[];
   materiais: MaterialRegistro[]; ordensServico: OrdemServico[]; partesDiarias: ParteDiariaEquipamento[];
 };
@@ -34,7 +34,6 @@ export default function ExecutiveOverviewV27(props: Props) {
     abastecimentos: props.abastecimentos,
     ticketsJazida: props.ticketsJazida,
     estacas: props.estacas,
-    rdos: props.rdos,
     listasPresenca: props.listasPresenca,
     presencasLink: props.presencasLink,
     apontamentos: props.apontamentos,
@@ -47,7 +46,7 @@ export default function ExecutiveOverviewV27(props: Props) {
     { label: 'Combustível', value: `${analytics.combustivel.litros.toLocaleString('pt-BR')} L`, detail: `${analytics.combustivel.pendencias} pendências`, icon: Fuel },
     { label: 'Viagens', value: analytics.viagens.registros, detail: `${analytics.viagens.volumeM3.toLocaleString('pt-BR')} m³`, icon: Truck },
     { label: 'Estacas', value: `${analytics.estacas.cravadoM.toLocaleString('pt-BR')} m`, detail: `${analytics.estacas.sobraM.toLocaleString('pt-BR')} m de saldo`, icon: Hammer },
-    { label: 'Produção', value: analytics.producao.apontamentos + analytics.producao.rdos, detail: `${analytics.producao.pessoasApontadas} pessoas apontadas`, icon: HardHat },
+    { label: 'Produção', value: analytics.producao.apontamentos, detail: `${analytics.producao.pessoasApontadas} pessoas apontadas`, icon: HardHat },
     { label: 'Materiais', value: analytics.materiais.registros, detail: `${analytics.materiais.divergencias} divergências`, icon: Package },
     { label: 'Manutenção', value: analytics.equipamentos.manutencao, detail: `${analytics.equipamentos.partesPendentes} partes pendentes`, icon: Wrench },
     { label: 'Custo consolidado', value: `R$ ${analytics.custos.total.toLocaleString('pt-BR')}`, detail: 'Materiais + manutenção + estacas', icon: Banknote },

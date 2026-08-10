@@ -23,7 +23,6 @@ const INTERMEDIATE_TABLE_IDS = [
   'abastecimentos',
   'lubrificacoes',
   'ticketsJazida',
-  'rdos',
   'listasPresenca',
   'ordensServico',
   'gruposEquipe',

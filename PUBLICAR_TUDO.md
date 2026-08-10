@@ -17,7 +17,7 @@ O assistente executa automaticamente:
 - criação do usuário, se ainda não existir, e concessão de `staff: true`;
 - instalação de dependências, TypeScript e build de produção;
 - commit, `pull --rebase` seguro e push para `main`;
-- publicação das regras do Firestore.
+- publicação das regras, índices e Storage do Firebase.
 
 Se o usuário for criado, a senha inicial aparece uma única vez na janela. Anote
 essa senha antes de fechar.

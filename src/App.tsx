@@ -15,7 +15,6 @@ import {
   EtapaServico, 
   Abastecimento, 
   Lubrificacao, 
-  RdoDiario,
   HistoryLog,
   ListaPresenca,
   OrdemServico,
@@ -48,7 +47,6 @@ import {
   INITIAL_ETAPAS_SERVICO, 
   INITIAL_ABASTECIMENTOS, 
   INITIAL_LUBRIFICACOES, 
-  INITIAL_RDOS,
   INITIAL_HISTORY_LOGS,
   INITIAL_PRESENCAS,
   INITIAL_ORDENS_SERVICO,
@@ -71,6 +69,9 @@ import {
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
+const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
+const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
+const UsuariosTab = lazy(() => import('./components/UsuariosTab'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
@@ -87,7 +88,6 @@ const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ParteDiariaEquipamentosTab = lazy(() => import('./components/ParteDiariaEquipamentosTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 const DocumentIntelligenceTab = lazy(() => import('./components/DocumentIntelligenceTab'));
-const RdoTab = lazy(() => import('./components/RdoTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
 // A base histórica de materiais fica em um chunk separado para não pesar no
@@ -102,6 +102,7 @@ import reneaLogo from './assets/images/logo-renea-branco.svg';
 import { auth, db } from './firebase';
 import {
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   type User,
@@ -303,6 +304,7 @@ export default function App() {
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(true);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
+  const [loginNotice, setLoginNotice] = useState<string>('');
   const activeUserName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
 
   // Notification and Toast States
@@ -334,7 +336,6 @@ export default function App() {
   const [lubrificacoes, setLubrificacoes] = useState<Lubrificacao[]>([]);
   const [ticketsJazida, setTicketsJazida] = useState<TicketJazida[]>([]);
   const [externalPublicTickets, setExternalPublicTickets] = useState<TicketJazida[]>([]);
-  const [rdos, setRdos] = useState<RdoDiario[]>([]);
   const [listasPresenca, setListasPresenca] = useState<ListaPresenca[]>([]);
   const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([]);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
@@ -405,7 +406,6 @@ export default function App() {
         { key: 'renea_abastecimentos', value: JSON.stringify(INITIAL_ABASTECIMENTOS) },
         { key: 'renea_lubrificacoes', value: JSON.stringify(INITIAL_LUBRIFICACOES) },
         { key: 'renea_tickets_jazida', value: JSON.stringify(INITIAL_TICKETS_JAZIDA) },
-        { key: 'renea_rdos', value: JSON.stringify(INITIAL_RDOS) },
         { key: 'renea_listas_presenca', value: JSON.stringify(INITIAL_PRESENCAS) },
         { key: 'renea_ordens_servico', value: JSON.stringify(INITIAL_ORDENS_SERVICO) },
         { key: 'renea_grupos_equipes', value: JSON.stringify(INITIAL_GRUPOS_EQUIPES) },
@@ -441,7 +441,6 @@ export default function App() {
       setAbastecimentos(INITIAL_ABASTECIMENTOS);
       setLubrificacoes(INITIAL_LUBRIFICACOES);
       setTicketsJazida(INITIAL_TICKETS_JAZIDA);
-      setRdos(INITIAL_RDOS);
       setListasPresenca(INITIAL_PRESENCAS);
       setOrdensServico(INITIAL_ORDENS_SERVICO);
       setGruposEquipe(INITIAL_GRUPOS_EQUIPES);
@@ -469,7 +468,6 @@ export default function App() {
       const savedAbastecimentos = localStorage.getItem('renea_abastecimentos');
       const savedLubrificacoes = localStorage.getItem('renea_lubrificacoes');
       const savedTicketsJazida = localStorage.getItem('renea_tickets_jazida');
-      const savedRdos = localStorage.getItem('renea_rdos');
       const savedListasPresenca = localStorage.getItem('renea_listas_presenca');
       const savedOrdensServico = localStorage.getItem('renea_ordens_servico');
       const savedGruposEquipe = localStorage.getItem('renea_grupos_equipes');
@@ -529,7 +527,6 @@ export default function App() {
       setAbastecimentos(loadedAbastecimentos);
       setLubrificacoes(parseStoredJson(savedLubrificacoes, 'renea_lubrificacoes', INITIAL_LUBRIFICACOES));
       setTicketsJazida(loadedTicketsJazida);
-      setRdos(parseStoredJson(savedRdos, 'renea_rdos', INITIAL_RDOS));
       setListasPresenca(shouldMigratePresencePeople ? INITIAL_PRESENCAS : parseStoredJson(savedListasPresenca, 'renea_listas_presenca', INITIAL_PRESENCAS));
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -619,6 +616,31 @@ export default function App() {
     }
   }), []);
 
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const inactivityMs = 30 * 60 * 1000;
+    let timeoutId: number | undefined;
+    const expireSession = async () => {
+      await signOut(auth);
+      setCurrentUser(null);
+      setIsLoggedIn(false);
+      setPassword('');
+      setLoginNotice('Sua sessão foi encerrada por inatividade.');
+    };
+    const refreshActivity = () => {
+      localStorage.setItem('renea_session_last_activity', new Date().toISOString());
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => { void expireSession(); }, inactivityMs);
+    };
+    const events: Array<keyof WindowEventMap> = ['click', 'keydown', 'pointerdown', 'touchstart'];
+    events.forEach(eventName => window.addEventListener(eventName, refreshActivity, { passive: true }));
+    refreshActivity();
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      events.forEach(eventName => window.removeEventListener(eventName, refreshActivity));
+    };
+  }, [isLoggedIn]);
+
 
   // Check the real Firestore connection and load sync preferences on mount.
   useEffect(() => {
@@ -668,7 +690,6 @@ export default function App() {
     customAbastecimentos = abastecimentos,
     customLubrificacoes = lubrificacoes,
     customTicketsJazida = ticketsJazida,
-    customRdos = rdos,
     customHistory = historyLogs,
     customListasPresenca = listasPresenca,
     customOrdensServico = ordensServico,
@@ -697,7 +718,6 @@ export default function App() {
         abastecimentos: customAbastecimentos,
         lubrificacoes: customLubrificacoes,
         ticketsJazida: customTicketsJazida,
-        rdos: customRdos,
         listasPresenca: customListasPresenca,
         ordensServico: customOrdensServico,
         gruposEquipe: customGruposEquipe,
@@ -789,7 +809,6 @@ export default function App() {
           ['abastecimentos', 'renea_abastecimentos'],
           ['lubrificacoes', 'renea_lubrificacoes'],
           ['ticketsJazida', 'renea_tickets_jazida'],
-          ['rdos', 'renea_rdos'],
           ['listasPresenca', 'renea_listas_presenca'],
           ['ordensServico', 'renea_ordens_servico'],
           ['gruposEquipe', 'renea_grupos_equipes'],
@@ -857,9 +876,6 @@ export default function App() {
         }
         if (data.ticketsJazida) {
           setTicketsJazida(data.ticketsJazida);
-        }
-        if (data.rdos) {
-          setRdos(data.rdos);
         }
         if (data.listasPresenca) {
           setListasPresenca(data.listasPresenca);
@@ -1078,7 +1094,6 @@ export default function App() {
           getLS('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
           getLS('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
           getLS('renea_tickets_jazida', []),
-          getLS('renea_rdos', INITIAL_RDOS),
           updatedHistory,
           getLS('renea_listas_presenca', INITIAL_PRESENCAS),
           getLS('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -1113,6 +1128,7 @@ export default function App() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+    setLoginNotice('');
     setIsAuthenticating(true);
     try {
       await signInWithEmailAndPassword(auth, username.trim().toLowerCase(), password);
@@ -1127,6 +1143,22 @@ export default function App() {
     } finally {
       setIsAuthenticating(false);
     }
+  };
+
+  const handlePasswordRecovery = async () => {
+    const email = username.trim().toLowerCase();
+    setLoginError('');
+    setLoginNotice('');
+    if (!email) {
+      setLoginError('Informe seu e-mail para receber a recuperação de senha.');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch {
+      // A mesma resposta evita confirmar se um e-mail possui conta no sistema.
+    }
+    setLoginNotice('Se a conta estiver autorizada, o e-mail de recuperação foi enviado.');
   };
 
   const handleLogout = async () => {
@@ -1967,51 +1999,6 @@ export default function App() {
     }
   };
 
-  const handleSaveRdo = (item: RdoDiario, isNew: boolean) => {
-    let updated;
-    if (isNew) {
-      updated = [...rdos, item];
-    } else {
-      updated = rdos.map(x => x.id === item.id ? item : x);
-    }
-    const ob = obras.find(o => o.id === item.obraLocalId);
-    saveAndLog(
-      'RDO Diário', 
-      isNew ? 'Criou' : 'Editou', 
-      `${isNew ? 'Registrou' : 'Editou'} RDO Diário para obra "${ob ? ob.nome : 'Geral'}" no dia ${item.data}.`,
-      historyLogs,
-      () => {
-        setRdos(updated);
-        localStorage.setItem('renea_rdos', JSON.stringify(updated));
-      }
-    );
-  };
-
-  const handleDeleteRdo = (id: string) => {
-    const item = rdos.find(x => x.id === id);
-    if (!item) return;
-    if (['Aprovado', 'Fechado'].includes(item.statusDocumento || 'Rascunho')) {
-      addNotification(
-        'RDO protegido',
-        'RDOs aprovados ou fechados não podem ser excluídos. Faça uma nova revisão para corrigir dados operacionais.',
-        'warning',
-        'Sistema Local',
-      );
-      return;
-    }
-    const updated = rdos.filter(x => x.id !== id);
-    saveAndLog(
-      'RDO Diário', 
-      'Excluiu', 
-      `Excluiu RDO Diário do dia ${item.data}.`,
-      historyLogs,
-      () => {
-        setRdos(updated);
-        localStorage.setItem('renea_rdos', JSON.stringify(updated));
-      }
-    );
-  };
-
   const handleSaveListaPresenca = (item: ListaPresenca, isNew: boolean) => {
     let updated;
     if (isNew) {
@@ -2172,7 +2159,6 @@ export default function App() {
       getLS('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
       getLS('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
       getLS('renea_tickets_jazida', []),
-      getLS('renea_rdos', INITIAL_RDOS),
       getLS('renea_history_logs', INITIAL_HISTORY_LOGS),
       getLS('renea_listas_presenca', INITIAL_PRESENCAS),
       getLS('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -2491,7 +2477,7 @@ export default function App() {
 
     handleUploadToFirebase(
       empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
-      abastecimentos, lubrificacoes, ticketsJazida, rdos, historyLogs, listasPresenca, ordensServico,
+      abastecimentos, lubrificacoes, ticketsJazida, historyLogs, listasPresenca, ordensServico,
       gruposEquipe, updatedPresencas, updatedHistorico, updatedNotifications
     );
   };
@@ -2757,7 +2743,6 @@ export default function App() {
     abastecimentos?: Abastecimento[];
     lubrificacoes?: Lubrificacao[];
     ticketsJazida?: TicketJazida[];
-    rdos: RdoDiario[];
     listasPresenca?: ListaPresenca[];
     ordensServico?: OrdemServico[];
     gruposEquipe?: GrupoEquipe[];
@@ -2787,7 +2772,6 @@ export default function App() {
     const nextAbastecimentos = imported.abastecimentos ?? abastecimentos;
     const nextLubrificacoes = imported.lubrificacoes ?? lubrificacoes;
     const nextTicketsJazida = imported.ticketsJazida ?? ticketsJazida;
-    const nextRdos = imported.rdos ?? rdos;
     const nextListasPresenca = imported.listasPresenca ?? listasPresenca;
     const nextOrdensServico = imported.ordensServico ?? ordensServico;
     const nextGruposEquipe = imported.gruposEquipe ?? gruposEquipe;
@@ -2828,7 +2812,6 @@ export default function App() {
       { key: 'renea_abastecimentos', value: JSON.stringify(nextAbastecimentos) },
       { key: 'renea_lubrificacoes', value: JSON.stringify(nextLubrificacoes) },
       { key: 'renea_tickets_jazida', value: JSON.stringify(nextTicketsJazida) },
-      { key: 'renea_rdos', value: JSON.stringify(nextRdos) },
       { key: 'renea_listas_presenca', value: JSON.stringify(nextListasPresenca) },
       { key: 'renea_ordens_servico', value: JSON.stringify(nextOrdensServico) },
       { key: 'renea_grupos_equipes', value: JSON.stringify(nextGruposEquipe) },
@@ -2857,7 +2840,6 @@ export default function App() {
     setAbastecimentos(nextAbastecimentos);
     setLubrificacoes(nextLubrificacoes);
     setTicketsJazida(nextTicketsJazida);
-    setRdos(nextRdos);
     setListasPresenca(nextListasPresenca);
     setOrdensServico(nextOrdensServico);
     setGruposEquipe(nextGruposEquipe);
@@ -2887,7 +2869,6 @@ export default function App() {
       { key: 'renea_abastecimentos', value: JSON.stringify(INITIAL_ABASTECIMENTOS) },
       { key: 'renea_lubrificacoes', value: JSON.stringify(INITIAL_LUBRIFICACOES) },
       { key: 'renea_tickets_jazida', value: JSON.stringify(INITIAL_TICKETS_JAZIDA) },
-      { key: 'renea_rdos', value: JSON.stringify(INITIAL_RDOS) },
       { key: 'renea_listas_presenca', value: JSON.stringify(INITIAL_PRESENCAS) },
       { key: 'renea_ordens_servico', value: JSON.stringify(INITIAL_ORDENS_SERVICO) },
       { key: 'renea_grupos_equipes', value: JSON.stringify(INITIAL_GRUPOS_EQUIPES) },
@@ -2919,7 +2900,6 @@ export default function App() {
     setAbastecimentos(INITIAL_ABASTECIMENTOS);
     setLubrificacoes(INITIAL_LUBRIFICACOES);
     setTicketsJazida(INITIAL_TICKETS_JAZIDA);
-    setRdos(INITIAL_RDOS);
     setListasPresenca(INITIAL_PRESENCAS);
     setOrdensServico(INITIAL_ORDENS_SERVICO);
     setGruposEquipe(INITIAL_GRUPOS_EQUIPES);
@@ -2948,7 +2928,7 @@ export default function App() {
     const clearedArrayKeys = [
       'renea_empresas', 'renea_obras', 'renea_equipamentos', 'renea_funcionarios',
       'renea_comboios', 'renea_combustiveis', 'renea_lubrificantes', 'renea_etapas',
-      'renea_abastecimentos', 'renea_lubrificacoes', 'renea_tickets_jazida', 'renea_rdos',
+      'renea_abastecimentos', 'renea_lubrificacoes', 'renea_tickets_jazida',
       'renea_listas_presenca', 'renea_ordens_servico', 'renea_grupos_equipes',
       'renea_presencas_link', 'renea_historico_presencas', 'renea_apontamento_ramos',
       'renea_apontamento_ramo_registros', 'renea_materiais_cadastro', 'renea_materiais_registros',
@@ -2975,7 +2955,6 @@ export default function App() {
     setAbastecimentos([]);
     setLubrificacoes([]);
     setTicketsJazida([]);
-    setRdos([]);
     setListasPresenca([]);
     setOrdensServico([]);
     setGruposEquipe([]);
@@ -3011,7 +2990,6 @@ export default function App() {
       lubrificantes: 'Lubrificantes/Etapas',
       abastecimentos: 'Abastecimentos',
       lubrificacoes: 'Lubrificações',
-      rdos: 'RDOs',
       presenca: 'Presença',
       apontamentoRamos: 'Apontamento Ramos',
       ticketsJazida: 'Tickets Jazida',
@@ -3062,9 +3040,6 @@ export default function App() {
               break;
             case 'lubrificacoes':
               persist('renea_lubrificacoes', nextValue(INITIAL_LUBRIFICACOES), setLubrificacoes);
-              break;
-            case 'rdos':
-              persist('renea_rdos', nextValue(INITIAL_RDOS), setRdos);
               break;
             case 'presenca':
               persist('renea_listas_presenca', nextValue(INITIAL_PRESENCAS), setListasPresenca);
@@ -3143,7 +3118,6 @@ export default function App() {
     const nextAbastecimentos = mergeByIdKeepingLatest(abastecimentos, data.abastecimentos);
     const nextLubrificacoes = mergeByIdKeepingLatest(lubrificacoes, data.lubrificacoes);
     const nextTicketsJazida = mergeByIdKeepingLatest(ticketsJazida, data.ticketsJazida);
-    const nextRdos = mergeByIdKeepingLatest(rdos, data.rdos);
     const nextListasPresenca = mergeByIdKeepingLatest(listasPresenca, data.listasPresenca);
     const nextOrdensServico = mergeByIdKeepingLatest(ordensServico, data.ordensServico);
     const nextPresencasLink = mergeByIdKeepingLatest(presencasLink, data.presencasLink);
@@ -3162,7 +3136,6 @@ export default function App() {
       { key: 'renea_abastecimentos', value: JSON.stringify(nextAbastecimentos) },
       { key: 'renea_lubrificacoes', value: JSON.stringify(nextLubrificacoes) },
       { key: 'renea_tickets_jazida', value: JSON.stringify(nextTicketsJazida) },
-      { key: 'renea_rdos', value: JSON.stringify(nextRdos) },
       { key: 'renea_listas_presenca', value: JSON.stringify(nextListasPresenca) },
       { key: 'renea_ordens_servico', value: JSON.stringify(nextOrdensServico) },
       { key: 'renea_presencas_link', value: JSON.stringify(nextPresencasLink) },
@@ -3176,7 +3149,6 @@ export default function App() {
     setAbastecimentos(nextAbastecimentos);
     setLubrificacoes(nextLubrificacoes);
     setTicketsJazida(nextTicketsJazida);
-    setRdos(nextRdos);
     setListasPresenca(nextListasPresenca);
     setOrdensServico(nextOrdensServico);
     setPresencasLink(nextPresencasLink);
@@ -3202,7 +3174,6 @@ export default function App() {
     const splitAbastecimentos = splitByArchivePeriod<Abastecimento>(abastecimentos, item => item.data, dataInicio, dataFim);
     const splitLubrificacoes = splitByArchivePeriod<Lubrificacao>(lubrificacoes, item => item.data, dataInicio, dataFim);
     const splitTicketsJazida = splitByArchivePeriod<TicketJazida>(ticketsJazida, item => item.data, dataInicio, dataFim);
-    const splitRdos = splitByArchivePeriod<RdoDiario>(rdos, item => item.data, dataInicio, dataFim);
     const splitListasPresenca = splitByArchivePeriod<ListaPresenca>(listasPresenca, item => item.data, dataInicio, dataFim);
     const splitOrdensServico = splitByArchivePeriod<OrdemServico>(ordensServico, item => item.dataAbertura, dataInicio, dataFim);
     const splitPresencasLink = splitByArchivePeriod<PresencaApontamento>(presencasLink, item => item.data, dataInicio, dataFim);
@@ -3217,7 +3188,6 @@ export default function App() {
       abastecimentos: splitAbastecimentos.selected,
       lubrificacoes: splitLubrificacoes.selected,
       ticketsJazida: splitTicketsJazida.selected,
-      rdos: splitRdos.selected,
       listasPresenca: splitListasPresenca.selected,
       ordensServico: splitOrdensServico.selected,
       presencasLink: splitPresencasLink.selected,
@@ -3267,7 +3237,6 @@ export default function App() {
           { key: 'renea_abastecimentos', value: JSON.stringify(splitAbastecimentos.remaining) },
           { key: 'renea_lubrificacoes', value: JSON.stringify(splitLubrificacoes.remaining) },
           { key: 'renea_tickets_jazida', value: JSON.stringify(splitTicketsJazida.remaining) },
-          { key: 'renea_rdos', value: JSON.stringify(splitRdos.remaining) },
           { key: 'renea_listas_presenca', value: JSON.stringify(splitListasPresenca.remaining) },
           { key: 'renea_ordens_servico', value: JSON.stringify(splitOrdensServico.remaining) },
           { key: 'renea_presencas_link', value: JSON.stringify(splitPresencasLink.remaining) },
@@ -3281,7 +3250,6 @@ export default function App() {
         setAbastecimentos(splitAbastecimentos.remaining);
         setLubrificacoes(splitLubrificacoes.remaining);
         setTicketsJazida(splitTicketsJazida.remaining);
-        setRdos(splitRdos.remaining);
         setListasPresenca(splitListasPresenca.remaining);
         setOrdensServico(splitOrdensServico.remaining);
         setPresencasLink(splitPresencasLink.remaining);
@@ -3351,7 +3319,6 @@ export default function App() {
       abastecimentos,
       lubrificacoes,
       ticketsJazida,
-      rdos,
       listasPresenca,
       ordensServico,
       gruposEquipe,
@@ -3389,7 +3356,7 @@ export default function App() {
 
   // Importação seletiva: o usuário escolhe exatamente o período (data início/fim)
   // que deseja importar do arquivo de backup. Registros com data (abastecimentos,
-  // lubrificações, RDOs e listas de presença) fora do intervalo são ignorados.
+  // lubrificações e listas de presença fora do intervalo são ignoradas.
   // Cadastros sem data (empresas, equipamentos, funcionários, etc.) são mesclados
   // por ID, sem apagar o que já existe no sistema.
   const handleImportFilteredByDate = (
@@ -3446,7 +3413,6 @@ export default function App() {
       // Registros datados: só entram os que caem dentro do período escolhido
       const incomingAbastecimentos = (parsed.abastecimentos || []).filter((x: Abastecimento) => inRange(x.data));
       const incomingLubrificacoes = (parsed.lubrificacoes || []).filter((x: Lubrificacao) => inRange(x.data));
-      const incomingRdos = (parsed.rdos || []).filter((x: RdoDiario) => inRange(x.data));
       const incomingPresencas = (parsed.listasPresenca || []).filter((x: ListaPresenca) => inRange(x.data));
       const incomingOrdensServico = (parsed.ordensServico || []).filter((x: OrdemServico) => inRange(x.dataAbertura));
       const incomingPresencasLink = (parsed.presencasLink || []).filter((x: PresencaApontamento) => inRange(x.data));
@@ -3459,7 +3425,6 @@ export default function App() {
 
       const newAbastecimentos = mergeById(abastecimentos, incomingAbastecimentos);
       const newLubrificacoes = mergeById(lubrificacoes, incomingLubrificacoes);
-      const newRdos = mergeById(rdos, incomingRdos);
       const newListasPresenca = mergeById(listasPresenca, incomingPresencas);
       const newOrdensServico = mergeById(ordensServico, incomingOrdensServico);
       const newPresencasLink = mergeById(presencasLink, incomingPresencasLink);
@@ -3472,7 +3437,7 @@ export default function App() {
         cravacoes: mergeById(controleEstacas.cravacoes, incomingEstacasCravacoes),
       };
 
-      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingRdos.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingApontamentoRamoRegistros.length + incomingTicketsJazida.length + incomingMateriaisRegistros.length + incomingPartesDiariasEquipamentos.length + incomingEstacasLotes.length + incomingEstacasCravacoes.length;
+      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingApontamentoRamoRegistros.length + incomingTicketsJazida.length + incomingMateriaisRegistros.length + incomingPartesDiariasEquipamentos.length + incomingEstacasLotes.length + incomingEstacasCravacoes.length;
       const logMsg = `Importou seletivamente ${totalImportados} registro(s) datado(s) entre ${dataInicio || 'início'} e ${dataFim || 'fim'}, além dos cadastros base.`;
       const newLog: HistoryLog = {
         id: `log-${Date.now()}`,
@@ -3496,7 +3461,6 @@ export default function App() {
         { key: 'renea_abastecimentos', value: JSON.stringify(newAbastecimentos) },
         { key: 'renea_lubrificacoes', value: JSON.stringify(newLubrificacoes) },
         { key: 'renea_tickets_jazida', value: JSON.stringify(newTicketsJazida) },
-        { key: 'renea_rdos', value: JSON.stringify(newRdos) },
         { key: 'renea_listas_presenca', value: JSON.stringify(newListasPresenca) },
         { key: 'renea_ordens_servico', value: JSON.stringify(newOrdensServico) },
         { key: 'renea_grupos_equipes', value: JSON.stringify(newGruposEquipe) },
@@ -3523,7 +3487,6 @@ export default function App() {
       setAbastecimentos(newAbastecimentos);
       setLubrificacoes(newLubrificacoes);
       setTicketsJazida(newTicketsJazida);
-      setRdos(newRdos);
       setListasPresenca(newListasPresenca);
       setOrdensServico(newOrdensServico);
       setGruposEquipe(newGruposEquipe);
@@ -3654,6 +3617,12 @@ export default function App() {
               </div>
             )}
 
+            {loginNotice && (
+              <div role="status" className="text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-3.5 py-2">
+                {loginNotice}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isAuthenticating}
@@ -3661,6 +3630,9 @@ export default function App() {
             >
               <LogIn className="w-4 h-4" />
               Entrar no sistema
+            </button>
+            <button type="button" onClick={() => void handlePasswordRecovery()} className="w-full text-center text-xs font-bold text-emerald-400 hover:text-emerald-300">
+              Recuperar senha
             </button>
           </form>
 
@@ -4038,7 +4010,6 @@ export default function App() {
                 ordensServico={ordensServico}
                 ticketsJazida={ticketsJazida}
                 estacas={controleEstacas}
-                rdos={rdos}
                 presencasLink={presencasLink}
                 apontamentoRamos={apontamentoRamos}
                 apontamentoRamoRegistros={apontamentoRamoRegistros}
@@ -4046,6 +4017,26 @@ export default function App() {
                 partesDiariasEquipamentos={partesDiariasEquipamentos}
                 onNavigate={navigateTo}
               />
+            )}
+
+            {activeTab === 'pendencias' && (
+              <PendenciasTab
+                tickets={ticketsJazida}
+                abastecimentos={abastecimentos}
+                materiais={materiaisRegistros}
+                estacas={controleEstacas}
+                ordensServico={ordensServico}
+                partesDiarias={partesDiariasEquipamentos}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'auditoria' && allowedTabs.includes('auditoria') && (
+              <AuditoriaTab historyLogs={historyLogs} />
+            )}
+
+            {activeTab === 'usuarios' && allowedTabs.includes('usuarios') && (
+              <UsuariosTab />
             )}
 
             {activeTab === 'cadastros' && allowedTabs.includes('cadastros') && (
@@ -4151,27 +4142,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'rdo' && (
-              <RdoTab
-                rdos={rdos}
-                empresas={empresas}
-                obras={obras}
-                equipamentos={equipamentos}
-                funcionarios={funcionarios}
-                etapas={etapas}
-                listasPresenca={listasPresenca}
-                gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
-                apontamentos={apontamentoRamoRegistros}
-                partesDiarias={partesDiariasEquipamentos}
-                tickets={ticketsJazida}
-                materiais={materiaisRegistros}
-                ordensServico={ordensServico}
-                activeUserName={activeUserName}
-                onSaveRdo={handleSaveRdo}
-                onDeleteRdo={handleDeleteRdo}
-              />
-            )}
 
             {activeTab === 'manutencao' && (
               <ManutencaoEquipamentosTab 
@@ -4245,7 +4215,6 @@ export default function App() {
                 controleEstacas={controleEstacas}
                 materiaisRegistros={materiaisRegistros}
                 presencasLink={presencasLink}
-                rdos={rdos}
                 partesDiariasEquipamentos={partesDiariasEquipamentos}
               />
             )}
@@ -4253,16 +4222,12 @@ export default function App() {
             {activeTab === 'configuracoes' && allowedTabs.includes('configuracoes') && (
               <ConfiguracoesTab 
                 historyLogs={historyLogs}
-                onResetToDefault={handleResetData}
-                onClearAllData={handleClearData}
-                onApplySelectiveReset={handleApplySelectiveReset}
                 onImportFullData={handleImportFullData}
                 onImportFilteredByDate={handleImportFilteredByDate}
                 onExportFullData={handleExportFullData}
                 periodosArquivados={periodosArquivados}
                 onArchivePeriod={handleArchivePeriod}
                 onRestoreArchivedPeriod={handleRestoreArchivedPeriod}
-                onDeleteArchivedPeriod={handleDeleteArchivedPeriod}
                 isFirebaseConnected={isFirebaseConnected}
                 isAutoSyncEnabled={isAutoSyncEnabled}
                 lastCloudSync={lastCloudSync}

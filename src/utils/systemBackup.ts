@@ -10,7 +10,6 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'abastecimentos',
   'lubrificacoes',
   'ticketsJazida',
-  'rdos',
   'listasPresenca',
   'ordensServico',
   'gruposEquipe',

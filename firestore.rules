@@ -27,15 +27,6 @@ service cloud.firestore {
       return isStaff() && request.auth.token.role != 'leitura';
     }
 
-    function canDelete() {
-      return isStaff()
-        && (
-          request.auth.token.role == null
-          || request.auth.token.role == 'admin'
-          || request.auth.token.role == 'gestor'
-        );
-    }
-
     function hasBaseFields(data) {
       return data != null
         && data.keys().hasAll(['updatedAt', 'empresas', 'obras', 'equipamentos'])
@@ -153,7 +144,9 @@ service cloud.firestore {
           || isValidTicketCounter(docId, request.resource.data)
           || isValidPublicTicket(docId, request.resource.data)
         );
-      allow delete: if canDelete() && isValidId(docId);
+      // O histórico operacional não pode ser removido pelo navegador.
+      // Correções usam atualização auditável ou arquivamento.
+      allow delete: if false;
     }
 
     // Espelho operacional de tickets. O público grava e pesquisa somente pelas
@@ -161,7 +154,7 @@ service cloud.firestore {
     match /sistemarenea_public_tickets/{docId} {
       allow read: if isStaff() && isValidId(docId);
       allow create, update: if canWrite() && isValidId(docId);
-      allow delete: if canDelete() && isValidId(docId);
+      allow delete: if false;
     }
 
     match /sistemarenea_public_meta/{docId} {
@@ -180,6 +173,29 @@ service cloud.firestore {
 
     // Contadores de proteção contra abuso são internos às funções serverless.
     match /sistemarenea_rate_limits/{docId} {
+      allow read, write: if false;
+    }
+
+    // Cadastros segmentados, auditoria, usuários e lotes de importação são
+    // manipulados exclusivamente por funções Netlify usando o Admin SDK.
+    // Não há acesso direto do navegador, mesmo para usuários autenticados.
+    match /sistemarenea_master_data/{organizationId}/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /sistemarenea_audit_logs/{docId} {
+      allow read, write: if false;
+    }
+
+    match /sistemarenea_app_users/{docId} {
+      allow read, write: if false;
+    }
+
+    match /sistemarenea_import_batches/{batchId}/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /sistemarenea_organizations/{organizationId} {
       allow read, write: if false;
     }
   }

@@ -6,7 +6,7 @@ const LEGACY_ID = 'main_data';
 const INTERMEDIATE_META_ID = 'meta';
 const INTERMEDIATE_TABLE_IDS = [
   'empresas', 'obras', 'equipamentos', 'funcionarios', 'comboios', 'combustiveis',
-  'lubrificantes', 'etapas', 'abastecimentos', 'lubrificacoes', 'ticketsJazida', 'rdos',
+  'lubrificantes', 'etapas', 'abastecimentos', 'lubrificacoes', 'ticketsJazida',
   'listasPresenca', 'ordensServico', 'gruposEquipe', 'presencasLink', 'historicoPresencas',
   'apontamentoRamos', 'apontamentoRamoRegistros', 'materiaisCadastro', 'materiaisRegistros',
   'partesDiariasEquipamentos', 'periodosArquivados', 'notifications', 'historyLogs',

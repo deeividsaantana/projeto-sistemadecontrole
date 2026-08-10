@@ -1241,7 +1241,7 @@ export default function CadastrosTab({
               </div>
             )}
 
-            {/* Simple Text items (Combustivel, Lubrificante, Etapa RDO) */}
+            {/* Simple Text items (Combustível, lubrificante e etapa) */}
             {(subTab === 'combustiveis' || subTab === 'lubrificantes' || subTab === 'etapas') && (
               <div className="space-y-1 max-w-md">
                 <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">

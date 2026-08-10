@@ -16,7 +16,7 @@ Data: 13/07/2026
 
 ## Conferências necessárias após publicar
 
-- Configurar `GEMINI_API_KEY` no Netlify e realizar uma análise com um documento real.
+- Validar a leitura local com um documento real e conferir manualmente os registros antes da gravação.
 - Executar `npm install` e `npm run build` no Codespace ou ambiente de publicação.
 - Conferir visualmente desktop e celular no endereço publicado.
 

@@ -14,8 +14,10 @@ O sistema agora usa contas reais do Firebase Authentication. A senha padrao
 3. Em **Sign-in method**, habilite **E-mail/senha**.
 4. Publique o site novamente.
 
-Crie cada usuário em **Authentication > Users** pelo Console do Firebase. O
-sistema não oferece mais cadastro público na tela de login.
+Crie o primeiro administrador pelo Console do Firebase e conceda a claim
+staff. Depois da publicação, administradores também podem criar, alterar
+perfil, inativar e reativar usuários em Administração > Usuários.
+Não existe cadastro público na tela de login.
 
 Antes de publicar as novas regras, conceda a permissão `staff` a pelo menos uma
 conta administrativa. Com `FIREBASE_SERVICE_ACCOUNT_KEY` configurada localmente:

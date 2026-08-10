@@ -11,8 +11,6 @@ import { loadMasterDataGatewayStatus, type MasterDataGatewayStatus } from '../se
 import { 
   Settings, 
   Clock, 
-  Trash2, 
-  RotateCcw, 
   Download, 
   Upload, 
   BookOpen, 
@@ -33,16 +31,12 @@ import {
 
 interface ConfiguracoesTabProps {
   historyLogs: HistoryLog[];
-  onResetToDefault: () => void;
-  onClearAllData: () => void;
-  onApplySelectiveReset: (scopeKeys: string[], mode: 'clear' | 'default') => { success: boolean; message: string };
   onImportFullData: (importedJson: string) => boolean;
   onImportFilteredByDate: (importedJson: string, dataInicio: string, dataFim: string) => { success: boolean; message: string };
   onExportFullData: () => string;
   periodosArquivados: PeriodoArquivado[];
   onArchivePeriod: (dataInicio: string, dataFim: string, nome?: string) => { success: boolean; message: string };
   onRestoreArchivedPeriod: (id: string) => { success: boolean; message: string };
-  onDeleteArchivedPeriod: (id: string) => { success: boolean; message: string };
   isFirebaseConnected: boolean;
   isAutoSyncEnabled: boolean;
   lastCloudSync: string;
@@ -53,16 +47,12 @@ interface ConfiguracoesTabProps {
 
 export default function ConfiguracoesTab({
   historyLogs,
-  onResetToDefault,
-  onClearAllData,
-  onApplySelectiveReset,
   onImportFullData,
   onImportFilteredByDate,
   onExportFullData,
   periodosArquivados,
   onArchivePeriod,
   onRestoreArchivedPeriod,
-  onDeleteArchivedPeriod,
   isFirebaseConnected,
   isAutoSyncEnabled,
   lastCloudSync,
@@ -82,21 +72,16 @@ export default function ConfiguracoesTab({
   const [filtroDataFim, setFiltroDataFim] = useState('');
   const [pendingFileText, setPendingFileText] = useState<string | null>(null);
   const [pendingFileName, setPendingFileName] = useState('');
+  const [pendingFullImportText, setPendingFullImportText] = useState<string | null>(null);
+  const [pendingFullImportName, setPendingFullImportName] = useState('');
   
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [showSelectiveConfirm, setShowSelectiveConfirm] = useState(false);
-  const [selectiveResetMode, setSelectiveResetMode] = useState<'clear' | 'default'>('clear');
-  const [selectedResetScopes, setSelectedResetScopes] = useState<string[]>(['abastecimentos']);
-  const [selectiveResetStatus, setSelectiveResetStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [selectiveResetMsg, setSelectiveResetMsg] = useState('');
   const [archiveDataInicio, setArchiveDataInicio] = useState('');
   const [archiveDataFim, setArchiveDataFim] = useState('');
   const [archiveNome, setArchiveNome] = useState('');
   const [archiveStatus, setArchiveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [archiveMsg, setArchiveMsg] = useState('');
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
-  const [archiveDeleteConfirmId, setArchiveDeleteConfirmId] = useState<string | null>(null);
+  const [pendingRestoreArchiveId, setPendingRestoreArchiveId] = useState<string | null>(null);
   const [historySearch, setHistorySearch] = useState('');
   const [historyTela, setHistoryTela] = useState('');
   const [historyAcao, setHistoryAcao] = useState('');
@@ -135,7 +120,7 @@ export default function ConfiguracoesTab({
       setMasterDataStatus(await loadMasterDataGatewayStatus());
     } catch (error) {
       setMasterDataStatus(null);
-      setMasterDataError(error instanceof Error ? error.message : 'Não foi possível consultar o Supabase.');
+      setMasterDataError(error instanceof Error ? error.message : 'Não foi possível consultar a persistência protegida.');
     } finally {
       setMasterDataLoading(false);
     }
@@ -171,68 +156,6 @@ export default function ConfiguracoesTab({
         .includes(term);
     });
   }, [historyLogs, historySearch, historyTela, historyAcao, historyStart, historyEnd]);
-
-  const resetScopeOptions = [
-    { key: 'empresas', label: 'Empresas', description: 'Cadastro de empresas e fornecedores.' },
-    { key: 'obras', label: 'Obras/Locais', description: 'Canteiros, locais e frentes de serviço.' },
-    { key: 'equipamentos', label: 'Equipamentos', description: 'Frotas, máquinas, placas e status.' },
-    { key: 'funcionarios', label: 'Funcionários', description: 'Colaboradores, líderes e áreas.' },
-    { key: 'comboios', label: 'Comboios', description: 'Tanques, placas e responsáveis.' },
-    { key: 'combustiveis', label: 'Tipos de combustível', description: 'Diesel, gasolina, Arla e produtos importados.' },
-    { key: 'lubrificantes', label: 'Lubrificantes/Etapas', description: 'Produtos de lubrificação e etapas de serviço.' },
-    { key: 'abastecimentos', label: 'Abastecimentos', description: 'Histórico da aba Combustível.' },
-    { key: 'lubrificacoes', label: 'Lubrificações', description: 'Lançamentos de lubrificação.' },
-    { key: 'presenca', label: 'Presença', description: 'Listas, grupos, links e apontamentos.' },
-    { key: 'apontamentoRamos', label: 'Apontamento Ramos', description: 'Configuração dos ramos e registros externos.' },
-    { key: 'ticketsJazida', label: 'Tickets Jazida', description: 'Tickets de liberação e recebimento.' },
-    { key: 'materiais', label: 'Materiais', description: 'Cadastros e movimentações de materiais.' },
-    { key: 'estacas', label: 'Estacas', description: 'Lotes, notas fiscais, cravações, sobras e perdas.' },
-    { key: 'partesDiarias', label: 'Partes Diárias', description: 'Partes diárias de equipamentos.' },
-    { key: 'manutencao', label: 'Manutenção', description: 'Ordens de serviço de equipamentos.' },
-    { key: 'periodosArquivados', label: 'Arquivos de períodos', description: 'Fechamentos guardados fora do dashboard.' },
-  ];
-
-  const allResetScopeKeys = resetScopeOptions.map(option => option.key);
-  const operationalResetScopeKeys = [
-    'abastecimentos',
-    'lubrificacoes',
-    'ticketsJazida',
-    'presenca',
-    'apontamentoRamos',
-    'materiais',
-    'estacas',
-    'partesDiarias',
-    'manutencao',
-  ];
-
-  const selectedResetLabels = resetScopeOptions
-    .filter(option => selectedResetScopes.includes(option.key))
-    .map(option => option.label);
-
-  const toggleResetScope = (key: string) => {
-    setSelectiveResetStatus('idle');
-    setSelectiveResetMsg('');
-    setShowSelectiveConfirm(false);
-    setSelectedResetScopes(current =>
-      current.includes(key)
-        ? current.filter(item => item !== key)
-        : [...current, key]
-    );
-  };
-
-  const setResetScopeSelection = (keys: string[]) => {
-    setSelectiveResetStatus('idle');
-    setSelectiveResetMsg('');
-    setShowSelectiveConfirm(false);
-    setSelectedResetScopes(Array.from(new Set(keys)));
-  };
-
-  const applySelectiveReset = () => {
-    const result = onApplySelectiveReset(selectedResetScopes, selectiveResetMode);
-    setSelectiveResetStatus(result.success ? 'success' : 'error');
-    setSelectiveResetMsg(result.message);
-    if (result.success) setShowSelectiveConfirm(false);
-  };
 
   const toLocalIsoDate = (date: Date) => {
     const year = date.getFullYear();
@@ -275,13 +198,7 @@ export default function ConfiguracoesTab({
     const result = onRestoreArchivedPeriod(id);
     setArchiveStatus(result.success ? 'success' : 'error');
     setArchiveMsg(result.message);
-  };
-
-  const deleteArchive = (id: string) => {
-    const result = onDeleteArchivedPeriod(id);
-    setArchiveStatus(result.success ? 'success' : 'error');
-    setArchiveMsg(result.message);
-    if (result.success) setArchiveDeleteConfirmId(null);
+    if (result.success) setPendingRestoreArchiveId(null);
   };
 
   // Trigger export download
@@ -311,14 +228,10 @@ export default function ConfiguracoesTab({
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
-        const success = onImportFullData(text);
-        if (success) {
-          setImportStatus('success');
-          setImportMsg('Backup importado com sucesso! Os dados foram atualizados.');
-        } else {
-          setImportStatus('error');
-          setImportMsg('O arquivo fornecido não possui a estrutura válida do sistema Renea.');
-        }
+        setPendingFullImportText(text);
+        setPendingFullImportName(file.name);
+        setImportStatus('idle');
+        setImportMsg('');
       } catch (err) {
         setImportStatus('error');
         setImportMsg('Falha de sintaxe ao ler o arquivo JSON de backup.');
@@ -327,6 +240,20 @@ export default function ConfiguracoesTab({
     reader.readAsText(file);
     // Reset file input value
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleConfirmFullImport = () => {
+    if (!pendingFullImportText) return;
+    const success = onImportFullData(pendingFullImportText);
+    if (success) {
+      setImportStatus('success');
+      setImportMsg('Backup importado com sucesso. Revise os dados restaurados e a trilha de auditoria.');
+      setPendingFullImportText(null);
+      setPendingFullImportName('');
+    } else {
+      setImportStatus('error');
+      setImportMsg('O arquivo fornecido não possui a estrutura válida do sistema Renea.');
+    }
   };
 
   // Seleciona o arquivo para importação seletiva por período (não importa ainda,
@@ -370,6 +297,21 @@ export default function ConfiguracoesTab({
           <p className="text-xs text-slate-400 mt-1">Gerencie a segurança local, importe ou exporte backups, faça auditorias e acesse o manual.</p>
         </div>
       </div>
+
+      {pendingFullImportText && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
+          <div>
+            <strong className="block text-xs uppercase tracking-wider text-amber-300">Confirmar restauração de backup</strong>
+            <p className="mt-1 text-xxs leading-relaxed text-slate-300">
+              O arquivo {pendingFullImportName || 'selecionado'} foi carregado, mas ainda não alterou os registros. A restauração pode atualizar dados operacionais; confirme somente após validar a origem e a data do backup.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={handleConfirmFullImport} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-amber-500">Confirmar restauração</button>
+            <button type="button" onClick={() => { setPendingFullImportText(null); setPendingFullImportName(''); }} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xxs font-bold text-slate-300">Cancelar</button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -434,13 +376,13 @@ export default function ConfiguracoesTab({
             )}
           </div>
 
-          {/* PostgreSQL/Supabase gradual foundation */}
+          {/* Persistência protegida gradual */}
           <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <div className="p-3 bg-emerald-500/10 text-emerald-300 rounded-xl"><Database className="w-5 h-5" /></div>
                 <div>
-                  <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Fundação PostgreSQL / Supabase</h2>
+                  <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Persistência Firebase / Netlify</h2>
                   <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
                     Camada opcional para cadastros mestres, auditoria e importações. O Firebase continua ativo e nenhum fluxo atual é substituído.
                   </p>
@@ -461,7 +403,7 @@ export default function ConfiguracoesTab({
             ) : (
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3">
                 <strong className="block text-xs text-amber-300">Modo opcional ainda não ativado</strong>
-                <span className="mt-1 block text-[10px] leading-relaxed text-slate-400">{masterDataError || 'Configure as variáveis do Supabase no Netlify quando iniciar a migração.'}</span>
+                <span className="mt-1 block text-[10px] leading-relaxed text-slate-400">{masterDataError || 'Configure a conta de serviço Firebase no Netlify para concluir a persistência protegida.'}</span>
               </div>
             )}
           </div>
@@ -701,21 +643,20 @@ export default function ConfiguracoesTab({
                         <span className="rounded bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-400">{formatIsoDate(archive.criadoEm.slice(0, 10))}</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => restoreArchive(archive.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-emerald-500">
-                          <FolderOpen className="w-3.5 h-3.5" />
-                          Puxar para operação
-                        </button>
-                        {archiveDeleteConfirmId === archive.id ? (
+                        {pendingRestoreArchiveId === archive.id ? (
                           <>
-                            <button type="button" onClick={() => deleteArchive(archive.id)} className="rounded-lg bg-rose-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-rose-500">Confirmar exclusão</button>
-                            <button type="button" onClick={() => setArchiveDeleteConfirmId(null)} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xxs font-bold text-slate-300">Cancelar</button>
+                            <button type="button" onClick={() => restoreArchive(archive.id)} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-amber-500">Confirmar restauração</button>
+                            <button type="button" onClick={() => setPendingRestoreArchiveId(null)} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xxs font-bold text-slate-300">Cancelar</button>
                           </>
                         ) : (
-                          <button type="button" onClick={() => setArchiveDeleteConfirmId(archive.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/25 bg-rose-950/10 px-3 py-1.5 text-xxs font-bold text-rose-300 hover:border-rose-400">
-                            <Trash2 className="w-3.5 h-3.5" />
-                            Excluir arquivo
+                          <button type="button" onClick={() => setPendingRestoreArchiveId(archive.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-emerald-500">
+                            <FolderOpen className="w-3.5 h-3.5" />
+                            Restaurar para operação
                           </button>
                         )}
+                        <span className="inline-flex items-center rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xxs font-bold text-slate-400">
+                          Arquivo preservado
+                        </span>
                       </div>
                     </div>
                   ))
@@ -882,136 +823,20 @@ export default function ConfiguracoesTab({
 
         </div>
 
-        {/* Right Column: Database resets and Complete Change audit logs */}
+        {/* Right Column: Data protection and complete change audit logs */}
         <div className="space-y-6">
           
-          {/* Hard reset Utilities */}
+          {/* Operational data protection */}
           <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
-            <h2 className="text-xs uppercase tracking-widest font-black text-rose-400 font-mono flex items-center gap-2">
-              <AlertTriangle className="w-4.5 h-4.5" />
-              Opções Destrutivas de Banco
+            <h2 className="text-xs uppercase tracking-widest font-black text-emerald-400 font-mono flex items-center gap-2">
+              <ShieldCheck className="w-4.5 h-4.5" />
+              Proteção de dados operacionais
             </h2>
             <p className="text-xxs text-slate-400 leading-relaxed">
-              As ações abaixo reinicializam a memória do navegador. Tenha certeza absoluta antes de clicar.
+              A exclusão total, a restauração para dados fictícios e o reset seletivo foram desativados para preservar o histórico operacional. Use exportação, importação assistida e arquivamento de períodos para manter rastreabilidade.
             </p>
-
-            <div className="space-y-2">
-              {/* Reset Default */}
-              {!showResetConfirm ? (
-                <button
-                  onClick={() => { setShowResetConfirm(true); setShowClearConfirm(false); setShowSelectiveConfirm(false); }}
-                  className="w-full py-2.5 bg-slate-950 hover:bg-slate-850 text-slate-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-800"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Restaurar Padrões de Fábrica
-                </button>
-              ) : (
-                <div className="bg-slate-950 border border-amber-500/20 p-3.5 rounded-xl text-center space-y-2">
-                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block font-mono">Confirmar restauração de fábrica?</span>
-                  <p className="text-xxs text-slate-500 leading-relaxed">Isso recolocará as 5 empresas fictícias e logs de junho de 2026.</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => { onResetToDefault(); setShowResetConfirm(false); }} className="flex-1 py-1.5 bg-amber-600 text-white font-bold text-xxs rounded-lg hover:bg-amber-500">Confirmar</button>
-                    <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-1.5 bg-slate-800 text-slate-300 font-bold text-xxs rounded-lg">Cancelar</button>
-                  </div>
-                </div>
-              )}
-
-              {/* Clear All */}
-              {!showClearConfirm ? (
-                <button
-                  onClick={() => { setShowClearConfirm(true); setShowResetConfirm(false); setShowSelectiveConfirm(false); }}
-                  className="w-full py-2.5 bg-rose-950/20 hover:bg-rose-950/40 border border-rose-900/30 text-rose-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Trash2 className="w-4.5 h-4.5" />
-                  Limpar Toda a Memória (Zerar)
-                </button>
-              ) : (
-                <div className="bg-rose-950/10 border border-rose-500/20 p-3.5 rounded-xl text-center space-y-2">
-                  <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block font-mono">⚠️ APAGAR TODO O BANCO?</span>
-                  <p className="text-xxs text-slate-500">Essa ação esvaziará todas as tabelas operacionais, incluindo equipamentos e abastecimentos.</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => { onClearAllData(); setShowClearConfirm(false); }} className="flex-1 py-1.5 bg-rose-600 text-white font-bold text-xxs rounded-lg hover:bg-rose-500">Sim, Zerar</button>
-                    <button onClick={() => setShowClearConfirm(false)} className="flex-1 py-1.5 bg-slate-800 text-slate-300 font-bold text-xxs rounded-lg">Voltar</button>
-                  </div>
-                </div>
-              )}
-
-              <div className="border-t border-slate-850 pt-4 space-y-3">
-                <div>
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-white font-mono">Reset seletivo por aba</h3>
-                  <p className="mt-1 text-xxs text-slate-500 leading-relaxed">
-                    Escolha exatamente o que quer excluir ou restaurar. O que não estiver marcado fica como está.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setSelectiveResetMode('clear'); setShowSelectiveConfirm(false); setSelectiveResetStatus('idle'); }}
-                    className={`rounded-xl border px-3 py-2 text-xxs font-bold ${selectiveResetMode === 'clear' ? 'border-rose-500/40 bg-rose-500/10 text-rose-300' : 'border-slate-800 bg-slate-950 text-slate-400'}`}
-                  >
-                    Zerar selecionados
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectiveResetMode('default'); setShowSelectiveConfirm(false); setSelectiveResetStatus('idle'); }}
-                    className={`rounded-xl border px-3 py-2 text-xxs font-bold ${selectiveResetMode === 'default' ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' : 'border-slate-800 bg-slate-950 text-slate-400'}`}
-                  >
-                    Restaurar padrão
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={() => setResetScopeSelection(allResetScopeKeys)} className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 hover:text-white">Marcar tudo</button>
-                  <button type="button" onClick={() => setResetScopeSelection(operationalResetScopeKeys)} className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 hover:text-white">Só operação</button>
-                  <button type="button" onClick={() => setResetScopeSelection([])} className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 hover:text-white">Desmarcar</button>
-                </div>
-
-                <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-850 bg-slate-950/45 p-2 space-y-1.5">
-                  {resetScopeOptions.map(option => (
-                    <label key={option.key} className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-850 bg-slate-950 p-2 hover:border-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={selectedResetScopes.includes(option.key)}
-                        onChange={() => toggleResetScope(option.key)}
-                        className="mt-0.5 h-4 w-4 accent-emerald-500"
-                      />
-                      <span>
-                        <span className="block text-xxs font-bold text-slate-200">{option.label}</span>
-                        <span className="block text-[10px] leading-snug text-slate-500">{option.description}</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-
-                {!showSelectiveConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => { setShowSelectiveConfirm(true); setShowResetConfirm(false); setShowClearConfirm(false); }}
-                    disabled={selectedResetScopes.length === 0}
-                    className="w-full rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Aplicar aos selecionados ({selectedResetScopes.length})
-                  </button>
-                ) : (
-                  <div className="rounded-xl border border-rose-500/20 bg-rose-950/10 p-3.5 space-y-2">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-rose-300 font-mono">Confirmar reset seletivo?</span>
-                    <p className="text-xxs leading-relaxed text-slate-400">
-                      Ação: {selectiveResetMode === 'clear' ? 'zerar' : 'restaurar padrão'} • Itens: {selectedResetLabels.join(', ') || 'nenhum'}.
-                    </p>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={applySelectiveReset} className="flex-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xxs font-bold text-white hover:bg-rose-500">Confirmar</button>
-                      <button type="button" onClick={() => setShowSelectiveConfirm(false)} className="flex-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xxs font-bold text-slate-300">Cancelar</button>
-                    </div>
-                  </div>
-                )}
-
-                {selectiveResetStatus !== 'idle' && (
-                  <div className={`rounded-xl border p-3 text-xs font-semibold ${selectiveResetStatus === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-rose-500/30 bg-rose-500/10 text-rose-400'}`}>
-                    {selectiveResetStatus === 'success' ? '✓' : '⚠️'} {selectiveResetMsg}
-                  </div>
-                )}
-              </div>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-xxs leading-relaxed text-slate-300">
+              Registros existentes só podem ser consultados, arquivados ou restaurados por rotinas com confirmação e trilha de auditoria. Não há mais comandos de zerar dados neste ambiente.
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Hammer, PackagePlus, Trash2 } from 'lucide-react';
 import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal, ApontamentoRamo } from '../types';
 import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
+import { uploadOperationalAttachment } from '../services/operationalAttachments';
 
 type Props = {
   controle: ControleEstacas;
@@ -62,6 +63,7 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
   const [mode, setMode] = useState<'lotes' | 'cravacoes' | 'notas'>('lotes');
   const [lot, setLot] = useState(emptyLot);
   const [driving, setDriving] = useState(emptyDriving);
+  const [lotFiles, setLotFiles] = useState<File[]>([]);
   const [message, setMessage] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const summary = useMemo(() => buildStakeSummary(controle), [controle]);
@@ -71,20 +73,38 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
     [controle.lotes]
   );
 
-  const saveLot = (event: React.FormEvent) => {
+  const saveLot = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!lot.notaFiscal || !lot.descricao || lot.comprimentoM <= 0) {
       setMessage('Informe NF, descrição e comprimento.');
       return;
     }
+    if (lotFiles.length > 0 && !lot.obraLocalId) {
+      setMessage('Selecione a obra antes de anexar arquivos ao lote.');
+      return;
+    }
+    const id = uid('lote-estaca');
+    let anexos: LoteEstaca['anexos'] = [];
+    try {
+      anexos = await Promise.all(lotFiles.map(file => uploadOperationalAttachment({
+        obraId: lot.obraLocalId || 'geral',
+        module: 'estacas-lotes',
+        recordId: id,
+      }, file)));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Não foi possível enviar os anexos.');
+      return;
+    }
     const nextLot: LoteEstaca = {
       ...lot,
-      id: uid('lote-estaca'),
+      id,
+      anexos,
       valorTotal: lot.valorTotal || lot.pesoKg * lot.valorUnitario,
       criadoEm: new Date().toISOString(),
     };
     onChange({ ...controle, lotes: [nextLot, ...controle.lotes] }, `Registrou lote da NF ${lot.notaFiscal}.`);
     setLot(emptyLot());
+    setLotFiles([]);
     setMessage('Recebimento registrado.');
   };
 
@@ -253,6 +273,7 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             <select value={lot.obraLocalId || ''} onChange={e => setLot({ ...lot, obraLocalId: e.target.value || undefined })} className="input-dark"><option value="">Obra/local</option>{obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
             <input placeholder="Destino textual" value={lot.destino} onChange={e => setLot({ ...lot, destino: e.target.value })} className="input-dark md:col-span-2" />
             <input placeholder="Responsável" value={lot.responsavel} onChange={e => setLot({ ...lot, responsavel: e.target.value })} className="input-dark" />
+            <label className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 md:col-span-2">Anexos (foto, PDF ou planilha)<input type="file" multiple accept="image/*,.pdf,.csv,.xlsx,.xls" onChange={e => setLotFiles(Array.from(e.target.files || []))} className="mt-1 block w-full text-[10px] text-slate-400" />{lotFiles.length ? <span className="mt-1 block text-[10px] text-emerald-300">{lotFiles.length} arquivo(s) selecionado(s)</span> : null}</label>
             <label className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 text-xs text-slate-300"><input type="checkbox" checked={lot.nfConferida} onChange={e => setLot({ ...lot, nfConferida: e.target.checked })} /> NF conferida</label>
             <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><PackagePlus className="h-4 w-4" /> Registrar lote</button>
           </form>

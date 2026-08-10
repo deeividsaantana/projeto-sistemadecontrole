@@ -179,36 +179,6 @@ const sourceTone: Record<string, string> = {
   'Legado Access': 'bg-slate-700 text-slate-300',
 };
 
-const readFileAsDataUrl = (file: Blob) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('Não foi possível ler o documento.'));
-    reader.readAsDataURL(file);
-  });
-
-const compressImageForAnalysis = async (file: File) => {
-  const original = await readFileAsDataUrl(file);
-  if (!file.type.startsWith('image/')) return { mimeType: file.type, dataUrl: original };
-  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const element = new Image();
-    element.onload = () => resolve(element);
-    element.onerror = () => reject(new Error('A imagem não pôde ser aberta.'));
-    element.src = original;
-  });
-  const maxSide = 2200;
-  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-  const context = canvas.getContext('2d');
-  if (!context) return { mimeType: file.type, dataUrl: original };
-  context.fillStyle = '#ffffff';
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return { mimeType: 'image/jpeg', dataUrl: canvas.toDataURL('image/jpeg', 0.86) };
-};
-
 const hashFile = async (file: File) => {
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
   return Array.from(new Uint8Array(digest))
@@ -239,8 +209,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const [filterSource, setFilterSource] = useState('');
   const [search, setSearch] = useState('');
   const [globalError, setGlobalError] = useState('');
-  const [supabaseSyncing, setSupabaseSyncing] = useState(false);
-  const [supabaseMessage, setSupabaseMessage] = useState('');
+  const [protectedSyncing, setProtectedSyncing] = useState(false);
+  const [protectedMessage, setProtectedMessage] = useState('');
 
   const sortedEquipment = useMemo(
     () => [...equipamentos].sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR', { numeric: true })),
@@ -633,16 +603,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       revisadoEm: new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
     }, false);
-    setSupabaseMessage(`Registro ${getFuelRecordPrefix(record, equipamentos)} marcado como conferido por ${reviewer}.`);
+    setProtectedMessage(`Registro ${getFuelRecordPrefix(record, equipamentos)} marcado como conferido por ${reviewer}.`);
   };
 
   const stageCurrentFuelDataset = async () => {
     if (!filteredRecords.length) {
-      setSupabaseMessage('Não há registros no filtro atual para enviar à persistência gradual.');
+      setProtectedMessage('Não há registros no filtro atual para enviar à persistência gradual.');
       return;
     }
-    setSupabaseSyncing(true);
-    setSupabaseMessage('');
+    setProtectedSyncing(true);
+    setProtectedMessage('');
     try {
       const batches = await stageFuelDataset(
         `Combustível RENEA ${today()}`,
@@ -657,11 +627,11 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         },
       );
       const preserved = batches.reduce((sum, batch) => sum + batch.preservedRows, 0);
-      setSupabaseMessage(`${preserved} registro(s) preservado(s) no Supabase em ${batches.length} lote(s), sem promoção automática.`);
+      setProtectedMessage(`${preserved} registro(s) preservado(s) no Firebase em ${batches.length} lote(s), sem promoção automática.`);
     } catch (error) {
-      setSupabaseMessage(error instanceof Error ? error.message : 'Não foi possível preservar a base no Supabase.');
+      setProtectedMessage(error instanceof Error ? error.message : 'Não foi possível preservar a base no Firebase.');
     } finally {
-      setSupabaseSyncing(false);
+      setProtectedSyncing(false);
     }
   };
 
@@ -738,43 +708,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       };
     });
 
-  const analyzeDocumentWithServer = async () => {
-    if (!documentFile) throw new Error('Selecione um PDF ou uma foto.');
-    const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Sessão Firebase não ativa para a análise inteligente.');
-
-    const prepared = await compressImageForAnalysis(documentFile);
-    const dataBase64 = prepared.dataUrl.split(',')[1] || '';
-    if (dataBase64.length > 7_000_000) {
-      throw new Error('O documento ficou grande demais. Divida o PDF ou envie uma foto por página.');
-    }
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/.netlify/functions/analisar-combustivel-documento', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify({
-        fileName: documentFile.name,
-        mimeType: prepared.mimeType,
-        dataBase64,
-        equipamentos: equipamentos.map((item) => item.prefixo),
-        combustiveis: combustiveis.map((item) => item.nome),
-        comboios: comboios.map((item) => item.nome),
-      }),
-    });
-    let payload: any = null;
-    try {
-      payload = await response.json();
-    } catch {
-      throw new Error(
-        response.status === 404
-          ? 'Function Netlify não encontrada neste ambiente.'
-          : `Resposta inválida da análise inteligente (HTTP ${response.status}).`,
-      );
-    }
-    if (!response.ok || !payload.success) throw new Error(payload.message || 'A análise do documento falhou.');
-    return payload.analysis as AiAnalysisResponse;
-  };
-
   const runDocumentAnalysis = async () => {
     if (!documentFile) {
       setAiError('Selecione um PDF ou uma foto.');
@@ -790,35 +723,22 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         );
       }
 
-      let analysis: AiAnalysisResponse | null = null;
-      let serverError = '';
-      try {
-        analysis = await analyzeDocumentWithServer();
-      } catch (error) {
-        serverError = error instanceof Error ? error.message : 'IA indisponível.';
-      }
-
-      if (!analysis) {
-        const localAnalysis = await analyzeFuelDocumentLocally(
-          documentFile,
-          {
-            equipamentos: equipamentos.map((item) => item.prefixo),
-            combustiveis: combustiveis.map((item) => item.nome),
-            comboios: comboios.map((item) => item.nome),
-          },
-          { manualText: manualDocumentText, defaultDate: entryDate || today() },
-        );
-        const aiSetupWarning = /AI_NOT_CONFIGURED|sem chave|não foi configurada|nao foi configurada/i.test(serverError)
-          ? 'IA online ainda não configurada no Netlify. A leitura local foi usada quando possível; para fotos e PDFs escaneados, cadastre GEMINI_API_KEY no Netlify.'
-          : `IA online indisponível: ${serverError}`;
-        analysis = {
-          ...localAnalysis,
-          avisosDocumento: [
-            aiSetupWarning,
-            ...localAnalysis.avisosDocumento,
-          ],
-        };
-      }
+      let analysis: AiAnalysisResponse = await analyzeFuelDocumentLocally(
+        documentFile,
+        {
+          equipamentos: equipamentos.map((item) => item.prefixo),
+          combustiveis: combustiveis.map((item) => item.nome),
+          comboios: comboios.map((item) => item.nome),
+        },
+        { manualText: manualDocumentText, defaultDate: entryDate || today() },
+      );
+      analysis = {
+        ...analysis,
+        avisosDocumento: [
+          'Leitura local ativa: revise os registros antes de salvar, principalmente em fotos e PDFs escaneados.',
+          ...analysis.avisosDocumento,
+        ],
+      };
 
       analysis = {
         ...analysis,
@@ -2177,19 +2097,19 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         <div className="space-y-5">
           <section className="flex flex-col gap-4 border border-sky-500/30 bg-sky-500/10 p-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="font-bold text-white">Persistência gradual no Supabase</h2>
+                  <h2 className="font-bold text-white">Persistência gradual protegida</h2>
               <p className="mt-1 text-xs text-slate-300">
-                Preserva todos os registros do filtro na fila PostgreSQL. Nenhuma linha é promovida automaticamente.
+                Preserva todos os registros do filtro na fila protegida. Nenhuma linha é promovida automaticamente.
               </p>
-              {supabaseMessage && <p className="mt-2 text-xs font-semibold text-sky-200">{supabaseMessage}</p>}
+              {protectedMessage && <p className="mt-2 text-xs font-semibold text-sky-200">{protectedMessage}</p>}
             </div>
             <button
               onClick={stageCurrentFuelDataset}
-              disabled={supabaseSyncing || !filteredRecords.length}
+              disabled={protectedSyncing || !filteredRecords.length}
               className="inline-flex h-11 shrink-0 items-center justify-center gap-2 bg-sky-500 px-5 text-sm font-bold text-slate-950 disabled:opacity-50"
             >
-              {supabaseSyncing ? <LoaderCircle className="animate-spin" size={18} /> : <CloudUpload size={18} />}
-              {supabaseSyncing ? 'Preservando...' : `Preservar ${filteredRecords.length} registro(s)`}
+              {protectedSyncing ? <LoaderCircle className="animate-spin" size={18} /> : <CloudUpload size={18} />}
+              {protectedSyncing ? 'Preservando...' : `Preservar ${filteredRecords.length} registro(s)`}
             </button>
           </section>
           <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
