@@ -1788,12 +1788,12 @@ export default function TicketsJazidaTab({
         </div>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-cyan-500/20 bg-slate-900">
-        <div className="border-b border-slate-800 bg-gradient-to-r from-cyan-500/10 via-slate-900 to-slate-900 p-5">
+      <section className="overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 bg-cyan-50/60 p-5">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="flex items-center gap-2 text-base font-black text-white"><Layers3 className="h-5 w-5 text-cyan-400" /> Conferência automática das viagens</h2>
+                <h2 className="flex items-center gap-2 font-sans text-base font-black text-slate-900"><Layers3 className="h-5 w-5 text-cyan-600" /> Conferência automática das viagens</h2>
                 <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-300">ERP v2.5</span>
               </div>
               <p className="mt-1 text-[11px] text-slate-400">Pareamento integral pelo Ticket Nº, sem limites fixos de linha. Prefixo, placa, material e quantidade seguem a mesma conferência da planilha.</p>
@@ -1813,7 +1813,7 @@ export default function TicketsJazidaTab({
               { label: 'Sem liberação', value: travelControl.receiptsWithoutRelease, detail: 'recebimento avulso', color: 'text-sky-300' },
               { label: 'Duração média', value: formatTravelDuration(travelControl.averageDurationMinutes), detail: `${travelControl.duplicateTickets} ticket(s) duplicado(s)`, color: 'text-cyan-300' },
             ].map(card => (
-              <div key={card.label} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+              <div key={card.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{card.label}</p>
                 <strong className={`mt-2 block text-xl font-black ${card.color}`}>{card.value}</strong>
                 <span className="mt-1 block text-[9px] text-slate-600">{card.detail}</span>
@@ -1822,7 +1822,7 @@ export default function TicketsJazidaTab({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/60 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
               <div><h3 className="text-[11px] font-black uppercase tracking-wider text-slate-200">Fila de revisão</h3><p className="mt-1 text-[9px] text-slate-500">Linhas incompletas, divergentes ou duplicadas permanecem visíveis para correção.</p></div>
               <span className="rounded-md bg-slate-800 px-2 py-1 text-[9px] font-black text-slate-300">{travelControl.totalTickets - travelControl.completeTrips} pendência(s)</span>
             </div>
@@ -1850,12 +1850,12 @@ export default function TicketsJazidaTab({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-emerald-500/25 bg-slate-900 shadow-2xl shadow-emerald-950/10">
-        <div className="border-b border-slate-800 bg-gradient-to-r from-emerald-500/10 via-slate-900 to-slate-900 p-5">
+      <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 bg-emerald-50/60 p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="flex items-center gap-2 text-base font-black text-white"><ListChecks className="h-5 w-5 text-emerald-400" /> Conferência das duas vias</h2>
+                <h2 className="flex items-center gap-2 font-sans text-base font-black text-slate-900"><ListChecks className="h-5 w-5 text-emerald-600" /> Conferência das duas vias</h2>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-300"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Tempo real</span>
               </div>
               <p className="mt-1 text-[11px] text-slate-400">Cada número impresso gera uma pendência de Liberação e outra de Recebimento. Marque somente quando a via física voltar.</p>

@@ -8,6 +8,7 @@ import {
   Empresa, 
   ObraLocal, 
   Equipamento, 
+  VinculoOperadorEquipamento,
   Funcionario, 
   Comboio, 
   TipoCombustivel, 
@@ -71,7 +72,7 @@ import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
-const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
+const ConsultaGeralTab = lazy(() => import('./components/ConsultaGeralTab'));
 const UsuariosTab = lazy(() => import('./components/UsuariosTab'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
@@ -80,6 +81,7 @@ const ConfiguracoesTab = lazy(() => import('./components/ConfiguracoesTab'));
 const PresencaTab = lazy(() => import('./components/PresencaTab'));
 const ManutencaoEquipamentosTab = lazy(() => import('./components/ManutencaoEquipamentosTab'));
 const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
+const PresencaUnificada = lazy(() => import('./components/PresencaUnificada'));
 const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaLinkExterno = lazy(() => import('./components/PresencaLinkExterno'));
 const ApontamentoRamosTab = lazy(() => import('./components/ApontamentoRamosTab'));
@@ -88,7 +90,6 @@ const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ParteDiariaEquipamentosTab = lazy(() => import('./components/ParteDiariaEquipamentosTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
-const DocumentIntelligenceTab = lazy(() => import('./components/DocumentIntelligenceTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
 // A base histórica de materiais fica em um chunk separado para não pesar no
@@ -349,6 +350,7 @@ export default function App() {
   const [partesDiariasEquipamentos, setPartesDiariasEquipamentos] = useState<ParteDiariaEquipamento[]>([]);
   const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
   const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
+  const [vinculosOperadorEquipamento, setVinculosOperadorEquipamento] = useState<VinculoOperadorEquipamento[]>([]);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
@@ -420,7 +422,7 @@ export default function App() {
         { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
         { key: 'renea_periodos_arquivados', value: '[]' },
         { key: 'renea_master_data_review_queue', value: '[]' },
-        { key: 'renea_history_logs', value: JSON.stringify(INITIAL_HISTORY_LOGS) },
+        { key: 'renea_history_logs', value: JSON.stringify([]) },
         { key: 'renea_notifications', value: '[]' },
       ].filter(entry => localStorage.getItem(entry.key) === null);
       commitStorageBatch(localStorage, [
@@ -454,7 +456,7 @@ export default function App() {
       setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
       setControleEstacas(INITIAL_CONTROLE_ESTACAS);
       setPeriodosArquivados([]);
-      setHistoryLogs(INITIAL_HISTORY_LOGS);
+      setHistoryLogs([]);
       setNotifications(getInitialNotifications());
     }
     {
@@ -481,6 +483,7 @@ export default function App() {
       const savedPartesDiariasEquipamentos = localStorage.getItem('renea_partes_diarias_equipamentos');
       const savedControleEstacas = localStorage.getItem('renea_controle_estacas');
       const savedPeriodosArquivados = localStorage.getItem('renea_periodos_arquivados');
+      const savedVinculosOperadorEquipamento = localStorage.getItem('renea_vinculos_operador_equipamento');
       const savedHistory = localStorage.getItem('renea_history_logs');
       const savedNotifications = localStorage.getItem('renea_notifications');
       const shouldMigratePresencePeople = localStorage.getItem('renea_colaboradores_planilha_v1') !== 'true';
@@ -540,7 +543,9 @@ export default function App() {
       setPartesDiariasEquipamentos(parseStoredJson(savedPartesDiariasEquipamentos, 'renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
       setControleEstacas(parseStoredJson(savedControleEstacas, 'renea_controle_estacas', INITIAL_CONTROLE_ESTACAS));
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
-      setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', INITIAL_HISTORY_LOGS));
+      setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
+      setHistoryLogs([]);
+      localStorage.removeItem('renea_history_logs');
       setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
 
       if (shouldMigratePresencePeople) {
@@ -730,6 +735,7 @@ export default function App() {
         materiaisRegistros: customMateriaisRegistros,
         partesDiariasEquipamentos: customPartesDiariasEquipamentos,
         periodosArquivados: customPeriodosArquivados,
+        vinculosOperadorEquipamento: parseStoredJson<VinculoOperadorEquipamento[]>(localStorage.getItem('renea_vinculos_operador_equipamento'), 'renea_vinculos_operador_equipamento', []),
         masterDataReviewQueue: parseStoredJson<MasterWorkbookReviewRow[]>(
           localStorage.getItem('renea_master_data_review_queue'),
           'renea_master_data_review_queue',
@@ -738,7 +744,7 @@ export default function App() {
         estacaLotes: customControleEstacas.lotes,
         estacaCravacoes: customControleEstacas.cravacoes,
         notifications: customNotifications,
-        historyLogs: customHistory,
+        historyLogs: [],
       };
       const uploadResult = await uploadFirebaseBackup(db, data);
       
@@ -920,9 +926,12 @@ export default function App() {
         if (data.notifications) {
           setNotifications(data.notifications);
         }
-        if (data.historyLogs) {
-          setHistoryLogs(data.historyLogs);
-        }
+      setHistoryLogs([]);
+      localStorage.removeItem('renea_history_logs');
+      if (Array.isArray(data.vinculosOperadorEquipamento)) {
+        setVinculosOperadorEquipamento(data.vinculosOperadorEquipamento);
+        localStorage.setItem('renea_vinculos_operador_equipamento', JSON.stringify(data.vinculosOperadorEquipamento));
+      }
         
         setLastCloudSync(nowStr);
         setIsFirebaseConnected(true);
@@ -1055,18 +1064,8 @@ export default function App() {
     audit?: Pick<HistoryLog, 'registroId' | 'valorAnterior' | 'valorNovo' | 'tipoOperacao'>,
   ) => {
     stateUpdateFn();
-    const newLog: HistoryLog = {
-      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      timestamp: new Date().toLocaleString('pt-BR'),
-      usuario: activeUserName,
-      acao: action,
-      tela: tableName,
-      descricao: description,
-      ...audit,
-    };
-    const updatedHistory = [newLog, ...newHistoryList];
-    setHistoryLogs(updatedHistory);
-    localStorage.setItem('renea_history_logs', JSON.stringify(updatedHistory));
+    setHistoryLogs([]);
+    localStorage.removeItem('renea_history_logs');
 
     // Notificação real (não simulada) refletindo a ação que de fato aconteceu
     addNotification(
@@ -1095,7 +1094,7 @@ export default function App() {
           getLS('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
           getLS('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
           getLS('renea_tickets_jazida', []),
-          updatedHistory,
+          [],
           getLS('renea_listas_presenca', INITIAL_PRESENCAS),
           getLS('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
           getLS('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
@@ -1291,6 +1290,54 @@ export default function App() {
       },
       { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
     );
+  };
+
+  const handleVincularOperadorEquipamento = (funcionarioId: string, equipamentoId: string, observacao = '') => {
+    const funcionario = funcionarios.find(item => item.id === funcionarioId);
+    const equipamento = equipamentos.find(item => item.id === equipamentoId);
+    if (!funcionario || !equipamento) return;
+    const now = new Date().toISOString();
+    const closedLinks = vinculosOperadorEquipamento.map(link =>
+      link.status === 'ATIVO' && (link.funcionarioId === funcionarioId || link.equipamentoId === equipamentoId)
+        ? { ...link, status: 'ENCERRADO' as const, fimEm: now, atualizadoEm: now }
+        : link,
+    );
+    const link: VinculoOperadorEquipamento = {
+      id: `vinculo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      funcionarioId,
+      funcionarioNome: funcionario.nome,
+      equipamentoId,
+      equipamentoPrefixo: equipamento.prefixo,
+      inicioEm: now,
+      status: 'ATIVO',
+      responsavelAlteracao: activeUserName,
+      observacao,
+      criadoEm: now,
+      atualizadoEm: now,
+    };
+    const nextLinks = [link, ...closedLinks];
+    const nextEquipment = equipamentos.map(item => {
+      if (item.id === equipamentoId) return { ...item, operadorResponsavelId: funcionarioId, operadorResponsavelNome: funcionario.nome };
+      if (item.operadorResponsavelId === funcionarioId) return { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined };
+      return item;
+    });
+    setVinculosOperadorEquipamento(nextLinks);
+    setEquipamentos(nextEquipment);
+    localStorage.setItem('renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
+    localStorage.setItem('renea_equipamentos', JSON.stringify(nextEquipment));
+    addNotification('Vínculo operacional atualizado', `${funcionario.nome} vinculado ao equipamento ${equipamento.prefixo}.`, 'success', 'Sistema Local');
+  };
+
+  const handleEncerrarVinculoOperadorEquipamento = (vinculoId: string) => {
+    const current = vinculosOperadorEquipamento.find(link => link.id === vinculoId && link.status === 'ATIVO');
+    if (!current) return;
+    const now = new Date().toISOString();
+    const nextLinks = vinculosOperadorEquipamento.map(link => link.id === vinculoId ? { ...link, status: 'ENCERRADO' as const, fimEm: now, atualizadoEm: now } : link);
+    const nextEquipment = equipamentos.map(item => item.id === current.equipamentoId ? { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined } : item);
+    setVinculosOperadorEquipamento(nextLinks);
+    setEquipamentos(nextEquipment);
+    localStorage.setItem('renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
+    localStorage.setItem('renea_equipamentos', JSON.stringify(nextEquipment));
   };
 
   const handleDeleteEquipamento = (id: string) => {
@@ -1779,7 +1826,7 @@ export default function App() {
         { key: 'renea_apontamento_ramos', value: JSON.stringify(promoted.ramos) },
         { key: 'renea_equipamentos', value: JSON.stringify(promoted.equipamentos) },
         { key: 'renea_master_data_review_queue', value: JSON.stringify(nextReviewRows) },
-        { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
+        { key: 'renea_history_logs', value: JSON.stringify([]) },
       ]);
 
       setEmpresas(promoted.empresas);
@@ -1788,7 +1835,7 @@ export default function App() {
       setMateriaisCadastro(promoted.materiais);
       setApontamentoRamos(promoted.ramos);
       setEquipamentos(promoted.equipamentos);
-      setHistoryLogs(nextHistory);
+      setHistoryLogs([]);
       addNotification('Planilha Mestre atualizada', message, preserved > 0 ? 'warning' : 'success', 'Sistema Local');
 
       if (isAutoSyncEnabled) {
@@ -2174,7 +2221,7 @@ export default function App() {
       getLS('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
       getLS('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
       getLS('renea_tickets_jazida', []),
-      getLS('renea_history_logs', INITIAL_HISTORY_LOGS),
+      [],
       getLS('renea_listas_presenca', INITIAL_PRESENCAS),
       getLS('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
       getLS('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
@@ -2298,11 +2345,11 @@ export default function App() {
         commitStorageBatch(localStorage, [
           { key: 'renea_combustiveis', value: JSON.stringify(nextFuelTypes) },
           { key: 'renea_abastecimentos', value: JSON.stringify(nextFuelRecords) },
-          { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
+      { key: 'renea_history_logs', value: JSON.stringify([]) },
         ]);
         setCombustiveis(nextFuelTypes);
         setAbastecimentos(nextFuelRecords);
-        setHistoryLogs(nextHistory);
+    setHistoryLogs([]);
 
         const syncResult = await uploadLocalSnapshotToFirebase();
         if (!syncResult.success) throw new Error(syncResult.message);
@@ -2379,11 +2426,11 @@ export default function App() {
 
         localStorage.setItem('renea_presencas_link', JSON.stringify(nextPresence));
         localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(nextPointing));
-        localStorage.setItem('renea_history_logs', JSON.stringify(nextHistory));
+    localStorage.removeItem('renea_history_logs');
         localStorage.setItem('renea_notifications', JSON.stringify(nextNotifications));
         setPresencasLink(nextPresence);
         setApontamentoRamoRegistros(nextPointing);
-        setHistoryLogs(nextHistory);
+    setHistoryLogs([]);
         setNotifications(nextNotifications);
 
         const syncResult = await uploadLocalSnapshotToFirebase();
@@ -2841,7 +2888,7 @@ export default function App() {
       { key: 'renea_periodos_arquivados', value: JSON.stringify(nextPeriodosArquivados) },
       { key: 'renea_master_data_review_queue', value: JSON.stringify(nextMasterDataReviewQueue) },
       { key: 'renea_notifications', value: JSON.stringify(nextNotifications) },
-      { key: 'renea_history_logs', value: JSON.stringify(logs) },
+      { key: 'renea_history_logs', value: JSON.stringify([]) },
     ]);
 
     setEmpresas(nextEmpresas);
@@ -2868,7 +2915,7 @@ export default function App() {
     setControleEstacas(nextControleEstacas);
     setPeriodosArquivados(nextPeriodosArquivados);
     setNotifications(nextNotifications);
-    setHistoryLogs(logs);
+    setHistoryLogs([]);
   };
 
   const handleResetData = () => {
@@ -2898,7 +2945,7 @@ export default function App() {
       { key: 'renea_periodos_arquivados', value: '[]' },
       { key: 'renea_master_data_review_queue', value: '[]' },
       { key: 'renea_notifications', value: '[]' },
-      { key: 'renea_history_logs', value: JSON.stringify(INITIAL_HISTORY_LOGS) },
+      { key: 'renea_history_logs', value: JSON.stringify([]) },
       { key: 'renea_colaboradores_planilha_v1', value: 'true' },
       { key: 'renea_planilhas_operacionais_v1', value: 'true' },
       { key: 'renea_materiais_planilha_v1', value: 'true' },
@@ -2928,7 +2975,7 @@ export default function App() {
     setControleEstacas(INITIAL_CONTROLE_ESTACAS);
     setPeriodosArquivados([]);
     setNotifications([]);
-    setHistoryLogs(INITIAL_HISTORY_LOGS);
+    setHistoryLogs([]);
   };
 
   const handleClearData = () => {
@@ -2953,7 +3000,7 @@ export default function App() {
     commitStorageBatch(localStorage, [
       ...clearedArrayKeys.map(key => ({ key, value: '[]' })),
       { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
-      { key: 'renea_history_logs', value: JSON.stringify([clearLog]) },
+      { key: 'renea_history_logs', value: JSON.stringify([]) },
       { key: 'renea_colaboradores_planilha_v1', value: 'true' },
       { key: 'renea_planilhas_operacionais_v1', value: 'true' },
       { key: 'renea_materiais_planilha_v1', value: 'true' },
@@ -2983,7 +3030,7 @@ export default function App() {
     setControleEstacas(INITIAL_CONTROLE_ESTACAS);
     setPeriodosArquivados([]);
     setNotifications([]);
-    setHistoryLogs([clearLog]);
+    setHistoryLogs([]);
   };
 
   const handleApplySelectiveReset = (
@@ -3488,7 +3535,7 @@ export default function App() {
         { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(newPartesDiariasEquipamentos) },
         { key: 'renea_controle_estacas', value: JSON.stringify(newControleEstacas) },
         { key: 'renea_master_data_review_queue', value: JSON.stringify(newMasterDataReviewQueue) },
-        { key: 'renea_history_logs', value: JSON.stringify(updatedHistory) },
+      { key: 'renea_history_logs', value: JSON.stringify([]) },
       ]);
 
       setEmpresas(newEmpresas);
@@ -3513,7 +3560,7 @@ export default function App() {
       setMateriaisRegistros(newMateriaisRegistros);
       setPartesDiariasEquipamentos(newPartesDiariasEquipamentos);
       setControleEstacas(newControleEstacas);
-      setHistoryLogs(updatedHistory);
+    setHistoryLogs([]);
 
       addNotification('Importação por Período Concluída', logMsg, 'success', 'Sistema Local');
 
@@ -3736,10 +3783,10 @@ export default function App() {
 
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
       
       {/* 1. SIDEBAR NAVIGATION - DESKTOP */}
-      <aside className="hidden md:flex flex-col w-72 bg-white/95 border-r border-slate-200 shadow-xl shadow-slate-200/40 shrink-0 select-none print:hidden" id="desktop-sidebar">
+      <aside className="hidden" id="desktop-sidebar" aria-hidden="true">
         {/* Branded Header */}
         <div className="h-[4.5rem] flex items-center px-6 border-b border-slate-200 bg-white">
           <img 
@@ -3856,15 +3903,17 @@ export default function App() {
       {/* 3. MAIN WORKSPACE CONTAINER */}
       <main className="flex-1 flex flex-col overflow-y-auto" id="main-workspace">
         {/* Subtle upper banner only visible on desktop (hidden when printing) */}
-        <div className="hidden md:flex items-center justify-between h-16 bg-white border-b border-slate-200 px-8 shrink-0 print:hidden select-none">
+        <div className="hidden md:flex items-center justify-between h-16 bg-white border-b border-slate-200 px-6 xl:px-8 shrink-0 print:hidden select-none">
           <div className="flex items-center gap-4">
-            <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+            <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-7 w-auto" />
+            <span className="h-8 w-px bg-slate-200" />
+            <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
               <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
               Renea Operacional • Canteiro de Obras Ativo
             </h2>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg">
               <Wifi className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Netlify Sync</span>
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">Sistema conectado</span>
             </div>
           </div>
           
@@ -3999,8 +4048,16 @@ export default function App() {
           </div>
         </div>
 
+        <nav className="hidden md:flex w-full gap-1 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2 print:hidden xl:px-8" aria-label="Módulos do sistema">
+          {filteredNavigationGroups.flatMap(group => group.items).map(item => {
+            const Icon = item.icon;
+            const active = activeTab === item.id;
+            return <button key={item.id} type="button" onClick={() => navigateTo(item.id)} aria-current={active ? 'page' : undefined} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-[11px] font-black transition ${active ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800'}`}><Icon className="h-4 w-4" />{item.label}</button>;
+          })}
+        </nav>
+
         {/* Dynamic Inner Tab Viewport */}
-        <div className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto print:p-0 print:m-0">
+        <div className="flex-1 overflow-x-hidden p-4 md:p-6 2xl:p-8 max-w-[1800px] w-full mx-auto print:p-0 print:m-0">
           <Suspense fallback={<ScreenLoadingFallback />}>
             <motion.div
               key={activeTab}
@@ -4034,6 +4091,24 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'consulta-geral' && (
+              <ConsultaGeralTab
+                empresas={empresas}
+                obras={obras}
+                equipamentos={equipamentos}
+                funcionarios={funcionarios}
+                abastecimentos={abastecimentos}
+                tickets={ticketsJazida}
+                materiais={materiaisRegistros}
+                ordensServico={ordensServico}
+                partesDiarias={partesDiariasEquipamentos}
+                vinculos={vinculosOperadorEquipamento}
+                onLink={handleVincularOperadorEquipamento}
+                onUnlink={handleEncerrarVinculoOperadorEquipamento}
+                onNavigate={navigateTo}
+              />
+            )}
+
             {activeTab === 'pendencias' && (
               <PendenciasTab
                 tickets={ticketsJazida}
@@ -4044,10 +4119,6 @@ export default function App() {
                 partesDiarias={partesDiariasEquipamentos}
                 onNavigate={navigateTo}
               />
-            )}
-
-            {activeTab === 'auditoria' && allowedTabs.includes('auditoria') && (
-              <AuditoriaTab historyLogs={historyLogs} />
             )}
 
             {activeTab === 'usuarios' && allowedTabs.includes('usuarios') && (
@@ -4103,7 +4174,6 @@ export default function App() {
                 onSaveAbastecimento={handleSaveAbastecimento}
                 onDeleteAbastecimento={handleDeleteAbastecimento}
                 onImportAbastecimentos={handleImportAbastecimentos}
-                oneDriveFuelSyncStatus={oneDriveFuelSyncStatus}
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onOpenCadastros={allowedTabs.includes('cadastros') ? () => navigateTo('cadastros') : undefined}
@@ -4123,26 +4193,29 @@ export default function App() {
             )}
 
             {activeTab === 'presenca' && (
-              <PresencaTab 
+              <PresencaUnificada
                 funcionarios={funcionarios}
-                obras={obras}
-                listasPresenca={listasPresenca}
-                onSaveListaPresenca={handleSaveListaPresenca}
-                onDeleteListaPresenca={handleDeleteListaPresenca}
-              />
-            )}
-
-            {activeTab === 'controle-presenca' && (
-              <ControlePresencaTab
-                funcionarios={funcionarios}
-                obras={obras}
-                gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
-                historicoPresencas={historicoPresencas}
-                onSaveGrupoEquipe={handleSaveGrupoEquipe}
-                onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
-                onUpdatePresencaLink={handleUpdatePresencaLink}
-                onRefreshFromFirebase={handleDownloadFromFirebase}
+                empresas={empresas}
+                listas={listasPresenca}
+                apontamentos={presencasLink}
+                diario={<PresencaTab
+                  funcionarios={funcionarios}
+                  obras={obras}
+                  listasPresenca={listasPresenca}
+                  onSaveListaPresenca={handleSaveListaPresenca}
+                  onDeleteListaPresenca={handleDeleteListaPresenca}
+                />}
+                tempoReal={<ControlePresencaTab
+                  funcionarios={funcionarios}
+                  obras={obras}
+                  gruposEquipe={gruposEquipe}
+                  presencasLink={presencasLink}
+                  historicoPresencas={historicoPresencas}
+                  onSaveGrupoEquipe={handleSaveGrupoEquipe}
+                  onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
+                  onUpdatePresencaLink={handleUpdatePresencaLink}
+                  onRefreshFromFirebase={handleDownloadFromFirebase}
+                />}
               />
             )}
 
@@ -4207,10 +4280,6 @@ export default function App() {
                 ramos={apontamentoRamos}
                 onChange={handleChangeControleEstacas}
               />
-            )}
-
-            {activeTab === 'inteligencia' && (
-              <DocumentIntelligenceTab />
             )}
 
             {activeTab === 'reports' && (

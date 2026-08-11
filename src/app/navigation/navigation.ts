@@ -5,7 +5,6 @@ import {
   FileText,
   FolderPlus,
   Hammer,
-  BrainCircuit,
   LayoutDashboard,
   ListChecks,
   Package,
@@ -14,6 +13,7 @@ import {
   Truck,
   Users,
   Wrench,
+  Search,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -30,6 +30,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Visão geral',
     items: [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
+      { id: 'consulta-geral', label: 'Consulta Geral', icon: Search },
       { id: 'pendencias', label: 'Pendências', icon: ListChecks },
       { id: 'reports', label: 'Relatórios Gerais', icon: FileText },
     ],
@@ -48,8 +49,7 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Equipes e campo',
     items: [
-      { id: 'presenca', label: 'Presença', icon: Users },
-      { id: 'controle-presenca', label: 'Controle de Presença', icon: ShieldCheck },
+      { id: 'presenca', label: 'Presença e Controle', icon: Users },
       { id: 'apontamentos', label: 'Apontamentos', icon: BarChart3 },
     ],
   },
@@ -57,9 +57,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Administração',
     items: [
       { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
-      { id: 'auditoria', label: 'Auditoria', icon: ShieldCheck },
       { id: 'usuarios', label: 'Usuários', icon: Users },
-      { id: 'inteligencia', label: 'Inteligência Documental', icon: BrainCircuit },
       { id: 'configuracoes', label: 'Apoio e Configuração', icon: Settings },
     ],
   },
@@ -71,9 +69,10 @@ export const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
 
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
-  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => id !== 'configuracoes' && id !== 'auditoria' && id !== 'usuarios'),
+  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => id !== 'configuracoes' && id !== 'usuarios'),
   operador: [
     'dashboard',
+    'consulta-geral',
     'pendencias',
     'reports',
     'partes-diarias',
@@ -83,11 +82,9 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'materiais',
     'manutencao',
     'presenca',
-    'controle-presenca',
     'apontamentos',
-    'inteligencia',
   ],
-  leitura: ['dashboard', 'reports'],
+  leitura: ['dashboard', 'consulta-geral', 'reports'],
 };
 
 export const normalizeUserRole = (value: unknown): UserRole => (

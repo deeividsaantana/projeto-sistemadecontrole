@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { getTicketControlDate, isTicketReturned } from './jazidaDailyControl';
 import { normalizeTicketNumber } from './ticketNumberSequence';
+import { getOperationalFuelLiters } from './fuelAnalyticsSafety';
 
 export type FuelAnalyticsFilters = {
   startDate?: string;
@@ -37,6 +38,7 @@ export type FuelDetailRow = {
   origin: string;
   responsible: string;
   warnings: string[];
+  includedInMetrics: boolean;
   original: Abastecimento;
 };
 
@@ -60,6 +62,7 @@ export type FuelAnalytics = {
   activeFleets: number;
   activeCompanies: number;
   warningRecords: number;
+  excludedRecords: number;
   unknownFleets: number;
   pumpDivergences: number;
   duplicateRecords: number;
@@ -203,7 +206,7 @@ const aggregateFuelRows = (
   totalLiters: number,
 ) => {
   const grouped = new Map<string, FuelAggregateRow>();
-  details.forEach(row => {
+  details.filter(row => row.includedInMetrics).forEach(row => {
     const key = keyFor(row);
     const current = grouped.get(key.id) || {
       ...key,
@@ -284,8 +287,13 @@ export const buildFuelAnalytics = ({
         (safeNumber(record.bombaFinal) - safeNumber(record.bombaInicial)) - safeNumber(record.quantidadeLitros),
       );
       const warnings = new Set<string>();
+      const operationalLiters = getOperationalFuelLiters(record);
       if (!equipment) warnings.add('Frota sem cadastro');
       if (!record.quantidadeLitros || safeNumber(record.quantidadeLitros) <= 0) warnings.add('Quantidade inválida');
+      if (operationalLiters === null) {
+        const source = [record.origem, record.integracaoArquivo || record.documentoOrigemNome, record.integracaoLinha ? `linha ${record.integracaoLinha}` : ''].filter(Boolean).join(' · ');
+        warnings.add(`INVÁLIDO / NECESSITA REVISÃO: volume "${String(record.quantidadeLitros ?? '')}" excluído dos indicadores${source ? ` (${source})` : ''}`);
+      }
       if (pumpDifference > 0.05) warnings.add('Diferença entre bomba e litros');
       if (record.status && record.status !== 'OK') warnings.add(record.status);
       if (duplicateIds.has(record.id) || record.status === 'Duplicado') warnings.add('Possível duplicidade');
@@ -301,7 +309,7 @@ export const buildFuelAnalytics = ({
         company: company?.nome || 'Sem cadastro',
         comboio: comboioMap.get(record.comboioId)?.nome || 'Não informado',
         fuel: fuelMap.get(record.tipoCombustivelId)?.nome || 'Não informado',
-        liters: safeNumber(record.quantidadeLitros),
+        liters: operationalLiters ?? safeNumber(record.quantidadeLitros),
         pumpInitial: safeNumber(record.bombaInicial),
         pumpFinal: safeNumber(record.bombaFinal),
         pumpDifference,
@@ -309,13 +317,15 @@ export const buildFuelAnalytics = ({
         origin: record.origem || 'Manual',
         responsible: record.responsavel || 'Não informado',
         warnings: Array.from(warnings),
+        includedInMetrics: operationalLiters !== null,
         original: record,
       } satisfies FuelDetailRow;
     })
     .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time) || a.prefix.localeCompare(b.prefix, 'pt-BR'));
 
-  const totalLiters = details.reduce((sum, row) => sum + row.liters, 0);
-  const fleetIds = new Set(details.map(row => row.prefix));
+  const metricDetails = details.filter(row => row.includedInMetrics);
+  const totalLiters = metricDetails.reduce((sum, row) => sum + row.liters, 0);
+  const fleetIds = new Set(metricDetails.map(row => row.prefix));
   const companies = aggregateFuelRows(details, row => ({ id: row.company, name: row.company }), totalLiters);
   const fleets = aggregateFuelRows(details, row => ({
     id: row.prefix,
@@ -326,7 +336,7 @@ export const buildFuelAnalytics = ({
   const fuelRows = aggregateFuelRows(details, row => ({ id: row.fuel, name: row.fuel }), totalLiters);
 
   const dailyMap = new Map<string, { date: string; label: string; liters: number; records: number; warnings: number }>();
-  details.forEach(row => {
+  metricDetails.forEach(row => {
     const current = dailyMap.get(row.date) || {
       date: row.date,
       label: formatShortDate(row.date),
@@ -345,7 +355,7 @@ export const buildFuelAnalytics = ({
   const previousLiters = previousPeriod
     ? abastecimentos
       .filter(record => inRange(record.data, previousPeriod.startDate, previousPeriod.endDate) && matchesNonDateFilters(record))
-      .reduce((sum, record) => sum + safeNumber(record.quantidadeLitros), 0)
+      .reduce((sum, record) => sum + (getOperationalFuelLiters(record) || 0), 0)
     : 0;
   const variationPercentage = previousPeriod
     ? previousLiters > 0
@@ -353,15 +363,17 @@ export const buildFuelAnalytics = ({
       : totalLiters > 0 ? 100 : 0
     : null;
   const warningRecords = details.filter(row => row.warnings.length > 0).length;
+  const excludedRecords = details.filter(row => !row.includedInMetrics).length;
 
   return {
     details,
     totalLiters,
     totalRecords: details.length,
-    averageLiters: details.length ? totalLiters / details.length : 0,
+    averageLiters: metricDetails.length ? totalLiters / metricDetails.length : 0,
     activeFleets: fleetIds.size,
     activeCompanies: companies.length,
     warningRecords,
+    excludedRecords,
     unknownFleets: details.filter(row => row.warnings.includes('Frota sem cadastro')).length,
     pumpDivergences: details.filter(row => row.warnings.includes('Diferença entre bomba e litros')).length,
     duplicateRecords: details.filter(row => row.warnings.includes('Possível duplicidade')).length,

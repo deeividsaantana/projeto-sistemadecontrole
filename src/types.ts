@@ -471,6 +471,21 @@ export interface AnexoOperacional {
   size: number;
 }
 
+export interface VinculoOperadorEquipamento {
+  id: string;
+  funcionarioId: string;
+  funcionarioNome: string;
+  equipamentoId: string;
+  equipamentoPrefixo: string;
+  inicioEm: string;
+  fimEm?: string;
+  status: 'ATIVO' | 'ENCERRADO';
+  responsavelAlteracao: string;
+  observacao?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export interface LoteEstaca {
   id: string;
   data: string;

@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
-  Cloud,
   CloudUpload,
   CopyPlus,
   CircleDollarSign,
@@ -43,6 +42,7 @@ import {
   normalizeFuelRecord,
 } from '../utils/combustivelValidation';
 import { findLastRecordedPumpForConvoy } from '../utils/fuelPumpSequence';
+import { getOperationalFuelLiters, isOperationalFuelRecord } from '../utils/fuelAnalyticsSafety';
 import { analyzeFuelDocumentLocally, buildFuelOperationalAnalysis } from '../utils/fuelDocumentParsing';
 import type { OperationalAnalysis } from '../utils/operationalAnalysis';
 import {
@@ -59,7 +59,6 @@ import {
   styleCorporateWorksheet,
 } from '../utils/excelCorporate';
 import { auth } from '../firebase';
-import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import { stageFuelDataset } from '../services/masterDataApi';
 
@@ -76,7 +75,6 @@ interface CombustivelInteligenteTabProps {
   onOpenCadastros?: () => void;
   onOpenSpreadsheetImport: () => void;
   isParsingSpreadsheet: boolean;
-  oneDriveFuelSyncStatus?: OneDriveFuelSyncStatus | null;
 }
 
 type WorkspaceView = 'painel' | 'digitacao' | 'documento' | 'registros' | 'conferencia';
@@ -199,7 +197,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   onOpenCadastros,
   onOpenSpreadsheetImport,
   isParsingSpreadsheet,
-  oneDriveFuelSyncStatus,
 }) => {
   const [view, setView] = useState<WorkspaceView>('painel');
   const [filterStart, setFilterStart] = useState('');
@@ -254,10 +251,14 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         .sort((a, b) => `${b.data}T${b.hora}`.localeCompare(`${a.data}T${a.hora}`)),
     [auditedRecords, filterStart, filterEnd, filterEquipment, filterStatus, filterSource, search, equipamentos],
   );
+  const operationalFilteredRecords = useMemo(
+    () => filteredRecords.filter(isOperationalFuelRecord),
+    [filteredRecords],
+  );
 
   const dashboard = useMemo(() => {
-    const totalLiters = filteredRecords.reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0);
-    const totalCost = filteredRecords.reduce((sum, item) => sum + Number(item.custoTotal || 0), 0);
+    const totalLiters = operationalFilteredRecords.reduce((sum, item) => sum + (getOperationalFuelLiters(item) || 0), 0);
+    const totalCost = operationalFilteredRecords.reduce((sum, item) => sum + Number(item.custoTotal || 0), 0);
     const pendingReview = filteredRecords.filter(item =>
       item.revisaoStatus !== 'Aprovado'
       && item.alertas?.some(alert => alert.severidade !== 'info')
@@ -268,20 +269,21 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       alerts: filteredRecords.reduce((sum, item) => sum + (item.alertas?.filter(alert => alert.severidade !== 'info').length || 0), 0),
       critical: filteredRecords.reduce((sum, item) => sum + (item.alertas?.filter(alert => alert.severidade === 'critico').length || 0), 0),
       pendingReview,
-      uniqueEquipment: new Set(filteredRecords.map((item) => item.equipamentoId || item.prefixoInformado || item.id)).size,
+      uniqueEquipment: new Set(operationalFilteredRecords.map((item) => item.equipamentoId || item.prefixoInformado || item.id)).size,
+      excluded: filteredRecords.length - operationalFilteredRecords.length,
     };
-  }, [filteredRecords]);
+  }, [filteredRecords, operationalFilteredRecords]);
 
   const dailyTrend = useMemo(() => {
     const map = new Map<string, number>();
-    filteredRecords.forEach((item) =>
-      map.set(item.data, (map.get(item.data) || 0) + Number(item.quantidadeLitros || 0)),
+    operationalFilteredRecords.forEach((item) =>
+      map.set(item.data, (map.get(item.data) || 0) + (getOperationalFuelLiters(item) || 0)),
     );
     return [...map.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-14)
       .map(([date, liters]) => ({ date, liters }));
-  }, [filteredRecords]);
+  }, [operationalFilteredRecords]);
   const maxDaily = Math.max(1, ...dailyTrend.map((item) => item.liters));
 
   const equipmentRanking = useMemo(() => {
@@ -289,7 +291,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         string,
         { equipmentId: string; liters: number; records: number; alerts: number; lastDate: string; rates: number[] }
       >();
-    const chronological = [...filteredRecords].sort((a, b) =>
+    const chronological = [...operationalFilteredRecords].sort((a, b) =>
       `${a.data}T${a.hora}`.localeCompare(`${b.data}T${b.hora}`),
     );
     const previous = new Map<string, Abastecimento>();
@@ -303,7 +305,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         lastDate: '',
         rates: [] as number[],
       };
-      current.liters += Number(item.quantidadeLitros || 0);
+      current.liters += getOperationalFuelLiters(item) || 0;
       current.records += 1;
       current.alerts = 0;
       current.lastDate = current.lastDate > item.data ? current.lastDate : item.data;
@@ -319,7 +321,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         averageRate: item.rates.length ? item.rates.reduce((a, b) => a + b, 0) / item.rates.length : 0,
       }))
       .sort((a, b) => b.liters - a.liters);
-  }, [filteredRecords]);
+  }, [operationalFilteredRecords]);
 
   const issueRanking = useMemo(() => {
     const issues = new Map<string, { code: string; label: string; count: number; severity: AlertaCombustivel['severidade'] }>();
@@ -986,25 +988,6 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           </button>
         </div>
       </header>
-
-      <section className={`flex flex-col gap-3 border p-4 md:flex-row md:items-center md:justify-between ${oneDriveFuelSyncStatus?.state === 'error' ? 'border-rose-500/30 bg-rose-500/10' : oneDriveFuelSyncStatus?.state === 'ready' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
-        <div className="flex items-start gap-3">
-          <Cloud className={oneDriveFuelSyncStatus?.state === 'ready' ? 'text-emerald-300' : oneDriveFuelSyncStatus?.state === 'error' ? 'text-rose-300' : 'text-slate-500'} size={20} />
-          <div>
-            <h2 className="text-sm font-bold text-white">OneDrive automático • somente Agosto/2026 • a cada 10 minutos</h2>
-            <p className="mt-1 text-xs text-slate-400">
-              {oneDriveFuelSyncStatus?.state === 'ready'
-                ? `${oneDriveFuelSyncStatus.fileName || 'Planilha localizada'} • ${oneDriveFuelSyncStatus.rowCount || 0} linha(s) • ${oneDriveFuelSyncStatus.warningCount || 0} para conferir`
-                : oneDriveFuelSyncStatus?.message || 'Aguardando a primeira leitura do computador sincronizador.'}
-            </p>
-          </div>
-        </div>
-        <span className="text-xs font-mono text-slate-400">
-          {oneDriveFuelSyncStatus?.syncedAt
-            ? `Última leitura: ${new Date(oneDriveFuelSyncStatus.syncedAt).toLocaleString('pt-BR')}`
-            : 'Ainda não sincronizado'}
-        </span>
-      </section>
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-800 pb-px">
         {navItems.map((item) => {

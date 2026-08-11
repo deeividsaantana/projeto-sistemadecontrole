@@ -29,6 +29,7 @@ import {
   ParteDiariaEquipamento
 } from '../types';
 import ExecutiveOverviewV27 from './ExecutiveOverviewV27';
+import { getOperationalFuelLiters, splitOperationalFuelRecords } from '../utils/fuelAnalyticsSafety';
 
 import { 
   ResponsiveContainer, 
@@ -104,8 +105,12 @@ export default function Dashboard({
 }: DashboardProps) {
 
   // 1. Calculations & Metrics
-  const totalLiters = abastecimentos.reduce((acc, curr) => acc + curr.quantidadeLitros, 0);
-  const fuelLaunchCount = abastecimentos.length;
+  const { operational: operationalFuel, review: excludedFuelRecords } = useMemo(
+    () => splitOperationalFuelRecords(abastecimentos),
+    [abastecimentos],
+  );
+  const totalLiters = operationalFuel.reduce((acc, curr) => acc + (getOperationalFuelLiters(curr) || 0), 0);
+  const fuelLaunchCount = operationalFuel.length;
   
   const equipamentosExternos = useEquipamentosExternos();
   const activeEquipments = equipamentos.filter(e => e.status === 'Ativo' || e.status === 'Mobilizado').length;
@@ -114,7 +119,7 @@ export default function Dashboard({
   const maintenanceEquipments = equipamentosExternos.manutencao ?? localMaintenanceEquipments;
 
   // 2. Consumption by fleet (rank)
-  const consumptionByFleet = Array.from(abastecimentos.reduce((map, ab) => {
+  const consumptionByFleet = Array.from(operationalFuel.reduce((map, ab) => {
     const eq = equipamentos.find(item => item.id === ab.equipamentoId);
     const key = eq?.id || ab.prefixoInformado || 'sem-prefixo';
     const current = map.get(key) || {
@@ -122,7 +127,7 @@ export default function Dashboard({
       nome: eq?.nome || 'Pendente de cadastro',
       liters: 0
     };
-    current.liters += ab.quantidadeLitros;
+    current.liters += getOperationalFuelLiters(ab) || 0;
     map.set(key, current);
     return map;
   }, new Map<string, { prefixo: string; nome: string; liters: number }>()).values())
@@ -133,10 +138,10 @@ export default function Dashboard({
   // 3. Consumption by Company
   const consumptionByCompany = empresas.map(emp => {
     // Abastecimentos for equipments owned by this company
-    const liters = abastecimentos.filter(ab => {
+    const liters = operationalFuel.filter(ab => {
       const eq = equipamentos.find(e => e.id === ab.equipamentoId);
       return eq && eq.empresaId === emp.id;
-    }).reduce((acc, curr) => acc + curr.quantidadeLitros, 0);
+    }).reduce((acc, curr) => acc + (getOperationalFuelLiters(curr) || 0), 0);
 
     return {
       nome: emp.nome,
@@ -146,11 +151,11 @@ export default function Dashboard({
 
   // 4. Group Fuel by Day Chart Data
   const fuelByDayMap: { [date: string]: number } = {};
-  abastecimentos.forEach(ab => {
+  operationalFuel.forEach(ab => {
     // Format date beautifully (e.g., "22/06")
     const parts = ab.data.split('-');
     const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : ab.data;
-    fuelByDayMap[label] = (fuelByDayMap[label] || 0) + ab.quantidadeLitros;
+    fuelByDayMap[label] = (fuelByDayMap[label] || 0) + (getOperationalFuelLiters(ab) || 0);
   });
 
   // Sort dates
@@ -165,10 +170,10 @@ export default function Dashboard({
 
   // 5. Group Fuel by Fuel Type Chart Data
   const fuelByTypeMap: { [typeName: string]: number } = {};
-  abastecimentos.forEach(ab => {
+  operationalFuel.forEach(ab => {
     const type = combustiveis.find(t => t.id === ab.tipoCombustivelId);
     const typeName = type ? type.nome : 'Outros';
-    fuelByTypeMap[typeName] = (fuelByTypeMap[typeName] || 0) + ab.quantidadeLitros;
+    fuelByTypeMap[typeName] = (fuelByTypeMap[typeName] || 0) + (getOperationalFuelLiters(ab) || 0);
   });
 
   const fuelByTypeData = Object.keys(fuelByTypeMap).map(name => ({
@@ -178,10 +183,10 @@ export default function Dashboard({
 
   // New calculations for additional dashboards
   const consumptionByObra = obras.map(site => {
-    const liters = abastecimentos.filter(ab => {
+    const liters = operationalFuel.filter(ab => {
       const eq = equipamentos.find(e => e.id === ab.equipamentoId);
       return eq && eq.localAtualId === site.id;
-    }).reduce((acc, curr) => acc + curr.quantidadeLitros, 0);
+    }).reduce((acc, curr) => acc + (getOperationalFuelLiters(curr) || 0), 0);
 
     return {
       nome: site.nome,
@@ -313,11 +318,11 @@ export default function Dashboard({
 
     let records: BuilderRecord[] = [];
     if (builderSource === 'abastecimentos') {
-      records = abastecimentos.map(item => {
+      records = operationalFuel.map(item => {
         const info = equipmentInfo(item.equipamentoId, item.prefixoInformado);
         return {
           date: item.data,
-          value: builderMetric === 'litros' ? Number(item.quantidadeLitros || 0) : 1,
+          value: builderMetric === 'litros' ? (getOperationalFuelLiters(item) || 0) : 1,
           frota: info.frota,
           empresa: info.empresa || 'Sem empresa',
           obra: info.obra || 'Sem obra',
@@ -400,7 +405,7 @@ export default function Dashboard({
     }
 
     return records.filter(item => inRange(item.date));
-  }, [builderSource, builderMetric, builderStart, builderEnd, abastecimentos, lubrificacoes, listasPresenca, ordensServico, equipamentos, empresas, obras, combustiveis, lubrificantes, historyLogs, todayStr]);
+  }, [builderSource, builderMetric, builderStart, builderEnd, operationalFuel, lubrificacoes, listasPresenca, ordensServico, equipamentos, empresas, obras, combustiveis, lubrificantes, historyLogs, todayStr]);
 
   const builderData = useMemo(() => {
     const map = new Map<string, number>();
@@ -427,6 +432,7 @@ export default function Dashboard({
   const fuelRecordsForReview = abastecimentos.filter(item =>
     (item.status && item.status !== 'OK') ||
     !item.equipamentoId ||
+    excludedFuelRecords.some(excluded => excluded.id === item.id) ||
     (item.alertas || []).some(alert => alert.severidade === 'critico' || alert.severidade === 'aviso')
   );
   if (fuelRecordsForReview.length > 0) {
@@ -435,7 +441,9 @@ export default function Dashboard({
       id: 'alert-fuel-review',
       type: fuelRecordsForReview.some(item => item.status === 'Erro de importação') ? 'danger' : 'warning',
       text: `${fuelRecordsForReview.length} abastecimento(s) para conferir`,
-      details: unknownPrefixes
+      details: excludedFuelRecords.length
+        ? `${excludedFuelRecords.length} registro(s) foram preservados, mas ficaram fora dos indicadores por volume inválido, fora da faixa ou cancelamento.`
+        : unknownPrefixes
         ? `${unknownPrefixes} lançamento(s) têm prefixo ainda não vinculado. Os dados foram preservados.`
         : 'Há divergências de bomba, leitura, quantidade ou possível duplicidade aguardando revisão.',
       tab: 'lancamentos',

@@ -466,12 +466,7 @@ export const INITIAL_LUBRIFICACOES: Lubrificacao[] = [
   { id: 'lub-11', data: '2026-06-23', hora: '12:55', equipamentoId: 'eq-ec063', horimetro: 10882, produtoLubrificacaoId: 'pl-1', compartimento: 'Pinos e Articulações', quantidade: 1, responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
 ];
 
-export const INITIAL_HISTORY_LOGS: HistoryLog[] = [
-  { id: 'log-1', timestamp: '2026-06-21 08:30:00', usuario: 'admin', acao: 'Criou', tela: 'Empresas', descricao: 'Cadastrou RENEA INFRAESTRUTURA S.A. como empresa principal.' },
-  { id: 'log-2', timestamp: '2026-06-21 09:15:00', usuario: 'admin', acao: 'Criou', tela: 'Equipamentos', descricao: 'Importação inicial da frota de equipamentos ativos Renea e parceiros, com base na planilha de controle de combustível.' },
-  { id: 'log-3', timestamp: '2026-06-21 18:00:00', usuario: 'admin', acao: 'Criou', tela: 'Funcionários', descricao: 'Importação inicial dos 164 colaboradores cadastrados.' },
-  { id: 'log-4', timestamp: '2026-06-23 13:00:00', usuario: 'admin', acao: 'Criou', tela: 'Lançamentos', descricao: 'Importou 73 abastecimentos e 11 lubrificações do comboio TQC022 (21 a 23/06/2026), preservando a cadeia de bomba inicial/final.' }
-];
+export const INITIAL_HISTORY_LOGS: HistoryLog[] = [];
 
 export const INITIAL_PRESENCAS: ListaPresenca[] = [
   {

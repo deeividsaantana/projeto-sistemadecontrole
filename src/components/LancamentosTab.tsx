@@ -42,7 +42,6 @@ import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
-import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -60,7 +59,6 @@ interface LancamentosTabProps {
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
   onDeleteLubrificacao: (id: string) => void;
   onOpenCadastros?: () => void;
-  oneDriveFuelSyncStatus?: OneDriveFuelSyncStatus | null;
 }
 
 type Mode = 'abastecimentos' | 'lubrificacoes';
@@ -79,7 +77,6 @@ export default function LancamentosTab({
   onSaveLubrificacao,
   onDeleteLubrificacao,
   onOpenCadastros,
-  oneDriveFuelSyncStatus,
 }: LancamentosTabProps) {
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
@@ -1055,7 +1052,6 @@ export default function LancamentosTab({
           onOpenCadastros={onOpenCadastros}
           onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
           isParsingSpreadsheet={isParsingImport}
-          oneDriveFuelSyncStatus={oneDriveFuelSyncStatus}
         />
         <input
           ref={fileInputRef}

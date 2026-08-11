@@ -292,7 +292,7 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
 
       {mode === 'lotes' && (
         <>
-          <form onSubmit={saveLot} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-4">
+          <form onSubmit={saveLot} className="grid min-w-0 gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
             <input type="date" value={lot.data} onChange={e => setLot({ ...lot, data: e.target.value })} className="input-dark" />
             <input placeholder="Nota fiscal" value={lot.notaFiscal} onChange={e => setLot({ ...lot, notaFiscal: e.target.value })} className="input-dark" />
             <input placeholder="Código do material" value={lot.materialCodigo} onChange={e => setLot({ ...lot, materialCodigo: e.target.value })} className="input-dark" />
@@ -307,9 +307,9 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             <select value={lot.obraLocalId || ''} onChange={e => setLot({ ...lot, obraLocalId: e.target.value || undefined })} className="input-dark"><option value="">Obra/local</option>{obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
             <input placeholder="Destino textual" value={lot.destino} onChange={e => setLot({ ...lot, destino: e.target.value })} className="input-dark md:col-span-2" />
             <input placeholder="Responsável" value={lot.responsavel} onChange={e => setLot({ ...lot, responsavel: e.target.value })} className="input-dark" />
-            <div className="rounded-lg border border-amber-800/70 bg-amber-950/20 px-3 py-2 text-xs text-amber-200 md:col-span-2">Anexos estão temporariamente indisponíveis porque o Firebase Storage não foi ativado. O registro do lote segue normalmente, sem perda dos demais dados.</div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 sm:col-span-2">Anexos estão temporariamente indisponíveis porque o Firebase Storage não foi ativado. O registro do lote segue normalmente, sem perda dos demais dados.</div>
             <label className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 text-xs text-slate-300"><input type="checkbox" checked={lot.nfConferida} onChange={e => setLot({ ...lot, nfConferida: e.target.checked })} /> NF conferida</label>
-            <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><PackagePlus className="h-4 w-4" /> Registrar lote</button>
+            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><PackagePlus className="h-4 w-4" /> Registrar lote</button>
           </form>
           <div className="overflow-x-auto rounded-2xl border border-slate-800">
             <table className="w-full min-w-[900px] text-left text-xs">

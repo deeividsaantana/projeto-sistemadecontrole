@@ -204,7 +204,7 @@ const MetricCard = ({
   label,
   value,
   helper,
-  tone = 'text-white',
+  tone = 'text-slate-900',
 }: {
   icon: React.ReactNode;
   label: string;
@@ -212,7 +212,7 @@ const MetricCard = ({
   helper: string;
   tone?: string;
 }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-lg">
+  <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
     <div className="flex items-center justify-between">
       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</span>
       <span className="text-slate-500">{icon}</span>
@@ -223,7 +223,7 @@ const MetricCard = ({
 );
 
 const EmptyEquipmentImage = ({ compact = false }: { compact?: boolean }) => (
-  <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950 text-slate-500">
+  <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">
     <Truck className={compact ? 'h-8 w-8' : 'h-14 w-14'} />
     {!compact && <span className="mt-2 text-[10px] font-bold uppercase tracking-widest">Foto não cadastrada</span>}
   </div>
@@ -624,8 +624,8 @@ export default function ManutencaoEquipamentosTab({
       }}
       className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition-colors ${
         activeView === view
-          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/30'
-          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          ? 'bg-emerald-600 text-white shadow-sm'
+          : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800'
       }`}
     >
       {icon}
@@ -635,15 +635,15 @@ export default function ManutencaoEquipamentosTab({
 
   return (
     <div className="space-y-5" id="manutencao-equipamentos-tab-root">
-      <section className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 shadow-2xl">
-        <div className="border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950/50 p-6">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 bg-white p-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">
                 <Wrench className="h-4 w-4" />
                 Gestão integrada da frota
               </div>
-              <h1 className="mt-2 text-2xl font-black tracking-tight text-white">
+              <h1 className="mt-2 font-sans text-2xl font-black tracking-tight text-slate-900">
                 Central de Manutenção e Disponibilidade
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-400">
@@ -651,7 +651,7 @@ export default function ManutencaoEquipamentosTab({
                 manutenção e relatórios profissionais em uma única tela.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-2">
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
               {navButton('frota', 'Consulta da frota', <Truck className="h-4 w-4" />)}
               {navButton('ordens', 'Ordens de serviço', <ClipboardList className="h-4 w-4" />)}
               {navButton('relatorio', 'Relatório completo', <BarChart3 className="h-4 w-4" />)}
@@ -672,28 +672,28 @@ export default function ManutencaoEquipamentosTab({
           label="OS abertas"
           value={openOrders.length}
           helper="Abertas, em andamento ou aguardando peça"
-          tone={openOrders.length ? 'text-amber-300' : 'text-emerald-300'}
+          tone={openOrders.length ? 'text-amber-600' : 'text-emerald-600'}
         />
         <MetricCard
           icon={<AlertTriangle className="h-5 w-5" />}
           label="Parados"
           value={stoppedEquipment}
           helper="Parados ou em manutenção"
-          tone={stoppedEquipment ? 'text-rose-300' : 'text-emerald-300'}
+          tone={stoppedEquipment ? 'text-rose-600' : 'text-emerald-600'}
         />
         <MetricCard
           icon={<UserRound className="h-5 w-5" />}
           label="Sem motorista"
           value={withoutDriver}
           helper="Aguardando definição de responsável"
-          tone={withoutDriver ? 'text-violet-300' : 'text-emerald-300'}
+          tone={withoutDriver ? 'text-violet-600' : 'text-emerald-600'}
         />
         <MetricCard
           icon={<Gauge className="h-5 w-5" />}
           label="Disponibilidade média"
           value={formatNumber(averageAvailability, '%')}
           helper={`${formatNumber(stoppedHours, ' h')} paradas registradas`}
-          tone={averageAvailability !== null && averageAvailability < 80 ? 'text-amber-300' : 'text-emerald-300'}
+          tone={averageAvailability !== null && averageAvailability < 80 ? 'text-amber-600' : 'text-emerald-600'}
         />
       </div>
 

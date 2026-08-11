@@ -41,6 +41,7 @@ import {
   FilterX
 } from 'lucide-react';
 import { totalQuantidade } from '../utils/apontamentoRamosConfig';
+import { getOperationalFuelLiters, isOperationalFuelRecord } from '../utils/fuelAnalyticsSafety';
 
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
@@ -134,6 +135,7 @@ export default function RelatoriosTab({
   const [filtroCombustivelId, setFiltroCombustivelId] = useState('');
   const [filtroResponsavel, setFiltroResponsavel] = useState('');
   const [fuelSort, setFuelSort] = useState<'data_desc' | 'litros_desc' | 'litros_asc'>('litros_desc');
+  const operationalAbastecimentos = abastecimentos.filter(isOperationalFuelRecord);
 
   const normalizeKey = (value: string) =>
     value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -172,7 +174,7 @@ export default function RelatoriosTab({
           return grouped[eq.id];
         };
 
-        abastecimentos.forEach(ab => {
+        operationalAbastecimentos.forEach(ab => {
           if (!isWithinSelectedPeriod(ab.data)) return;
           if (filtroCombustivelId && ab.tipoCombustivelId !== filtroCombustivelId) return;
           if (filtroResponsavel && !ab.responsavel.toLowerCase().includes(filtroResponsavel.toLowerCase())) return;
@@ -192,7 +194,7 @@ export default function RelatoriosTab({
             prefixo: ab.prefixoInformado || 'Sem prefixo',
             nome: 'Pendente de cadastro',
           });
-          linha.produtos[produtoNome] = (linha.produtos[produtoNome] || 0) + ab.quantidadeLitros;
+          linha.produtos[produtoNome] = (linha.produtos[produtoNome] || 0) + (getOperationalFuelLiters(ab) || 0);
         });
 
         lubrificacoes.forEach(lub => {
@@ -223,7 +225,7 @@ export default function RelatoriosTab({
         // Group fuel by company
         const grouped: { [name: string]: { companyName: string; liters: number; vehiclesCount: number; countAbas: number } } = {};
 
-        abastecimentos.forEach(ab => {
+        operationalAbastecimentos.forEach(ab => {
           if (!isWithinSelectedPeriod(ab.data)) return;
           if (filtroCombustivelId && ab.tipoCombustivelId !== filtroCombustivelId) return;
           if (filtroResponsavel && !ab.responsavel.toLowerCase().includes(filtroResponsavel.toLowerCase())) return;
@@ -241,7 +243,7 @@ export default function RelatoriosTab({
           if (!grouped[cName]) {
             grouped[cName] = { companyName: cName, liters: 0, vehiclesCount: 0, countAbas: 0 };
           }
-          grouped[cName].liters += ab.quantidadeLitros;
+          grouped[cName].liters += getOperationalFuelLiters(ab) || 0;
           grouped[cName].countAbas += 1;
         });
 
@@ -253,7 +255,7 @@ export default function RelatoriosTab({
 
       case 'consumo_periodo': {
         // Timeline of abastecimentos
-        return abastecimentos.filter(ab => {
+        return operationalAbastecimentos.filter(ab => {
           if (!isWithinSelectedPeriod(ab.data)) return false;
           
           if (filtroCombustivelId && ab.tipoCombustivelId !== filtroCombustivelId) return false;
@@ -353,7 +355,7 @@ export default function RelatoriosTab({
               site,
               activeEquipment: siteEquipment.filter(eq => eq.status === 'Ativo' || eq.status === 'Mobilizado').length,
               maintenanceEquipment: siteEquipment.filter(eq => eq.status === 'Manutenção' || eq.status === 'Parado').length,
-              fuelLiters: fuelRecords.reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0),
+      fuelLiters: fuelRecords.reduce((sum, item) => sum + (getOperationalFuelLiters(item) || 0), 0),
               lubricationQuantity: lubricationRecords.reduce((sum, item) => sum + Number(item.quantidade || 0), 0),
               presenceRecords: presenceRecords.length,
               presentPeople: presenceRecords.filter(item => item.presente).length,

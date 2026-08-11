@@ -1,5 +1,6 @@
 import {
   doc,
+  deleteDoc,
   getDocFromServer,
   runTransaction,
   setDoc,
@@ -36,6 +37,7 @@ const INTERMEDIATE_TABLE_IDS = [
   'periodosArquivados',
   'notifications',
   'historyLogs',
+  'vinculosOperadorEquipamento',
 ] as const;
 const MAX_CHUNK_PAYLOAD_BYTES = 600_000;
 const FIREBASE_READ_TIMEOUT_MS = 20_000;
@@ -329,7 +331,8 @@ const performFirebaseBackupUpload = async (
   const documentsToWrite: Array<{ id: string; data: CloudChunk & typeof compatibilityFields }> = [];
   let reusedDocuments = 0;
 
-  for (const [table, rawItems] of Object.entries(data)) {
+  const sanitizedData = { ...data, historyLogs: [] };
+  for (const [table, rawItems] of Object.entries(sanitizedData)) {
     if (!Array.isArray(rawItems)) continue;
 
     const fullPayload = JSON.stringify(rawItems);
@@ -411,6 +414,16 @@ const performFirebaseBackupUpload = async (
     'Publicacao do manifesto do backup',
     FIREBASE_WRITE_TIMEOUT_MS,
   );
+
+  const currentHistoryChunks = new Set(chunks.historyLogs || []);
+  const obsoleteHistoryChunks = (previousManifest?.chunks?.historyLogs || []).filter(id => !currentHistoryChunks.has(id));
+  await runWithConcurrency(obsoleteHistoryChunks.map(documentId => async () => {
+    await deleteDoc(doc(database, CLOUD_COLLECTION, documentId));
+  }));
+  await Promise.all([
+    setDoc(doc(database, CLOUD_COLLECTION, LEGACY_DOCUMENT_ID), { historyLogs: [] }, { merge: true }),
+    setDoc(doc(database, CLOUD_COLLECTION, 'historyLogs'), { value: [], updatedAt }, { merge: true }),
+  ]);
 
   return {
     updatedAt,

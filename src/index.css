@@ -34,12 +34,28 @@ body {
 /* Camada clara corporativa: preserva as cores semânticas (verde, âmbar e vermelho)
    e converte as antigas superfícies estruturais escuras do sistema para o tema v6. */
 #app-root .bg-slate-950,
-#app-root .bg-slate-900 {
+#app-root .bg-slate-900,
+#app-root [class^="bg-slate-950/"],
+#app-root [class*=" bg-slate-950/"],
+#app-root [class^="bg-slate-900/"],
+#app-root [class*=" bg-slate-900/"] {
   background-color: #ffffff;
 }
 
-#app-root .bg-slate-800 {
+#app-root .bg-slate-800,
+#app-root [class^="bg-slate-800/"],
+#app-root [class*=" bg-slate-800/"] {
   background-color: #f1f5f9;
+}
+
+#app-root [class^="from-slate-950"],
+#app-root [class*=" from-slate-950"],
+#app-root [class^="from-slate-900"],
+#app-root [class*=" from-slate-900"],
+#app-root [class^="from-slate-800"],
+#app-root [class*=" from-slate-800"] {
+  background-image: none;
+  background-color: #ffffff;
 }
 
 #app-root .border-slate-800,
@@ -81,7 +97,6 @@ body {
 #app-root .bg-indigo-600.text-white,
 #app-root .bg-amber-600.text-white,
 #app-root .bg-slate-700.text-white,
-#app-root .bg-gradient-to-r.text-white,
 #app-root .bg-emerald-600 .text-white,
 #app-root .bg-emerald-500 .text-white,
 #app-root .bg-rose-600 .text-white,
@@ -90,13 +105,12 @@ body {
 #app-root .bg-cyan-600 .text-white,
 #app-root .bg-indigo-600 .text-white,
 #app-root .bg-amber-600 .text-white,
-#app-root .bg-slate-700 .text-white,
-#app-root .bg-gradient-to-r .text-white {
+#app-root .bg-slate-700 .text-white {
   color: #ffffff;
 }
 
 h1, h2, h3, .font-display {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
 }
 
 @utility ticket-input {

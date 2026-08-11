@@ -49,7 +49,7 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import reneaLogo from '../assets/images/renea_logo_new.png';
-import reneaDashboardLogo from '../assets/images/logo-renea-branco.svg';
+import reneaDashboardLogo from '../assets/images/logo-renea-dark.svg';
 import spmarLogo from '../assets/images/spmar_logo.png';
 import {
   addCorporateSummarySheet,
@@ -155,19 +155,19 @@ function MetricCard({
   tone?: 'emerald' | 'sky' | 'amber' | 'rose' | 'violet';
 }) {
   const classes = {
-    emerald: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300',
-    sky: 'border-sky-500/20 bg-sky-500/5 text-sky-300',
-    amber: 'border-amber-500/20 bg-amber-500/5 text-amber-300',
-    rose: 'border-rose-500/20 bg-rose-500/5 text-rose-300',
-    violet: 'border-violet-500/20 bg-violet-500/5 text-violet-300',
+    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700',
+    sky: 'border-sky-200 bg-sky-50/70 text-sky-700',
+    amber: 'border-amber-200 bg-amber-50/70 text-amber-700',
+    rose: 'border-rose-200 bg-rose-50/70 text-rose-700',
+    violet: 'border-violet-200 bg-violet-50/70 text-violet-700',
   }[tone];
   return (
-    <div className={`rounded-2xl border p-4 ${classes}`}>
+    <div className={`min-w-0 overflow-hidden rounded-2xl border p-4 ${classes}`}>
       <div className="mb-3 flex items-start justify-between gap-2">
         <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</span>
-        <span className="rounded-lg bg-slate-950/70 p-2"><Icon className="h-4 w-4" /></span>
+        <span className="shrink-0 rounded-lg bg-white p-2 shadow-sm"><Icon className="h-4 w-4" /></span>
       </div>
-      <strong className="block font-mono text-2xl font-black text-white">{value}</strong>
+      <strong className="block max-w-full break-words font-mono text-xl font-black leading-tight text-slate-900 xl:text-2xl" title={value}>{value}</strong>
       <span className="mt-1 block text-[10px] leading-relaxed text-slate-400">{detail}</span>
     </div>
   );
@@ -297,10 +297,10 @@ export default function OperationalReportsDashboard({
     if (mode === 'combustivel') {
       downloadCsv(`RENEA_COMBUSTIVEL_${startDate || 'INICIO'}_${endDate || 'ATUAL'}.csv`, [
         'Data', 'Hora', 'Prefixo', 'Equipamento', 'Empresa', 'Comboio', 'Combustível', 'Litros',
-        'Bomba inicial', 'Bomba final', 'Status', 'Origem', 'Responsável', 'Pendências',
+        'Bomba inicial', 'Bomba final', 'Status', 'Origem', 'Responsável', 'Incluído nos indicadores', 'Pendências',
       ], fuelAnalytics.details.map(row => [
         formatDate(row.date), row.time, row.prefix, row.equipment, row.company, row.comboio, row.fuel,
-        row.liters, row.pumpInitial, row.pumpFinal, row.status, row.origin, row.responsible,
+        row.liters, row.pumpInitial, row.pumpFinal, row.status, row.origin, row.responsible, row.includedInMetrics ? 'Sim' : 'Não',
         row.warnings.join(' | '),
       ]));
     } else {
@@ -397,12 +397,12 @@ export default function OperationalReportsDashboard({
       const detailSheet = workbook.addWorksheet('DADOS DETALHADOS');
       detailSheet.addRow([]); detailSheet.addRow([]);
       if (mode === 'combustivel') {
-        detailSheet.addRow(['Data', 'Hora', 'Prefixo', 'Equipamento', 'Empresa', 'Comboio', 'Combustível', 'Litros', 'Bomba inicial', 'Bomba final', 'Diferença', 'Status', 'Origem', 'Responsável', 'Pendências']);
+        detailSheet.addRow(['Data', 'Hora', 'Prefixo', 'Equipamento', 'Empresa', 'Comboio', 'Combustível', 'Litros', 'Bomba inicial', 'Bomba final', 'Diferença', 'Status', 'Origem', 'Responsável', 'Incluído nos indicadores', 'Pendências']);
         fuelAnalytics.details.forEach(row => detailSheet.addRow([
           formatDate(row.date), row.time, row.prefix, row.equipment, row.company, row.comboio, row.fuel, row.liters,
-          row.pumpInitial, row.pumpFinal, Number(row.pumpDifference.toFixed(3)), row.status, row.origin, row.responsible, row.warnings.join(' | '),
+          row.pumpInitial, row.pumpFinal, Number(row.pumpDifference.toFixed(3)), row.status, row.origin, row.responsible, row.includedInMetrics ? 'Sim' : 'Não', row.warnings.join(' | '),
         ]));
-        styleCorporateWorksheet(detailSheet, { title: `Abastecimentos detalhados - ${periodLabel}`, headerRow: 3, lastColumn: 15, recordCount: fuelAnalytics.details.length });
+        styleCorporateWorksheet(detailSheet, { title: `Abastecimentos detalhados - ${periodLabel}`, headerRow: 3, lastColumn: 16, recordCount: fuelAnalytics.details.length });
       } else {
         detailSheet.addRow(['Data', 'Ticket', 'Criado em', 'Liberação', 'Retorno liberação', 'Recebimento', 'Retorno recebimento', 'Prefixo', 'Placa', 'Equipamento', 'Empresa', 'Material', 'Destino', 'Quantidade', 'Unidade', 'NF', 'Duplicidades', 'Pendências']);
         jazidaAnalytics.details.forEach(row => detailSheet.addRow([
@@ -472,7 +472,7 @@ export default function OperationalReportsDashboard({
         autoTable(doc, {
           startY: 50,
           head: [['Data', 'Hora', 'Frota', 'Equipamento', 'Empresa', 'Comboio', 'Produto', 'Litros', 'Bombas', 'Status / conferência']],
-          body: fuelAnalytics.details.map(row => [
+          body: fuelAnalytics.details.filter(row => row.includedInMetrics).map(row => [
             formatDate(row.date), row.time, row.prefix, row.equipment, row.company, row.comboio, row.fuel,
             number(row.liters, 2), `${number(row.pumpInitial, 2)} → ${number(row.pumpFinal, 2)}`,
             row.warnings.join(' | ') || 'OK',
@@ -535,7 +535,7 @@ export default function OperationalReportsDashboard({
   const fuelInsights = [
     fuelAnalytics.fleets[0] ? `Maior consumo: ${fuelAnalytics.fleets[0].name}, com ${number(fuelAnalytics.fleets[0].liters, 2)} L (${percent(fuelAnalytics.fleets[0].percentage)} do período).` : 'Ainda não há consumo no período.',
     fuelAnalytics.companies[0] ? `Empresa com maior volume: ${fuelAnalytics.companies[0].name}, ${number(fuelAnalytics.companies[0].liters, 2)} L.` : 'Nenhuma empresa identificada no período.',
-    fuelAnalytics.warningRecords ? `${fuelAnalytics.warningRecords} lançamento(s) pedem conferência: ${fuelAnalytics.unknownFleets} sem frota, ${fuelAnalytics.pumpDivergences} com diferença de bomba e ${fuelAnalytics.duplicateRecords} possível(is) duplicado(s).` : 'Todos os lançamentos filtrados passaram pelas verificações automáticas.',
+    fuelAnalytics.warningRecords ? `${fuelAnalytics.warningRecords} lançamento(s) pedem conferência: ${fuelAnalytics.excludedRecords} fora dos indicadores, ${fuelAnalytics.unknownFleets} sem frota, ${fuelAnalytics.pumpDivergences} com diferença de bomba e ${fuelAnalytics.duplicateRecords} possível(is) duplicado(s).` : 'Todos os lançamentos filtrados passaram pelas verificações automáticas.',
     'A ordem das linhas não é usada para validar bombas: cada lançamento e comboio é conferido individualmente.',
   ];
 
@@ -551,13 +551,13 @@ export default function OperationalReportsDashboard({
 
   return (
     <section className="space-y-5 print:hidden" id="operational-reports-dashboard">
-      <div className="overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 shadow-2xl shadow-emerald-950/20">
-        <div className="flex flex-col gap-5 border-b border-slate-800 p-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+        <div className="flex flex-col gap-5 border-b border-slate-200 bg-white p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="shrink-0 rounded-2xl border border-emerald-400/20 bg-slate-950/80 px-3 py-2.5 shadow-lg shadow-emerald-950/20"><img src={reneaDashboardLogo} alt="RENEA Infraestrutura" className="h-9 w-auto object-contain sm:h-10" /></div>
+            <div className="shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm"><img src={reneaDashboardLogo} alt="RENEA Infraestrutura" className="h-9 w-auto object-contain sm:h-10" /></div>
             <div>
               <span className="text-[9px] font-black uppercase tracking-[0.24em] text-emerald-400">Central de conferência operacional</span>
-              <h2 className="mt-1 text-xl font-black text-white">Dashboards de Combustível e Jazida</h2>
+              <h2 className="mt-1 text-xl font-black text-slate-900">Dashboards de Combustível e Jazida</h2>
               <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-slate-400">Análise diária, comparativos, qualidade cadastral, pendências e relatórios completos a partir da mesma base usada nos lançamentos.</p>
             </div>
           </div>
@@ -568,7 +568,7 @@ export default function OperationalReportsDashboard({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 border-b border-slate-800 bg-slate-950/35 p-2">
+        <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50 p-2">
           <button type="button" onClick={() => changeMode('combustivel')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black transition ${mode === 'combustivel' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`}><Fuel className="h-4 w-4" /> Combustível</button>
           <button type="button" onClick={() => changeMode('jazida')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black transition ${mode === 'jazida' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`}><TicketCheck className="h-4 w-4" /> Jazida</button>
         </div>
