@@ -1,5 +1,4 @@
 import { initializeApp } from "firebase/app";
-import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
@@ -60,10 +59,5 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
-
-// Initialize Analytics conditionally to prevent crashes in sandboxed iframes or non-browser rendering
-export const analyticsPromise = isSupported()
-  .then((supported) => (supported ? getAnalytics(app) : null))
-  .catch(() => null);
 
 export default app;
