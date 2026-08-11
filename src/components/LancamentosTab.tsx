@@ -41,6 +41,7 @@ import SpreadsheetImportReview from './SpreadsheetImportReview';
 import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
+import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
 import type { OneDriveFuelSyncStatus } from '../oneDriveFuelSync';
 
 interface LancamentosTabProps {
@@ -114,6 +115,7 @@ export default function LancamentosTab({
     linha: number;
     valido: boolean;
     duplicado: boolean;
+    status: 'valido' | 'duplicado' | 'ignorado' | 'erro';
     motivo: string;
     item?: Abastecimento;
     preview: Record<string, string>;
@@ -126,6 +128,7 @@ export default function LancamentosTab({
   const [importFileName, setImportFileName] = useState('');
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
   const [importedFuelTypes, setImportedFuelTypes] = useState<TipoCombustivel[]>([]);
+  const [importReport, setImportReport] = useState('');
 
   const normalizeHeader = (s: string) =>
     (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
@@ -386,15 +389,15 @@ export default function LancamentosTab({
           const quantidadeLida = parseNumberValue(rawQtd);
           const bombaInicialLida = parseNumberValue(rawBombaInicial);
           const bombaFinalPlanilha = parseNumberValue(rawBombaFinal);
-          const bombaInicial = Number.isFinite(bombaInicialLida) ? bombaInicialLida : 0;
-          const quantidadeCalculada = Number.isFinite(bombaFinalPlanilha) && bombaFinalPlanilha > bombaInicial
+          const bombaInicial = Number.isFinite(bombaInicialLida) ? bombaInicialLida : NaN;
+          const quantidadeCalculada = Number.isFinite(bombaFinalPlanilha) && Number.isFinite(bombaInicial) && bombaFinalPlanilha > bombaInicial
             ? bombaFinalPlanilha - bombaInicial
             : NaN;
           const quantidade = Number.isFinite(quantidadeLida) ? quantidadeLida : quantidadeCalculada;
           const quantidadeFoiCalculada = !Number.isFinite(quantidadeLida) && Number.isFinite(quantidadeCalculada);
           const bombaFinal = Number.isFinite(bombaFinalPlanilha)
             ? bombaFinalPlanilha
-            : Number.isFinite(quantidade) ? bombaInicial + quantidade : 0;
+            : Number.isFinite(quantidade) && Number.isFinite(bombaInicial) ? bombaInicial + quantidade : NaN;
           const tipoCombustivelTexto = String(getCell(row, 'tipoCombustivel') || '').trim();
           const comboioTexto = String(getCell(row, 'comboio') || '').trim();
           const empresaTexto = String(getCell(row, 'empresa') || '').trim();
@@ -424,17 +427,17 @@ export default function LancamentosTab({
             Litros: Number.isFinite(quantidade) ? String(quantidade) : '', Combustível: tipoCombustivelTexto || comb?.nome || '', Comboio: comboioTexto, Empresa: empresaTexto,
             Responsável: responsavel || 'Não informado na planilha',
             Leitura: horimetroInicial > 0 ? `H ${horimetroInicial}` : kmInicial > 0 ? `KM ${kmInicial}` : '',
-            Bomba: `${bombaInicial || ''} → ${bombaFinal || ''}`,
+            Bomba: `${Number.isFinite(bombaInicial) ? bombaInicial : ''} → ${Number.isFinite(bombaFinal) ? bombaFinal : ''}`,
             Custo: custoLitro > 0 ? `R$ ${custoLitro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/L` : '',
             Original: rawRowText,
           };
 
           const importAlerts = [
             fallbackMode ? 'Cabeçalho não reconhecido com segurança; linha importada por posição para conferência.' : '',
-            !dataStr ? 'Data não reconhecida na planilha; foi usada a data da importação.' : '',
+            !dataStr ? 'Data vazia ou inválida.' : '',
             !frotaTexto ? 'Prefixo/frota não informado na planilha.' : '',
             frotaTexto && !eq ? `Prefixo "${frotaTexto}" ainda não está cadastrado.` : '',
-            (!horaStr || !normalizeQuickTime(horaStr).valid) ? 'Hora vazia ou inválida; foi usado 00:00.' : '',
+            (!horaStr || !normalizeQuickTime(horaStr).valid) ? 'Hora vazia ou inválida.' : '',
             (isNaN(quantidade) || quantidade === undefined) ? 'Quantidade vazia ou ilegível; conferir litros.' : '',
             quantidade <= 0 ? 'Quantidade menor ou igual a zero; conferir litros.' : '',
             fuelResolution.missing && comb ? `Tipo de combustível vazio; foi usado "${comb.nome}" para manter o registro importável.` : '',
@@ -448,64 +451,87 @@ export default function LancamentosTab({
 
           // Checagem de bomba final (Prioridade 4)
           let statusFinal: string = 'OK';
-          const bombaFinalCalculada = bombaInicial + (isNaN(quantidade) ? 0 : quantidade);
-          if (!isNaN(bombaFinalPlanilha) && bombaFinalPlanilha !== undefined && Math.abs(bombaFinalPlanilha - bombaFinalCalculada) > 0.01) {
+          const bombaFinalCalculada = Number.isFinite(bombaInicial) && Number.isFinite(quantidade) ? bombaInicial + quantidade : NaN;
+          if (Number.isFinite(bombaFinalPlanilha) && Number.isFinite(bombaFinalCalculada) && Math.abs(bombaFinalPlanilha - bombaFinalCalculada) > 0.01) {
             statusFinal = 'Verificar bomba';
           }
 
-          // Duplicidade: Data + Frota + Hora + Quantidade + Tipo Combustível
-          const dataFinal = dataStr || new Date().toISOString().slice(0, 10);
-          const horaFinal = normalizeQuickTime(horaStr).valid ? horaStr : '00:00';
-          const quantidadeFinal = Number.isFinite(quantidade) ? Number(quantidade.toFixed(4)) : 0;
-          const dupKey = `${dataFinal}|${eq?.id || frotaTexto}|${horaFinal}|${quantidadeFinal}|${comb?.id || tipoCombustivelTexto}`;
-          const dupNoSistema = abastecimentos.some(a => `${a.data}|${a.equipamentoId || a.prefixoInformado || ''}|${a.hora}|${a.quantidadeLitros}|${a.tipoCombustivelId}` === dupKey);
+          // Identidade: Data + Prefixo + Litros + Hora + Bomba Inicial + Bomba Final.
+          const dataFinal = dataStr;
+          const horaFinal = normalizeQuickTime(horaStr).valid ? horaStr : '';
+          const quantidadeFinal = Number.isFinite(quantidade) ? Number(quantidade.toFixed(4)) : NaN;
+          const candidate: Partial<Abastecimento> = {
+            data: dataFinal,
+            hora: horaFinal,
+            equipamentoId: eq?.id || '',
+            prefixoInformado: frotaTexto.toUpperCase(),
+            quantidadeLitros: quantidadeFinal,
+            bombaInicial: Number.isFinite(bombaInicial) ? bombaInicial : undefined as any,
+            bombaFinal: Number.isFinite(bombaFinal) ? bombaFinal : undefined as any,
+          };
+          const dupKey = buildFuelImportKey(candidate);
+          const dupNoSistema = abastecimentos.some(a => buildFuelImportKey({
+            ...a,
+            prefixoInformado: a.prefixoInformado || equipamentos.find(eqItem => eqItem.id === a.equipamentoId)?.prefixo || a.equipamentoId,
+          }) === dupKey);
           const dupNoLote = seenInBatch.has(dupKey);
           seenInBatch.add(dupKey);
           const isDuplicado = dupNoSistema || dupNoLote;
-          if (isDuplicado) importAlerts.push('Possível duplicidade: a linha foi preservada e marcada para conferência.');
+          const rowHasEssentialContent = Boolean(dataStr || frotaTexto || Number.isFinite(quantidade));
+          const ignored = !rowHasEssentialContent || !Number.isFinite(quantidade) || quantidade <= 0;
+          const publishable = isPublishableFuelImport(candidate) && Boolean(comb);
+          const status: ImportRow['status'] = isDuplicado ? 'duplicado' : ignored ? 'ignorado' : publishable ? 'valido' : 'erro';
+          if (isDuplicado) importAlerts.push('Duplicado identificado; esta linha não será publicada.');
+          if (ignored) importAlerts.push('Linha vazia, sem litros válidos ou zerada; esta linha não será publicada.');
+          if (!ignored && !publishable) importAlerts.push('Campos obrigatórios inválidos; esta linha não será publicada.');
 
-          const valido = true;
+          const valido = status === 'valido';
           const motivo = importAlerts.join(' | ');
+          const item: Abastecimento | undefined = valido ? {
+            id: `import-${Date.now()}-${ws.name}-${rowNumber}`,
+            data: dataFinal,
+            hora: horaFinal,
+            equipamentoId: eq?.id || '',
+            prefixoInformado: frotaTexto.toUpperCase(),
+            horimetroInicial,
+            kmInicial,
+            bombaInicial,
+            quantidadeLitros: quantidadeFinal,
+            bombaFinal,
+            custoLitro,
+            tipoCombustivelId: comb?.id || '',
+            comboioId: combVeic?.id || '',
+            responsavel,
+            observacao: [
+              observacao || `Fonte: ${ws.name}`,
+              `Linha original ${ws.name}:${rowNumber}: ${rawRowText}.`,
+              empresaTexto ? `Empresa informada na planilha: ${empresaTexto}.` : '',
+              frotaTexto && !eq ? `Prefixo informado sem cadastro: ${frotaTexto}.` : '',
+              tipoCombustivelTexto ? `Combustível informado na planilha: ${tipoCombustivelTexto}.` : '',
+              comboioTexto ? `Comboio informado na planilha: ${comboioTexto}.` : '',
+              !responsavel ? 'Responsável não informado na planilha; conferir no registro.' : '',
+              quantidadeFoiCalculada ? 'Quantidade calculada pela diferença entre bomba final e inicial.' : '',
+              motivo,
+            ].filter(Boolean).join(' | '),
+            status: (motivo && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal) as any,
+            origem: 'Planilha',
+            documentoOrigemNome: file.name,
+            documentoOrigemHash: dupKey,
+            integracaoAba: ws.name,
+            integracaoLinha: rowNumber,
+            criadoEm: new Date().toISOString(),
+            atualizadoEm: new Date().toISOString(),
+          } : undefined;
 
           rows.push({
             aba: ws.name,
             linha: rowNumber,
             valido,
             duplicado: isDuplicado,
+            status,
             motivo,
             preview,
-            item: {
-              id: `import-${Date.now()}-${ws.name}-${rowNumber}`,
-              data: dataFinal,
-              hora: horaFinal,
-              equipamentoId: eq?.id || '',
-              prefixoInformado: frotaTexto.toUpperCase(),
-              horimetroInicial,
-              kmInicial,
-              bombaInicial,
-              quantidadeLitros: quantidadeFinal,
-              bombaFinal,
-              custoLitro,
-              tipoCombustivelId: comb?.id || '',
-              comboioId: combVeic?.id || '',
-              responsavel,
-              observacao: [
-                observacao || `Fonte: ${ws.name}`,
-                `Linha original ${ws.name}:${rowNumber}: ${rawRowText}.`,
-                empresaTexto ? `Empresa informada na planilha: ${empresaTexto}.` : '',
-                frotaTexto && !eq ? `Prefixo informado sem cadastro: ${frotaTexto}.` : '',
-                tipoCombustivelTexto ? `Combustível informado na planilha: ${tipoCombustivelTexto}.` : '',
-                comboioTexto ? `Comboio informado na planilha: ${comboioTexto}.` : '',
-                !responsavel ? 'Responsável não informado na planilha; conferir no registro.' : '',
-                quantidadeFoiCalculada ? 'Quantidade calculada pela diferença entre bomba final e inicial.' : '',
-                motivo,
-              ].filter(Boolean).join(' | '),
-              status: (isDuplicado ? 'Duplicado' : motivo && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal) as any,
-              origem: 'Planilha',
-              documentoOrigemNome: file.name,
-              criadoEm: new Date().toISOString(),
-              atualizadoEm: new Date().toISOString(),
-            },
+            item,
           });
         });
       });
@@ -524,17 +550,20 @@ export default function LancamentosTab({
 
   const importSummary = useMemo(() => {
     const total = importRows.length;
-    const validas = importRows.filter(r => r.valido).length;
-    const duplicadas = importRows.filter(r => r.duplicado).length;
-    const comErro = importRows.filter(r => !r.valido && !r.duplicado).length;
+    const validas = importRows.filter(r => r.status === 'valido').length;
+    const duplicadas = importRows.filter(r => r.status === 'duplicado').length;
+    const ignoradas = importRows.filter(r => r.status === 'ignorado').length;
+    const comErro = importRows.filter(r => r.status === 'erro').length;
     const conferencia = importRows.filter(r => r.motivo).length;
-    return { total, validas, duplicadas, comErro, conferencia };
+    return { total, validas, duplicadas, ignoradas, comErro, conferencia };
   }, [importRows]);
 
   const handleConfirmImport = () => {
     setIsConfirmingImport(true);
-    const validItems = importRows.filter(r => r.item).map(r => r.item!) as Abastecimento[];
-    onImportAbastecimentos(validItems, importedFuelTypes);
+    const validItems = importRows.filter(r => r.status === 'valido' && r.item).map(r => r.item!) as Abastecimento[];
+    const usedFuelIds = new Set(validItems.map(item => item.tipoCombustivelId));
+    onImportAbastecimentos(validItems, importedFuelTypes.filter(item => usedFuelIds.has(item.id)));
+    setImportReport(`Importação concluída: ${validItems.length} novo(s) abastecimento(s) publicado(s); ${importSummary.duplicadas} duplicado(s), ${importSummary.ignoradas} linha(s) vazia(s)/zerada(s) e ${importSummary.comErro} registro(s) inválido(s) não foram publicados.`);
     setIsConfirmingImport(false);
     setIsImportModalOpen(false);
     setImportRows([]);
@@ -1000,6 +1029,13 @@ export default function LancamentosTab({
             {validationError}
           </div>
         )}
+        {importReport && (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span className="flex-1">{importReport}</span>
+            <button type="button" onClick={() => setImportReport('')} className="rounded p-1 text-emerald-700 hover:bg-emerald-100" aria-label="Fechar relatório"><X className="h-4 w-4" /></button>
+          </div>
+        )}
         <CombustivelInteligenteTab
           empresas={empresas}
           equipamentos={equipamentos}
@@ -1032,14 +1068,15 @@ export default function LancamentosTab({
           title="Importar abastecimentos"
           fileName={importFileName}
           validCount={importSummary.validas}
-          ignoredCount={0}
+          ignoredCount={importSummary.duplicadas + importSummary.ignoradas + importSummary.comErro}
           columns={['Linha', 'Aba', 'Status', 'Data', 'Frota', 'Litros', 'Hora', 'Leitura', 'Bomba', 'Combustível', 'Comboio', 'Empresa', 'Responsável']}
           rows={importRows.map(row => ({
             Linha: row.linha,
             Aba: row.aba,
-            Status: row.valido
-              ? row.duplicado ? 'Importável • possível duplicidade' : row.motivo ? 'Importável • conferir' : 'Válido'
-              : row.motivo || 'Erro',
+            Status: row.status === 'valido' ? '✅ Válido'
+              : row.status === 'duplicado' ? '⚠ Duplicado • bloqueado'
+              : row.status === 'ignorado' ? '⚠ Ignorado • bloqueado'
+              : '❌ Erro • bloqueado',
             Data: row.preview.Data,
             Hora: row.preview.Hora,
             Frota: row.preview.Frota,
@@ -1051,7 +1088,7 @@ export default function LancamentosTab({
             Empresa: row.preview.Empresa,
             Responsável: row.preview['Responsável']
           }))}
-          note={`${importSummary.total} linha(s) analisada(s), ${importSummary.validas} importável(is) e 0 ignorada(s). ${importSummary.conferencia} linha(s) irão para conferência sem serem descartadas.${importedFuelTypes.length ? ` ${importedFuelTypes.length} tipo(s) de combustível novo(s) serão cadastrados junto com a importação.` : ''}`}
+          note={`${importSummary.total} linha(s) lida(s): ${importSummary.validas} válida(s), ${importSummary.duplicadas} duplicada(s), ${importSummary.ignoradas} ignorada(s) e ${importSummary.comErro} com erro. Somente ${importSummary.validas} registro(s) serão publicados.${importedFuelTypes.length ? ` Cadastros de combustível serão criados apenas quando usados por uma linha válida.` : ''}`}
           confirming={isConfirmingImport}
           onCancel={handleCancelImport}
           onConfirm={handleConfirmImport}
@@ -1697,14 +1734,15 @@ export default function LancamentosTab({
         title="Importar abastecimentos"
         fileName={importFileName}
         validCount={importSummary.validas}
-        ignoredCount={0}
+        ignoredCount={importSummary.duplicadas + importSummary.ignoradas + importSummary.comErro}
         columns={['Linha', 'Aba', 'Status', 'Data', 'Frota', 'Litros', 'Hora', 'Leitura', 'Bomba', 'Combustível', 'Comboio', 'Empresa', 'Responsável']}
         rows={importRows.map(row => ({
           Linha: row.linha,
           Aba: row.aba,
-          Status: row.valido
-            ? row.duplicado ? 'Importável • possível duplicidade' : row.motivo ? 'Importável • conferir' : 'Válido'
-            : row.motivo || 'Erro',
+          Status: row.status === 'valido' ? '✅ Válido'
+            : row.status === 'duplicado' ? '⚠ Duplicado • bloqueado'
+            : row.status === 'ignorado' ? '⚠ Ignorado • bloqueado'
+            : '❌ Erro • bloqueado',
           Data: row.preview.Data,
           Hora: row.preview.Hora,
           Frota: row.preview.Frota,
@@ -1716,7 +1754,7 @@ export default function LancamentosTab({
           Empresa: row.preview.Empresa,
           Responsável: row.preview['Responsável']
         }))}
-        note={`${importSummary.total} linha(s) analisada(s), ${importSummary.validas} importável(is) e 0 ignorada(s). ${importSummary.conferencia} linha(s) irão para conferência sem serem descartadas.${importedFuelTypes.length ? ` ${importedFuelTypes.length} tipo(s) de combustível novo(s) serão cadastrados junto com a importação.` : ''}`}
+        note={`${importSummary.total} linha(s) lida(s): ${importSummary.validas} válida(s), ${importSummary.duplicadas} duplicada(s), ${importSummary.ignoradas} ignorada(s) e ${importSummary.comErro} com erro. Somente ${importSummary.validas} registro(s) serão publicados.${importedFuelTypes.length ? ` Cadastros de combustível serão criados apenas quando usados por uma linha válida.` : ''}`}
         confirming={isConfirmingImport}
         onCancel={handleCancelImport}
         onConfirm={handleConfirmImport}

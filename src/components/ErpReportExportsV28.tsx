@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import ExcelJS from 'exceljs';
-import { jsPDF } from 'jspdf';
 import { Download, FileSpreadsheet, Printer } from 'lucide-react';
 import type {
   ControleEstacas, Equipamento, MaterialRegistro, ParteDiariaEquipamento,
   PresencaApontamento, TicketJazida,
 } from '../types';
 import { buildStakeSummary } from '../utils/stakeOperations';
+import { generateUniversalPdfReport } from '../utils/universalPdfReport';
 
 type Props = {
   tickets: TicketJazida[];
@@ -66,26 +66,19 @@ export default function ErpReportExportsV28({ tickets, estacas, materiais, prese
     downloadBlob(`\uFEFF${rows.map(row => row.map(csvCell).join(';')).join('\n')}`, 'text/csv;charset=utf-8', `RELATORIO_COMERCIAL_RENEA_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
     const stake = buildStakeSummary(estacas);
-    const documentPdf = new jsPDF();
-    documentPdf.setFontSize(18);
-    documentPdf.text('RENEA ERP 3.0 - Fechamento Executivo', 14, 18);
-    documentPdf.setFontSize(10);
-    const lines = [
-      `Emissão: ${new Date().toLocaleString('pt-BR')}`,
-      `Viagens/tickets: ${tickets.length}`,
-      `Materiais: ${materiais.length} registros`,
-      `Efetivo apontado: ${presencas.filter(item => item.status === 'Presente').length}`,
-      `Equipamentos: ${equipamentos.length}`,
-      `Partes diárias: ${partes.length}`,
-      `Estacas recebidas: ${stake.recebidoM.toLocaleString('pt-BR')} m`,
-      `Estacas cravadas: ${stake.cravadoM.toLocaleString('pt-BR')} m`,
-      `Saldo de estacas: ${stake.sobraM.toLocaleString('pt-BR')} m`,
-      `Notas fiscais de estacas pendentes: ${stake.notasPendentes}`,
-    ];
-    lines.forEach((line, index) => documentPdf.text(line, 14, 30 + index * 7));
-    documentPdf.save(`RENEA_ERP_3_FECHAMENTO_${new Date().toISOString().slice(0, 10)}.pdf`);
+    await generateUniversalPdfReport({
+      title: 'Fechamento Executivo', subtitle: 'Visão consolidada dos módulos operacionais',
+      columns: [{ header: 'Indicador', dataKey: 'indicador' }, { header: 'Resultado', dataKey: 'resultado' }],
+      rows: [
+        ['Viagens / tickets', tickets.length], ['Materiais', materiais.length], ['Efetivo presente', presencas.filter(item => item.status === 'Presente').length],
+        ['Equipamentos', equipamentos.length], ['Partes diárias', partes.length], ['Estacas recebidas', `${stake.recebidoM.toLocaleString('pt-BR')} m`],
+        ['Estacas cravadas', `${stake.cravadoM.toLocaleString('pt-BR')} m`], ['Saldo de estacas', `${stake.sobraM.toLocaleString('pt-BR')} m`], ['Notas fiscais pendentes', stake.notasPendentes],
+      ].map(([indicador, resultado]) => ({ indicador, resultado })),
+      summary: [{ label: 'Módulos consolidados', value: 6 }, { label: 'Registros operacionais', value: tickets.length + materiais.length + presencas.length + partes.length }],
+      fileName: `RENEA_FECHAMENTO_${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
   };
 
   return (

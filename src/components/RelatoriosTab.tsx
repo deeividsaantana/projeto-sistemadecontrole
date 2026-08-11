@@ -44,13 +44,13 @@ import { totalQuantidade } from '../utils/apontamentoRamosConfig';
 
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import OperationalReportsDashboard from './OperationalReportsDashboard';
 import ReportCatalogV28 from './ReportCatalogV28';
 import ErpReportExportsV28 from './ErpReportExportsV28';
+import UniversalPdfCenter from './UniversalPdfCenter';
+import { generateUniversalPdfReport } from '../utils/universalPdfReport';
 
 interface RelatoriosTabProps {
   empresas: Empresa[];
@@ -465,26 +465,6 @@ export default function RelatoriosTab({
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-
-      // Try to load the Renea logo
-      let logoBase64 = '';
-      try {
-        logoBase64 = await getBase64ImageFromUrl(reneaLogoFull);
-      } catch (e) {
-        console.warn("Could not load logo as base64, using fallback text logo.", e);
-      }
-
-      // Try to load the SPMAR partner logo (parceiro/concessionária)
-      let spmarLogoBase64 = '';
-      try {
-        spmarLogoBase64 = await getBase64ImageFromUrl(spmarLogo);
-      } catch (e) {
-        console.warn("Could not load SPMAR logo as base64.", e);
-      }
-
       // Define table content based on reportType
       let tableHeaders: string[] = [];
       let tableRows: string[][] = [];
@@ -623,113 +603,24 @@ export default function RelatoriosTab({
         ]);
       }
 
-      // Drawing header on each page
-      const drawHeaderAndFooter = (data: any) => {
-        doc.setFillColor(248, 250, 252); 
-        doc.rect(0, 0, pageWidth, 35, 'F');
-
-        doc.setFillColor(15, 81, 50); 
-        doc.rect(0, 0, pageWidth, 4, 'F');
-
-        // Logo RENEA (esquerda)
-        if (logoBase64) {
-          doc.addImage(logoBase64, 'PNG', 12, 9, 34, 16);
-        } else {
-          doc.setFont('Helvetica', 'bold');
-          doc.setFontSize(16);
-          doc.setTextColor(15, 81, 50);
-          doc.text("RENEA", 12, 18);
-          doc.setFontSize(8);
-          doc.setTextColor(120);
-          doc.text("INFRAESTRUTURA", 12, 23);
-        }
-
-        // Logo do parceiro/concessionária SPMAR (direita)
-        if (spmarLogoBase64) {
-          const spmarW = 32;
-          const spmarH = spmarW * (193 / 889);
-          doc.addImage(spmarLogoBase64, 'PNG', pageWidth - 12 - spmarW, 17 - spmarH / 2, spmarW, spmarH);
-        }
-
-        // Título centralizado (padrão de planilha: nome do relatório + período)
-        doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(12);
-        doc.setTextColor(30, 41, 59);
-        doc.text(reportTitle.toUpperCase(), pageWidth / 2, 13, { align: 'center' });
-
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(100);
-        const periodStr = `Período: ${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')}`;
-        doc.text(periodStr, pageWidth / 2, 19, { align: 'center' });
-
-        const generatedAt = `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
-        doc.text(generatedAt, pageWidth / 2, 24, { align: 'center' });
-
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.5);
-        doc.line(0, 35, pageWidth, 35);
-
-        // Footer
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(100);
-        
-        doc.setDrawColor(241, 245, 249);
-        doc.line(15, pageHeight - 15, pageWidth - 15, pageHeight - 15);
-
-        const footerText = 'Sistema Renea • Controle Integrado de Frota e Diário de Obras';
-        doc.text(footerText, 15, pageHeight - 10);
-        
-        const pageInfo = `Página ${data.pageNumber} de ${data.pageCount || 'X'}`;
-        doc.text(pageInfo, pageWidth - 15, pageHeight - 10, { align: 'right' });
-      };
-
-      doc.setFont('Helvetica', 'italic');
-      doc.setFontSize(9);
-      doc.setTextColor(71, 85, 105);
-      const splitDescription = doc.splitTextToSize(reportDescription, pageWidth - 30);
-      doc.text(splitDescription, 15, 43);
-
-      autoTable(doc, {
-        startY: 50,
-        head: [tableHeaders],
-        body: tableRows,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [15, 81, 50], 
-          textColor: [255, 255, 255],
-          font: 'Helvetica',
-          fontStyle: 'bold',
-          fontSize: 8.5,
-          halign: 'left',
-          valign: 'middle'
-        },
-        bodyStyles: {
-          font: 'Helvetica',
-          fontSize: 8,
-          textColor: [51, 65, 85],
-          cellPadding: 3
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252] 
-        },
-        margin: { top: 38, bottom: 20, left: 15, right: 15 },
-        didDrawPage: drawHeaderAndFooter
+      const columns = tableHeaders.map((header, index) => ({ header, dataKey: `column_${index}` }));
+      await generateUniversalPdfReport({
+        title: reportTitle,
+        subtitle: reportDescription,
+        columns,
+        rows: tableRows.map(row => Object.fromEntries(row.map((value, index) => [`column_${index}`, value]))),
+        orientation: tableHeaders.length > 7 ? 'landscape' : 'portrait',
+        work: obras.find(item => item.id === filtroObraId)?.nome,
+        company: empresas.find(item => item.id === filtroEmpresaId)?.nome,
+        period: `${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')}`,
+        filters: [
+          filtroEmpresaId ? `Empresa: ${empresas.find(item => item.id === filtroEmpresaId)?.nome || filtroEmpresaId}` : 'Todas as empresas',
+          filtroObraId ? `Obra: ${obras.find(item => item.id === filtroObraId)?.nome || filtroObraId}` : 'Todas as obras',
+          filtroEquipamentoId ? `Equipamento: ${equipamentos.find(item => item.id === filtroEquipamentoId)?.prefixo || filtroEquipamentoId}` : 'Toda a frota',
+        ],
+        summary: [{ label: 'Registros do relatório', value: tableRows.length }],
+        fileName: `Renea_Relatorio_${reportType}_${dataInicio}_a_${dataFim}.pdf`,
       });
-
-      const totalPages = doc.internal.pages.length - 1;
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(100);
-        doc.setFillColor(255, 255, 255);
-        doc.rect(pageWidth - 35, pageHeight - 13, 20, 5, 'F');
-        doc.text(`Página ${i} de ${totalPages}`, pageWidth - 15, pageHeight - 10, { align: 'right' });
-      }
-
-      doc.save(`Renea_Relatorio_${reportType}_${dataInicio}_a_${dataFim}.pdf`);
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
     } finally {
@@ -1063,6 +954,18 @@ export default function RelatoriosTab({
         presencas={presencasLink}
         equipamentos={equipamentos}
         partes={partesDiariasEquipamentos}
+      />
+      <UniversalPdfCenter
+        abastecimentos={abastecimentos}
+        estacas={controleEstacas}
+        tickets={ticketsJazida}
+        materiais={materiaisRegistros}
+        equipamentos={equipamentos}
+        funcionarios={funcionarios}
+        presencas={presencasLink}
+        partes={partesDiariasEquipamentos}
+        dataInicio={dataInicio}
+        dataFim={dataFim}
       />
 
       <OperationalReportsDashboard

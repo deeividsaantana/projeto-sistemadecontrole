@@ -404,7 +404,7 @@ const ensureNetlifyLink = () => {
   if (linkedSiteId === NETLIFY_SITE_ID) return;
   info('Vinculando esta pasta ao site Netlify de produção');
   runDlx('netlify-cli', ['link', '--id', NETLIFY_SITE_ID]);
-  ok('Pasta vinculada ao site gentle-liger-841eb6.');
+  ok('Pasta vinculada ao site merry-crumble-98d743.');
 };
 
 const ensureRepositoryReady = () => {
@@ -548,7 +548,10 @@ const publish = async () => {
 
   info('Publicando as regras do Firestore');
   runDlx('firebase-tools', ['deploy', '--only', 'firestore', '--project', FIREBASE_PROJECT_ID]);
-  ok('Regras do Firebase publicadas.');
+  ok('Regras do Firestore publicadas.');
+  const storageResult = runDlx('firebase-tools', ['deploy', '--only', 'storage', '--project', FIREBASE_PROJECT_ID], { allowFailure: true, capture: true });
+  if (storageResult.status === 0) ok('Regras do Storage publicadas.');
+  else warn('Firebase Storage ainda não está ativado; anexos continuam indisponíveis sem bloquear o restante da publicação.');
 
   console.log('\n============================================================');
   console.log('PUBLICAÇÃO CONCLUÍDA');

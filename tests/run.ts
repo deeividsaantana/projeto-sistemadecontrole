@@ -25,3 +25,4 @@ import './materializeMasterData.test';
 import './erpV30.test';
 import './centralRegistry.test';
 import './centralWorkbookExport.test';
+import './fuelImportIdentity.test';

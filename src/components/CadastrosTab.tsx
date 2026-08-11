@@ -26,6 +26,7 @@ import MasterDataReviewCenter from './MasterDataReviewCenter';
 import type { MasterWorkbookAnalysis } from '../masterData/masterWorkbook';
 import EquipmentOperationsPanel from './EquipmentOperationsPanel';
 import CentralRegistryOverview from './CentralRegistryOverview';
+import OrganizationChart from './OrganizationChart';
 import { validateEquipmentMasterRecord } from '../utils/equipmentOperations';
 import {
   isActiveCollaborator,
@@ -137,6 +138,7 @@ export default function CadastrosTab({
   const [filterAtivo, setFilterAtivo] = useState<string>('todos');
   const [filterTipoEquipamento, setFilterTipoEquipamento] = useState<string>('todos');
   const [filterCargo, setFilterCargo] = useState<string>('todos');
+  const [activeFuncionarioId, setActiveFuncionarioId] = useState<string | null>(null);
 
   // Form togglers & editing identifiers
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
@@ -1484,6 +1486,13 @@ export default function CadastrosTab({
         )}
 
         {subTab === 'funcionarios' && (
+          <>
+          <OrganizationChart
+            funcionarios={filteredFuncionarios}
+            empresas={empresas}
+            activeId={activeFuncionarioId}
+            onActiveIdChange={setActiveFuncionarioId}
+          />
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -1505,7 +1514,13 @@ export default function CadastrosTab({
                   filteredFuncionarios.map(item => {
                     const emp = empresas.find(e => e.id === item.empresaId);
                     return (
-                      <tr key={item.id} className="hover:bg-slate-950/20 transition-colors">
+                      <tr
+                        id={`func-row-${item.id}`}
+                        key={item.id}
+                        onMouseEnter={() => setActiveFuncionarioId(item.id)}
+                        onMouseLeave={() => setActiveFuncionarioId(null)}
+                        className={`transition-colors ${activeFuncionarioId === item.id ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}
+                      >
                         <td className="py-4 px-5">
                           <span className="block font-mono text-[10px] text-emerald-400">{item.matricula || 'SEM MATRÍCULA'}</span>
                           <span className="font-black text-slate-100">{item.nome}</span>
@@ -1532,6 +1547,7 @@ export default function CadastrosTab({
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {subTab === 'comboios' && (

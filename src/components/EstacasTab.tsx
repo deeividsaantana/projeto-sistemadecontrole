@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet, Hammer, PackagePlus, Tras
 import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal, ApontamentoRamo } from '../types';
 import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
 import { uploadOperationalAttachment } from '../services/operationalAttachments';
+import StakeDrivingMap from './StakeDrivingMap';
 
 type Props = {
   controle: ControleEstacas;
@@ -66,6 +67,8 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
   const [lotFiles, setLotFiles] = useState<File[]>([]);
   const [message, setMessage] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [activeDrivingId, setActiveDrivingId] = useState<string | null>(null);
+  const [visibleDrivingIds, setVisibleDrivingIds] = useState<string[]>(controle.cravacoes.map(item => item.id));
   const summary = useMemo(() => buildStakeSummary(controle), [controle]);
   const balances = useMemo(() => buildStakeBalances(controle), [controle]);
   const invoices = useMemo(
@@ -110,8 +113,12 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
 
   const saveDriving = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!driving.identificacao || driving.comprimentoM <= 0 || driving.comprimentoCravadoM <= 0) {
-      setMessage('Informe identificação e comprimentos da cravação.');
+    if (!driving.identificacao || driving.comprimentoM <= 0 || driving.comprimentoCravadoM < 0) {
+      setMessage('Informe identificação, comprimento válido e profundidade cravada maior ou igual a zero.');
+      return;
+    }
+    if (driving.comprimentoCravadoM > driving.comprimentoM) {
+      setMessage('A profundidade cravada informada é superior ao comprimento total da estaca. Verifique a medição.');
       return;
     }
     const suggested = driving.loteId ? undefined : suggestStakeLot(driving, controle);
@@ -273,7 +280,7 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             <select value={lot.obraLocalId || ''} onChange={e => setLot({ ...lot, obraLocalId: e.target.value || undefined })} className="input-dark"><option value="">Obra/local</option>{obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
             <input placeholder="Destino textual" value={lot.destino} onChange={e => setLot({ ...lot, destino: e.target.value })} className="input-dark md:col-span-2" />
             <input placeholder="Responsável" value={lot.responsavel} onChange={e => setLot({ ...lot, responsavel: e.target.value })} className="input-dark" />
-            <label className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 md:col-span-2">Anexos (foto, PDF ou planilha)<input type="file" multiple accept="image/*,.pdf,.csv,.xlsx,.xls" onChange={e => setLotFiles(Array.from(e.target.files || []))} className="mt-1 block w-full text-[10px] text-slate-400" />{lotFiles.length ? <span className="mt-1 block text-[10px] text-emerald-300">{lotFiles.length} arquivo(s) selecionado(s)</span> : null}</label>
+            <div className="rounded-lg border border-amber-800/70 bg-amber-950/20 px-3 py-2 text-xs text-amber-200 md:col-span-2">Anexos estão temporariamente indisponíveis porque o Firebase Storage não foi ativado. O registro do lote segue normalmente, sem perda dos demais dados.</div>
             <label className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 text-xs text-slate-300"><input type="checkbox" checked={lot.nfConferida} onChange={e => setLot({ ...lot, nfConferida: e.target.checked })} /> NF conferida</label>
             <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><PackagePlus className="h-4 w-4" /> Registrar lote</button>
           </form>
@@ -293,6 +300,14 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
 
       {mode === 'cravacoes' && (
         <>
+          <StakeDrivingMap
+            items={controle.cravacoes}
+            ramos={ramos}
+            obras={obras}
+            activeId={activeDrivingId}
+            onActiveIdChange={setActiveDrivingId}
+            onVisibleIdsChange={setVisibleDrivingIds}
+          />
           <form onSubmit={saveDriving} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-4">
             <input type="date" value={driving.data} onChange={e => setDriving({ ...driving, data: e.target.value })} className="input-dark" />
             <input placeholder="Identificação / frente" value={driving.identificacao} onChange={e => setDriving({ ...driving, identificacao: e.target.value })} className="input-dark" />
@@ -308,7 +323,7 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><Hammer className="h-4 w-4" /> Registrar cravação</button>
           </form>
           <div className="grid gap-3">
-            {controle.cravacoes.map(item => <div key={item.id} className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900 p-4 md:flex-row md:items-center"><div className="flex-1"><p className="font-black text-white">{item.identificacao} · {item.perfil}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} m cravados · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-400' : 'text-amber-400'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" onClick={() => removeDriving(item.id)} className="p-2 text-rose-400"><Trash2 className="h-4 w-4" /></button></div>)}
+            {controle.cravacoes.filter(item => visibleDrivingIds.includes(item.id)).sort((a, b) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true })).map(item => <div id={`stake-row-${item.id}`} key={item.id} onMouseEnter={() => setActiveDrivingId(item.id)} onMouseLeave={() => setActiveDrivingId(null)} className={`flex flex-col gap-2 rounded-xl border bg-white p-4 transition md:flex-row md:items-center ${activeDrivingId === item.id ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}><div className="flex-1"><p className="font-black text-slate-900">{item.identificacao} · {item.perfil || 'Perfil não informado'}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} / {item.comprimentoM} m · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-700' : 'text-amber-700'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" onClick={() => removeDriving(item.id)} className="p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button></div>)}
           </div>
         </>
       )}

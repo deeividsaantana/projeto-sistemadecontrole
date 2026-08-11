@@ -66,6 +66,7 @@ import {
   inferFleetCategory,
   normalizeAvailabilityTarget,
 } from './utils/equipmentOperations';
+import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -96,7 +97,7 @@ let INITIAL_MATERIAIS_CADASTRO: MaterialCadastro[] = [];
 let INITIAL_MATERIAIS_REGISTROS: MaterialRegistro[] = [];
 // Motion and Logo Import
 import { motion, AnimatePresence } from 'motion/react';
-import reneaLogo from './assets/images/logo-renea-branco.svg';
+import reneaLogo from './assets/images/renea_logo_new.png';
 
 // Firebase Imports
 import { auth, db } from './firebase';
@@ -1849,13 +1850,20 @@ export default function App() {
 
   // Importação de planilha — Prioridade 3: grava em lote (um único registro de histórico)
   const handleImportAbastecimentos = (novosItens: Abastecimento[], combustiveisImportados: TipoCombustivel[] = []) => {
-    if ((!novosItens || novosItens.length === 0) && combustiveisImportados.length === 0) return;
-    const fuelMerge = combustiveisImportados.length
-      ? mergeImportedRecords(combustiveis, combustiveisImportados, item => normalizeImportText(item.nome))
+    const existingWithCanonicalPrefix = abastecimentos.map(item => ({
+      ...item,
+      prefixoInformado: item.prefixoInformado || equipamentos.find(equipment => equipment.id === item.equipamentoId)?.prefixo || item.equipamentoId,
+    }));
+    const { accepted: itensIneditos, rejected: itensRejeitados } = filterNovelFuelImports(existingWithCanonicalPrefix, novosItens || []);
+    const tiposUtilizados = new Set(itensIneditos.map(item => item.tipoCombustivelId));
+    const combustiveisValidos = combustiveisImportados.filter(item => tiposUtilizados.has(item.id));
+    if (itensIneditos.length === 0 && combustiveisValidos.length === 0) return;
+    const fuelMerge = combustiveisValidos.length
+      ? mergeImportedRecords(combustiveis, combustiveisValidos, item => normalizeImportText(item.nome))
       : null;
-    let updated = mergeRecordsById(abastecimentos, novosItens);
+    let updated = mergeRecordsById(abastecimentos, itensIneditos);
     updated = auditarBaseCombustivel(updated);
-    const origens = new Set(novosItens.map(item => item.origem || 'Planilha'));
+    const origens = new Set(itensIneditos.map(item => item.origem || 'Planilha'));
     const origemDescricao = origens.size === 1 ? [...origens][0] : 'fontes combinadas';
     const fuelMessage = fuelMerge && fuelMerge.created > 0
       ? ` Também cadastrou ${fuelMerge.created} tipo(s) de combustível novo(s).`
@@ -1863,7 +1871,7 @@ export default function App() {
     saveAndLog(
       'Abastecimentos',
       'Criou',
-      `Importou ${novosItens.length} registro(s) de combustível via ${origemDescricao}.${fuelMessage}`,
+      `Importou ${itensIneditos.length} registro(s) inédito(s) de combustível via ${origemDescricao}; ${itensRejeitados.length} inválido(s) ou duplicado(s) foram bloqueados.${fuelMessage}`,
       historyLogs,
       () => {
         if (fuelMerge) {
@@ -3683,7 +3691,7 @@ export default function App() {
           onChange={event => setMenuSearch(event.target.value)}
           placeholder="Buscar módulo"
           aria-label="Buscar módulo no menu"
-          className="w-full h-9 pl-9 pr-3 bg-slate-950 border border-slate-800 rounded-md text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-600"
+          className="w-full h-10 pl-9 pr-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:text-slate-400 shadow-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
         />
       </div>
       <div className="space-y-5">
@@ -3701,7 +3709,7 @@ export default function App() {
                     onClick={() => navigateTo(item.id, mobile)}
                     aria-current={active ? 'page' : undefined}
                     title={item.label}
-                    className={`group w-full min-h-10 flex items-center gap-3 px-3 py-2 rounded-md text-xs font-bold transition-colors ${active ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                    className={`group w-full min-h-10 flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all ${active ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-900/15' : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800'}`}
                   >
                     <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-slate-500 group-hover:text-emerald-400'}`} />
                     <span className="flex-1 text-left leading-tight">{item.label}</span>
@@ -3721,12 +3729,12 @@ export default function App() {
 
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row text-slate-100 antialiased font-sans" id="app-root">
+    <div className="min-h-screen flex flex-col md:flex-row text-slate-100 antialiased font-sans" id="app-root">
       
       {/* 1. SIDEBAR NAVIGATION - DESKTOP */}
-      <aside className="hidden md:flex flex-col w-72 bg-slate-900 border-r border-slate-800 shrink-0 select-none print:hidden" id="desktop-sidebar">
+      <aside className="hidden md:flex flex-col w-72 bg-white/95 border-r border-slate-200 shadow-xl shadow-slate-200/40 shrink-0 select-none print:hidden" id="desktop-sidebar">
         {/* Branded Header */}
-        <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950/20">
+        <div className="h-[4.5rem] flex items-center px-6 border-b border-slate-200 bg-white">
           <img 
             src={reneaLogo} 
             alt="RENEA Infraestrutura" 

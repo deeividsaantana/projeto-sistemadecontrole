@@ -2,7 +2,7 @@
 
 @layer components {
   .input-dark {
-    @apply w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none transition-colors focus:border-emerald-500;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15;
   }
 }
 
@@ -13,6 +13,50 @@
 
 body {
   font-family: var(--font-sans);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(16 185 129 / 0.10), transparent 30rem),
+    radial-gradient(circle at 100% 100%, rgb(14 116 144 / 0.06), transparent 28rem),
+    #f8fafc;
+  color: #0f172a;
+}
+
+::selection {
+  background: rgb(16 185 129 / 0.32);
+  color: #064e3b;
+}
+
+* {
+  scrollbar-color: #334155 #0f172a;
+  scrollbar-width: thin;
+}
+
+/* Camada clara corporativa: preserva as cores semânticas (verde, âmbar e vermelho)
+   e converte as antigas superfícies estruturais escuras do sistema para o tema v6. */
+#app-root .bg-slate-950,
+#app-root .bg-slate-900 {
+  background-color: #ffffff;
+}
+
+#app-root .bg-slate-800 {
+  background-color: #f1f5f9;
+}
+
+#app-root .border-slate-800,
+#app-root .border-slate-700 {
+  border-color: #e2e8f0;
+}
+
+#app-root .text-slate-100,
+#app-root .text-slate-200,
+#app-root .text-slate-300 {
+  color: #334155;
+}
+
+#app-root .text-slate-400,
+#app-root .text-slate-500,
+#app-root .text-slate-600 {
+  color: #64748b;
 }
 
 h1, h2, h3, .font-display {
