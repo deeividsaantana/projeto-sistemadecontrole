@@ -81,3 +81,16 @@ test('alertas de origem são preservados junto com a validação recalculada', (
   const [audited] = auditFuelDataset([enrichFuelRecord(imported, equipment)], [equipment]);
   assert.ok(audited.alertas?.some(alert => alert.codigo === 'AVISO_PLANILHA'));
 });
+
+test('cancelamento preserva o lançamento e não é reativado pela auditoria', () => {
+  const cancelled: Abastecimento = {
+    ...record,
+    status: 'Cancelado',
+    atualizadoEm: '2026-08-11T12:00:00.000Z',
+    revisaoObservacao: 'Cancelado para preservar o histórico operacional.',
+  };
+  const [audited] = auditFuelDataset([cancelled], [equipment]);
+  assert.equal(audited.id, record.id);
+  assert.equal(audited.status, 'Cancelado');
+  assert.equal(audited.revisaoObservacao, cancelled.revisaoObservacao);
+});

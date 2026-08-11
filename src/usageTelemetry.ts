@@ -15,6 +15,7 @@ export interface UsageSummary {
 }
 
 const endpoint = '/.netlify/functions/usage-telemetry';
+const isLocalPreview = () => typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 const getAuthorizationHeaders = async () => {
   const user = auth.currentUser;
@@ -26,6 +27,7 @@ const getAuthorizationHeaders = async () => {
 };
 
 export const recordTabUsage = async (tabId: string, label: string) => {
+  if (isLocalPreview()) return;
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -41,6 +43,7 @@ export const recordTabUsage = async (tabId: string, label: string) => {
 };
 
 export const loadUsageSummary = async (periodDays = 30): Promise<UsageSummary> => {
+  if (isLocalPreview()) throw new Error('Resumo de uso disponível somente no ambiente Netlify.');
   const response = await fetch(`${endpoint}?days=${Math.max(1, Math.min(90, periodDays))}`, {
     headers: await getAuthorizationHeaders(),
     cache: 'no-store',

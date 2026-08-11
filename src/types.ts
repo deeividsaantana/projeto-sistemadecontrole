@@ -147,6 +147,7 @@ export interface MaterialRegistro {
 
 export type StatusRegistroCombustivel =
   | 'OK'
+  | 'Cancelado'
   | 'Pendente'
   | 'Duplicado'
   | 'Verificar quantidade'

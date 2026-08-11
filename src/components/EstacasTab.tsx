@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import ExcelJS from 'exceljs';
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Hammer, PackagePlus, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Hammer, PackagePlus, Pencil, Trash2, X } from 'lucide-react';
 import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal, ApontamentoRamo } from '../types';
 import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
 import { uploadOperationalAttachment } from '../services/operationalAttachments';
@@ -68,6 +68,7 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
   const [message, setMessage] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [activeDrivingId, setActiveDrivingId] = useState<string | null>(null);
+  const [editingDrivingId, setEditingDrivingId] = useState<string | null>(null);
   const [visibleDrivingIds, setVisibleDrivingIds] = useState<string[]>(controle.cravacoes.map(item => item.id));
   const summary = useMemo(() => buildStakeSummary(controle), [controle]);
   const balances = useMemo(() => buildStakeBalances(controle), [controle]);
@@ -122,16 +123,39 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
       return;
     }
     const suggested = driving.loteId ? undefined : suggestStakeLot(driving, controle);
+    const previous = editingDrivingId ? controle.cravacoes.find(item => item.id === editingDrivingId) : undefined;
     const nextDriving: CravacaoEstaca = {
       ...driving,
       loteId: driving.loteId || suggested?.id,
       sobraM: Math.max(0, driving.sobraM || driving.comprimentoM - driving.comprimentoCravadoM - driving.perdaM),
-      id: uid('cravacao-estaca'),
-      criadoEm: new Date().toISOString(),
+      id: previous?.id || uid('cravacao-estaca'),
+      criadoEm: previous?.criadoEm || new Date().toISOString(),
     };
-    onChange({ ...controle, cravacoes: [nextDriving, ...controle.cravacoes] }, `Registrou cravação ${driving.identificacao}.`);
+    const nextItems = previous
+      ? controle.cravacoes.map(item => item.id === previous.id ? nextDriving : item)
+      : [nextDriving, ...controle.cravacoes];
+    onChange({ ...controle, cravacoes: nextItems }, `${previous ? 'Atualizou' : 'Registrou'} cravação ${driving.identificacao}.`);
     setDriving(emptyDriving());
-    setMessage(suggested ? `Cravação registrada e associada ao lote da NF ${suggested.notaFiscal}.` : 'Cravação registrada.');
+    setEditingDrivingId(null);
+    setActiveDrivingId(nextDriving.id);
+    setMessage(previous ? 'Cravação atualizada e mapa sincronizado.' : suggested ? `Cravação registrada e associada ao lote da NF ${suggested.notaFiscal}.` : 'Cravação registrada.');
+  };
+
+  const editDriving = (item: CravacaoEstaca) => {
+    const { id: _id, criadoEm: _createdAt, ...draft } = item;
+    setDriving(draft);
+    setEditingDrivingId(item.id);
+    setActiveDrivingId(item.id);
+    setMode('cravacoes');
+    setMessage(`Editando ${item.identificacao}. Salve para atualizar também o mapa.`);
+    requestAnimationFrame(() => document.getElementById('stake-driving-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  };
+
+  const cancelDrivingEdit = () => {
+    setDriving(emptyDriving());
+    setEditingDrivingId(null);
+    setActiveDrivingId(null);
+    setMessage('Edição cancelada sem alterar o registro.');
   };
 
   const importWorkbook = async (file: File) => {
@@ -216,7 +240,10 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
     lotes: controle.lotes.filter(item => item.id !== id),
     cravacoes: controle.cravacoes.map(item => item.loteId === id ? { ...item, loteId: undefined } : item),
   }, 'Excluiu um lote e preservou as cravações para reassociação.');
-  const removeDriving = (id: string) => onChange({ ...controle, cravacoes: controle.cravacoes.filter(item => item.id !== id) }, 'Excluiu uma cravação.');
+  const removeDriving = (id: string) => {
+    onChange({ ...controle, cravacoes: controle.cravacoes.filter(item => item.id !== id) }, 'Excluiu uma cravação.');
+    if (editingDrivingId === id) cancelDrivingEdit();
+  };
 
   return (
     <div className="space-y-5">
@@ -308,7 +335,7 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             onActiveIdChange={setActiveDrivingId}
             onVisibleIdsChange={setVisibleDrivingIds}
           />
-          <form onSubmit={saveDriving} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-4">
+          <form id="stake-driving-form" onSubmit={saveDriving} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
             <input type="date" value={driving.data} onChange={e => setDriving({ ...driving, data: e.target.value })} className="input-dark" />
             <input placeholder="Identificação / frente" value={driving.identificacao} onChange={e => setDriving({ ...driving, identificacao: e.target.value })} className="input-dark" />
             <input placeholder="Perfil" value={driving.perfil} onChange={e => setDriving({ ...driving, perfil: e.target.value })} className="input-dark" />
@@ -320,10 +347,11 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             <select value={driving.obraLocalId || ''} onChange={e => setDriving({ ...driving, obraLocalId: e.target.value || undefined })} className="input-dark"><option value="">Obra/local</option>{obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
             <select value={driving.ramoId || ''} onChange={e => setDriving({ ...driving, ramoId: e.target.value || undefined })} className="input-dark"><option value="">Ramo</option>{ramos.map(item => <option key={item.id} value={item.id}>{item.ramoNome}</option>)}</select>
             <input placeholder="Responsável" value={driving.responsavel} onChange={e => setDriving({ ...driving, responsavel: e.target.value })} className="input-dark" />
-            <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><Hammer className="h-4 w-4" /> Registrar cravação</button>
+            <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><Hammer className="h-4 w-4" /> {editingDrivingId ? 'Salvar alterações' : 'Registrar cravação'}</button>
+            {editingDrivingId && <button type="button" onClick={cancelDrivingEdit} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:border-slate-400"><X className="h-4 w-4" /> Cancelar edição</button>}
           </form>
           <div className="grid gap-3">
-            {controle.cravacoes.filter(item => visibleDrivingIds.includes(item.id)).sort((a, b) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true })).map(item => <div id={`stake-row-${item.id}`} key={item.id} onMouseEnter={() => setActiveDrivingId(item.id)} onMouseLeave={() => setActiveDrivingId(null)} className={`flex flex-col gap-2 rounded-xl border bg-white p-4 transition md:flex-row md:items-center ${activeDrivingId === item.id ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}><div className="flex-1"><p className="font-black text-slate-900">{item.identificacao} · {item.perfil || 'Perfil não informado'}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} / {item.comprimentoM} m · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-700' : 'text-amber-700'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" onClick={() => removeDriving(item.id)} className="p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button></div>)}
+            {controle.cravacoes.filter(item => visibleDrivingIds.includes(item.id)).sort((a, b) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true })).map(item => <div id={`stake-row-${item.id}`} key={item.id} onMouseEnter={() => setActiveDrivingId(item.id)} onMouseLeave={() => editingDrivingId !== item.id && setActiveDrivingId(null)} className={`flex flex-col gap-2 rounded-xl border bg-white p-4 transition md:flex-row md:items-center ${activeDrivingId === item.id ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}><div className="flex-1"><p className="font-black text-slate-900">{item.identificacao} · {item.perfil || 'Perfil não informado'}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} / {item.comprimentoM} m · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-700' : 'text-amber-700'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" title="Editar cravação" onClick={() => editDriving(item)} className="p-2 text-sky-600 hover:text-sky-800"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir cravação" onClick={() => removeDriving(item.id)} className="p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button></div>)}
           </div>
         </>
       )}

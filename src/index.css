@@ -27,7 +27,7 @@ body {
 }
 
 * {
-  scrollbar-color: #334155 #0f172a;
+  scrollbar-color: #94a3b8 #f1f5f9;
   scrollbar-width: thin;
 }
 
@@ -57,6 +57,42 @@ body {
 #app-root .text-slate-500,
 #app-root .text-slate-600 {
   color: #64748b;
+}
+
+/* O legado usa text-white para métricas e títulos em cartões que agora são
+   brancos. No tema claro, texto branco vira tinta estrutural; componentes com
+   fundo semântico preservam branco explicitamente. */
+#app-root .text-white {
+  color: #0f172a;
+}
+
+#app-root option,
+#app-root select {
+  color: #334155;
+  background-color: #ffffff;
+}
+
+#app-root .bg-emerald-600.text-white,
+#app-root .bg-emerald-500.text-white,
+#app-root .bg-rose-600.text-white,
+#app-root .bg-red-600.text-white,
+#app-root .bg-blue-600.text-white,
+#app-root .bg-cyan-600.text-white,
+#app-root .bg-indigo-600.text-white,
+#app-root .bg-amber-600.text-white,
+#app-root .bg-slate-700.text-white,
+#app-root .bg-gradient-to-r.text-white,
+#app-root .bg-emerald-600 .text-white,
+#app-root .bg-emerald-500 .text-white,
+#app-root .bg-rose-600 .text-white,
+#app-root .bg-red-600 .text-white,
+#app-root .bg-blue-600 .text-white,
+#app-root .bg-cyan-600 .text-white,
+#app-root .bg-indigo-600 .text-white,
+#app-root .bg-amber-600 .text-white,
+#app-root .bg-slate-700 .text-white,
+#app-root .bg-gradient-to-r .text-white {
+  color: #ffffff;
 }
 
 h1, h2, h3, .font-display {

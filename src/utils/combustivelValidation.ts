@@ -325,11 +325,11 @@ export const normalizeFuelRecord = (
   const normalizedTime = normalizeQuickTime(record.hora);
   const normalized = { ...record, hora: normalizedTime.valid ? normalizedTime.value : record.hora };
   const alertas = mergeFuelAlerts(record.alertas, validateFueling(normalized, records, equipamentos));
-  return { ...normalized, alertas, status: getFuelStatusFromAlerts(alertas) };
+  return { ...normalized, alertas, status: record.status === 'Cancelado' ? 'Cancelado' : getFuelStatusFromAlerts(alertas) };
 };
 
 export const auditFuelDataset = (records: Abastecimento[], equipamentos: Equipamento[]) => {
-  const chronological = [...records].sort((a, b) => toTimestamp(a).localeCompare(toTimestamp(b)) || a.id.localeCompare(b.id));
+  const chronological = records.filter(record => record.status !== 'Cancelado').sort((a, b) => toTimestamp(a).localeCompare(toTimestamp(b)) || a.id.localeCompare(b.id));
   const previousEquipment = new Map<string, Abastecimento>();
   const previousPump = new Map<string, Abastecimento>();
   const duplicateKeys = new Map<string, Abastecimento>();
@@ -352,5 +352,5 @@ export const auditFuelDataset = (records: Abastecimento[], equipamentos: Equipam
     if (!duplicateKeys.has(duplicateKey)) duplicateKeys.set(duplicateKey, current);
   });
 
-  return records.map(record => audited.get(record.id) || record);
+  return records.map(record => record.status === 'Cancelado' ? record : audited.get(record.id) || record);
 };

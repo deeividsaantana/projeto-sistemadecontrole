@@ -97,7 +97,7 @@ let INITIAL_MATERIAIS_CADASTRO: MaterialCadastro[] = [];
 let INITIAL_MATERIAIS_REGISTROS: MaterialRegistro[] = [];
 // Motion and Logo Import
 import { motion, AnimatePresence } from 'motion/react';
-import reneaLogo from './assets/images/renea_logo_new.png';
+import reneaLogo from './assets/images/logo-renea-dark.svg';
 
 // Firebase Imports
 import { auth, db } from './firebase';
@@ -1834,12 +1834,19 @@ export default function App() {
   const handleDeleteAbastecimento = (id: string) => {
     const item = abastecimentos.find(x => x.id === id);
     if (!item) return;
-    let updated = abastecimentos.filter(x => x.id !== id);
+    const cancelledAt = new Date().toISOString();
+    let updated = abastecimentos.map(x => x.id === id ? {
+      ...x,
+      status: 'Cancelado' as const,
+      atualizadoEm: cancelledAt,
+      revisaoStatus: 'Reaberto' as const,
+      revisaoObservacao: [x.revisaoObservacao, `Registro cancelado em ${new Date(cancelledAt).toLocaleString('pt-BR')}.`].filter(Boolean).join(' '),
+    } : x);
     updated = auditarBaseCombustivel(updated);
     saveAndLog(
       'Abastecimentos', 
-      'Excluiu', 
-      `Excluiu lançamento de abastecimento ID ${id.substring(0, 8)}.`,
+      'Editou', 
+      `Cancelou lançamento de abastecimento ID ${id.substring(0, 8)} sem apagar o histórico operacional.`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -3567,7 +3574,7 @@ export default function App() {
   // Login Screen Render
   if (isAuthenticating && !isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-600">
         <div className="flex items-center gap-3 text-sm font-semibold">
           <span className="w-5 h-5 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
           Validando acesso seguro...
@@ -3578,8 +3585,8 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-slate-100 antialiased font-sans" id="login-viewport">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-lg p-7 shadow-2xl relative overflow-hidden">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-slate-900 antialiased font-sans" id="login-viewport">
+        <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-7 shadow-xl relative overflow-hidden">
           {/* Branded Logo and Header */}
           <div className="text-center mb-8 relative">
             <div className="mx-auto w-48 h-auto flex items-center justify-center mb-4">
@@ -3590,12 +3597,12 @@ export default function App() {
                 referrerPolicy="no-referrer"
               />
             </div>
-            <p className="text-xs text-slate-400 mt-2">Sistema Integrado de Gestão Operacional</p>
+            <p className="text-xs text-slate-500 mt-2">Sistema Integrado de Gestão Operacional</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4 relative">
             <div className="space-y-1.5">
-              <label htmlFor="login-email" className="text-xs font-bold text-slate-300 uppercase">E-mail corporativo</label>
+              <label htmlFor="login-email" className="text-xs font-bold text-slate-700 uppercase">E-mail corporativo</label>
               <input 
                 id="login-email"
                 name="email"
@@ -3604,15 +3611,15 @@ export default function App() {
                 placeholder="nome@empresa.com.br"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-white border border-slate-300 rounded-md px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-colors"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="login-password" className="text-xs font-bold text-slate-300 uppercase">Senha de acesso</label>
+              <label htmlFor="login-password" className="text-xs font-bold text-slate-700 uppercase">Senha de acesso</label>
               <div className="relative">
-                <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Senha corporativa" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-md px-4 py-3 pr-12 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500" required />
+                <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Senha corporativa" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-white border border-slate-300 rounded-md px-4 py-3 pr-12 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10" required />
                 <button type="button" onClick={() => setShowPassword(value => !value)} title={showPassword ? 'Ocultar senha' : 'Mostrar senha'} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -3644,7 +3651,7 @@ export default function App() {
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-slate-800 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+          <div className="mt-6 pt-4 border-t border-slate-200 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             Acesso somente para contas autorizadas pela administração
           </div>
@@ -3729,7 +3736,7 @@ export default function App() {
 
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
-    <div className="min-h-screen flex flex-col md:flex-row text-slate-100 antialiased font-sans" id="app-root">
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
       
       {/* 1. SIDEBAR NAVIGATION - DESKTOP */}
       <aside className="hidden md:flex flex-col w-72 bg-white/95 border-r border-slate-200 shadow-xl shadow-slate-200/40 shrink-0 select-none print:hidden" id="desktop-sidebar">
@@ -3749,7 +3756,7 @@ export default function App() {
         </nav>
 
         {/* Database Status Info */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/40 space-y-2 text-[10px] text-slate-500 font-mono">
+        <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2 text-[10px] text-slate-500 font-mono">
           <div className="flex items-center justify-between gap-1.5 font-bold mb-1">
             <div className="flex items-center gap-1.5 text-emerald-500">
               <Database className="w-3.5 h-3.5" />
@@ -3767,7 +3774,7 @@ export default function App() {
           </div>
           <button 
             onClick={() => void handleLogout()}
-            className="w-full mt-2 py-1.5 bg-slate-800 hover:bg-rose-950 hover:text-rose-400 border border-slate-700/60 hover:border-rose-900/60 text-slate-400 rounded-lg font-bold text-[9px] flex items-center justify-center gap-1 transition-all cursor-pointer"
+            className="w-full mt-2 py-1.5 bg-white hover:bg-rose-50 hover:text-rose-600 border border-slate-200 hover:border-rose-200 text-slate-600 rounded-lg font-bold text-[9px] flex items-center justify-center gap-1 transition-all cursor-pointer"
           >
             <LogOut className="w-3 h-3" />
             Sair da conta
@@ -3776,7 +3783,7 @@ export default function App() {
       </aside>
 
       {/* 2. MOBILE NAVIGATION HEADER */}
-      <header className="md:hidden flex items-center justify-between h-16 bg-slate-900 border-b border-slate-800 px-4 text-white print:hidden shrink-0" id="mobile-header">
+      <header className="md:hidden flex items-center justify-between h-16 bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
         <img 
           src={reneaLogo} 
           alt="RENEA Infraestrutura" 
@@ -3849,7 +3856,7 @@ export default function App() {
       {/* 3. MAIN WORKSPACE CONTAINER */}
       <main className="flex-1 flex flex-col overflow-y-auto" id="main-workspace">
         {/* Subtle upper banner only visible on desktop (hidden when printing) */}
-        <div className="hidden md:flex items-center justify-between h-16 bg-slate-950 border-b border-slate-900 px-8 shrink-0 print:hidden select-none">
+        <div className="hidden md:flex items-center justify-between h-16 bg-white border-b border-slate-200 px-8 shrink-0 print:hidden select-none">
           <div className="flex items-center gap-4">
             <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>

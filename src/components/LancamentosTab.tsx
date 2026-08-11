@@ -814,10 +814,11 @@ export default function LancamentosTab({
 
   // Cards de resumo respeitando os filtros ativos (Prioridade 1)
   const resumoAbastecimentos = useMemo(() => {
-    const totalLitros = filteredAbastecimentos.reduce((sum, ab) => sum + (Number(ab.quantidadeLitros) || 0), 0);
-    const totalRegistros = filteredAbastecimentos.length;
+    const validRecords = filteredAbastecimentos.filter(ab => ab.status !== 'Cancelado');
+    const totalLitros = validRecords.reduce((sum, ab) => sum + (Number(ab.quantidadeLitros) || 0), 0);
+    const totalRegistros = validRecords.length;
     const mediaLitros = totalRegistros > 0 ? totalLitros / totalRegistros : 0;
-    const frotasUnicas = new Set(filteredAbastecimentos.map(ab => ab.equipamentoId)).size;
+    const frotasUnicas = new Set(validRecords.map(ab => ab.equipamentoId)).size;
     return { totalLitros, totalRegistros, mediaLitros, frotasUnicas };
   }, [filteredAbastecimentos]);
 
@@ -1259,6 +1260,7 @@ export default function LancamentosTab({
                 <option value="">Todos</option>
                 <option value="OK">OK</option>
                 <option value="Pendente">Pendente</option>
+                <option value="Cancelado">Cancelado</option>
                 <option value="Duplicado">Duplicado</option>
                 <option value="Verificar quantidade">Verificar quantidade</option>
                 <option value="Verificar bomba">Verificar bomba</option>
@@ -1706,9 +1708,11 @@ export default function LancamentosTab({
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-sm uppercase tracking-wider font-black text-white font-mono">⚠️ Confirmar Exclusão de Lançamento?</h3>
+              <h3 className="text-sm uppercase tracking-wider font-black text-white font-mono">{mode === 'abastecimentos' ? 'Confirmar cancelamento?' : 'Confirmar exclusão?'}</h3>
               <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                Você tem certeza que deseja excluir esta movimentação? Isso recalculará os saldos operacionais e consumo na mesma hora.
+                {mode === 'abastecimentos'
+                  ? 'O lançamento ficará marcado como Cancelado, continuará disponível para auditoria e deixará de compor os indicadores operacionais.'
+                  : 'Você tem certeza que deseja excluir esta movimentação? Isso recalculará os saldos operacionais na mesma hora.'}
               </p>
             </div>
             <div className="flex gap-2">
@@ -1716,7 +1720,7 @@ export default function LancamentosTab({
                 onClick={() => executeDeletion(deleteConfirmId)}
                 className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
               >
-                Sim, Excluir
+                {mode === 'abastecimentos' ? 'Sim, Cancelar lançamento' : 'Sim, Excluir'}
               </button>
               <button 
                 onClick={() => setDeleteConfirmId(null)}
