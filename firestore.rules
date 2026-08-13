@@ -134,7 +134,8 @@ service cloud.firestore {
 
     // Matches the cloud backup path for the Renea Infraestrutura system
     match /sistemarenea_cloud/{docId} {
-      allow get, list: if isStaff() && isValidId(docId);
+      allow get: if isStaff() && isValidId(docId);
+      allow list: if isStaff();
       allow create, update: if canWrite() && isValidId(docId)
         && (
           isValidLegacyCloudState(request.resource.data)
@@ -152,13 +153,15 @@ service cloud.firestore {
     // Espelho operacional de tickets. O público grava e pesquisa somente pelas
     // funções Netlify; usuários autenticados administram o acervo pelo painel.
     match /sistemarenea_public_tickets/{docId} {
-      allow read: if isStaff() && isValidId(docId);
+      allow get: if isStaff() && isValidId(docId);
+      allow list: if isStaff();
       allow create, update: if canWrite() && isValidId(docId);
       allow delete: if false;
     }
 
     match /sistemarenea_public_meta/{docId} {
-      allow read: if isStaff() && isValidId(docId);
+      allow get: if isStaff() && isValidId(docId);
+      allow list: if isStaff();
       allow create, update: if canWrite() && isValidId(docId);
       allow delete: if false;
     }
