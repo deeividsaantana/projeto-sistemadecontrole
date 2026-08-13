@@ -166,7 +166,11 @@ service cloud.firestore {
     // A fila é criada exclusivamente pelo Admin SDK. O painel autenticado pode
     // ler e marcar itens processados, sem expor a coleção na internet.
     match /sistemarenea_public_submissions/{docId} {
-      allow read: if isStaff() && isValidId(docId);
+      // Em consultas de coleção o Firestore não consegue provar uma expressão
+      // aplicada ao ID de cada documento antes de executar a query. Mantenha a
+      // validação de ID no acesso unitário e autorize a listagem pelo papel.
+      allow get: if isStaff() && isValidId(docId);
+      allow list: if isStaff();
       allow update: if canWrite() && isValidId(docId);
       allow create, delete: if false;
     }

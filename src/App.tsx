@@ -2497,7 +2497,33 @@ export default function App() {
     setHistoryLogs([]);
         setNotifications(nextNotifications);
 
-        const syncResult = await uploadLocalSnapshotToFirebase();
+        let syncResult = await uploadLocalSnapshotToFirebase();
+        if (!syncResult.success && /conflito|outro computador|vers[aã]o mais recente/i.test(syncResult.message)) {
+          // A fila pública é idempotente por ID. Em caso de concorrência,
+          // baixa o retrato vencedor, reaplica somente os envios pendentes e
+          // tenta novamente sem apagar nem duplicar registros operacionais.
+          const downloadResult = await handleDownloadFromFirebase();
+          if (!downloadResult.success) throw new Error(downloadResult.message);
+          const refreshedPresence = mergeRecordsById(
+            parseStoredJson<PresencaApontamento[]>(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', []),
+            incomingPresence,
+          );
+          const refreshedPointing = mergeRecordsById(
+            parseStoredJson<ApontamentoRamoRegistro[]>(localStorage.getItem('renea_apontamento_ramo_registros'), 'renea_apontamento_ramo_registros', []),
+            incomingPointing,
+          );
+          const refreshedNotifications = mergeRecordsById(
+            parseStoredJson<AppNotification[]>(localStorage.getItem('renea_notifications'), 'renea_notifications', []),
+            nextNotifications,
+          );
+          localStorage.setItem('renea_presencas_link', JSON.stringify(refreshedPresence));
+          localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(refreshedPointing));
+          localStorage.setItem('renea_notifications', JSON.stringify(refreshedNotifications));
+          setPresencasLink(refreshedPresence);
+          setApontamentoRamoRegistros(refreshedPointing);
+          setNotifications(refreshedNotifications);
+          syncResult = await uploadLocalSnapshotToFirebase();
+        }
         if (!syncResult.success) throw new Error(syncResult.message);
         await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
       } catch (error) {
