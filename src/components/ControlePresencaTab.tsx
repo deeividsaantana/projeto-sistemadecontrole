@@ -22,9 +22,9 @@ import {
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generateUniversalPdfReport } from '../utils/universalPdfReport';
 import {
+  Empresa,
   Funcionario,
   GrupoEquipe,
   HistoricoPresenca,
@@ -54,6 +54,7 @@ const statusClasses: Record<PresencaStatus, string> = {
 };
 
 interface ControlePresencaTabProps {
+  empresas: Empresa[];
   funcionarios: Funcionario[];
   obras: ObraLocal[];
   gruposEquipe: GrupoEquipe[];
@@ -100,6 +101,7 @@ const toCsv = (rows: Array<Array<string | number>>) =>
     .join('\n');
 
 export default function ControlePresencaTab({
+  empresas,
   funcionarios,
   obras,
   gruposEquipe,
@@ -122,6 +124,7 @@ export default function ControlePresencaTab({
   const [filtroFuncionario, setFiltroFuncionario] = useState('');
   const [grupoSearch, setGrupoSearch] = useState('');
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeCompany, setEmployeeCompany] = useState('');
   const [feedback, setFeedback] = useState('');
 
   const emptyGroup: GrupoEquipe = {
@@ -249,9 +252,10 @@ export default function ControlePresencaTab({
     const query = employeeSearch.trim().toLowerCase();
     return funcionarios
       .filter(func => func.ativo)
+      .filter(func => !employeeCompany || func.empresaId === employeeCompany)
       .filter(func => !query || func.nome.toLowerCase().includes(query) || func.cargo.toLowerCase().includes(query))
       .sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [employeeSearch, funcionarios]);
+  }, [employeeCompany, employeeSearch, funcionarios]);
 
   const filteredGroups = useMemo(() => {
     const query = grupoSearch.trim().toLowerCase();
@@ -290,6 +294,10 @@ export default function ControlePresencaTab({
     const now = new Date().toISOString();
     const payload: GrupoEquipe = {
       ...groupForm,
+      funcionarioIds: Array.from(new Set(groupForm.funcionarioIds)).filter(id => funcionarios.some(func => func.id === id && func.ativo)),
+      funcionarioMatriculas: Array.from(new Set(groupForm.funcionarioIds
+        .map(id => funcionarios.find(func => func.id === id)?.matricula)
+        .filter((value): value is string => Boolean(value)))),
       id: editingGroupId || `grp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       token: groupForm.token || generateToken(),
       createdAt: groupForm.createdAt || now,
@@ -389,20 +397,30 @@ export default function ControlePresencaTab({
     await downloadCorporateWorkbook(workbook, `RENEA_presenca_${getTodayInput()}.xlsx`);
   };
 
-  const handleExportPdf = () => {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    doc.setFontSize(13);
-    doc.text('Sistema Renea - Controle de Presença', 14, 14);
-    doc.setFontSize(9);
-    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 20);
-    autoTable(doc, {
-      startY: 26,
-      head: [['Data', 'Grupo', 'Responsável', 'Frente', 'Funcionário', 'Função', 'Status', 'Observação', 'Horário']],
-      body: rowsForExport,
-      styles: { fontSize: 7, cellPadding: 1.8 },
-      headStyles: { fillColor: [6, 95, 70] }
+  const handleExportPdf = async () => {
+    await generateUniversalPdfReport({
+      title: 'Relatório de Controle de Presença',
+      subtitle: 'Apontamentos de campo, equipes, responsáveis e situações do efetivo',
+      company: 'RENEA INFRAESTRUTURA · Sistema Integrado de Gestão Operacional',
+      orientation: 'landscape',
+      fileName: `RENEA_presenca_${getTodayInput()}.pdf`,
+      period: `${periodoInicio || filtroData || 'início'} a ${periodoFim || filtroData || 'fim'}`,
+      filters: [filtroGrupo === 'todos' ? 'Todos os grupos' : `Grupo: ${filtroGrupo}`, filtroStatus === 'todos' ? 'Todos os status' : `Status: ${filtroStatus}`],
+      summary: [
+        { label: 'Registros', value: filteredRecords.length },
+        { label: 'Presentes', value: filteredRecords.filter(item => item.status === 'Presente').length },
+        { label: 'Ausentes', value: filteredRecords.filter(item => item.status === 'Ausente').length },
+        { label: 'Pendentes no dia', value: pendingGroups.length },
+      ],
+      columns: [
+        { header: 'Data', dataKey: 'data' }, { header: 'Grupo', dataKey: 'grupo' },
+        { header: 'Responsável', dataKey: 'responsavel' }, { header: 'Frente', dataKey: 'frente' },
+        { header: 'Funcionário', dataKey: 'funcionario' }, { header: 'Função', dataKey: 'funcao' },
+        { header: 'Status', dataKey: 'status' }, { header: 'Observação', dataKey: 'observacao' },
+        { header: 'Horário', dataKey: 'horario' },
+      ],
+      rows: filteredRecords.map(item => ({ data: item.data, grupo: item.grupoNome, responsavel: item.responsavel, frente: item.frenteServico, funcionario: item.funcionarioNome, funcao: item.funcao, status: item.status, observacao: item.observacao, horario: item.horaEnvio })),
     });
-    doc.save(`presenca-${getTodayInput()}.pdf`);
   };
 
   const openEditRecord = (record: PresencaApontamento) => {
@@ -713,16 +731,17 @@ export default function ControlePresencaTab({
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span className="text-[10px] uppercase tracking-widest font-black text-slate-500">Vincular funcionários</span>
-                  <input
-                    value={employeeSearch}
-                    onChange={e => setEmployeeSearch(e.target.value)}
-                    placeholder="Filtrar funcionários"
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                  />
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <select value={employeeCompany} onChange={e => setEmployeeCompany(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-emerald-500">
+                      <option value="">Todas as empresas</option>
+                      {empresas.filter(item => item.status !== 'INATIVO').map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                    </select>
+                    <input value={employeeSearch} onChange={e => setEmployeeSearch(e.target.value)} placeholder="Filtrar colaboradores" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-emerald-500" />
+                  </div>
                 </div>
                 <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
                   {visibleFuncionarios.map(func => (
-                    <label key={func.id} className="flex items-start gap-2 p-3 rounded-xl bg-slate-950 border border-slate-800 text-sm">
+                    <label key={func.id} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-sm">
                       <input
                         type="checkbox"
                         checked={groupForm.funcionarioIds.includes(func.id)}
@@ -735,8 +754,8 @@ export default function ControlePresencaTab({
                         className="mt-1 accent-emerald-600"
                       />
                       <span className="min-w-0">
-                        <span className="block text-slate-100 font-bold truncate">{func.nome}</span>
-                        <span className="block text-[11px] text-slate-500 truncate">{func.cargo}</span>
+                        <span className="block truncate font-bold text-slate-900">{func.nome}</span>
+                        <span className="block truncate text-[11px] text-slate-500">{func.matricula ? `${func.matricula} | ` : ''}{func.cargo} | {empresas.find(item => item.id === func.empresaId)?.nome || 'Empresa não vinculada'}</span>
                       </span>
                     </label>
                   ))}

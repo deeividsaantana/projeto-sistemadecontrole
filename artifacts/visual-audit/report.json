@@ -1,0 +1,125 @@
+[
+  {
+    "viewport": {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    },
+    "authenticated": true,
+    "errors": [],
+    "pages": [
+      {
+        "target": "basculantes",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 390,
+          "viewportWidth": 390,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\mobile-basculantes.png"
+      },
+      {
+        "target": "consulta",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 390,
+          "viewportWidth": 390,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\mobile-consulta.png"
+      },
+      {
+        "target": "pendencias",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 390,
+          "viewportWidth": 390,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\mobile-pendencias.png"
+      }
+    ]
+  },
+  {
+    "viewport": {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    "authenticated": true,
+    "errors": [],
+    "pages": [
+      {
+        "target": "basculantes",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 768,
+          "viewportWidth": 768,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\tablet-basculantes.png"
+      },
+      {
+        "target": "consulta",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 768,
+          "viewportWidth": 768,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\tablet-consulta.png"
+      },
+      {
+        "target": "pendencias",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 768,
+          "viewportWidth": 768,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\tablet-pendencias.png"
+      }
+    ]
+  },
+  {
+    "viewport": {
+      "name": "desktop",
+      "width": 1440,
+      "height": 1000
+    },
+    "authenticated": true,
+    "errors": [],
+    "pages": [
+      {
+        "target": "basculantes",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 1440,
+          "viewportWidth": 1440,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\desktop-basculantes.png"
+      },
+      {
+        "target": "consulta",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 1440,
+          "viewportWidth": 1440,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\desktop-consulta.png"
+      },
+      {
+        "target": "pendencias",
+        "clicked": true,
+        "overflow": {
+          "documentWidth": 1440,
+          "viewportWidth": 1440,
+          "horizontalOverflow": false
+        },
+        "screenshot": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\visual-audit\\desktop-pendencias.png"
+      }
+    ]
+  }
+]

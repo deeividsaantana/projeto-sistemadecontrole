@@ -37,7 +37,7 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
     if (!this.state.error) return this.props.children;
 
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 grid place-items-center p-6">
+      <main className="grid min-h-screen place-items-center bg-slate-50 p-6 text-slate-800">
         <section className="w-full max-w-xl rounded-2xl border border-rose-500/30 bg-slate-900 p-6 shadow-2xl">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-rose-400">Falha de interface</p>
           <h1 className="mt-2 text-xl font-bold">O sistema preservou os dados, mas esta tela não pôde ser exibida.</h1>

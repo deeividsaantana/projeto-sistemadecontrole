@@ -53,10 +53,10 @@ export default function ExecutiveOverviewV27(props: Props) {
   ];
 
   return (
-    <section className="space-y-4 rounded-2xl border border-emerald-500/20 bg-slate-950 p-5">
+    <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-400">ERP v2.7 · Painel executivo</p>
-        <h2 className="text-xl font-black text-white">Operação consolidada</h2>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700">Painel executivo · visão operacional</p>
+        <h2 className="text-xl font-black text-slate-900">Operação consolidada</h2>
       </div>
       <div className="grid gap-2 md:grid-cols-5">
         <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="input-dark" />
@@ -66,7 +66,7 @@ export default function ExecutiveOverviewV27(props: Props) {
         <select value={ramo} onChange={e => setRamo(e.target.value)} className="input-dark"><option value="">Todos os ramos</option>{props.ramos.map(item => <option key={item.id} value={item.id}>{item.ramoNome}</option>)}</select>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map(({ label, value, detail, icon: Icon }) => <div key={label} className="rounded-xl border border-slate-800 bg-slate-900 p-4"><div className="flex items-center justify-between"><p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label}</p><Icon className="h-4 w-4 text-emerald-400" /></div><p className="mt-2 text-xl font-black text-white">{value}</p><p className="mt-1 text-[10px] text-slate-500">{detail}</p></div>)}
+        {cards.map(({ label, value, detail, icon: Icon }) => <div key={label} className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between gap-2"><p className="truncate text-[9px] font-black uppercase tracking-wider text-slate-500">{label}</p><Icon className="h-4 w-4 shrink-0 text-emerald-600" /></div><p className="mt-2 break-words text-xl font-black text-slate-900">{value}</p><p className="mt-1 text-[10px] text-slate-500">{detail}</p></div>)}
       </div>
     </section>
   );

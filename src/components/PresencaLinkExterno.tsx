@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, Search, Send, ShieldCheck, UserCheck, Users } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, RefreshCw, Search, Send, ShieldCheck, UserCheck, Users } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Funcionario, GrupoEquipe, ObraLocal, PresencaApontamento, PresencaStatus } from '../types';
+import { Empresa, Funcionario, GrupoEquipe, ObraLocal, PresencaApontamento, PresencaStatus } from '../types';
 import reneaLogo from '../assets/images/logo-renea-branco.svg';
 import './publicLinks.css';
 
@@ -23,9 +23,12 @@ interface PresencaLinkExternoProps {
   token: string;
   gruposEquipe: GrupoEquipe[];
   funcionarios: Funcionario[];
+  empresas: Empresa[];
   obras: ObraLocal[];
   presencasLink: PresencaApontamento[];
   isLoadingCloud: boolean;
+  loadError: string;
+  onRetry: () => void;
   onSubmitPresenca: (
     grupo: GrupoEquipe,
     data: string,
@@ -43,8 +46,11 @@ export default function PresencaLinkExterno({
   token,
   gruposEquipe,
   funcionarios,
+  empresas,
   obras,
   isLoadingCloud,
+  loadError,
+  onRetry,
   onSubmitPresenca
 }: PresencaLinkExternoProps) {
   const [data, setData] = useState(todayInput());
@@ -92,6 +98,7 @@ export default function PresencaLinkExterno({
     if (!grupo?.obraId) return grupo?.frenteServico || '';
     return obras.find(obra => obra.id === grupo.obraId)?.nome || grupo.frenteServico;
   }, [grupo, obras]);
+  const companyName = (func: Funcionario) => empresas.find(item => item.id === func.empresaId)?.nome || 'Empresa não informada';
 
   useEffect(() => {
     if (!grupo) return;
@@ -139,7 +146,7 @@ export default function PresencaLinkExterno({
             <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
               <img src={reneaLogo} alt="RENEA" className="h-8 w-auto object-contain" />
               <div className="text-right">
-                <p className="text-xs font-black uppercase text-emerald-400">Presença digital</p>
+                <p className="text-xs font-black uppercase text-emerald-400">Presença e Controle</p>
                 <p className="text-[11px] text-slate-400">Link geral de equipes</p>
               </div>
             </div>
@@ -158,7 +165,7 @@ export default function PresencaLinkExterno({
               <p className="mt-1 text-sm text-slate-500">Selecione o grupo responsável para iniciar a presença.</p>
             </section>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+            <div className="public-mobile-card bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
@@ -172,7 +179,21 @@ export default function PresencaLinkExterno({
               {filteredActiveGroups.length === 0 ? (
                 <div className="text-center py-8">
                   <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
-                  <p className="text-sm text-slate-400 mt-3">Nenhum grupo ativo encontrado.</p>
+                  <p className="text-sm font-bold text-slate-700 mt-3">
+                    {loadError ? 'Não foi possível carregar as equipes.' : 'Nenhum grupo ativo encontrado.'}
+                  </p>
+                  {loadError && (
+                    <>
+                      <p className="mx-auto mt-1 max-w-md text-xs text-slate-500">{loadError}</p>
+                      <button
+                        type="button"
+                        onClick={onRetry}
+                        className="mx-auto mt-4 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-600 bg-emerald-600 px-4 text-xs font-black text-white hover:bg-emerald-500"
+                      >
+                        <RefreshCw className="h-4 w-4" /> Tentar novamente
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -224,7 +245,7 @@ export default function PresencaLinkExterno({
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
           <img src={reneaLogo} alt="RENEA" className="h-8 w-auto object-contain" />
           <div className="min-w-0 text-right">
-            <p className="text-xs font-black uppercase text-emerald-400">Presença digital</p>
+            <p className="text-xs font-black uppercase text-emerald-400">Presença e Controle</p>
             <p className="truncate text-[11px] text-slate-400">{grupo.nome}</p>
           </div>
         </div>
@@ -242,7 +263,7 @@ export default function PresencaLinkExterno({
                 <ShieldCheck className="w-4 h-4" />
                 Link seguro
               </div>
-              <h1 className="mt-1 text-2xl font-black text-slate-950">Presença da equipe</h1>
+              <h1 className="mt-1 text-2xl font-black text-slate-950">Controle da equipe</h1>
               <p className="mt-1 text-sm text-slate-500">Confira o grupo e registre a situação de cada funcionário.</p>
             </div>
             {isGeneralLink && (
@@ -259,7 +280,7 @@ export default function PresencaLinkExterno({
         </section>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <section className="public-mobile-card bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Nome da obra</p>
@@ -285,7 +306,7 @@ export default function PresencaLinkExterno({
             </div>
           </section>
 
-          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <section className="public-mobile-card bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-400" />
@@ -302,7 +323,7 @@ export default function PresencaLinkExterno({
                   <div>
                     <p className="text-sm font-black text-white">{func.nome}</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      {func.matricula ? `MAT. ${func.matricula} • ` : ''}{func.cargo}
+                      {func.matricula ? `MAT. ${func.matricula} • ` : ''}{func.cargo} • {companyName(func)}
                     </p>
                   </div>
 
@@ -354,7 +375,7 @@ export default function PresencaLinkExterno({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full min-h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-black text-sm flex items-center justify-center gap-2 transition-colors"
+            className="public-mobile-submit w-full min-h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-black text-sm flex items-center justify-center gap-2 transition-colors"
           >
             {isSubmitting ? <Clock className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             Enviar presença

@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+const component = readFileSync(new URL('../src/components/ControleEquipamentosDiarioTab.tsx', import.meta.url), 'utf8');
+const navigation = readFileSync(new URL('../src/app/navigation/navigation.ts', import.meta.url), 'utf8');
+const backup = readFileSync(new URL('../src/utils/systemBackup.ts', import.meta.url), 'utf8');
+const cloud = readFileSync(new URL('../src/firebaseCloudSync.ts', import.meta.url), 'utf8');
+const publicSnapshot = readFileSync(new URL('../netlify/functions/_shared/cloud-snapshot.js', import.meta.url), 'utf8');
+const reportService = readFileSync(new URL('../src/fleet/reportService.ts', import.meta.url), 'utf8');
+const reconciliation = readFileSync(new URL('../src/fleet/reconciliation.ts', import.meta.url), 'utf8');
+const dataTable = readFileSync(new URL('../src/components/fleet/FleetDataTable.tsx', import.meta.url), 'utf8');
+const pdfReport = readFileSync(new URL('../src/fleet/pdfReport.ts', import.meta.url), 'utf8');
+const excelExport = readFileSync(new URL('../src/fleet/excelExport.ts', import.meta.url), 'utf8');
+
+assert.equal((app.match(/activeTab === 'controle-equipamentos'/g) || []).length, 1);
+assert.match(navigation, /Controle de Basculantes/);
+assert.match(component, /useFleetReport/);
+assert.match(component, /FleetFilterBar/);
+assert.match(component, /FleetDataTable/);
+assert.match(component, /FleetBulkActions/);
+assert.match(component, /ConfirmDialog/);
+assert.match(component, /previewFleetImport/);
+assert.match(component, /generateFleetPdf/);
+assert.match(component, /exportFleetExcel/);
+assert.match(reportService, /createFleetReportViewModel/);
+assert.match(reportService, /calculateFleetMetrics/);
+assert.match(reportService, /selectMaintenanceCBs/);
+assert.match(reconciliation, /isDumpTruck/);
+assert.match(reconciliation, /lookupDriverByCode/);
+assert.match(dataTable, /Selecionar todos desta página/);
+assert.match(pdfReport, /A4|a4/);
+assert.match(excelExport, /RESUMO/);
+assert.match(excelExport, /HISTÓRICO/);
+assert.match(app, /renea_controle_equipamentos_diario/);
+assert.match(backup, /controleEquipamentosDiario/);
+assert.match(cloud, /controleEquipamentosDiario/);
+assert.match(publicSnapshot, /controleEquipamentosDiario/);

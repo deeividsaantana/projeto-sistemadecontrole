@@ -9,7 +9,7 @@ const INTERMEDIATE_TABLE_IDS = [
   'lubrificantes', 'etapas', 'abastecimentos', 'lubrificacoes', 'ticketsJazida',
   'listasPresenca', 'ordensServico', 'gruposEquipe', 'presencasLink', 'historicoPresencas',
   'apontamentoRamos', 'apontamentoRamoRegistros', 'materiaisCadastro', 'materiaisRegistros',
-  'partesDiariasEquipamentos', 'periodosArquivados', 'notifications', 'historyLogs',
+  'partesDiariasEquipamentos', 'controleEquipamentosDiario', 'periodosArquivados', 'notifications', 'historyLogs',
 ];
 
 const hashText = value => crypto.createHash('sha256').update(value).digest('hex');

@@ -68,7 +68,10 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
   const [message, setMessage] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [activeDrivingId, setActiveDrivingId] = useState<string | null>(null);
+  const [editingLotId, setEditingLotId] = useState<string | null>(null);
   const [editingDrivingId, setEditingDrivingId] = useState<string | null>(null);
+  const [selectedLotIds, setSelectedLotIds] = useState<string[]>([]);
+  const [selectedDrivingIds, setSelectedDrivingIds] = useState<string[]>([]);
   const [visibleDrivingIds, setVisibleDrivingIds] = useState<string[]>(controle.cravacoes.map(item => item.id));
   const summary = useMemo(() => buildStakeSummary(controle), [controle]);
   const balances = useMemo(() => buildStakeBalances(controle), [controle]);
@@ -87,7 +90,8 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
       setMessage('Selecione a obra antes de anexar arquivos ao lote.');
       return;
     }
-    const id = uid('lote-estaca');
+    const previous = editingLotId ? controle.lotes.find(item => item.id === editingLotId) : undefined;
+    const id = previous?.id || uid('lote-estaca');
     let anexos: LoteEstaca['anexos'] = [];
     try {
       anexos = await Promise.all(lotFiles.map(file => uploadOperationalAttachment({
@@ -102,14 +106,33 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
     const nextLot: LoteEstaca = {
       ...lot,
       id,
-      anexos,
+      anexos: anexos.length > 0 ? anexos : previous?.anexos,
       valorTotal: lot.valorTotal || lot.pesoKg * lot.valorUnitario,
-      criadoEm: new Date().toISOString(),
+      criadoEm: previous?.criadoEm || new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
     };
-    onChange({ ...controle, lotes: [nextLot, ...controle.lotes] }, `Registrou lote da NF ${lot.notaFiscal}.`);
+    const nextLots = previous
+      ? controle.lotes.map(item => item.id === previous.id ? nextLot : item)
+      : [nextLot, ...controle.lotes];
+    onChange({ ...controle, lotes: nextLots }, `${previous ? 'Atualizou' : 'Registrou'} lote da NF ${lot.notaFiscal}.`);
     setLot(emptyLot());
+    setEditingLotId(null);
     setLotFiles([]);
-    setMessage('Recebimento registrado.');
+    setMessage(previous ? 'Recebimento atualizado.' : 'Recebimento registrado.');
+  };
+
+  const editLot = (item: LoteEstaca) => {
+    const { id: _id, criadoEm: _createdAt, atualizadoEm: _updatedAt, ...draft } = item;
+    setLot(draft);
+    setEditingLotId(item.id);
+    setMode('lotes');
+    setMessage(`Editando o lote da NF ${item.notaFiscal}.`);
+  };
+
+  const cancelLotEdit = () => {
+    setLot(emptyLot());
+    setEditingLotId(null);
+    setLotFiles([]);
   };
 
   const saveDriving = (event: React.FormEvent) => {
@@ -244,6 +267,21 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
     onChange({ ...controle, cravacoes: controle.cravacoes.filter(item => item.id !== id) }, 'Excluiu uma cravação.');
     if (editingDrivingId === id) cancelDrivingEdit();
   };
+  const removeSelectedLots = () => {
+    if (selectedLotIds.length === 0 || !window.confirm(`Excluir ${selectedLotIds.length} lote(s) selecionado(s)? As cravações serão preservadas para reassociação.`)) return;
+    const selected = new Set(selectedLotIds);
+    onChange({
+      lotes: controle.lotes.filter(item => !selected.has(item.id)),
+      cravacoes: controle.cravacoes.map(item => item.loteId && selected.has(item.loteId) ? { ...item, loteId: undefined } : item),
+    }, `Excluiu ${selected.size} lote(s) selecionado(s) e preservou as cravações.`);
+    setSelectedLotIds([]);
+  };
+  const removeSelectedDrivings = () => {
+    if (selectedDrivingIds.length === 0 || !window.confirm(`Excluir ${selectedDrivingIds.length} cravação(ões) selecionada(s)?`)) return;
+    const selected = new Set(selectedDrivingIds);
+    onChange({ ...controle, cravacoes: controle.cravacoes.filter(item => !selected.has(item.id)) }, `Excluiu ${selected.size} cravação(ões) selecionada(s).`);
+    setSelectedDrivingIds([]);
+  };
 
   return (
     <div className="space-y-5">
@@ -309,15 +347,20 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             <input placeholder="Responsável" value={lot.responsavel} onChange={e => setLot({ ...lot, responsavel: e.target.value })} className="input-dark" />
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 sm:col-span-2">Anexos estão temporariamente indisponíveis porque o Firebase Storage não foi ativado. O registro do lote segue normalmente, sem perda dos demais dados.</div>
             <label className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 text-xs text-slate-300"><input type="checkbox" checked={lot.nfConferida} onChange={e => setLot({ ...lot, nfConferida: e.target.checked })} /> NF conferida</label>
-            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><PackagePlus className="h-4 w-4" /> Registrar lote</button>
+            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><PackagePlus className="h-4 w-4" /> {editingLotId ? 'Salvar alterações' : 'Registrar lote'}</button>
+            {editingLotId && <button type="button" onClick={cancelLotEdit} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700"><X className="h-4 w-4" /> Cancelar edição</button>}
           </form>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
+            <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={controle.lotes.length > 0 && selectedLotIds.length === controle.lotes.length} onChange={e => setSelectedLotIds(e.target.checked ? controle.lotes.map(item => item.id) : [])} /> Selecionar todos ({selectedLotIds.length})</label>
+            <button type="button" disabled={selectedLotIds.length === 0} onClick={removeSelectedLots} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+          </div>
           <div className="overflow-x-auto rounded-2xl border border-slate-800">
             <table className="w-full min-w-[900px] text-left text-xs">
-              <thead className="bg-slate-900 text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Data/NF</th><th>Material</th><th>Perfil</th><th>Recebido</th><th>Cravado</th><th>Saldo</th><th>Status</th><th /></tr></thead>
+              <thead className="bg-slate-900 text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Sel.</th><th>Data/NF</th><th>Material</th><th>Perfil</th><th>Recebido</th><th>Cravado</th><th>Saldo</th><th>Status</th><th /></tr></thead>
               <tbody className="divide-y divide-slate-800 bg-slate-950">
                 {controle.lotes.map(item => {
                   const balance = balances.find(entry => entry.loteId === item.id);
-                  return <tr key={item.id}><td className="p-3 text-slate-300">{item.data}<br /><b className="text-white">NF {item.notaFiscal}</b></td><td className="text-slate-300">{item.descricao}<br /><span className="text-slate-600">{item.materialCodigo}</span></td><td className="text-slate-300">{item.perfilModelo || item.comprimentoM}</td><td className="text-slate-300">{balance?.recebidoM} m</td><td className="text-slate-300">{balance?.cravadoM} m</td><td className={balance?.status === 'Divergente' ? 'font-black text-rose-400' : 'font-black text-emerald-400'}>{balance?.saldoConfirmadoM} m</td><td className="text-slate-400">{item.nfConferida ? 'NF conferida' : item.status}</td><td><button type="button" onClick={() => removeLot(item.id)} className="p-2 text-rose-400"><Trash2 className="h-4 w-4" /></button></td></tr>;
+                  return <tr key={item.id}><td className="p-3"><input type="checkbox" checked={selectedLotIds.includes(item.id)} onChange={e => setSelectedLotIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /></td><td className="text-slate-300">{item.data}<br /><b className="text-white">NF {item.notaFiscal}</b></td><td className="text-slate-300">{item.descricao}<br /><span className="text-slate-600">{item.materialCodigo}</span></td><td className="text-slate-300">{item.perfilModelo || item.comprimentoM}</td><td className="text-slate-300">{balance?.recebidoM} m</td><td className="text-slate-300">{balance?.cravadoM} m</td><td className={balance?.status === 'Divergente' ? 'font-black text-rose-400' : 'font-black text-emerald-400'}>{balance?.saldoConfirmadoM} m</td><td className="text-slate-400">{item.nfConferida ? 'NF conferida' : item.status}</td><td><button type="button" title="Editar lote" onClick={() => editLot(item)} className="p-2 text-sky-400"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir lote" onClick={() => removeLot(item.id)} className="p-2 text-rose-400"><Trash2 className="h-4 w-4" /></button></td></tr>;
                 })}
               </tbody>
             </table>
@@ -350,8 +393,12 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><Hammer className="h-4 w-4" /> {editingDrivingId ? 'Salvar alterações' : 'Registrar cravação'}</button>
             {editingDrivingId && <button type="button" onClick={cancelDrivingEdit} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:border-slate-400"><X className="h-4 w-4" /> Cancelar edição</button>}
           </form>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
+            <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={visibleDrivingIds.length > 0 && visibleDrivingIds.every(id => selectedDrivingIds.includes(id))} onChange={e => setSelectedDrivingIds(e.target.checked ? visibleDrivingIds : [])} /> Selecionar visíveis ({selectedDrivingIds.length})</label>
+            <button type="button" disabled={selectedDrivingIds.length === 0} onClick={removeSelectedDrivings} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionadas</button>
+          </div>
           <div className="grid gap-3">
-            {controle.cravacoes.filter(item => visibleDrivingIds.includes(item.id)).sort((a, b) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true })).map(item => <div id={`stake-row-${item.id}`} key={item.id} onMouseEnter={() => setActiveDrivingId(item.id)} onMouseLeave={() => editingDrivingId !== item.id && setActiveDrivingId(null)} className={`flex flex-col gap-2 rounded-xl border bg-white p-4 transition md:flex-row md:items-center ${activeDrivingId === item.id ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}><div className="flex-1"><p className="font-black text-slate-900">{item.identificacao} · {item.perfil || 'Perfil não informado'}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} / {item.comprimentoM} m · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-700' : 'text-amber-700'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" title="Editar cravação" onClick={() => editDriving(item)} className="p-2 text-sky-600 hover:text-sky-800"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir cravação" onClick={() => removeDriving(item.id)} className="p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button></div>)}
+            {controle.cravacoes.filter(item => visibleDrivingIds.includes(item.id)).sort((a, b) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true })).map(item => <div id={`stake-row-${item.id}`} key={item.id} onMouseEnter={() => setActiveDrivingId(item.id)} onMouseLeave={() => editingDrivingId !== item.id && setActiveDrivingId(null)} className={`flex flex-col gap-2 rounded-xl border bg-white p-4 transition md:flex-row md:items-center ${activeDrivingId === item.id ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}><input type="checkbox" checked={selectedDrivingIds.includes(item.id)} onChange={e => setSelectedDrivingIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /><div className="flex-1"><p className="font-black text-slate-900">{item.identificacao} · {item.perfil || 'Perfil não informado'}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} / {item.comprimentoM} m · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-700' : 'text-amber-700'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" title="Editar cravação" onClick={() => editDriving(item)} className="p-2 text-sky-600 hover:text-sky-800"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir cravação" onClick={() => removeDriving(item.id)} className="p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button></div>)}
           </div>
         </>
       )}

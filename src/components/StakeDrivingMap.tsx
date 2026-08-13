@@ -23,11 +23,8 @@ const statusOf = (item: CravacaoEstaca): { key: StatusKey; label: string; icon: 
 };
 const sequenceSort = (a: CravacaoEstaca, b: CravacaoEstaca) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true });
 
-const SheetPileProfile = () => <svg viewBox="0 0 790 300" className="h-auto w-full max-w-[310px]" role="img" aria-label="Perfil técnico de estaca-prancha metálica com 740 por 270 milímetros">
+const SheetPileProfile = () => <svg viewBox="20 45 755 225" className="h-auto w-full max-w-[310px]" role="img" aria-label="Perfil técnico ilustrativo de estaca-prancha metálica sem dimensões de referência">
   <path d="M35 62h118l148 188h188l148-118h118V62h-74v54h-70L467 250H323L177 62h-68v92H35Z" fill="none" stroke="currentColor" strokeWidth="15" strokeLinejoin="round"/>
-  <path d="M395 45v150m-64-45h128" stroke="#2563eb" strokeWidth="5"/><text x="410" y="79" fill="#2563eb" fontSize="30">Y</text><text x="466" y="159" fill="#2563eb" fontSize="30">X</text><text x="352" y="180" fill="#2563eb" fontSize="26" fontStyle="italic">CG</text>
-  <path d="M35 23h722M35 10v27M757 10v27" stroke="currentColor" strokeWidth="4"/><text x="350" y="37" fontSize="25" fontWeight="700">740 mm</text>
-  <path d="M775 62v188M762 62h26M762 250h26" stroke="currentColor" strokeWidth="4"/><text x="684" y="164" fontSize="23" fontWeight="700">270 mm</text>
 </svg>;
 
 export default function StakeDrivingMap({ items, ramos, obras, activeId, onActiveIdChange, onVisibleIdsChange }: Props) {

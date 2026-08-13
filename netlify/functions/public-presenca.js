@@ -39,18 +39,38 @@ const sanitizeGroup = (group, exposedToken = '') => ({
 const getPublicConfig = (snapshot, token) => {
   const groups = activeGroupsForToken(snapshot, token);
   if (groups.length === 0) return null;
-  const employeeIds = new Set(groups.flatMap(group => Array.isArray(group.funcionarioIds) ? group.funcionarioIds : []));
-  const employees = (snapshot.funcionarios || [])
-    .filter(employee => employee?.ativo && employeeIds.has(employee.id))
+  const allEmployees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
+  const employeeById = new Map(allEmployees.map(employee => [employee.id, employee]));
+  const employeeByRegistration = new Map(allEmployees.map(employee => [cleanString(employee.matricula, 80).toLowerCase(), employee]));
+  const resolvedGroups = groups.map(group => {
+    const resolvedIds = new Set((Array.isArray(group.funcionarioIds) ? group.funcionarioIds : []).filter(id => employeeById.has(id)));
+    (Array.isArray(group.funcionarioMatriculas) ? group.funcionarioMatriculas : []).forEach(registration => {
+      const employee = employeeByRegistration.get(cleanString(registration, 80).toLowerCase());
+      if (employee) resolvedIds.add(employee.id);
+    });
+    return { ...group, funcionarioIds: [...resolvedIds] };
+  });
+  const employeeIds = new Set(resolvedGroups.flatMap(group => group.funcionarioIds));
+  const employees = allEmployees
+    .filter(employee => employeeIds.has(employee.id))
     .map(employee => ({
       id: cleanString(employee.id, 160),
       nome: cleanString(employee.nome, 180),
       cargo: cleanString(employee.cargo, 120),
       telefone: '',
-      empresaId: '',
+      empresaId: cleanString(employee.empresaId, 160),
       ativo: true,
     }));
-  const workIds = new Set(groups.map(group => group.obraId).filter(Boolean));
+  const companyIds = new Set(employees.map(employee => employee.empresaId).filter(Boolean));
+  const companies = (snapshot.empresas || [])
+    .filter(company => companyIds.has(company.id))
+    .map(company => ({
+      id: cleanString(company.id, 160),
+      nome: cleanString(company.nome, 180),
+      cnpj: '', telefone: '', responsavel: '',
+      status: company.status === 'INATIVO' ? 'INATIVO' : 'ATIVO',
+    }));
+  const workIds = new Set(resolvedGroups.map(group => group.obraId).filter(Boolean));
   const works = (snapshot.obras || [])
     .filter(work => workIds.has(work.id))
     .map(work => ({
@@ -61,8 +81,9 @@ const getPublicConfig = (snapshot, token) => {
       status: ['Ativa', 'Concluída', 'Planejada'].includes(work.status) ? work.status : 'Ativa',
     }));
   return {
-    gruposEquipe: groups.map(group => sanitizeGroup(group, isGeneralToken(token) ? '' : token)),
+    gruposEquipe: resolvedGroups.map(group => sanitizeGroup(group, isGeneralToken(token) ? '' : token)),
     funcionarios: employees,
+    empresas: companies,
     obras: works,
   };
 };

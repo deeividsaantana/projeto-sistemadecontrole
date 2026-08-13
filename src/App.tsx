@@ -33,6 +33,7 @@ import {
   MaterialCadastro,
   MaterialRegistro,
   ParteDiariaEquipamento,
+  ControleEquipamentoDiario,
   PeriodoArquivado,
   ControleEstacas
 } from './types';
@@ -61,6 +62,7 @@ import {
   INITIAL_PARTES_DIARIAS_EQUIPAMENTOS
 } from './utils/initialData';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
+import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
 import {
@@ -68,6 +70,7 @@ import {
   normalizeAvailabilityTarget,
 } from './utils/equipmentOperations';
 import { filterNovelFuelImports } from './utils/fuelImportIdentity';
+import { mergeImportedRecords } from './utils/importMerge';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -89,6 +92,7 @@ const ApontamentoRamoLinkExterno = lazy(() => import('./components/ApontamentoRa
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ParteDiariaEquipamentosTab = lazy(() => import('./components/ParteDiariaEquipamentosTab'));
+const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -220,28 +224,6 @@ const numberFromImport = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const mergeImportedRecords = <T extends { id: string },>(
-  current: T[],
-  incoming: T[],
-  getKey: (item: T) => string
-) => {
-  let created = 0;
-  let updated = 0;
-  const next = [...current];
-  incoming.forEach(item => {
-    const key = getKey(item);
-    const index = key ? next.findIndex(existing => getKey(existing) === key) : -1;
-    if (index >= 0) {
-      next[index] = { ...item, id: next[index].id } as T;
-      updated += 1;
-    } else {
-      next.push(item);
-      created += 1;
-    }
-  });
-  return { next, created, updated };
-};
-
 const mergeSeedRecords = <T,>(current: T[], seed: T[], getKey: (item: T) => string) => {
   const keys = new Set(current.map(item => getKey(item)).filter(Boolean));
   const next = [...current];
@@ -250,6 +232,16 @@ const mergeSeedRecords = <T,>(current: T[], seed: T[], getKey: (item: T) => stri
     if (!key || keys.has(key)) return;
     keys.add(key);
     next.push(item);
+  });
+  return next;
+};
+
+const mergeSeedRecordsPreferSeed = <T,>(current: T[], seed: T[], getKey: (item: T) => string) => {
+  const seedByKey = new Map(seed.map(item => [getKey(item), item]));
+  const next = current.map(item => seedByKey.get(getKey(item)) ?? item);
+  const currentKeys = new Set(current.map(getKey));
+  seed.forEach(item => {
+    if (!currentKeys.has(getKey(item))) next.push(item);
   });
   return next;
 };
@@ -348,11 +340,13 @@ export default function App() {
   const [materiaisCadastro, setMateriaisCadastro] = useState<MaterialCadastro[]>([]);
   const [materiaisRegistros, setMateriaisRegistros] = useState<MaterialRegistro[]>([]);
   const [partesDiariasEquipamentos, setPartesDiariasEquipamentos] = useState<ParteDiariaEquipamento[]>([]);
+  const [controleEquipamentosDiario, setControleEquipamentosDiario] = useState<ControleEquipamentoDiario[]>([]);
   const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
   const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
   const [vinculosOperadorEquipamento, setVinculosOperadorEquipamento] = useState<VinculoOperadorEquipamento[]>([]);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
+  const [externalPresenceLoadError, setExternalPresenceLoadError] = useState('');
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
   const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
   const [externalTicketLoadError, setExternalTicketLoadError] = useState('');
@@ -419,6 +413,7 @@ export default function App() {
         { key: 'renea_materiais_cadastro', value: JSON.stringify(INITIAL_MATERIAIS_CADASTRO) },
         { key: 'renea_materiais_registros', value: JSON.stringify(INITIAL_MATERIAIS_REGISTROS) },
         { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS) },
+        { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO) },
         { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
         { key: 'renea_periodos_arquivados', value: '[]' },
         { key: 'renea_master_data_review_queue', value: '[]' },
@@ -429,7 +424,7 @@ export default function App() {
         ...initialStorageEntries,
         { key: 'renea_data_loaded_v2', value: 'true' },
         { key: 'renea_colaboradores_planilha_v1', value: 'true' },
-        { key: 'renea_planilhas_operacionais_v1', value: 'true' },
+        { key: 'renea_planilhas_operacionais_v2', value: 'true' },
         { key: 'renea_materiais_planilha_v1', value: 'true' },
       ]);
 
@@ -454,6 +449,7 @@ export default function App() {
       setMateriaisCadastro(INITIAL_MATERIAIS_CADASTRO);
       setMateriaisRegistros(INITIAL_MATERIAIS_REGISTROS);
       setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
+      setControleEquipamentosDiario(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO);
       setControleEstacas(INITIAL_CONTROLE_ESTACAS);
       setPeriodosArquivados([]);
       setHistoryLogs([]);
@@ -481,17 +477,21 @@ export default function App() {
       const savedMateriaisCadastro = localStorage.getItem('renea_materiais_cadastro');
       const savedMateriaisRegistros = localStorage.getItem('renea_materiais_registros');
       const savedPartesDiariasEquipamentos = localStorage.getItem('renea_partes_diarias_equipamentos');
+      const savedControleEquipamentosDiario = localStorage.getItem('renea_controle_equipamentos_diario');
       const savedControleEstacas = localStorage.getItem('renea_controle_estacas');
       const savedPeriodosArquivados = localStorage.getItem('renea_periodos_arquivados');
       const savedVinculosOperadorEquipamento = localStorage.getItem('renea_vinculos_operador_equipamento');
       const savedHistory = localStorage.getItem('renea_history_logs');
       const savedNotifications = localStorage.getItem('renea_notifications');
       const shouldMigratePresencePeople = localStorage.getItem('renea_colaboradores_planilha_v1') !== 'true';
-      const shouldMigrateSpreadsheetSeed = localStorage.getItem('renea_planilhas_operacionais_v1') !== 'true';
+      const shouldMigrateSpreadsheetSeed = localStorage.getItem('renea_planilhas_operacionais_v2') !== 'true';
       const shouldMigrateMateriaisSeed = localStorage.getItem('renea_materiais_planilha_v1') !== 'true';
       const parsedEquipamentos = parseStoredJson(savedEquipamentos, 'renea_equipamentos', INITIAL_EQUIPAMENTOS);
+      const parsedEmpresas = parseStoredJson(savedEmpresas, 'renea_empresas', INITIAL_EMPRESAS);
+      const parsedComboios = parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS);
       const parsedAbastecimentos = parseStoredJson(savedAbastecimentos, 'renea_abastecimentos', INITIAL_ABASTECIMENTOS);
       const parsedTicketsJazida = parseStoredJson(savedTicketsJazida, 'renea_tickets_jazida', INITIAL_TICKETS_JAZIDA);
+      const parsedControleEstacas = parseStoredJson(savedControleEstacas, 'renea_controle_estacas', INITIAL_CONTROLE_ESTACAS);
       const parsedMateriaisCadastro = parseStoredJson(savedMateriaisCadastro, 'renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO);
       const parsedMateriaisRegistros = parseStoredJson(savedMateriaisRegistros, 'renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS);
       const parsedGruposEquipe = shouldMigratePresencePeople
@@ -505,14 +505,26 @@ export default function App() {
       );
       const securedPublicLinks = rotateWeakPublicLinkTokens(parsedGruposEquipe, mergedApontamentoRamos);
       const loadedEquipamentos = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedEquipamentos, INITIAL_EQUIPAMENTOS, item => item.prefixo.trim().toLowerCase())
+        ? mergeSeedRecordsPreferSeed(parsedEquipamentos, INITIAL_EQUIPAMENTOS, item => item.prefixo.trim().toLowerCase())
         : parsedEquipamentos;
+      const loadedEmpresas = shouldMigrateSpreadsheetSeed
+        ? mergeSeedRecords(parsedEmpresas, INITIAL_EMPRESAS, item => item.id)
+        : parsedEmpresas;
+      const loadedComboios = shouldMigrateSpreadsheetSeed
+        ? mergeSeedRecords(parsedComboios, INITIAL_COMBOIOS, item => item.placa.trim().toLowerCase())
+        : parsedComboios;
       const loadedAbastecimentos = shouldMigrateSpreadsheetSeed
         ? mergeSeedRecords(parsedAbastecimentos, INITIAL_ABASTECIMENTOS, item => `${item.data}|${item.equipamentoId}|${item.hora}|${item.quantidadeLitros}|${item.bombaInicial}`)
         : parsedAbastecimentos;
       const loadedTicketsJazida = shouldMigrateSpreadsheetSeed
         ? mergeSeedRecords(parsedTicketsJazida, INITIAL_TICKETS_JAZIDA, item => `${item.tipoTicket || 'Liberação'}|${item.data}|${item.ticketNumero}|${item.prefixo}`)
         : parsedTicketsJazida;
+      const loadedControleEstacas = shouldMigrateSpreadsheetSeed
+        ? {
+            lotes: mergeSeedRecords(parsedControleEstacas.lotes, INITIAL_CONTROLE_ESTACAS.lotes, item => item.id),
+            cravacoes: mergeSeedRecords(parsedControleEstacas.cravacoes, INITIAL_CONTROLE_ESTACAS.cravacoes, item => item.id),
+          }
+        : parsedControleEstacas;
       const loadedMateriaisCadastro = shouldMigrateMateriaisSeed
         ? mergeSeedRecords(parsedMateriaisCadastro, INITIAL_MATERIAIS_CADASTRO, materialCadastroKey)
         : parsedMateriaisCadastro;
@@ -520,11 +532,11 @@ export default function App() {
         ? mergeSeedRecords(parsedMateriaisRegistros, INITIAL_MATERIAIS_REGISTROS, materialRegistroKey)
         : parsedMateriaisRegistros;
 
-      setEmpresas(parseStoredJson(savedEmpresas, 'renea_empresas', INITIAL_EMPRESAS));
+      setEmpresas(loadedEmpresas);
       setObras(parseStoredJson(savedObras, 'renea_obras', INITIAL_OBRAS));
       setEquipamentos(loadedEquipamentos);
       setFuncionarios(shouldMigratePresencePeople ? INITIAL_FUNCIONARIOS : parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS));
-      setComboios(parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS));
+      setComboios(loadedComboios);
       setCombustiveis(parseStoredJson(savedCombustiveis, 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL));
       setLubrificantes(parseStoredJson(savedLubrificantes, 'renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO));
       setEtapas(parseStoredJson(savedEtapas, 'renea_etapas', INITIAL_ETAPAS_SERVICO));
@@ -541,7 +553,8 @@ export default function App() {
       setMateriaisCadastro(loadedMateriaisCadastro);
       setMateriaisRegistros(loadedMateriaisRegistros);
       setPartesDiariasEquipamentos(parseStoredJson(savedPartesDiariasEquipamentos, 'renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
-      setControleEstacas(parseStoredJson(savedControleEstacas, 'renea_controle_estacas', INITIAL_CONTROLE_ESTACAS));
+      setControleEquipamentosDiario(parseStoredJson(savedControleEquipamentosDiario, 'renea_controle_equipamentos_diario', INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO));
+      setControleEstacas(loadedControleEstacas);
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs([]);
@@ -577,10 +590,13 @@ export default function App() {
         localStorage.setItem('renea_periodos_arquivados', JSON.stringify([]));
       }
       if (shouldMigrateSpreadsheetSeed) {
+        localStorage.setItem('renea_empresas', JSON.stringify(loadedEmpresas));
         localStorage.setItem('renea_equipamentos', JSON.stringify(loadedEquipamentos));
+        localStorage.setItem('renea_comboios', JSON.stringify(loadedComboios));
         localStorage.setItem('renea_abastecimentos', JSON.stringify(loadedAbastecimentos));
         localStorage.setItem('renea_tickets_jazida', JSON.stringify(loadedTicketsJazida));
-        localStorage.setItem('renea_planilhas_operacionais_v1', 'true');
+        localStorage.setItem('renea_controle_estacas', JSON.stringify(loadedControleEstacas));
+        localStorage.setItem('renea_planilhas_operacionais_v2', 'true');
       }
       if (shouldMigrateMateriaisSeed) {
         localStorage.setItem('renea_materiais_cadastro', JSON.stringify(loadedMateriaisCadastro));
@@ -734,6 +750,7 @@ export default function App() {
         materiaisCadastro: customMateriaisCadastro,
         materiaisRegistros: customMateriaisRegistros,
         partesDiariasEquipamentos: customPartesDiariasEquipamentos,
+        controleEquipamentosDiario: parseStoredJson<ControleEquipamentoDiario[]>(localStorage.getItem('renea_controle_equipamentos_diario'), 'renea_controle_equipamentos_diario', INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO),
         periodosArquivados: customPeriodosArquivados,
         vinculosOperadorEquipamento: parseStoredJson<VinculoOperadorEquipamento[]>(localStorage.getItem('renea_vinculos_operador_equipamento'), 'renea_vinculos_operador_equipamento', []),
         masterDataReviewQueue: parseStoredJson<MasterWorkbookReviewRow[]>(
@@ -826,6 +843,7 @@ export default function App() {
           ['materiaisCadastro', 'renea_materiais_cadastro'],
           ['materiaisRegistros', 'renea_materiais_registros'],
           ['partesDiariasEquipamentos', 'renea_partes_diarias_equipamentos'],
+          ['controleEquipamentosDiario', 'renea_controle_equipamentos_diario'],
           ['periodosArquivados', 'renea_periodos_arquivados'],
           ['masterDataReviewQueue', 'renea_master_data_review_queue'],
           ['notifications', 'renea_notifications'],
@@ -914,6 +932,9 @@ export default function App() {
         if (data.partesDiariasEquipamentos) {
           setPartesDiariasEquipamentos(data.partesDiariasEquipamentos);
         }
+        if (data.controleEquipamentosDiario) {
+          setControleEquipamentosDiario(data.controleEquipamentosDiario);
+        }
         if (data.periodosArquivados) {
           setPeriodosArquivados(data.periodosArquivados);
         }
@@ -994,17 +1015,28 @@ export default function App() {
     };
   }, [isAutoSyncEnabled, externalPresenceToken, externalApontamentoToken, externalTicketLink]);
 
-  useEffect(() => {
+  const reloadExternalPresence = async () => {
     if (!externalPresenceToken) return;
     setIsExternalPresenceLoading(true);
-    loadPublicPresenceConfig(externalPresenceToken)
-      .then(config => {
-        setGruposEquipe(config.gruposEquipe);
-        setFuncionarios(config.funcionarios);
-        setObras(config.obras);
-      })
-      .catch(error => console.error('Falha ao carregar link público de presença:', error))
-      .finally(() => setIsExternalPresenceLoading(false));
+    setExternalPresenceLoadError('');
+    try {
+      const config = await loadPublicPresenceConfig(externalPresenceToken);
+      setGruposEquipe(config.gruposEquipe);
+      setFuncionarios(config.funcionarios);
+      setEmpresas(config.empresas || []);
+      setObras(config.obras);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível carregar as equipes.';
+      setExternalPresenceLoadError(message);
+      console.error('Falha ao carregar link público de presença:', error);
+    } finally {
+      setIsExternalPresenceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!externalPresenceToken) return;
+    void reloadExternalPresence();
   }, [externalPresenceToken]);
 
   useEffect(() => {
@@ -2018,6 +2050,38 @@ export default function App() {
       .catch(error => console.warn('Falha ao excluir ticket público:', error));
   };
 
+  const handleDeleteAbastecimentos = (ids: string[]) => {
+    const selected = new Set(ids);
+    if (selected.size === 0) return;
+    const updated = auditarBaseCombustivel(abastecimentos.filter(item => !selected.has(item.id)));
+    saveAndLog(
+      'Abastecimentos',
+      'Excluiu',
+      `Excluiu permanentemente ${selected.size} abastecimento(s) selecionado(s).`,
+      historyLogs,
+      () => {
+        setAbastecimentos(updated);
+        localStorage.setItem('renea_abastecimentos', JSON.stringify(updated));
+      }
+    );
+  };
+
+  const handleDeleteTicketsJazida = (ids: string[]) => {
+    const selected = new Set(ids);
+    if (selected.size === 0) return;
+    const updated = ticketsJazida.filter(item => !selected.has(item.id));
+    saveAndLog(
+      'Tickets Jazida',
+      'Excluiu',
+      `Excluiu permanentemente ${selected.size} ticket(s) selecionado(s).`,
+      historyLogs,
+      () => {
+        setTicketsJazida(updated);
+        localStorage.setItem('renea_tickets_jazida', JSON.stringify(updated));
+      }
+    );
+  };
+
   const handleImportTicketsJazida = (novosItens: TicketJazida[]) => {
     if (!novosItens || novosItens.length === 0) return;
     const existingIds = new Set(ticketsJazida.map(item => item.id));
@@ -2744,10 +2808,9 @@ export default function App() {
 
   const handleImportPartesDiariasEquipamentos = (registros: ParteDiariaEquipamento[]) => {
     if (!registros.length) return;
-    const key = (item: ParteDiariaEquipamento) =>
-      item.numero
-        ? normalizeImportText(`numero-${item.numero}`)
-        : normalizeImportText(`${item.data}-${item.equipamentoId || item.prefixo}-${item.operadorNome}`);
+    const key = (item: ParteDiariaEquipamento) => normalizeImportText(
+      `${item.data}|${item.equipamentoId || item.prefixo}|${item.operadorId || item.matricula || item.operadorNome}`,
+    );
     const result = mergeImportedRecords(partesDiariasEquipamentos, registros, key);
     if (!result.created && !result.updated) return;
     saveAndLog(
@@ -2778,6 +2841,57 @@ export default function App() {
         localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(updated));
       }
     );
+  };
+
+  const handleDeletePartesDiariasEquipamentos = (ids: string[]) => {
+    const uniqueIds = Array.from(new Set(ids));
+    if (!uniqueIds.length || !confirm(`Excluir ${uniqueIds.length} parte(s) diária(s) selecionada(s)?`)) return;
+    const updated = partesDiariasEquipamentos.filter(item => !uniqueIds.includes(item.id));
+    saveAndLog('Parte Diária de Equipamentos', 'Excluiu', `Excluiu ${uniqueIds.length} parte(s) diária(s) em lote.`, historyLogs, () => {
+      setPartesDiariasEquipamentos(updated);
+      localStorage.setItem('renea_partes_diarias_equipamentos', JSON.stringify(updated));
+    });
+  };
+
+  const handleSaveControleEquipamentoDiario = (registro: ControleEquipamentoDiario, isNew: boolean) => {
+    const updated = isNew
+      ? [registro, ...controleEquipamentosDiario]
+      : controleEquipamentosDiario.map(item => item.id === registro.id ? registro : item);
+    saveAndLog(
+      'Controle Diário de Equipamentos',
+      isNew ? 'Criou' : 'Editou',
+      `${isNew ? 'Criou' : 'Editou'} o controle de ${registro.prefixo} em ${registro.data}.`,
+      historyLogs,
+      () => {
+        setControleEquipamentosDiario(updated);
+        localStorage.setItem('renea_controle_equipamentos_diario', JSON.stringify(updated));
+      },
+    );
+  };
+
+  const handleImportControleEquipamentosDiario = (registros: ControleEquipamentoDiario[]) => {
+    if (!registros.length) return;
+    const result = mergeImportedRecords(controleEquipamentosDiario, registros, item => normalizeImportText(item.chave || `${item.data}|${item.codigoFuncionario}`));
+    saveAndLog(
+      'Controle Diário de Equipamentos',
+      'Criou',
+      `Importação concluída: ${result.created} novo(s), ${result.updated} atualizado(s), ${result.unchanged} já existente(s), ${result.duplicated} duplicado(s) no arquivo.`,
+      historyLogs,
+      () => {
+        setControleEquipamentosDiario(result.next);
+        localStorage.setItem('renea_controle_equipamentos_diario', JSON.stringify(result.next));
+      },
+    );
+  };
+
+  const handleDeleteControleEquipamentosDiario = (ids: string[]) => {
+    const uniqueIds = Array.from(new Set(ids));
+    if (!uniqueIds.length || !confirm(`Você está prestes a excluir ${uniqueIds.length} registro(s) do controle de basculantes. Continuar?`)) return;
+    const updated = controleEquipamentosDiario.filter(item => !uniqueIds.includes(item.id));
+    saveAndLog('Controle Diário de Equipamentos', 'Excluiu', `Excluiu ${uniqueIds.length} registro(s) em uma única operação.`, historyLogs, () => {
+      setControleEquipamentosDiario(updated);
+      localStorage.setItem('renea_controle_equipamentos_diario', JSON.stringify(updated));
+    });
   };
 
   const handleSubmitApontamentoRamoLink = async (
@@ -2815,6 +2929,7 @@ export default function App() {
     materiaisCadastro?: MaterialCadastro[];
     materiaisRegistros?: MaterialRegistro[];
     partesDiariasEquipamentos?: ParteDiariaEquipamento[];
+    controleEquipamentosDiario?: ControleEquipamentoDiario[];
     controleEstacas?: ControleEstacas;
     periodosArquivados?: PeriodoArquivado[];
     masterDataReviewQueue?: MasterWorkbookReviewRow[];
@@ -2844,6 +2959,7 @@ export default function App() {
     const nextMateriaisCadastro = imported.materiaisCadastro ?? materiaisCadastro;
     const nextMateriaisRegistros = imported.materiaisRegistros ?? materiaisRegistros;
     const nextPartesDiariasEquipamentos = imported.partesDiariasEquipamentos ?? partesDiariasEquipamentos;
+    const nextControleEquipamentosDiario = imported.controleEquipamentosDiario ?? controleEquipamentosDiario;
     const nextControleEstacas = imported.controleEstacas ?? controleEstacas;
     const nextPeriodosArquivados = imported.periodosArquivados ?? periodosArquivados;
     const nextMasterDataReviewQueue = imported.masterDataReviewQueue ?? parseStoredJson<MasterWorkbookReviewRow[]>(
@@ -2884,6 +3000,7 @@ export default function App() {
       { key: 'renea_materiais_cadastro', value: JSON.stringify(nextMateriaisCadastro) },
       { key: 'renea_materiais_registros', value: JSON.stringify(nextMateriaisRegistros) },
       { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(nextPartesDiariasEquipamentos) },
+      { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(nextControleEquipamentosDiario) },
       { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
       { key: 'renea_periodos_arquivados', value: JSON.stringify(nextPeriodosArquivados) },
       { key: 'renea_master_data_review_queue', value: JSON.stringify(nextMasterDataReviewQueue) },
@@ -2912,6 +3029,7 @@ export default function App() {
     setMateriaisCadastro(nextMateriaisCadastro);
     setMateriaisRegistros(nextMateriaisRegistros);
     setPartesDiariasEquipamentos(nextPartesDiariasEquipamentos);
+    setControleEquipamentosDiario(nextControleEquipamentosDiario);
     setControleEstacas(nextControleEstacas);
     setPeriodosArquivados(nextPeriodosArquivados);
     setNotifications(nextNotifications);
@@ -2941,13 +3059,14 @@ export default function App() {
       { key: 'renea_materiais_cadastro', value: JSON.stringify(INITIAL_MATERIAIS_CADASTRO) },
       { key: 'renea_materiais_registros', value: JSON.stringify(INITIAL_MATERIAIS_REGISTROS) },
       { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS) },
-      { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
+      { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO) },
+      { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: [], cravacoes: [] }) },
       { key: 'renea_periodos_arquivados', value: '[]' },
       { key: 'renea_master_data_review_queue', value: '[]' },
       { key: 'renea_notifications', value: '[]' },
       { key: 'renea_history_logs', value: JSON.stringify([]) },
       { key: 'renea_colaboradores_planilha_v1', value: 'true' },
-      { key: 'renea_planilhas_operacionais_v1', value: 'true' },
+      { key: 'renea_planilhas_operacionais_v2', value: 'true' },
       { key: 'renea_materiais_planilha_v1', value: 'true' },
     ]);
 
@@ -2972,6 +3091,7 @@ export default function App() {
     setMateriaisCadastro(INITIAL_MATERIAIS_CADASTRO);
     setMateriaisRegistros(INITIAL_MATERIAIS_REGISTROS);
     setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
+    setControleEquipamentosDiario(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO);
     setControleEstacas(INITIAL_CONTROLE_ESTACAS);
     setPeriodosArquivados([]);
     setNotifications([]);
@@ -2995,14 +3115,15 @@ export default function App() {
       'renea_presencas_link', 'renea_historico_presencas', 'renea_apontamento_ramos',
       'renea_apontamento_ramo_registros', 'renea_materiais_cadastro', 'renea_materiais_registros',
       'renea_partes_diarias_equipamentos', 'renea_periodos_arquivados', 'renea_notifications',
+      'renea_controle_equipamentos_diario',
       'renea_master_data_review_queue',
     ];
     commitStorageBatch(localStorage, [
       ...clearedArrayKeys.map(key => ({ key, value: '[]' })),
-      { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
+      { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: [], cravacoes: [] }) },
       { key: 'renea_history_logs', value: JSON.stringify([]) },
       { key: 'renea_colaboradores_planilha_v1', value: 'true' },
-      { key: 'renea_planilhas_operacionais_v1', value: 'true' },
+      { key: 'renea_planilhas_operacionais_v2', value: 'true' },
       { key: 'renea_materiais_planilha_v1', value: 'true' },
     ]);
 
@@ -3027,7 +3148,8 @@ export default function App() {
     setMateriaisCadastro([]);
     setMateriaisRegistros([]);
     setPartesDiariasEquipamentos([]);
-    setControleEstacas(INITIAL_CONTROLE_ESTACAS);
+    setControleEquipamentosDiario([]);
+    setControleEstacas({ lotes: [], cravacoes: [] });
     setPeriodosArquivados([]);
     setNotifications([]);
     setHistoryLogs([]);
@@ -3140,7 +3262,7 @@ export default function App() {
           }
         });
         localStorage.setItem('renea_colaboradores_planilha_v1', 'true');
-        localStorage.setItem('renea_planilhas_operacionais_v1', 'true');
+        localStorage.setItem('renea_planilhas_operacionais_v2', 'true');
         localStorage.setItem('renea_materiais_planilha_v1', 'true');
       }
     );
@@ -3187,6 +3309,7 @@ export default function App() {
     const nextApontamentoRamoRegistros = mergeByIdKeepingLatest(apontamentoRamoRegistros, data.apontamentoRamoRegistros);
     const nextMateriaisRegistros = mergeByIdKeepingLatest(materiaisRegistros, data.materiaisRegistros);
     const nextPartesDiariasEquipamentos = mergeByIdKeepingLatest(partesDiariasEquipamentos, data.partesDiariasEquipamentos);
+    const nextControleEquipamentosDiario = mergeByIdKeepingLatest(controleEquipamentosDiario, data.controleEquipamentosDiario || []);
     const nextControleEstacas: ControleEstacas = data.estacas
       ? {
           lotes: mergeByIdKeepingLatest(controleEstacas.lotes, data.estacas.lotes),
@@ -3205,6 +3328,7 @@ export default function App() {
       { key: 'renea_apontamento_ramo_registros', value: JSON.stringify(nextApontamentoRamoRegistros) },
       { key: 'renea_materiais_registros', value: JSON.stringify(nextMateriaisRegistros) },
       { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(nextPartesDiariasEquipamentos) },
+      { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(nextControleEquipamentosDiario) },
       { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
     ]);
 
@@ -3218,6 +3342,7 @@ export default function App() {
     setApontamentoRamoRegistros(nextApontamentoRamoRegistros);
     setMateriaisRegistros(nextMateriaisRegistros);
     setPartesDiariasEquipamentos(nextPartesDiariasEquipamentos);
+    setControleEquipamentosDiario(nextControleEquipamentosDiario);
     setControleEstacas(nextControleEstacas);
   };
 
@@ -3243,6 +3368,7 @@ export default function App() {
     const splitApontamentoRamoRegistros = splitByArchivePeriod<ApontamentoRamoRegistro>(apontamentoRamoRegistros, item => item.data, dataInicio, dataFim);
     const splitMateriaisRegistros = splitByArchivePeriod<MaterialRegistro>(materiaisRegistros, item => item.data, dataInicio, dataFim);
     const splitPartesDiariasEquipamentos = splitByArchivePeriod<ParteDiariaEquipamento>(partesDiariasEquipamentos, item => item.data, dataInicio, dataFim);
+    const splitControleEquipamentosDiario = splitByArchivePeriod<ControleEquipamentoDiario>(controleEquipamentosDiario, item => item.data, dataInicio, dataFim);
     const splitEstacasLotes = splitByArchivePeriod<ControleEstacas['lotes'][number]>(controleEstacas.lotes, item => item.data, dataInicio, dataFim);
     const splitEstacasCravacoes = splitByArchivePeriod<ControleEstacas['cravacoes'][number]>(controleEstacas.cravacoes, item => item.data, dataInicio, dataFim);
 
@@ -3257,6 +3383,7 @@ export default function App() {
       apontamentoRamoRegistros: splitApontamentoRamoRegistros.selected,
       materiaisRegistros: splitMateriaisRegistros.selected,
       partesDiariasEquipamentos: splitPartesDiariasEquipamentos.selected,
+      controleEquipamentosDiario: splitControleEquipamentosDiario.selected,
       estacas: {
         lotes: splitEstacasLotes.selected,
         cravacoes: splitEstacasCravacoes.selected,
@@ -3306,6 +3433,7 @@ export default function App() {
           { key: 'renea_apontamento_ramo_registros', value: JSON.stringify(splitApontamentoRamoRegistros.remaining) },
           { key: 'renea_materiais_registros', value: JSON.stringify(splitMateriaisRegistros.remaining) },
           { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(splitPartesDiariasEquipamentos.remaining) },
+          { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(splitControleEquipamentosDiario.remaining) },
           { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: splitEstacasLotes.remaining, cravacoes: splitEstacasCravacoes.remaining }) },
           { key: 'renea_periodos_arquivados', value: JSON.stringify(nextArchives) },
         ]);
@@ -3319,6 +3447,7 @@ export default function App() {
         setApontamentoRamoRegistros(splitApontamentoRamoRegistros.remaining);
         setMateriaisRegistros(splitMateriaisRegistros.remaining);
         setPartesDiariasEquipamentos(splitPartesDiariasEquipamentos.remaining);
+        setControleEquipamentosDiario(splitControleEquipamentosDiario.remaining);
         setControleEstacas({ lotes: splitEstacasLotes.remaining, cravacoes: splitEstacasCravacoes.remaining });
         setPeriodosArquivados(nextArchives);
       }
@@ -3391,6 +3520,7 @@ export default function App() {
       materiaisCadastro,
       materiaisRegistros,
       partesDiariasEquipamentos,
+      controleEquipamentosDiario,
       controleEstacas,
       periodosArquivados,
       masterDataReviewQueue: parseStoredJson<MasterWorkbookReviewRow[]>(
@@ -3482,6 +3612,7 @@ export default function App() {
       const incomingTicketsJazida = (parsed.ticketsJazida || []).filter((x: TicketJazida) => inRange(x.data));
       const incomingMateriaisRegistros = (parsed.materiaisRegistros || []).filter((x: MaterialRegistro) => inRange(x.data));
       const incomingPartesDiariasEquipamentos = (parsed.partesDiariasEquipamentos || []).filter((x: ParteDiariaEquipamento) => inRange(x.data));
+      const incomingControleEquipamentosDiario = (parsed.controleEquipamentosDiario || []).filter((x: ControleEquipamentoDiario) => inRange(x.data));
       const incomingEstacasLotes = (parsed.controleEstacas?.lotes || []).filter((x: ControleEstacas['lotes'][number]) => inRange(x.data));
       const incomingEstacasCravacoes = (parsed.controleEstacas?.cravacoes || []).filter((x: ControleEstacas['cravacoes'][number]) => inRange(x.data));
 
@@ -3494,12 +3625,13 @@ export default function App() {
       const newTicketsJazida = mergeById(ticketsJazida, incomingTicketsJazida);
       const newMateriaisRegistros = mergeById(materiaisRegistros, incomingMateriaisRegistros);
       const newPartesDiariasEquipamentos = mergeById(partesDiariasEquipamentos, incomingPartesDiariasEquipamentos);
+      const newControleEquipamentosDiario = mergeById(controleEquipamentosDiario, incomingControleEquipamentosDiario);
       const newControleEstacas: ControleEstacas = {
         lotes: mergeById(controleEstacas.lotes, incomingEstacasLotes),
         cravacoes: mergeById(controleEstacas.cravacoes, incomingEstacasCravacoes),
       };
 
-      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingApontamentoRamoRegistros.length + incomingTicketsJazida.length + incomingMateriaisRegistros.length + incomingPartesDiariasEquipamentos.length + incomingEstacasLotes.length + incomingEstacasCravacoes.length;
+      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingApontamentoRamoRegistros.length + incomingTicketsJazida.length + incomingMateriaisRegistros.length + incomingPartesDiariasEquipamentos.length + incomingControleEquipamentosDiario.length + incomingEstacasLotes.length + incomingEstacasCravacoes.length;
       const logMsg = `Importou seletivamente ${totalImportados} registro(s) datado(s) entre ${dataInicio || 'início'} e ${dataFim || 'fim'}, além dos cadastros base.`;
       const newLog: HistoryLog = {
         id: `log-${Date.now()}`,
@@ -3533,6 +3665,7 @@ export default function App() {
         { key: 'renea_materiais_cadastro', value: JSON.stringify(newMateriaisCadastro) },
         { key: 'renea_materiais_registros', value: JSON.stringify(newMateriaisRegistros) },
         { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(newPartesDiariasEquipamentos) },
+        { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(newControleEquipamentosDiario) },
         { key: 'renea_controle_estacas', value: JSON.stringify(newControleEstacas) },
         { key: 'renea_master_data_review_queue', value: JSON.stringify(newMasterDataReviewQueue) },
       { key: 'renea_history_logs', value: JSON.stringify([]) },
@@ -3559,6 +3692,7 @@ export default function App() {
       setMateriaisCadastro(newMateriaisCadastro);
       setMateriaisRegistros(newMateriaisRegistros);
       setPartesDiariasEquipamentos(newPartesDiariasEquipamentos);
+      setControleEquipamentosDiario(newControleEquipamentosDiario);
       setControleEstacas(newControleEstacas);
     setHistoryLogs([]);
 
@@ -3595,9 +3729,12 @@ export default function App() {
           token={externalPresenceToken}
           gruposEquipe={gruposEquipe}
           funcionarios={funcionarios}
+          empresas={empresas}
           obras={obras}
           presencasLink={presencasLink}
           isLoadingCloud={isExternalPresenceLoading}
+          loadError={externalPresenceLoadError}
+          onRetry={() => void reloadExternalPresence()}
           onSubmitPresenca={handleSubmitPresencaLink}
         />
       </Suspense>
@@ -3870,6 +4007,7 @@ export default function App() {
 
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
             className="p-2 text-slate-400 hover:text-white cursor-pointer"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -4102,6 +4240,10 @@ export default function App() {
                 materiais={materiaisRegistros}
                 ordensServico={ordensServico}
                 partesDiarias={partesDiariasEquipamentos}
+                controlesEquipamentos={controleEquipamentosDiario}
+                gruposEquipe={gruposEquipe}
+                presencas={presencasLink}
+                apontamentos={apontamentoRamoRegistros}
                 vinculos={vinculosOperadorEquipamento}
                 onLink={handleVincularOperadorEquipamento}
                 onUnlink={handleEncerrarVinculoOperadorEquipamento}
@@ -4117,6 +4259,11 @@ export default function App() {
                 estacas={controleEstacas}
                 ordensServico={ordensServico}
                 partesDiarias={partesDiariasEquipamentos}
+                controlesEquipamentos={controleEquipamentosDiario}
+                empresas={empresas}
+                equipamentos={equipamentos}
+                funcionarios={funcionarios}
+                gruposEquipe={gruposEquipe}
                 onNavigate={navigateTo}
               />
             )}
@@ -4173,6 +4320,7 @@ export default function App() {
                 lubrificacoes={lubrificacoes}
                 onSaveAbastecimento={handleSaveAbastecimento}
                 onDeleteAbastecimento={handleDeleteAbastecimento}
+                onDeleteAbastecimentos={handleDeleteAbastecimentos}
                 onImportAbastecimentos={handleImportAbastecimentos}
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}
@@ -4188,7 +4336,24 @@ export default function App() {
                 obras={obras}
                 onSave={handleSaveParteDiariaEquipamento}
                 onDelete={handleDeleteParteDiariaEquipamento}
+                onDeleteMany={handleDeletePartesDiariasEquipamentos}
                 onImport={handleImportPartesDiariasEquipamentos}
+              />
+            )}
+
+            {activeTab === 'controle-equipamentos' && (
+              <ControleEquipamentosDiarioTab
+                registros={controleEquipamentosDiario}
+                equipamentos={equipamentos}
+                empresas={empresas}
+                funcionarios={funcionarios}
+                gruposEquipe={gruposEquipe}
+                ordensServico={ordensServico}
+                onSave={handleSaveControleEquipamentoDiario}
+                onImport={handleImportControleEquipamentosDiario}
+                onDeleteMany={handleDeleteControleEquipamentosDiario}
+                onOpenMaintenance={() => navigateTo('manutencao')}
+                onOpenEmployeeRegistration={() => navigateTo('cadastros')}
               />
             )}
 
@@ -4200,6 +4365,7 @@ export default function App() {
                 apontamentos={presencasLink}
                 diario={<PresencaTab
                   funcionarios={funcionarios}
+                  empresas={empresas}
                   obras={obras}
                   listasPresenca={listasPresenca}
                   onSaveListaPresenca={handleSaveListaPresenca}
@@ -4207,6 +4373,7 @@ export default function App() {
                 />}
                 tempoReal={<ControlePresencaTab
                   funcionarios={funcionarios}
+                  empresas={empresas}
                   obras={obras}
                   gruposEquipe={gruposEquipe}
                   presencasLink={presencasLink}
@@ -4255,6 +4422,7 @@ export default function App() {
                 ramos={apontamentoRamos}
                 onSaveTicket={handleSaveTicketJazida}
                 onDeleteTicket={handleDeleteTicketJazida}
+                onDeleteTickets={handleDeleteTicketsJazida}
                 onImportTickets={handleImportTicketsJazida}
                 onReserveTicketNumber={handleReserveTicketNumber}
                 onReserveTicketNumbers={handleReserveTicketNumbers}

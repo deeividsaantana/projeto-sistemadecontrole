@@ -55,7 +55,8 @@ import {
   Clock, 
   TrendingUp, 
   ArrowUpRight,
-  ShieldAlert
+  ShieldAlert,
+  ChevronDown
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -250,6 +251,7 @@ export default function Dashboard({
   const [builderGroup, setBuilderGroup] = useState<BuilderGroup>('dia');
   const [builderStart, setBuilderStart] = useState('');
   const [builderEnd, setBuilderEnd] = useState('');
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
 
   const sourceOptions: Array<{ id: BuilderSource; label: string }> = [
     { id: 'abastecimentos', label: 'Combustível' },
@@ -545,20 +547,22 @@ export default function Dashboard({
         partesDiarias={partesDiariasEquipamentos}
       />
 
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4" id="dashboard-builder">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" id="dashboard-builder">
+        <button type="button" onClick={() => setIsBuilderOpen(value => !value)} className="flex w-full flex-col gap-2 text-left md:flex-row md:items-center md:justify-between" aria-expanded={isBuilderOpen}>
           <div>
-            <h2 className="text-xs uppercase tracking-widest font-black text-slate-400 font-mono flex items-center gap-1.5">
-              <Activity className="w-4 h-4 text-emerald-400" />
-              Criar dashboard
+            <h2 className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-slate-700">
+              <Activity className="h-4 w-4 text-emerald-600" />
+              Personalizar análise
             </h2>
-            <p className="text-[10px] text-slate-500 mt-0.5">Monte um painel por fonte, métrica, agrupamento e período.</p>
+            <p className="mt-0.5 text-[10px] text-slate-500">Abra apenas quando precisar montar um gráfico por fonte, métrica e período.</p>
           </div>
-          <span className="text-[10px] font-bold text-emerald-300 font-mono">
-            {builderRecords.length} registro(s) | {builderTotal.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+          <span className="flex items-center gap-2 text-[10px] font-bold text-emerald-700">
+            {builderRecords.length} registro(s)
+            <ChevronDown className={`h-4 w-4 transition-transform ${isBuilderOpen ? 'rotate-180' : ''}`} />
           </span>
-        </div>
+        </button>
 
+        {isBuilderOpen && <div className="mt-5 space-y-4 border-t border-slate-100 pt-5">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <label className="text-[10px] font-bold uppercase text-slate-500">
             Fonte
@@ -626,7 +630,7 @@ export default function Dashboard({
                 <BarChart data={builderData} margin={{ top: 10, right: 14, left: -20, bottom: 26 }}>
                   <XAxis dataKey="name" stroke="#64748b" fontSize={9} tickLine={false} interval={0} angle={-18} textAnchor="end" height={48} />
                   <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} itemStyle={{ color: '#34d399', fontSize: '11px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', boxShadow: '0 12px 28px rgba(15,23,42,.14)' }} labelStyle={{ color: '#334155', fontWeight: 700 }} itemStyle={{ color: '#047857', fontSize: '11px' }} />
                   <Bar dataKey="valor" fill="#34d399" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -654,83 +658,8 @@ export default function Dashboard({
             </table>
           </div>
         </div>
+        </div>}
       </section>
-
-      {/* 2. KPI Scorecard Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4" id="kpi-grid">
-        {/* KPI 1 */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden group hover:border-emerald-500/30 transition-all">
-          <div className="p-3 bg-emerald-600/10 text-emerald-400 rounded-xl">
-            <Droplets className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Abastecido</span>
-            <span className="text-xl font-black text-white font-mono block mt-1">{totalLiters.toLocaleString('pt-BR')} L</span>
-            <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
-              <TrendingUp className="w-3.5 h-3.5" />
-              Consumo acumulado
-            </span>
-          </div>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all"></div>
-        </div>
-
-        {/* KPI 2 */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden group hover:border-emerald-500/30 transition-all">
-          <div className="p-3 bg-emerald-600/10 text-emerald-400 rounded-xl">
-            <Truck className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Equipamentos Ativos</span>
-            <span className="text-xl font-black text-white font-mono block mt-1">{activeEquipments}</span>
-            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Operando em campo</span>
-          </div>
-        </div>
-
-        {/* KPI 3 */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden group hover:border-rose-500/30 transition-all">
-          <div className="p-3 bg-rose-500/10 text-rose-400 rounded-xl">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Frota Parada</span>
-            <span className="text-xl font-black text-white font-mono block mt-1">{stoppedEquipments}</span>
-            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Sem operador ou inativo</span>
-          </div>
-        </div>
-
-        {/* KPI 4 */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden group hover:border-amber-500/30 transition-all">
-          <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl">
-            <Wrench className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Em Manutenção</span>
-            <span className="text-xl font-black text-white font-mono block mt-1">{maintenanceEquipments}</span>
-            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
-              {equipamentosExternos.manutencao !== null ? 'Sincronizado com manutenção externa' : 'Oficina de campo / corretiva'}
-            </span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onNavigate('lancamentos')}
-          className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4 text-left shadow-sm transition-all hover:border-cyan-500/40"
-        >
-          <div className="p-3 bg-cyan-500/10 text-cyan-300 rounded-xl">
-            <Droplets className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-mono">Registros Combustível</span>
-            <span className="text-xl font-black font-mono block mt-1 text-emerald-300">
-              {fuelLaunchCount}
-            </span>
-            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5 truncate">
-              {fuelLaunchCount ? `${totalLiters.toLocaleString('pt-BR')} L lançados` : 'Sem lançamentos'}
-            </span>
-          </div>
-        </button>
-      </div>
 
       {/* 2.5 Presença & Manutenção Summary Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="presenca-manutencao-summary-row">
@@ -847,9 +776,9 @@ export default function Dashboard({
                     axisLine={false}
                   />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                    labelStyle={{ color: '#94a3b8', fontWeight: 'bold', fontSize: '11px' }}
-                    itemStyle={{ color: '#10b981', fontSize: '12px' }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', boxShadow: '0 12px 28px rgba(15,23,42,.14)' }}
+                    labelStyle={{ color: '#334155', fontWeight: 'bold', fontSize: '11px' }}
+                    itemStyle={{ color: '#047857', fontSize: '12px' }}
                   />
                   <Area 
                     type="monotone" 
@@ -894,8 +823,8 @@ export default function Dashboard({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                    itemStyle={{ color: '#fff', fontSize: '11px' }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', boxShadow: '0 12px 28px rgba(15,23,42,.14)' }}
+                    itemStyle={{ color: '#047857', fontSize: '11px' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -937,8 +866,8 @@ export default function Dashboard({
                   <XAxis type="number" stroke="#475569" fontSize={9} tickLine={false} />
                   <YAxis dataKey="nome" type="category" stroke="#475569" fontSize={9} tickLine={false} width={80} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                    itemStyle={{ color: '#10b981', fontSize: '11px' }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', boxShadow: '0 12px 28px rgba(15,23,42,.14)' }}
+                    itemStyle={{ color: '#047857', fontSize: '11px' }}
                   />
                   <Bar dataKey="litros" fill="#059669" radius={[0, 4, 4, 0]}>
                     {consumptionByObra.map((entry, index) => (
@@ -977,8 +906,8 @@ export default function Dashboard({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                    itemStyle={{ color: '#fff', fontSize: '11px' }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', boxShadow: '0 12px 28px rgba(15,23,42,.14)' }}
+                    itemStyle={{ color: '#047857', fontSize: '11px' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -1014,8 +943,8 @@ export default function Dashboard({
                   <XAxis dataKey="nome" stroke="#475569" fontSize={9} tickLine={false} />
                   <YAxis stroke="#475569" fontSize={9} tickLine={false} axisLine={false} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                    itemStyle={{ color: '#34d399', fontSize: '11px' }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', boxShadow: '0 12px 28px rgba(15,23,42,.14)' }}
+                    itemStyle={{ color: '#047857', fontSize: '11px' }}
                   />
                   <Bar dataKey="presencas" fill="#34d399" radius={[4, 4, 0, 0]}>
                     {headcountByObra.map((entry, index) => (

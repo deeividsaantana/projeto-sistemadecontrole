@@ -55,6 +55,7 @@ interface LancamentosTabProps {
 
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
+  onDeleteAbastecimentos: (ids: string[]) => void;
   onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
   onDeleteLubrificacao: (id: string) => void;
@@ -73,6 +74,7 @@ export default function LancamentosTab({
   lubrificacoes,
   onSaveAbastecimento,
   onDeleteAbastecimento,
+  onDeleteAbastecimentos,
   onImportAbastecimentos,
   onSaveLubrificacao,
   onDeleteLubrificacao,
@@ -85,6 +87,7 @@ export default function LancamentosTab({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [selectedAbastecimentoIds, setSelectedAbastecimentoIds] = useState<string[]>([]);
   const [validationError, setValidationError] = useState('');
 
   // --- Filtros avançados do módulo de Combustível/Lubrificação (Prioridade 1) ---
@@ -1546,10 +1549,16 @@ export default function LancamentosTab({
         
         {/* ABASTECIMENTOS TABLE */}
         {mode === 'abastecimentos' && (
-          <div className="overflow-x-auto">
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-white px-5 py-3 text-xs">
+              <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredAbastecimentos.length > 0 && filteredAbastecimentos.every(item => selectedAbastecimentoIds.includes(item.id))} onChange={event => setSelectedAbastecimentoIds(event.target.checked ? filteredAbastecimentos.map(item => item.id) : [])} /> Selecionar visíveis ({selectedAbastecimentoIds.length})</label>
+              <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedAbastecimentoIds.length} abastecimento(s) selecionado(s)?`)) { onDeleteAbastecimentos(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+            </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-850 text-slate-400 uppercase text-[10px] font-bold bg-slate-950/20 font-mono">
+                  <th className="py-3.5 px-5">Sel.</th>
                   <th className="py-3.5 px-5">Data / Hora</th>
                   <th className="py-3.5 px-5">Frota</th>
                   <th className="py-3.5 px-5">Combustível</th>
@@ -1564,7 +1573,7 @@ export default function LancamentosTab({
               <tbody className="divide-y divide-slate-850">
                 {filteredAbastecimentos.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-slate-500 italic">
+                    <td colSpan={10} className="py-10 text-center text-slate-500 italic">
                       {hasFiltrosAtivos ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Nenhum abastecimento encontrado.'}
                     </td>
                   </tr>
@@ -1586,6 +1595,7 @@ export default function LancamentosTab({
 
                     return (
                       <tr key={ab.id} className="hover:bg-slate-950/20 transition-colors">
+                        <td className="py-4 px-5"><input type="checkbox" checked={selectedAbastecimentoIds.includes(ab.id)} onChange={event => setSelectedAbastecimentoIds(current => event.target.checked ? [...current, ab.id] : current.filter(id => id !== ab.id))} /></td>
                         <td className="py-4 px-5">
                           <span className="font-bold text-slate-100 block">{ab.data.split('-').reverse().join('/')}</span>
                           <span className="text-[10px] text-slate-500 font-mono">{ab.hora}</span>
@@ -1631,6 +1641,7 @@ export default function LancamentosTab({
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 

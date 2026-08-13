@@ -270,6 +270,7 @@ export interface GrupoEquipe {
   frenteServico: string;
   obraId?: string;
   funcionarioIds: string[];
+  funcionarioMatriculas?: string[];
   status: 'ativo' | 'inativo';
   token: string;
   tokenGeral?: string;
@@ -578,6 +579,7 @@ export interface PeriodoArquivado {
     apontamentoRamoRegistros: ApontamentoRamoRegistro[];
     materiaisRegistros: MaterialRegistro[];
     partesDiariasEquipamentos: ParteDiariaEquipamento[];
+    controleEquipamentosDiario?: ControleEquipamentoDiario[];
     estacas?: ControleEstacas;
   };
 }
@@ -638,6 +640,51 @@ export interface ParteDiariaEquipamento {
   outrosProblemas: string;
   status: StatusParteDiariaEquipamento;
   observacao: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export type StatusControleEquipamentoDiario =
+  | 'Em operação'
+  | 'Disponível'
+  | 'Aguardando motorista'
+  | 'Em manutenção'
+  | 'Aguardando manutenção'
+  | 'Aguardando equipamento'
+  | 'Reserva'
+  | 'Desmobilizado';
+
+export interface EventoControleEquipamentoDiario {
+  id: string;
+  ocorridoEm: string;
+  tipo: 'SAIDA_OPERACAO' | 'ENTRADA_MANUTENCAO' | 'LIBERACAO_MANUTENCAO' | 'ALTERACAO_STATUS';
+  statusAnterior?: StatusControleEquipamentoDiario;
+  statusNovo: StatusControleEquipamentoDiario;
+  motivo?: string;
+  observacao?: string;
+  ordemServicoId?: string;
+}
+
+export interface ControleEquipamentoDiario {
+  id: string;
+  chave: string;
+  data: string;
+  funcionarioId: string;
+  codigoFuncionario: string;
+  nomeMotorista: string;
+  equipamentoId: string;
+  prefixo: string;
+  familia: string;
+  status: StatusControleEquipamentoDiario;
+  horaSaida: string;
+  horaEntradaManutencao: string;
+  horaLiberacao: string;
+  motivoManutencao?: string;
+  ordemServicoId?: string;
+  eventos?: EventoControleEquipamentoDiario[];
+  observacao: string;
+  origem: 'SISTEMA' | 'PLANILHA';
+  revisao: string[];
   criadoEm: string;
   atualizadoEm: string;
 }

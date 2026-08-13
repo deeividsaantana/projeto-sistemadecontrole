@@ -4,6 +4,7 @@ import type {
   ClimaApontamento,
   CondicaoApontamento,
   Funcionario,
+  Empresa,
   GrupoEquipe,
   ObraLocal,
   PresencaStatus,
@@ -36,15 +37,30 @@ const callPublicApi = async <T,>(path: string, init?: RequestInit): Promise<ApiE
 export interface PublicPresenceConfig {
   gruposEquipe: GrupoEquipe[];
   funcionarios: Funcionario[];
+  empresas: Empresa[];
   obras: ObraLocal[];
 }
 
 export const loadPublicPresenceConfig = async (token: string): Promise<PublicPresenceConfig> => {
-  const response = await callPublicApi<PublicPresenceConfig>(
-    `/.netlify/functions/public-presenca?token=${encodeURIComponent(token)}`,
-  );
-  if (!response.data) throw new Error('Configuração de presença não encontrada.');
-  return response.data;
+  let lastError: unknown;
+  const delays = [0, 700, 1_600];
+  for (const delay of delays) {
+    if (delay) await new Promise(resolve => window.setTimeout(resolve, delay));
+    try {
+      const response = await callPublicApi<PublicPresenceConfig>(
+        `/.netlify/functions/public-presenca?token=${encodeURIComponent(token)}`,
+      );
+      if (!response.data || !Array.isArray(response.data.gruposEquipe) || response.data.gruposEquipe.length === 0) {
+        throw new Error('Nenhuma equipe foi retornada pelo serviço de presença.');
+      }
+      return response.data;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Não foi possível carregar as equipes de presença.');
 };
 
 export const submitPublicPresence = async (

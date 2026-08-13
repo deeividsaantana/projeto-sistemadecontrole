@@ -64,6 +64,7 @@ interface TicketsJazidaTabProps {
   ramos: ApontamentoRamo[];
   onSaveTicket: (item: TicketJazida, isNew: boolean) => void;
   onDeleteTicket: (id: string) => void;
+  onDeleteTickets: (ids: string[]) => void;
   onImportTickets: (items: TicketJazida[]) => void;
   onReserveTicketNumber: () => Promise<string>;
   onReserveTicketNumbers: (count: number) => Promise<string[]>;
@@ -290,6 +291,7 @@ export default function TicketsJazidaTab({
   ramos,
   onSaveTicket,
   onDeleteTicket,
+  onDeleteTickets,
   onImportTickets,
   onReserveTicketNumber,
   onReserveTicketNumbers,
@@ -298,6 +300,7 @@ export default function TicketsJazidaTab({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
   const [validationError, setValidationError] = useState('');
   const [importMessage, setImportMessage] = useState('');
   const [viewingTicket, setViewingTicket] = useState<TicketJazida | null>(null);
@@ -2291,10 +2294,15 @@ export default function TicketsJazidaTab({
 
       {/* Table */}
       <div className="bg-slate-900 border border-slate-850 rounded-2xl overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-white px-5 py-3 text-xs">
+          <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredTickets.length > 0 && filteredTickets.every(item => selectedTicketIds.includes(item.id))} onChange={event => setSelectedTicketIds(event.target.checked ? filteredTickets.map(item => item.id) : [])} /> Selecionar visíveis ({selectedTicketIds.length})</label>
+          <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedTicketIds.length} ticket(s) selecionado(s)?`)) { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-850 text-slate-400 uppercase text-[10px] font-bold bg-slate-950/20 font-mono">
+                <th className="py-3.5 px-5">Sel.</th>
                 <th className="py-3.5 px-5">Data / Hora</th>
                 <th className="py-3.5 px-5">Ticket Nº</th>
                 <th className="py-3.5 px-5">Prefixo / Placa</th>
@@ -2309,7 +2317,7 @@ export default function TicketsJazidaTab({
             <tbody className="divide-y divide-slate-850">
               {filteredTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-slate-500 italic">
+                  <td colSpan={10} className="py-10 text-center text-slate-500 italic">
                     {hasFiltrosAtivos ? 'Nenhum ticket encontrado para os filtros selecionados.' : 'Nenhum ticket registrado.'}
                   </td>
                 </tr>
@@ -2323,6 +2331,7 @@ export default function TicketsJazidaTab({
                   );
                   return (
                     <tr key={t.id} className="hover:bg-slate-950/20 transition-colors">
+                      <td className="py-4 px-5"><input type="checkbox" checked={selectedTicketIds.includes(t.id)} onChange={event => setSelectedTicketIds(current => event.target.checked ? [...current, t.id] : current.filter(id => id !== t.id))} /></td>
                       <td className="py-4 px-5">
                         <span className="font-bold text-slate-100 block">{t.data.split('-').reverse().join('/')}</span>
                         <span className="text-[10px] text-slate-500 font-mono block">{t.tipoTicket || 'Liberação'}</span>

@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react';
 import ExcelJS from 'exceljs';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import {
   Activity,
   AlertTriangle,
@@ -49,6 +47,23 @@ import {
   downloadCorporateWorkbook,
   styleCorporateWorksheet,
 } from '../utils/excelCorporate';
+import { generateUniversalPdfReport } from '../utils/universalPdfReport';
+import fleetTruckPhoto from '../assets/equipment/fleet-truck.png';
+import earthmovingPhoto from '../assets/equipment/earthmoving.png';
+import liftingPilingPhoto from '../assets/equipment/lifting-piling.png';
+import siteSupportPhoto from '../assets/equipment/site-support.png';
+import concreteMixerPhoto from '../assets/equipment/concrete-mixer.png';
+import truckCranePhoto from '../assets/equipment/truck-crane.png';
+import fuelServiceTruckPhoto from '../assets/equipment/fuel-service-truck.png';
+import bulldozerPhoto from '../assets/equipment/bulldozer.png';
+import backhoePhoto from '../assets/equipment/backhoe.png';
+import roadRollerPhoto from '../assets/equipment/road-roller.png';
+import drillingRigPhoto from '../assets/equipment/drilling-rig.png';
+import aerialPlatformPhoto from '../assets/equipment/aerial-platform.png';
+import neutralTruckPhoto from '../assets/equipment/neutral-truck.png';
+import neutralEarthmovingPhoto from '../assets/equipment/neutral-earthmoving.png';
+import neutralLiftingPhoto from '../assets/equipment/neutral-lifting.png';
+import neutralSupportPhoto from '../assets/equipment/neutral-support.png';
 
 interface ManutencaoEquipamentosTabProps {
   equipamentos: Equipamento[];
@@ -222,12 +237,28 @@ const MetricCard = ({
   </div>
 );
 
-const EmptyEquipmentImage = ({ compact = false }: { compact?: boolean }) => (
-  <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">
-    <Truck className={compact ? 'h-8 w-8' : 'h-14 w-14'} />
-    {!compact && <span className="mt-2 text-[10px] font-bold uppercase tracking-widest">Foto não cadastrada</span>}
-  </div>
-);
+const representativeEquipmentPhoto = (equipment: Equipamento, isReneaOwned: boolean) => {
+  if (equipment.foto) return equipment.foto;
+  const type = `${equipment.tipo} ${equipment.nome} ${equipment.modelo}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (!isReneaOwned) {
+    if (/escavadeira|retroescavadeira|trator|compactador|rolo/.test(type)) return neutralEarthmovingPhoto;
+    if (/guindaste|grua|perfuratriz|bate estaca|pta|plataforma/.test(type)) return neutralLiftingPhoto;
+    if (/gerador|compressor|bomba de agua/.test(type)) return neutralSupportPhoto;
+    return neutralTruckPhoto;
+  }
+  if (/betoneira|bomba de concreto|caminhao bomba/.test(type)) return concreteMixerPhoto;
+  if (/munck/.test(type)) return truckCranePhoto;
+  if (/comboio|abastecimento/.test(type)) return fuelServiceTruckPhoto;
+  if (/trator de esteira|bulldozer/.test(type)) return bulldozerPhoto;
+  if (/retroescavadeira/.test(type)) return backhoePhoto;
+  if (/compactador|rolo/.test(type)) return roadRollerPhoto;
+  if (/perfuratriz|bate estaca/.test(type)) return drillingRigPhoto;
+  if (/pta|plataforma/.test(type)) return aerialPlatformPhoto;
+  if (/guindaste|grua/.test(type)) return liftingPilingPhoto;
+  if (/escavadeira/.test(type)) return earthmovingPhoto;
+  if (/gerador|compressor|bomba de agua/.test(type)) return siteSupportPhoto;
+  return fleetTruckPhoto;
+};
 
 export default function ManutencaoEquipamentosTab({
   equipamentos,
@@ -242,6 +273,7 @@ export default function ManutencaoEquipamentosTab({
   onUpdateEquipamentoStatus,
 }: ManutencaoEquipamentosTabProps) {
   const [activeView, setActiveView] = useState<MaintenanceView>('frota');
+  const reneaCompanyIds = useMemo(() => new Set(empresas.filter(company => company.nome.toLowerCase().includes('renea')).map(company => company.id)), [empresas]);
   const [searchQuery, setSearchQuery] = useState('');
   const [equipmentStatusFilter, setEquipmentStatusFilter] = useState('todos');
   const [orderStatusFilter, setOrderStatusFilter] = useState('todos');
@@ -530,85 +562,50 @@ export default function ManutencaoEquipamentosTab({
     }
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
     setIsExporting(true);
     try {
-      const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      document.setFillColor(15, 23, 42);
-      document.rect(0, 0, 297, 28, 'F');
-      document.setTextColor(255, 255, 255);
-      document.setFontSize(16);
-      document.text('RENEA INFRAESTRUTURA', 14, 12);
-      document.setFontSize(10);
-      document.text('Relatório Profissional de Manutenção e Disponibilidade', 14, 20);
-      document.setTextColor(51, 65, 85);
-      document.setFontSize(8);
-      document.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 230, 20);
-      document.setFontSize(9);
-      document.text(
-        `Frota: ${equipamentos.length} | Parados/manutenção: ${stoppedEquipment} | OS abertas: ${openOrders.length} | Sem motorista: ${withoutDriver} | Disponibilidade média: ${formatNumber(averageAvailability, '%')}`,
-        14,
-        35,
-      );
-
-      autoTable(document, {
-        startY: 41,
-        head: [[
-          'Prefixo', 'Equipamento', 'Status', 'Motorista/Operador', 'Local', 'OS',
-          'H. máquina', 'H. equip.', 'H. paradas', 'Disponib.', 'Meta',
-        ]],
-        body: fleetSummaries.map(summary => [
-          summary.equipment.prefixo,
-          summary.equipment.nome,
-          summary.equipment.status,
-          summary.driverName,
-          locationName(summary.equipment, obras),
-          summary.openWorkOrders,
-          formatNumber(summary.machineHours),
-          formatNumber(summary.equipmentHours),
-          formatNumber(summary.stoppedHours),
-          formatNumber(summary.maintenanceAvailabilityPercent, '%'),
-          formatNumber(summary.targetPercent, '%'),
-        ]),
-        styles: { fontSize: 6.8, cellPadding: 1.5 },
-        headStyles: { fillColor: [6, 95, 70], textColor: 255 },
-        alternateRowStyles: { fillColor: [241, 245, 249] },
+      await generateUniversalPdfReport({
+        title: 'Relatório de Manutenção e Disponibilidade',
+        subtitle: 'Frota, responsáveis, horas operacionais, disponibilidade e ordens de serviço',
+        company: 'RENEA INFRAESTRUTURA · Sistema Integrado de Gestão Operacional',
+        orientation: 'landscape',
+        fileName: `RENEA_manutencao_profissional_${fileDate()}.pdf`,
+        filters: [searchQuery ? `Busca: ${searchQuery}` : 'Toda a frota', equipmentStatusFilter !== 'todos' ? `Status: ${equipmentStatusFilter}` : 'Todos os status'],
+        summary: [
+          { label: 'Frota', value: equipamentos.length },
+          { label: 'Parados / manutenção', value: stoppedEquipment },
+          { label: 'OS abertas', value: openOrders.length },
+          { label: 'Sem motorista', value: withoutDriver },
+          { label: 'Disponibilidade média', value: formatNumber(averageAvailability, '%') },
+        ],
+        columns: [
+          { header: 'Prefixo', dataKey: 'prefixo' },
+          { header: 'Equipamento', dataKey: 'equipamento' },
+          { header: 'Status', dataKey: 'status' },
+          { header: 'Motorista / Operador', dataKey: 'motorista' },
+          { header: 'Local', dataKey: 'local' },
+          { header: 'OS abertas', dataKey: 'os' },
+          { header: 'H. máquina', dataKey: 'maquina' },
+          { header: 'H. equipamento', dataKey: 'equipamentoHoras' },
+          { header: 'H. paradas', dataKey: 'paradas' },
+          { header: 'Disponibilidade', dataKey: 'disponibilidade' },
+          { header: 'Meta', dataKey: 'meta' },
+        ],
+        rows: fleetSummaries.map(summary => ({
+          prefixo: summary.equipment.prefixo,
+          equipamento: summary.equipment.nome,
+          status: summary.equipment.status,
+          motorista: summary.driverName,
+          local: locationName(summary.equipment, obras),
+          os: summary.openWorkOrders,
+          maquina: formatNumber(summary.machineHours),
+          equipamentoHoras: formatNumber(summary.equipmentHours),
+          paradas: formatNumber(summary.stoppedHours),
+          disponibilidade: formatNumber(summary.maintenanceAvailabilityPercent, '%'),
+          meta: formatNumber(summary.targetPercent, '%'),
+        })),
       });
-
-      document.addPage();
-      document.setTextColor(15, 23, 42);
-      document.setFontSize(13);
-      document.text('Histórico detalhado das ordens de serviço', 14, 14);
-      autoTable(document, {
-        startY: 20,
-        head: [[
-          'OS', 'Equip.', 'Status', 'Abertura', 'Conclusão', 'Motivo', 'Manutenção',
-          'Motorista', 'H. maq.', 'H. parada', 'Disp.', 'Movimentação', 'Saída/Chegada',
-        ]],
-        body: ordensServico.map(order => {
-          const equipment = equipamentos.find(item => item.id === order.equipamentoId);
-          const metrics = deriveWorkOrderMetrics(order);
-          return [
-            order.numero,
-            equipment?.prefixo || 'Não localizado',
-            order.status,
-            formatDate(order.dataAbertura),
-            formatDate(order.dataConclusao),
-            order.motivo || '',
-            order.descricao,
-            order.motoristaNome || '',
-            formatNumber(metrics.machineHours),
-            formatNumber(metrics.stoppedHours),
-            formatNumber(metrics.availabilityPercent, '%'),
-            order.movimentacao || 'Sem movimentação',
-            `${formatDate(order.dataSaida)} ${order.horaSaida || ''} / ${formatDate(order.dataChegada)} ${order.horaChegada || ''}`,
-          ];
-        }),
-        styles: { fontSize: 6, cellPadding: 1.2 },
-        headStyles: { fillColor: [15, 23, 42], textColor: 255 },
-        alternateRowStyles: { fillColor: [241, 245, 249] },
-      });
-      document.save(`RENEA_manutencao_profissional_${fileDate()}.pdf`);
       setFeedback('Relatório PDF profissional gerado com indicadores e histórico detalhado.');
     } finally {
       setIsExporting(false);
@@ -761,13 +758,11 @@ export default function ManutencaoEquipamentosTab({
                 }`}
               >
                 <div className="relative h-40 overflow-hidden">
-                  {summary.equipment.foto ? (
-                    <img
-                      src={summary.equipment.foto}
-                      alt={`${summary.equipment.prefixo} - ${summary.equipment.nome}`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : <EmptyEquipmentImage />}
+                  <img
+                    src={representativeEquipmentPhoto(summary.equipment, reneaCompanyIds.has(summary.equipment.empresaId))}
+                    alt={`${summary.equipment.prefixo} - ${summary.equipment.nome}`}
+                    className="h-full w-full object-cover"
+                  />
                   <span className={`absolute left-3 top-3 rounded-lg border px-2 py-1 text-[9px] font-black uppercase ${EQUIPMENT_STATUS_STYLE[summary.equipment.status]}`}>
                     {summary.equipment.status}
                   </span>
@@ -823,16 +818,14 @@ export default function ManutencaoEquipamentosTab({
             {selectedSummary ? (
               <>
                 <div className="relative h-52 overflow-hidden rounded-t-2xl">
-                  {selectedSummary.equipment.foto ? (
-                    <img
-                      src={selectedSummary.equipment.foto}
-                      alt={selectedSummary.equipment.nome}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : <EmptyEquipmentImage />}
+                  <img
+                    src={representativeEquipmentPhoto(selectedSummary.equipment, reneaCompanyIds.has(selectedSummary.equipment.empresaId))}
+                    alt={selectedSummary.equipment.nome}
+                    className="h-full w-full object-cover"
+                  />
                   <label className="absolute bottom-3 right-3 flex cursor-pointer items-center gap-2 rounded-xl bg-slate-950/90 px-3 py-2 text-[10px] font-black text-white shadow-lg hover:bg-emerald-600">
                     <Camera className="h-4 w-4" />
-                    {selectedSummary.equipment.foto ? 'Trocar foto' : 'Adicionar foto'}
+                    {selectedSummary.equipment.foto ? 'Trocar foto' : 'Adicionar foto real'}
                     <input
                       type="file"
                       accept="image/*"

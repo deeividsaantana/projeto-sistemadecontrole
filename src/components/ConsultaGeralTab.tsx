@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Building2, Fuel, HardHat, Package, Search, TicketCheck, Truck, Users } from 'lucide-react';
-import type { Abastecimento, Empresa, Equipamento, Funcionario, MaterialRegistro, ObraLocal, OrdemServico, ParteDiariaEquipamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
+import type { Abastecimento, ApontamentoRamoRegistro, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, MaterialRegistro, ObraLocal, OrdemServico, ParteDiariaEquipamento, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
+import { normalizeComparable } from '../utils/canonicalIdentity';
 
 type GeneralRow = {
   id: string;
@@ -10,6 +11,12 @@ type GeneralRow = {
   meta: string;
   status: string;
   driver?: string;
+  date?: string;
+  company?: string;
+  equipmentType?: string;
+  prefix?: string;
+  maintenance?: boolean;
+  location?: string;
   tab: string;
 };
 
@@ -23,19 +30,32 @@ type Props = {
   materiais: MaterialRegistro[];
   ordensServico: OrdemServico[];
   partesDiarias: ParteDiariaEquipamento[];
+  controlesEquipamentos: ControleEquipamentoDiario[];
+  gruposEquipe: GrupoEquipe[];
+  presencas: PresencaApontamento[];
+  apontamentos: ApontamentoRamoRegistro[];
   vinculos: VinculoOperadorEquipamento[];
   onLink: (funcionarioId: string, equipamentoId: string, observacao?: string) => void;
   onUnlink: (vinculoId: string) => void;
   onNavigate: (tab: string) => void;
 };
 
-const normalize = (value: unknown) => String(value ?? '')
-  .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+const normalize = normalizeComparable;
 
-export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, materiais, ordensServico, partesDiarias, vinculos, onLink, onUnlink, onNavigate }: Props) {
+export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, materiais, ordensServico, partesDiarias, controlesEquipamentos, gruposEquipe, presencas, apontamentos, vinculos, onLink, onUnlink, onNavigate }: Props) {
   const [query, setQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState('Todos');
   const [statusFilter, setStatusFilter] = useState('Todos');
+  const [companyFilter, setCompanyFilter] = useState('Todas');
+  const [equipmentTypeFilter, setEquipmentTypeFilter] = useState('Todos');
+  const [driverFilter, setDriverFilter] = useState('Todos');
+  const [maintenanceFilter, setMaintenanceFilter] = useState('Todas');
+  const [prefixFilter, setPrefixFilter] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [linkEmployee, setLinkEmployee] = useState('');
   const [linkEquipment, setLinkEquipment] = useState('');
   const [linkNote, setLinkNote] = useState('');
@@ -63,23 +83,42 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
     return [
     ...empresas.map(item => ({ id: `empresa-${item.id}`, module: 'Empresas', title: item.nome, detail: item.cnpj || 'CNPJ não informado', meta: item.responsavel || 'Responsável não informado', status: item.status || 'ATIVO', tab: 'cadastros' })),
     ...obras.map(item => ({ id: `obra-${item.id}`, module: 'Obras', title: item.nome, detail: item.endereco || 'Endereço não informado', meta: item.responsavel || 'Responsável não informado', status: item.status, tab: 'cadastros' })),
-    ...equipamentos.map(item => ({ id: `equipamento-${item.id}`, module: 'Frota', title: `${item.prefixo || 'Sem prefixo'} · ${item.nome}`, detail: [item.marca, item.modelo, item.placa || item.seriePlaca].filter(Boolean).join(' · ') || 'Identificação incompleta', meta: `${item.tipo || item.categoriaFrota || 'Equipamento'} · ${linkedDriver(item)}`, driver: linkedDriver(item), status: equipmentStatus(item), tab: 'manutencao' })),
+    ...equipamentos.map(item => ({ id: `equipamento-${item.id}`, module: 'Frota', title: `${item.prefixo || 'Sem prefixo'} · ${item.nome}`, detail: [item.marca, item.modelo, item.placa || item.seriePlaca].filter(Boolean).join(' · ') || 'Identificação incompleta', meta: `${item.tipo || item.categoriaFrota || 'Equipamento'} · ${linkedDriver(item)} · ${empresas.find(company => company.id === item.empresaId)?.nome || 'Empresa não vinculada'}`, driver: linkedDriver(item), company: empresas.find(company => company.id === item.empresaId)?.nome, equipmentType: item.tipo || item.categoriaFrota || item.familia, prefix: item.prefixo, maintenance: equipmentStatus(item).toLocaleLowerCase('pt-BR').includes('manutenção'), status: equipmentStatus(item), tab: 'manutencao' })),
     ...funcionarios.map(item => { const linked = equipamentos.filter(equipment => equipment.operadorResponsavelId === item.id || normalize(equipment.operadorResponsavelNome) === normalize(item.nome)); return { id: `funcionario-${item.id}`, module: 'Colaboradores', title: item.nome, detail: [item.matricula, item.cargo].filter(Boolean).join(' · '), meta: linked.length ? `Frota vinculada: ${linked.map(eq => eq.prefixo).join(', ')}` : [item.area, item.liderNome].filter(Boolean).join(' · ') || 'Sem equipamento vinculado', status: item.status || (item.ativo ? 'ATIVO' : 'INATIVO'), tab: 'cadastros' }; }),
     ...abastecimentos.map(item => ({ id: `abastecimento-${item.id}`, module: 'Combustível', title: `${item.prefixoInformado || equipamentos.find(eq => eq.id === item.equipamentoId)?.prefixo || 'Sem prefixo'} · ${item.quantidadeLitros} L`, detail: `${item.data} ${item.hora || ''}`.trim(), meta: item.responsavel || item.origem || 'Origem não informada', status: item.status || 'OK', tab: 'lancamentos' })),
     ...tickets.map(item => ({ id: `ticket-${item.id}`, module: 'Tickets', title: `Ticket ${item.ticketNumero || 'sem número'}`, detail: `${item.prefixo || 'Sem prefixo'} · ${item.placa || 'Sem placa'}`, meta: `${item.data} · ${item.tipoMaterial || 'Material não informado'}`, status: item.statusFluxo || item.status || 'Pendente', tab: 'tickets-jazida' })),
     ...materiais.map(item => ({ id: `material-${item.id}`, module: 'Materiais', title: item.material || 'Material sem descrição', detail: `${item.quantidade || 0} ${item.unidade || ''}`.trim(), meta: [item.data, item.fornecedor, item.nota].filter(Boolean).join(' · '), status: item.status || 'Registrado', tab: 'materiais' })),
+    ...ordensServico.map(item => { const equipment = equipamentos.find(eq=>eq.id===item.equipamentoId); return ({ id: `os-${item.id}`, module: 'Manutenção', title: `${item.numero} · ${equipment?.prefixo || 'Frota não localizada'}`, detail: item.descricao || item.motivo || 'Sem descrição', meta: `${item.dataAbertura} · ${item.responsavel}`, date: item.dataAbertura, company: empresas.find(company=>company.id===equipment?.empresaId)?.nome, equipmentType: equipment?.tipo || equipment?.familia, prefix: equipment?.prefixo, maintenance: true, status: item.status, tab: 'manutencao' }); }),
+    ...partesDiarias.map(item => ({ id: `parte-${item.id}`, module: 'Partes Diárias', title: `${item.numero} · ${item.prefixo}`, detail: `${item.operadorNome || 'Sem motorista'} · ${item.matricula || 'Sem código'}`, meta: `${item.data} · ${item.obraNome}`, date: item.data, driver: item.operadorNome, prefix: item.prefixo, location: item.obraNome, status: item.status, tab: 'partes-diarias' })),
+    ...controlesEquipamentos.map(item => { const equipment = equipamentos.find(eq=>eq.id===item.equipamentoId || normalize(eq.prefixo)===normalize(item.prefixo)); return ({ id: `controle-${item.id}`, module: 'Basculantes', title: `${item.prefixo} · ${item.nomeMotorista || 'Aguardando motorista'}`, detail: [item.motivoManutencao, item.observacao].filter(Boolean).join(' · ') || item.familia, meta: `${item.data} · Saída ${item.horaSaida || '—'} · Retorno ${item.horaLiberacao || '—'}`, date: item.data, driver: item.nomeMotorista, company: empresas.find(company=>company.id===equipment?.empresaId)?.nome, equipmentType: item.familia || equipment?.tipo, prefix: item.prefixo, maintenance: item.status.toLocaleLowerCase('pt-BR').includes('manutenção'), status: item.status, tab: 'controle-equipamentos' }); }),
+    ...gruposEquipe.map(item => ({ id: `grupo-${item.id}`, module: 'Equipes', title: item.nome, detail: `${item.responsavel} · ${item.funcionarioIds.length} colaborador(es)`, meta: item.frenteServico, status: item.status, tab: 'presenca' })),
+    ...presencas.map(item => ({ id: `presenca-${item.id}`, module: 'Presenças', title: item.funcionarioNome, detail: `${item.grupoNome} · ${item.funcao}`, meta: `${item.data} ${item.horaEnvio}`, date: item.data, driver: item.funcionarioNome, status: item.status, tab: 'presenca' })),
+    ...apontamentos.map(item => ({ id: `apontamento-${item.id}`, module: 'Apontamentos', title: `${item.ramoNome} · ${item.responsavel}`, detail: item.descricaoAtividade || 'Sem descrição', meta: `${item.data} ${item.horaEnvio} · ${item.empresa}`, date: item.data, company: item.empresa, location: item.ramoNome, status: 'Registrado', tab: 'apontamentos' })),
     ];
-  }, [empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, materiais, ordensServico, partesDiarias, vinculos]);
+  }, [empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, materiais, ordensServico, partesDiarias, controlesEquipamentos, gruposEquipe, presencas, apontamentos, vinculos]);
 
   const modules = ['Todos', ...Array.from(new Set(rows.map(row => row.module)))];
   const statuses = ['Todos', ...Array.from(new Set(rows.map(row => row.status).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'))];
+  const companies = ['Todas', ...Array.from(new Set(rows.map(row => row.company).filter((value): value is string => Boolean(value)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))];
+  const equipmentTypes = ['Todos', ...Array.from(new Set(rows.map(row => row.equipmentType).filter((value): value is string => Boolean(value)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))];
+  const drivers = ['Todos', ...Array.from(new Set(rows.map(row => row.driver).filter((value): value is string => Boolean(value)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))];
   const filtered = useMemo(() => {
     const term = normalize(query);
     return rows.filter(row => (moduleFilter === 'Todos' || row.module === moduleFilter)
       && (statusFilter === 'Todos' || row.status === statusFilter)
-      && (!term || normalize(`${row.title} ${row.detail} ${row.meta} ${row.status}`).includes(term)))
-      .slice(0, 250);
-  }, [rows, moduleFilter, statusFilter, query]);
+      && (companyFilter === 'Todas' || row.company === companyFilter)
+      && (equipmentTypeFilter === 'Todos' || row.equipmentType === equipmentTypeFilter)
+      && (driverFilter === 'Todos' || row.driver === driverFilter)
+      && (maintenanceFilter === 'Todas' || (maintenanceFilter === 'Com manutenção' ? row.maintenance === true : row.maintenance !== true))
+      && (!prefixFilter || normalize(row.prefix).includes(normalize(prefixFilter)))
+      && (!locationFilter || normalize(row.location).includes(normalize(locationFilter)))
+      && (!dateFrom || Boolean(row.date && row.date >= dateFrom))
+      && (!dateTo || Boolean(row.date && row.date <= dateTo))
+      && (!term || normalize(`${row.title} ${row.detail} ${row.meta} ${row.status}`).includes(term)));
+  }, [rows, moduleFilter, statusFilter, companyFilter, equipmentTypeFilter, driverFilter, maintenanceFilter, prefixFilter, locationFilter, dateFrom, dateTo, query]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedRows = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const cards = [
     ['Empresas', empresas.length, Building2], ['Obras', obras.length, HardHat], ['Frota', equipamentos.length, Truck],
@@ -104,6 +143,23 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
             {statuses.map(status => <option key={status}>{status}</option>)}
           </select>
         </div>
+        <details className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4" open>
+          <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-slate-700">Filtros avançados</summary>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-[10px] font-black uppercase text-slate-500">De<input type="date" value={dateFrom} onChange={event=>{setDateFrom(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
+            <label className="text-[10px] font-black uppercase text-slate-500">Até<input type="date" value={dateTo} onChange={event=>{setDateTo(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
+            <label className="text-[10px] font-black uppercase text-slate-500">Empresa<select value={companyFilter} onChange={event=>{setCompanyFilter(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700">{companies.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label className="text-[10px] font-black uppercase text-slate-500">Tipo de equipamento<select value={equipmentTypeFilter} onChange={event=>{setEquipmentTypeFilter(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700">{equipmentTypes.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label className="text-[10px] font-black uppercase text-slate-500">Prefixo<input value={prefixFilter} onChange={event=>{setPrefixFilter(event.target.value);setPage(1)}} placeholder="Ex.: CB-729" className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
+            <label className="text-[10px] font-black uppercase text-slate-500">Motorista<select value={driverFilter} onChange={event=>{setDriverFilter(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700">{drivers.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label className="text-[10px] font-black uppercase text-slate-500">Manutenção<select value={maintenanceFilter} onChange={event=>{setMaintenanceFilter(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700"><option>Todas</option><option>Com manutenção</option><option>Sem manutenção</option></select></label>
+            <label className="text-[10px] font-black uppercase text-slate-500">Local<input value={locationFilter} onChange={event=>{setLocationFilter(event.target.value);setPage(1)}} placeholder="Obra, ramo ou frente" className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-emerald-700">{[dateFrom,dateTo,companyFilter!=='Todas',equipmentTypeFilter!=='Todos',driverFilter!=='Todos',maintenanceFilter!=='Todas',prefixFilter,locationFilter,moduleFilter!=='Todos',statusFilter!=='Todos'].filter(Boolean).length} filtro(s) ativo(s)</span>
+            <button type="button" onClick={()=>{setQuery('');setModuleFilter('Todos');setStatusFilter('Todos');setCompanyFilter('Todas');setEquipmentTypeFilter('Todos');setDriverFilter('Todos');setMaintenanceFilter('Todas');setPrefixFilter('');setLocationFilter('');setDateFrom('');setDateTo('');setPage(1)}} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-black text-slate-700">Limpar filtros</button>
+          </div>
+        </details>
       </section>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
@@ -122,9 +178,9 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><h2 className="text-sm font-black text-slate-900">Resultados</h2><span className="text-xs font-bold text-emerald-700">{filtered.length} exibido(s)</span></div>
+        <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-sm font-black text-slate-900">Resultados</h2><span className="text-xs font-bold text-emerald-700">{filtered.length} encontrado(s) · página {safePage} de {totalPages}</span></div><div className="flex items-center gap-2"><select value={pageSize} onChange={event=>{setPageSize(Number(event.target.value));setPage(1)}} className="h-9 rounded-lg border border-slate-200 px-2 text-xs font-bold"><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select><button disabled={safePage<=1} onClick={()=>setPage(value=>Math.max(1,value-1))} className="h-9 rounded-lg border border-slate-200 px-3 text-xs font-bold disabled:opacity-40">Anterior</button><button disabled={safePage>=totalPages} onClick={()=>setPage(value=>Math.min(totalPages,value+1))} className="h-9 rounded-lg border border-slate-200 px-3 text-xs font-bold disabled:opacity-40">Próxima</button></div></div>
         <div className="divide-y divide-slate-100">
-          {filtered.length ? filtered.map(row => <button key={row.id} type="button" onClick={() => onNavigate(row.tab)} className="grid w-full min-w-0 gap-2 px-5 py-4 text-left transition hover:bg-emerald-50/60 md:grid-cols-[140px_1fr_1fr_170px] md:items-center"><span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-600">{row.module}</span><span className="min-w-0"><b className="block truncate text-sm text-slate-900">{row.title}</b><small className="block truncate text-slate-500">{row.detail}</small></span><span className="min-w-0 truncate text-xs text-slate-500" title={row.meta}>{row.meta}</span><span className="text-xs font-black text-emerald-700 md:text-right">{row.status}</span></button>) : <div className="px-5 py-16 text-center text-sm text-slate-500">Nenhum registro encontrado com os filtros informados.</div>}
+          {pagedRows.length ? pagedRows.map(row => <button key={row.id} type="button" onClick={() => onNavigate(row.tab)} className="grid w-full min-w-0 gap-2 px-5 py-4 text-left transition hover:bg-emerald-50/60 md:grid-cols-[140px_1fr_1fr_170px] md:items-center"><span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-600">{row.module}</span><span className="min-w-0"><b className="block truncate text-sm text-slate-900">{row.title}</b><small className="block truncate text-slate-500">{row.detail}</small></span><span className="min-w-0 truncate text-xs text-slate-500" title={row.meta}>{row.meta}</span><span className="text-xs font-black text-emerald-700 md:text-right">{row.status}</span></button>) : <div className="px-5 py-16 text-center text-sm text-slate-500">Nenhum registro encontrado com os filtros informados.</div>}
         </div>
       </section>
     </div>

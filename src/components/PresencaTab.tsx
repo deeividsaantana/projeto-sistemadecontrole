@@ -17,9 +17,10 @@ import {
   ShieldCheck,
   AlertCircle
 } from 'lucide-react';
-import { Funcionario, ObraLocal, ListaPresenca, PresencaItem } from '../types';
+import { Empresa, Funcionario, ObraLocal, ListaPresenca, PresencaItem } from '../types';
 
 interface PresencaTabProps {
+  empresas: Empresa[];
   funcionarios: Funcionario[];
   obras: ObraLocal[];
   listasPresenca: ListaPresenca[];
@@ -28,6 +29,7 @@ interface PresencaTabProps {
 }
 
 export default function PresencaTab({
+  empresas,
   funcionarios,
   obras,
   listasPresenca,
@@ -59,11 +61,18 @@ export default function PresencaTab({
   const [filterDataInicio, setFilterDataInicio] = useState<string>('');
   const [filterDataFim, setFilterDataFim] = useState<string>('');
   const [filterFaixaPresenca, setFilterFaixaPresenca] = useState<string>('todos');
+  const [empresaSelecionada, setEmpresaSelecionada] = useState<string>('');
+
+  const colaboradoresDaEmpresa = funcionarios.filter(f =>
+    f.ativo
+    && !['INATIVO', 'DESMOBILIZADO'].includes(f.status || '')
+    && (!empresaSelecionada || f.empresaId === empresaSelecionada)
+  );
 
   const handleOpenCreate = () => {
     // Pre-populate items with all active employees marked as Present
     const initialItems: { [funcionarioId: string]: { presente: boolean; observacao: string } } = {};
-    funcionarios.filter(f => f.ativo).forEach(f => {
+    colaboradoresDaEmpresa.forEach(f => {
       initialItems[f.id] = { presente: true, observacao: '' };
     });
 
@@ -87,7 +96,7 @@ export default function PresencaTab({
     });
 
     // Populate missing active employees as present just in case
-    funcionarios.filter(f => f.ativo).forEach(f => {
+    colaboradoresDaEmpresa.forEach(f => {
       if (!items[f.id]) {
         items[f.id] = { presente: true, observacao: '' };
       }
@@ -408,7 +417,20 @@ export default function PresencaTab({
               </div>
 
               {/* Form Metadata Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-slate-400">Empresa dos colaboradores</label>
+                  <select value={empresaSelecionada} onChange={event => {
+                    const empresaId = event.target.value;
+                    setEmpresaSelecionada(empresaId);
+                    const items: typeof formData.items = {};
+                    funcionarios.filter(item => item.ativo && (!empresaId || item.empresaId === empresaId)).forEach(item => { items[item.id] = { presente: true, observacao: '' }; });
+                    setFormData(current => ({ ...current, items }));
+                  }} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none">
+                    <option value="">Todas as empresas</option>
+                    {empresas.filter(item => item.status !== 'INATIVO').map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                  </select>
+                </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-slate-400 font-mono uppercase tracking-wider block">Data do Diário</label>
                   <div className="relative">
@@ -497,7 +519,7 @@ export default function PresencaTab({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-850">
-                      {funcionarios.filter(f => f.ativo).map(func => {
+                      {colaboradoresDaEmpresa.map(func => {
                         const state = formData.items[func.id] || { presente: true, observacao: '' };
                         return (
                           <tr key={func.id} className="hover:bg-slate-900/40">

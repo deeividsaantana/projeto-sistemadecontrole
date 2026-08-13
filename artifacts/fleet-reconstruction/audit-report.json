@@ -1,0 +1,581 @@
+{
+  "generatedAt": "2026-08-13T14:43:59.579Z",
+  "results": [
+    {
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "layout": {
+        "documentWidth": 320,
+        "viewportWidth": 320,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao incorporar a fila pública; os itens permanecerão pendentes: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=Nuf-tuqRvD9caQGpEz2LhFjSdor7ahEwr0i0l_S7LJw54b97HigL0Q&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=fsj2XjHFq0Kh-U5YoRSZ-A&AID=0&CI=0&TYPE=xmlhttp&zx=ivpp80o4xv3o&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 780
+      },
+      "layout": {
+        "documentWidth": 360,
+        "viewportWidth": 360,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=J58IL8YLmdyqT2EMiRfuuLeplxr0yu584lxsVnZt7hKO2ldXXp1Pyw&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=Ea-kuoDOIJ5P2YuS7cLfEQ&AID=0&CI=0&TYPE=xmlhttp&zx=y2viau2jzdki&t=1",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=Ix-AVbZUrkj-Vzp5NvPItLjHQAzQDGUcaoSACghTjMvshck5VYe1Ow&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=RrgZHMIdvIN10rUnlFgm6A&AID=0&CI=0&TYPE=xmlhttp&zx=jcg2vhcringx&t=1",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=Ix-AVbZUrkj-Vzp5NvPItLjHQAzQDGUcaoSACghTjMvshck5VYe1Ow&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=RrgZHMIdvIN10rUnlFgm6A&AID=8&CI=1&TYPE=xmlhttp&zx=3osu9oe3u51o&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "layout": {
+        "documentWidth": 375,
+        "viewportWidth": 375,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=QT6y3ULX2BpHUj47YDJV_ZLqSCDXMvupQARiWBFSlZfH_g7FJ1LUEA&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=fjSmjm4MYOf9IlKMJobHpg&AID=0&CI=0&TYPE=xmlhttp&zx=uhvsian54kx7&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "layout": {
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=li16k4J5ay725AjXzkH5oG2IvEP075uiuJmisGu9yzHCBCP-RFK8fg&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=afD0WhL2hujcDFPxhSL6lQ&AID=0&CI=0&TYPE=xmlhttp&zx=5m7a1151e653&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 412,
+        "height": 860
+      },
+      "layout": {
+        "documentWidth": 412,
+        "viewportWidth": 412,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=TFPFkYvNv9sntpYtUZ2q0byNQPSGFAgcrp0h0X9mjBWTQ2zwFW6A8w&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=TMp7abJCFnsUmJZlPyifHA&AID=0&CI=0&TYPE=xmlhttp&zx=14t2hd1pxcaq&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 430,
+        "height": 900
+      },
+      "layout": {
+        "documentWidth": 430,
+        "viewportWidth": 430,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=ozgnNhpyWqADrI3GDNdW6ObwZfxiWovy17NnyiiijjPtPpki1_z2hg&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=ynbQqfqMUrSfa6Q7_b5FcA&AID=0&CI=0&TYPE=xmlhttp&zx=r6u8yhre6pt1&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 480,
+        "height": 900
+      },
+      "layout": {
+        "documentWidth": 480,
+        "viewportWidth": 480,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=mSlmgzBIPTB35sAdWcyGLgt-VAqYenIt6iSRK3IN2TgW477xYPFa-A&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=_rrmfZKitaGxucjCCBL_rw&AID=0&CI=0&TYPE=xmlhttp&zx=1y4dva9p7eqh&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "layout": {
+        "documentWidth": 768,
+        "viewportWidth": 768,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Cadastros",
+          "Painel de Controle",
+          "Consulta Geral",
+          "Pendências",
+          "Relatórios Gerais",
+          "Parte Diária de Equipamentos",
+          "Controle de Basculantes",
+          "Combustível",
+          "Tickets Jazida",
+          "Controle de Estacas",
+          "Materiais",
+          "Manutenção",
+          "Presença e Controle",
+          "Apontamentos",
+          "Cadastros Auxiliares",
+          "Usuários",
+          "Apoio e Configuração",
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar",
+          "Matrícula",
+          "Motorista",
+          "Prefixo",
+          "Status",
+          "Saída",
+          "Parado",
+          "Local"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=Iu5YuZNRZVXgp_1jWU7iuDuzsc6l640EWRaSZbZlDN70jpwMAkBiDA&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=AormmV-wLeIlZR_NJhQA3A&AID=0&CI=0&TYPE=xmlhttp&zx=uovzzg405iug&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 900
+      },
+      "layout": {
+        "documentWidth": 1024,
+        "viewportWidth": 1024,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Cadastros",
+          "Painel de Controle",
+          "Consulta Geral",
+          "Pendências",
+          "Relatórios Gerais",
+          "Parte Diária de Equipamentos",
+          "Controle de Basculantes",
+          "Combustível",
+          "Tickets Jazida",
+          "Controle de Estacas",
+          "Materiais",
+          "Manutenção",
+          "Presença e Controle",
+          "Apontamentos",
+          "Cadastros Auxiliares",
+          "Usuários",
+          "Apoio e Configuração",
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar",
+          "Matrícula",
+          "Motorista",
+          "Prefixo",
+          "Status",
+          "Saída",
+          "Parado",
+          "Local"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=8dLzviQeLtZX_RVJ9t-VOr6IHMzdGqMKI0baSBMR13JT0mRS25E3NQ&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=FzgWSbVu83DTPRm8E7gFzA&AID=0&CI=0&TYPE=xmlhttp&zx=qucfqp4v0cop&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "layout": {
+        "documentWidth": 1280,
+        "viewportWidth": 1280,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Cadastros",
+          "Painel de Controle",
+          "Consulta Geral",
+          "Pendências",
+          "Relatórios Gerais",
+          "Parte Diária de Equipamentos",
+          "Controle de Basculantes",
+          "Combustível",
+          "Tickets Jazida",
+          "Controle de Estacas",
+          "Materiais",
+          "Manutenção",
+          "Presença e Controle",
+          "Apontamentos",
+          "Cadastros Auxiliares",
+          "Usuários",
+          "Apoio e Configuração",
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar",
+          "Matrícula",
+          "Motorista",
+          "Prefixo",
+          "Status",
+          "Saída",
+          "Parado",
+          "Local"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=hx-4tt9ybSkI5yyYS4qakKwP7oSP6uEeGt1YWfQFsVr_9YU05QRP1w&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=tHC0Wj3WCsKFN_d8-f9cSg&AID=0&CI=0&TYPE=xmlhttp&zx=yhcrr153wzbd&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "layout": {
+        "documentWidth": 1366,
+        "viewportWidth": 1366,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Cadastros",
+          "Painel de Controle",
+          "Consulta Geral",
+          "Pendências",
+          "Relatórios Gerais",
+          "Parte Diária de Equipamentos",
+          "Controle de Basculantes",
+          "Combustível",
+          "Tickets Jazida",
+          "Controle de Estacas",
+          "Materiais",
+          "Manutenção",
+          "Presença e Controle",
+          "Apontamentos",
+          "Cadastros Auxiliares",
+          "Usuários",
+          "Apoio e Configuração",
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar",
+          "Matrícula",
+          "Motorista",
+          "Prefixo",
+          "Status",
+          "Saída",
+          "Parado",
+          "Local"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=8yIrgoX4kcs9Af_WwuEQ1zmpQdf5IkLDiaTj0zsnNAMwAezvlsSv1Q&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=Qjdj9su67CU76BWnoEEDrw&AID=0&CI=0&TYPE=xmlhttp&zx=u91j54pwf13b&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "layout": {
+        "documentWidth": 1440,
+        "viewportWidth": 1440,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Cadastros",
+          "Painel de Controle",
+          "Consulta Geral",
+          "Pendências",
+          "Relatórios Gerais",
+          "Parte Diária de Equipamentos",
+          "Controle de Basculantes",
+          "Combustível",
+          "Tickets Jazida",
+          "Controle de Estacas",
+          "Materiais",
+          "Manutenção",
+          "Presença e Controle",
+          "Apontamentos",
+          "Cadastros Auxiliares",
+          "Usuários",
+          "Apoio e Configuração",
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar",
+          "Matrícula",
+          "Motorista",
+          "Prefixo",
+          "Status",
+          "Saída",
+          "Parado",
+          "Local"
+        ]
+      },
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcCB3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfU5NJeWUdIOjBeTHFXZdND2M.woff2",
+          "error": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=yni6nUycYmHCZz3d5LPqc0ePcWlABRGaHZYLBzuE1BkaOTuel0FJpw&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=Qupq6R_ICDh1HYhFP7THVQ&AID=0&CI=0&TYPE=xmlhttp&zx=9ehyj21v75rx&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "layout": {
+        "documentWidth": 1920,
+        "viewportWidth": 1920,
+        "horizontalOverflow": false,
+        "headingVisible": true,
+        "visibleButtons": [
+          "Cadastros",
+          "Painel de Controle",
+          "Consulta Geral",
+          "Pendências",
+          "Relatórios Gerais",
+          "Parte Diária de Equipamentos",
+          "Controle de Basculantes",
+          "Combustível",
+          "Tickets Jazida",
+          "Controle de Estacas",
+          "Materiais",
+          "Manutenção",
+          "Presença e Controle",
+          "Apontamentos",
+          "Cadastros Auxiliares",
+          "Usuários",
+          "Apoio e Configuração",
+          "Novo lançamento",
+          "Atualizar",
+          "Relatório PDF",
+          "Exportar Excel",
+          "Importar",
+          "Limpar",
+          "Matrícula",
+          "Motorista",
+          "Prefixo",
+          "Status",
+          "Saída",
+          "Parado",
+          "Local"
+        ]
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "Falha ao validar a conexao real com o Firestore: FirebaseError: Missing or insufficient permissions.",
+        "Falha ao atualizar tickets públicos: FirebaseError: Missing or insufficient permissions."
+      ],
+      "failedRequests": [
+        {
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=2xFweFegHbEZIHdrtlGTyiJKHfY6j-H8vmkUYfQrU09LFE03NMQiBQ&VER=8&database=projects%2Fsistemarenea%2Fdatabases%2F(default)&RID=rpc&SID=AeuQLIUzMWXEBvVj2i9iUQ&AID=0&CI=0&TYPE=xmlhttp&zx=8awrvgydsmd5&t=1",
+          "error": "net::ERR_ABORTED"
+        }
+      ]
+    }
+  ],
+  "exports": {
+    "pdfPath": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\fleet-reconstruction\\downloads\\RELATORIO_DIARIO_SITUACAO_OPERACIONAL_CBS_2026-08-12.pdf",
+    "excelPath": "C:\\Users\\deivids\\Documents\\teste70-rdo-removal\\artifacts\\fleet-reconstruction\\downloads\\RELATORIO_CBS_ALTO_TIETE_2026-08-12.xlsx",
+    "pdfBytes": 161434,
+    "excelBytes": 17316,
+    "errors": []
+  },
+  "formChecks": {
+    "dialogVisible": true,
+    "dateVisible": true,
+    "employeeCodeVisible": true,
+    "prefixVisible": true,
+    "saveVisible": true
+  }
+}

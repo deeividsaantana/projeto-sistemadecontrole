@@ -75,6 +75,32 @@ body {
   color: #64748b;
 }
 
+/* Tons claros do tema legado perdiam contraste quando as superfícies passaram
+   a ser brancas. Mantemos a semântica das cores com contraste AA. */
+#app-root .text-emerald-200,
+#app-root .text-emerald-300,
+#app-root .text-emerald-400 { color: #047857; }
+#app-root .text-amber-100,
+#app-root .text-amber-200,
+#app-root .text-amber-300,
+#app-root .text-amber-400 { color: #92400e; }
+#app-root .text-orange-200,
+#app-root .text-orange-300,
+#app-root .text-orange-400 { color: #9a3412; }
+#app-root .text-rose-200,
+#app-root .text-rose-300,
+#app-root .text-rose-400 { color: #be123c; }
+#app-root .text-red-200,
+#app-root .text-red-300,
+#app-root .text-red-400 { color: #b91c1c; }
+#app-root .text-blue-200,
+#app-root .text-blue-300,
+#app-root .text-blue-400,
+#app-root .text-cyan-300 { color: #0369a1; }
+#app-root .text-violet-200,
+#app-root .text-violet-300,
+#app-root .text-violet-400 { color: #6d28d9; }
+
 /* O legado usa text-white para métricas e títulos em cartões que agora são
    brancos. No tema claro, texto branco vira tinta estrutural; componentes com
    fundo semântico preservam branco explicitamente. */
@@ -128,4 +154,60 @@ h1, h2, h3, .font-display {
 .ticket-input:focus {
   border-color: #10b981;
   box-shadow: 0 0 0 3px rgb(16 185 129 / 0.12);
+}
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #fleet-print-report,
+  #fleet-print-report * {
+    visibility: visible !important;
+  }
+
+  #fleet-print-report {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: #222;
+  }
+
+  .fleet-report-page {
+    display: flex;
+    min-height: 190mm;
+    flex-direction: column;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .fleet-report-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .fleet-report-page table {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .fleet-report-page thead {
+    display: table-header-group;
+  }
+
+  .fleet-report-page tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .fleet-report-page img {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }

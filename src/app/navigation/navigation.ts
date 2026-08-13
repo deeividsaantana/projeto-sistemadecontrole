@@ -11,6 +11,7 @@ import {
   Settings,
   ShieldCheck,
   Truck,
+  Activity,
   Users,
   Wrench,
   Search,
@@ -39,6 +40,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Operação',
     items: [
       { id: 'partes-diarias', label: 'Parte Diária de Equipamentos', icon: CircleGauge },
+      { id: 'controle-equipamentos', label: 'Controle de Basculantes', icon: Activity },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
@@ -76,6 +78,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'pendencias',
     'reports',
     'partes-diarias',
+    'controle-equipamentos',
     'lancamentos',
     'tickets-jazida',
     'estacas',
