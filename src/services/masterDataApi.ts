@@ -69,6 +69,15 @@ interface ApiEnvelope<T> {
 
 const endpoint = '/.netlify/functions/master-data';
 
+interface MasterDataRequestInit extends RequestInit {
+  idempotencyKey?: string;
+}
+
+const createIdempotencyKey = () => {
+  const randomPart = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+  return `master-data:${Date.now().toString(36)}:${randomPart}`;
+};
+
 const authorizationHeaders = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login para consultar os cadastros mestres.');
@@ -78,11 +87,14 @@ const authorizationHeaders = async () => {
   };
 };
 
-const request = async <T>(url: string, init: RequestInit = {}): Promise<ApiEnvelope<T>> => {
+const request = async <T>(url: string, init: MasterDataRequestInit = {}): Promise<ApiEnvelope<T>> => {
+  const method = String(init.method || 'GET').toUpperCase();
+  const idempotencyKey = method === 'GET' ? '' : init.idempotencyKey || createIdempotencyKey();
   const response = await fetch(url, {
     ...init,
     headers: {
       ...await authorizationHeaders(),
+      ...(idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : {}),
       ...init.headers,
     },
     cache: 'no-store',

@@ -9,7 +9,11 @@ assert.match(gateway, /resolveOrganizationId\(staff, process\.env\.FIREBASE_DEFA
 assert.match(gateway, /const ROOT_COLLECTION = 'sistemarenea_master_data'/);
 assert.match(gateway, /const AUDIT_COLLECTION = 'sistemarenea_audit_logs'/);
 assert.match(gateway, /const writeAudit = async/);
+assert.match(gateway, /buildAuditRecord\(context, action, entity, recordId, before, after, details\)/);
+assert.match(gateway, /withIdempotency\(event, context, idempotencyKey/);
 assert.match(gateway, /const listAudits = async/);
+assert.match(gateway, /const sanitizeAuditFilters =/);
+assert.match(gateway, /const matchesAuditFilters =/);
 assert.match(gateway, /queryStringParameters\?\.action === 'audit'/);
 assert.match(gateway, /const createUser = async/);
 assert.match(gateway, /queryStringParameters\?\.action === 'users'/);

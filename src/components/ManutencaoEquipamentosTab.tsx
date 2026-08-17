@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import ExcelJS from 'exceljs';
 import {
   Activity,
   AlertTriangle,
@@ -41,29 +40,22 @@ import {
   deriveWorkOrderMetrics,
   type MaintenanceFleetSummary,
 } from '../utils/equipmentOperations';
-import {
-  addCorporateSummarySheet,
-  configureCorporateWorkbook,
-  downloadCorporateWorkbook,
-  styleCorporateWorksheet,
-} from '../utils/excelCorporate';
-import { generateUniversalPdfReport } from '../utils/universalPdfReport';
-import fleetTruckPhoto from '../assets/equipment/fleet-truck.png';
-import earthmovingPhoto from '../assets/equipment/earthmoving.png';
-import liftingPilingPhoto from '../assets/equipment/lifting-piling.png';
-import siteSupportPhoto from '../assets/equipment/site-support.png';
-import concreteMixerPhoto from '../assets/equipment/concrete-mixer.png';
-import truckCranePhoto from '../assets/equipment/truck-crane.png';
-import fuelServiceTruckPhoto from '../assets/equipment/fuel-service-truck.png';
-import bulldozerPhoto from '../assets/equipment/bulldozer.png';
-import backhoePhoto from '../assets/equipment/backhoe.png';
-import roadRollerPhoto from '../assets/equipment/road-roller.png';
-import drillingRigPhoto from '../assets/equipment/drilling-rig.png';
-import aerialPlatformPhoto from '../assets/equipment/aerial-platform.png';
-import neutralTruckPhoto from '../assets/equipment/neutral-truck.png';
-import neutralEarthmovingPhoto from '../assets/equipment/neutral-earthmoving.png';
-import neutralLiftingPhoto from '../assets/equipment/neutral-lifting.png';
-import neutralSupportPhoto from '../assets/equipment/neutral-support.png';
+import fleetTruckPhoto from '../assets/equipment/optimized/fleet-truck.jpg';
+import earthmovingPhoto from '../assets/equipment/optimized/earthmoving.jpg';
+import liftingPilingPhoto from '../assets/equipment/optimized/lifting-piling.jpg';
+import siteSupportPhoto from '../assets/equipment/optimized/site-support.jpg';
+import concreteMixerPhoto from '../assets/equipment/optimized/concrete-mixer.jpg';
+import truckCranePhoto from '../assets/equipment/optimized/truck-crane.jpg';
+import fuelServiceTruckPhoto from '../assets/equipment/optimized/fuel-service-truck.jpg';
+import bulldozerPhoto from '../assets/equipment/optimized/bulldozer.jpg';
+import backhoePhoto from '../assets/equipment/optimized/backhoe.jpg';
+import roadRollerPhoto from '../assets/equipment/optimized/road-roller.jpg';
+import drillingRigPhoto from '../assets/equipment/optimized/drilling-rig.jpg';
+import aerialPlatformPhoto from '../assets/equipment/optimized/aerial-platform.jpg';
+import neutralTruckPhoto from '../assets/equipment/optimized/neutral-truck.jpg';
+import neutralEarthmovingPhoto from '../assets/equipment/optimized/neutral-earthmoving.jpg';
+import neutralLiftingPhoto from '../assets/equipment/optimized/neutral-lifting.jpg';
+import neutralSupportPhoto from '../assets/equipment/optimized/neutral-support.jpg';
 
 interface ManutencaoEquipamentosTabProps {
   equipamentos: Equipamento[];
@@ -457,6 +449,15 @@ export default function ManutencaoEquipamentosTab({
   const exportExcel = async () => {
     setIsExporting(true);
     try {
+      const [{ default: ExcelJS }, {
+        addCorporateSummarySheet,
+        configureCorporateWorkbook,
+        downloadCorporateWorkbook,
+        styleCorporateWorksheet,
+      }] = await Promise.all([
+        import('exceljs'),
+        import('../utils/excelCorporate'),
+      ]);
       const workbook = new ExcelJS.Workbook();
       configureCorporateWorkbook(workbook, 'Relatório profissional de manutenção e disponibilidade da frota');
       addCorporateSummarySheet(workbook, 'Manutenção e Disponibilidade da Frota', [
@@ -565,6 +566,7 @@ export default function ManutencaoEquipamentosTab({
   const exportPdf = async () => {
     setIsExporting(true);
     try {
+      const { generateUniversalPdfReport } = await import('../utils/universalPdfReport');
       await generateUniversalPdfReport({
         title: 'Relatório de Manutenção e Disponibilidade',
         subtitle: 'Frota, responsáveis, horas operacionais, disponibilidade e ordens de serviço',

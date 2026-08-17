@@ -4,7 +4,7 @@ import {
   uploadBytes,
   type StorageReference,
 } from 'firebase/storage';
-import { storage } from '../firebase';
+import { storage } from '../firebaseStorage';
 import {
   buildOperationalAttachmentPath,
   type OperationalAttachmentScope,

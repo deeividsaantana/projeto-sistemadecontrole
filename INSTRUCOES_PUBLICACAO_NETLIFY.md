@@ -65,11 +65,20 @@ GEMINI_DOCUMENT_MODEL=gemini-2.5-flash
 ```
 
 A função valida o token do usuário logado antes de usar a IA. Para facilitar a
-troca futura de projeto Firebase, também pode configurar a chave pública web:
+troca futura de projeto Firebase, configure também as variáveis públicas do Vite usadas pelo navegador:
 
 ```txt
-FIREBASE_WEB_API_KEY=SUA_CHAVE_PUBLICA_DO_FIREBASE
+VITE_FIREBASE_API_KEY=SUA_CHAVE_PUBLICA_DO_FIREBASE
+VITE_FIREBASE_AUTH_DOMAIN=sistemarenea.firebaseapp.com
+VITE_FIREBASE_DATABASE_URL=https://sistemarenea-default-rtdb.firebaseio.com
+VITE_FIREBASE_PROJECT_ID=sistemarenea
+VITE_FIREBASE_STORAGE_BUCKET=sistemarenea.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=259137561260
+VITE_FIREBASE_APP_ID=1:259137561260:web:835cac33a4a8ba6afaf509
+VITE_FIREBASE_MEASUREMENT_ID=G-JJXRKV2FB7
 ```
+
+`FIREBASE_WEB_API_KEY` ainda pode existir em scripts legados de publicação, mas o front-end Vite só lê variáveis iniciadas por `VITE_`.
 
 Para liberar a análise somente a administradores específicos, informe os e-mails
 separados por vírgula:

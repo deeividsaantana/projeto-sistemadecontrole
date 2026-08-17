@@ -29,17 +29,6 @@ import {
 } from '../types';
 import { APONTAMENTO_LINK_TOKEN } from './apontamentoRamosConfig';
 import { generateSecurePublicToken } from './publicLinkSecurity';
-import {
-  IMPORTED_SEED_EQUIPAMENTOS,
-  IMPORTED_SEED_TICKETS_JAZIDA
-} from './importedSpreadsheetSeed';
-import {
-  IMPORTED_AUG2026_ABASTECIMENTOS,
-  IMPORTED_AUG2026_COMBOIOS,
-  IMPORTED_AUG2026_EMPRESAS,
-  IMPORTED_AUG2026_EQUIPAMENTOS,
-  IMPORTED_AUG2026_TICKETS_JAZIDA,
-} from './importedAugust2026Seed';
 
 const mergeByKey = <T,>(base: T[], imported: T[], getKey: (item: T) => string) => {
   const keys = new Set(base.map(item => getKey(item)).filter(Boolean));
@@ -74,7 +63,36 @@ export const loadInitialMateriaisData = async (): Promise<{
   };
 };
 
-export const INITIAL_EMPRESAS: Empresa[] = mergeByKey([
+let operationalSeedHydrated = false;
+
+export const hydrateInitialOperationalSeedData = async (): Promise<void> => {
+  if (operationalSeedHydrated) return;
+  const [spreadsheetSeed, augustSeed] = await Promise.all([
+    import('./importedSpreadsheetSeed'),
+    import('./importedAugust2026Seed'),
+  ]);
+
+  INITIAL_EMPRESAS = mergeByKey(BASE_INITIAL_EMPRESAS, augustSeed.IMPORTED_AUG2026_EMPRESAS, item => item.id);
+  INITIAL_EQUIPAMENTOS = mergePreferImportedByKey(
+    mergeByKey(
+      BASE_INITIAL_EQUIPAMENTOS,
+      spreadsheetSeed.IMPORTED_SEED_EQUIPAMENTOS,
+      item => item.prefixo.trim().toLowerCase()
+    ),
+    augustSeed.IMPORTED_AUG2026_EQUIPAMENTOS,
+    item => item.prefixo.trim().toLowerCase()
+  );
+  INITIAL_COMBOIOS = mergeByKey(BASE_INITIAL_COMBOIOS, augustSeed.IMPORTED_AUG2026_COMBOIOS, item => item.placa.trim().toLowerCase());
+  INITIAL_ABASTECIMENTOS = augustSeed.IMPORTED_AUG2026_ABASTECIMENTOS;
+  INITIAL_TICKETS_JAZIDA = mergeByKey(
+    spreadsheetSeed.IMPORTED_SEED_TICKETS_JAZIDA,
+    augustSeed.IMPORTED_AUG2026_TICKETS_JAZIDA,
+    item => item.id
+  );
+  operationalSeedHydrated = true;
+};
+
+const BASE_INITIAL_EMPRESAS: Empresa[] = [
   { id: 'emp-1', nome: 'RENEA INFRAESTRUTURA S.A.', cnpj: '12.345.678/0001-90', telefone: '(11) 3214-9900', responsavel: 'Eng. Ricardo Renea' },
   { id: 'emp-2', nome: 'CONSTRUTORA SUL-AMERICANA S/A', cnpj: '98.765.432/0001-10', telefone: '(21) 2500-1122', responsavel: 'Dr. Roberto Souza' },
   { id: 'emp-3', nome: 'GT Transportes', cnpj: '45.888.222/0001-30', telefone: '(19) 3876-5432', responsavel: 'Sandro Santos' },
@@ -94,7 +112,9 @@ export const INITIAL_EMPRESAS: Empresa[] = mergeByKey([
   { id: 'emp-17', nome: 'Lagon', cnpj: '90.011.122/0001-33', telefone: '(11) 3344-5566', responsavel: 'Leonardo Lagon' },
   { id: 'emp-18', nome: 'Formeq Rental', cnpj: '12.345.678/0002-12', telefone: '(11) 5566-7788', responsavel: 'Felipe Formeq' },
   { id: 'emp-19', nome: 'Sollo', cnpj: '34.567.890/0002-34', telefone: '(11) 7788-9900', responsavel: 'Silvio Sollo' }
-], IMPORTED_AUG2026_EMPRESAS, item => item.id);
+];
+
+export let INITIAL_EMPRESAS: Empresa[] = BASE_INITIAL_EMPRESAS;
 
 export const INITIAL_OBRAS: ObraLocal[] = [
   { id: 'obr-1', nome: 'Mão de Obra Geral - RENEA', endereco: 'Frente de Trabalho Renea', responsavel: 'Eng. Ricardo Renea', status: 'Ativa' },
@@ -187,15 +207,7 @@ const BASE_INITIAL_EQUIPAMENTOS: Equipamento[] = [
   { id: 'eq-te038', prefixo: 'TE038', nome: "Trator De Esteiras D6 T XL", tipo: 'Trator de Esteira', marca: 'Caterpillar', modelo: "D6T XL", seriePlaca: 'TE038', empresaId: 'emp-1', status: 'Ativo', localAtualId: 'obr-1', observacao: 'Frota própria Renea.' }
 ];
 
-export const INITIAL_EQUIPAMENTOS: Equipamento[] = mergePreferImportedByKey(
-  mergeByKey(
-    BASE_INITIAL_EQUIPAMENTOS,
-    IMPORTED_SEED_EQUIPAMENTOS,
-    item => item.prefixo.trim().toLowerCase()
-  ),
-  IMPORTED_AUG2026_EQUIPAMENTOS,
-  item => item.prefixo.trim().toLowerCase()
-);
+export let INITIAL_EQUIPAMENTOS: Equipamento[] = BASE_INITIAL_EQUIPAMENTOS;
 
 export const INITIAL_FUNCIONARIOS: Funcionario[] = [
   { id: "fun-102240", matricula: "102240", nome: "ADEMAR FERREIRA DA CRUZ", cargo: "GREIDISTA", telefone: '', empresaId: 'emp-1', ativo: true, liderMatricula: "102200", liderNome: "RENILSON DOS SANTOS", area: "TERRAPLENAGEM", responsavelArea: "ALVARO ALVES VILELA" },
@@ -364,11 +376,13 @@ export const INITIAL_FUNCIONARIOS: Funcionario[] = [
   { id: "fun-102405", matricula: "102405", nome: "JOSE DOS REIS SANTOS", cargo: "AUXILIAR GERAL", telefone: '', empresaId: 'emp-1', ativo: true, liderMatricula: "101567", liderNome: "CARLOS EDUARDO SILVA DE SANTANA", area: "MOVIMENTAÇÃO DE CARGA", responsavelArea: "CONSTANTINO DEMETRIO FILHO" }
 ];
 
-export const INITIAL_COMBOIOS: Comboio[] = mergeByKey([
+const BASE_INITIAL_COMBOIOS: Comboio[] = [
   { id: 'com-1', nome: 'Comboio TQC022', placa: 'BRA-2200', capacidadeLitros: 10000, responsavel: 'Espedito Bento da Silva' },
   { id: 'com-2', nome: 'Comboio 01 - Renea', placa: 'BRA-9A12', capacidadeLitros: 4000, responsavel: 'José da Silva' },
   { id: 'com-3', nome: 'Comboio 02 - Renea', placa: 'REO-4B90', capacidadeLitros: 6000, responsavel: 'Marcos de Souza' }
-], IMPORTED_AUG2026_COMBOIOS, item => item.placa.trim().toLowerCase());
+];
+
+export let INITIAL_COMBOIOS: Comboio[] = BASE_INITIAL_COMBOIOS;
 
 export const INITIAL_TIPOS_COMBUSTIVEL: TipoCombustivel[] = [
   { id: 'tc-1', nome: 'Óleo Diesel S 10 Comum' },
@@ -469,13 +483,9 @@ const BASE_INITIAL_ABASTECIMENTOS: Abastecimento[] = [
   { id: 'ab-73', data: '2026-06-23', hora: '12:55', equipamentoId: 'eq-ec063', horimetroInicial: 0, kmInicial: 0, bombaInicial: 93942, quantidadeLitros: 181, bombaFinal: 94123, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
 ];
 
-export const INITIAL_ABASTECIMENTOS: Abastecimento[] = IMPORTED_AUG2026_ABASTECIMENTOS;
+export let INITIAL_ABASTECIMENTOS: Abastecimento[] = BASE_INITIAL_ABASTECIMENTOS;
 
-export const INITIAL_TICKETS_JAZIDA: TicketJazida[] = mergeByKey(
-  IMPORTED_SEED_TICKETS_JAZIDA,
-  IMPORTED_AUG2026_TICKETS_JAZIDA,
-  item => item.id
-);
+export let INITIAL_TICKETS_JAZIDA: TicketJazida[] = [];
 
 export const INITIAL_LUBRIFICACOES: Lubrificacao[] = [
   { id: 'lub-1', data: '2026-06-22', hora: '06:20', equipamentoId: 'eq-ec079', horimetro: 1954, produtoLubrificacaoId: 'pl-1', compartimento: 'Pinos e Articulações', quantidade: 1, responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },

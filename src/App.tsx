@@ -58,6 +58,7 @@ import {
   INITIAL_APONTAMENTO_RAMOS,
   INITIAL_APONTAMENTO_RAMO_REGISTROS,
   INITIAL_TICKETS_JAZIDA,
+  hydrateInitialOperationalSeedData,
   loadInitialMateriaisData,
   INITIAL_PARTES_DIARIAS_EQUIPAMENTOS
 } from './utils/initialData';
@@ -101,16 +102,13 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 let INITIAL_MATERIAIS_CADASTRO: MaterialCadastro[] = [];
 let INITIAL_MATERIAIS_REGISTROS: MaterialRegistro[] = [];
 // Motion and Logo Import
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-dark.svg';
 
 // Firebase Imports
 import { auth, db } from './firebase';
 import {
   onAuthStateChanged,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signOut,
   type User,
 } from 'firebase/auth';
 import {
@@ -146,7 +144,9 @@ import { loadOneDriveFuelPayload, type OneDriveFuelSyncStatus } from './oneDrive
 import { materializeOneDriveFuelRows } from './utils/oneDriveFuelImport';
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { rotateWeakPublicLinkTokens } from './utils/publicLinkSecurity';
-import { commitStorageBatch, isReneaStoredValueValid, parseReneaStoredJson } from './utils/resilientStorage';
+import { commitStorageBatch } from './utils/resilientStorage';
+import { parseStoredJson, readStoredFlag, writeStoredFlag } from './data/localStore';
+import { STORAGE_KEYS } from './data/storageKeys';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
 import { promoteMasterWorkbook } from './masterData/materializeMasterData';
 import type { MasterWorkbookAnalysis, MasterWorkbookReviewRow } from './masterData/masterWorkbook';
@@ -159,6 +159,9 @@ import {
   normalizeUserRole,
   type UserRole,
 } from './app/navigation/navigation';
+import { NavigationMenu } from './app/shell/NavigationMenu';
+import { DesktopTopBar } from './app/shell/DesktopTopBar';
+import { DesktopModuleTabs } from './app/shell/DesktopModuleTabs';
 import {
   getApontamentoTokenFromUrl,
   getPresenceTokenFromUrl,
@@ -166,35 +169,43 @@ import {
   isTicketLinkUrl,
 } from './app/routing/publicRoutes';
 import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
+import { ToastViewport } from './shared/components/feedback/ToastViewport';
+import { AuthLoadingScreen, LoginScreen } from './auth/LoginScreen';
+import {
+  getLoginErrorMessage,
+  normalizeLoginEmail,
+  sendPasswordRecoveryEmail,
+  signInWithCorporateEmail,
+  signOutCurrentUser,
+} from './auth/authService';
+import {
+  recordSessionActivity,
+  SESSION_ACTIVITY_EVENTS,
+  SESSION_INACTIVITY_MS,
+} from './auth/sessionActivity';
+import {
+  createNotification,
+  getInitialNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  persistNotifications,
+  prependNotifications,
+  type NotificationSource,
+  type NotificationType,
+} from './notifications/notificationService';
 
 // Icons Import
 import {
   Database,
   Menu,
   X,
-  LogIn,
   LogOut,
-  Eye,
-  EyeOff,
-  Search,
-  ChevronRight,
   FolderPlus,
-  ShieldCheck,
   Bell,
   BellRing,
-  Wifi,
-  CheckCheck,
-  Info,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
 } from 'lucide-react';
 
 import { AppNotification } from './types';
-
-// Notificações reais começam vazias. Elas são preenchidas apenas por ações
-// genuínas do usuário (cadastros, edições, sincronizações com o Firebase etc.)
-const getInitialNotifications = (): AppNotification[] => [];
 
 type CadastroImportTarget = 'empresas' | 'fornecedores' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
 type CadastroImportRow = Record<string, string>;
@@ -268,20 +279,6 @@ const mergeTicketCollections = (current: TicketJazida[], incoming: TicketJazida[
   return Array.from(indexed.values());
 };
 
-const parseStoredJson = <T,>(rawValue: string | null, storageKey: string, fallback: T): T => {
-  if (!rawValue) return fallback;
-  if (!isReneaStoredValueValid(storageKey, rawValue)) {
-    console.error(`O dado local ${storageKey} está corrompido e foi preservado para recuperação.`);
-    return fallback;
-  }
-  const parsed = parseReneaStoredJson<T | null>(rawValue, null);
-  if (parsed !== null) return parsed;
-  // A recuperação do IndexedDB já foi tentada antes da montagem do React. Se
-  // não havia cópia íntegra, a tela continua disponível sem destruir o original.
-  console.error(`O dado local ${storageKey} está corrompido e foi preservado para recuperação.`);
-  return fallback;
-};
-
 const mergeRecordsById = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
   const indexed = new Map(current.map(item => [item.id, item]));
   incoming.forEach(item => indexed.set(item.id, item));
@@ -351,7 +348,7 @@ export default function App() {
   const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
   const [externalTicketLoadError, setExternalTicketLoadError] = useState('');
   const [publicLinksRotationPending, setPublicLinksRotationPending] = useState(
-    () => localStorage.getItem('renea_public_links_rotation_pending_v31') === 'true',
+    () => readStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31),
   );
   const externalPresenceToken = getPresenceTokenFromUrl();
   const externalApontamentoToken = getApontamentoTokenFromUrl();
@@ -380,15 +377,18 @@ export default function App() {
       // histórica administrativa de materiais.
       if (externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
       try {
-        const materialData = await loadInitialMateriaisData();
+        const [, materialData] = await Promise.all([
+          hydrateInitialOperationalSeedData(),
+          loadInitialMateriaisData(),
+        ]);
         if (cancelled) return;
         INITIAL_MATERIAIS_CADASTRO = materialData.cadastro;
         INITIAL_MATERIAIS_REGISTROS = materialData.registros;
       } catch (error) {
-        console.error('Falha ao carregar a base histórica de materiais:', error);
+        console.error('Falha ao carregar a base historica inicial:', error);
       }
 
-    const isDataLoadedV2 = localStorage.getItem('renea_data_loaded_v2') === 'true';
+    const isDataLoadedV2 = readStoredFlag(localStorage, STORAGE_KEYS.dataLoadedV2);
 
     if (!isDataLoadedV2) {
       const initialStorageEntries = [
@@ -483,9 +483,9 @@ export default function App() {
       const savedVinculosOperadorEquipamento = localStorage.getItem('renea_vinculos_operador_equipamento');
       const savedHistory = localStorage.getItem('renea_history_logs');
       const savedNotifications = localStorage.getItem('renea_notifications');
-      const shouldMigratePresencePeople = localStorage.getItem('renea_colaboradores_planilha_v1') !== 'true';
-      const shouldMigrateSpreadsheetSeed = localStorage.getItem('renea_planilhas_operacionais_v2') !== 'true';
-      const shouldMigrateMateriaisSeed = localStorage.getItem('renea_materiais_planilha_v1') !== 'true';
+      const shouldMigratePresencePeople = !readStoredFlag(localStorage, STORAGE_KEYS.colaboradoresPlanilhaV1);
+      const shouldMigrateSpreadsheetSeed = !readStoredFlag(localStorage, STORAGE_KEYS.planilhasOperacionaisV2);
+      const shouldMigrateMateriaisSeed = !readStoredFlag(localStorage, STORAGE_KEYS.materiaisPlanilhaV1);
       const parsedEquipamentos = parseStoredJson(savedEquipamentos, 'renea_equipamentos', INITIAL_EQUIPAMENTOS);
       const parsedEmpresas = parseStoredJson(savedEmpresas, 'renea_empresas', INITIAL_EMPRESAS);
       const parsedComboios = parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS);
@@ -574,7 +574,7 @@ export default function App() {
       }
       if (securedPublicLinks.changed) {
         localStorage.setItem('renea_grupos_equipes', JSON.stringify(securedPublicLinks.gruposEquipe));
-        localStorage.setItem('renea_public_links_rotation_pending_v31', 'true');
+        writeStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31, true);
         setPublicLinksRotationPending(true);
       }
       if (!savedApontamentoRamoRegistros) {
@@ -619,7 +619,7 @@ export default function App() {
     try {
       const token = await user.getIdTokenResult(true);
       if (token.claims.staff !== true) {
-        await signOut(auth);
+        await signOutCurrentUser(auth);
         setCurrentUser(null);
         setIsLoggedIn(false);
         setLoginError('Sua conta existe, mas ainda não foi autorizada para acessar o sistema.');
@@ -640,37 +640,40 @@ export default function App() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    const inactivityMs = 30 * 60 * 1000;
     let timeoutId: number | undefined;
     const expireSession = async () => {
-      await signOut(auth);
+      await signOutCurrentUser(auth);
       setCurrentUser(null);
       setIsLoggedIn(false);
       setPassword('');
       setLoginNotice('Sua sessão foi encerrada por inatividade.');
     };
     const refreshActivity = () => {
-      localStorage.setItem('renea_session_last_activity', new Date().toISOString());
+      recordSessionActivity(localStorage);
       if (timeoutId) window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => { void expireSession(); }, inactivityMs);
+      timeoutId = window.setTimeout(() => { void expireSession(); }, SESSION_INACTIVITY_MS);
     };
-    const events: Array<keyof WindowEventMap> = ['click', 'keydown', 'pointerdown', 'touchstart'];
-    events.forEach(eventName => window.addEventListener(eventName, refreshActivity, { passive: true }));
+    SESSION_ACTIVITY_EVENTS.forEach(eventName => window.addEventListener(eventName, refreshActivity, { passive: true }));
     refreshActivity();
     return () => {
       if (timeoutId) window.clearTimeout(timeoutId);
-      events.forEach(eventName => window.removeEventListener(eventName, refreshActivity));
+      SESSION_ACTIVITY_EVENTS.forEach(eventName => window.removeEventListener(eventName, refreshActivity));
     };
   }, [isLoggedIn]);
 
 
-  // Check the real Firestore connection and load sync preferences on mount.
+  // Check the real Firestore connection only after authentication.
   useEffect(() => {
-    const autoSyncSaved = localStorage.getItem('renea_auto_sync') === 'true';
+    const autoSyncSaved = readStoredFlag(localStorage, STORAGE_KEYS.autoSync);
     setIsAutoSyncEnabled(autoSyncSaved);
     
     const savedLastSync = localStorage.getItem('renea_last_cloud_sync') || '';
     setLastCloudSync(savedLastSync);
+
+    if (!isLoggedIn || externalTicketLink || externalPresenceToken || externalApontamentoToken) {
+      setIsFirebaseConnected(false);
+      return;
+    }
 
     const checkConnection = async () => {
       try {
@@ -696,8 +699,8 @@ export default function App() {
         setIsFirebaseConnected(false);
       }
     };
-    checkConnection();
-  }, []);
+    void checkConnection();
+  }, [isLoggedIn, externalTicketLink, externalPresenceToken, externalApontamentoToken]);
 
   // Firebase Upload Cloud Sync
   const handleUploadToFirebase = async (
@@ -810,7 +813,7 @@ export default function App() {
           apontamentoRamos: securedPublicLinks.apontamentoRamos,
         };
         if (securedPublicLinks.changed) {
-          localStorage.setItem('renea_public_links_rotation_pending_v31', 'true');
+          writeStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31, true);
           setPublicLinksRotationPending(true);
         }
         const syncIso = backup.updatedAt || new Date().toISOString();
@@ -1108,7 +1111,7 @@ export default function App() {
     );
 
     // Handle background cloud sync if Auto Sync is active
-    if (localStorage.getItem('renea_auto_sync') === 'true') {
+    if (readStoredFlag(localStorage, STORAGE_KEYS.autoSync)) {
       setTimeout(() => {
         const getLS = (key: string, def: any) => {
           const val = localStorage.getItem(key);
@@ -1163,22 +1166,17 @@ export default function App() {
     setLoginNotice('');
     setIsAuthenticating(true);
     try {
-      await signInWithEmailAndPassword(auth, username.trim().toLowerCase(), password);
+      await signInWithCorporateEmail(auth, username, password);
       setLoginError('');
-    } catch (error: any) {
-      const code = String(error?.code || '');
-      setLoginError(code.includes('invalid-credential') || code.includes('user-not-found')
-        ? 'E-mail ou senha incorretos.'
-        : code.includes('too-many-requests')
-          ? 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
-          : 'Não foi possível entrar. Verifique sua conexão e tente novamente.');
+    } catch (error: unknown) {
+      setLoginError(getLoginErrorMessage(error));
     } finally {
       setIsAuthenticating(false);
     }
   };
 
   const handlePasswordRecovery = async () => {
-    const email = username.trim().toLowerCase();
+    const email = normalizeLoginEmail(username);
     setLoginError('');
     setLoginNotice('');
     if (!email) {
@@ -1186,7 +1184,7 @@ export default function App() {
       return;
     }
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordRecoveryEmail(auth, email);
     } catch {
       // A mesma resposta evita confirmar se um e-mail possui conta no sistema.
     }
@@ -1194,7 +1192,7 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await signOutCurrentUser(auth);
     setIsLoggedIn(false);
     setCurrentUser(null);
     setUsername('');
@@ -2210,22 +2208,14 @@ export default function App() {
   const addNotification = (
     title: string, 
     message: string, 
-    type: 'info' | 'success' | 'warning' | 'error' = 'info',
-    source: 'Netlify App' | 'Sistema Local' | 'Firebase Cloud' = 'Netlify App'
+    type: NotificationType = 'info',
+    source: NotificationSource = 'Netlify App'
   ) => {
-    const newNotif: AppNotification = {
-      id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      title,
-      message,
-      type,
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      read: false,
-      source
-    };
+    const newNotif = createNotification(title, message, type, source);
 
     setNotifications(prev => {
-      const updated = [newNotif, ...prev].slice(0, 50);
-      localStorage.setItem('renea_notifications', JSON.stringify(updated));
+      const updated = prependNotifications(prev, [newNotif]);
+      persistNotifications(localStorage, updated);
       return updated;
     });
 
@@ -2240,9 +2230,9 @@ export default function App() {
   };
 
   const persistPresenceNotifications = (newItems: AppNotification[]) => {
-    const updated = [...newItems, ...notifications].slice(0, 50);
+    const updated = prependNotifications(notifications, newItems);
     setNotifications(updated);
-    localStorage.setItem('renea_notifications', JSON.stringify(updated));
+    persistNotifications(localStorage, updated);
     // Mostra somente o alerta mais recente, evitando uma pilha cobrindo a tela.
     const latestItem = newItems[0];
     if (latestItem) {
@@ -2257,16 +2247,8 @@ export default function App() {
   const createPresenceNotification = (
     title: string,
     message: string,
-    type: 'info' | 'success' | 'warning' | 'error' = 'info'
-  ): AppNotification => ({
-    id: `notif-pres-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    title,
-    message,
-    type,
-    timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    read: false,
-    source: 'Netlify App'
-  });
+    type: NotificationType = 'info'
+  ): AppNotification => createNotification(title, message, type, 'Netlify App', 'notif-pres');
 
   const uploadLocalSnapshotToFirebase = () => {
     const getLS = (key: string, def: any) => {
@@ -2312,7 +2294,7 @@ export default function App() {
       const result = await uploadLocalSnapshotToFirebase();
       running = false;
       if (cancelled || !result.success) return;
-      localStorage.removeItem('renea_public_links_rotation_pending_v31');
+      localStorage.removeItem(STORAGE_KEYS.publicLinksRotationPendingV31);
       setPublicLinksRotationPending(false);
       addNotification(
         'Links públicos protegidos',
@@ -2491,7 +2473,7 @@ export default function App() {
         localStorage.setItem('renea_presencas_link', JSON.stringify(nextPresence));
         localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(nextPointing));
     localStorage.removeItem('renea_history_logs');
-        localStorage.setItem('renea_notifications', JSON.stringify(nextNotifications));
+        persistNotifications(localStorage, nextNotifications);
         setPresencasLink(nextPresence);
         setApontamentoRamoRegistros(nextPointing);
     setHistoryLogs([]);
@@ -2518,7 +2500,7 @@ export default function App() {
           );
           localStorage.setItem('renea_presencas_link', JSON.stringify(refreshedPresence));
           localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(refreshedPointing));
-          localStorage.setItem('renea_notifications', JSON.stringify(refreshedNotifications));
+          persistNotifications(localStorage, refreshedNotifications);
           setPresencasLink(refreshedPresence);
           setApontamentoRamoRegistros(refreshedPointing);
           setNotifications(refreshedNotifications);
@@ -3783,104 +3765,46 @@ export default function App() {
 
   // Login Screen Render
   if (isAuthenticating && !isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-600">
-        <div className="flex items-center gap-3 text-sm font-semibold">
-          <span className="w-5 h-5 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
-          Validando acesso seguro...
-        </div>
-      </div>
-    );
+    return <AuthLoadingScreen />;
   }
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-slate-900 antialiased font-sans" id="login-viewport">
-        <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-7 shadow-xl relative overflow-hidden">
-          {/* Branded Logo and Header */}
-          <div className="text-center mb-8 relative">
-            <div className="mx-auto w-48 h-auto flex items-center justify-center mb-4">
-              <img 
-                src={reneaLogo} 
-                alt="RENEA Infraestrutura" 
-                className="w-full h-auto object-contain"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <p className="text-xs text-slate-500 mt-2">Sistema Integrado de Gestão Operacional</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4 relative">
-            <div className="space-y-1.5">
-              <label htmlFor="login-email" className="text-xs font-bold text-slate-700 uppercase">E-mail corporativo</label>
-              <input 
-                id="login-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="nome@empresa.com.br"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-md px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-colors"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="login-password" className="text-xs font-bold text-slate-700 uppercase">Senha de acesso</label>
-              <div className="relative">
-                <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Senha corporativa" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-white border border-slate-300 rounded-md px-4 py-3 pr-12 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10" required />
-                <button type="button" onClick={() => setShowPassword(value => !value)} title={showPassword ? 'Ocultar senha' : 'Mostrar senha'} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white">
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {loginError && (
-                <div role="alert" className="text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-md px-3.5 py-2">
-                {loginError}
-              </div>
-            )}
-
-            {loginNotice && (
-              <div role="status" className="text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-3.5 py-2">
-                {loginNotice}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isAuthenticating}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-extrabold text-sm uppercase rounded-md shadow-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              Entrar no sistema
-            </button>
-            <button type="button" onClick={() => void handlePasswordRecovery()} className="w-full text-center text-xs font-bold text-emerald-400 hover:text-emerald-300">
-              Recuperar senha
-            </button>
-          </form>
-
-          <div className="mt-6 pt-4 border-t border-slate-200 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            Acesso somente para contas autorizadas pela administração
-          </div>
-        </div>
-      </div>
+      <LoginScreen
+        logoSrc={reneaLogo}
+        username={username}
+        password={password}
+        showPassword={showPassword}
+        isAuthenticating={isAuthenticating}
+        loginError={loginError}
+        loginNotice={loginNotice}
+        onUsernameChange={setUsername}
+        onPasswordChange={setPassword}
+        onTogglePasswordVisibility={() => setShowPassword(value => !value)}
+        onSubmit={handleLogin}
+        onPasswordRecovery={() => void handlePasswordRecovery()}
+      />
     );
   }
-
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleMarkAllAsRead = () => {
-    const updated = notifications.map(n => ({ ...n, read: true }));
+    const updated = markAllNotificationsAsRead(notifications);
     setNotifications(updated);
-    localStorage.setItem('renea_notifications', JSON.stringify(updated));
+    persistNotifications(localStorage, updated);
   };
 
   const handleClearNotifications = () => {
     setNotifications([]);
-    localStorage.setItem('renea_notifications', JSON.stringify([]));
+    persistNotifications(localStorage, []);
+  };
+
+  const handleMarkNotificationAsRead = (id: string) => {
+    setNotifications(prev => {
+      const updated = markNotificationAsRead(prev, id);
+      persistNotifications(localStorage, updated);
+      return updated;
+    });
   };
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase('pt-BR');
@@ -3899,51 +3823,15 @@ export default function App() {
   };
 
   const renderNavigation = (mobile = false) => (
-    <>
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-        <input
-          type="search"
-          value={menuSearch}
-          onChange={event => setMenuSearch(event.target.value)}
-          placeholder="Buscar módulo"
-          aria-label="Buscar módulo no menu"
-          className="w-full h-10 pl-9 pr-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:text-slate-400 shadow-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
-        />
-      </div>
-      <div className="space-y-5">
-        {filteredNavigationGroups.map(group => (
-          <section key={group.label} aria-label={group.label}>
-            <p className="px-3 mb-1.5 text-[9px] font-black uppercase text-slate-600">{group.label}</p>
-            <div className="space-y-1">
-              {group.items.map(item => {
-                const Icon = item.icon;
-                const active = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => navigateTo(item.id, mobile)}
-                    aria-current={active ? 'page' : undefined}
-                    title={item.label}
-                    className={`group w-full min-h-10 flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all ${active ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-900/15' : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800'}`}
-                  >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-slate-500 group-hover:text-emerald-400'}`} />
-                    <span className="flex-1 text-left leading-tight">{item.label}</span>
-                    <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-70'}`} />
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-        {filteredNavigationGroups.length === 0 && (
-          <p className="px-3 py-6 text-center text-xs text-slate-500">Nenhum módulo encontrado.</p>
-        )}
-      </div>
-    </>
+    <NavigationMenu
+      activeTab={activeTab}
+      groups={filteredNavigationGroups}
+      menuSearch={menuSearch}
+      onMenuSearchChange={setMenuSearch}
+      onNavigate={navigateTo}
+      mobile={mobile}
+    />
   );
-
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
@@ -4066,160 +3954,25 @@ export default function App() {
 
       {/* 3. MAIN WORKSPACE CONTAINER */}
       <main className="flex-1 flex flex-col overflow-y-auto" id="main-workspace">
-        {/* Subtle upper banner only visible on desktop (hidden when printing) */}
-        <div className="hidden md:flex items-center justify-between h-16 bg-white border-b border-slate-200 px-6 xl:px-8 shrink-0 print:hidden select-none">
-          <div className="flex items-center gap-4">
-            <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-7 w-auto" />
-            <span className="h-8 w-px bg-slate-200" />
-            <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
-              Renea Operacional • Canteiro de Obras Ativo
-            </h2>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg">
-              <Wifi className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">Sistema conectado</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigateTo('cadastros')}
-              title="Abrir cadastros auxiliares"
-              className={`h-10 px-3 rounded-md border text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-700'}`}
-            >
-              <FolderPlus className="w-4 h-4" />
-              <span>Cadastros</span>
-            </button>
-
-            {/* Notification Bell Dropdown Button */}
-            <div className="relative">
-              <button 
-                onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
-                className={`p-2 bg-slate-900 hover:bg-slate-800 border ${isNotifDropdownOpen ? 'border-emerald-500 text-white bg-slate-800' : 'border-slate-800 text-slate-400'} hover:border-slate-700 hover:text-white rounded-xl transition-all relative cursor-pointer flex items-center justify-center`}
-                title="Notificações Netlify"
-              >
-                {unreadCount > 0 ? (
-                  <>
-                    <BellRing className="w-4 h-4 text-emerald-400 animate-bounce" />
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white font-extrabold text-[8px] rounded-full flex items-center justify-center shadow-lg">
-                      {unreadCount}
-                    </span>
-                  </>
-                ) : (
-                  <Bell className="w-4 h-4" />
-                )}
-              </button>
-
-              {isNotifDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsNotifDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-3 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-200">Alertas Campo (Netlify)</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px] font-bold">
-                        {unreadCount > 0 && (
-                          <button 
-                            onClick={handleMarkAllAsRead}
-                            className="text-emerald-400 hover:underline flex items-center gap-0.5 cursor-pointer"
-                          >
-                            <CheckCheck className="w-3.5 h-3.5" />
-                            Lidas
-                          </button>
-                        )}
-                        {notifications.length > 0 && (
-                          <>
-                            <span className="text-slate-800">|</span>
-                            <button 
-                              onClick={handleClearNotifications}
-                              className="text-slate-500 hover:text-slate-300 cursor-pointer"
-                            >
-                              Limpar
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {notifications.length === 0 ? (
-                        <div className="py-10 text-center flex flex-col items-center justify-center text-slate-500">
-                          <Bell className="w-7 h-7 text-slate-700 mb-1.5" />
-                          <p className="text-[11px] italic">Sem alertas recentes</p>
-                          <p className="text-[9px] text-slate-600 mt-1 max-w-[200px]">Alertas de cadastros, edições e sincronizações aparecerão aqui.</p>
-                        </div>
-                      ) : (
-                        notifications.map(n => {
-                          const borderClass = n.read ? 'border-slate-800/40 opacity-60 bg-slate-950/20' : 'border-emerald-500/20 bg-emerald-500/5';
-                          const dotClass = n.type === 'success' 
-                            ? 'bg-emerald-500' 
-                            : n.type === 'warning' 
-                            ? 'bg-amber-500' 
-                            : n.type === 'error' 
-                            ? 'bg-rose-500' 
-                            : 'bg-blue-500';
-
-                          return (
-                            <div 
-                              key={n.id} 
-                              onClick={() => {
-                                setNotifications(prev => {
-                                  const updated = prev.map(item => item.id === n.id ? { ...item, read: true } : item);
-                                  localStorage.setItem('renea_notifications', JSON.stringify(updated));
-                                  return updated;
-                                });
-                              }}
-                              className={`p-2.5 border rounded-xl space-y-1 text-left transition-all hover:bg-slate-800/40 cursor-pointer ${borderClass}`}
-                            >
-                              <div className="flex items-start gap-1.5 justify-between">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`} />
-                                  <span className="text-[9px] font-black uppercase tracking-wider truncate text-slate-200">{n.title}</span>
-                                </div>
-                                <span className="text-[9px] text-slate-500 font-mono shrink-0">{n.timestamp}</span>
-                              </div>
-                              <p className="text-[10px] text-slate-400 leading-normal">{n.message}</p>
-                              <div className="flex items-center justify-between pt-1">
-                                <span className="text-[8px] px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded font-mono uppercase font-black">{n.source}</span>
-                                {!n.read && <span className="text-[8px] text-emerald-400 font-bold font-mono">NOVO</span>}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="text-right">
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest font-mono">Data do Sistema</p>
-              <p className="text-xs font-semibold text-slate-300">
-                {new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
-            </div>
-            <div className="h-10 px-3 rounded-md bg-slate-900 border border-slate-800 flex items-center gap-2 text-xs font-bold text-slate-200 max-w-56">
-              <div className="w-6 h-6 bg-emerald-600 rounded-md flex items-center justify-center font-bold text-white text-[10px] shrink-0">{(currentUser?.displayName || currentUser?.email || 'U').slice(0, 2).toUpperCase()}</div>
-              <div className="min-w-0 text-left">
-                <span className="block truncate">{currentUser?.displayName || 'Usuário RENEA'}</span>
-                <span className="block truncate text-[9px] font-normal text-slate-500">{currentUser?.email}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <nav className="hidden md:flex w-full gap-1 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2 print:hidden xl:px-8" aria-label="Módulos do sistema">
-          {filteredNavigationGroups.flatMap(group => group.items).map(item => {
-            const Icon = item.icon;
-            const active = activeTab === item.id;
-            return <button key={item.id} type="button" onClick={() => navigateTo(item.id)} aria-current={active ? 'page' : undefined} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-[11px] font-black transition ${active ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800'}`}><Icon className="h-4 w-4" />{item.label}</button>;
-          })}
-        </nav>
-
+        <DesktopTopBar
+          activeTab={activeTab}
+          logoSrc={reneaLogo}
+          currentUser={currentUser}
+          isNotificationOpen={isNotifDropdownOpen}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onNavigate={tab => navigateTo(tab)}
+          onToggleNotifications={() => setIsNotifDropdownOpen(value => !value)}
+          onCloseNotifications={() => setIsNotifDropdownOpen(false)}
+          onMarkAllNotificationsAsRead={handleMarkAllAsRead}
+          onClearNotifications={handleClearNotifications}
+          onMarkNotificationAsRead={handleMarkNotificationAsRead}
+        />
+        <DesktopModuleTabs
+          activeTab={activeTab}
+          groups={filteredNavigationGroups}
+          onNavigate={tab => navigateTo(tab)}
+        />
         {/* Dynamic Inner Tab Viewport */}
         <div className="flex-1 overflow-x-hidden p-4 md:p-6 2xl:p-8 max-w-[1800px] w-full mx-auto print:p-0 print:m-0">
           <Suspense fallback={<ScreenLoadingFallback />}>
@@ -4511,7 +4264,7 @@ export default function App() {
                 lastCloudSync={lastCloudSync}
                 onToggleAutoSync={(val) => {
                   setIsAutoSyncEnabled(val);
-                  localStorage.setItem('renea_auto_sync', val ? 'true' : 'false');
+                  writeStoredFlag(localStorage, STORAGE_KEYS.autoSync, val);
                   if (val) {
                     handleUploadToFirebase().then(result => {
                       addNotification(
@@ -4532,49 +4285,8 @@ export default function App() {
         </div>
       </main>
 
-      {/* Toast notifications container in the top right corner */}
       <OfflineStatusV29 />
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 w-full max-w-sm pointer-events-none select-none">
-        <AnimatePresence>
-          {activeToasts.map(toast => {
-            const colorClass = toast.type === 'success' 
-              ? 'border-emerald-500/20 bg-slate-900/95 text-emerald-400'
-              : toast.type === 'warning'
-              ? 'border-amber-500/20 bg-slate-900/95 text-amber-400'
-              : toast.type === 'error'
-              ? 'border-rose-500/20 bg-slate-900/95 text-rose-400'
-              : 'border-blue-500/20 bg-slate-900/95 text-blue-400';
-
-            return (
-              <motion.div
-                key={toast.id}
-                initial={{ opacity: 0, x: 50, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-                exit={{ opacity: 0, x: 50, scale: 0.95 }}
-                className={`pointer-events-auto border p-4 rounded-2xl shadow-2xl flex gap-3 items-start backdrop-blur-md ${colorClass}`}
-              >
-                <div className="mt-0.5 shrink-0">
-                  {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                  {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400" />}
-                  {toast.type === 'error' && <XCircle className="w-5 h-5 text-rose-400" />}
-                  {toast.type === 'info' && <Info className="w-5 h-5 text-blue-400" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider block truncate text-slate-100">{toast.title}</span>
-                    <span className="text-[9px] font-mono opacity-50 shrink-0 text-slate-400">{toast.timestamp}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed mt-1">{toast.message}</p>
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <span className="text-[8px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md font-mono uppercase font-black">{toast.source}</span>
-                    <span className="text-[9px] text-slate-500">Tempo Real</span>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
+      <ToastViewport toasts={activeToasts} />
 
     </div>
   );

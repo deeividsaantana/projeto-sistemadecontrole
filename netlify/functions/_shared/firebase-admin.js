@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { extractBearerToken, mergeSecurityHeaders } from './api-security.js';
 
 const FIREBASE_SERVICE_ACCOUNT_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64
   ? Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf8')
@@ -35,9 +36,8 @@ export const getAdminAuth = () => {
 };
 
 export const requireStaffUser = async event => {
-  const authorization = String(event.headers?.authorization || event.headers?.Authorization || '');
-  const match = authorization.match(/^Bearer\s+(.+)$/i);
-  if (!match) {
+  const token = extractBearerToken(event);
+  if (!token) {
     const error = new Error('Faça login no sistema para consultar a integração.');
     error.statusCode = 401;
     throw error;
@@ -45,7 +45,7 @@ export const requireStaffUser = async event => {
   // A validação criptográfica e a claim `staff` já protegem a consulta. O modo
   // `checkRevoked` exige uma chamada administrativa adicional ao Google Auth e
   // falha no runtime empacotado do Netlify, embora o token Firebase seja válido.
-  const decoded = await getAdminAuth().verifyIdToken(match[1]);
+  const decoded = await getAdminAuth().verifyIdToken(token);
   if (decoded.staff !== true) {
     const error = new Error('Sua conta não possui autorização de equipe.');
     error.statusCode = 403;
@@ -61,8 +61,7 @@ export const jsonResponse = (statusCode, payload, extraHeaders = {}) => ({
   headers: {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff',
-    ...extraHeaders,
+    ...mergeSecurityHeaders(extraHeaders),
   },
   body: JSON.stringify(payload),
 });
@@ -124,5 +123,5 @@ export const functionErrorResponse = error => {
   return jsonResponse(statusCode, {
     success: false,
     message: statusCode >= 500 ? 'O serviço está temporariamente indisponível.' : error.message,
-  });
+  }, error?.headers || {});
 };

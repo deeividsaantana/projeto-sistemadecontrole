@@ -1,18 +1,17 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
+import {
+  getMissingFirebaseClientConfigKeys,
+  resolveFirebaseClientConfig,
+} from './config/firebaseClientConfig';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDGN9xLkhgsqDIMXSTU9G03LEeC4Jmjpo4",
-  authDomain: "sistemarenea.firebaseapp.com",
-  databaseURL: "https://sistemarenea-default-rtdb.firebaseio.com",
-  projectId: "sistemarenea",
-  storageBucket: "sistemarenea.firebasestorage.app",
-  messagingSenderId: "259137561260",
-  appId: "1:259137561260:web:835cac33a4a8ba6afaf509",
-  measurementId: "G-JJXRKV2FB7"
-};
+const firebaseConfig = resolveFirebaseClientConfig();
+const missingFirebaseKeys = getMissingFirebaseClientConfigKeys(firebaseConfig);
+
+if (missingFirebaseKeys.length > 0) {
+  console.warn(`Configuração Firebase incompleta: ${missingFirebaseKeys.join(', ')}.`);
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -20,7 +19,6 @@ const app = initializeApp(firebaseConfig);
 // Initialize services
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-export const storage = getStorage(app);
 
 // Error handling types and helper as specified by firebase-integration skill
 export enum OperationType {

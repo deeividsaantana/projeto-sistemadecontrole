@@ -15,10 +15,30 @@ export default defineConfig(() => {
       target: 'es2022',
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-            'vendor-motion': ['motion/react'],
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('/firebase/') || id.includes('\\firebase\\')) {
+                if (id.includes('/storage/') || id.includes('\\storage\\')) return 'vendor-firebase-storage';
+                return 'vendor-firebase';
+              }
+              if (id.includes('/exceljs/') || id.includes('\\exceljs\\')) return 'vendor-excel';
+              if (id.includes('/jspdf') || id.includes('\\jspdf')) return 'vendor-pdf';
+              if (id.includes('/html2canvas/') || id.includes('\\html2canvas\\')) return 'vendor-canvas';
+              if (id.includes('/recharts/') || id.includes('\\recharts\\')) return 'vendor-charts';
+              if (id.includes('/motion/') || id.includes('\\motion\\')) return 'vendor-motion';
+              if (id.includes('/react/') || id.includes('\\react\\') || id.includes('/react-dom/') || id.includes('\\react-dom\\')) {
+                return 'vendor-react';
+              }
+            }
+            if (id.includes('/src/utils/importedAugust2026Seed') || id.includes('\\src\\utils\\importedAugust2026Seed')) {
+              return 'seed-august-2026';
+            }
+            if (id.includes('/src/utils/importedSpreadsheetSeed') || id.includes('\\src\\utils\\importedSpreadsheetSeed')) {
+              return 'seed-spreadsheet';
+            }
+            if (id.includes('/src/utils/initialMateriaisData') || id.includes('\\src\\utils\\initialMateriaisData')) {
+              return 'seed-materiais';
+            }
           },
         },
       },

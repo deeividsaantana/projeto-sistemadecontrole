@@ -146,6 +146,7 @@ export default function CadastrosTab({
 
   // Deletion confirmations
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const [importFeedback, setImportFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [pendingImport, setPendingImport] = useState<{ fileName: string; rows: Record<string, string>[] } | null>(null);
@@ -442,16 +443,22 @@ export default function CadastrosTab({
   };
 
   const executeDeletion = (id: string) => {
-    if (subTab === 'empresas' || subTab === 'fornecedores') onDeleteEmpresa(id);
-    else if (subTab === 'obras') onDeleteObra(id);
-    else if (subTab === 'equipamentos' || subTab === 'veiculos') onDeleteEquipamento(id);
-    else if (subTab === 'funcionarios') onDeleteFuncionario(id);
-    else if (subTab === 'comboios') onDeleteComboio(id);
-    else if (subTab === 'combustiveis') onDeleteTipoCombustivel(id);
-    else if (subTab === 'lubrificantes') onDeleteProdutoLubrificacao(id);
-    else if (subTab === 'etapas') onDeleteEtapaServico(id);
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      if (subTab === 'empresas' || subTab === 'fornecedores') onDeleteEmpresa(id);
+      else if (subTab === 'obras') onDeleteObra(id);
+      else if (subTab === 'equipamentos' || subTab === 'veiculos') onDeleteEquipamento(id);
+      else if (subTab === 'funcionarios') onDeleteFuncionario(id);
+      else if (subTab === 'comboios') onDeleteComboio(id);
+      else if (subTab === 'combustiveis') onDeleteTipoCombustivel(id);
+      else if (subTab === 'lubrificantes') onDeleteProdutoLubrificacao(id);
+      else if (subTab === 'etapas') onDeleteEtapaServico(id);
 
-    setDeleteConfirmId(null);
+      setDeleteConfirmId(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // 5. Query Filters
@@ -493,6 +500,31 @@ export default function CadastrosTab({
   const filteredCombustiveis = combustiveis.filter(x => x.nome.toLowerCase().includes(q));
   const filteredLubrificantes = lubrificantes.filter(x => x.nome.toLowerCase().includes(q));
   const filteredEtapas = etapas.filter(x => x.nome.toLowerCase().includes(q));
+  const deleteTarget = deleteConfirmId
+    ? subTab === 'empresas' || subTab === 'fornecedores'
+      ? empresas.find(item => item.id === deleteConfirmId)
+      : subTab === 'obras'
+        ? obras.find(item => item.id === deleteConfirmId)
+        : subTab === 'equipamentos' || subTab === 'veiculos'
+          ? equipamentos.find(item => item.id === deleteConfirmId)
+          : subTab === 'funcionarios'
+            ? funcionarios.find(item => item.id === deleteConfirmId)
+            : subTab === 'comboios'
+              ? comboios.find(item => item.id === deleteConfirmId)
+              : subTab === 'combustiveis'
+                ? combustiveis.find(item => item.id === deleteConfirmId)
+                : subTab === 'lubrificantes'
+                  ? lubrificantes.find(item => item.id === deleteConfirmId)
+                  : etapas.find(item => item.id === deleteConfirmId)
+    : null;
+  const deleteTargetName = deleteTarget && 'nome' in deleteTarget ? String(deleteTarget.nome || '') : deleteConfirmId || '';
+  const deleteTargetCode = deleteTarget && 'prefixo' in deleteTarget
+    ? String(deleteTarget.prefixo || '')
+    : deleteTarget && 'placa' in deleteTarget
+      ? String(deleteTarget.placa || '')
+      : deleteTarget && 'cnpj' in deleteTarget
+        ? String(deleteTarget.cnpj || '')
+        : deleteConfirmId || '';
 
   const clearAdvancedFilters = () => {
     setFilterStatus('todos');
@@ -1627,27 +1659,34 @@ export default function CadastrosTab({
 
       {/* Safe inline Prompt Deletion Confirmation Dialog overlay */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-slate-900 border border-rose-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="cadastro-delete-title">
+          <div className="w-full max-w-md bg-slate-900 border border-rose-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
             <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl w-fit">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-sm uppercase tracking-wider font-black text-white font-mono">Confirmar inativação?</h3>
+              <h3 id="cadastro-delete-title" className="text-sm uppercase tracking-wider font-black text-white font-mono">Confirmar inativacao?</h3>
               <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
                 O registro continuará no histórico e nos lançamentos existentes. {subTab === 'equipamentos' || subTab === 'veiculos' ? 'A frota será marcada como desmobilizada.' : 'O cadastro será marcado como inativo.'}
               </p>
+              <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3">
+                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-500">Registro selecionado</span>
+                <strong className="mt-1 block truncate text-sm text-white">{deleteTargetName || 'Registro sem nome'}</strong>
+                <span className="mt-1 block truncate font-mono text-[10px] text-slate-400">{deleteTargetCode}</span>
+              </div>
             </div>
             <div className="flex gap-2">
               <button 
                 onClick={() => executeDeletion(deleteConfirmId)}
-                className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                disabled={isDeleting}
+                className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {subTab === 'equipamentos' || subTab === 'veiculos' ? 'DESMOBILIZAR' : 'INATIVAR'}
+                {isDeleting ? 'PROCESSANDO...' : subTab === 'equipamentos' || subTab === 'veiculos' ? 'DESMOBILIZAR' : 'INATIVAR'}
               </button>
               <button 
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                disabled={isDeleting}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Não, Cancelar
               </button>

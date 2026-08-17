@@ -21,6 +21,18 @@ import {
   requireStaffUser,
   serverTimestamp,
 } from './_shared/firebase-admin.js';
+import {
+  assertHttpMethod,
+  assertIdempotencyKey,
+  assertValidEntityId,
+  optionsResponse,
+} from './_shared/api-security.js';
+import {
+  logApiEvent,
+  withApiTelemetry,
+} from './_shared/observability.js';
+import { buildAuditRecord } from './_shared/audit-log.js';
+import { withIdempotency } from './_shared/idempotency.js';
 
 const ROOT_COLLECTION = 'sistemarenea_master_data';
 const ORGANIZATIONS_COLLECTION = 'sistemarenea_organizations';
@@ -29,15 +41,7 @@ const IMPORT_BATCHES_COLLECTION = 'sistemarenea_import_batches';
 const AUDIT_COLLECTION = 'sistemarenea_audit_logs';
 const MAX_IMPORT_CHUNK_BYTES = 550_000;
 
-const safeId = (value, label = 'Identificador') => {
-  const id = cleanString(value, 128);
-  if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
-    const error = new Error(label + ' inválido.');
-    error.statusCode = 400;
-    throw error;
-  }
-  return id;
-};
+const safeId = (value, label = 'Identificador') => assertValidEntityId(value, label);
 
 const entityCollection = (database, organizationId, entity) => database
   .collection(ROOT_COLLECTION)
@@ -108,17 +112,7 @@ const writeAudit = async (context, action, entity, recordId, before, after, deta
   const reference = context.database.collection(AUDIT_COLLECTION).doc();
   await reference.set({
     id: reference.id,
-    organizationId: context.organizationId,
-    module: entity,
-    recordId,
-    action,
-    userId: context.userId,
-    userEmail: cleanString(context.staff.email, 320).toLowerCase() || null,
-    before: before || null,
-    after: after || null,
-    details,
-    createdAt: serverTimestamp(),
-    createdAtIso: new Date().toISOString(),
+    ...buildAuditRecord(context, action, entity, recordId, before, after, details),
   });
 };
 
@@ -141,6 +135,26 @@ const gatewayStatus = async context => jsonResponse(200, {
   },
 });
 
+const sanitizeAuditFilters = queryStringParameters => ({
+  action: cleanString(queryStringParameters?.actionType || queryStringParameters?.auditAction, 80).toUpperCase(),
+  module: cleanString(queryStringParameters?.module || queryStringParameters?.entity, 80),
+  userId: cleanString(queryStringParameters?.userId, 160),
+  recordId: cleanString(queryStringParameters?.recordId, 160),
+  from: cleanString(queryStringParameters?.from, 40),
+  to: cleanString(queryStringParameters?.to, 40),
+});
+
+const matchesAuditFilters = (record, filters) => {
+  if (filters.action && String(record.action || '').toUpperCase() !== filters.action) return false;
+  if (filters.module && String(record.module || '') !== filters.module) return false;
+  if (filters.userId && String(record.userId || '') !== filters.userId) return false;
+  if (filters.recordId && String(record.recordId || '') !== filters.recordId) return false;
+  const createdAtIso = String(record.createdAtIso || '');
+  if (filters.from && createdAtIso < filters.from) return false;
+  if (filters.to && createdAtIso > filters.to) return false;
+  return true;
+};
+
 const listAudits = async (event, context) => {
   if (context.role !== 'admin') {
     const error = new Error('Somente administradores podem consultar a auditoria completa.');
@@ -148,15 +162,17 @@ const listAudits = async (event, context) => {
     throw error;
   }
   const limit = sanitizeListLimit(event.queryStringParameters?.limit);
+  const filters = sanitizeAuditFilters(event.queryStringParameters);
   const snapshot = await context.database.collection(AUDIT_COLLECTION)
     .where('organizationId', '==', context.organizationId)
     .limit(Math.max(limit * 3, limit))
     .get();
   const records = snapshot.docs
     .map(item => item.data())
+    .filter(item => matchesAuditFilters(item, filters))
     .sort((left, right) => String(right.createdAtIso || '').localeCompare(String(left.createdAtIso || '')))
     .slice(0, limit);
-  return jsonResponse(200, { success: true, data: { records } });
+  return jsonResponse(200, { success: true, data: { records, filters } });
 };
 
 const assertAdministrator = context => {
@@ -457,19 +473,23 @@ const stageOperationalImport = async (body, context, type) => {
   });
 };
 
-export const handler = async event => {
+export const handler = async event => withApiTelemetry(event, 'master-data', async telemetry => {
   try {
-    const method = String(event.httpMethod || 'GET').toUpperCase();
+    const allowedMethods = ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'];
+    if (String(event.httpMethod || 'GET').toUpperCase() === 'OPTIONS') {
+      return optionsResponse(allowedMethods);
+    }
+    const method = assertHttpMethod(event, allowedMethods.filter(item => item !== 'OPTIONS'));
     const context = await getRequestContext(event);
+    context.requestId = telemetry.requestId;
     if (method === 'GET') {
       if (event.queryStringParameters?.action === 'audit') return await listAudits(event, context);
       if (event.queryStringParameters?.action === 'users') return await listUsers(event, context);
       return event.queryStringParameters?.entity ? await listRecords(event, context) : await gatewayStatus(context);
     }
-    if (!['POST', 'PATCH', 'DELETE'].includes(method)) {
-      return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST, PATCH, DELETE' });
-    }
+    const idempotencyKey = assertIdempotencyKey(event);
     const body = parseJsonBody(event, 4_000_000);
+    return await withIdempotency(event, context, idempotencyKey, async () => {
     if (method === 'POST' && body.action === 'create-user') return await createUser(body, context);
     if (method === 'PATCH' && body.action === 'update-user') return await updateUser(body, context);
     if (method === 'POST' && body.action === 'stage-master-import') return await stageMasterImport(body, context);
@@ -484,7 +504,12 @@ export const handler = async event => {
     if (method === 'POST') return await createRecord(body, context);
     if (method === 'PATCH') return await updateRecord(body, context);
     return await archiveRecord(body, context);
+    });
   } catch (error) {
+    logApiEvent('error', 'api.request.failed', telemetry, {
+      statusCode: Number(error?.statusCode) || 500,
+      errorName: error?.name || 'Error',
+    });
     return functionErrorResponse(error);
   }
-};
+});

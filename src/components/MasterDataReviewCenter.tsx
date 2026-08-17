@@ -22,6 +22,7 @@ import {
   Search,
   ShieldCheck,
   Upload,
+  X,
 } from 'lucide-react';
 import type {
   ApontamentoRamo,
@@ -139,6 +140,7 @@ export default function MasterDataReviewCenter({
   const [analysisError, setAnalysisError] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const [applyOutcome, setApplyOutcome] = useState<{ success: boolean; message: string } | null>(null);
+  const [pendingApplyConfirmation, setPendingApplyConfirmation] = useState(false);
 
   const existingIndex = useMemo(() => buildExistingMasterIndex({
     empresas,
@@ -278,10 +280,7 @@ export default function MasterDataReviewCenter({
 
   const applyMasterWorkbook = async () => {
     if (!analysis || isApplying) return;
-    const confirmed = window.confirm(
-      'Atualizar os cadastros do ERP com as linhas novas e já correspondidas? Duplicidades e linhas inválidas continuarão guardadas para revisão.',
-    );
-    if (!confirmed) return;
+    setPendingApplyConfirmation(false);
     setIsApplying(true);
     setApplyOutcome(null);
     try {
@@ -366,7 +365,7 @@ export default function MasterDataReviewCenter({
             </div>
             <button
               type="button"
-              onClick={applyMasterWorkbook}
+              onClick={() => setPendingApplyConfirmation(true)}
               disabled={isApplying}
               className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-xs font-black text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
             >
@@ -523,6 +522,70 @@ export default function MasterDataReviewCenter({
           {stageMutation.error && (
             <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-200">
               {stageMutation.error instanceof Error ? stageMutation.error.message : 'Não foi possível preservar a revisão.'}
+            </div>
+          )}
+          {pendingApplyConfirmation && (
+            <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-master-apply-title">
+              <div className="w-full max-w-lg rounded-xl border border-emerald-500/30 bg-slate-900 p-5 shadow-2xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-300">
+                      <Database className="h-3.5 w-3.5" />
+                      Acao operacional
+                    </span>
+                    <h3 id="confirm-master-apply-title" className="mt-3 text-base font-black text-white">Aplicar planilha mestre?</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingApplyConfirmation(false)}
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-slate-700 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                    aria-label="Fechar confirmacao"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
+                    <span className="block text-[9px] font-black uppercase text-emerald-300">Novas</span>
+                    <strong className="text-lg text-white">{analysis.rows.filter(row => row.status === 'ready').length}</strong>
+                  </div>
+                  <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3">
+                    <span className="block text-[9px] font-black uppercase text-cyan-300">Atualizaveis</span>
+                    <strong className="text-lg text-white">{analysis.rows.filter(row => row.status === 'matched').length}</strong>
+                  </div>
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
+                    <span className="block text-[9px] font-black uppercase text-amber-300">Duplicadas</span>
+                    <strong className="text-lg text-white">{analysis.rows.filter(row => row.status === 'duplicate').length}</strong>
+                  </div>
+                  <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3">
+                    <span className="block text-[9px] font-black uppercase text-rose-300">Invalidas</span>
+                    <strong className="text-lg text-white">{analysis.rows.filter(row => row.status === 'invalid').length}</strong>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-xs leading-relaxed text-slate-300">
+                  O ERP vai criar ou atualizar somente linhas novas e ja correspondidas. Duplicidades, invalidos e vinculos nao localizados continuarao preservados para revisao, sem descarte automatico.
+                </p>
+
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setPendingApplyConfirmation(false)}
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-xs font-bold text-slate-200 transition hover:bg-slate-800"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={applyMasterWorkbook}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 text-xs font-black text-slate-950 transition hover:bg-emerald-400"
+                  >
+                    <Database className="h-4 w-4" />
+                    Confirmar aplicacao
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
