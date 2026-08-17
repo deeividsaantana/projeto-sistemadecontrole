@@ -4,6 +4,7 @@ import {
   getApontamentoTokenFromUrl,
   getPresenceTokenFromUrl,
   getTicketAccessTokenFromUrl,
+  isPublicLinkUrl,
   isTicketLinkUrl,
 } from '../src/app/routing/publicRoutes';
 
@@ -12,6 +13,13 @@ test('resolve token de presença pela rota pública', () => {
     getPresenceTokenFromUrl({ pathname: '/presenca-link/equipe%201', search: '' }),
     'equipe 1',
   );
+});
+
+test('reconhece qualquer link publico antes de inicializar o ERP completo', () => {
+  assert.equal(isPublicLinkUrl({ pathname: '/presenca-link/equipe-1', search: '' }), true);
+  assert.equal(isPublicLinkUrl({ pathname: '/apontamento-link/ramo-700', search: '' }), true);
+  assert.equal(isPublicLinkUrl({ pathname: '/ticket-link/ticket-seguro', search: '' }), true);
+  assert.equal(isPublicLinkUrl({ pathname: '/', search: '' }), false);
 });
 
 test('mantém compatibilidade com tokens públicos por query string', () => {

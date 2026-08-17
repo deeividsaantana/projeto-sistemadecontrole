@@ -38,7 +38,6 @@ interface ConfiguracoesTabProps {
   onArchivePeriod: (dataInicio: string, dataFim: string, nome?: string) => { success: boolean; message: string };
   onRestoreArchivedPeriod: (id: string) => { success: boolean; message: string };
   isFirebaseConnected: boolean;
-  isAutoSyncEnabled: boolean;
   lastCloudSync: string;
   onToggleAutoSync: (val: boolean) => void;
   onUploadToFirebase: () => Promise<{ success: boolean; message: string }>;
@@ -54,7 +53,6 @@ export default function ConfiguracoesTab({
   onArchivePeriod,
   onRestoreArchivedPeriod,
   isFirebaseConnected,
-  isAutoSyncEnabled,
   lastCloudSync,
   onToggleAutoSync,
   onUploadToFirebase,
@@ -717,11 +715,13 @@ export default function ConfiguracoesTab({
               </div>
               <button
                 type="button"
-                onClick={() => onToggleAutoSync(!isAutoSyncEnabled)}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isAutoSyncEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                onClick={() => onToggleAutoSync(true)}
+                aria-pressed="true"
+                title="Sincronizacao obrigatoria para todos os usuarios"
+                className="relative inline-flex h-5 w-9 shrink-0 cursor-not-allowed rounded-full border-2 border-transparent bg-emerald-500 transition-colors duration-200 ease-in-out focus:outline-none"
               >
                 <span
-                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${isAutoSyncEnabled ? 'translate-x-4' : 'translate-x-0'}`}
+                  className="pointer-events-none inline-block h-4 w-4 translate-x-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
                 />
               </button>
             </div>

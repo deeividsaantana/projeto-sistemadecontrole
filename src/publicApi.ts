@@ -11,7 +11,6 @@ import type {
   TicketJazida,
   TurnoApontamento,
 } from './types';
-import { auth } from './firebase';
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -124,6 +123,7 @@ export const validatePublicTicketAccess = async (accessToken: string) => {
 };
 
 export const getSecurePublicTicketLink = async () => {
+  const { auth } = await import('./firebase');
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login novamente para gerar o link público.');
   const idToken = await user.getIdToken();

@@ -34,6 +34,16 @@ export const isTicketLinkUrl = (location?: PublicLocation) => {
     || new URLSearchParams(resolvedLocation.search).has('tickets');
 };
 
+export const isPublicLinkUrl = (location?: PublicLocation) => {
+  const resolvedLocation = getLocation(location);
+  if (!resolvedLocation) return false;
+  return Boolean(
+    getPresenceTokenFromUrl(resolvedLocation)
+    || getApontamentoTokenFromUrl(resolvedLocation)
+    || isTicketLinkUrl(resolvedLocation),
+  );
+};
+
 export const getTicketAccessTokenFromUrl = (location?: PublicLocation) => {
   const resolvedLocation = getLocation(location);
   if (!resolvedLocation) return '';

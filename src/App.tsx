@@ -310,7 +310,7 @@ export default function App() {
 
   // Firebase Sync States
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
-  const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(false);
+  const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [oneDriveFuelSyncStatus, setOneDriveFuelSyncStatus] = useState<OneDriveFuelSyncStatus | null>(null);
 
@@ -664,8 +664,8 @@ export default function App() {
 
   // Check the real Firestore connection only after authentication.
   useEffect(() => {
-    const autoSyncSaved = readStoredFlag(localStorage, STORAGE_KEYS.autoSync);
-    setIsAutoSyncEnabled(autoSyncSaved);
+    setIsAutoSyncEnabled(true);
+    writeStoredFlag(localStorage, STORAGE_KEYS.autoSync, true);
     
     const savedLastSync = localStorage.getItem('renea_last_cloud_sync') || '';
     setLastCloudSync(savedLastSync);
@@ -1110,9 +1110,8 @@ export default function App() {
       'Sistema Local'
     );
 
-    // Handle background cloud sync if Auto Sync is active
-    if (readStoredFlag(localStorage, STORAGE_KEYS.autoSync)) {
-      setTimeout(() => {
+    // Sincronizacao Firebase obrigatoria para manter todos os usuarios alinhados.
+    setTimeout(() => {
         const getLS = (key: string, def: any) => {
           const val = localStorage.getItem(key);
           return parseStoredJson(val, key, def);
@@ -1155,8 +1154,7 @@ export default function App() {
             );
           }
         });
-      }, 100);
-    }
+    }, 100);
   };
 
   // Auth Handler
@@ -4260,21 +4258,29 @@ export default function App() {
                 onArchivePeriod={handleArchivePeriod}
                 onRestoreArchivedPeriod={handleRestoreArchivedPeriod}
                 isFirebaseConnected={isFirebaseConnected}
-                isAutoSyncEnabled={isAutoSyncEnabled}
                 lastCloudSync={lastCloudSync}
                 onToggleAutoSync={(val) => {
-                  setIsAutoSyncEnabled(val);
-                  writeStoredFlag(localStorage, STORAGE_KEYS.autoSync, val);
-                  if (val) {
-                    handleUploadToFirebase().then(result => {
-                      addNotification(
-                        result.success ? 'Firebase sincronizado' : 'Falha no Firebase',
-                        result.message,
-                        result.success ? 'success' : 'error',
-                        'Firebase Cloud',
-                      );
-                    });
+                  if (!val) {
+                    setIsAutoSyncEnabled(true);
+                    writeStoredFlag(localStorage, STORAGE_KEYS.autoSync, true);
+                    addNotification(
+                      'Sincronização obrigatória',
+                      'A sincronização automática com Firebase é obrigatória para manter todos os usuários atualizados.',
+                      'info',
+                      'Firebase Cloud',
+                    );
+                    return;
                   }
+                  setIsAutoSyncEnabled(true);
+                  writeStoredFlag(localStorage, STORAGE_KEYS.autoSync, true);
+                  handleUploadToFirebase().then(result => {
+                    addNotification(
+                      result.success ? 'Firebase sincronizado' : 'Falha no Firebase',
+                      result.message,
+                      result.success ? 'success' : 'error',
+                      'Firebase Cloud',
+                    );
+                  });
                 }}
                 onUploadToFirebase={handleUploadToFirebase}
                 onDownloadFromFirebase={handleDownloadFromFirebase}
