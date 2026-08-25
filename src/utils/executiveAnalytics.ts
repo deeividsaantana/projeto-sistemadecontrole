@@ -92,7 +92,9 @@ export const buildExecutiveAnalytics = ({
       .filter(item => !filters.ramo || item.ramoId === filters.ramo),
   };
   const stakeSummary = buildStakeSummary(filteredStakes);
-  const directPresence = sum(filteredPresenceLists.map(list => list.funcionarios.filter(item => item.presente).length));
+  const directPresence = sum(filteredPresenceLists.map(list => (
+    Array.isArray(list.funcionarios) ? list.funcionarios.filter(item => item.presente).length : 0
+  )));
   const linkedPresence = filteredPresence.filter(item => item.status === 'Presente').length;
   const apontadoPeople = sum(filteredPointings.flatMap(item => item.funcoes.map(entry => entry.quantidade)));
   const apontadoEquipment = sum(filteredPointings.flatMap(item => item.equipamentos.map(entry => entry.quantidade)));

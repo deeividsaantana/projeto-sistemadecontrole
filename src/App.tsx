@@ -142,6 +142,12 @@ import { loadOneDriveFuelPayload, type OneDriveFuelSyncStatus } from './oneDrive
 import { materializeOneDriveFuelRows } from './utils/oneDriveFuelImport';
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { rotateWeakPublicLinkTokens } from './utils/publicLinkSecurity';
+import {
+  normalizePresenceLists,
+  normalizeRuntimeCollection,
+  normalizeStakeControl,
+  normalizeTeamGroups,
+} from './utils/runtimeDataSafety';
 import { commitStorageBatch } from './utils/resilientStorage';
 import { parseStoredJson, readStoredFlag, writeStoredFlag } from './data/localStore';
 import { STORAGE_KEYS } from './data/storageKeys';
@@ -488,12 +494,21 @@ export default function App() {
       const parsedComboios = parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS);
       const parsedAbastecimentos = parseStoredJson(savedAbastecimentos, 'renea_abastecimentos', INITIAL_ABASTECIMENTOS);
       const parsedTicketsJazida = parseStoredJson(savedTicketsJazida, 'renea_tickets_jazida', INITIAL_TICKETS_JAZIDA);
-      const parsedControleEstacas = parseStoredJson(savedControleEstacas, 'renea_controle_estacas', INITIAL_CONTROLE_ESTACAS);
+      const parsedControleEstacas = normalizeStakeControl(
+        parseStoredJson(savedControleEstacas, 'renea_controle_estacas', INITIAL_CONTROLE_ESTACAS),
+      );
       const parsedMateriaisCadastro = parseStoredJson(savedMateriaisCadastro, 'renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO);
       const parsedMateriaisRegistros = parseStoredJson(savedMateriaisRegistros, 'renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS);
-      const parsedGruposEquipe = shouldMigratePresencePeople
-        ? INITIAL_GRUPOS_EQUIPES
-        : parseStoredJson(savedGruposEquipe, 'renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES);
+      const parsedGruposEquipe = normalizeTeamGroups(
+        shouldMigratePresencePeople
+          ? INITIAL_GRUPOS_EQUIPES
+          : parseStoredJson(savedGruposEquipe, 'renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
+      );
+      const parsedListasPresenca = normalizePresenceLists(
+        shouldMigratePresencePeople
+          ? INITIAL_PRESENCAS
+          : parseStoredJson(savedListasPresenca, 'renea_listas_presenca', INITIAL_PRESENCAS),
+      );
       const parsedApontamentoRamos = parseStoredJson(savedApontamentoRamos, 'renea_apontamento_ramos', INITIAL_APONTAMENTO_RAMOS);
       const mergedApontamentoRamos = mergeSeedRecords(
         parsedApontamentoRamos,
@@ -540,7 +555,7 @@ export default function App() {
       setAbastecimentos(loadedAbastecimentos);
       setLubrificacoes(parseStoredJson(savedLubrificacoes, 'renea_lubrificacoes', INITIAL_LUBRIFICACOES));
       setTicketsJazida(loadedTicketsJazida);
-      setListasPresenca(shouldMigratePresencePeople ? INITIAL_PRESENCAS : parseStoredJson(savedListasPresenca, 'renea_listas_presenca', INITIAL_PRESENCAS));
+      setListasPresenca(parsedListasPresenca);
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
       setGruposEquipe(securedPublicLinks.gruposEquipe);
       setPresencasLink(parseStoredJson(savedPresencasLink, 'renea_presencas_link', INITIAL_PRESENCAS_LINK));
@@ -869,74 +884,74 @@ export default function App() {
         ]);
 
         // Só atualiza o React depois de toda a persistência local concluir.
-        if (data.empresas) {
-          setEmpresas(data.empresas);
+        if (Object.hasOwn(data, 'empresas')) {
+          setEmpresas(normalizeRuntimeCollection<Empresa>(data.empresas));
         }
-        if (data.obras) {
-          setObras(data.obras);
+        if (Object.hasOwn(data, 'obras')) {
+          setObras(normalizeRuntimeCollection<ObraLocal>(data.obras));
         }
-        if (data.equipamentos) {
-          setEquipamentos(data.equipamentos);
+        if (Object.hasOwn(data, 'equipamentos')) {
+          setEquipamentos(normalizeRuntimeCollection<Equipamento>(data.equipamentos));
         }
-        if (data.funcionarios) {
-          setFuncionarios(data.funcionarios);
+        if (Object.hasOwn(data, 'funcionarios')) {
+          setFuncionarios(normalizeRuntimeCollection<Funcionario>(data.funcionarios));
         }
-        if (data.comboios) {
-          setComboios(data.comboios);
+        if (Object.hasOwn(data, 'comboios')) {
+          setComboios(normalizeRuntimeCollection<Comboio>(data.comboios));
         }
-        if (data.combustiveis) {
-          setCombustiveis(data.combustiveis);
+        if (Object.hasOwn(data, 'combustiveis')) {
+          setCombustiveis(normalizeRuntimeCollection<TipoCombustivel>(data.combustiveis));
         }
-        if (data.lubrificantes) {
-          setLubrificantes(data.lubrificantes);
+        if (Object.hasOwn(data, 'lubrificantes')) {
+          setLubrificantes(normalizeRuntimeCollection<ProdutoLubrificacao>(data.lubrificantes));
         }
-        if (data.etapas) {
-          setEtapas(data.etapas);
+        if (Object.hasOwn(data, 'etapas')) {
+          setEtapas(normalizeRuntimeCollection<EtapaServico>(data.etapas));
         }
-        if (data.abastecimentos) {
-          setAbastecimentos(data.abastecimentos);
+        if (Object.hasOwn(data, 'abastecimentos')) {
+          setAbastecimentos(normalizeRuntimeCollection<Abastecimento>(data.abastecimentos));
         }
-        if (data.lubrificacoes) {
-          setLubrificacoes(data.lubrificacoes);
+        if (Object.hasOwn(data, 'lubrificacoes')) {
+          setLubrificacoes(normalizeRuntimeCollection<Lubrificacao>(data.lubrificacoes));
         }
-        if (data.ticketsJazida) {
-          setTicketsJazida(data.ticketsJazida);
+        if (Object.hasOwn(data, 'ticketsJazida')) {
+          setTicketsJazida(normalizeRuntimeCollection<TicketJazida>(data.ticketsJazida));
         }
-        if (data.listasPresenca) {
-          setListasPresenca(data.listasPresenca);
+        if (Object.hasOwn(data, 'listasPresenca')) {
+          setListasPresenca(normalizePresenceLists(data.listasPresenca));
         }
-        if (data.ordensServico) {
-          setOrdensServico(data.ordensServico);
+        if (Object.hasOwn(data, 'ordensServico')) {
+          setOrdensServico(normalizeRuntimeCollection<OrdemServico>(data.ordensServico));
         }
-        if (data.gruposEquipe) {
-          setGruposEquipe(data.gruposEquipe);
+        if (Object.hasOwn(data, 'gruposEquipe')) {
+          setGruposEquipe(normalizeTeamGroups(data.gruposEquipe));
         }
-        if (data.presencasLink) {
-          setPresencasLink(data.presencasLink);
+        if (Object.hasOwn(data, 'presencasLink')) {
+          setPresencasLink(normalizeRuntimeCollection<PresencaApontamento>(data.presencasLink));
         }
-        if (data.historicoPresencas) {
-          setHistoricoPresencas(data.historicoPresencas);
+        if (Object.hasOwn(data, 'historicoPresencas')) {
+          setHistoricoPresencas(normalizeRuntimeCollection<HistoricoPresenca>(data.historicoPresencas));
         }
-        if (data.apontamentoRamos) {
-          setApontamentoRamos(data.apontamentoRamos);
+        if (Object.hasOwn(data, 'apontamentoRamos')) {
+          setApontamentoRamos(normalizeRuntimeCollection<ApontamentoRamo>(data.apontamentoRamos));
         }
-        if (data.apontamentoRamoRegistros) {
-          setApontamentoRamoRegistros(data.apontamentoRamoRegistros);
+        if (Object.hasOwn(data, 'apontamentoRamoRegistros')) {
+          setApontamentoRamoRegistros(normalizeRuntimeCollection<ApontamentoRamoRegistro>(data.apontamentoRamoRegistros));
         }
-        if (data.materiaisCadastro) {
-          setMateriaisCadastro(data.materiaisCadastro);
+        if (Object.hasOwn(data, 'materiaisCadastro')) {
+          setMateriaisCadastro(normalizeRuntimeCollection<MaterialCadastro>(data.materiaisCadastro));
         }
-        if (data.materiaisRegistros) {
-          setMateriaisRegistros(data.materiaisRegistros);
+        if (Object.hasOwn(data, 'materiaisRegistros')) {
+          setMateriaisRegistros(normalizeRuntimeCollection<MaterialRegistro>(data.materiaisRegistros));
         }
-        if (data.partesDiariasEquipamentos) {
-          setPartesDiariasEquipamentos(data.partesDiariasEquipamentos);
+        if (Object.hasOwn(data, 'partesDiariasEquipamentos')) {
+          setPartesDiariasEquipamentos(normalizeRuntimeCollection<ParteDiariaEquipamento>(data.partesDiariasEquipamentos));
         }
-        if (data.controleEquipamentosDiario) {
-          setControleEquipamentosDiario(data.controleEquipamentosDiario);
+        if (Object.hasOwn(data, 'controleEquipamentosDiario')) {
+          setControleEquipamentosDiario(normalizeRuntimeCollection<ControleEquipamentoDiario>(data.controleEquipamentosDiario));
         }
-        if (data.periodosArquivados) {
-          setPeriodosArquivados(data.periodosArquivados);
+        if (Object.hasOwn(data, 'periodosArquivados')) {
+          setPeriodosArquivados(normalizeRuntimeCollection<PeriodoArquivado>(data.periodosArquivados));
         }
         if (Array.isArray(data.estacaLotes) || Array.isArray(data.estacaCravacoes)) {
           setControleEstacas({
@@ -944,8 +959,8 @@ export default function App() {
             cravacoes: Array.isArray(data.estacaCravacoes) ? data.estacaCravacoes : [],
           });
         }
-        if (data.notifications) {
-          setNotifications(data.notifications);
+        if (Object.hasOwn(data, 'notifications')) {
+          setNotifications(normalizeRuntimeCollection<AppNotification>(data.notifications));
         }
       setHistoryLogs([]);
       localStorage.removeItem('renea_history_logs');
@@ -1021,10 +1036,10 @@ export default function App() {
     setExternalPresenceLoadError('');
     try {
       const config = await loadPublicPresenceConfig(externalPresenceToken);
-      setGruposEquipe(config.gruposEquipe);
-      setFuncionarios(config.funcionarios);
-      setEmpresas(config.empresas || []);
-      setObras(config.obras);
+      setGruposEquipe(normalizeTeamGroups(config.gruposEquipe));
+      setFuncionarios(normalizeRuntimeCollection<Funcionario>(config.funcionarios));
+      setEmpresas(normalizeRuntimeCollection<Empresa>(config.empresas));
+      setObras(normalizeRuntimeCollection<ObraLocal>(config.obras));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Não foi possível carregar as equipes.';
       setExternalPresenceLoadError(message);

@@ -89,6 +89,10 @@ interface DashboardProps {
   onNavigate: (tab: string) => void;
 }
 
+const presencePeople = (list: ListaPresenca) => (
+  Array.isArray(list?.funcionarios) ? list.funcionarios : []
+);
+
 export default function Dashboard({
   empresas,
   obras,
@@ -215,7 +219,7 @@ export default function Dashboard({
     let presentCount = 0;
     if (siteLists.length > 0) {
       const latest = [...siteLists].sort((a, b) => b.data.localeCompare(a.data))[0];
-      presentCount = latest.funcionarios.filter(f => f.presente).length;
+      presentCount = presencePeople(latest).filter(f => f.presente).length;
     }
     return {
       nome: site.nome,
@@ -232,8 +236,8 @@ export default function Dashboard({
     return [...siteLists].sort((a, b) => b.data.localeCompare(a.data))[0];
   }).filter((x): x is ListaPresenca => x !== null);
 
-  const totalFuncionariosListados = latestListaPorObra.reduce((acc, l) => acc + l.funcionarios.length, 0);
-  const totalPresentesListados = latestListaPorObra.reduce((acc, l) => acc + l.funcionarios.filter(f => f.presente).length, 0);
+  const totalFuncionariosListados = latestListaPorObra.reduce((acc, list) => acc + presencePeople(list).length, 0);
+  const totalPresentesListados = latestListaPorObra.reduce((acc, list) => acc + presencePeople(list).filter(item => item.presente).length, 0);
   const percPresencaGeral = totalFuncionariosListados > 0 ? Math.round((totalPresentesListados / totalFuncionariosListados) * 100) : 0;
   const listasDeHoje = listasPresenca.filter(l => l.data === todayStr).length;
 
@@ -362,12 +366,13 @@ export default function Dashboard({
       });
     } else if (builderSource === 'presenca') {
       records = listasPresenca.map(item => {
-        const presentes = item.funcionarios.filter(func => func.presente).length;
+        const people = presencePeople(item);
+        const presentes = people.filter(func => func.presente).length;
         return {
           date: item.data,
           value: builderMetric === 'equipe' || builderMetric === 'quantidade' ? presentes : 1,
           obra: obras.find(obra => obra.id === item.obraId)?.nome || 'Sem obra',
-          status: `${presentes}/${item.funcionarios.length} presentes`,
+          status: `${presentes}/${people.length} presentes`,
           responsavel: item.responsavel || 'Sem responsável',
           produto: 'Presença',
           origem: 'Lista',

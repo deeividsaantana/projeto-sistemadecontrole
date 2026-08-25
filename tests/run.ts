@@ -13,6 +13,7 @@ import './publicRoutes.test';
 import './publicLinksBootstrap.test';
 import './presenceRealtime.test';
 import './publicPresenceBackend.test';
+import './runtimeDataSafety.test';
 import './publicLinkSecurity.test';
 import './navigation.test';
 import './notificationService.test';

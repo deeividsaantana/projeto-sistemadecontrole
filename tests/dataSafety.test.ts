@@ -11,6 +11,9 @@ test('armazenamento resiliente aceita somente listas JSON nas tabelas operaciona
   assert.equal(isReneaStoredValueValid('renea_abastecimentos', '[{"id":"1"}]'), true);
   assert.equal(isReneaStoredValueValid('renea_abastecimentos', '{"id":"1"}'), false);
   assert.equal(isReneaStoredValueValid('renea_abastecimentos', '[quebrado'), false);
+  assert.equal(isReneaStoredValueValid('renea_controle_equipamentos_diario', '[]'), true);
+  assert.equal(isReneaStoredValueValid('renea_controle_equipamentos_diario', '{}'), false);
+  assert.equal(isReneaStoredValueValid('renea_vinculos_operador_equipamento', '[]'), true);
   assert.equal(isReneaStoredValueValid('renea_auto_sync', 'true'), true);
 });
 
