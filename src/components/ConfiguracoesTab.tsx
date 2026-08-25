@@ -15,19 +15,30 @@ import {
   Upload, 
   BookOpen, 
   Check, 
-  AlertTriangle,
-  Cloud,
-  CloudOff,
   RefreshCw,
-  Wifi,
-  WifiOff,
   Archive,
   FolderOpen,
   CalendarDays,
   BarChart3,
   ShieldCheck,
-  Database
+  Database,
+  Trash2,
 } from 'lucide-react';
+
+const DELETABLE_TABS = [
+  { id: 'cadastros', label: 'Cadastros auxiliares' },
+  { id: 'lancamentos', label: 'Combustível e lubrificação' },
+  { id: 'controle-equipamentos', label: 'Controle de basculantes' },
+  { id: 'tickets-jazida', label: 'Tickets Jazida' },
+  { id: 'estacas', label: 'Controle de estacas' },
+  { id: 'materiais', label: 'Materiais' },
+  { id: 'manutencao', label: 'Manutenção' },
+  { id: 'presenca', label: 'Presença e controle' },
+  { id: 'apontamentos', label: 'Apontamentos' },
+  { id: 'periodos-arquivados', label: 'Períodos arquivados' },
+] as const;
+
+type DeletableTabId = typeof DELETABLE_TABS[number]['id'];
 
 interface ConfiguracoesTabProps {
   historyLogs: HistoryLog[];
@@ -37,11 +48,7 @@ interface ConfiguracoesTabProps {
   periodosArquivados: PeriodoArquivado[];
   onArchivePeriod: (dataInicio: string, dataFim: string, nome?: string) => { success: boolean; message: string };
   onRestoreArchivedPeriod: (id: string) => { success: boolean; message: string };
-  isFirebaseConnected: boolean;
-  lastCloudSync: string;
-  onToggleAutoSync: (val: boolean) => void;
-  onUploadToFirebase: () => Promise<{ success: boolean; message: string }>;
-  onDownloadFromFirebase: () => Promise<{ success: boolean; message: string }>;
+  onDeleteTabData: (tabId: DeletableTabId) => { success: boolean; message: string };
 }
 
 export default function ConfiguracoesTab({
@@ -52,11 +59,7 @@ export default function ConfiguracoesTab({
   periodosArquivados,
   onArchivePeriod,
   onRestoreArchivedPeriod,
-  isFirebaseConnected,
-  lastCloudSync,
-  onToggleAutoSync,
-  onUploadToFirebase,
-  onDownloadFromFirebase
+  onDeleteTabData,
 }: ConfiguracoesTabProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,12 +89,10 @@ export default function ConfiguracoesTab({
   const [historyStart, setHistoryStart] = useState('');
   const [historyEnd, setHistoryEnd] = useState('');
 
-  // Firebase Cloud Sync states
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [syncMsg, setSyncMsg] = useState('');
-  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [deleteTabId, setDeleteTabId] = useState<DeletableTabId | ''>('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [deleteMessage, setDeleteMessage] = useState('');
   const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
   const [usageError, setUsageError] = useState('');
@@ -324,7 +325,7 @@ export default function ConfiguracoesTab({
             <div>
               <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Acesso corporativo protegido</h2>
               <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                O acesso usa contas individuais do Firebase e autorização de equipe. Senhas nunca são exibidas ou armazenadas nesta tela.
+                O acesso usa contas individuais e autorização por perfil. Senhas nunca são exibidas ou armazenadas nesta tela.
               </p>
             </div>
             <div className="flex items-center gap-2 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-bold text-emerald-300">
@@ -380,9 +381,9 @@ export default function ConfiguracoesTab({
               <div className="flex items-start gap-3">
                 <div className="p-3 bg-emerald-500/10 text-emerald-300 rounded-xl"><Database className="w-5 h-5" /></div>
                 <div>
-                  <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Persistência Firebase / Netlify</h2>
+                  <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Persistência protegida</h2>
                   <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                    Camada opcional para cadastros mestres, auditoria e importações. O Firebase continua ativo e nenhum fluxo atual é substituído.
+                    Camada segura para cadastros mestres, auditoria e importações, sem alterar o fluxo operacional atual.
                   </p>
                 </div>
               </div>
@@ -401,7 +402,7 @@ export default function ConfiguracoesTab({
             ) : (
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3">
                 <strong className="block text-xs text-amber-300">Modo opcional ainda não ativado</strong>
-                <span className="mt-1 block text-[10px] leading-relaxed text-slate-400">{masterDataError || 'Configure a conta de serviço Firebase no Netlify para concluir a persistência protegida.'}</span>
+                <span className="mt-1 block text-[10px] leading-relaxed text-slate-400">{masterDataError ? 'A persistência protegida não respondeu. Tente verificar novamente.' : 'A persistência protegida ainda não está disponível nesta conta.'}</span>
               </div>
             )}
           </div>
@@ -663,160 +664,70 @@ export default function ConfiguracoesTab({
             </div>
           </div>
 
-          {/* Sincronização em Nuvem (Firebase) */}
-          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono flex items-center gap-2">
-                <Cloud className="w-5 h-5 text-emerald-400" />
-                Sincronização em Nuvem (Firebase)
-              </h2>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-950 border border-slate-800">
-                {isFirebaseConnected ? (
-                  <>
-                    <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-[10px] font-bold text-emerald-400 font-mono">ONLINE</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="text-[10px] font-bold text-amber-500 font-mono">LOCAL</span>
-                  </>
-                )}
+          <div className="space-y-4 rounded-2xl border border-rose-500/25 bg-slate-900 p-5">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-rose-500/10 p-3 text-rose-300"><Trash2 className="h-5 w-5" /></div>
+              <div>
+                <h2 className="font-mono text-sm font-extrabold uppercase tracking-wider text-white">Exclusão completa por aba</h2>
+                <p className="mt-1 text-xxs leading-relaxed text-slate-400">Escolha uma aba para apagar somente o conjunto de dados pertencente a ela. As demais áreas não serão alteradas.</p>
               </div>
             </div>
 
-            <p className="text-xxs text-slate-400 leading-relaxed">
-              Integração ativa com o banco de dados em nuvem Google Firebase. Salve suas frotas e relatórios de forma segura para acesso compartilhado e restauração instantânea.
-            </p>
-
-            {/* Sync Info Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
-              <div>
-                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">Status da Conexão</span>
-                <span className={`text-xs font-black font-mono block mt-0.5 ${isFirebaseConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {isFirebaseConnected ? '✓ Firestore Conectado' : '⚠️ Firebase Indisponível'}
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">Último Backup Nuvem</span>
-                <span className="text-xs font-black text-white font-mono block mt-0.5">
-                  {lastCloudSync || 'Nunca sincronizado'}
-                </span>
-              </div>
-            </div>
-
-            {/* Auto Sync Toggle */}
-            <div className="flex items-center justify-between p-3.5 bg-slate-950/40 border border-slate-850 rounded-xl">
-              <div>
-                <span className="text-xxs font-extrabold text-white block">Sincronização Automática</span>
-                <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">
-                  Envia todas as modificações (Criar, Editar, Excluir) imediatamente para o Firebase Firestore
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => onToggleAutoSync(true)}
-                aria-pressed="true"
-                title="Sincronizacao obrigatoria para todos os usuarios"
-                className="relative inline-flex h-5 w-9 shrink-0 cursor-not-allowed rounded-full border-2 border-transparent bg-emerald-500 transition-colors duration-200 ease-in-out focus:outline-none"
-              >
-                <span
-                  className="pointer-events-none inline-block h-4 w-4 translate-x-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
-                />
-              </button>
-            </div>
-
-            {/* Sync Action Buttons */}
-            <div className="flex flex-wrap gap-2.5">
-              <button
-                type="button"
-                onClick={async () => {
-                  setIsSyncing(true);
-                  setSyncStatus('idle');
-                  setSyncMsg('');
-                  try {
-                    const res = await onUploadToFirebase();
-                    if (res.success) {
-                      setSyncStatus('success');
-                      setSyncMsg(res.message);
-                    } else {
-                      setSyncStatus('error');
-                      setSyncMsg(res.message);
-                    }
-                  } catch (err: any) {
-                    setSyncStatus('error');
-                    setSyncMsg(err.message || 'Erro inesperado ao sincronizar.');
-                  } finally {
-                    setIsSyncing(false);
-                  }
+            <label className="grid gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Aba com dados a excluir
+              <select
+                value={deleteTabId}
+                onChange={event => {
+                  setDeleteTabId(event.target.value as DeletableTabId | '');
+                  setDeleteConfirmation('');
+                  setDeleteStatus('idle');
+                  setDeleteMessage('');
                 }}
-                disabled={isSyncing || isRestoring}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                className="min-h-11 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs normal-case text-white outline-none focus:border-rose-400"
               >
-                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Sincronizando...' : 'Enviar Dados para a Nuvem'}
-              </button>
+                <option value="">Selecione uma aba</option>
+                {DELETABLE_TABS.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+              </select>
+            </label>
 
-              {!showRestoreConfirm ? (
-                <button
-                  type="button"
-                  onClick={() => setShowRestoreConfirm(true)}
-                  disabled={isSyncing || isRestoring}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 disabled:bg-slate-900 disabled:border-slate-850 disabled:text-slate-655 text-slate-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  Baixar Dados da Nuvem
-                </button>
-              ) : (
-                <div className="flex flex-col sm:flex-row items-center gap-2 bg-slate-950 p-3 rounded-xl border border-amber-500/20 w-full">
-                  <div className="flex-1 text-center sm:text-left">
-                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block font-mono">⚠️ RESTAURAR DA NUVEM?</span>
-                    <span className="text-[9px] text-slate-400 leading-tight">Essa ação substituirá todos os seus dados locais por aqueles salvos no Firebase.</span>
-                  </div>
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setIsRestoring(true);
-                        setSyncStatus('idle');
-                        setSyncMsg('');
-                        setShowRestoreConfirm(false);
-                        try {
-                          const res = await onDownloadFromFirebase();
-                          if (res.success) {
-                            setSyncStatus('success');
-                            setSyncMsg(res.message);
-                          } else {
-                            setSyncStatus('error');
-                            setSyncMsg(res.message);
-                          }
-                        } catch (err: any) {
-                          setSyncStatus('error');
-                          setSyncMsg(err.message || 'Erro inesperado ao restaurar.');
-                        } finally {
-                          setIsRestoring(false);
-                        }
-                      }}
-                      className="flex-1 sm:flex-none px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xxs rounded-lg transition-all cursor-pointer"
-                    >
-                      Confirmar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowRestoreConfirm(false)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xxs rounded-lg transition-all cursor-pointer"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
+            {deleteTabId && (() => {
+              const selectedTab = DELETABLE_TABS.find(tab => tab.id === deleteTabId);
+              const confirmationPhrase = `EXCLUIR ${selectedTab?.label.toLocaleUpperCase('pt-BR') || ''}`;
+              const confirmed = deleteConfirmation.trim() === confirmationPhrase;
+              return (
+                <div className="space-y-3 rounded-xl border border-rose-500/25 bg-slate-950 p-4">
+                  <p className="text-xxs leading-relaxed text-slate-300">Esta ação é permanente e será propagada automaticamente. Para confirmar, digite <strong className="text-rose-300">{confirmationPhrase}</strong>.</p>
+                  <input
+                    value={deleteConfirmation}
+                    onChange={event => setDeleteConfirmation(event.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 font-mono text-xs text-white outline-none focus:border-rose-400"
+                    aria-label="Frase de confirmação da exclusão"
+                  />
+                  <button
+                    type="button"
+                    disabled={!confirmed}
+                    onClick={() => {
+                      const response = onDeleteTabData(deleteTabId);
+                      setDeleteStatus(response.success ? 'success' : 'error');
+                      setDeleteMessage(response.message);
+                      if (response.success) {
+                        setDeleteTabId('');
+                        setDeleteConfirmation('');
+                      }
+                    }}
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-xs font-extrabold text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+                  >
+                    <Trash2 className="h-4 w-4" /> Excluir todos os dados desta aba
+                  </button>
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
-            {/* Sync Feedback message */}
-            {syncStatus !== 'idle' && (
-              <div className={`p-4 rounded-xl border text-xs font-semibold ${syncStatus === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'}`}>
-                {syncStatus === 'success' ? '✓' : '⚠️'} {syncMsg}
+            {deleteStatus !== 'idle' && (
+              <div className={`rounded-xl border p-3 text-xs font-semibold ${deleteStatus === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-rose-500/30 bg-rose-500/10 text-rose-300'}`}>
+                {deleteMessage}
               </div>
             )}
           </div>
@@ -833,10 +744,10 @@ export default function ConfiguracoesTab({
               Proteção de dados operacionais
             </h2>
             <p className="text-xxs text-slate-400 leading-relaxed">
-              A exclusão total, a restauração para dados fictícios e o reset seletivo foram desativados para preservar o histórico operacional. Use exportação, importação assistida e arquivamento de períodos para manter rastreabilidade.
+              A exclusão completa é separada por aba e exige uma confirmação digitada. Antes de excluir, use a exportação ou o arquivamento quando precisar preservar uma cópia recuperável.
             </p>
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-xxs leading-relaxed text-slate-300">
-              Registros existentes só podem ser consultados, arquivados ou restaurados por rotinas com confirmação e trilha de auditoria. Não há mais comandos de zerar dados neste ambiente.
+              Cada exclusão afeta somente a área selecionada, é registrada no histórico e não apaga os dados das outras abas.
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import { Bell, BellRing, CheckCheck } from 'lucide-react';
 import type { AppNotification } from '../../types';
-import { Badge, Button, EmptyState, IconButton, cn } from '../../shared/ui';
+import { Button, EmptyState, IconButton, cn } from '../../shared/ui';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -48,7 +48,7 @@ export function NotificationCenter({
             <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">Alertas Campo (Netlify)</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">Alertas do sistema</span>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-bold">
                 {unreadCount > 0 && (
@@ -104,8 +104,7 @@ export function NotificationCenter({
                         <span className="text-[9px] text-slate-500 font-mono shrink-0">{notification.timestamp}</span>
                       </div>
                       <p className="text-[10px] leading-normal text-slate-600">{notification.message}</p>
-                      <div className="flex items-center justify-between pt-1">
-                        <Badge className="h-5 px-1.5 text-[8px]">{notification.source}</Badge>
+                      <div className="flex items-center justify-end pt-1">
                         {!notification.read && <span className="text-[8px] text-emerald-700 font-bold font-mono">NOVO</span>}
                       </div>
                     </button>

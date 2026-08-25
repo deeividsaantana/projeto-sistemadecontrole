@@ -316,7 +316,7 @@ export default function MasterDataReviewCenter({
               : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
           }`}>
             {gatewayQuery.isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}
-                {gatewayQuery.data?.configured ? 'Firebase protegido pronto' : 'Modo local preservado'}
+                {gatewayQuery.data?.configured ? 'Camada protegida pronta' : 'Modo local preservado'}
           </div>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xlsm" className="hidden" onChange={handleWorkbook} />
           <button
@@ -342,7 +342,7 @@ export default function MasterDataReviewCenter({
           <div>
             <FileSearch className="mx-auto h-8 w-8 text-slate-600" />
             <p className="mt-2 text-sm font-bold text-slate-300">Nenhuma planilha mestre em revisão</p>
-              <p className="mt-1 text-[10px] text-slate-500">A análise não altera os cadastros atuais e preserva a revisão no Firebase.</p>
+              <p className="mt-1 text-[10px] text-slate-500">A análise não altera os cadastros atuais e preserva a revisão com segurança.</p>
           </div>
         </div>
       ) : (

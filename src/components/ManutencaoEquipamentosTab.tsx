@@ -1448,7 +1448,7 @@ export default function ManutencaoEquipamentosTab({
 
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-[10px] text-slate-600">
         <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Última atualização em tempo real</span>
-        <span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />Dados preservados em backup e Firebase</span>
+        <span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />Dados preservados automaticamente</span>
         <span className="flex items-center gap-1.5"><Gauge className="h-3.5 w-3.5" />Disponibilidade calculada por horas registradas</span>
       </div>
     </div>

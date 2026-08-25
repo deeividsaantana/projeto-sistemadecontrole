@@ -82,12 +82,10 @@ const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const ConfiguracoesTab = lazy(() => import('./components/ConfiguracoesTab'));
-const PresencaTab = lazy(() => import('./components/PresencaTab'));
 const ManutencaoEquipamentosTab = lazy(() => import('./components/ManutencaoEquipamentosTab'));
 const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
-const PresencaUnificada = lazy(() => import('./components/PresencaUnificada'));
 const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
-const PresencaLinkExterno = lazy(() => import('./components/PresencaLinkExterno'));
+const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
 const ApontamentoRamosTab = lazy(() => import('./components/ApontamentoRamosTab'));
 const ApontamentoRamoLinkExterno = lazy(() => import('./components/ApontamentoRamoLinkExterno'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
@@ -125,8 +123,9 @@ import {
   savePublicTicket,
 } from './firebaseTickets';
 import {
-  loadPendingPublicSubmissions,
   markPublicSubmissionsProcessed,
+  subscribePendingPublicSubmissions,
+  type PublicSubmission,
 } from './firebasePublicSubmissions';
 import {
   loadPublicApontamentoConfig,
@@ -195,7 +194,6 @@ import {
 
 // Icons Import
 import {
-  Database,
   Menu,
   X,
   LogOut,
@@ -782,7 +780,7 @@ export default function App() {
       setIsFirebaseConnected(true);
       return {
         success: true,
-        message: `Firebase sincronizado: ${uploadResult.totalRecords.toLocaleString('pt-BR')} registros protegidos em blocos seguros.`,
+        message: `${uploadResult.totalRecords.toLocaleString('pt-BR')} registros atualizados com segurança.`,
       };
     } catch (error: unknown) {
       setIsFirebaseConnected(false);
@@ -960,10 +958,10 @@ export default function App() {
         setIsFirebaseConnected(true);
         return {
           success: true,
-          message: `Dados restaurados do Firebase com sucesso (${backup.totalRecords.toLocaleString('pt-BR')} registros).`,
+          message: `Dados atualizados com sucesso (${backup.totalRecords.toLocaleString('pt-BR')} registros).`,
         };
       } else {
-        return { success: false, message: 'Nenhum backup encontrado no Firestore.' };
+        return { success: false, message: 'Nenhuma cópia de dados foi encontrada.' };
       }
     } catch (error: unknown) {
       setIsFirebaseConnected(false);
@@ -1098,8 +1096,18 @@ export default function App() {
     audit?: Pick<HistoryLog, 'registroId' | 'valorAnterior' | 'valorNovo' | 'tipoOperacao'>,
   ) => {
     stateUpdateFn();
-    setHistoryLogs([]);
-    localStorage.removeItem('renea_history_logs');
+    const changeLog: HistoryLog = {
+      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toLocaleString('pt-BR'),
+      usuario: activeUserName,
+      acao: action,
+      tela: tableName,
+      descricao: description,
+      ...audit,
+    };
+    const updatedHistory = [changeLog, ...newHistoryList].slice(0, 2_000);
+    setHistoryLogs(updatedHistory);
+    localStorage.setItem('renea_history_logs', JSON.stringify(updatedHistory));
 
     // Notificação real (não simulada) refletindo a ação que de fato aconteceu
     addNotification(
@@ -1109,7 +1117,7 @@ export default function App() {
       'Sistema Local'
     );
 
-    // Sincronizacao Firebase obrigatoria para manter todos os usuarios alinhados.
+    // A sincronização é obrigatória e silenciosa para manter todos os usuários alinhados.
     setTimeout(() => {
         const getLS = (key: string, def: any) => {
           const val = localStorage.getItem(key);
@@ -1142,16 +1150,7 @@ export default function App() {
           getLS('renea_periodos_arquivados', []),
           getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
         ).then(res => {
-          if (res.success) {
-            console.log("Auto-sync completed successfully.");
-          } else {
-            addNotification(
-              'Sincronização pendente',
-              res.message,
-              'warning',
-              'Firebase Cloud',
-            );
-          }
+          if (!res.success) console.warn('Sincronização automática pendente:', res.message);
         });
     }, 100);
   };
@@ -2297,7 +2296,7 @@ export default function App() {
         'Links públicos protegidos',
         'Links antigos previsíveis foram substituídos. Compartilhe os novos endereços de presença e apontamento.',
         'warning',
-        'Firebase Cloud',
+        'Sistema Local',
       );
     };
     const timer = window.setTimeout(() => void publishRotation(), 1_000);
@@ -2427,14 +2426,16 @@ export default function App() {
     if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
     let cancelled = false;
     let running = false;
+    let queuedSubmissions: PublicSubmission[] | null = null;
 
-    const ingestPublicSubmissions = async () => {
-      if (cancelled || running) return;
+    const ingestPublicSubmissions = async (submissions: PublicSubmission[]) => {
+      if (cancelled || submissions.length === 0) return;
+      if (running) {
+        queuedSubmissions = submissions;
+        return;
+      }
       running = true;
       try {
-        const submissions = await loadPendingPublicSubmissions(db);
-        if (cancelled || submissions.length === 0) return;
-
         const incomingPresence = submissions.flatMap(item => item.kind === 'presence' ? (item.payload.records || []) : []);
         const incomingPointing = submissions.flatMap(item => item.kind === 'apontamento' && item.payload.record ? [item.payload.record] : []);
         const storedPresence = parseStoredJson<PresencaApontamento[]>(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', []);
@@ -2464,16 +2465,16 @@ export default function App() {
             : `${item.payload.record?.ramoNome || 'Ramo'} enviou um apontamento de campo.`,
           timestamp: new Date(item.createdAtIso || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           read: false,
-          source: 'Firebase Cloud' as const,
+          source: 'Sistema Local' as const,
         })));
 
         localStorage.setItem('renea_presencas_link', JSON.stringify(nextPresence));
         localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(nextPointing));
-    localStorage.removeItem('renea_history_logs');
+        localStorage.setItem('renea_history_logs', JSON.stringify(nextHistory));
         persistNotifications(localStorage, nextNotifications);
         setPresencasLink(nextPresence);
         setApontamentoRamoRegistros(nextPointing);
-    setHistoryLogs([]);
+        setHistoryLogs(nextHistory);
         setNotifications(nextNotifications);
 
         let syncResult = await uploadLocalSnapshotToFirebase();
@@ -2495,11 +2496,17 @@ export default function App() {
             parseStoredJson<AppNotification[]>(localStorage.getItem('renea_notifications'), 'renea_notifications', []),
             nextNotifications,
           );
+          const refreshedHistory = mergeRecordsById(
+            parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []),
+            nextHistory,
+          );
           localStorage.setItem('renea_presencas_link', JSON.stringify(refreshedPresence));
           localStorage.setItem('renea_apontamento_ramo_registros', JSON.stringify(refreshedPointing));
+          localStorage.setItem('renea_history_logs', JSON.stringify(refreshedHistory));
           persistNotifications(localStorage, refreshedNotifications);
           setPresencasLink(refreshedPresence);
           setApontamentoRamoRegistros(refreshedPointing);
+          setHistoryLogs(refreshedHistory);
           setNotifications(refreshedNotifications);
           syncResult = await uploadLocalSnapshotToFirebase();
         }
@@ -2509,15 +2516,25 @@ export default function App() {
         if (!cancelled) console.warn('Falha ao incorporar a fila pública; os itens permanecerão pendentes:', error);
       } finally {
         running = false;
+        if (!cancelled && queuedSubmissions) {
+          const nextQueue = queuedSubmissions;
+          queuedSubmissions = null;
+          void ingestPublicSubmissions(nextQueue);
+        }
       }
     };
 
-    const initial = window.setTimeout(ingestPublicSubmissions, 2_000);
-    const interval = window.setInterval(ingestPublicSubmissions, 30_000);
+    const unsubscribe = subscribePendingPublicSubmissions(
+      db,
+      submissions => void ingestPublicSubmissions(submissions),
+      error => {
+        if (!cancelled) console.warn('Falha ao acompanhar os envios públicos em tempo real:', error);
+      },
+    );
     return () => {
       cancelled = true;
-      window.clearTimeout(initial);
-      window.clearInterval(interval);
+      queuedSubmissions = null;
+      unsubscribe();
     };
   }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken, externalApontamentoToken]);
 
@@ -3177,6 +3194,7 @@ export default function App() {
       comboios: 'Comboios',
       combustiveis: 'Tipos de combustível',
       lubrificantes: 'Lubrificantes/Etapas',
+      etapas: 'Etapas de serviço',
       abastecimentos: 'Abastecimentos',
       lubrificacoes: 'Lubrificações',
       presenca: 'Presença',
@@ -3185,6 +3203,7 @@ export default function App() {
       materiais: 'Materiais',
       estacas: 'Estacas',
       partesDiarias: 'Partes Diárias',
+      controleEquipamentos: 'Controle de basculantes',
       manutencao: 'Manutenção',
       periodosArquivados: 'Arquivos de períodos',
     };
@@ -3211,6 +3230,7 @@ export default function App() {
               break;
             case 'equipamentos':
               persist('renea_equipamentos', nextValue(INITIAL_EQUIPAMENTOS), setEquipamentos);
+              persist('renea_vinculos_operador_equipamento', [], setVinculosOperadorEquipamento);
               break;
             case 'funcionarios':
               persist('renea_funcionarios', nextValue(INITIAL_FUNCIONARIOS), setFuncionarios);
@@ -3223,6 +3243,9 @@ export default function App() {
               break;
             case 'lubrificantes':
               persist('renea_lubrificantes', nextValue(INITIAL_PRODUTOS_LUBRIFICACAO), setLubrificantes);
+              break;
+            case 'etapas':
+              persist('renea_etapas', nextValue(INITIAL_ETAPAS_SERVICO), setEtapas);
               break;
             case 'abastecimentos':
               persist('renea_abastecimentos', nextValue(INITIAL_ABASTECIMENTOS), setAbastecimentos);
@@ -3256,6 +3279,9 @@ export default function App() {
             case 'partesDiarias':
               persist('renea_partes_diarias_equipamentos', nextValue(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS), setPartesDiariasEquipamentos);
               break;
+            case 'controleEquipamentos':
+              persist('renea_controle_equipamentos_diario', nextValue(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO), setControleEquipamentosDiario);
+              break;
             case 'manutencao':
               persist('renea_ordens_servico', nextValue(INITIAL_ORDENS_SERVICO), setOrdensServico);
               break;
@@ -3276,6 +3302,24 @@ export default function App() {
       success: true,
       message: `${mode === 'clear' ? 'Dados zerados' : 'Padrões restaurados'} para: ${uniqueScopes.map(key => labels[key] || key).join(', ')}.`,
     };
+  };
+
+  const handleDeleteTabData = (tabId: string): { success: boolean; message: string } => {
+    const scopesByTab: Record<string, string[]> = {
+      cadastros: ['empresas', 'obras', 'equipamentos', 'funcionarios', 'comboios', 'combustiveis', 'lubrificantes', 'etapas'],
+      lancamentos: ['abastecimentos', 'lubrificacoes'],
+      'controle-equipamentos': ['controleEquipamentos'],
+      'tickets-jazida': ['ticketsJazida'],
+      estacas: ['estacas'],
+      materiais: ['materiais'],
+      manutencao: ['manutencao'],
+      presenca: ['presenca'],
+      apontamentos: ['apontamentoRamos'],
+      'periodos-arquivados': ['periodosArquivados'],
+    };
+    const scopes = scopesByTab[tabId];
+    if (!scopes) return { success: false, message: 'A aba selecionada não possui um conjunto de dados excluível.' };
+    return handleApplySelectiveReset(scopes, 'clear');
   };
 
   const isDateInRange = (date: string | undefined, start: string, end: string) => (
@@ -3730,13 +3774,12 @@ export default function App() {
   if (externalPresenceToken) {
     return (
       <Suspense fallback={<ScreenLoadingFallback label="Abrindo presença..." />}>
-        <PresencaLinkExterno
+        <PresencaTempoRealPublica
           token={externalPresenceToken}
           gruposEquipe={gruposEquipe}
           funcionarios={funcionarios}
           empresas={empresas}
           obras={obras}
-          presencasLink={presencasLink}
           isLoadingCloud={isExternalPresenceLoading}
           loadError={externalPresenceLoadError}
           onRetry={() => void reloadExternalPresence()}
@@ -3836,51 +3879,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
       
-      {/* 1. SIDEBAR NAVIGATION - DESKTOP */}
-      <aside className="hidden" id="desktop-sidebar" aria-hidden="true">
-        {/* Branded Header */}
-        <div className="h-[4.5rem] flex items-center px-6 border-b border-slate-200 bg-white">
-          <img 
-            src={reneaLogo} 
-            alt="RENEA Infraestrutura" 
-            className="h-7 w-auto object-contain" 
-            referrerPolicy="no-referrer" 
-          />
-        </div>
-
-        {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {renderNavigation(false)}
-        </nav>
-
-        {/* Database Status Info */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2 text-[10px] text-slate-500 font-mono">
-          <div className="flex items-center justify-between gap-1.5 font-bold mb-1">
-            <div className="flex items-center gap-1.5 text-emerald-500">
-              <Database className="w-3.5 h-3.5" />
-              <span>Banco de Dados Local</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className={`w-1.5 h-1.5 rounded-full ${isFirebaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-              <span className={isFirebaseConnected ? 'text-emerald-400' : 'text-rose-500'}>Firebase</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-y-1 text-slate-400">
-            <span>Frota: {equipamentos.length}</span>
-            <span>Empresas: {empresas.length}</span>
-            <span>Materiais: {materiaisRegistros.length}</span>
-          </div>
-          <button 
-            onClick={() => void handleLogout()}
-            className="w-full mt-2 py-1.5 bg-white hover:bg-rose-50 hover:text-rose-600 border border-slate-200 hover:border-rose-200 text-slate-600 rounded-lg font-bold text-[9px] flex items-center justify-center gap-1 transition-all cursor-pointer"
-          >
-            <LogOut className="w-3 h-3" />
-            Sair da conta
-          </button>
-        </div>
-      </aside>
-
-      {/* 2. MOBILE NAVIGATION HEADER */}
+      {/* Mobile navigation header */}
       <header className="lg:hidden flex items-center justify-between h-[4.25rem] bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
         <img 
           src={reneaLogo} 
@@ -4124,31 +4123,16 @@ export default function App() {
             )}
 
             {activeTab === 'presenca' && (
-              <PresencaUnificada
+              <ControlePresencaTab
                 funcionarios={funcionarios}
                 empresas={empresas}
-                listas={listasPresenca}
-                apontamentos={presencasLink}
-                diario={<PresencaTab
-                  funcionarios={funcionarios}
-                  empresas={empresas}
-                  obras={obras}
-                  listasPresenca={listasPresenca}
-                  onSaveListaPresenca={handleSaveListaPresenca}
-                  onDeleteListaPresenca={handleDeleteListaPresenca}
-                />}
-                tempoReal={<ControlePresencaTab
-                  funcionarios={funcionarios}
-                  empresas={empresas}
-                  obras={obras}
-                  gruposEquipe={gruposEquipe}
-                  presencasLink={presencasLink}
-                  historicoPresencas={historicoPresencas}
-                  onSaveGrupoEquipe={handleSaveGrupoEquipe}
-                  onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
-                  onUpdatePresencaLink={handleUpdatePresencaLink}
-                  onRefreshFromFirebase={handleDownloadFromFirebase}
-                />}
+                obras={obras}
+                gruposEquipe={gruposEquipe}
+                presencasLink={presencasLink}
+                historicoPresencas={historicoPresencas}
+                onSaveGrupoEquipe={handleSaveGrupoEquipe}
+                onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
+                onUpdatePresencaLink={handleUpdatePresencaLink}
               />
             )}
 
@@ -4246,33 +4230,7 @@ export default function App() {
                 periodosArquivados={periodosArquivados}
                 onArchivePeriod={handleArchivePeriod}
                 onRestoreArchivedPeriod={handleRestoreArchivedPeriod}
-                isFirebaseConnected={isFirebaseConnected}
-                lastCloudSync={lastCloudSync}
-                onToggleAutoSync={(val) => {
-                  if (!val) {
-                    setIsAutoSyncEnabled(true);
-                    writeStoredFlag(localStorage, STORAGE_KEYS.autoSync, true);
-                    addNotification(
-                      'Sincronização obrigatória',
-                      'A sincronização automática com Firebase é obrigatória para manter todos os usuários atualizados.',
-                      'info',
-                      'Firebase Cloud',
-                    );
-                    return;
-                  }
-                  setIsAutoSyncEnabled(true);
-                  writeStoredFlag(localStorage, STORAGE_KEYS.autoSync, true);
-                  handleUploadToFirebase().then(result => {
-                    addNotification(
-                      result.success ? 'Firebase sincronizado' : 'Falha no Firebase',
-                      result.message,
-                      result.success ? 'success' : 'error',
-                      'Firebase Cloud',
-                    );
-                  });
-                }}
-                onUploadToFirebase={handleUploadToFirebase}
-                onDownloadFromFirebase={handleDownloadFromFirebase}
+                onDeleteTabData={handleDeleteTabData}
               />
             )}
             </motion.div>

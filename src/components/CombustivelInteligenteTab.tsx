@@ -629,9 +629,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         },
       );
       const preserved = batches.reduce((sum, batch) => sum + batch.preservedRows, 0);
-      setProtectedMessage(`${preserved} registro(s) preservado(s) no Firebase em ${batches.length} lote(s), sem promoção automática.`);
+      setProtectedMessage(`${preserved} registro(s) preservado(s) em ${batches.length} lote(s), sem promoção automática.`);
     } catch (error) {
-      setProtectedMessage(error instanceof Error ? error.message : 'Não foi possível preservar a base no Firebase.');
+      setProtectedMessage(error instanceof Error ? error.message : 'Não foi possível preservar a base protegida.');
     } finally {
       setProtectedSyncing(false);
     }

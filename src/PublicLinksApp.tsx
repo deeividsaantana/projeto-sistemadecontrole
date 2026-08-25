@@ -5,7 +5,6 @@ import type {
   Funcionario,
   GrupoEquipe,
   ObraLocal,
-  PresencaApontamento,
   TicketJazida,
 } from './types';
 import {
@@ -27,11 +26,10 @@ import {
   type PublicApontamentoPayload,
 } from './publicApi';
 
-const PresencaLinkExterno = lazy(() => import('./components/PresencaLinkExterno'));
+const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
 const ApontamentoRamoLinkExterno = lazy(() => import('./components/ApontamentoRamoLinkExterno'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 
-const emptyPresenceRecords: PresencaApontamento[] = [];
 const emptyTickets: TicketJazida[] = [];
 
 export default function PublicLinksApp() {
@@ -135,13 +133,12 @@ export default function PublicLinksApp() {
   if (presenceToken) {
     return (
       <Suspense fallback={<ScreenLoadingFallback label="Abrindo presença..." />}>
-        <PresencaLinkExterno
+        <PresencaTempoRealPublica
           token={presenceToken}
           gruposEquipe={gruposEquipe}
           funcionarios={funcionarios}
           empresas={empresas}
           obras={obras}
-          presencasLink={emptyPresenceRecords}
           isLoadingCloud={presenceLoading}
           loadError={presenceError}
           onRetry={() => void reloadPresence()}

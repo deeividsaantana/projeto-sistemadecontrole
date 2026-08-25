@@ -2,12 +2,13 @@ import {
   collection,
   doc,
   Firestore,
-  getDocs,
+  onSnapshot,
   query,
   serverTimestamp,
   where,
   writeBatch,
 } from 'firebase/firestore';
+import type { Unsubscribe } from 'firebase/firestore';
 import type { ApontamentoRamoRegistro, PresencaApontamento } from './types';
 
 const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
@@ -27,17 +28,21 @@ export type PublicSubmission = {
   };
 };
 
-export const loadPendingPublicSubmissions = async (database: Firestore): Promise<PublicSubmission[]> => {
-  const snapshot = await getDocs(query(
-    collection(database, SUBMISSIONS_COLLECTION),
-    where('status', '==', 'pending'),
-  ));
-  return snapshot.docs
-    .map(item => ({ id: item.id, ...item.data() }) as PublicSubmission)
-    .filter(item => item.kind === 'presence' || item.kind === 'apontamento')
-    .filter(item => item.payload && typeof item.payload.data === 'string')
-    .sort((a, b) => String(a.createdAtIso || '').localeCompare(String(b.createdAtIso || '')));
-};
+const normalizeSubmissionSnapshot = (items: Array<{ id: string; data: () => Record<string, unknown> }>): PublicSubmission[] => items
+  .map(item => ({ id: item.id, ...item.data() }) as PublicSubmission)
+  .filter(item => item.kind === 'presence' || item.kind === 'apontamento')
+  .filter(item => item.payload && typeof item.payload.data === 'string')
+  .sort((a, b) => String(a.createdAtIso || '').localeCompare(String(b.createdAtIso || '')));
+
+export const subscribePendingPublicSubmissions = (
+  database: Firestore,
+  onChange: (submissions: PublicSubmission[]) => void,
+  onError: (error: Error) => void,
+): Unsubscribe => onSnapshot(
+  query(collection(database, SUBMISSIONS_COLLECTION), where('status', '==', 'pending')),
+  snapshot => onChange(normalizeSubmissionSnapshot(snapshot.docs)),
+  error => onError(error),
+);
 
 export const markPublicSubmissionsProcessed = async (
   database: Firestore,

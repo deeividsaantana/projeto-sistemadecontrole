@@ -17,6 +17,27 @@ import { withIdempotency } from './_shared/idempotency.js';
 
 const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
 const isGeneralToken = token => token.startsWith('geral-');
+const SNAPSHOT_CACHE_TTL_MS = 15_000;
+let cachedSnapshot = null;
+let cachedSnapshotUntil = 0;
+let snapshotRequest = null;
+
+const loadPresenceSnapshot = async database => {
+  const now = Date.now();
+  if (cachedSnapshot && now < cachedSnapshotUntil) return cachedSnapshot;
+  if (!snapshotRequest) {
+    snapshotRequest = loadCloudSnapshot(database)
+      .then(snapshot => {
+        cachedSnapshot = snapshot;
+        cachedSnapshotUntil = Date.now() + SNAPSHOT_CACHE_TTL_MS;
+        return snapshot;
+      })
+      .finally(() => {
+        snapshotRequest = null;
+      });
+  }
+  return snapshotRequest;
+};
 
 const activeGroupsForToken = (snapshot, token) => {
   const active = (snapshot.gruposEquipe || []).filter(group => group?.status === 'ativo' && group?.linkAtivo);
@@ -38,13 +59,10 @@ const sanitizeGroup = (group, exposedToken = '') => ({
   updatedAt: '',
 });
 
-const getPublicConfig = (snapshot, token) => {
-  const groups = activeGroupsForToken(snapshot, token);
-  if (groups.length === 0) return null;
-  const allEmployees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
-  const employeeById = new Map(allEmployees.map(employee => [employee.id, employee]));
-  const employeeByRegistration = new Map(allEmployees.map(employee => [cleanString(employee.matricula, 80).toLowerCase(), employee]));
-  const resolvedGroups = groups.map(group => {
+const resolveGroupEmployeeIds = (groups, employees) => {
+  const employeeById = new Map(employees.map(employee => [employee.id, employee]));
+  const employeeByRegistration = new Map(employees.map(employee => [cleanString(employee.matricula, 80).toLowerCase(), employee]));
+  return groups.map(group => {
     const resolvedIds = new Set((Array.isArray(group.funcionarioIds) ? group.funcionarioIds : []).filter(id => employeeById.has(id)));
     (Array.isArray(group.funcionarioMatriculas) ? group.funcionarioMatriculas : []).forEach(registration => {
       const employee = employeeByRegistration.get(cleanString(registration, 80).toLowerCase());
@@ -52,6 +70,13 @@ const getPublicConfig = (snapshot, token) => {
     });
     return { ...group, funcionarioIds: [...resolvedIds] };
   });
+};
+
+const getPublicConfig = (snapshot, token) => {
+  const groups = activeGroupsForToken(snapshot, token);
+  if (groups.length === 0) return null;
+  const allEmployees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
+  const resolvedGroups = resolveGroupEmployeeIds(groups, allEmployees);
   const employeeIds = new Set(resolvedGroups.flatMap(group => group.funcionarioIds));
   const employees = allEmployees
     .filter(employee => employeeIds.has(employee.id))
@@ -137,6 +162,13 @@ const buildPresenceRecords = ({ group, employees, date, items, token }) => {
   return { records, submissionId, createdAtIso: now.toISOString() };
 };
 
+export const __testing = {
+  activeGroupsForToken,
+  buildPresenceRecords,
+  getPublicConfig,
+  resolveGroupEmployeeIds,
+};
+
 export const handler = async event => {
   try {
     const database = getAdminDb();
@@ -146,10 +178,12 @@ export const handler = async event => {
     if (method === 'GET') {
       const token = cleanString(event.queryStringParameters?.token, 180);
       if (!token) return jsonResponse(400, { success: false, message: 'Token de presença não informado.' });
-      const snapshot = await loadCloudSnapshot(database);
+      const snapshot = await loadPresenceSnapshot(database);
       const config = getPublicConfig(snapshot, token);
       if (!config) return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
-      return jsonResponse(200, { success: true, data: config });
+      return jsonResponse(200, { success: true, data: config }, {
+        'Cache-Control': 'private, max-age=15, stale-while-revalidate=30',
+      });
     }
 
     if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST' });
@@ -168,11 +202,11 @@ export const handler = async event => {
       requestId: event.headers?.['x-request-id'] || '',
     };
     return await withIdempotency(event, publicContext, idempotencyKey, async () => {
-      const snapshot = await loadCloudSnapshot(database);
-      const authorizedGroups = activeGroupsForToken(snapshot, token);
+      const snapshot = await loadPresenceSnapshot(database);
+      const employees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
+      const authorizedGroups = resolveGroupEmployeeIds(activeGroupsForToken(snapshot, token), employees);
       const group = authorizedGroups.find(item => item.id === groupId);
       if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
-      const employees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
       const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token });
       await database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`).set({
         kind: 'presence',
@@ -182,7 +216,11 @@ export const handler = async event => {
         sourceIpHash: requestIpHash(event),
         payload: { grupoId: group.id, grupoNome: cleanString(group.nome, 160), data: date, records },
       });
-      return jsonResponse(201, { success: true, submissionId, message: `Presença de ${group.nome} enviada com segurança.` });
+      return jsonResponse(201, {
+        success: true,
+        data: { submissionId, createdAtIso },
+        message: `Presença de ${group.nome} enviada com segurança.`,
+      });
     });
   } catch (error) {
     return functionErrorResponse(error);

@@ -11,6 +11,8 @@ import './fuelWorkbookReader.test';
 import './fuelSyncInventory.test';
 import './publicRoutes.test';
 import './publicLinksBootstrap.test';
+import './presenceRealtime.test';
+import './publicPresenceBackend.test';
 import './publicLinkSecurity.test';
 import './navigation.test';
 import './notificationService.test';

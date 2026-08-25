@@ -68,25 +68,13 @@ export interface PublicPresenceConfig {
 }
 
 export const loadPublicPresenceConfig = async (token: string): Promise<PublicPresenceConfig> => {
-  let lastError: unknown;
-  const delays = [0, 700, 1_600];
-  for (const delay of delays) {
-    if (delay) await new Promise(resolve => window.setTimeout(resolve, delay));
-    try {
-      const response = await callPublicApi<PublicPresenceConfig>(
-        `/.netlify/functions/public-presenca?token=${encodeURIComponent(token)}`,
-      );
-      if (!response.data || !Array.isArray(response.data.gruposEquipe) || response.data.gruposEquipe.length === 0) {
-        throw new Error('Nenhuma equipe foi retornada pelo serviço de presença.');
-      }
-      return response.data;
-    } catch (error) {
-      lastError = error;
-    }
+  const response = await callPublicApi<PublicPresenceConfig>(
+    `/.netlify/functions/public-presenca?token=${encodeURIComponent(token)}`,
+  );
+  if (!response.data || !Array.isArray(response.data.gruposEquipe) || response.data.gruposEquipe.length === 0) {
+    throw new Error('Nenhuma equipe foi retornada pelo serviço de presença.');
   }
-  throw lastError instanceof Error
-    ? lastError
-    : new Error('Não foi possível carregar as equipes de presença.');
+  return response.data;
 };
 
 export const submitPublicPresence = async (
@@ -96,12 +84,17 @@ export const submitPublicPresence = async (
   items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>,
 ) => {
   const payload = { token, grupoId, data, items };
-  const response = await callPublicApi<never>('/.netlify/functions/public-presenca', {
+  const response = await callPublicApi<{ submissionId: string; createdAtIso: string }>('/.netlify/functions/public-presenca', {
     method: 'POST',
     headers: { 'X-Idempotency-Key': stableRequestKey('presenca', payload) },
     body: JSON.stringify(payload),
   });
-  return { success: true, message: response.message || 'Presença enviada com segurança.' };
+  return {
+    success: true,
+    message: response.message || 'Presença enviada com segurança.',
+    submissionId: response.data?.submissionId,
+    createdAtIso: response.data?.createdAtIso,
+  };
 };
 
 export interface PublicApontamentoConfig {

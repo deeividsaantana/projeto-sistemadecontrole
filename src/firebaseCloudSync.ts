@@ -267,10 +267,10 @@ export const formatFirebaseSyncError = (error: unknown): string => {
   const normalized = `${code} ${message}`.toLowerCase();
 
   if (normalized.includes('permission-denied') || normalized.includes('missing or insufficient permissions')) {
-    return 'O Firestore recusou a gravacao. Publique as regras atualizadas do arquivo firestore.rules no Firebase.';
+    return 'A gravação automática foi recusada pela política de acesso. A equipe técnica precisa revisar as permissões do ambiente.';
   }
   if (normalized.includes('resource-exhausted') || normalized.includes('maximum size')) {
-    return 'O Firebase recusou um documento por tamanho. Atualize o site para a versao com backup dividido em blocos.';
+    return 'O armazenamento automático atingiu o limite disponível. Nenhum dado local foi descartado.';
   }
   if (normalized.includes('cloud_version_conflict')) {
     return 'Outro computador publicou dados enquanto este envio estava em andamento. Baixe a versao mais recente antes de tentar novamente.';
@@ -281,9 +281,9 @@ export const formatFirebaseSyncError = (error: unknown): string => {
     || normalized.includes('offline')
     || normalized.includes('network')
   ) {
-    return 'O Firebase nao respondeu. Verifique a internet e tente novamente; a operacao foi encerrada sem travar a tela.';
+    return 'O serviço de dados não respondeu. Verifique a internet; a operação foi encerrada sem travar a tela.';
   }
-  return message || 'Falha desconhecida ao acessar o Firebase.';
+  return message || 'Falha desconhecida ao acessar o serviço de dados.';
 };
 
 export const getFirebaseConnectionStatus = async (
