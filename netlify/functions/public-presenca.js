@@ -26,7 +26,7 @@ const loadPresenceSnapshot = async database => {
   const now = Date.now();
   if (cachedSnapshot && now < cachedSnapshotUntil) return cachedSnapshot;
   if (!snapshotRequest) {
-    snapshotRequest = loadCloudSnapshot(database)
+    snapshotRequest = loadCloudSnapshot(database, ['gruposEquipe', 'funcionarios', 'empresas', 'obras'])
       .then(snapshot => {
         cachedSnapshot = snapshot;
         cachedSnapshotUntil = Date.now() + SNAPSHOT_CACHE_TTL_MS;

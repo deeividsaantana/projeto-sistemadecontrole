@@ -13,6 +13,26 @@ import {
 } from './_shared/firebase-admin.js';
 import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
 
+const SNAPSHOT_CACHE_TTL_MS = 30_000;
+let cachedSnapshot = null;
+let cachedSnapshotUntil = 0;
+let snapshotRequest = null;
+
+const loadApontamentoSnapshot = async database => {
+  const now = Date.now();
+  if (cachedSnapshot && now < cachedSnapshotUntil) return cachedSnapshot;
+  if (!snapshotRequest) {
+    snapshotRequest = loadCloudSnapshot(database, ['apontamentoRamos'])
+      .then(snapshot => {
+        cachedSnapshot = snapshot;
+        cachedSnapshotUntil = Date.now() + SNAPSHOT_CACHE_TTL_MS;
+        return snapshot;
+      })
+      .finally(() => { snapshotRequest = null; });
+  }
+  return snapshotRequest;
+};
+
 const TURNOS = ['Manhã', 'Tarde', 'Noite'];
 const CLIMAS = new Set(['Chuvoso', 'Nublado', 'Ensolarado']);
 const CONDICOES = new Set(['Praticável', 'Impraticável']);
@@ -67,7 +87,7 @@ export const handler = async event => {
     if (method === 'GET') {
       const token = cleanString(event.queryStringParameters?.token, 180);
       if (!token) return jsonResponse(400, { success: false, message: 'Token de apontamento não informado.' });
-      const snapshot = await loadCloudSnapshot(database);
+      const snapshot = await loadApontamentoSnapshot(database);
       const ramos = activeRamosForToken(snapshot, token);
       if (ramos.length === 0) return jsonResponse(404, { success: false, message: 'Link de apontamento inválido ou inativo.' });
       return jsonResponse(200, { success: true, data: { ramos: ramos.map(ramo => sanitizeRamo(ramo, token)) } });
@@ -82,7 +102,7 @@ export const handler = async event => {
     if (!token || !ramoId || !responsavel || !isIsoDate(data)) {
       return jsonResponse(400, { success: false, message: 'Dados de apontamento incompletos ou inválidos.' });
     }
-    const snapshot = await loadCloudSnapshot(database);
+    const snapshot = await loadApontamentoSnapshot(database);
     const ramo = activeRamosForToken(snapshot, token).find(item => item.id === ramoId);
     if (!ramo) return jsonResponse(403, { success: false, message: 'O link não autoriza o ramo selecionado.' });
 

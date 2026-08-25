@@ -12,6 +12,10 @@ const INTERMEDIATE_TABLE_IDS = [
   'partesDiariasEquipamentos', 'controleEquipamentosDiario', 'periodosArquivados', 'notifications', 'historyLogs',
 ];
 
+const SNAPSHOT_CACHE_TTL_MS = 30_000;
+const snapshotCache = new Map();
+const snapshotRequests = new Map();
+
 const hashText = value => crypto.createHash('sha256').update(value).digest('hex');
 
 const loadDocuments = async (database, ids) => {
@@ -24,9 +28,11 @@ const loadDocuments = async (database, ids) => {
   return results;
 };
 
-const loadManifestSnapshot = async (database, manifest) => {
+const loadManifestSnapshot = async (database, manifest, requestedTables) => {
   const data = {};
+  const allowedTables = requestedTables ? new Set(requestedTables) : null;
   for (const [table, ids] of Object.entries(manifest.chunks || {})) {
+    if (allowedTables && !allowedTables.has(table)) continue;
     if (!Array.isArray(ids) || ids.length === 0) {
       data[table] = [];
       continue;
@@ -51,18 +57,42 @@ const loadManifestSnapshot = async (database, manifest) => {
   return data;
 };
 
-export const loadCloudSnapshot = async database => {
+export const loadCloudSnapshot = async (database, requestedTables) => {
+  const tables = Array.isArray(requestedTables) && requestedTables.length > 0
+    ? [...new Set(requestedTables)].sort()
+    : null;
+  const cacheKey = tables ? tables.join(',') : '*';
+  const now = Date.now();
+  const cached = snapshotCache.get(cacheKey);
+  if (cached && now < cached.until) return cached.data;
+  const pending = snapshotRequests.get(cacheKey);
+  if (pending) return pending;
+
+  const request = loadCloudSnapshotUncached(database, tables)
+    .then(data => {
+      snapshotCache.set(cacheKey, { data, until: Date.now() + SNAPSHOT_CACHE_TTL_MS });
+      return data;
+    })
+    .finally(() => snapshotRequests.delete(cacheKey));
+  snapshotRequests.set(cacheKey, request);
+  return request;
+};
+
+const loadCloudSnapshotUncached = async (database, requestedTables) => {
   const collection = database.collection(CLOUD_COLLECTION);
   const manifestSnapshot = await collection.doc(MANIFEST_ID).get();
   if (manifestSnapshot.exists) {
     const manifest = manifestSnapshot.data();
     if (manifest?.kind !== 'manifest' || !manifest.chunks) throw new Error('Manifesto de nuvem inválido.');
-    return loadManifestSnapshot(database, manifest);
+    return loadManifestSnapshot(database, manifest, requestedTables);
   }
 
   const metaSnapshot = await collection.doc(INTERMEDIATE_META_ID).get();
   if (metaSnapshot.exists) {
-    const tableSnapshots = await loadDocuments(database, INTERMEDIATE_TABLE_IDS);
+    const tableIds = requestedTables
+      ? INTERMEDIATE_TABLE_IDS.filter(table => requestedTables.includes(table))
+      : INTERMEDIATE_TABLE_IDS;
+    const tableSnapshots = await loadDocuments(database, tableIds);
     const data = {};
     tableSnapshots.forEach(snapshot => {
       const value = snapshot.data()?.value;
