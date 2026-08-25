@@ -20,7 +20,13 @@ const fallbackRead = (): OfflineCommand[] => {
   }
 };
 
-const fallbackWrite = (items: OfflineCommand[]) => localStorage.setItem(MEMORY_KEY, JSON.stringify(items));
+const fallbackWrite = (items: OfflineCommand[]) => {
+  try {
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.warn('A fila offline não pôde usar a cache local; a operação continuará em memória.', error);
+  }
+};
 
 const openDatabase = () => new Promise<IDBDatabase>((resolve, reject) => {
   if (!('indexedDB' in window)) {

@@ -3,8 +3,10 @@ import test from 'node:test';
 import {
   commitStorageBatch,
   isReneaStoredValueValid,
+  isStorageQuotaExceededError,
   parseReneaStoredJson,
 } from '../src/utils/resilientStorage';
+import { writeStorageValue, writeStoredJson } from '../src/data/localStore';
 import { describeInvalidBackup, validateSystemBackup } from '../src/utils/systemBackup';
 
 test('armazenamento resiliente aceita somente listas JSON nas tabelas operacionais', () => {
@@ -79,4 +81,30 @@ test('gravação em lote reverte as chaves anteriores quando uma escrita falha',
   ]), /Nenhuma alteração parcial/);
   assert.equal(values.get('a'), 'anterior-a');
   assert.equal(values.get('b'), 'anterior-b');
+});
+
+test('cache local cheia não derruba a interface nem perde o valor em memória', () => {
+  const quotaError = Object.assign(new Error("Setting the value of 'renea_tickets_jazida' exceeded the quota."), {
+    name: 'QuotaExceededError',
+  });
+  const storage = {
+    getItem: () => null,
+    setItem: () => { throw quotaError; },
+    removeItem: () => undefined,
+  };
+  const previousWarn = console.warn;
+  console.warn = () => undefined;
+  try {
+    assert.equal(writeStorageValue(storage, 'renea_tickets_jazida', '[{"id":"1"}]'), false);
+    assert.equal(writeStoredJson(storage, 'renea_tickets_jazida', [{ id: '1' }]), false);
+  } finally {
+    console.warn = previousWarn;
+  }
+});
+
+test('erro de quota continua identificável quando embrulhado pela gravação transacional', () => {
+  const quotaError = Object.assign(new Error('exceeded the quota'), { name: 'QuotaExceededError' });
+  const wrapped = new Error('Não foi possível gravar o conjunto completo.', { cause: quotaError });
+  assert.equal(isStorageQuotaExceededError(wrapped), true);
+  assert.equal(isStorageQuotaExceededError(new Error('falha de rede')), false);
 });

@@ -53,6 +53,29 @@ interface StorageAdapter {
   removeItem(key: string): void;
 }
 
+export const isStorageQuotaExceededError = (error: unknown): boolean => {
+  let current: unknown = error;
+  const visited = new Set<unknown>();
+
+  while (current && typeof current === 'object' && !visited.has(current)) {
+    visited.add(current);
+    const candidate = current as { name?: unknown; message?: unknown; code?: unknown; cause?: unknown };
+    const name = String(candidate.name || '').toLowerCase();
+    const message = String(candidate.message || '').toLowerCase();
+    const code = Number(candidate.code);
+    if (
+      name.includes('quotaexceeded')
+      || message.includes('exceeded the quota')
+      || message.includes('quota exceeded')
+      || code === 22
+      || code === 1014
+    ) return true;
+    current = candidate.cause;
+  }
+
+  return false;
+};
+
 export interface StorageBatchEntry {
   key: string;
   value: string;

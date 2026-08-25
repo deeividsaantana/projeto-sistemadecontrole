@@ -7,6 +7,21 @@ import {
 
 type BrowserStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
+export const writeStorageValue = (
+  storage: Pick<Storage, 'setItem'>,
+  storageKey: string,
+  value: string,
+): boolean => {
+  try {
+    storage.setItem(storageKey, value);
+    return true;
+  } catch (error) {
+    const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    console.warn(`A cache local não pôde gravar ${storageKey}. O sistema continuará usando os dados em memória e a sincronização remota.`, reason);
+    return false;
+  }
+};
+
 export const parseStoredJson = <T,>(rawValue: string | null, storageKey: string, fallback: T): T => {
   if (!rawValue) return fallback;
   if (!isReneaStoredValueValid(storageKey, rawValue)) {
@@ -29,9 +44,7 @@ export const writeStoredJson = <T,>(
   storage: BrowserStorage,
   storageKey: string,
   value: T,
-): void => {
-  storage.setItem(storageKey, JSON.stringify(value));
-};
+): boolean => writeStorageValue(storage, storageKey, JSON.stringify(value));
 
 export const readStoredFlag = (
   storage: BrowserStorage,
@@ -42,9 +55,7 @@ export const writeStoredFlag = (
   storage: BrowserStorage,
   storageKey: string,
   value: boolean,
-): void => {
-  storage.setItem(storageKey, value ? 'true' : 'false');
-};
+): boolean => writeStorageValue(storage, storageKey, value ? 'true' : 'false');
 
 export const writeStoredBatch = (
   storage: BrowserStorage,

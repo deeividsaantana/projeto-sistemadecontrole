@@ -27,7 +27,7 @@ test('envios publicos entram no painel por assinatura em tempo real', () => {
   assert.match(subscriptionSource, /onSnapshot\(/);
   assert.doesNotMatch(subscriptionSource, /getDocs|setInterval/);
   assert.match(appSource, /subscribePendingPublicSubmissions/);
-  assert.match(appSource, /localStorage\.setItem\('renea_history_logs', JSON\.stringify\(nextHistory\)\)/);
+  assert.match(appSource, /writeStorageValue\(localStorage, 'renea_history_logs', JSON\.stringify\(nextHistory\)\)/);
 });
 
 test('servico publico reutiliza leitura curta e devolve comprovante do envio', () => {

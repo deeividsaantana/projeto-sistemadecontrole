@@ -39,6 +39,7 @@ import { buildTicketSpreadsheetWorkbook } from '../utils/ticketSpreadsheetExport
 import { buildJazidaDailyControl, getTicketControlDate, isTicketReturned } from '../utils/jazidaDailyControl';
 import { buildTravelOperationControl, formatTravelDuration } from '../utils/travelOperations';
 import { isReneaStoredValueValid, parseReneaStoredJson } from '../utils/resilientStorage';
+import { writeStorageValue } from '../data/localStore';
 import { stageTravelDataset } from '../services/masterDataApi';
 import { getSecurePublicTicketLink } from '../publicApi';
 import { jsPDF } from 'jspdf';
@@ -866,7 +867,7 @@ export default function TicketsJazidaTab({
       };
       setPrintedBatches(prev => {
         const next = [novoLote, ...prev];
-        localStorage.setItem('renea_jazida_printed_batches', JSON.stringify(next));
+        writeStorageValue(localStorage, 'renea_jazida_printed_batches', JSON.stringify(next));
         return next;
       });
       setControlDate(batchDate);
