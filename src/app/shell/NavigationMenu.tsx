@@ -35,11 +35,11 @@ export function NavigationMenu({
         aria-label="Buscar modulo no menu"
         className="mb-4"
       />
-      <div className="space-y-5">
+      <div className="space-y-6">
         {groups.map(group => (
           <section key={group.label} aria-label={group.label}>
-            <p className="px-3 mb-1.5 text-[9px] font-black uppercase text-slate-600">{group.label}</p>
-            <div className="space-y-1">
+            <p className="px-3 mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{group.label}</p>
+            <div className="space-y-1.5">
               {group.items.map(item => {
                 const Icon = item.icon;
                 const active = activeTab === item.id;
@@ -51,8 +51,8 @@ export function NavigationMenu({
                     aria-current={active ? 'page' : undefined}
                     title={item.label}
                     className={cn(
-                      'group flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-xs font-bold transition-colors',
-                      active ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800',
+                      'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+                      active ? 'bg-emerald-700 text-white shadow-sm' : 'text-slate-600 hover:translate-x-0.5 hover:bg-emerald-50 hover:text-emerald-800',
                     )}
                   >
                     <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-slate-500 group-hover:text-emerald-600')} />

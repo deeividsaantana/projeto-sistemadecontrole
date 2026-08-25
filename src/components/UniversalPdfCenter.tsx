@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { FileText } from 'lucide-react';
-import type { Abastecimento, ControleEstacas, Equipamento, Funcionario, MaterialRegistro, ParteDiariaEquipamento, PresencaApontamento, TicketJazida } from '../types';
+import type { Abastecimento, ControleEstacas, Equipamento, Funcionario, MaterialRegistro, PresencaApontamento, TicketJazida } from '../types';
 import { generateUniversalPdfReport, type UniversalPdfColumn } from '../utils/universalPdfReport';
 
 type Props = {
   abastecimentos: Abastecimento[]; estacas: ControleEstacas; tickets: TicketJazida[]; materiais: MaterialRegistro[];
-  equipamentos: Equipamento[]; funcionarios: Funcionario[]; presencas: PresencaApontamento[]; partes: ParteDiariaEquipamento[];
+  equipamentos: Equipamento[]; funcionarios: Funcionario[]; presencas: PresencaApontamento[];
   dataInicio: string; dataFim: string;
 };
 type Report = { id: string; label: string; columns: UniversalPdfColumn[]; rows: object[] };
@@ -23,7 +23,6 @@ export default function UniversalPdfCenter(props: Props) {
     { id: 'equipamentos', label: 'Equipamentos', columns: [['Prefixo','prefixo'],['Equipamento','nome'],['Tipo','tipo'],['Marca','marca'],['Modelo','modelo'],['Placa/Série','seriePlaca'],['Status','status']].map(([header,dataKey])=>({header,dataKey})), rows: props.equipamentos },
     { id: 'efetivo', label: 'Efetivo', columns: [['Data','data'],['Colaborador','funcionarioNome'],['Função','funcao'],['Grupo','grupoNome'],['Status','status'],['Responsável','responsavel'],['Frente','frenteServico']].map(([header,dataKey])=>({header,dataKey})), rows: props.presencas.filter(within) },
     { id: 'colaboradores', label: 'Colaboradores / Cadastros', columns: [['Matrícula','matricula'],['Colaborador','nome'],['Função','cargo'],['Área','area'],['Líder','liderNome'],['Responsável','responsavelArea'],['Status','statusExibicao']].map(([header,dataKey])=>({header,dataKey})), rows: props.funcionarios.map(item => ({ ...item, statusExibicao: item.status || (item.ativo ? 'ATIVO' : 'INATIVO') })) },
-    { id: 'partes', label: 'Partes Diárias', columns: [['Data','data'],['Número','numero'],['Prefixo','prefixo'],['Equipamento','tipoEquipamento'],['Operador','operadorNome'],['Obra','obraNome'],['Status','status']].map(([header,dataKey])=>({header,dataKey})), rows: props.partes.filter(within) },
   ];
   const exportReport = async (report: Report) => {
     setGenerating(report.id);

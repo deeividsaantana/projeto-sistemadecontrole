@@ -12,6 +12,8 @@ import {
   stableHash,
 } from './_shared/firebase-admin.js';
 import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
+import { assertIdempotencyKey } from './_shared/api-security.js';
+import { withIdempotency } from './_shared/idempotency.js';
 
 const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
 const isGeneralToken = token => token.startsWith('geral-');
@@ -158,21 +160,30 @@ export const handler = async event => {
     if (!token || !groupId || !isIsoDate(date) || !Array.isArray(body.items) || body.items.length === 0 || body.items.length > 500) {
       return jsonResponse(400, { success: false, message: 'Dados de presença incompletos ou inválidos.' });
     }
-    const snapshot = await loadCloudSnapshot(database);
-    const authorizedGroups = activeGroupsForToken(snapshot, token);
-    const group = authorizedGroups.find(item => item.id === groupId);
-    if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
-    const employees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
-    const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token });
-    await database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`).set({
-      kind: 'presence',
-      status: 'pending',
-      createdAt: serverTimestamp(),
-      createdAtIso,
-      sourceIpHash: requestIpHash(event),
-      payload: { grupoId: group.id, grupoNome: cleanString(group.nome, 160), data: date, records },
+    const idempotencyKey = assertIdempotencyKey(event, { required: true });
+    const publicContext = {
+      database,
+      organizationId: 'public-presenca',
+      userId: stableHash(token).slice(0, 32),
+      requestId: event.headers?.['x-request-id'] || '',
+    };
+    return await withIdempotency(event, publicContext, idempotencyKey, async () => {
+      const snapshot = await loadCloudSnapshot(database);
+      const authorizedGroups = activeGroupsForToken(snapshot, token);
+      const group = authorizedGroups.find(item => item.id === groupId);
+      if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
+      const employees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
+      const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token });
+      await database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`).set({
+        kind: 'presence',
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        createdAtIso,
+        sourceIpHash: requestIpHash(event),
+        payload: { grupoId: group.id, grupoNome: cleanString(group.nome, 160), data: date, records },
+      });
+      return jsonResponse(201, { success: true, submissionId, message: `Presença de ${group.nome} enviada com segurança.` });
     });
-    return jsonResponse(201, { success: true, submissionId, message: `Presença de ${group.nome} enviada com segurança.` });
   } catch (error) {
     return functionErrorResponse(error);
   }

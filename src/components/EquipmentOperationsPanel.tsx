@@ -1,8 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  CheckCircle2,
-  ClipboardCheck,
   Gauge,
   Search,
   Settings,
@@ -64,7 +62,6 @@ export default function EquipmentOperationsPanel({
     mobilized: summaries.filter(item => item.equipment.mobilizado).length,
     belowTarget: summaries.filter(item => item.belowTarget).length,
     openWorkOrders: summaries.reduce((total, item) => total + item.openWorkOrders, 0),
-    pendingDailyParts: summaries.reduce((total, item) => total + item.pendingDailyParts, 0),
   }), [summaries]);
 
   return (
@@ -77,15 +74,14 @@ export default function EquipmentOperationsPanel({
           </div>
           <h3 className="mt-2 text-lg font-black text-white">Equipamentos, veículos e implementos</h3>
           <p className="mt-1 text-xs text-slate-400">
-            Disponibilidade consolidada com partes diárias e ordens de serviço, sem duplicar o cadastro mestre.
+            Disponibilidade consolidada com histórico operacional e ordens de serviço, sem duplicar o cadastro mestre.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
           {[
             { label: 'Mobilizados', value: totals.mobilized, icon: Truck, tone: 'text-cyan-300' },
             { label: 'Abaixo da meta', value: totals.belowTarget, icon: AlertTriangle, tone: 'text-rose-300' },
             { label: 'OS abertas', value: totals.openWorkOrders, icon: Settings, tone: 'text-amber-300' },
-            { label: 'Partes pendentes', value: totals.pendingDailyParts, icon: ClipboardCheck, tone: 'text-violet-300' },
           ].map(card => (
             <div key={card.label} className="min-w-32 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2">
               <div className={`flex items-center gap-1.5 ${card.tone}`}>
@@ -131,7 +127,6 @@ export default function EquipmentOperationsPanel({
               <th className="px-4 py-3">Operador responsável</th>
               <th className="px-4 py-3">Disponibilidade</th>
               <th className="px-4 py-3">Manutenção</th>
-              <th className="px-4 py-3">Parte diária</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
@@ -177,20 +172,11 @@ export default function EquipmentOperationsPanel({
                     {item.openWorkOrders > 0 ? `${item.openWorkOrders} OS aberta(s)` : 'Sem OS aberta'}
                   </span>
                 </td>
-                <td className="px-4 py-3">
-                  <span className={item.pendingDailyParts > 0 ? 'text-violet-300' : 'text-slate-300'}>
-                    {item.pendingDailyParts > 0 ? `${item.pendingDailyParts} pendente(s)` : 'Sem pendência'}
-                  </span>
-                  <span className="mt-1 flex items-center gap-1 text-[9px] text-slate-500">
-                    {item.latestDailyPart?.status === 'Conferido' && <CheckCircle2 size={11} className="text-emerald-400" />}
-                    Última: {formatDate(item.latestDailyPart?.data)}
-                  </span>
-                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
                   Nenhum item de frota corresponde aos filtros.
                 </td>
               </tr>

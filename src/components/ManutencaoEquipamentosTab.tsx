@@ -872,7 +872,7 @@ export default function ManutencaoEquipamentosTab({
                     </select>
                     {selectedSummary.latestDailyPart && (
                       <p className="mt-2 text-[10px] text-slate-500">
-                        Última parte diária: {formatDate(selectedSummary.latestDailyPart.data)} por {selectedSummary.latestDailyPart.operadorNome}.
+                        Último registro operacional: {formatDate(selectedSummary.latestDailyPart.data)} por {selectedSummary.latestDailyPart.operadorNome}.
                       </p>
                     )}
                   </div>

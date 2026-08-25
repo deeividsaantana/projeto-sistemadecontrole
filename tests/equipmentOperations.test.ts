@@ -92,7 +92,7 @@ const summaries = buildEquipmentOperationalSummaries(
 );
 assert.equal(summaries.length, 1);
 assert.equal(summaries[0].availabilityPercent, 80);
-assert.equal(summaries[0].availabilitySource, 'Partes diárias');
+assert.equal(summaries[0].availabilitySource, 'Histórico operacional');
 assert.equal(summaries[0].openWorkOrders, 1);
 assert.equal(summaries[0].pendingDailyParts, 1);
 assert.equal(summaries[0].responsibleOperator, 'Wedley');

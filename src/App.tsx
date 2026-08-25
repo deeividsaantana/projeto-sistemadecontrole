@@ -92,7 +92,6 @@ const ApontamentoRamosTab = lazy(() => import('./components/ApontamentoRamosTab'
 const ApontamentoRamoLinkExterno = lazy(() => import('./components/ApontamentoRamoLinkExterno'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
-const ParteDiariaEquipamentosTab = lazy(() => import('./components/ParteDiariaEquipamentosTab'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
@@ -3818,6 +3817,9 @@ export default function App() {
   const navigateTo = (tab: string, closeMobile = false) => {
     setActiveTab(allowedTabs.includes(tab) ? tab : 'dashboard');
     if (closeMobile) setIsMobileMenuOpen(false);
+    window.requestAnimationFrame(() => {
+      document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
+    });
   };
 
   const renderNavigation = (mobile = false) => (
@@ -3879,7 +3881,7 @@ export default function App() {
       </aside>
 
       {/* 2. MOBILE NAVIGATION HEADER */}
-      <header className="md:hidden flex items-center justify-between h-16 bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
+      <header className="lg:hidden flex items-center justify-between h-[4.25rem] bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
         <img 
           src={reneaLogo} 
           alt="RENEA Infraestrutura" 
@@ -3893,7 +3895,7 @@ export default function App() {
             onClick={() => navigateTo('cadastros', true)}
             title="Abrir cadastros auxiliares"
             aria-label="Abrir cadastros auxiliares"
-            className={`p-2 rounded-md border transition-colors cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200'}`}
           >
             <FolderPlus className="w-5 h-5" />
           </button>
@@ -3902,7 +3904,7 @@ export default function App() {
           <div className="relative">
             <button 
               onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
-              className="p-2 text-slate-400 hover:text-white relative cursor-pointer"
+              className="relative cursor-pointer rounded-xl p-2.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800"
             >
               {notifications.filter(n => !n.read).length > 0 ? (
                 <>
@@ -3920,7 +3922,7 @@ export default function App() {
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label={isMobileMenuOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
-            className="p-2 text-slate-400 hover:text-white cursor-pointer"
+            className="cursor-pointer rounded-xl p-2.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -3929,11 +3931,11 @@ export default function App() {
 
       {/* Mobile Drawer Menu overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
+        <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
           <div className="w-80 max-w-[88vw] bg-slate-900 border-l border-slate-800 p-5 flex flex-col space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="text-xs font-bold text-slate-400 tracking-wider">NAVEGAÇÃO</span>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
+              <span className="text-xs font-semibold text-slate-500 tracking-[0.14em]">NAVEGAÇÃO</span>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -3941,7 +3943,7 @@ export default function App() {
             <nav className="flex-1 overflow-y-auto">
               {renderNavigation(true)}
               <div className="pt-5 mt-5 border-t border-slate-800">
-                <button type="button" onClick={() => { void handleLogout(); setIsMobileMenuOpen(false); }} className="w-full py-2.5 bg-rose-950/30 text-rose-400 hover:bg-rose-950/60 rounded-md font-bold text-xs flex items-center justify-center gap-2">
+                <button type="button" onClick={() => { void handleLogout(); setIsMobileMenuOpen(false); }} className="w-full py-3 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold text-xs flex items-center justify-center gap-2">
                   <LogOut className="w-4 h-4" /> Sair da conta
                 </button>
               </div>
@@ -3972,7 +3974,7 @@ export default function App() {
           onNavigate={tab => navigateTo(tab)}
         />
         {/* Dynamic Inner Tab Viewport */}
-        <div className="flex-1 overflow-x-hidden p-4 md:p-6 2xl:p-8 max-w-[1800px] w-full mx-auto print:p-0 print:m-0">
+        <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full mx-auto print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3.5 sm:p-4 md:p-7 2xl:p-10 max-w-[1440px]'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <motion.div
               key={activeTab}
@@ -4102,19 +4104,6 @@ export default function App() {
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onOpenCadastros={allowedTabs.includes('cadastros') ? () => navigateTo('cadastros') : undefined}
-              />
-            )}
-
-            {activeTab === 'partes-diarias' && (
-              <ParteDiariaEquipamentosTab
-                registros={partesDiariasEquipamentos}
-                equipamentos={equipamentos}
-                funcionarios={funcionarios}
-                obras={obras}
-                onSave={handleSaveParteDiariaEquipamento}
-                onDelete={handleDeleteParteDiariaEquipamento}
-                onDeleteMany={handleDeletePartesDiariasEquipamentos}
-                onImport={handleImportPartesDiariasEquipamentos}
               />
             )}
 

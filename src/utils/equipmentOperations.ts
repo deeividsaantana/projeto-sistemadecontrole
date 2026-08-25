@@ -14,7 +14,7 @@ export interface EquipmentValidationResult {
 export interface EquipmentOperationalSummary {
   equipment: Equipamento;
   availabilityPercent: number | null;
-  availabilitySource: 'Cadastro' | 'Partes diárias' | 'Sem dados';
+  availabilitySource: 'Cadastro' | 'Histórico operacional' | 'Sem dados';
   targetPercent: number | null;
   belowTarget: boolean;
   openWorkOrders: number;
@@ -190,7 +190,7 @@ export const buildEquipmentOperationalSummaries = (
     availabilitySource: explicitAvailability !== null
       ? 'Cadastro'
       : partsAvailability !== null
-        ? 'Partes diárias'
+        ? 'Histórico operacional'
         : 'Sem dados',
     targetPercent,
     belowTarget: availabilityPercent !== null

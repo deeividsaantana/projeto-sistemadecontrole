@@ -128,19 +128,6 @@ export default function PendenciasTab({
         });
       });
 
-    partesDiarias
-      .filter(item => item.status !== 'Conferido')
-      .forEach(item => {
-        items.push({
-          id: 'parte-' + item.id,
-          title: 'Parte diária ' + item.numero + ' não conferida',
-          detail: item.prefixo + ' • ' + item.data,
-          module: 'partes-diarias',
-          moduleLabel: 'Parte diária',
-          priority: item.status === 'Inconsistente' ? 'Alta' : 'Média',
-        });
-      });
-
     controlesEquipamentos
       .filter(item => (item.revisao || []).length > 0 || ['Em manutenção', 'Aguardando manutenção', 'Aguardando equipamento'].includes(item.status))
       .forEach(item => items.push({
@@ -152,6 +139,7 @@ export default function PendenciasTab({
       }));
 
     auditOperationalIntegrity({ empresas, equipamentos, funcionarios, grupos: gruposEquipe, controles: controlesEquipamentos, partes: partesDiarias, ordens: ordensServico })
+      .filter(issue => issue.module !== 'partes-diarias')
       .forEach(issue => items.push({ id: issue.id, title: issue.title, detail: issue.detail, module: issue.module, moduleLabel: issue.category, priority: issue.priority }));
 
     const rank = { Crítica: 0, Alta: 1, Média: 2, Baixa: 3 } as const;

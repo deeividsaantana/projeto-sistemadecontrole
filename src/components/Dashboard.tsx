@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
 import { useEquipamentosExternos } from '../hooks/useEquipamentosExternos';
-import reneaDashboardLogo from '../assets/images/logo-renea-dark.svg';
 
 import { 
   Empresa, 
@@ -30,6 +32,11 @@ import {
 } from '../types';
 import ExecutiveOverviewV27 from './ExecutiveOverviewV27';
 import { getOperationalFuelLiters, splitOperationalFuelRecords } from '../utils/fuelAnalyticsSafety';
+import rodoviaDuplicada from '../assets/renea-editorial/rodovia-duplicada.jpg';
+import rodoviaSerra from '../assets/renea-editorial/rodovia-serra.jpg';
+import ponteConstrucao from '../assets/renea-editorial/ponte-construcao.jpg';
+
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 import { 
   ResponsiveContainer, 
@@ -104,6 +111,8 @@ export default function Dashboard({
   partesDiariasEquipamentos = [],
   onNavigate
 }: DashboardProps) {
+
+  const dashboardRef = useRef<HTMLDivElement>(null);
 
   // 1. Calculations & Metrics
   const { operational: operationalFuel, review: excludedFuelRecords } = useMemo(
@@ -483,7 +492,7 @@ export default function Dashboard({
       id: `alert-os-${os.id}`,
       type: 'danger',
       text: `OS Urgente: ${os.numero}`,
-      details: `${eq ? eq.prefixo : 'Equipamento'} — ${os.descricao || os.tipo}`
+      details: `${eq ? eq.prefixo : 'Equipamento'} - ${os.descricao || os.tipo}`
     });
   });
 
@@ -497,37 +506,108 @@ export default function Dashboard({
     });
   });
 
+  useGSAP(() => {
+    const root = dashboardRef.current;
+    if (!root) return;
+
+    const mediaQuery = gsap.matchMedia();
+    mediaQuery.add('(min-width: 768px) and (prefers-reduced-motion: no-preference)', () => {
+      gsap.fromTo('.dashboard-intro__content',
+        { autoAlpha: 0, y: 44 },
+        { autoAlpha: 1, y: 0, duration: 1.05, ease: 'power3.out' },
+      );
+      gsap.fromTo('.dashboard-intro__gallery figure',
+        { autoAlpha: 0, scale: 0.82, y: 54 },
+        { autoAlpha: 1, scale: 1, y: 0, duration: 1.15, stagger: 0.16, ease: 'power3.out', delay: 0.15 },
+      );
+      gsap.to('.dashboard-intro__backdrop', {
+        scale: 1.08,
+        filter: 'saturate(0.62) brightness(0.64)',
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '.dashboard-intro',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true,
+        },
+      });
+
+      gsap.utils.toArray<HTMLElement>('.gsap-media').forEach(media => {
+        gsap.fromTo(media,
+          { autoAlpha: 0.32, scale: 0.84 },
+          {
+            autoAlpha: 1,
+            scale: 1,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: media,
+              start: 'top 88%',
+              end: 'center 48%',
+              scrub: true,
+            },
+          },
+        );
+      });
+
+      if (window.matchMedia('(min-width: 1024px)').matches) {
+        ScrollTrigger.create({
+          trigger: '.motion-chapter',
+          start: 'top 6rem',
+          end: 'bottom bottom',
+          pin: '.motion-chapter__pin',
+          pinSpacing: false,
+          anticipatePin: 1,
+        });
+      }
+    });
+
+    return () => mediaQuery.revert();
+  }, { scope: dashboardRef });
+
 
   return (
-    <div className="space-y-6" id="dashboard-tab">
+    <div id="dashboard-tab" ref={dashboardRef}>
       
       {/* 1. Header Greetings */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <img src={reneaDashboardLogo} alt="RENEA Infraestrutura" className="h-10 w-auto shrink-0 object-contain sm:h-11" />
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
-              Olá, Administrador
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Aqui está o resumo operacional das frentes de serviço da Renea Infraestrutura.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
+      <section className="dashboard-intro">
+        <img className="dashboard-intro__backdrop" src={rodoviaDuplicada} alt="Vista aérea de rodovia duplicada em operação" />
+        <div className="dashboard-intro__shade" />
+        <div className="dashboard-intro__content">
+          <p className="dashboard-intro__eyebrow">Sistema de controle operacional</p>
+          <h1 className="dashboard-intro__title">Controle que acompanha a operação.</h1>
+          <p className="dashboard-intro__copy">Monitoramento integrado das frentes de serviço, frota e indicadores críticos.</p>
+          <div className="dashboard-intro__actions">
           <button 
             onClick={() => onNavigate('lancamentos')}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            className="dashboard-intro__primary"
           >
-            Novo Lançamento
+            Novo lançamento <ArrowUpRight className="h-4 w-4" />
           </button>
           <button 
             onClick={() => onNavigate('reports')}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+            className="dashboard-intro__secondary"
           >
             Ver Relatórios
           </button>
+          </div>
+        </div>
+        <div className="dashboard-intro__gallery" aria-label="Registros fotográficos da operação">
+          <figure><img src={rodoviaSerra} alt="Trecho rodoviário em implantação" /></figure>
+          <figure><img src={ponteConstrucao} alt="Ponte em construção" /></figure>
+        </div>
+      </section>
+
+      <div className="operational-marquee" aria-hidden="true">
+        <div className="operational-marquee__track">
+          {[0, 1].map(copy => (
+            <React.Fragment key={copy}>
+              <span>Frota conectada</span><i />
+              <span>Combustível rastreável</span><i />
+              <span>Presença em campo</span><i />
+              <span>Manutenção coordenada</span><i />
+              <span>Relatórios consolidados</span><i />
+            </React.Fragment>
+          ))}
         </div>
       </div>
 
@@ -661,6 +741,13 @@ export default function Dashboard({
         </div>}
       </section>
 
+      <section className="motion-chapter">
+        <header className="motion-chapter__pin">
+          <p>Operação de campo</p>
+          <h2>Do canteiro à decisão.</h2>
+          <span>Imagens reais e indicadores percorrem o mesmo fluxo operacional.</span>
+        </header>
+        <div className="motion-chapter__flow">
       {/* 2.5 Presença & Manutenção Summary Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="presenca-manutencao-summary-row">
         {/* Presença Summary Card */}
@@ -845,7 +932,14 @@ export default function Dashboard({
           </div>
         </div>
 
+        <figure className="dashboard-fleet-visual gsap-media">
+          <img src={rodoviaSerra} alt="Infraestrutura rodoviária acompanhada pelo sistema" />
+          <figcaption><strong>Dados conectados ao campo.</strong></figcaption>
+        </figure>
+
       </div>
+        </div>
+      </section>
 
       {/* 3b. Worksite Performance & Resources Dashboards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="worksite-analytics-row">
@@ -1106,6 +1200,21 @@ export default function Dashboard({
           </div>
         </div>
       </div>
+
+      <section className="dashboard-action">
+        <div>
+          <p>Controle integrado</p>
+          <h2>
+            Transforme obra
+            <span className="dashboard-action__inline-image"><img src={ponteConstrucao} alt="" /></span>
+            em decisão confiável.
+          </h2>
+        </div>
+        <div className="dashboard-action__buttons">
+          <button type="button" onClick={() => onNavigate('consulta-geral')}>Abrir Consulta Geral <ArrowUpRight className="h-4 w-4" /></button>
+          <button type="button" onClick={() => onNavigate('reports')}>Gerar Relatórios</button>
+        </div>
+      </section>
 
     </div>
   );

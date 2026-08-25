@@ -955,7 +955,6 @@ export default function RelatoriosTab({
         materiais={materiaisRegistros}
         presencas={presencasLink}
         equipamentos={equipamentos}
-        partes={partesDiariasEquipamentos}
       />
       <UniversalPdfCenter
         abastecimentos={abastecimentos}
@@ -965,7 +964,6 @@ export default function RelatoriosTab({
         equipamentos={equipamentos}
         funcionarios={funcionarios}
         presencas={presencasLink}
-        partes={partesDiariasEquipamentos}
         dataInicio={dataInicio}
         dataFim={dataFim}
       />

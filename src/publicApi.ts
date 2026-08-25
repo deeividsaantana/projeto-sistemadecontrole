@@ -18,19 +18,46 @@ interface ApiEnvelope<T> {
   data?: T;
 }
 
+const PUBLIC_API_TIMEOUT_MS = 8_000;
+
 const callPublicApi = async <T,>(path: string, init?: RequestInit): Promise<ApiEnvelope<T>> => {
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers || {}),
-    },
-  });
-  const payload = await response.json().catch(() => ({ success: false, message: 'Resposta inválida do serviço.' })) as ApiEnvelope<T>;
-  if (!response.ok || !payload.success) {
-    throw new Error(payload.message || 'O serviço público não respondeu.');
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  init?.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), PUBLIC_API_TIMEOUT_MS);
+  try {
+    const response = await fetch(path, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers || {}),
+      },
+    });
+    const payload = await response.json().catch(() => ({ success: false, message: 'Resposta inválida do serviço.' })) as ApiEnvelope<T>;
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.message || 'O serviço público não respondeu.');
+    }
+    return payload;
+  } catch (error) {
+    if (controller.signal.aborted && !init?.signal?.aborted) {
+      throw new Error('O serviço demorou mais de 8 segundos. Verifique a conexão e tente novamente.');
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+    init?.signal?.removeEventListener('abort', abortFromCaller);
   }
-  return payload;
+};
+
+const stableRequestKey = (kind: string, payload: unknown) => {
+  const source = JSON.stringify(payload);
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${kind}:${(hash >>> 0).toString(16).padStart(8, '0')}`;
 };
 
 export interface PublicPresenceConfig {
@@ -68,9 +95,11 @@ export const submitPublicPresence = async (
   data: string,
   items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>,
 ) => {
+  const payload = { token, grupoId, data, items };
   const response = await callPublicApi<never>('/.netlify/functions/public-presenca', {
     method: 'POST',
-    body: JSON.stringify({ token, grupoId, data, items }),
+    headers: { 'X-Idempotency-Key': stableRequestKey('presenca', payload) },
+    body: JSON.stringify(payload),
   });
   return { success: true, message: response.message || 'Presença enviada com segurança.' };
 };

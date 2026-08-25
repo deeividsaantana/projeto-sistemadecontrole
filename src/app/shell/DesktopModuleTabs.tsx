@@ -9,7 +9,7 @@ interface DesktopModuleTabsProps {
 
 export function DesktopModuleTabs({ activeTab, groups, onNavigate }: DesktopModuleTabsProps) {
   return (
-    <nav className="hidden md:flex w-full gap-1 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2 print:hidden xl:px-8" aria-label="Modulos do sistema">
+    <nav className="app-module-tabs hidden md:flex w-full gap-1 overflow-x-auto px-5 print:hidden xl:px-8" aria-label="Modulos do sistema">
       {groups.flatMap(group => group.items).map(item => {
         const Icon = item.icon;
         const active = activeTab === item.id;
@@ -20,12 +20,12 @@ export function DesktopModuleTabs({ activeTab, groups, onNavigate }: DesktopModu
             onClick={() => onNavigate(item.id)}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-[11px] font-black transition-colors',
-              active ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800',
+              'app-module-tab flex h-16 w-[7.15rem] shrink-0 items-center gap-2 px-3 text-left text-[10px] font-semibold leading-tight',
+              active ? 'app-module-tab--active text-emerald-950' : 'text-slate-600 hover:text-emerald-900',
             )}
           >
-            <Icon className="h-4 w-4" />
-            {item.label}
+            <Icon className="app-module-tab__glyph h-4 w-4 shrink-0" strokeWidth={1.8} />
+            <span className="max-w-[6.5rem]">{item.label}</span>
           </button>
         );
       })}

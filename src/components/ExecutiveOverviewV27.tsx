@@ -48,25 +48,29 @@ export default function ExecutiveOverviewV27(props: Props) {
     { label: 'Estacas', value: `${analytics.estacas.cravadoM.toLocaleString('pt-BR')} m`, detail: `${analytics.estacas.sobraM.toLocaleString('pt-BR')} m de saldo`, icon: Hammer },
     { label: 'Produção', value: analytics.producao.apontamentos, detail: `${analytics.producao.pessoasApontadas} pessoas apontadas`, icon: HardHat },
     { label: 'Materiais', value: analytics.materiais.registros, detail: `${analytics.materiais.divergencias} divergências`, icon: Package },
-    { label: 'Manutenção', value: analytics.equipamentos.manutencao, detail: `${analytics.equipamentos.partesPendentes} partes pendentes`, icon: Wrench },
+    { label: 'Manutenção', value: analytics.equipamentos.manutencao, detail: 'Ordens e disponibilidade da frota', icon: Wrench },
     { label: 'Custo consolidado', value: `R$ ${analytics.custos.total.toLocaleString('pt-BR')}`, detail: 'Materiais + manutenção + estacas', icon: Banknote },
   ];
 
   return (
-    <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700">Painel executivo · visão operacional</p>
-        <h2 className="text-xl font-black text-slate-900">Operação consolidada</h2>
-      </div>
-      <div className="grid gap-2 md:grid-cols-5">
+    <section className="executive-overview">
+      <aside className="executive-command">
+        <p>Comando executivo</p>
+        <h2>Operação consolidada</h2>
+        <span>Refine a leitura sem alterar os registros de origem.</span>
+      <div className="executive-filters">
         <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="input-dark" />
         <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="input-dark" />
         <select value={obraId} onChange={e => setObraId(e.target.value)} className="input-dark"><option value="">Todas as obras</option>{props.obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
         <select value={empresaId} onChange={e => setEmpresaId(e.target.value)} className="input-dark"><option value="">Todas as empresas</option>{props.empresas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
         <select value={ramo} onChange={e => setRamo(e.target.value)} className="input-dark"><option value="">Todos os ramos</option>{props.ramos.map(item => <option key={item.id} value={item.id}>{item.ramoNome}</option>)}</select>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map(({ label, value, detail, icon: Icon }) => <div key={label} className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between gap-2"><p className="truncate text-[9px] font-black uppercase tracking-wider text-slate-500">{label}</p><Icon className="h-4 w-4 shrink-0 text-emerald-600" /></div><p className="mt-2 break-words text-xl font-black text-slate-900">{value}</p><p className="mt-1 text-[10px] text-slate-500">{detail}</p></div>)}
+      </aside>
+      <div className="executive-surface">
+        <div className="executive-surface__heading"><p>Indicadores do período</p><span>Dados do sistema</span></div>
+      <div className="executive-metrics">
+        {cards.map(({ label, value, detail, icon: Icon }) => <div key={label} className="executive-metric"><div className="executive-metric__icon"><Icon className="h-4 w-4" strokeWidth={1.7} /></div><p className="executive-metric__label">{label}</p><p className="executive-metric__value">{value}</p><p className="executive-metric__detail">{detail}</p></div>)}
+      </div>
       </div>
     </section>
   );

@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  CircleGauge,
   ClipboardList,
   FileText,
   FolderPlus,
@@ -39,7 +38,6 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
-      { id: 'partes-diarias', label: 'Parte Diária de Equipamentos', icon: CircleGauge },
       { id: 'controle-equipamentos', label: 'Controle de Basculantes', icon: Activity },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
@@ -77,7 +75,6 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'consulta-geral',
     'pendencias',
     'reports',
-    'partes-diarias',
     'controle-equipamentos',
     'lancamentos',
     'tickets-jazida',

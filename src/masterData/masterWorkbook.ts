@@ -610,7 +610,7 @@ export const analyzeMasterWorkbook = async (
         sheetName: worksheet.name,
         rowCount: rows.length,
         reason: worksheet.name.toLocaleUpperCase('pt-BR') === 'CBS'
-          ? 'Controle diário preservado para conciliação com a Parte Diária de Equipamentos.'
+          ? 'Controle preservado para conciliação com o histórico operacional de equipamentos.'
           : worksheet.name.startsWith('CAD_')
             ? 'Cadastro reservado para a próxima versão modular.'
             : 'Base operacional preservada no arquivo de origem e não promovida como cadastro mestre.',

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ExcelJS from 'exceljs';
 import { Download, FileSpreadsheet, Printer } from 'lucide-react';
 import type {
-  ControleEstacas, Equipamento, MaterialRegistro, ParteDiariaEquipamento,
+  ControleEstacas, Equipamento, MaterialRegistro,
   PresencaApontamento, TicketJazida,
 } from '../types';
 import { buildStakeSummary } from '../utils/stakeOperations';
@@ -14,7 +14,6 @@ type Props = {
   materiais: MaterialRegistro[];
   presencas: PresencaApontamento[];
   equipamentos: Equipamento[];
-  partes: ParteDiariaEquipamento[];
 };
 
 const downloadBlob = (content: BlobPart, type: string, filename: string) => {
@@ -28,7 +27,7 @@ const downloadBlob = (content: BlobPart, type: string, filename: string) => {
 
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
-export default function ErpReportExportsV28({ tickets, estacas, materiais, presencas, equipamentos, partes }: Props) {
+export default function ErpReportExportsV28({ tickets, estacas, materiais, presencas, equipamentos }: Props) {
   const [exporting, setExporting] = useState(false);
   const exportExcel = async () => {
     setExporting(true);
@@ -51,7 +50,6 @@ export default function ErpReportExportsV28({ tickets, estacas, materiais, prese
       addSheet('Relatório Comercial', ['Data do descarte', 'Placa', 'Aut. descarte', 'Nº vale', 'Peso/Volume', 'Valor R$', 'Material', 'Pagamento'], tickets.map(item => [item.data, item.placa, item.notaFiscalNumero || item.ticketNumero, item.ticketNumero, item.quantidadeM3, 0, item.tipoMaterial, 'VENDA A PRAZO']));
       addSheet('Efetivo', ['Data', 'Grupo', 'Colaborador', 'Função', 'Status', 'Responsável', 'Frente'], presencas.map(item => [item.data, item.grupoNome, item.funcionarioNome, item.funcao, item.status, item.responsavel, item.frenteServico]));
       addSheet('Equipamentos', ['Prefixo', 'Equipamento', 'Tipo', 'Empresa', 'Local', 'Status'], equipamentos.map(item => [item.prefixo, item.nome, item.tipo, item.empresaId, item.localAtualId, item.status]));
-      addSheet('Partes Diárias', ['Data', 'Número', 'Prefixo', 'Operador', 'Obra', 'Status'], partes.map(item => [item.data, item.numero, item.prefixo, item.operadorNome, item.obraNome, item.status]));
       downloadBlob(await workbook.xlsx.writeBuffer() as unknown as BlobPart, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', `RENEA_ERP_3_RELATORIOS_${new Date().toISOString().slice(0, 10)}.xlsx`);
     } finally {
       setExporting(false);
@@ -73,10 +71,10 @@ export default function ErpReportExportsV28({ tickets, estacas, materiais, prese
       columns: [{ header: 'Indicador', dataKey: 'indicador' }, { header: 'Resultado', dataKey: 'resultado' }],
       rows: [
         ['Viagens / tickets', tickets.length], ['Materiais', materiais.length], ['Efetivo presente', presencas.filter(item => item.status === 'Presente').length],
-        ['Equipamentos', equipamentos.length], ['Partes diárias', partes.length], ['Estacas recebidas', `${stake.recebidoM.toLocaleString('pt-BR')} m`],
+        ['Equipamentos', equipamentos.length], ['Estacas recebidas', `${stake.recebidoM.toLocaleString('pt-BR')} m`],
         ['Estacas cravadas', `${stake.cravadoM.toLocaleString('pt-BR')} m`], ['Saldo de estacas', `${stake.sobraM.toLocaleString('pt-BR')} m`], ['Notas fiscais pendentes', stake.notasPendentes],
       ].map(([indicador, resultado]) => ({ indicador, resultado })),
-      summary: [{ label: 'Módulos consolidados', value: 6 }, { label: 'Registros operacionais', value: tickets.length + materiais.length + presencas.length + partes.length }],
+      summary: [{ label: 'Módulos consolidados', value: 5 }, { label: 'Registros operacionais', value: tickets.length + materiais.length + presencas.length }],
       fileName: `RENEA_FECHAMENTO_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
