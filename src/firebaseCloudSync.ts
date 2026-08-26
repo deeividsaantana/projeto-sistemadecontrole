@@ -222,6 +222,22 @@ const serializeArrayInChunks = (items: unknown[]): string[] => {
   return chunks;
 };
 
+const sanitizeCloudRecord = (table: string, item: unknown): unknown => {
+  if (table !== 'ticketsJazida' || !item || typeof item !== 'object' || Array.isArray(item)) return item;
+  const serialized = JSON.stringify(item);
+  if (!serialized || textEncoder.encode(serialized).byteLength <= MAX_CHUNK_PAYLOAD_BYTES) return item;
+  const record = { ...(item as Record<string, unknown>) };
+  // Assinaturas são imagens base64 e podem ultrapassar o limite de um bloco.
+  // A cópia local permanece intacta; o backup remoto guarda os dados operacionais
+  // e uma indicação explícita para a revisão do anexo original.
+  for (const key of ['assinaturaDigital', 'assinaturaResponsavel']) {
+    if (typeof record[key] === 'string' && record[key].length > 100_000) {
+      record[key] = '[anexo preservado no dispositivo de origem]';
+    }
+  }
+  return record;
+};
+
 const countRecords = (data: FirebaseCloudData) => (
   Object.values(data).reduce(
     (total, value) => total + (Array.isArray(value) ? value.length : 0),
@@ -332,7 +348,12 @@ const performFirebaseBackupUpload = async (
   const documentsToWrite: Array<{ id: string; data: CloudChunk & typeof compatibilityFields }> = [];
   let reusedDocuments = 0;
 
-  const sanitizedData = { ...data };
+  const sanitizedData = Object.fromEntries(
+    Object.entries(data).map(([table, value]) => [
+      table,
+      Array.isArray(value) ? value.map(item => sanitizeCloudRecord(table, item)) : value,
+    ]),
+  ) as FirebaseCloudData;
   for (const [table, rawItems] of Object.entries(sanitizedData)) {
     if (!Array.isArray(rawItems)) continue;
 
