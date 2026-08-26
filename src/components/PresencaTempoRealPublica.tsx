@@ -107,19 +107,24 @@ export default function PresencaTempoRealPublica({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
+  const [draftHydrated, setDraftHydrated] = useState(false);
 
   useEffect(() => {
+    setDraftHydrated(false);
     const draft = readDraft(token);
-    if (!draft) return;
-    setDate(draft.date);
-    setSelectedGroupId(draft.selectedGroupId);
-    setItems(draft.items);
-    setResult(draft.result);
+    if (draft) {
+      setDate(draft.date);
+      setSelectedGroupId(draft.selectedGroupId);
+      setItems(draft.items);
+      setResult(draft.result);
+    }
+    setDraftHydrated(true);
   }, [token]);
 
   useEffect(() => {
+    if (!draftHydrated) return;
     writeDraft(token, { date, selectedGroupId, items, result });
-  }, [date, items, result, selectedGroupId, token]);
+  }, [date, draftHydrated, items, result, selectedGroupId, token]);
 
   const activeGroups = useMemo(() => (Array.isArray(gruposEquipe) ? gruposEquipe : [])
     .filter(group => group?.status === 'ativo' && group?.linkAtivo)
