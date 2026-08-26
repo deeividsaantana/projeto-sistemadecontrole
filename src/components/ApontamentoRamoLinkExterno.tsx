@@ -343,7 +343,7 @@ export default function ApontamentoRamoLinkExterno({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full min-h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-black text-sm flex items-center justify-center gap-2 transition-colors"
+            className="public-mobile-submit w-full min-h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-black text-sm flex items-center justify-center gap-2 transition-colors"
           >
             <Send className="w-4 h-4" />
             {isSubmitting ? 'Enviando...' : 'Enviar apontamento do ramo'}
@@ -385,6 +385,7 @@ function QuantidadeSection({
             <input
               type="number"
               min={0}
+              inputMode="numeric"
               value={item.quantidade || ''}
               onChange={e => onChange(item.nome, Number(e.target.value))}
               className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center outline-none focus:border-emerald-500"

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -68,6 +68,8 @@ export default function PresencaTempoRealPublica({
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [groupSearch, setGroupSearch] = useState('');
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const deferredGroupSearch = useDeferredValue(groupSearch);
+  const deferredEmployeeSearch = useDeferredValue(employeeSearch);
   const [items, setItems] = useState<Record<string, ItemState>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -78,10 +80,10 @@ export default function PresencaTempoRealPublica({
     .map(group => ({ ...group, funcionarioIds: Array.isArray(group.funcionarioIds) ? group.funcionarioIds.filter(Boolean) : [] })), [gruposEquipe]);
 
   const filteredGroups = useMemo(() => {
-    const query = groupSearch.trim().toLocaleLowerCase('pt-BR');
+    const query = deferredGroupSearch.trim().toLocaleLowerCase('pt-BR');
     return activeGroups.filter(group => !query || [safeText(group.nome), safeText(group.responsavel), safeText(group.frenteServico)]
       .some(value => value.toLocaleLowerCase('pt-BR').includes(query)));
-  }, [activeGroups, groupSearch]);
+  }, [activeGroups, deferredGroupSearch]);
 
   const group = useMemo(() => generalLink
     ? activeGroups.find(item => item.id === selectedGroupId)
@@ -94,10 +96,10 @@ export default function PresencaTempoRealPublica({
   }, [funcionarios, group]);
 
   const visibleEmployees = useMemo(() => {
-    const query = employeeSearch.trim().toLocaleLowerCase('pt-BR');
+    const query = deferredEmployeeSearch.trim().toLocaleLowerCase('pt-BR');
     return groupEmployees.filter(employee => !query || [safeText(employee.nome), safeText(employee.cargo), safeText(employee.matricula)]
       .some(value => value.toLocaleLowerCase('pt-BR').includes(query)));
-  }, [employeeSearch, groupEmployees]);
+  }, [deferredEmployeeSearch, groupEmployees]);
 
   const workName = useMemo(() => {
     if (!group) return '';
@@ -209,7 +211,8 @@ export default function PresencaTempoRealPublica({
             <h1>Escolha sua equipe</h1>
             <p>Selecione o grupo correto para começar a conferência.</p>
           </section>
-          <div className="presence-public__search"><Search className="h-5 w-5" /><input value={groupSearch} onChange={event => setGroupSearch(event.target.value)} placeholder="Buscar equipe ou responsável" /></div>
+          <div className="presence-public__search"><Search className="h-5 w-5" /><input autoFocus inputMode="search" enterKeyHint="search" autoComplete="off" value={groupSearch} onChange={event => setGroupSearch(event.target.value)} placeholder="Buscar equipe ou responsável" aria-label="Buscar equipe ou responsável" /></div>
+          <p className="presence-public__search-meta" aria-live="polite">{filteredGroups.length} {filteredGroups.length === 1 ? 'equipe encontrada' : 'equipes encontradas'}</p>
           <section className="presence-public__group-list">
             {filteredGroups.length === 0 ? <p className="presence-public__empty">Nenhuma equipe encontrada.</p> : filteredGroups.map(item => (
               <button key={item.id} type="button" onClick={() => setSelectedGroupId(item.id)} className="presence-public__group-button">
@@ -270,7 +273,7 @@ export default function PresencaTempoRealPublica({
           <div className="presence-public__progress-track"><i style={{ width: `${progress}%` }} /></div>
           <label>Data do apontamento<input type="date" value={date} onChange={event => setDate(event.target.value)} max={todayInput()} /></label>
         </section>
-        <div className="presence-public__search"><Search className="h-5 w-5" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador" /></div>
+        <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador" aria-label="Buscar colaborador" /></div>
         <form onSubmit={submit} className="presence-public__form">
           <section className="presence-public__employee-list">
             {visibleEmployees.map(employee => {
