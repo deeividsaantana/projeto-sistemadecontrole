@@ -168,7 +168,7 @@ export default function PresencaTempoRealPublica({
     ])));
     setEmployeeSearch('');
     setError('');
-    setResult(null);
+    setResult(current => current?.submissionId ? current : null);
   }, [group, groupEmployees]);
 
   const reviewed = groupEmployees.filter(employee => Boolean(items[employee.id]?.status)).length;

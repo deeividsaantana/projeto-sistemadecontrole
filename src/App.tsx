@@ -124,7 +124,6 @@ import {
 } from './firebaseTickets';
 import {
   markPublicSubmissionsProcessed,
-  loadPendingPublicSubmissions,
   subscribePendingPublicSubmissions,
   type PublicSubmission,
 } from './firebasePublicSubmissions';
@@ -286,6 +285,16 @@ const mergeTicketCollections = (current: TicketJazida[], incoming: TicketJazida[
 const mergeRecordsById = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
   const indexed = new Map(current.map(item => [item.id, item]));
   incoming.forEach(item => indexed.set(item.id, item));
+  return Array.from(indexed.values());
+};
+
+const presenceBusinessKey = (item: Pick<PresencaApontamento, 'grupoId' | 'data' | 'funcionarioId'>) => (
+  `${item.grupoId}|${item.data}|${item.funcionarioId}`
+);
+
+const mergePresenceRecords = (current: PresencaApontamento[], incoming: PresencaApontamento[]) => {
+  const indexed = new Map(current.map(item => [presenceBusinessKey(item), item]));
+  incoming.forEach(item => indexed.set(presenceBusinessKey(item), item));
   return Array.from(indexed.values());
 };
 
@@ -570,8 +579,7 @@ export default function App() {
       setControleEstacas(loadedControleEstacas);
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
-      setHistoryLogs([]);
-      localStorage.removeItem('renea_history_logs');
+      setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
       setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
 
       if (shouldMigratePresencePeople) {
@@ -777,7 +785,7 @@ export default function App() {
         estacaLotes: customControleEstacas.lotes,
         estacaCravacoes: customControleEstacas.cravacoes,
         notifications: customNotifications,
-        historyLogs: [],
+        historyLogs: customHistory,
       };
       const uploadResult = await uploadFirebaseBackup(db, data);
       
@@ -968,8 +976,11 @@ export default function App() {
         if (Object.hasOwn(data, 'notifications')) {
           setNotifications(normalizeRuntimeCollection<AppNotification>(data.notifications));
         }
-      setHistoryLogs([]);
-      localStorage.removeItem('renea_history_logs');
+      if (Object.hasOwn(data, 'historyLogs')) {
+        const restoredHistory = normalizeRuntimeCollection<HistoryLog>(data.historyLogs);
+        setHistoryLogs(restoredHistory);
+        writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(restoredHistory));
+      }
       if (Array.isArray(data.vinculosOperadorEquipamento)) {
         setVinculosOperadorEquipamento(data.vinculosOperadorEquipamento);
         writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(data.vinculosOperadorEquipamento));
@@ -2461,7 +2472,7 @@ export default function App() {
         const incomingPointing = submissions.flatMap(item => item.kind === 'apontamento' && item.payload.record ? [item.payload.record] : []);
         const storedPresence = parseStoredJson<PresencaApontamento[]>(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', []);
         const storedPointing = parseStoredJson<ApontamentoRamoRegistro[]>(localStorage.getItem('renea_apontamento_ramo_registros'), 'renea_apontamento_ramo_registros', []);
-        const nextPresence = mergeRecordsById(storedPresence, incomingPresence);
+        const nextPresence = mergePresenceRecords(storedPresence, incomingPresence);
         const nextPointing = mergeRecordsById(storedPointing, incomingPointing);
 
         const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
@@ -2505,7 +2516,7 @@ export default function App() {
           // tenta novamente sem apagar nem duplicar registros operacionais.
           const downloadResult = await handleDownloadFromFirebase();
           if (!downloadResult.success) throw new Error(downloadResult.message);
-          const refreshedPresence = mergeRecordsById(
+          const refreshedPresence = mergePresenceRecords(
             parseStoredJson<PresencaApontamento[]>(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', []),
             incomingPresence,
           );
@@ -2552,22 +2563,10 @@ export default function App() {
         if (!cancelled) console.warn('Falha ao acompanhar os envios públicos em tempo real:', error);
       },
     );
-    const reconcile = () => {
-      if (cancelled) return;
-      void loadPendingPublicSubmissions(db)
-        .then(submissions => void ingestPublicSubmissions(submissions))
-        .catch(error => {
-          if (!cancelled) console.warn('Falha na reconciliação automática dos envios públicos:', error);
-        });
-    };
-    const initialReconcile = window.setTimeout(reconcile, 1_500);
-    const reconcileInterval = window.setInterval(reconcile, 15_000);
     return () => {
       cancelled = true;
       queuedSubmissions = null;
       unsubscribe();
-      window.clearTimeout(initialReconcile);
-      window.clearInterval(reconcileInterval);
     };
   }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken, externalApontamentoToken]);
 

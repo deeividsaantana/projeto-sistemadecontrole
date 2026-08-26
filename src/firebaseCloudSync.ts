@@ -332,7 +332,7 @@ const performFirebaseBackupUpload = async (
   const documentsToWrite: Array<{ id: string; data: CloudChunk & typeof compatibilityFields }> = [];
   let reusedDocuments = 0;
 
-  const sanitizedData = { ...data, historyLogs: [] };
+  const sanitizedData = { ...data };
   for (const [table, rawItems] of Object.entries(sanitizedData)) {
     if (!Array.isArray(rawItems)) continue;
 

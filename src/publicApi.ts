@@ -53,11 +53,14 @@ const callPublicApi = async <T,>(path: string, init?: RequestInit): Promise<ApiE
 const stableRequestKey = (kind: string, payload: unknown) => {
   const source = JSON.stringify(payload);
   let hash = 2166136261;
+  let secondaryHash = 374761393;
   for (let index = 0; index < source.length; index += 1) {
     hash ^= source.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
+    secondaryHash ^= source.charCodeAt(index);
+    secondaryHash = Math.imul(secondaryHash, 2246822519);
   }
-  return `${kind}:${(hash >>> 0).toString(16).padStart(8, '0')}`;
+  return `${kind}:${(hash >>> 0).toString(16).padStart(8, '0')}${(secondaryHash >>> 0).toString(16).padStart(8, '0')}`;
 };
 
 export interface PublicPresenceConfig {

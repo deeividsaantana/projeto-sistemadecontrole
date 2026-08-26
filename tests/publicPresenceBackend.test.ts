@@ -59,3 +59,10 @@ test('backend publico aceita somente uma situacao valida por colaborador', () =>
     items: [{ funcionarioId: 'employee-1', status: 'Presente', observacao: '' }],
   }), /lista da equipe mudou ou está incompleta/i);
 });
+
+test('backend rejeita datas ISO que nao existem no calendario', async () => {
+  const source = await import('../netlify/functions/_shared/firebase-admin.js');
+  assert.equal(source.isIsoDate('2026-02-29'), false);
+  assert.equal(source.isIsoDate('2026-02-28'), true);
+  assert.equal(source.isIsoDate('2026-13-01'), false);
+});

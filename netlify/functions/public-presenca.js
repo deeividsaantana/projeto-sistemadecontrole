@@ -17,7 +17,7 @@ import { withIdempotency } from './_shared/idempotency.js';
 
 const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
 const isGeneralToken = token => token.startsWith('geral-');
-const SNAPSHOT_CACHE_TTL_MS = 15_000;
+const SNAPSHOT_CACHE_TTL_MS = 0;
 let cachedSnapshot = null;
 let cachedSnapshotUntil = 0;
 let snapshotRequest = null;
@@ -26,7 +26,7 @@ const loadPresenceSnapshot = async database => {
   const now = Date.now();
   if (cachedSnapshot && now < cachedSnapshotUntil) return cachedSnapshot;
   if (!snapshotRequest) {
-    snapshotRequest = loadCloudSnapshot(database, ['gruposEquipe', 'funcionarios', 'empresas', 'obras'])
+    snapshotRequest = loadCloudSnapshot(database, ['gruposEquipe', 'funcionarios', 'empresas', 'obras'], { cacheTtlMs: 0 })
       .then(snapshot => {
         cachedSnapshot = snapshot;
         cachedSnapshotUntil = Date.now() + SNAPSHOT_CACHE_TTL_MS;
@@ -115,7 +115,7 @@ const getPublicConfig = (snapshot, token) => {
   };
 };
 
-const buildPresenceRecords = ({ group, employees, date, items, token }) => {
+const buildPresenceRecords = ({ group, employees, date, items, token, submissionId: requestedSubmissionId = '' }) => {
   const employeeMap = new Map(employees.map(employee => [employee.id, employee]));
   const allowedIds = new Set(group.funcionarioIds || []);
   const expectedIds = new Set([...allowedIds].filter(id => employeeMap.has(id)));
@@ -126,7 +126,7 @@ const buildPresenceRecords = ({ group, employees, date, items, token }) => {
     throw error;
   }
   const now = new Date();
-  const submissionId = crypto.randomUUID();
+  const submissionId = requestedSubmissionId || crypto.randomUUID();
   const horaEnvio = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
   const records = items.map((item, index) => {
     const funcionarioId = cleanString(item.funcionarioId, 160);
@@ -182,7 +182,7 @@ export const handler = async event => {
       const config = getPublicConfig(snapshot, token);
       if (!config) return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
       return jsonResponse(200, { success: true, data: config }, {
-        'Cache-Control': 'private, max-age=15, stale-while-revalidate=30',
+        'Cache-Control': 'no-store',
       });
     }
 
@@ -207,7 +207,24 @@ export const handler = async event => {
       const authorizedGroups = resolveGroupEmployeeIds(activeGroupsForToken(snapshot, token), employees);
       const group = authorizedGroups.find(item => item.id === groupId);
       if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
-      const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token });
+      const existingSnapshot = await database.collection('sistemarenea_public_submissions')
+        .where('payload.grupoId', '==', group.id)
+        .get();
+      const existingEmployeeIds = new Set(
+        existingSnapshot.docs.flatMap(item => {
+          if (item.data()?.kind !== 'presence' || item.data()?.payload?.data !== date) return [];
+          const records = item.data()?.payload?.records;
+          return Array.isArray(records) ? records.map(record => cleanString(record?.funcionarioId, 160)) : [];
+        }).filter(Boolean),
+      );
+      const submittedEmployeeIds = new Set(body.items.map(item => cleanString(item?.funcionarioId, 160)));
+      if ([...submittedEmployeeIds].some(id => existingEmployeeIds.has(id))) {
+        const error = new Error('Já existe presença registrada para um ou mais colaboradores desta equipe nesta data.');
+        error.statusCode = 409;
+        throw error;
+      }
+      const stableSubmissionId = `presence_${stableHash(idempotencyKey).slice(0, 48)}`;
+      const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token, submissionId: stableSubmissionId });
       await database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`).set({
         kind: 'presence',
         status: 'pending',

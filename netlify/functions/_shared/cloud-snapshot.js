@@ -57,20 +57,23 @@ const loadManifestSnapshot = async (database, manifest, requestedTables) => {
   return data;
 };
 
-export const loadCloudSnapshot = async (database, requestedTables) => {
+export const loadCloudSnapshot = async (database, requestedTables, options = {}) => {
+  const cacheTtlMs = Number.isFinite(options.cacheTtlMs)
+    ? Math.max(0, options.cacheTtlMs)
+    : SNAPSHOT_CACHE_TTL_MS;
   const tables = Array.isArray(requestedTables) && requestedTables.length > 0
     ? [...new Set(requestedTables)].sort()
     : null;
   const cacheKey = tables ? tables.join(',') : '*';
   const now = Date.now();
   const cached = snapshotCache.get(cacheKey);
-  if (cached && now < cached.until) return cached.data;
+  if (cacheTtlMs > 0 && cached && now < cached.until) return cached.data;
   const pending = snapshotRequests.get(cacheKey);
   if (pending) return pending;
 
   const request = loadCloudSnapshotUncached(database, tables)
     .then(data => {
-      snapshotCache.set(cacheKey, { data, until: Date.now() + SNAPSHOT_CACHE_TTL_MS });
+      if (cacheTtlMs > 0) snapshotCache.set(cacheKey, { data, until: Date.now() + cacheTtlMs });
       return data;
     })
     .finally(() => snapshotRequests.delete(cacheKey));

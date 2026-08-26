@@ -86,12 +86,27 @@ export const parseJsonBody = (event, maxBytes = 250_000) => {
 
 export const cleanString = (value, maxLength = 200) => String(value ?? '').trim().slice(0, maxLength);
 
-export const isIsoDate = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+export const isIsoDate = value => {
+  const normalized = String(value || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return false;
+  const [year, month, day] = normalized.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
+};
 
 export const stableHash = value => crypto.createHash('sha256').update(String(value)).digest('hex');
 
 export const requestIpHash = event => {
-  const forwarded = cleanString(event.headers?.['x-forwarded-for'] || event.headers?.['client-ip'] || 'unknown', 200);
+  const forwarded = cleanString(
+    event.headers?.['x-nf-client-connection-ip']
+      || event.headers?.['x-real-ip']
+      || event.headers?.['x-forwarded-for']
+      || event.headers?.['client-ip']
+      || 'unknown',
+    200,
+  );
   return stableHash(forwarded.split(',')[0].trim()).slice(0, 24);
 };
 

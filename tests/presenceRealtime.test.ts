@@ -23,17 +23,16 @@ test('link publico exige revisao explicita de todos os colaboradores', () => {
   assert.doesNotMatch(publicPresenceSource, /status:\s*'Presente'/);
 });
 
-test('envios publicos entram no painel em tempo real e por reconciliacao', () => {
+test('envios publicos entram no painel por assinatura em tempo real', () => {
   assert.match(subscriptionSource, /onSnapshot\(/);
-  assert.match(subscriptionSource, /getDocs\(/);
-  assert.match(appSource, /setInterval\(reconcile, 15_000\)/);
+  assert.doesNotMatch(subscriptionSource, /getDocs|setInterval/);
   assert.match(appSource, /subscribePendingPublicSubmissions/);
   assert.match(appSource, /writeStorageValue\(localStorage, 'renea_history_logs', JSON\.stringify\(nextHistory\)\)/);
 });
 
 test('servico publico reutiliza leitura curta e devolve comprovante do envio', () => {
-  assert.match(functionSource, /SNAPSHOT_CACHE_TTL_MS = 15_000/);
+  assert.match(functionSource, /SNAPSHOT_CACHE_TTL_MS = 0/);
   assert.match(functionSource, /resolveGroupEmployeeIds/);
   assert.match(functionSource, /data: \{ submissionId, createdAtIso \}/);
-  assert.match(functionSource, /private, max-age=15, stale-while-revalidate=30/);
+  assert.match(functionSource, /Cache-Control.*no-store/);
 });
