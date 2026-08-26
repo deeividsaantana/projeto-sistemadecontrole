@@ -41,7 +41,7 @@ const loadPresenceSnapshot = async database => {
 
 const activeGroupsForToken = (snapshot, token) => {
   const active = (snapshot.gruposEquipe || []).filter(group => group?.status === 'ativo' && group?.linkAtivo);
-  if (isGeneralToken(token)) return active.some(group => group.tokenGeral === token) ? active : [];
+  if (active.some(group => group.tokenGeral === token)) return active;
   return active.filter(group => group.token === token);
 };
 
@@ -157,6 +157,7 @@ const buildPresenceRecords = ({ group, employees, date, items, token, submission
       observacao: cleanString(item.observacao, 500),
       tokenUsado: `validado-${stableHash(token).slice(0, 12)}`,
       createdAt: now.toISOString(),
+      submissionDocId: `presence_${submissionId}`,
     };
   });
   return { records, submissionId, createdAtIso: now.toISOString() };

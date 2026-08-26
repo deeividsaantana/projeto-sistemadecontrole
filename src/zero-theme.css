@@ -339,6 +339,64 @@ body::before { opacity: .018; }
 .dashboard-action__buttons button:first-child { border-color: var(--zero-amber); background: var(--zero-amber); color: var(--zero-ink); }
 .dashboard-action__buttons button:hover { transform: translateY(-3px); border-color: #fff; }
 
+/* Camada clara definitiva: remove superfícies escuras herdadas do tema antigo.
+   As fotografias continuam com contraste próprio, mas o shell e os painéis
+   operacionais permanecem claros e legíveis em todas as abas. */
+.app-module-tabs {
+  background: var(--zero-paper) !important;
+  border-bottom-color: var(--zero-line) !important;
+}
+.app-module-tab { color: var(--zero-muted) !important; border-color: var(--zero-line) !important; }
+.app-module-tab:hover,
+.app-module-tab--active { background: #f1f4ef !important; color: var(--zero-ink) !important; }
+.app-module-tab--active .app-module-tab__glyph,
+.app-module-tab__glyph { color: var(--zero-forest) !important; }
+.app-module-tab--active::after { background: var(--zero-amber) !important; }
+
+.executive-command {
+  color: var(--zero-ink) !important;
+  background: #edf2ed !important;
+  border-right: 1px solid var(--zero-line);
+}
+.executive-command > p { color: var(--zero-forest-soft) !important; }
+.executive-command h2 { color: var(--zero-ink) !important; }
+.executive-command > span { color: var(--zero-muted) !important; }
+.executive-filters .input-dark {
+  border-color: #cfd4d0 !important;
+  background: var(--zero-paper) !important;
+  color: var(--zero-ink) !important;
+}
+
+#presenca-manutencao-summary-row {
+  border-color: var(--zero-line) !important;
+  background-color: var(--zero-paper) !important;
+}
+#presenca-manutencao-summary-row::before { background: linear-gradient(90deg, transparent 42%, var(--zero-paper)); }
+#presenca-manutencao-summary-row > button {
+  background: rgb(255 253 248 / .94) !important;
+  border-bottom-color: var(--zero-line) !important;
+  color: var(--zero-ink) !important;
+}
+#presenca-manutencao-summary-row > button :is(.text-white,.text-slate-200) { color: var(--zero-ink) !important; }
+#presenca-manutencao-summary-row > button :is(.text-slate-400,.text-slate-500) { color: var(--zero-muted) !important; }
+#presenca-manutencao-summary-row > button:hover { background: #f1f4ef !important; }
+
+#dashboard-lists-row { border-color: var(--zero-line) !important; }
+#dashboard-lists-row > div:last-child,
+#dashboard-lists-row > div:last-child :is(.text-slate-200,.text-white) { background: var(--zero-paper) !important; color: var(--zero-ink) !important; }
+#dashboard-lists-row > div:last-child :is(.text-slate-400,.text-slate-500) { color: var(--zero-muted) !important; }
+#dashboard-lists-row > div:last-child .border-slate-800 { border-color: var(--zero-line) !important; }
+
+.dashboard-action {
+  color: var(--zero-ink) !important;
+  background: var(--zero-paper) !important;
+  border: 1px solid var(--zero-line);
+}
+.dashboard-action > div > p { color: var(--zero-forest-soft) !important; }
+.dashboard-action h2 { color: var(--zero-ink) !important; }
+.dashboard-action__buttons button { border-color: var(--zero-line); color: var(--zero-ink); background: transparent; }
+.dashboard-action__buttons button:first-child { color: var(--zero-ink); }
+
 @media (max-width: 1180px) {
   .app-topbar__status-copy, .app-topbar__date { display: none !important; }
   .dashboard-intro__content { width: 65%; }

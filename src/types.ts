@@ -294,6 +294,7 @@ export interface PresencaApontamento {
   observacao: string;
   tokenUsado: string;
   createdAt: string;
+  submissionDocId?: string;
   updatedAt?: string;
   atualizadoPor?: string;
   motivoAlteracao?: string;

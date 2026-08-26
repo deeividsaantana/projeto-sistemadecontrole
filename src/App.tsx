@@ -2664,11 +2664,23 @@ export default function App() {
 
   const handleDeletePresencaLink = (ids: string[]) => {
     const selected = new Set(ids);
+    const submissionDocIds = Array.from(new Set(
+      presencasLink
+        .filter(item => selected.has(item.id))
+        .map(item => {
+          if (item.submissionDocId) return item.submissionDocId;
+          const legacyMatch = /^plink-(.+)-\d+$/.exec(item.id);
+          return legacyMatch ? `presence_${legacyMatch[1]}` : '';
+        })
+        .filter(Boolean),
+    ));
     const updatedPresencas = presencasLink.filter(item => !selected.has(item.id));
     setPresencasLink(updatedPresencas);
     writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
     addNotification('Presenças excluídas', `${ids.length} registro(s) removido(s) manualmente.`, 'warning', 'Sistema Local');
-    void uploadLocalSnapshotToFirebase();
+    void markPublicSubmissionsProcessed(db, submissionDocIds, currentUser?.uid || activeUserName)
+      .catch(error => console.warn('Não foi possível encerrar a submissão pública excluída:', error))
+      .finally(() => { void uploadLocalSnapshotToFirebase(); });
   };
 
   const handleSaveApontamentoRamo = (ramo: ApontamentoRamo, isNew: boolean) => {
