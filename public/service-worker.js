@@ -1,4 +1,4 @@
-const CACHE_NAME = 'renea-erp-shell-v342';
+const CACHE_NAME = 'renea-erp-shell-v343';
 const SHELL = ['/manifest.webmanifest', '/favicon.png'];
 const STATIC_PATHS = ['/assets/'];
 const STATIC_DESTINATIONS = new Set(['script', 'style', 'image', 'font', 'manifest']);
