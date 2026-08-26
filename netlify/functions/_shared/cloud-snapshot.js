@@ -28,7 +28,7 @@ const loadDocuments = async (database, ids) => {
   return results;
 };
 
-const loadManifestSnapshot = async (database, manifest, requestedTables) => {
+const loadManifestSnapshot = async (database, manifest, requestedTables, options = {}) => {
   const data = {};
   const allowedTables = requestedTables ? new Set(requestedTables) : null;
   for (const [table, ids] of Object.entries(manifest.chunks || {})) {
@@ -49,7 +49,7 @@ const loadManifestSnapshot = async (database, manifest, requestedTables) => {
       rows.push(...parsed);
     }
     const expectedHash = manifest.tableHashes?.[table];
-    if (expectedHash && hashText(JSON.stringify(rows)) !== expectedHash) {
+    if (!options.skipIntegrityCheck && expectedHash && hashText(JSON.stringify(rows)) !== expectedHash) {
       throw new Error(`Falha de integridade na tabela ${table}.`);
     }
     data[table] = rows;
@@ -88,7 +88,7 @@ const loadCloudSnapshotUncached = async (database, requestedTables, options = {}
     const manifest = manifestSnapshot.data();
     if (manifest?.kind !== 'manifest' || !manifest.chunks) throw new Error('Manifesto de nuvem inválido.');
     try {
-      return await loadManifestSnapshot(database, manifest, requestedTables);
+      return await loadManifestSnapshot(database, manifest, requestedTables, options);
     } catch (error) {
       // Links públicos não podem ficar indisponíveis por um manifesto novo
       // publicado antes de todos os blocos. O fallback é opt-in e mantém a

@@ -32,6 +32,7 @@ const loadPresenceSnapshot = async database => {
     snapshotRequest = loadCloudSnapshot(database, ['gruposEquipe', 'funcionarios', 'empresas', 'obras'], {
       cacheTtlMs: SNAPSHOT_CACHE_TTL_MS,
       allowLegacyFallback: true,
+      skipIntegrityCheck: true,
     })
       .then(snapshot => {
         cachedSnapshot = snapshot;
