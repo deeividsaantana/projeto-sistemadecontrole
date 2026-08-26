@@ -223,9 +223,7 @@ const serializeArrayInChunks = (items: unknown[]): string[] => {
 };
 
 const sanitizeCloudRecord = (table: string, item: unknown): unknown => {
-  if (table !== 'ticketsJazida' || !item || typeof item !== 'object' || Array.isArray(item)) return item;
-  const serialized = JSON.stringify(item);
-  if (!serialized || textEncoder.encode(serialized).byteLength <= MAX_CHUNK_PAYLOAD_BYTES) return item;
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
   const record = { ...(item as Record<string, unknown>) };
   // Assinaturas são imagens base64 e podem ultrapassar o limite de um bloco.
   // A cópia local permanece intacta; o backup remoto guarda os dados operacionais
@@ -234,6 +232,16 @@ const sanitizeCloudRecord = (table: string, item: unknown): unknown => {
     if (typeof record[key] === 'string' && record[key].length > 100_000) {
       record[key] = '[anexo preservado no dispositivo de origem]';
     }
+  }
+  // Há versões antigas que gravaram o anexo com outro nome ou dentro de um
+  // campo expandido. Reduza somente os maiores campos até caber no bloco;
+  // datas, números e textos operacionais curtos permanecem íntegros.
+  while (textEncoder.encode(JSON.stringify(record)).byteLength > MAX_CHUNK_PAYLOAD_BYTES) {
+    const candidates = Object.entries(record)
+      .filter(([, value]) => typeof value === 'string' && value.length > 256)
+      .sort(([, a], [, b]) => String(b).length - String(a).length);
+    if (candidates.length === 0) break;
+    record[candidates[0][0]] = '[conteúdo extenso preservado no dispositivo de origem]';
   }
   return record;
 };
