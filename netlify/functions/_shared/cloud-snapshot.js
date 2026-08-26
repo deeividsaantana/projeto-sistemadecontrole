@@ -71,7 +71,7 @@ export const loadCloudSnapshot = async (database, requestedTables, options = {})
   const pending = snapshotRequests.get(cacheKey);
   if (pending) return pending;
 
-  const request = loadCloudSnapshotUncached(database, tables)
+  const request = loadCloudSnapshotUncached(database, tables, options)
     .then(data => {
       if (cacheTtlMs > 0) snapshotCache.set(cacheKey, { data, until: Date.now() + cacheTtlMs });
       return data;
@@ -81,13 +81,23 @@ export const loadCloudSnapshot = async (database, requestedTables, options = {})
   return request;
 };
 
-const loadCloudSnapshotUncached = async (database, requestedTables) => {
+const loadCloudSnapshotUncached = async (database, requestedTables, options = {}) => {
   const collection = database.collection(CLOUD_COLLECTION);
   const manifestSnapshot = await collection.doc(MANIFEST_ID).get();
   if (manifestSnapshot.exists) {
     const manifest = manifestSnapshot.data();
     if (manifest?.kind !== 'manifest' || !manifest.chunks) throw new Error('Manifesto de nuvem inválido.');
-    return loadManifestSnapshot(database, manifest, requestedTables);
+    try {
+      return await loadManifestSnapshot(database, manifest, requestedTables);
+    } catch (error) {
+      // Links públicos não podem ficar indisponíveis por um manifesto novo
+      // publicado antes de todos os blocos. O fallback é opt-in e mantém a
+      // validação rígida para os demais consumidores do snapshot.
+      if (!options.allowLegacyFallback) throw error;
+      const legacySnapshot = await collection.doc(LEGACY_ID).get();
+      if (legacySnapshot.exists) return legacySnapshot.data() || {};
+      throw error;
+    }
   }
 
   const metaSnapshot = await collection.doc(INTERMEDIATE_META_ID).get();
