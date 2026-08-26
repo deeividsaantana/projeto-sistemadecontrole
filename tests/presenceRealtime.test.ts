@@ -23,9 +23,10 @@ test('link publico exige revisao explicita de todos os colaboradores', () => {
   assert.doesNotMatch(publicPresenceSource, /status:\s*'Presente'/);
 });
 
-test('envios publicos entram no painel por assinatura em tempo real', () => {
+test('envios publicos entram no painel em tempo real e por reconciliacao', () => {
   assert.match(subscriptionSource, /onSnapshot\(/);
-  assert.doesNotMatch(subscriptionSource, /getDocs|setInterval/);
+  assert.match(subscriptionSource, /getDocs\(/);
+  assert.match(appSource, /setInterval\(reconcile, 15_000\)/);
   assert.match(appSource, /subscribePendingPublicSubmissions/);
   assert.match(appSource, /writeStorageValue\(localStorage, 'renea_history_logs', JSON\.stringify\(nextHistory\)\)/);
 });

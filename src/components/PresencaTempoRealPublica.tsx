@@ -51,6 +51,39 @@ const todayInput = () => {
 
 const safeText = (value: unknown) => typeof value === 'string' ? value : '';
 const isGeneralToken = (token: string) => token.startsWith('geral-');
+const draftStorageKey = (token: string) => `renea_public_presence_${token}`;
+
+type PresenceDraft = {
+  date: string;
+  selectedGroupId: string;
+  items: Record<string, ItemState>;
+  result: SubmissionResult | null;
+};
+
+const readDraft = (token: string): PresenceDraft | null => {
+  try {
+    const raw = sessionStorage.getItem(draftStorageKey(token));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PresenceDraft>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      date: typeof parsed.date === 'string' ? parsed.date : todayInput(),
+      selectedGroupId: typeof parsed.selectedGroupId === 'string' ? parsed.selectedGroupId : '',
+      items: parsed.items && typeof parsed.items === 'object' ? parsed.items as Record<string, ItemState> : {},
+      result: parsed.result && typeof parsed.result === 'object' ? parsed.result as SubmissionResult : null,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const writeDraft = (token: string, draft: PresenceDraft) => {
+  try {
+    sessionStorage.setItem(draftStorageKey(token), JSON.stringify(draft));
+  } catch {
+    // A storage failure must never interrupt field registration.
+  }
+};
 
 export default function PresencaTempoRealPublica({
   token,
@@ -74,6 +107,19 @@ export default function PresencaTempoRealPublica({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
+
+  useEffect(() => {
+    const draft = readDraft(token);
+    if (!draft) return;
+    setDate(draft.date);
+    setSelectedGroupId(draft.selectedGroupId);
+    setItems(draft.items);
+    setResult(draft.result);
+  }, [token]);
+
+  useEffect(() => {
+    writeDraft(token, { date, selectedGroupId, items, result });
+  }, [date, items, result, selectedGroupId, token]);
 
   const activeGroups = useMemo(() => (Array.isArray(gruposEquipe) ? gruposEquipe : [])
     .filter(group => group?.status === 'ativo' && group?.linkAtivo)
@@ -111,7 +157,10 @@ export default function PresencaTempoRealPublica({
 
   useEffect(() => {
     if (!group) return;
-    setItems(Object.fromEntries(groupEmployees.map(employee => [employee.id, { observacao: '' }])));
+    setItems(current => Object.fromEntries(groupEmployees.map(employee => [
+      employee.id,
+      current[employee.id] || { observacao: '' },
+    ])));
     setEmployeeSearch('');
     setError('');
     setResult(null);
@@ -249,7 +298,7 @@ export default function PresencaTempoRealPublica({
             <div><strong>{(counts['Falta justificada'] || 0) + (counts.Férias || 0) + (counts.Afastado || 0) + (counts.Outro || 0)}</strong><span>Outros</span></div>
           </div>
           {result.submissionId && <p className="presence-public__audit-id">ID do envio: {result.submissionId}</p>}
-          <button type="button" onClick={() => { setResult(null); if (generalLink) setSelectedGroupId(''); }} className="presence-public__primary"><ArrowLeft className="h-4 w-4" /> Voltar às equipes</button>
+          <button type="button" onClick={() => { setResult(null); setItems({}); if (generalLink) setSelectedGroupId(''); }} className="presence-public__primary"><ArrowLeft className="h-4 w-4" /> Voltar às equipes</button>
         </section>
       </main>
     );

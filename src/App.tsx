@@ -124,6 +124,7 @@ import {
 } from './firebaseTickets';
 import {
   markPublicSubmissionsProcessed,
+  loadPendingPublicSubmissions,
   subscribePendingPublicSubmissions,
   type PublicSubmission,
 } from './firebasePublicSubmissions';
@@ -2551,10 +2552,22 @@ export default function App() {
         if (!cancelled) console.warn('Falha ao acompanhar os envios públicos em tempo real:', error);
       },
     );
+    const reconcile = () => {
+      if (cancelled) return;
+      void loadPendingPublicSubmissions(db)
+        .then(submissions => void ingestPublicSubmissions(submissions))
+        .catch(error => {
+          if (!cancelled) console.warn('Falha na reconciliação automática dos envios públicos:', error);
+        });
+    };
+    const initialReconcile = window.setTimeout(reconcile, 1_500);
+    const reconcileInterval = window.setInterval(reconcile, 15_000);
     return () => {
       cancelled = true;
       queuedSubmissions = null;
       unsubscribe();
+      window.clearTimeout(initialReconcile);
+      window.clearInterval(reconcileInterval);
     };
   }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken, externalApontamentoToken]);
 

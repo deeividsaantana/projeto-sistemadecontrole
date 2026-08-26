@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   Firestore,
+  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
@@ -43,6 +44,14 @@ export const subscribePendingPublicSubmissions = (
   snapshot => onChange(normalizeSubmissionSnapshot(snapshot.docs)),
   error => onError(error),
 );
+
+// Reconciliation fallback for browsers where a realtime listener was paused by
+// the mobile OS or briefly lost its connection. Pending documents are durable
+// on the server, so polling only this small queue is safe and idempotent.
+export const loadPendingPublicSubmissions = async (database: Firestore): Promise<PublicSubmission[]> => {
+  const snapshot = await getDocs(query(collection(database, SUBMISSIONS_COLLECTION), where('status', '==', 'pending')));
+  return normalizeSubmissionSnapshot(snapshot.docs);
+};
 
 export const markPublicSubmissionsProcessed = async (
   database: Firestore,
