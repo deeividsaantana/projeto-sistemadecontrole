@@ -17,7 +17,10 @@ import { withIdempotency } from './_shared/idempotency.js';
 
 const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
 const isGeneralToken = token => token.startsWith('geral-');
-const SNAPSHOT_CACHE_TTL_MS = 0;
+// A configuração pública pode ser reutilizada por poucos segundos sem perder
+// a sensação de tempo real. O cabeçalho no-store continua impedindo cache do
+// navegador; esta janela curta evita leituras excessivas no Firestore.
+const SNAPSHOT_CACHE_TTL_MS = 3000;
 let cachedSnapshot = null;
 let cachedSnapshotUntil = 0;
 let snapshotRequest = null;
@@ -26,7 +29,7 @@ const loadPresenceSnapshot = async database => {
   const now = Date.now();
   if (cachedSnapshot && now < cachedSnapshotUntil) return cachedSnapshot;
   if (!snapshotRequest) {
-    snapshotRequest = loadCloudSnapshot(database, ['gruposEquipe', 'funcionarios', 'empresas', 'obras'], { cacheTtlMs: 0 })
+    snapshotRequest = loadCloudSnapshot(database, ['gruposEquipe', 'funcionarios', 'empresas', 'obras'], { cacheTtlMs: SNAPSHOT_CACHE_TTL_MS })
       .then(snapshot => {
         cachedSnapshot = snapshot;
         cachedSnapshotUntil = Date.now() + SNAPSHOT_CACHE_TTL_MS;
@@ -174,7 +177,11 @@ export const handler = async event => {
   try {
     const database = getAdminDb();
     const method = String(event.httpMethod || 'GET').toUpperCase();
-    await enforceRateLimit(database, event, `public-presenca-${method}`, method === 'GET' ? 120 : 30, method === 'GET' ? 300 : 3600);
+    // GET é somente leitura e não deve abrir uma transação de escrita no
+    // Firestore a cada carregamento do link. Escritas continuam protegidas.
+    if (method !== 'GET') {
+      await enforceRateLimit(database, event, `public-presenca-${method}`, 30, 3600);
+    }
 
     if (method === 'GET') {
       const token = cleanString(event.queryStringParameters?.token, 180);

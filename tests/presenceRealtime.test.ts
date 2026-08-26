@@ -31,7 +31,7 @@ test('envios publicos entram no painel por assinatura em tempo real', () => {
 });
 
 test('servico publico reutiliza leitura curta e devolve comprovante do envio', () => {
-  assert.match(functionSource, /SNAPSHOT_CACHE_TTL_MS = 0/);
+  assert.match(functionSource, /SNAPSHOT_CACHE_TTL_MS = 3000/);
   assert.match(functionSource, /resolveGroupEmployeeIds/);
   assert.match(functionSource, /data: \{ submissionId, createdAtIso \}/);
   assert.match(functionSource, /Cache-Control.*no-store/);
