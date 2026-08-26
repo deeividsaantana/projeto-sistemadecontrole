@@ -12,6 +12,8 @@ import {
   stableHash,
 } from './_shared/firebase-admin.js';
 import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
+import { assertIdempotencyKey } from './_shared/api-security.js';
+import { withIdempotency } from './_shared/idempotency.js';
 
 const SNAPSHOT_CACHE_TTL_MS = 30_000;
 let cachedSnapshot = null;
@@ -102,13 +104,21 @@ export const handler = async event => {
     if (!token || !ramoId || !responsavel || !isIsoDate(data)) {
       return jsonResponse(400, { success: false, message: 'Dados de apontamento incompletos ou inválidos.' });
     }
-    const snapshot = await loadApontamentoSnapshot(database);
-    const ramo = activeRamosForToken(snapshot, token).find(item => item.id === ramoId);
-    if (!ramo) return jsonResponse(403, { success: false, message: 'O link não autoriza o ramo selecionado.' });
+    const idempotencyKey = assertIdempotencyKey(event, { required: true });
+    const publicContext = {
+      database,
+      organizationId: 'public-apontamento',
+      userId: stableHash(token).slice(0, 32),
+      requestId: event.headers?.['x-request-id'] || '',
+    };
+    return await withIdempotency(event, publicContext, idempotencyKey, async () => {
+      const snapshot = await loadApontamentoSnapshot(database);
+      const ramo = activeRamosForToken(snapshot, token).find(item => item.id === ramoId);
+      if (!ramo) return jsonResponse(403, { success: false, message: 'O link não autoriza o ramo selecionado.' });
 
-    const now = new Date();
-    const submissionId = crypto.randomUUID();
-    const record = {
+      const now = new Date();
+      const submissionId = crypto.randomUUID();
+      const record = {
       id: `apramo-${submissionId}`,
       data,
       horaEnvio: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }),
@@ -127,15 +137,16 @@ export const handler = async event => {
       tokenUsado: `validado-${stableHash(token).slice(0, 12)}`,
       createdAt: now.toISOString(),
     };
-    await database.collection('sistemarenea_public_submissions').doc(`apontamento_${submissionId}`).set({
-      kind: 'apontamento',
-      status: 'pending',
-      createdAt: serverTimestamp(),
-      createdAtIso: now.toISOString(),
-      sourceIpHash: requestIpHash(event),
-      payload: { ramoId: ramo.id, data, record },
+      await database.collection('sistemarenea_public_submissions').doc(`apontamento_${submissionId}`).set({
+        kind: 'apontamento',
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        createdAtIso: now.toISOString(),
+        sourceIpHash: requestIpHash(event),
+        payload: { ramoId: ramo.id, data, record },
+      });
+      return jsonResponse(201, { success: true, submissionId, message: `Apontamento de ${ramo.ramoNome} enviado com segurança.` });
     });
-    return jsonResponse(201, { success: true, submissionId, message: `Apontamento de ${ramo.ramoNome} enviado com segurança.` });
   } catch (error) {
     return functionErrorResponse(error);
   }

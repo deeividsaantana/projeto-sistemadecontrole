@@ -2663,6 +2663,15 @@ export default function App() {
     );
   };
 
+  const handleDeletePresencaLink = (ids: string[]) => {
+    const selected = new Set(ids);
+    const updatedPresencas = presencasLink.filter(item => !selected.has(item.id));
+    setPresencasLink(updatedPresencas);
+    writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
+    addNotification('Presenças excluídas', `${ids.length} registro(s) removido(s) manualmente.`, 'warning', 'Sistema Local');
+    void uploadLocalSnapshotToFirebase();
+  };
+
   const handleSaveApontamentoRamo = (ramo: ApontamentoRamo, isNew: boolean) => {
     const updated = isNew
       ? [...apontamentoRamos, ramo]
@@ -4166,6 +4175,7 @@ export default function App() {
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
                 onUpdatePresencaLink={handleUpdatePresencaLink}
+                onDeletePresencaLink={handleDeletePresencaLink}
               />
             )}
 

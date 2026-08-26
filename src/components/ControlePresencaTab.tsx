@@ -77,6 +77,7 @@ interface ControlePresencaTabProps {
   onSaveGrupoEquipe: (grupo: GrupoEquipe, isNew: boolean) => void;
   onDeleteGrupoEquipe: (id: string) => void;
   onUpdatePresencaLink: (id: string, status: PresencaStatus, observacao: string, motivo: string) => void;
+  onDeletePresencaLink?: (ids: string[]) => void;
 }
 
 type View = 'ao-vivo' | 'equipes' | 'registros' | 'historico';
@@ -155,6 +156,7 @@ export default function ControlePresencaTab({
   onSaveGrupoEquipe,
   onDeleteGrupoEquipe,
   onUpdatePresencaLink,
+  onDeletePresencaLink,
 }: ControlePresencaTabProps) {
   const today = localToday();
   const safeFuncionarios = useMemo(() => (Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean), [funcionarios]);
@@ -177,6 +179,7 @@ export default function ControlePresencaTab({
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingRecord, setEditingRecord] = useState<PresencaApontamento | null>(null);
+  const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [editStatus, setEditStatus] = useState<PresencaStatus>('Presente');
   const [editObservation, setEditObservation] = useState('');
   const [editReason, setEditReason] = useState('');
@@ -432,6 +435,15 @@ export default function ControlePresencaTab({
     setFeedback('Presença atualizada com histórico de auditoria.');
   };
 
+  const deleteSelectedRecords = () => {
+    if (selectedRecordIds.length === 0) return;
+    const confirmed = window.confirm(`Excluir ${selectedRecordIds.length} registro(s) de presença? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+    onDeletePresencaLink?.(selectedRecordIds);
+    setSelectedRecordIds([]);
+    setFeedback(`${selectedRecordIds.length} registro(s) de presença excluído(s).`);
+  };
+
   const navItems: Array<{ id: View; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'ao-vivo', label: 'Ao vivo', icon: Radio },
     { id: 'equipes', label: 'Equipes', icon: Users },
@@ -584,19 +596,20 @@ export default function ControlePresencaTab({
             <select value={recordGroup} onChange={event => setRecordGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{safeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select>
             <select value={recordStatus} onChange={event => setRecordStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select>
             <div className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={recordSearch} onChange={event => setRecordSearch(event.target.value)} placeholder="Buscar colaborador, função ou responsável" className={`${FIELD} pl-10`} /></div>
-            <div className="flex gap-2"><button type="button" onClick={exportExcel} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={exportPdf} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button></div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={exportExcel} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={exportPdf} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{selectedRecordIds.length > 0 && <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800"><Trash2 className="h-4 w-4" /> Excluir ({selectedRecordIds.length})</button>}</div>
           </div>
+          <label className="flex min-h-11 items-center gap-2 px-1 text-xs font-bold text-[#53605a]"><input type="checkbox" checked={filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id))} onChange={event => setSelectedRecordIds(event.target.checked ? filteredRecords.map(record => record.id) : [])} className="h-4 w-4 accent-emerald-700" /> Selecionar registros filtrados</label>
           <div className="grid gap-3">
             {filteredRecords.length === 0 ? <div className={`${PANEL} px-5 py-14 text-center text-sm text-[#65716b]`}>Nenhum registro encontrado para os filtros selecionados.</div> : filteredRecords.map(record => {
               const duplicated = duplicateKeys.has(duplicateKey(record));
               return (
-                <article key={record.id || `${duplicateKey(record)}-${record.horaEnvio}`} className={`${PANEL} grid gap-4 p-4 lg:grid-cols-[150px_1.2fr_1.2fr_180px_auto] lg:items-center`}>
-                  <div><p className="text-xs font-bold text-[#65716b]">{record.data.split('-').reverse().join('/')}</p><p className="mt-1 text-lg font-black tabular-nums text-[#101a22]">{record.horaEnvio || '--:--'}</p>{duplicated && <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800"><AlertTriangle className="h-3 w-3" /> Duplicado</span>}</div>
+                <article key={record.id || `${duplicateKey(record)}-${record.horaEnvio}`} className={`${PANEL} grid gap-4 p-4 lg:grid-cols-[28px_150px_1.2fr_1.2fr_180px_auto] lg:items-center`}>
+                  <label className="flex items-start justify-center pt-1"><input type="checkbox" checked={selectedRecordIds.includes(record.id)} onChange={event => setSelectedRecordIds(current => event.target.checked ? [...new Set([...current, record.id])] : current.filter(id => id !== record.id))} aria-label={`Selecionar presença de ${record.funcionarioNome}`} className="h-4 w-4 accent-emerald-700" /></label><div><p className="text-xs font-bold text-[#65716b]">{record.data.split('-').reverse().join('/')}</p><p className="mt-1 text-lg font-black tabular-nums text-[#101a22]">{record.horaEnvio || '--:--'}</p>{duplicated && <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800"><AlertTriangle className="h-3 w-3" /> Duplicado</span>}</div>
                   <div><p className="text-sm font-black text-[#101a22]">{record.funcionarioNome || 'Colaborador não informado'}</p><p className="mt-1 text-xs text-[#65716b]">{record.funcao || 'Função não informada'}</p></div>
                   <div><p className="text-sm font-bold text-[#101a22]">{record.grupoNome || 'Equipe não informada'}</p><p className="mt-1 text-xs text-[#65716b]">{record.responsavel} · {record.frenteServico}</p></div>
                   <span className={`w-fit rounded-lg border px-3 py-2 text-xs font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>
                   <button type="button" onClick={() => openRecordEditor(record)} className={SECONDARY_BUTTON}><Edit3 className="h-4 w-4" /> Atualizar</button>
-                  {record.observacao && <p className="border-t border-[#ebe7dc] pt-3 text-sm text-[#65716b] lg:col-span-5">{record.observacao}</p>}
+                  {record.observacao && <p className="border-t border-[#ebe7dc] pt-3 text-sm text-[#65716b] lg:col-span-6">{record.observacao}</p>}
                 </article>
               );
             })}

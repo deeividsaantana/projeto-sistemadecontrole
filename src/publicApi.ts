@@ -127,9 +127,11 @@ export const submitPublicApontamento = async (
   ramoId: string,
   payload: PublicApontamentoPayload,
 ) => {
+  const requestPayload = { token, ramoId, ...payload };
   const response = await callPublicApi<never>('/.netlify/functions/public-apontamento', {
     method: 'POST',
-    body: JSON.stringify({ token, ramoId, ...payload }),
+    headers: { 'X-Idempotency-Key': stableRequestKey('apontamento', requestPayload) },
+    body: JSON.stringify(requestPayload),
   });
   return { success: true, message: response.message || 'Apontamento enviado com segurança.' };
 };
