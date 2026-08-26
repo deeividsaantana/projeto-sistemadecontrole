@@ -96,6 +96,14 @@ const loadCloudSnapshotUncached = async (database, requestedTables, options = {}
       if (!options.allowLegacyFallback) throw error;
       const legacySnapshot = await collection.doc(LEGACY_ID).get();
       if (legacySnapshot.exists) return legacySnapshot.data() || {};
+      const directIds = ['gruposEquipe', 'funcionarios', 'empresas', 'obras'];
+      const directSnapshots = await Promise.all(directIds.map(id => collection.doc(id).get()));
+      const directData = {};
+      directSnapshots.forEach(snapshot => {
+        const value = snapshot.data()?.value;
+        if (snapshot.exists && Array.isArray(value)) directData[snapshot.id] = value;
+      });
+      if (Object.keys(directData).length > 0) return directData;
       throw error;
     }
   }
