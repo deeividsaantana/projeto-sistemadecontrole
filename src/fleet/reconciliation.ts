@@ -41,6 +41,15 @@ export const isDumpTruck = (equipment: Equipamento): boolean =>
     `${equipment.familia ?? ''} ${equipment.tipo ?? ''} ${equipment.nome ?? ''}`,
   ).includes('basculante');
 
+export const isOperationalFleet = (equipment: Equipamento): boolean => {
+  const description = normalizeComparable(
+    `${equipment.prefixo ?? ''} ${equipment.familia ?? ''} ${equipment.tipo ?? ''} ${equipment.nome ?? ''}`,
+  );
+  return ['basculante', 'pipa', 'cavalo mecanico', 'comboio', 'carroceria']
+    .some(category => description.includes(category))
+    || /^(cb|cp|cv|ca|cc)\d+$/i.test(normalizePrefix(equipment.prefixo));
+};
+
 export const reconcileCompany = (
   companyId: string | undefined,
   companyName: string | undefined,
@@ -322,7 +331,7 @@ export const reconcileFleetRecord = (
     { equipmentId: record.equipamentoId, prefix: record.prefixo },
     context.equipment,
   );
-  if (!equipmentResult.value || !isDumpTruck(equipmentResult.value)) return undefined;
+  if (!equipmentResult.value || !isOperationalFleet(equipmentResult.value)) return undefined;
   const employeeResult = reconcileEmployee(
     {
       employeeId: record.funcionarioId,

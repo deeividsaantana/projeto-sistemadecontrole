@@ -21,6 +21,12 @@ export const filterFleetStates = (
   if (filters.companyId !== 'Todos' && state.equipment.companyId !== filters.companyId) {
     return false;
   }
+  if (filters.group && filters.group !== 'Todos' && !includesNormalized(state.equipment.family, filters.group)) {
+    return false;
+  }
+  if (filters.equipmentType && filters.equipmentType !== 'Todos' && !includesNormalized(state.equipment.equipmentType, filters.equipmentType)) {
+    return false;
+  }
   if (filters.status !== 'Todos' && state.operationalStatus !== filters.status) return false;
   if (filters.prefix && !normalizePrefix(state.equipment.prefix).includes(normalizePrefix(filters.prefix))) {
     return false;

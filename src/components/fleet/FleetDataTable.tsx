@@ -135,14 +135,16 @@ export default function FleetDataTable({
         ))}
         {!pageRows.length && (
           <div className="rounded-lg border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-            Nenhum caminhão basculante encontrado para os filtros.
+            Nenhuma frota encontrada para os filtros.
           </div>
         )}
       </div>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1120px] table-fixed border-collapse text-left text-xs">
+        <table className="w-full min-w-[1390px] table-fixed border-collapse text-left text-xs">
           <colgroup>
             <col className="w-[42px]" />
+            <col className="w-[110px]" />
+            <col className="w-[165px]" />
             <col className="w-[92px]" />
             <col className="w-[190px]" />
             <col className="w-[90px]" />
@@ -164,6 +166,8 @@ export default function FleetDataTable({
                   className="size-4 accent-emerald-600"
                 />
               </th>
+              <th className="border-b border-slate-300 p-2">Grupo</th>
+              <th className="border-b border-slate-300 p-2">Tipo</th>
               <th className="border-b border-slate-300 p-2">{header('Matrícula', 'employeeCode')}</th>
               <th className="border-b border-slate-300 p-2">{header('Motorista', 'driver')}</th>
               <th className="border-b border-slate-300 p-2">{header('Prefixo', 'prefix')}</th>
@@ -181,6 +185,8 @@ export default function FleetDataTable({
               return (
                 <tr key={row.recordId} className={selected ? 'bg-emerald-50' : index % 2 ? 'bg-slate-50/60' : 'bg-white'}>
                   <td className="p-2 text-center"><input type="checkbox" checked={selected} onChange={event => toggleRow(row.recordId, event.target.checked)} aria-label={`Selecionar ${row.equipment.prefix}`} className="size-4 accent-emerald-600" /></td>
+                  <td className="truncate p-2 font-bold text-slate-700" title={row.equipment.family}>{row.equipment.family || '—'}</td>
+                  <td className="truncate p-2 text-slate-600" title={row.equipment.equipmentType}>{row.equipment.equipmentType || '—'}</td>
                   <td className="p-2 font-mono font-bold text-slate-700">{row.driver?.employeeCode || '—'}</td>
                   <td className="truncate p-2 font-bold text-slate-900" title={row.driver?.employeeName}>{row.driver?.employeeName || 'Sem motorista'}</td>
                   <td className="p-2 font-black text-slate-950">{row.equipment.prefix}</td>
@@ -194,7 +200,7 @@ export default function FleetDataTable({
               );
             })}
             {!pageRows.length && (
-              <tr><td colSpan={10} className="p-12 text-center text-sm text-slate-500">Nenhum caminhão basculante encontrado para os filtros.</td></tr>
+              <tr><td colSpan={12} className="p-12 text-center text-sm text-slate-500">Nenhuma frota encontrada para os filtros.</td></tr>
             )}
           </tbody>
         </table>

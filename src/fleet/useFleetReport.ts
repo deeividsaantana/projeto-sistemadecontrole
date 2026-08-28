@@ -18,6 +18,8 @@ export interface UseFleetReportResult {
 
 const countActiveFilters = (filters: FleetReportFilters): number => [
   filters.companyId !== 'Todos',
+  Boolean(filters.group && filters.group !== 'Todos'),
+  Boolean(filters.equipmentType && filters.equipmentType !== 'Todos'),
   filters.status !== 'Todos',
   Boolean(filters.prefix),
   Boolean(filters.driver),

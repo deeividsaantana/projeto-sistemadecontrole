@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import type { FleetCurrentState, FleetReportViewModel } from './domain';
+import { summarizeFleetCategories } from './categorySummary';
 
 const FONT_NAME = 'Aptos Narrow';
 const FONT_SIZE = 11;
@@ -171,7 +172,7 @@ const createSummarySheet = (
     sheet,
     'A1:F1',
     'RELATÓRIO DIÁRIO DE SITUAÇÃO OPERACIONAL',
-    'DOS CAMINHÕES BASCULANTES (CBs) · Operação - Alto Tietê',
+    'FROTAS OPERACIONAIS · Complexo do Alto Tietê',
   );
   sheet.mergeCells('A3:F3');
   sheet.getCell('A3').value = viewModel.companyLabel;
@@ -179,7 +180,7 @@ const createSummarySheet = (
   sheet.getCell('A3').font = { name: FONT_NAME, size: 10, bold: true, color: { argb: `FF${GREEN}` } };
   const metrics = [
     ['DATA', viewModel.reportDateLabel, 'F3F4F5'],
-    ['TOTAL CBs', viewModel.metrics.total, 'F3F4F5'],
+    ['TOTAL DE FROTAS', viewModel.metrics.total, 'F3F4F5'],
     ['EM OPERAÇÃO', viewModel.metrics.operating, SOFT_GREEN],
     ['EM MANUTENÇÃO', viewModel.metrics.maintenance + viewModel.metrics.waitingMaintenance, SOFT_RED],
     ['À DISPOSIÇÃO', viewModel.metrics.available, SOFT_BLUE],
@@ -224,6 +225,24 @@ const createSummarySheet = (
   styleBodyRows(sheet, 9, 9 + indicatorRows.length);
   sheet.getCell('B14').numFmt = '0.0%';
   sheet.getCell('B15').numFmt = '0.0%';
+  const categories = summarizeFleetCategories(viewModel.allRows);
+  sheet.getRow(19).values = ['Categoria', 'Total', 'Em operação', 'Em manutenção', 'A confirmar', 'Prefixos'];
+  styleHeaderRow(sheet.getRow(19));
+  categories.forEach((category, index) => {
+    sheet.getRow(20 + index).values = [
+      category.label,
+      category.total,
+      category.operating,
+      category.maintenance,
+      category.pending,
+      category.prefixes.join(', '),
+    ];
+  });
+  styleBodyRows(sheet, 19, 19 + categories.length);
+  sheet.getColumn(6).width = 52;
+  for (let row = 20; row <= 19 + categories.length; row += 1) {
+    sheet.getCell(row, 6).alignment = { vertical: 'middle', wrapText: true };
+  }
   sheet.pageSetup = {
     orientation: 'landscape',
     paperSize: 9,
@@ -235,6 +254,8 @@ const createSummarySheet = (
 };
 
 const operationRow = (state: FleetCurrentState): Array<string | number | Date | null> => [
+  state.equipment.family,
+  state.equipment.equipmentType,
   state.driver?.employeeCode || '',
   state.driver?.employeeName || 'Sem motorista',
   state.equipment.prefix,
@@ -246,6 +267,8 @@ const operationRow = (state: FleetCurrentState): Array<string | number | Date | 
 ];
 
 const maintenanceRow = (state: FleetCurrentState): Array<string | number | Date | null> => [
+  state.equipment.family,
+  state.equipment.equipmentType,
   state.equipment.prefix,
   state.maintenanceEntryTime || '',
   state.stoppedDurationLabel === '—' ? '' : state.stoppedDurationLabel,
@@ -255,6 +278,8 @@ const maintenanceRow = (state: FleetCurrentState): Array<string | number | Date 
 ];
 
 const availableRow = (state: FleetCurrentState): Array<string | number | Date | null> => [
+  state.equipment.family,
+  state.equipment.equipmentType,
   state.driver?.employeeCode || '',
   state.driver?.employeeName || 'Sem motorista',
   state.equipment.prefix,
@@ -362,6 +387,8 @@ export const buildFleetWorkbook = (
     name: 'OPERAÇÃO',
     tableName: 'OperacaoCBs',
     columns: [
+      'Grupo',
+      'Tipo',
       'Matrícula',
       'Nome / Motorista',
       'Prefixo',
@@ -371,15 +398,17 @@ export const buildFleetWorkbook = (
       'Local',
       'Observação',
     ],
-    widths: [14, 32, 13, 20, 16, 16, 25, 55],
+    widths: [16, 24, 14, 32, 13, 20, 16, 16, 25, 55],
     rows: viewModel.operating.map(operationRow),
-    statusColumn: 4,
-    wrapColumns: [8],
+    statusColumn: 6,
+    wrapColumns: [10],
   });
   createDataSheet(workbook, {
     name: 'MANUTENÇÃO',
     tableName: 'ManutencaoCBs',
     columns: [
+      'Grupo',
+      'Tipo',
       'Prefixo',
       'Entrada',
       'Tempo Parado',
@@ -387,15 +416,17 @@ export const buildFleetWorkbook = (
       'Ocorrência / Motivo',
       'OS',
     ],
-    widths: [14, 16, 16, 22, 60, 16],
+    widths: [16, 24, 14, 16, 16, 22, 60, 16],
     rows: viewModel.maintenance.map(maintenanceRow),
-    statusColumn: 4,
-    wrapColumns: [5],
+    statusColumn: 6,
+    wrapColumns: [7],
   });
   createDataSheet(workbook, {
     name: 'À DISPOSIÇÃO',
     tableName: 'DisponibilidadeCBs',
     columns: [
+      'Grupo',
+      'Tipo',
       'Matrícula',
       'Nome / Motorista',
       'Prefixo',
@@ -405,10 +436,10 @@ export const buildFleetWorkbook = (
       'Local',
       'Observação',
     ],
-    widths: [14, 32, 13, 20, 16, 16, 25, 55],
+    widths: [16, 24, 14, 32, 13, 20, 16, 16, 25, 55],
     rows: viewModel.available.map(availableRow),
-    statusColumn: 4,
-    wrapColumns: [8],
+    statusColumn: 6,
+    wrapColumns: [10],
   });
   createHistorySheet(workbook, viewModel);
   return workbook;
@@ -419,7 +450,7 @@ export const exportFleetExcel = async (
 ): Promise<FleetExcelResult> => {
   const workbook = buildFleetWorkbook(viewModel);
   const buffer = await workbook.xlsx.writeBuffer();
-  const fileName = `RELATORIO_CBS_ALTO_TIETE_${viewModel.reportDate}.xlsx`;
+  const fileName = `RELATORIO_FROTAS_ALTO_TIETE_${viewModel.reportDate}.xlsx`;
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });

@@ -14,7 +14,7 @@ const pdfReport = readFileSync(new URL('../src/fleet/pdfReport.ts', import.meta.
 const excelExport = readFileSync(new URL('../src/fleet/excelExport.ts', import.meta.url), 'utf8');
 
 assert.equal((app.match(/activeTab === 'controle-equipamentos'/g) || []).length, 1);
-assert.match(navigation, /Controle de Basculantes/);
+assert.match(navigation, /Controle Operacional de Frotas/);
 assert.match(component, /useFleetReport/);
 assert.match(component, /FleetFilterBar/);
 assert.match(component, /FleetDataTable/);

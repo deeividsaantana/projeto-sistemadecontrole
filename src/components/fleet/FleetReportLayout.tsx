@@ -9,7 +9,7 @@ interface Props {
 
 const metrics = (viewModel: FleetReportViewModel) => [
   { label: 'Data', value: viewModel.reportDateLabel, className: 'bg-slate-100' },
-  { label: 'Total CBs', value: viewModel.metrics.total, className: 'bg-slate-100' },
+  { label: 'Total de frotas', value: viewModel.metrics.total, className: 'bg-slate-100' },
   { label: 'Em operação', value: viewModel.metrics.operating, className: 'bg-emerald-50' },
   { label: 'Em manutenção', value: viewModel.metrics.maintenance + viewModel.metrics.waitingMaintenance, className: 'bg-rose-50' },
   { label: 'À disposição', value: viewModel.metrics.available, className: 'bg-sky-50' },
@@ -21,7 +21,7 @@ function ReportHeader({ viewModel }: Props) {
     <>
       <header className="grid grid-cols-[120px_1fr_120px] items-center gap-4">
         <img src={reneaLogo} alt="RENEA" className="max-h-12 max-w-[110px] object-contain object-left" />
-        <div className="text-center"><h1 className="text-base font-black uppercase tracking-wide text-slate-900">Relatório Diário de Situação Operacional</h1><h2 className="text-sm font-black uppercase text-slate-800">dos Caminhões Basculantes (CBs)</h2><p className="mt-1 text-[10px] text-slate-500">{viewModel.operationName}</p></div>
+        <div className="text-center"><h1 className="text-base font-black uppercase tracking-wide text-slate-900">Relatório Diário de Situação Operacional</h1><h2 className="text-sm font-black uppercase text-slate-800">Frotas operacionais</h2><p className="mt-1 text-[10px] text-slate-500">{viewModel.operationName}</p></div>
         <img src={spmarLogo} alt="SPMAR" className="ml-auto max-h-12 max-w-[110px] object-contain object-right" />
       </header>
       <div className="mt-2 h-1 bg-emerald-700" />

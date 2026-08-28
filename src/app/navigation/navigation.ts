@@ -38,7 +38,7 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
-      { id: 'controle-equipamentos', label: 'Controle de Basculantes', icon: Activity },
+      { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
@@ -87,8 +87,9 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   leitura: ['dashboard', 'consulta-geral', 'reports'],
 };
 
-export const normalizeUserRole = (value: unknown): UserRole => (
-  value === 'gestor' || value === 'operador' || value === 'leitura' || value === 'admin'
+export const normalizeUserRole = (value: unknown): UserRole => {
+  if (value === 'administrador') return 'admin';
+  return value === 'gestor' || value === 'operador' || value === 'leitura' || value === 'admin'
     ? value
-    : 'leitura'
-);
+    : 'leitura';
+};

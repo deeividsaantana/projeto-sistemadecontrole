@@ -123,6 +123,8 @@ export interface FleetCurrentState {
 export interface FleetReportFilters {
   date: string;
   companyId: string;
+  group?: string;
+  equipmentType?: string;
   status: FleetOperationalStatus | 'Todos';
   prefix: string;
   driver: string;
@@ -322,6 +324,8 @@ export const isFleetEvent = (
 export const createEmptyFleetFilters = (date: string): FleetReportFilters => ({
   date,
   companyId: 'Todos',
+  group: 'Todos',
+  equipmentType: 'Todos',
   status: 'Todos',
   prefix: '',
   driver: '',

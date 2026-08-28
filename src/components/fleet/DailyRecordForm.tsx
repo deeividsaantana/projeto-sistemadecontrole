@@ -246,7 +246,7 @@ export default function DailyRecordForm({
   const validate = (): string[] => {
     const errors: string[] = [];
     if (!form.date) errors.push('Informe a data operacional.');
-    if (!form.equipmentId || !form.prefix) errors.push('Selecione um caminhão basculante válido.');
+    if (!form.equipmentId || !form.prefix) errors.push('Selecione uma frota operacional válida.');
     if (
       form.operationalStatus === FLEET_OPERATIONAL_STATUS.operating
       && !form.employeeId
@@ -302,7 +302,7 @@ export default function DailyRecordForm({
         nomeMotorista: form.employeeName,
         equipamentoId: form.equipmentId,
         prefixo: form.prefix,
-        familia: selectedEquipment?.familia || selectedEquipment?.tipo || 'Caminhão Basculante',
+        familia: selectedEquipment?.familia || selectedEquipment?.tipo || 'Frota operacional',
         status: nextLegacyStatus,
         horaSaida: form.departureTime,
         horaEntradaManutencao: form.maintenanceEntryTime,

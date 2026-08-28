@@ -5,6 +5,7 @@ import { getFleetStatusDefinition } from './status';
 import { formatBrazilianDateTime } from './time';
 import reneaLogoUrl from '../assets/images/renea_logo_new.png';
 import spmarLogoUrl from '../assets/images/spmar_logo.png';
+import { summarizeFleetCategories } from './categorySummary';
 
 const PAGE_WIDTH = 297;
 const PAGE_HEIGHT = 210;
@@ -69,7 +70,7 @@ const drawHeader = (
     align: 'center',
   });
   document.setFontSize(10);
-  document.text('DOS CAMINHÕES BASCULANTES (CBs)', PAGE_WIDTH / 2, 16, {
+  document.text('FROTAS OPERACIONAIS · COMPLEXO DO ALTO TIETÊ', PAGE_WIDTH / 2, 16, {
     align: 'center',
   });
   document.setFont('helvetica', 'normal');
@@ -86,7 +87,7 @@ const metricDefinitions = (
   viewModel: FleetReportViewModel,
 ): Array<{ label: string; value: string | number; fill: string }> => [
   { label: 'DATA', value: viewModel.reportDateLabel, fill: '#F3F4F5' },
-  { label: 'TOTAL CBs', value: viewModel.metrics.total, fill: '#F3F4F5' },
+  { label: 'TOTAL DE FROTAS', value: viewModel.metrics.total, fill: '#F3F4F5' },
   { label: 'EM OPERAÇÃO', value: viewModel.metrics.operating, fill: '#EDF8F2' },
   {
     label: 'EM MANUTENÇÃO',
@@ -126,13 +127,74 @@ const drawMetricStrip = (
   return startY + 15;
 };
 
+const drawCategorySummary = (
+  document: jsPDF,
+  viewModel: FleetReportViewModel,
+  startY: number,
+): number => {
+  const categories = summarizeFleetCategories(viewModel.allRows);
+  const dumpTruck = categories.find(category => category.key === 'dumpTruck');
+  const support = categories.filter(category => category.key !== 'dumpTruck');
+  const gap = 3;
+  const leftWidth = 108;
+  const rightX = MARGIN_X + leftWidth + gap;
+  const rightWidth = CONTENT_WIDTH - leftWidth - gap;
+  const height = 27;
+  document.setDrawColor(BORDER);
+  document.setLineWidth(0.25);
+  document.roundedRect(MARGIN_X, startY, leftWidth, height, 1, 1, 'S');
+  document.roundedRect(rightX, startY, rightWidth, height, 1, 1, 'S');
+  document.setFont('helvetica', 'bold');
+  document.setTextColor(DARK);
+  document.setFontSize(8.5);
+  document.text('BASCULANTES', MARGIN_X + 4, startY + 5.5);
+  const basculanteMetrics = [
+    ['TOTAL', dumpTruck?.total ?? 0],
+    ['EM OPERAÇÃO', dumpTruck?.operating ?? 0],
+    ['A CONFIRMAR', dumpTruck?.pending ?? 0],
+  ] as const;
+  basculanteMetrics.forEach(([label, value], index) => {
+    const x = MARGIN_X + 4 + index * 33;
+    document.setFontSize(5.5);
+    document.setTextColor('#687078');
+    document.text(label, x, startY + 12);
+    document.setFontSize(14);
+    document.setTextColor(index === 2 ? '#B77900' : GREEN);
+    document.text(String(value), x, startY + 21);
+  });
+  document.setFontSize(8.5);
+  document.setTextColor(DARK);
+  document.text('APOIO · PÁTIO ARACARÉ', rightX + 4, startY + 5.5);
+  document.setFontSize(13);
+  document.setTextColor(GREEN);
+  const supportTotal = support.reduce((sum, category) => sum + category.total, 0);
+  document.text(String(supportTotal), rightX + 4, startY + 15);
+  document.setFontSize(5.3);
+  document.setTextColor('#687078');
+  document.text('EM OPERAÇÃO / INFORMADOS', rightX + 4, startY + 20);
+  support.slice(0, 4).forEach((category, index) => {
+    const y = startY + 10 + index * 4;
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(5.8);
+    document.setTextColor(DARK);
+    document.text(`${category.label.toUpperCase()}  ${category.total}`, rightX + 32, y);
+    document.setFont('helvetica', 'normal');
+    document.setTextColor('#53606B');
+    document.text(category.prefixes.join(', '), rightX + 78, y);
+  });
+  return startY + height + 3;
+};
+
 const operationRows = (rows: FleetCurrentState[]): PdfRow[] => rows.map(state => ({
+  group: state.equipment.family || '—',
+  type: state.equipment.equipmentType || '—',
   employeeCode: state.driver?.employeeCode || '—',
   driver: state.driver?.employeeName || 'Sem motorista',
   prefix: state.equipment.prefix,
   status: state.operationalStatus,
   departure: state.departureTime || '—',
   stopped: state.stoppedDurationLabel,
+  location: state.location || '—',
   note: state.note || state.maintenanceReason || '—',
 }));
 
@@ -217,39 +279,45 @@ const drawOperationTable = (
   const titleEnd = drawTableTitle(document, 'Operação - Alto Tietê', startY);
   const body: RowInput[] = rows.length
     ? operationRows(rows)
-    : [['—', 'Nenhum CB em operação neste período.', '—', '—', '—', '—', '—']];
+    : [['—', 'Nenhuma frota em operação neste período.', '—', '—', '—', '—', '—', '—', '—']];
   autoTable(document, {
     ...commonTableOptions,
     startY: titleEnd,
     head: [[
+      'GRUPO',
+      'TIPO',
       'MATRÍCULA',
       'NOME / MOTORISTA',
       'PREFIXO',
       'STATUS ATUAL',
       'SAÍDA / ARACARÉ',
-      'TEMPO PARADO',
+      'LOCAL DE SAÍDA',
       'OBSERVAÇÃO',
     ]],
     body,
     columns: rows.length ? [
+      { header: 'GRUPO', dataKey: 'group' },
+      { header: 'TIPO', dataKey: 'type' },
       { header: 'MATRÍCULA', dataKey: 'employeeCode' },
       { header: 'NOME / MOTORISTA', dataKey: 'driver' },
       { header: 'PREFIXO', dataKey: 'prefix' },
       { header: 'STATUS ATUAL', dataKey: 'status' },
       { header: 'SAÍDA / ARACARÉ', dataKey: 'departure' },
-      { header: 'TEMPO PARADO', dataKey: 'stopped' },
+      { header: 'LOCAL DE SAÍDA', dataKey: 'location' },
       { header: 'OBSERVAÇÃO', dataKey: 'note' },
     ] : undefined,
     columnStyles: {
-      0: { cellWidth: 22, halign: 'center' },
-      1: { cellWidth: 54 },
-      2: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
-      3: { cellWidth: 30, halign: 'center' },
-      4: { cellWidth: 26, halign: 'center' },
-      5: { cellWidth: 25, halign: 'center' },
-      6: { cellWidth: 100 },
+      0: { cellWidth: 18 },
+      1: { cellWidth: 31 },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 47 },
+      4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
+      5: { cellWidth: 27, halign: 'center' },
+      6: { cellWidth: 22, halign: 'center' },
+      7: { cellWidth: 31 },
+      8: { cellWidth: 65 },
     },
-    didParseCell: data => applyStatusCell(data, 3),
+    didParseCell: data => applyStatusCell(data, 5),
   });
   return (document as JsPdfWithAutoTable).lastAutoTable.finalY;
 };
@@ -259,7 +327,7 @@ const drawMaintenanceTable = (
   rows: FleetCurrentState[],
   startY: number,
 ): number => {
-  const titleEnd = drawTableTitle(document, 'CBs em manutenção', startY);
+  const titleEnd = drawTableTitle(document, 'Frotas em manutenção', startY);
   const body: RowInput[] = rows.length
     ? maintenanceRows(rows)
     : [['—', '—', '—', 'Nenhum CB em manutenção.', '—']];
@@ -293,7 +361,7 @@ const drawAvailableTable = (
   rows: FleetCurrentState[],
   startY: number,
 ): number => {
-  const titleEnd = drawTableTitle(document, 'CBs à disposição', startY);
+  const titleEnd = drawTableTitle(document, 'Frotas à disposição', startY);
   const body: RowInput[] = rows.length
     ? availableRows(rows)
     : [['—', 'Nenhum CB à disposição.', '—', '—', '—', '—', '—']];
@@ -373,10 +441,12 @@ export const generateFleetPdf = async (
   });
   let y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
   y = drawMetricStrip(document, viewModel, y);
+  y = drawCategorySummary(document, viewModel, y);
   drawOperationTable(document, viewModel.operating, y);
   document.addPage('a4', 'landscape');
   y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
   y = drawMetricStrip(document, viewModel, y);
+  y = drawCategorySummary(document, viewModel, y);
   y = drawMaintenanceTable(document, viewModel.maintenance, y);
   if (y > 155) {
     document.addPage('a4', 'landscape');
@@ -387,7 +457,7 @@ export const generateFleetPdf = async (
   }
   drawAvailableTable(document, viewModel.available, y);
   addPageFooters(document, viewModel);
-  const fileName = `RELATORIO_DIARIO_SITUACAO_OPERACIONAL_CBS_${viewModel.reportDate}.pdf`;
+  const fileName = `RELATORIO_DIARIO_SITUACAO_OPERACIONAL_FROTAS_${viewModel.reportDate}.pdf`;
   document.save(fileName);
   return {
     fileName,
@@ -406,10 +476,12 @@ export const createFleetPdfArrayBuffer = async (
   const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   let y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
   y = drawMetricStrip(document, viewModel, y);
+  y = drawCategorySummary(document, viewModel, y);
   drawOperationTable(document, viewModel.operating, y);
   document.addPage('a4', 'landscape');
   y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
   y = drawMetricStrip(document, viewModel, y);
+  y = drawCategorySummary(document, viewModel, y);
   y = drawMaintenanceTable(document, viewModel.maintenance, y);
   drawAvailableTable(document, viewModel.available, Math.min(y + 5, 155));
   addPageFooters(document, viewModel);

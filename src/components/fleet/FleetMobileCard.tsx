@@ -48,6 +48,14 @@ export default function FleetMobileCard({
           </div>
           <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-md bg-slate-50 p-2 text-xs">
             <div>
+              <dt className="text-[9px] font-black uppercase text-slate-400">Grupo</dt>
+              <dd className="mt-0.5 truncate font-bold text-slate-800">{state.equipment.family || 'Não informado'}</dd>
+            </div>
+            <div>
+              <dt className="text-[9px] font-black uppercase text-slate-400">Tipo</dt>
+              <dd className="mt-0.5 truncate font-bold text-slate-800">{state.equipment.equipmentType || 'Não informado'}</dd>
+            </div>
+            <div>
               <dt className="text-[9px] font-black uppercase text-slate-400">Saída</dt>
               <dd className="mt-0.5 font-bold text-slate-800">{state.departureTime || '—'}</dd>
             </div>

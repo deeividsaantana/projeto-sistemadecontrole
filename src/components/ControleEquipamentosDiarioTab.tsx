@@ -1,7 +1,10 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
+  CalendarDays,
+  Database,
   FileDown,
   FileSpreadsheet,
+  History,
   Plus,
   Printer,
   RefreshCw,
@@ -56,6 +59,8 @@ interface Props {
 type ConfirmationState =
   | { kind: 'delete'; ids: string[] }
   | { kind: 'status'; ids: string[]; status: FleetOperationalStatus };
+
+type FleetView = 'today' | 'history' | 'registry';
 
 const asText = (value: unknown): string => String(value ?? '').trim();
 
@@ -135,7 +140,26 @@ export default function ControleEquipamentosDiarioTab({
   const [message, setMessage] = useState('');
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>('info');
   const [exporting, setExporting] = useState<'pdf' | 'excel' | ''>('');
+  const [activeView, setActiveView] = useState<FleetView>('today');
   const inputRef = useRef<HTMLInputElement>(null);
+  const groups = useMemo(() => [...new Set(registros.map(record => record.familia).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, 'pt-BR')), [registros]);
+  const equipmentTypes = useMemo(() => [...new Set(equipamentos.map(item => item.tipo).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, 'pt-BR')), [equipamentos]);
+  const historyByDate = useMemo(() => {
+    const dates = [...new Set(registros.map(record => record.data).filter(Boolean))]
+      .sort((left, right) => right.localeCompare(left));
+    return dates.map(date => {
+      const daily = registros.filter(record => record.data === date);
+      return {
+        date,
+        total: daily.length,
+        operating: daily.filter(record => record.status === 'Em operação').length,
+        maintenance: daily.filter(record => record.status === 'Em manutenção' || record.status === 'Aguardando manutenção').length,
+        pending: daily.filter(record => record.status !== 'Em operação' && record.status !== 'Em manutenção' && record.status !== 'Aguardando manutenção').length,
+      };
+    });
+  }, [registros]);
   const selectedStates = useMemo(
     () => viewModel.allRows.filter(state => selectedIds.includes(state.recordId)),
     [selectedIds, viewModel.allRows],
@@ -301,12 +325,12 @@ export default function ControleEquipamentosDiarioTab({
     }
   };
   return (
-    <main className="mx-auto max-w-[1760px] space-y-3 text-slate-800">
-      <header className="flex flex-col gap-3 border-b border-slate-200 bg-white pb-3 lg:flex-row lg:items-center lg:justify-between">
+    <main className="mx-auto max-w-[1760px] space-y-4 text-slate-800">
+      <header className="flex flex-col gap-4 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-700">Alto Tietê · Controle operacional</p>
-          <h1 className="mt-1 text-2xl font-black leading-tight text-slate-950">Caminhões Basculantes</h1>
-          <p className="mt-1 text-xs text-slate-500">Controle diário, manutenção, disponibilidade e histórico em uma única fonte normalizada.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Complexo do Alto Tietê</p>
+          <h1 className="mt-1 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">Controle Operacional de Frotas</h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">Situação diária, motoristas, saídas, pendências e relatórios em uma única visão operacional.</p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <button type="button" onClick={openNewRecord} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-black text-white hover:bg-emerald-700"><Plus size={15}/>Novo lançamento</button>
@@ -317,11 +341,26 @@ export default function ControleEquipamentosDiarioTab({
           <button type="button" onClick={() => inputRef.current?.click()} className="col-span-2 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 sm:col-span-1"><Upload size={15}/>Importar</button>
         </div>
       </header>
+      <nav className="flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Visões do controle de frotas">
+        {([
+          ['today', 'Situação do dia', CalendarDays],
+          ['history', 'Histórico semanal', History],
+          ['registry', 'Cadastros vinculados', Database],
+        ] as const).map(([id, label, Icon]) => (
+          <button key={String(id)} type="button" onClick={() => setActiveView(id as FleetView)} className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-black transition-colors ${activeView === id ? 'border-emerald-700 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+            <Icon size={16}/>{label}
+          </button>
+        ))}
+      </nav>
       {message && <div role={messageTone==='error'?'alert':'status'} className={`rounded-md border px-3 py-2 text-xs font-bold ${messageTone==='success'?'border-emerald-200 bg-emerald-50 text-emerald-800':messageTone==='error'?'border-rose-200 bg-rose-50 text-rose-800':'border-sky-200 bg-sky-50 text-sky-800'}`}>{message}</div>}
-      <FleetFilterBar filters={filters} companies={empresas} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
+      {activeView === 'today' && <>
       <FleetKpiStrip metrics={viewModel.metrics}/>
-      {viewModel.integrityWarnings.length>0 && <details className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"><summary className="cursor-pointer text-xs font-black text-amber-900">{viewModel.integrityWarnings.length} aviso(s) de integridade nos dados filtrados</summary><ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-amber-900">{viewModel.integrityWarnings.map(warning=><li key={warning}>{warning}</li>)}</ul></details>}
+      {viewModel.integrityWarnings.length>0 && <details className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"><summary className="cursor-pointer text-xs font-black text-amber-900">Conferência pendente: {viewModel.integrityWarnings.length} aviso(s) nos dados filtrados</summary><ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-amber-900">{viewModel.integrityWarnings.map(warning=><li key={warning}>{warning}</li>)}</ul></details>}
+      <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
       <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state=>setConfirmation({kind:'delete',ids:[state.recordId]})}/>
+      </>}
+      {activeView === 'history' && <section className="overflow-hidden rounded-lg border border-slate-200 bg-white"><header className="border-b border-slate-200 px-4 py-3"><h2 className="font-black text-slate-950">Fechamentos por data</h2><p className="text-xs text-slate-500">Comparativo dos registros operacionais disponíveis no sistema.</p></header><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr>{['Data','Total de frotas','Em operação','Em manutenção','A confirmar','Disponibilidade'].map(label=><th key={label} className="border-b border-slate-200 px-4 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{historyByDate.map(item=><tr key={item.date}><td className="px-4 py-3 font-black">{new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3">{item.total}</td><td className="px-4 py-3 font-bold text-emerald-700">{item.operating}</td><td className="px-4 py-3 font-bold text-rose-700">{item.maintenance}</td><td className="px-4 py-3 font-bold text-amber-700">{item.pending}</td><td className="px-4 py-3 font-black">{item.total ? `${((item.operating / item.total) * 100).toFixed(1).replace('.', ',')}%` : '—'}</td></tr>)}</tbody></table></div>{!historyByDate.length&&<p className="p-10 text-center text-sm text-slate-500">Nenhum fechamento disponível.</p>}</section>}
+      {activeView === 'registry' && <section className="grid gap-3 lg:grid-cols-2"><article className="rounded-lg border border-slate-200 bg-white p-4"><p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Frotas cadastradas</p><strong className="mt-2 block text-3xl text-slate-950">{equipamentos.length}</strong><p className="mt-1 text-xs text-slate-500">Equipamentos disponíveis para vínculo nos lançamentos.</p><div className="mt-4 flex flex-wrap gap-2">{equipmentTypes.slice(0,8).map(type=><span key={type} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">{type}</span>)}</div></article><article className="rounded-lg border border-slate-200 bg-white p-4"><p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Motoristas e operadores</p><strong className="mt-2 block text-3xl text-slate-950">{funcionarios.length}</strong><p className="mt-1 text-xs text-slate-500">Profissionais disponíveis para vinculação por matrícula.</p><button type="button" onClick={onOpenEmployeeRegistration} className="mt-4 rounded-md border border-emerald-700 px-3 py-2 text-xs font-black text-emerald-800 hover:bg-emerald-50">Abrir cadastro de funcionários</button></article></section>}
       <FleetBulkActions count={selectedIds.length} onClear={()=>setSelectedIds([])} onDelete={()=>setConfirmation({kind:'delete',ids:selectedIds})} onExport={()=>void handleExcel(true)} onChangeStatus={status=>setConfirmation({kind:'status',ids:selectedIds,status})}/>
       <FleetReportLayout viewModel={viewModel}/>
       {formOpen && <DailyRecordForm record={editingRecord} records={registros} equipment={equipamentos} employees={funcionarios} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} onSave={handleSaved} onClose={()=>{setFormOpen(false);setEditingRecord(undefined)}} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenMaintenance={onOpenMaintenance}/>}
