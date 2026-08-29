@@ -10,6 +10,7 @@ export interface FleetCategorySummary {
   total: number;
   operating: number;
   maintenance: number;
+  available: number;
   pending: number;
   prefixes: string[];
 }
@@ -46,13 +47,18 @@ export const summarizeFleetCategories = (rows: FleetCurrentState[]): FleetCatego
     const maintenance = categoryRows.filter(row =>
       row.operationalStatus === FLEET_OPERATIONAL_STATUS.maintenance
       || row.operationalStatus === FLEET_OPERATIONAL_STATUS.waitingMaintenance).length;
+    const available = categoryRows.filter(row =>
+      row.operationalStatus === FLEET_OPERATIONAL_STATUS.available).length;
+    const pending = categoryRows.filter(row =>
+      row.operationalStatus === FLEET_OPERATIONAL_STATUS.pending).length;
     return {
       key,
       label: CATEGORY_LABELS[key],
       total: categoryRows.length,
       operating,
       maintenance,
-      pending: categoryRows.length - operating - maintenance,
+      available,
+      pending,
       prefixes: categoryRows.map(row => row.equipment.prefix).filter(Boolean)
         .sort((left, right) => left.localeCompare(right, 'pt-BR', { numeric: true })),
     };

@@ -8,6 +8,7 @@ import {
   Plus,
   Printer,
   RefreshCw,
+  Search,
   Upload,
 } from 'lucide-react';
 import type {
@@ -33,6 +34,12 @@ import { previewFleetImport } from '../fleet/importService';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import { generateFleetPdf } from '../fleet/pdfReport';
 import { exportFleetExcel } from '../fleet/excelExport';
+import { OPERATIONAL_DRIVERS } from '../fleet/operationalDrivers';
+import {
+  buildWeeklyFleetReport,
+  exportWeeklyFleetExcel,
+  exportWeeklyFleetPdf,
+} from '../fleet/weeklyReport';
 import FleetKpiStrip from './fleet/FleetKpiStrip';
 import FleetFilterBar from './fleet/FleetFilterBar';
 import FleetDataTable from './fleet/FleetDataTable';
@@ -84,6 +91,7 @@ const buildSelectionViewModel = (
     operating: source.operating.filter(state => ids.has(state.recordId)),
     maintenance: source.maintenance.filter(state => ids.has(state.recordId)),
     available: source.available.filter(state => ids.has(state.recordId)),
+    pending: source.pending.filter(state => ids.has(state.recordId)),
     waitingDriver: source.waitingDriver.filter(state => ids.has(state.recordId)),
     other: source.other.filter(state => ids.has(state.recordId)),
     sections: source.sections.map(section => ({
@@ -107,18 +115,19 @@ export default function ControleEquipamentosDiarioTab({
   onOpenMaintenance,
   onOpenEmployeeRegistration,
 }: Props) {
+  const operationalDrivers = useMemo(() => [...OPERATIONAL_DRIVERS], []);
   const context = useMemo(() => ({
     records: registros,
     equipment: equipamentos,
-    employees: funcionarios,
+    employees: operationalDrivers,
     companies: empresas,
     teams: gruposEquipe,
     maintenanceOrders: ordensServico,
   }), [
     empresas,
     equipamentos,
-    funcionarios,
     gruposEquipe,
+    operationalDrivers,
     ordensServico,
     registros,
   ]);
@@ -139,9 +148,22 @@ export default function ControleEquipamentosDiarioTab({
   const [importFileName, setImportFileName] = useState('');
   const [message, setMessage] = useState('');
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>('info');
-  const [exporting, setExporting] = useState<'pdf' | 'excel' | ''>('');
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | 'weekly-pdf' | 'weekly-excel' | ''>('');
   const [activeView, setActiveView] = useState<FleetView>('today');
+  const [driverSearch, setDriverSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const filteredOperationalDrivers = useMemo(() => {
+    const query = driverSearch.trim().toLocaleUpperCase('pt-BR');
+    if (!query) return operationalDrivers;
+    return operationalDrivers.filter(driver =>
+      `${driver.matricula || ''} ${driver.nome} ${driver.cargo}`
+        .toLocaleUpperCase('pt-BR')
+        .includes(query));
+  }, [driverSearch, operationalDrivers]);
+  const driverRoleCounts = useMemo(() => operationalDrivers.reduce<Record<string, number>>(
+    (counts, driver) => ({ ...counts, [driver.cargo]: (counts[driver.cargo] || 0) + 1 }),
+    {},
+  ), [operationalDrivers]);
   const groups = useMemo(() => [...new Set(registros.map(record => record.familia).filter(Boolean))]
     .sort((left, right) => left.localeCompare(right, 'pt-BR')), [registros]);
   const equipmentTypes = useMemo(() => [...new Set(equipamentos.map(item => item.tipo).filter(Boolean))]
@@ -156,7 +178,8 @@ export default function ControleEquipamentosDiarioTab({
         total: daily.length,
         operating: daily.filter(record => record.status === 'Em operação').length,
         maintenance: daily.filter(record => record.status === 'Em manutenção' || record.status === 'Aguardando manutenção').length,
-        pending: daily.filter(record => record.status !== 'Em operação' && record.status !== 'Em manutenção' && record.status !== 'Aguardando manutenção').length,
+        available: daily.filter(record => record.status === 'Disponível').length,
+        pending: daily.filter(record => record.status === 'A confirmar').length,
       };
     });
   }, [registros]);
@@ -224,6 +247,39 @@ export default function ControleEquipamentosDiarioTab({
     } catch (error) {
       setMessageTone('error');
       setMessage(error instanceof Error ? error.message : 'Não foi possível gerar o Excel.');
+    } finally {
+      setExporting('');
+    }
+  };
+  const weeklyReport = useMemo(() => buildWeeklyFleetReport(registros), [registros]);
+  const handleWeeklyPdf = async () => {
+    if (exporting) return;
+    setExporting('weekly-pdf');
+    setMessageTone('info');
+    setMessage('Gerando relatório semanal em PDF...');
+    try {
+      const result = await exportWeeklyFleetPdf(weeklyReport);
+      setMessageTone('success');
+      setMessage(`${result.fileName} gerado com ${result.rows} lançamento(s).`);
+    } catch (error) {
+      setMessageTone('error');
+      setMessage(error instanceof Error ? error.message : 'Não foi possível gerar o PDF semanal.');
+    } finally {
+      setExporting('');
+    }
+  };
+  const handleWeeklyExcel = async () => {
+    if (exporting) return;
+    setExporting('weekly-excel');
+    setMessageTone('info');
+    setMessage('Gerando relatório semanal em Excel...');
+    try {
+      const result = await exportWeeklyFleetExcel(weeklyReport);
+      setMessageTone('success');
+      setMessage(`${result.fileName} gerado com as abas ${result.sheets?.join(', ')}.`);
+    } catch (error) {
+      setMessageTone('error');
+      setMessage(error instanceof Error ? error.message : 'Não foi possível gerar o Excel semanal.');
     } finally {
       setExporting('');
     }
@@ -359,11 +415,42 @@ export default function ControleEquipamentosDiarioTab({
       <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
       <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state=>setConfirmation({kind:'delete',ids:[state.recordId]})}/>
       </>}
-      {activeView === 'history' && <section className="overflow-hidden rounded-lg border border-slate-200 bg-white"><header className="border-b border-slate-200 px-4 py-3"><h2 className="font-black text-slate-950">Fechamentos por data</h2><p className="text-xs text-slate-500">Comparativo dos registros operacionais disponíveis no sistema.</p></header><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr>{['Data','Total de frotas','Em operação','Em manutenção','A confirmar','Disponibilidade'].map(label=><th key={label} className="border-b border-slate-200 px-4 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{historyByDate.map(item=><tr key={item.date}><td className="px-4 py-3 font-black">{new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3">{item.total}</td><td className="px-4 py-3 font-bold text-emerald-700">{item.operating}</td><td className="px-4 py-3 font-bold text-rose-700">{item.maintenance}</td><td className="px-4 py-3 font-bold text-amber-700">{item.pending}</td><td className="px-4 py-3 font-black">{item.total ? `${((item.operating / item.total) * 100).toFixed(1).replace('.', ',')}%` : '—'}</td></tr>)}</tbody></table></div>{!historyByDate.length&&<p className="p-10 text-center text-sm text-slate-500">Nenhum fechamento disponível.</p>}</section>}
-      {activeView === 'registry' && <section className="grid gap-3 lg:grid-cols-2"><article className="rounded-lg border border-slate-200 bg-white p-4"><p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Frotas cadastradas</p><strong className="mt-2 block text-3xl text-slate-950">{equipamentos.length}</strong><p className="mt-1 text-xs text-slate-500">Equipamentos disponíveis para vínculo nos lançamentos.</p><div className="mt-4 flex flex-wrap gap-2">{equipmentTypes.slice(0,8).map(type=><span key={type} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">{type}</span>)}</div></article><article className="rounded-lg border border-slate-200 bg-white p-4"><p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Motoristas e operadores</p><strong className="mt-2 block text-3xl text-slate-950">{funcionarios.length}</strong><p className="mt-1 text-xs text-slate-500">Profissionais disponíveis para vinculação por matrícula.</p><button type="button" onClick={onOpenEmployeeRegistration} className="mt-4 rounded-md border border-emerald-700 px-3 py-2 text-xs font-black text-emerald-800 hover:bg-emerald-50">Abrir cadastro de funcionários</button></article></section>}
+      {activeView === 'history' && <section className="overflow-hidden rounded-lg border border-slate-200 bg-white"><header className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-black text-slate-950">Fechamentos por data</h2><p className="text-xs text-slate-500">Comparativo dos registros operacionais e exportação dos últimos sete dias.</p></div><div className="flex flex-wrap gap-2"><button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyPdf()} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-40"><Printer size={15}/>{exporting==='weekly-pdf'?'Gerando...':'Semanal PDF'}</button><button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyExcel()} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-40"><FileSpreadsheet size={15}/>{exporting==='weekly-excel'?'Gerando...':'Semanal Excel'}</button></div></header><div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left text-sm"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr>{['Data','Total de frotas','Em operação','Em manutenção','À disposição','A confirmar','Disponibilidade'].map(label=><th key={label} className="border-b border-slate-200 px-4 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{historyByDate.map(item=><tr key={item.date}><td className="px-4 py-3 font-black">{new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3">{item.total}</td><td className="px-4 py-3 font-bold text-emerald-700">{item.operating}</td><td className="px-4 py-3 font-bold text-rose-700">{item.maintenance}</td><td className="px-4 py-3 font-bold text-sky-700">{item.available}</td><td className="px-4 py-3 font-bold text-amber-700">{item.pending}</td><td className="px-4 py-3 font-black">{item.total ? `${(((item.operating + item.available) / item.total) * 100).toFixed(1).replace('.', ',')}%` : '—'}</td></tr>)}</tbody></table></div>{!historyByDate.length&&<p className="p-10 text-center text-sm text-slate-500">Nenhum fechamento disponível.</p>}</section>}
+      {activeView === 'registry' && <section className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
+        <article className="rounded-lg border border-slate-200 bg-white p-4">
+          <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Frotas cadastradas</p>
+          <strong className="mt-2 block text-3xl text-slate-950">{equipamentos.length}</strong>
+          <p className="mt-1 text-xs text-slate-500">Equipamentos disponíveis para vínculo nos lançamentos.</p>
+          <div className="mt-4 flex flex-wrap gap-2">{equipmentTypes.slice(0,8).map(type=><span key={type} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">{type}</span>)}</div>
+        </article>
+        <article className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <header className="border-b border-slate-200 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Mini lista independente</p>
+                <h2 className="mt-1 text-lg font-black text-slate-950">Motoristas e operadores <span className="text-emerald-700">{operationalDrivers.length}</span></h2>
+                <p className="mt-1 text-xs text-slate-500">Cadastro exclusivo das frotas, separado dos colaboradores gerais.</p>
+              </div>
+              <label className="relative block sm:w-72">
+                <span className="sr-only">Buscar motorista</span>
+                <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                <input value={driverSearch} onChange={event=>setDriverSearch(event.target.value)} placeholder="Matrícula, nome ou função" className="h-10 w-full rounded-md border border-slate-300 pl-9 pr-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"/>
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">{Object.entries(driverRoleCounts).sort((a,b)=>b[1]-a[1]).map(([role,count])=><span key={role} className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-800">{count} · {role}</span>)}</div>
+          </header>
+          <div className="max-h-[430px] overflow-auto">
+            <table className="w-full min-w-[620px] text-left text-xs">
+              <thead className="sticky top-0 z-[1] bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="border-b border-slate-200 px-4 py-3">Matrícula</th><th className="border-b border-slate-200 px-4 py-3">Motorista / operador</th><th className="border-b border-slate-200 px-4 py-3">Função</th><th className="border-b border-slate-200 px-4 py-3">Status</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">{filteredOperationalDrivers.map(driver=><tr key={driver.id} className="hover:bg-emerald-50/50"><td className="px-4 py-3 font-mono font-black text-slate-800">{driver.matricula}</td><td className="px-4 py-3 font-bold text-slate-950">{driver.nome}</td><td className="px-4 py-3 text-slate-600">{driver.cargo}</td><td className="px-4 py-3"><span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-800">Ativo</span></td></tr>)}</tbody>
+            </table>
+            {!filteredOperationalDrivers.length&&<p className="p-8 text-center text-sm text-slate-500">Nenhum motorista encontrado para “{driverSearch}”.</p>}
+          </div>
+        </article>
+      </section>}
       <FleetBulkActions count={selectedIds.length} onClear={()=>setSelectedIds([])} onDelete={()=>setConfirmation({kind:'delete',ids:selectedIds})} onExport={()=>void handleExcel(true)} onChangeStatus={status=>setConfirmation({kind:'status',ids:selectedIds,status})}/>
       <FleetReportLayout viewModel={viewModel}/>
-      {formOpen && <DailyRecordForm record={editingRecord} records={registros} equipment={equipamentos} employees={funcionarios} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} onSave={handleSaved} onClose={()=>{setFormOpen(false);setEditingRecord(undefined)}} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenMaintenance={onOpenMaintenance}/>}
+      {formOpen && <DailyRecordForm record={editingRecord} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} onSave={handleSaved} onClose={()=>{setFormOpen(false);setEditingRecord(undefined)}} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenDriverRegistry={()=>{setFormOpen(false);setEditingRecord(undefined);setActiveView('registry')}} onOpenMaintenance={onOpenMaintenance}/>}
       <FleetDetailDrawer state={detailState} onClose={()=>setDetailState(undefined)} onEdit={openEdit}/>
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.kind==='delete'?`Excluir ${confirmation.ids.length} registro(s)?`:`Alterar ${confirmation?.ids.length||0} registro(s)?`} description={confirmation?.kind==='delete'?'Os registros serão removidos da visão operacional. O histórico de alteração permanecerá registrado pelo sistema.':`O status será alterado para "${confirmation?.status}" e um evento será incluído em cada histórico.`} confirmLabel={confirmation?.kind==='delete'?'Excluir registros':'Alterar status'} tone={confirmation?.kind==='delete'?'danger':'warning'} busy={confirmationBusy} onCancel={()=>setConfirmation(undefined)} onConfirm={executeConfirmation}/>
       {importPreview && <div className="fixed inset-0 z-[105] flex items-end justify-center bg-slate-950/45 sm:items-center sm:p-4"><section role="dialog" aria-modal="true" aria-labelledby="import-preview-title" className="max-h-[95dvh] w-full overflow-hidden bg-white sm:max-w-4xl sm:rounded-xl"><header className="border-b border-slate-200 p-4"><p className="text-[9px] font-black uppercase tracking-wider text-emerald-700">Pré-visualização da importação</p><h2 id="import-preview-title" className="text-lg font-black text-slate-950">{importFileName}</h2></header><div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-5">{[['Novos',importPreview.newCount,'bg-emerald-50 text-emerald-800'],['Atualizações',importPreview.updateCount,'bg-sky-50 text-sky-800'],['Duplicados',importPreview.duplicateCount,'bg-slate-100 text-slate-800'],['Ignorados',importPreview.ignoredCount,'bg-amber-50 text-amber-800'],['Com erro',importPreview.errorCount,'bg-rose-50 text-rose-800']].map(([label,value,tone])=><article key={String(label)} className={`rounded-md border border-slate-200 p-3 ${tone}`}><span className="text-[9px] font-black uppercase">{label}</span><strong className="block text-2xl">{value}</strong></article>)}</div><div className="max-h-[50vh] overflow-auto border-y border-slate-200"><table className="w-full min-w-[800px] text-left text-xs"><thead className="sticky top-0 bg-slate-200"><tr><th className="p-2">Linha</th><th>Resultado</th><th>Prefixo</th><th>Motorista</th><th>Data</th><th>Mensagens</th></tr></thead><tbody className="divide-y divide-slate-100">{importPreview.rows.slice(0,500).map(row=><tr key={`${row.rowNumber}-${row.key}`}><td className="p-2 font-mono">{row.rowNumber}</td><td className="font-black">{row.disposition}</td><td>{row.record?.prefixo||'—'}</td><td>{row.record?.nomeMotorista||'—'}</td><td>{row.record?.data||'—'}</td><td className="max-w-md py-2 pr-2 text-slate-600">{row.messages.join(' ')||'Sem divergências.'}</td></tr>)}</tbody></table></div><footer className="flex flex-col-reverse gap-2 p-4 sm:flex-row sm:justify-end"><button type="button" onClick={()=>{setImportPreview(undefined);setImportFileName('')}} className="min-h-11 rounded-md border border-slate-300 bg-white px-5 text-sm font-black text-slate-700">Cancelar</button><button type="button" disabled={!importPreview.canApply} onClick={applyImportPreview} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 text-sm font-black text-white disabled:opacity-40"><FileDown size={16}/>Aplicar importação em uma etapa</button></footer></section></div>}

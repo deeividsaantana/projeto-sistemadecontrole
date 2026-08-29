@@ -50,6 +50,15 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // No localhost, encaminha apenas as funções públicas para o backend já publicado.
+      // Isso permite testar o link pelo celular sem fazer um novo deploy.
+      proxy: {
+        '/.netlify/functions': {
+          target: process.env.VITE_PUBLIC_FUNCTIONS_PROXY_TARGET || 'https://reneaerp.netlify.app',
+          changeOrigin: true,
+          secure: true,
+        },
+      },
     },
   };
 });

@@ -32,6 +32,7 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
 
 test('claim desconhecida aplica privilégio mínimo', () => {
   assert.equal(normalizeUserRole('gestor'), 'gestor');
+  assert.equal(normalizeUserRole('administrador'), 'admin');
   assert.equal(normalizeUserRole('perfil-antigo'), 'leitura');
   assert.equal(normalizeUserRole(undefined), 'leitura');
 });

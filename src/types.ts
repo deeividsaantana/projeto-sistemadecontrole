@@ -648,6 +648,7 @@ export interface ParteDiariaEquipamento {
 export type StatusControleEquipamentoDiario =
   | 'Em operação'
   | 'Disponível'
+  | 'A confirmar'
   | 'Aguardando motorista'
   | 'Em manutenção'
   | 'Aguardando manutenção'

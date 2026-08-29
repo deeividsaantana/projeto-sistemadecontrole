@@ -12,6 +12,7 @@ const reconciliation = readFileSync(new URL('../src/fleet/reconciliation.ts', im
 const dataTable = readFileSync(new URL('../src/components/fleet/FleetDataTable.tsx', import.meta.url), 'utf8');
 const pdfReport = readFileSync(new URL('../src/fleet/pdfReport.ts', import.meta.url), 'utf8');
 const excelExport = readFileSync(new URL('../src/fleet/excelExport.ts', import.meta.url), 'utf8');
+const weeklyReport = readFileSync(new URL('../src/fleet/weeklyReport.ts', import.meta.url), 'utf8');
 
 assert.equal((app.match(/activeTab === 'controle-equipamentos'/g) || []).length, 1);
 assert.match(navigation, /Controle Operacional de Frotas/);
@@ -23,6 +24,8 @@ assert.match(component, /ConfirmDialog/);
 assert.match(component, /previewFleetImport/);
 assert.match(component, /generateFleetPdf/);
 assert.match(component, /exportFleetExcel/);
+assert.match(component, /exportWeeklyFleetPdf/);
+assert.match(component, /exportWeeklyFleetExcel/);
 assert.match(reportService, /createFleetReportViewModel/);
 assert.match(reportService, /calculateFleetMetrics/);
 assert.match(reportService, /selectMaintenanceCBs/);
@@ -32,6 +35,8 @@ assert.match(dataTable, /Selecionar todos desta página/);
 assert.match(pdfReport, /A4|a4/);
 assert.match(excelExport, /RESUMO/);
 assert.match(excelExport, /HISTÓRICO/);
+assert.match(weeklyReport, /RELATÓRIO SEMANAL DE SITUAÇÃO OPERACIONAL DAS FROTAS/);
+assert.match(weeklyReport, /RESUMO SEMANAL/);
 assert.match(app, /renea_controle_equipamentos_diario/);
 assert.match(backup, /controleEquipamentosDiario/);
 assert.match(cloud, /controleEquipamentosDiario/);

@@ -30,6 +30,7 @@ interface Props {
   onSave: (record: ControleEquipamentoDiario, isNew: boolean) => void | Promise<void>;
   onClose: () => void;
   onOpenEmployeeRegistration: () => void;
+  onOpenDriverRegistry?: () => void;
   onOpenMaintenance: () => void;
 }
 
@@ -124,7 +125,7 @@ export default function DailyRecordForm({
   maintenanceOrders,
   onSave,
   onClose,
-  onOpenEmployeeRegistration,
+  onOpenDriverRegistry,
   onOpenMaintenance,
 }: Props) {
   const [form, setForm] = useState<FormState>(
@@ -184,7 +185,7 @@ export default function DailyRecordForm({
     }
     const driver = lookupDriverByCode(form.employeeCode, activeEmployees, companies, teams);
     if (!driver) {
-      setEmployeeLookupError('Motorista não localizado. Cadastre agora ou registre temporariamente.');
+      setEmployeeLookupError('Motorista não localizado na mini lista operacional. Confira a matrícula ou registre temporariamente.');
       setForm(current => ({
         ...current,
         employeeId: '',
@@ -346,7 +347,7 @@ export default function DailyRecordForm({
             <label className="text-xs font-bold text-slate-700">Matrícula / código<div className="mt-1 flex"><input value={form.employeeCode} onChange={event => update('employeeCode', event.target.value)} onBlur={lookupEmployeeCode} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupEmployeeCode(); } }} placeholder="103177" className="h-10 min-w-0 flex-1 rounded-l-md border border-slate-300 px-3"/><button type="button" onClick={lookupEmployeeCode} className="rounded-r-md border border-l-0 border-slate-300 bg-slate-50 px-3 text-xs font-black">Buscar</button></div></label>
             <label className="text-xs font-bold text-slate-700">Motorista<select value={form.employeeId} onChange={event => applyEmployee(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-2"><option value="">Selecione / não cadastrado</option>{activeEmployees.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(employee=><option key={employee.id} value={employee.id}>{employee.matricula ? `${employee.matricula} · ` : ''}{employee.nome}</option>)}</select></label>
             <label className="text-xs font-bold text-slate-700">Nome apresentado<input value={form.employeeName} disabled={Boolean(form.employeeId)} onChange={event => update('employeeName', event.target.value)} placeholder="Nome do motorista" className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 disabled:bg-slate-100"/></label>
-            {employeeLookupError && <div className="rounded-md border border-amber-200 bg-amber-50 p-3 sm:col-span-2 lg:col-span-4"><div className="flex gap-2 text-xs text-amber-900"><AlertCircle size={16} className="shrink-0"/><span>{employeeLookupError}</span></div><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={onOpenEmployeeRegistration} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 text-xs font-black text-amber-800"><UserPlus size={14}/>Cadastrar agora</button><button type="button" onClick={()=>{update('temporaryDriver',true);setEmployeeLookupError('')}} className="min-h-9 rounded-md bg-amber-700 px-3 text-xs font-black text-white">Registrar temporariamente</button><button type="button" onClick={()=>{setEmployeeLookupError('');update('employeeCode','');update('employeeName','')}} className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-xs font-black">Cancelar</button></div></div>}
+            {employeeLookupError && <div className="rounded-md border border-amber-200 bg-amber-50 p-3 sm:col-span-2 lg:col-span-4"><div className="flex gap-2 text-xs text-amber-900"><AlertCircle size={16} className="shrink-0"/><span>{employeeLookupError}</span></div><div className="mt-2 flex flex-wrap gap-2">{onOpenDriverRegistry&&<button type="button" onClick={onOpenDriverRegistry} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 text-xs font-black text-amber-800"><UserPlus size={14}/>Abrir mini lista</button>}<button type="button" onClick={()=>{update('temporaryDriver',true);setEmployeeLookupError('')}} className="min-h-9 rounded-md bg-amber-700 px-3 text-xs font-black text-white">Registrar temporariamente</button><button type="button" onClick={()=>{setEmployeeLookupError('');update('employeeCode','');update('employeeName','')}} className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-xs font-black">Cancelar</button></div></div>}
             <label className="text-xs font-bold text-slate-700">Empresa do motorista<input value={form.employeeCompany} readOnly placeholder="Preenchida pelo cadastro" className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-slate-100 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">Equipe<input value={form.teamName} readOnly placeholder="Preenchida pelo vínculo" className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-slate-100 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">Prefixo<div className="mt-1 flex"><input value={form.prefix} onChange={event => update('prefix', event.target.value.toUpperCase())} onBlur={lookupPrefix} placeholder="CB770" className="h-10 min-w-0 flex-1 rounded-l-md border border-slate-300 px-3 font-black"/><button type="button" onClick={lookupPrefix} className="rounded-r-md border border-l-0 border-slate-300 bg-slate-50 px-3 text-xs font-black">Buscar</button></div></label>

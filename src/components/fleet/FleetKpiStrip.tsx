@@ -9,14 +9,15 @@ const kpis = (metrics: FleetMetrics) => [
   { label: 'Frotas monitoradas', value: metrics.total, tone: 'border-slate-200 bg-slate-50 text-slate-900' },
   { label: 'Em operação', value: metrics.operating, tone: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
   { label: 'Em manutenção', value: metrics.maintenance + metrics.waitingMaintenance, tone: 'border-rose-200 bg-rose-50 text-rose-800' },
-  { label: 'A confirmar', value: metrics.available + metrics.waitingDriver + metrics.unclassified, tone: 'border-amber-200 bg-amber-50 text-amber-900' },
+  { label: 'À disposição', value: metrics.available, tone: 'border-sky-200 bg-sky-50 text-sky-800' },
+  { label: 'A confirmar', value: metrics.pending, tone: 'border-amber-200 bg-amber-50 text-amber-900' },
   { label: 'Disponibilidade', value: `${metrics.availabilityRate.toFixed(1).replace('.', ',')}%`, tone: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
   { label: 'Horas paradas', value: metrics.stoppedDurationLabel, tone: 'border-slate-200 bg-white text-slate-800' },
 ];
 
 export default function FleetKpiStrip({ metrics }: Props) {
   return (
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6" aria-label="Indicadores da frota">
+    <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Indicadores da frota">
       {kpis(metrics).map(item => (
         <article key={item.label} className={`min-h-[78px] rounded-lg border px-3 py-3 ${item.tone}`}>
           <p className="text-[9px] font-black uppercase tracking-[0.12em] opacity-70">{item.label}</p>

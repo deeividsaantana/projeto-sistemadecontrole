@@ -12,6 +12,7 @@ export const FLEET_OPERATIONAL_STATUS = {
   operating: 'Em operação',
   maintenance: 'Em manutenção',
   available: 'À disposição',
+  pending: 'A confirmar',
   waitingDriver: 'Aguardando motorista',
   unavailable: 'Indisponível',
   waitingMaintenance: 'Aguardando manutenção',
@@ -136,6 +137,7 @@ export interface FleetMetrics {
   operating: number;
   maintenance: number;
   available: number;
+  pending: number;
   waitingDriver: number;
   unavailable: number;
   waitingMaintenance: number;
@@ -150,7 +152,7 @@ export interface FleetMetrics {
 }
 
 export interface FleetReportSection {
-  id: 'operating' | 'maintenance' | 'available' | 'waitingDriver' | 'other';
+  id: 'operating' | 'maintenance' | 'available' | 'pending' | 'waitingDriver' | 'other';
   title: string;
   emptyMessage: string;
   rows: FleetCurrentState[];
@@ -168,6 +170,7 @@ export interface FleetReportViewModel {
   operating: FleetCurrentState[];
   maintenance: FleetCurrentState[];
   available: FleetCurrentState[];
+  pending: FleetCurrentState[];
   waitingDriver: FleetCurrentState[];
   other: FleetCurrentState[];
   sections: FleetReportSection[];
@@ -337,6 +340,7 @@ export const createEmptyFleetMetrics = (): FleetMetrics => ({
   operating: 0,
   maintenance: 0,
   available: 0,
+  pending: 0,
   waitingDriver: 0,
   unavailable: 0,
   waitingMaintenance: 0,

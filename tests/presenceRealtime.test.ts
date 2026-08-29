@@ -36,3 +36,20 @@ test('servico publico reutiliza leitura curta e devolve comprovante do envio', (
   assert.match(functionSource, /data: \{ submissionId, createdAtIso \}/);
   assert.match(functionSource, /Cache-Control.*no-store/);
 });
+
+test('situacao diaria oferece PDF e Excel e oculta equipes ja enviadas', () => {
+  assert.match(adminPresenceSource, /Relatório da situação do dia/);
+  assert.match(adminPresenceSource, /exportDailyExcel/);
+  assert.match(adminPresenceSource, /exportDailyPdf/);
+  assert.match(functionSource, /loadSubmittedGroupIds/);
+  assert.match(functionSource, /filterSubmittedGroups/);
+  assert.match(publicPresenceSource, /Todas as equipes já enviaram a presença de hoje/);
+});
+
+test('apontador salva rascunho local sem transmitir ao painel', () => {
+  assert.match(publicPresenceSource, /const saveDraft = \(\) =>/);
+  assert.match(publicPresenceSource, /Rascunho salvo neste aparelho · Ainda não enviado/);
+  assert.match(publicPresenceSource, /type="button" onClick=\{saveDraft\}/);
+  assert.match(publicPresenceSource, /type="submit"/);
+  assert.match(publicPresenceSource, /'Enviar presença'/);
+});

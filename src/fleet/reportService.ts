@@ -71,6 +71,9 @@ export const selectMaintenanceCBs = (states: FleetCurrentState[]): FleetCurrentS
 export const selectAvailableCBs = (states: FleetCurrentState[]): FleetCurrentState[] =>
   states.filter(state => state.operationalStatus === FLEET_OPERATIONAL_STATUS.available);
 
+export const selectPendingCBs = (states: FleetCurrentState[]): FleetCurrentState[] =>
+  states.filter(state => state.operationalStatus === FLEET_OPERATIONAL_STATUS.pending);
+
 export const selectWaitingDriverCBs = (states: FleetCurrentState[]): FleetCurrentState[] =>
   states.filter(state => state.operationalStatus === FLEET_OPERATIONAL_STATUS.waitingDriver);
 
@@ -80,6 +83,7 @@ export const selectOtherCBs = (states: FleetCurrentState[]): FleetCurrentState[]
     FLEET_OPERATIONAL_STATUS.maintenance,
     FLEET_OPERATIONAL_STATUS.waitingMaintenance,
     FLEET_OPERATIONAL_STATUS.available,
+    FLEET_OPERATIONAL_STATUS.pending,
     FLEET_OPERATIONAL_STATUS.waitingDriver,
   ]);
   return states.filter(state => !primary.has(state.operationalStatus));
@@ -94,6 +98,7 @@ export const calculateFleetMetrics = (
   const operating = count(FLEET_OPERATIONAL_STATUS.operating);
   const maintenance = count(FLEET_OPERATIONAL_STATUS.maintenance);
   const available = count(FLEET_OPERATIONAL_STATUS.available);
+  const pending = count(FLEET_OPERATIONAL_STATUS.pending);
   const waitingDriver = count(FLEET_OPERATIONAL_STATUS.waitingDriver);
   const unavailable = count(FLEET_OPERATIONAL_STATUS.unavailable);
   const waitingMaintenance = count(FLEET_OPERATIONAL_STATUS.waitingMaintenance);
@@ -110,6 +115,7 @@ export const calculateFleetMetrics = (
     operating,
     maintenance,
     available,
+    pending,
     waitingDriver,
     unavailable,
     waitingMaintenance,
@@ -155,6 +161,9 @@ export const createFleetReportViewModel = (
     .sort((left, right) => (right.stoppedMinutes ?? -1) - (left.stoppedMinutes ?? -1));
   const available = selectAvailableCBs(filtered)
     .sort((left, right) => (right.stoppedMinutes ?? -1) - (left.stoppedMinutes ?? -1));
+  const pending = selectPendingCBs(filtered)
+    .sort((left, right) =>
+      left.equipment.prefix.localeCompare(right.equipment.prefix, 'pt-BR', { numeric: true }));
   const waitingDriver = selectWaitingDriverCBs(filtered)
     .sort((left, right) =>
       left.equipment.prefix.localeCompare(right.equipment.prefix, 'pt-BR', { numeric: true }));
@@ -185,6 +194,7 @@ export const createFleetReportViewModel = (
     operating,
     maintenance,
     available,
+    pending,
     waitingDriver,
     other,
     sections: [
@@ -205,6 +215,12 @@ export const createFleetReportViewModel = (
         title: 'CBs à disposição',
         emptyMessage: 'Nenhum CB à disposição.',
         rows: available,
+      },
+      {
+        id: 'pending',
+        title: 'CBs a confirmar',
+        emptyMessage: 'Nenhum CB aguardando confirmação.',
+        rows: pending,
       },
       {
         id: 'waitingDriver',

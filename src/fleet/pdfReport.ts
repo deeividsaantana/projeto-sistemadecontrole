@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable, { type CellHookData, type RowInput } from 'jspdf-autotable';
-import type { FleetCurrentState, FleetReportViewModel } from './domain';
+import { FLEET_OPERATIONAL_STATUS, type FleetCurrentState, type FleetReportViewModel } from './domain';
 import { getFleetStatusDefinition } from './status';
 import { formatBrazilianDateTime } from './time';
 import reneaLogoUrl from '../assets/images/renea_logo_new.png';
@@ -48,7 +48,9 @@ const drawHeader = (
   spmarLogo?: string,
 ): number => {
   if (reneaLogo) {
-    document.addImage(reneaLogo, 'PNG', MARGIN_X, 7, 33, 12, undefined, 'FAST');
+    // O arquivo oficial possui margens transparentes grandes. Estas dimensões
+    // preservam a proporção original e posicionam apenas a área visível.
+    document.addImage(reneaLogo, 'PNG', MARGIN_X - 14.5, -11.5, 80, 44.7, undefined, 'FAST');
   } else {
     document.setFont('helvetica', 'bold');
     document.setFontSize(12);
@@ -56,7 +58,7 @@ const drawHeader = (
     document.text('RENEA', MARGIN_X, 14);
   }
   if (spmarLogo) {
-    document.addImage(spmarLogo, 'PNG', PAGE_WIDTH - MARGIN_X - 30, 7, 30, 12, undefined, 'FAST');
+    document.addImage(spmarLogo, 'PNG', PAGE_WIDTH - MARGIN_X - 54, 5, 54, 11.7, undefined, 'FAST');
   } else {
     document.setFont('helvetica', 'bold');
     document.setFontSize(10);
@@ -65,41 +67,59 @@ const drawHeader = (
   }
   document.setTextColor(DARK);
   document.setFont('helvetica', 'bold');
-  document.setFontSize(12.5);
-  document.text('RELATÓRIO DIÁRIO DE SITUAÇÃO OPERACIONAL', PAGE_WIDTH / 2, 11, {
+  document.setTextColor('#10223A');
+  document.setFontSize(13.5);
+  document.text('RELATÓRIO DIÁRIO DE SITUAÇÃO OPERACIONAL DAS FROTAS', PAGE_WIDTH / 2, 11.5, {
     align: 'center',
   });
-  document.setFontSize(10);
-  document.text('FROTAS OPERACIONAIS · COMPLEXO DO ALTO TIETÊ', PAGE_WIDTH / 2, 16, {
+  document.setFontSize(8.5);
+  document.setTextColor('#086B3D');
+  document.text(`Complexo do Alto Tietê · ${viewModel.reportDateLabel}`, PAGE_WIDTH / 2, 17, {
     align: 'center',
   });
-  document.setFont('helvetica', 'normal');
-  document.setFontSize(7.5);
-  document.setTextColor('#626A72');
-  document.text(viewModel.operationName, PAGE_WIDTH / 2, 20, { align: 'center' });
-  document.setDrawColor(GREEN);
-  document.setLineWidth(0.7);
+  document.setDrawColor('#10223A');
+  document.setLineWidth(0.45);
   document.line(MARGIN_X, 23, PAGE_WIDTH - MARGIN_X, 23);
-  return 26;
+  return 27;
+};
+
+const drawVehicleGlyph = (
+  document: jsPDF,
+  x: number,
+  y: number,
+  kind: 'dump' | 'water' | 'tractor' | 'fuel' | 'flatbed' = 'flatbed',
+): void => {
+  document.setDrawColor(GREEN);
+  document.setLineWidth(0.45);
+  document.rect(x + 7, y + 3, 5, 4);
+  document.line(x + 7, y + 3, x + 10, y + 3);
+  document.line(x + 10, y + 3, x + 12, y + 5);
+  if (kind === 'water' || kind === 'fuel') {
+    document.roundedRect(x, y + 2, 7, 4.5, 1.5, 1.5, 'S');
+  } else if (kind === 'tractor') {
+    document.rect(x + 3, y + 1, 4, 5.5);
+    document.line(x, y + 6.5, x + 7, y + 6.5);
+  } else if (kind === 'dump') {
+    document.line(x, y + 1, x + 6.5, y + 2);
+    document.line(x + 6.5, y + 2, x + 5, y + 6.5);
+    document.line(x + 5, y + 6.5, x + 1, y + 6.5);
+    document.line(x + 1, y + 6.5, x, y + 1);
+  } else {
+    document.rect(x, y + 3, 7, 3.5);
+  }
+  document.circle(x + 3, y + 8, 1.1);
+  document.circle(x + 10, y + 8, 1.1);
 };
 
 const metricDefinitions = (
   viewModel: FleetReportViewModel,
 ): Array<{ label: string; value: string | number; fill: string }> => [
-  { label: 'DATA', value: viewModel.reportDateLabel, fill: '#F3F4F5' },
-  { label: 'TOTAL DE FROTAS', value: viewModel.metrics.total, fill: '#F3F4F5' },
-  { label: 'EM OPERAÇÃO', value: viewModel.metrics.operating, fill: '#EDF8F2' },
-  {
-    label: 'EM MANUTENÇÃO',
-    value: viewModel.metrics.maintenance + viewModel.metrics.waitingMaintenance,
-    fill: '#FDF0F0',
-  },
-  { label: 'À DISPOSIÇÃO', value: viewModel.metrics.available, fill: '#EEF7FC' },
-  {
-    label: 'HORAS PARADAS',
-    value: viewModel.metrics.stoppedDurationLabel,
-    fill: '#FFF8E8',
-  },
+  { label: 'TOTAL DE FROTAS', value: viewModel.metrics.total, fill: '#FFFFFF' },
+  { label: 'EM OPERAÇÃO', value: viewModel.metrics.operating, fill: '#FFFFFF' },
+  { label: 'À DISPOSIÇÃO', value: viewModel.metrics.available, fill: '#FFFFFF' },
+  { label: 'A CONFIRMAR', value: viewModel.metrics.pending, fill: '#FFFFFF' },
+  { label: 'HORAS PARADAS', value: viewModel.metrics.stoppedDurationLabel, fill: '#FFFFFF' },
+  { label: 'DISPONIBILIDADE', value: `${viewModel.metrics.availabilityRate.toFixed(1).replace('.', ',')}%`, fill: '#FFFFFF' },
 ];
 
 const drawMetricStrip = (
@@ -108,23 +128,47 @@ const drawMetricStrip = (
   startY: number,
 ): number => {
   const metrics = metricDefinitions(viewModel);
-  const gap = 1.5;
+  const gap = 0;
   const width = (CONTENT_WIDTH - gap * (metrics.length - 1)) / metrics.length;
   metrics.forEach((metric, index) => {
     const x = MARGIN_X + index * (width + gap);
     document.setFillColor(metric.fill);
     document.setDrawColor(BORDER);
     document.setLineWidth(0.2);
-    document.roundedRect(x, startY, width, 12, 0.6, 0.6, 'FD');
-    document.setTextColor('#60676E');
+    document.roundedRect(x, startY, width, 18, index === 0 ? 1 : 0, index === 0 ? 1 : 0, 'FD');
+    if (index > 0) document.line(x, startY + 2.5, x, startY + 15.5);
+    const iconX = x + 11;
+    const iconY = startY + 9;
+    const isPending = metric.label === 'A CONFIRMAR';
+    document.setDrawColor(isPending ? '#F2A900' : '#086B3D');
+    document.setLineWidth(0.65);
+    if (index === 0) {
+      document.rect(iconX - 5, iconY - 4, 7, 6);
+      document.rect(iconX + 2, iconY - 2.5, 4, 4.5);
+      document.circle(iconX - 2.5, iconY + 3, 1.2);
+      document.circle(iconX + 4, iconY + 3, 1.2);
+    } else if (index === 1) {
+      document.rect(iconX - 5, iconY - 5, 10, 10);
+      document.line(iconX - 2.5, iconY, iconX - 0.5, iconY + 2);
+      document.line(iconX - 0.5, iconY + 2, iconX + 3.5, iconY - 2.5);
+    } else if (metric.label === 'A CONFIRMAR' || metric.label === 'HORAS PARADAS' || metric.label === 'À DISPOSIÇÃO') {
+      document.circle(iconX, iconY, 5);
+      document.line(iconX, iconY, iconX, iconY - 3);
+      document.line(iconX, iconY, iconX + 2.5, iconY + 1.5);
+    } else {
+      document.circle(iconX, iconY, 5);
+      document.line(iconX, iconY, iconX, iconY - 5);
+      document.line(iconX, iconY, iconX + 5, iconY);
+    }
+    document.setTextColor('#10223A');
     document.setFont('helvetica', 'bold');
-    document.setFontSize(5.8);
-    document.text(metric.label, x + width / 2, startY + 3.5, { align: 'center' });
-    document.setTextColor(DARK);
-    document.setFontSize(9);
-    document.text(String(metric.value), x + width / 2, startY + 8.7, { align: 'center' });
+    document.setFontSize(6.2);
+    document.text(metric.label, x + 23, startY + 6, { align: 'left' });
+    document.setTextColor(isPending ? '#F2A900' : '#086B3D');
+    document.setFontSize(15);
+    document.text(String(metric.value), x + 23, startY + 14.5, { align: 'left' });
   });
-  return startY + 15;
+  return startY + 22;
 };
 
 const drawCategorySummary = (
@@ -135,54 +179,66 @@ const drawCategorySummary = (
   const categories = summarizeFleetCategories(viewModel.allRows);
   const dumpTruck = categories.find(category => category.key === 'dumpTruck');
   const support = categories.filter(category => category.key !== 'dumpTruck');
+  const supportRows = [
+    ['CAMINHÕES-PIPA', 'waterTruck'],
+    ['CAMINHÃO COMBOIO', 'fuelTruck'],
+    ['CAVALO MECÂNICO', 'tractor'],
+    ['CAMINHÃO CARROCERIA', 'flatbed'],
+  ] as const;
   const gap = 3;
   const leftWidth = 108;
   const rightX = MARGIN_X + leftWidth + gap;
   const rightWidth = CONTENT_WIDTH - leftWidth - gap;
-  const height = 27;
+  const height = 43;
   document.setDrawColor(BORDER);
   document.setLineWidth(0.25);
   document.roundedRect(MARGIN_X, startY, leftWidth, height, 1, 1, 'S');
   document.roundedRect(rightX, startY, rightWidth, height, 1, 1, 'S');
   document.setFont('helvetica', 'bold');
   document.setTextColor(DARK);
-  document.setFontSize(8.5);
-  document.text('BASCULANTES', MARGIN_X + 4, startY + 5.5);
+  document.setFontSize(10);
+  drawVehicleGlyph(document, MARGIN_X + leftWidth / 2 - 29, startY + 1, 'dump');
+  document.text('BASCULANTES', MARGIN_X + leftWidth / 2 + 3, startY + 7, { align: 'center' });
   const basculanteMetrics = [
     ['TOTAL', dumpTruck?.total ?? 0],
     ['EM OPERAÇÃO', dumpTruck?.operating ?? 0],
+    ['À DISPOSIÇÃO', dumpTruck?.available ?? 0],
     ['A CONFIRMAR', dumpTruck?.pending ?? 0],
   ] as const;
   basculanteMetrics.forEach(([label, value], index) => {
-    const x = MARGIN_X + 4 + index * 33;
+    const x = MARGIN_X + 4 + index * 25;
     document.setFontSize(5.5);
     document.setTextColor('#687078');
-    document.text(label, x, startY + 12);
+    document.text(label, x, startY + 17);
     document.setFontSize(14);
-    document.setTextColor(index === 2 ? '#B77900' : GREEN);
-    document.text(String(value), x, startY + 21);
+    document.setTextColor(index === 3 ? '#B77900' : GREEN);
+    document.text(String(value), x, startY + 29);
   });
-  document.setFontSize(8.5);
+  document.setFontSize(10);
   document.setTextColor(DARK);
-  document.text('APOIO · PÁTIO ARACARÉ', rightX + 4, startY + 5.5);
+  drawVehicleGlyph(document, rightX + rightWidth / 2 - 40, startY + 1, 'water');
+  document.text('APOIO · PÁTIO ARACARÉ', rightX + rightWidth / 2 + 4, startY + 7, { align: 'center' });
   document.setFontSize(13);
   document.setTextColor(GREEN);
   const supportTotal = support.reduce((sum, category) => sum + category.total, 0);
-  document.text(String(supportTotal), rightX + 4, startY + 15);
+  document.text(String(supportTotal), rightX + 13, startY + 25);
   document.setFontSize(5.3);
   document.setTextColor('#687078');
-  document.text('EM OPERAÇÃO / INFORMADOS', rightX + 4, startY + 20);
-  support.slice(0, 4).forEach((category, index) => {
-    const y = startY + 10 + index * 4;
+  document.text('EM OPERAÇÃO', rightX + 4, startY + 34);
+  supportRows.forEach(([label, key], index) => {
+    const category = support.find(item => item.key === key);
+    const y = startY + 15 + index * 6;
     document.setFont('helvetica', 'bold');
-    document.setFontSize(5.8);
+    document.setFontSize(6.2);
     document.setTextColor(DARK);
-    document.text(`${category.label.toUpperCase()}  ${category.total}`, rightX + 32, y);
+    document.text(label, rightX + 32, y);
+    document.setTextColor(GREEN);
+    document.text(String(category?.total ?? 0), rightX + 78, y);
     document.setFont('helvetica', 'normal');
     document.setTextColor('#53606B');
-    document.text(category.prefixes.join(', '), rightX + 78, y);
+    document.text(category?.prefixes.join(', ') || '—', rightX + 88, y);
   });
-  return startY + height + 3;
+  return startY + height + 4;
 };
 
 const operationRows = (rows: FleetCurrentState[]): PdfRow[] => rows.map(state => ({
@@ -225,7 +281,35 @@ const applyStatusCell = (
     String(data.cell.raw) as FleetCurrentState['operationalStatus'],
   );
   data.cell.styles.textColor = definition.reportColor;
+  data.cell.styles.fillColor = definition.reportBackground;
   data.cell.styles.fontStyle = 'bold';
+};
+
+const prepareStatusPill = (data: CellHookData, statusColumn: number): void => {
+  if (data.section !== 'body' || data.column.index !== statusColumn) return;
+  data.cell.text = [];
+  data.cell.styles.fillColor = '#FFFFFF';
+};
+
+const drawStatusPill = (document: jsPDF, data: CellHookData, statusColumn: number): void => {
+  if (data.section !== 'body' || data.column.index !== statusColumn) return;
+  const value = String(data.cell.raw) as FleetCurrentState['operationalStatus'];
+  const definition = getFleetStatusDefinition(value);
+  const label = value === FLEET_OPERATIONAL_STATUS.operating
+    ? 'EM OPERAÇÃO'
+    : value.toUpperCase();
+  const pillWidth = Math.min(data.cell.width - 3, Math.max(18, document.getTextWidth(label) + 6));
+  const pillX = data.cell.x + (data.cell.width - pillWidth) / 2;
+  const pillY = data.cell.y + 1.1;
+  const pillHeight = data.cell.height - 2.2;
+  document.setFillColor(definition.reportColor);
+  document.roundedRect(pillX, pillY, pillWidth, pillHeight, 1, 1, 'F');
+  document.setFont('helvetica', 'bold');
+  document.setFontSize(5.7);
+  document.setTextColor('#FFFFFF');
+  document.text(label, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1.2, {
+    align: 'center',
+  });
 };
 
 const drawTableTitle = (
@@ -248,7 +332,7 @@ const commonTableOptions = {
   theme: 'grid' as const,
   // A margem superior também é obrigatória: sem ela o AutoTable pode ocupar
   // o cabeçalho institucional ao iniciar uma tabela em uma página já criada.
-  margin: { top: 41, left: MARGIN_X, right: MARGIN_X, bottom: 13 },
+  margin: { top: 31, left: MARGIN_X, right: MARGIN_X, bottom: 16 },
   styles: {
     font: 'helvetica',
     fontSize: 6.2,
@@ -260,8 +344,8 @@ const commonTableOptions = {
     valign: 'middle' as const,
   },
   headStyles: {
-    fillColor: '#D8DADD',
-    textColor: '#252A2F',
+    fillColor: '#082343',
+    textColor: '#FFFFFF',
     fontStyle: 'bold' as const,
     halign: 'center' as const,
     lineColor: '#AEB3B8',
@@ -275,22 +359,24 @@ const drawOperationTable = (
   document: jsPDF,
   rows: FleetCurrentState[],
   startY: number,
+  viewModel?: FleetReportViewModel,
+  reneaLogo?: string,
+  spmarLogo?: string,
 ): number => {
-  const titleEnd = drawTableTitle(document, 'Operação - Alto Tietê', startY);
   const body: RowInput[] = rows.length
     ? operationRows(rows)
     : [['—', 'Nenhuma frota em operação neste período.', '—', '—', '—', '—', '—', '—', '—']];
   autoTable(document, {
     ...commonTableOptions,
-    startY: titleEnd,
+    startY,
     head: [[
       'GRUPO',
       'TIPO',
-      'MATRÍCULA',
-      'NOME / MOTORISTA',
       'PREFIXO',
-      'STATUS ATUAL',
-      'SAÍDA / ARACARÉ',
+      'SITUAÇÃO',
+      'HORA DE SAÍDA',
+      'MATRÍCULA',
+      'MOTORISTA / OPERADOR',
       'LOCAL DE SAÍDA',
       'OBSERVAÇÃO',
     ]],
@@ -298,26 +384,30 @@ const drawOperationTable = (
     columns: rows.length ? [
       { header: 'GRUPO', dataKey: 'group' },
       { header: 'TIPO', dataKey: 'type' },
-      { header: 'MATRÍCULA', dataKey: 'employeeCode' },
-      { header: 'NOME / MOTORISTA', dataKey: 'driver' },
       { header: 'PREFIXO', dataKey: 'prefix' },
-      { header: 'STATUS ATUAL', dataKey: 'status' },
-      { header: 'SAÍDA / ARACARÉ', dataKey: 'departure' },
+      { header: 'SITUAÇÃO', dataKey: 'status' },
+      { header: 'HORA DE SAÍDA', dataKey: 'departure' },
+      { header: 'MATRÍCULA', dataKey: 'employeeCode' },
+      { header: 'MOTORISTA / OPERADOR', dataKey: 'driver' },
       { header: 'LOCAL DE SAÍDA', dataKey: 'location' },
       { header: 'OBSERVAÇÃO', dataKey: 'note' },
     ] : undefined,
     columnStyles: {
-      0: { cellWidth: 18 },
-      1: { cellWidth: 31 },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 47 },
-      4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
-      5: { cellWidth: 27, halign: 'center' },
-      6: { cellWidth: 22, halign: 'center' },
-      7: { cellWidth: 31 },
-      8: { cellWidth: 65 },
+      0: { cellWidth: 23 },
+      1: { cellWidth: 36 },
+      2: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
+      3: { cellWidth: 29, halign: 'center' },
+      4: { cellWidth: 23, halign: 'center' },
+      5: { cellWidth: 22, halign: 'center' },
+      6: { cellWidth: 58 },
+      7: { cellWidth: 29 },
+      8: { cellWidth: 39 },
     },
-    didParseCell: data => applyStatusCell(data, 5),
+    didParseCell: data => prepareStatusPill(data, 3),
+    didDrawCell: data => drawStatusPill(document, data, 3),
+    didDrawPage: data => {
+      if (data.pageNumber > 1 && viewModel) drawHeader(document, viewModel, reneaLogo, spmarLogo);
+    },
   });
   return (document as JsPdfWithAutoTable).lastAutoTable.finalY;
 };
@@ -409,21 +499,95 @@ const addPageFooters = (
   const pages = document.getNumberOfPages();
   for (let page = 1; page <= pages; page += 1) {
     document.setPage(page);
-    document.setDrawColor('#D5D8DB');
-    document.setLineWidth(0.2);
-    document.line(MARGIN_X, PAGE_HEIGHT - 9, PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 9);
+    document.setDrawColor(GREEN);
+    document.setLineWidth(0.55);
+    document.line(MARGIN_X, PAGE_HEIGHT - 12, PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 12);
     document.setFont('helvetica', 'normal');
     document.setFontSize(5.5);
     document.setTextColor('#717980');
     document.text(
       `Gerado em ${formatBrazilianDateTime(viewModel.generatedAt)} · ${viewModel.companyLabel}`,
       MARGIN_X,
-      PAGE_HEIGHT - 5,
+      PAGE_HEIGHT - 6,
     );
-    document.text(`Página ${page} de ${pages}`, PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 5, {
+    document.text(`Página ${page} de ${pages}`, PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 6, {
       align: 'right',
     });
   }
+};
+
+const drawPendingBanner = (
+  document: jsPDF,
+  viewModel: FleetReportViewModel,
+  startY: number,
+): number => {
+  const pending = viewModel.metrics.pending;
+  document.setDrawColor('#F2A900');
+  document.setLineWidth(0.3);
+  document.roundedRect(MARGIN_X, startY, CONTENT_WIDTH, 13, 1, 1, 'S');
+  document.setTextColor('#10223A');
+  document.setFont('helvetica', 'bold');
+  document.setFontSize(8.5);
+  document.text('CONFERÊNCIAS PENDENTES', MARGIN_X + 15, startY + 7.8);
+  document.setTextColor('#F2A900');
+  document.setFontSize(15);
+  document.text('!', MARGIN_X + 7, startY + 8.7, { align: 'center' });
+  document.setTextColor('#24344A');
+  document.setFont('helvetica', 'normal');
+  document.setFontSize(7);
+  const message = pending > 0
+    ? `${pending} veículo${pending === 1 ? '' : 's'} aguardando confirmação de saída.`
+    : 'Nenhuma conferência pendente para os equipamentos informados.';
+  document.text(message, MARGIN_X + 68, startY + 5.2);
+  document.text(
+    'Conferir documentação e equipamentos antes do início da operação.',
+    MARGIN_X + 68,
+    startY + 9.2,
+  );
+  return startY + 13;
+};
+
+const ensureSectionRoom = (
+  document: jsPDF,
+  viewModel: FleetReportViewModel,
+  currentY: number,
+  estimatedHeight: number,
+  reneaLogo?: string,
+  spmarLogo?: string,
+): number => {
+  const contentBottom = PAGE_HEIGHT - 13;
+  if (currentY + estimatedHeight <= contentBottom) return currentY;
+  document.addPage('a4', 'landscape');
+  return drawHeader(document, viewModel, reneaLogo, spmarLogo);
+};
+
+const buildFleetPdfDocument = (
+  viewModel: FleetReportViewModel,
+  reneaLogo?: string,
+  spmarLogo?: string,
+  compress = false,
+): jsPDF => {
+  const document = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+    compress,
+  });
+  let y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
+  y = drawMetricStrip(document, viewModel, y);
+  y = drawCategorySummary(document, viewModel, y);
+  y = drawOperationTable(document, viewModel.allRows, y, viewModel, reneaLogo, spmarLogo);
+  y = ensureSectionRoom(
+    document,
+    viewModel,
+    y + 4,
+    17,
+    reneaLogo,
+    spmarLogo,
+  );
+  drawPendingBanner(document, viewModel, y);
+  addPageFooters(document, viewModel);
+  return document;
 };
 
 export const generateFleetPdf = async (
@@ -433,30 +597,7 @@ export const generateFleetPdf = async (
     loadImageData(reneaLogoUrl),
     loadImageData(spmarLogoUrl),
   ]);
-  const document = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: 'a4',
-    compress: true,
-  });
-  let y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
-  y = drawMetricStrip(document, viewModel, y);
-  y = drawCategorySummary(document, viewModel, y);
-  drawOperationTable(document, viewModel.operating, y);
-  document.addPage('a4', 'landscape');
-  y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
-  y = drawMetricStrip(document, viewModel, y);
-  y = drawCategorySummary(document, viewModel, y);
-  y = drawMaintenanceTable(document, viewModel.maintenance, y);
-  if (y > 155) {
-    document.addPage('a4', 'landscape');
-    y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
-    y = drawMetricStrip(document, viewModel, y);
-  } else {
-    y += 5;
-  }
-  drawAvailableTable(document, viewModel.available, y);
-  addPageFooters(document, viewModel);
+  const document = buildFleetPdfDocument(viewModel, reneaLogo, spmarLogo, true);
   const fileName = `RELATORIO_DIARIO_SITUACAO_OPERACIONAL_FROTAS_${viewModel.reportDate}.pdf`;
   document.save(fileName);
   return {
@@ -473,17 +614,6 @@ export const createFleetPdfArrayBuffer = async (
     loadImageData(reneaLogoUrl),
     loadImageData(spmarLogoUrl),
   ]);
-  const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-  let y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
-  y = drawMetricStrip(document, viewModel, y);
-  y = drawCategorySummary(document, viewModel, y);
-  drawOperationTable(document, viewModel.operating, y);
-  document.addPage('a4', 'landscape');
-  y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
-  y = drawMetricStrip(document, viewModel, y);
-  y = drawCategorySummary(document, viewModel, y);
-  y = drawMaintenanceTable(document, viewModel.maintenance, y);
-  drawAvailableTable(document, viewModel.available, Math.min(y + 5, 155));
-  addPageFooters(document, viewModel);
+  const document = buildFleetPdfDocument(viewModel, reneaLogo, spmarLogo);
   return document.output('arraybuffer');
 };

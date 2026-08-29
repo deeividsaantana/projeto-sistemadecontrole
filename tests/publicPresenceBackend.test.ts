@@ -66,3 +66,23 @@ test('backend rejeita datas ISO que nao existem no calendario', async () => {
   assert.equal(source.isIsoDate('2026-02-28'), true);
   assert.equal(source.isIsoDate('2026-13-01'), false);
 });
+
+test('equipe enviada fica indisponivel pelo restante do dia', () => {
+  const config = __testing.getPublicConfig({
+    gruposEquipe: [group],
+    funcionarios: employees,
+    empresas: [{ id: 'company-1', nome: 'RENEA', status: 'ATIVO' }],
+    obras: [{ id: 'work-1', nome: 'Obra Norte', status: 'Ativa' }],
+  }, group.token);
+
+  assert.ok(config);
+  const available = __testing.filterSubmittedGroups(config, new Set([group.id]));
+  assert.deepEqual(available.gruposEquipe, []);
+  assert.deepEqual(available.funcionarios, []);
+  assert.deepEqual(available.empresas, []);
+  assert.deepEqual(available.obras, []);
+});
+
+test('data operacional usa o fuso horario de Sao Paulo', () => {
+  assert.match(__testing.todayInSaoPaulo(), /^\d{4}-\d{2}-\d{2}$/);
+});

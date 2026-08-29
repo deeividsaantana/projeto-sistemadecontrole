@@ -21,6 +21,7 @@ const viewModel: FleetReportViewModel = {
     operating: 1,
     maintenance: 0,
     available: 0,
+    pending: 0,
     waitingDriver: 0,
     unavailable: 0,
     waitingMaintenance: 0,
@@ -37,6 +38,7 @@ const viewModel: FleetReportViewModel = {
   operating: [],
   maintenance: [],
   available: [],
+  pending: [],
   waitingDriver: [],
   other: [],
   sections: [],
@@ -47,7 +49,7 @@ const viewModel: FleetReportViewModel = {
 const workbook = buildFleetWorkbook(viewModel);
 assert.deepEqual(
   workbook.worksheets.map(sheet => sheet.name),
-  ['RESUMO', 'OPERAÇÃO', 'MANUTENÇÃO', 'À DISPOSIÇÃO', 'HISTÓRICO'],
+  ['RESUMO', 'OPERAÇÃO', 'MANUTENÇÃO', 'À DISPOSIÇÃO', 'A CONFIRMAR', 'HISTÓRICO'],
 );
 const summary = workbook.getWorksheet('RESUMO');
 assert.ok(summary);
@@ -56,9 +58,10 @@ assert.equal(summary?.getCell('B6').value, 1);
 assert.equal(summary?.getCell('C6').value, 1);
 assert.equal(summary?.getCell('D6').value, 0);
 assert.equal(summary?.getCell('E6').value, 0);
-assert.equal(summary?.getCell('F6').value, '00:54');
+assert.equal(summary?.getCell('F6').value, 0);
+assert.equal(summary?.getCell('G6').value, '00:54');
 
-for (const name of ['OPERAÇÃO', 'MANUTENÇÃO', 'À DISPOSIÇÃO', 'HISTÓRICO']) {
+for (const name of ['OPERAÇÃO', 'MANUTENÇÃO', 'À DISPOSIÇÃO', 'A CONFIRMAR', 'HISTÓRICO']) {
   const sheet = workbook.getWorksheet(name);
   assert.ok(sheet);
   assert.equal(sheet?.views[0]?.state, 'frozen');
@@ -71,6 +74,8 @@ for (const name of ['OPERAÇÃO', 'MANUTENÇÃO', 'À DISPOSIÇÃO', 'HISTÓRICO
         ? 'ManutencaoCBs'
         : name === 'À DISPOSIÇÃO'
           ? 'DisponibilidadeCBs'
+          : name === 'A CONFIRMAR'
+            ? 'ConfirmacaoCBs'
           : 'HistoricoCBs',
   ));
   assert.equal(sheet?.getRow(1).font?.name, 'Aptos Narrow');

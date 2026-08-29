@@ -22,14 +22,14 @@ type FirebaseEnv = Partial<Record<
 >>;
 
 const defaultFirebaseClientConfig: FirebaseClientConfig = {
-  apiKey: 'AIzaSyDGN9xLkhgsqDIMXSTU9G03LEeC4Jmjpo4',
-  authDomain: 'sistemarenea.firebaseapp.com',
-  databaseURL: 'https://sistemarenea-default-rtdb.firebaseio.com',
-  projectId: 'sistemarenea',
-  storageBucket: 'sistemarenea.firebasestorage.app',
-  messagingSenderId: '259137561260',
-  appId: '1:259137561260:web:835cac33a4a8ba6afaf509',
-  measurementId: 'G-JJXRKV2FB7',
+  apiKey: 'AIzaSyBPcOluz5J84fdSMRFekHwa-6TCk2ts4K8',
+  authDomain: 'sistemaerp-787f6.firebaseapp.com',
+  databaseURL: 'https://sistemaerp-787f6-default-rtdb.firebaseio.com',
+  projectId: 'sistemaerp-787f6',
+  storageBucket: 'sistemaerp-787f6.firebasestorage.app',
+  messagingSenderId: '333772297925',
+  appId: '1:333772297925:web:b7ece8323a6ef5e28742ac',
+  measurementId: 'G-WS7H39BVDR',
 };
 
 const pickEnv = (env: FirebaseEnv, key: keyof FirebaseEnv, fallback: string) => {

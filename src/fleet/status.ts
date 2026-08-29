@@ -70,6 +70,21 @@ export const FLEET_STATUS_DEFINITIONS: FleetStatusDefinition[] = [
     priority: 3,
   },
   {
+    value: FLEET_OPERATIONAL_STATUS.pending,
+    key: 'pending',
+    shortLabel: 'A confirmar',
+    description: 'Informação operacional ainda pendente de conferência.',
+    textClass: 'text-amber-800',
+    backgroundClass: 'bg-amber-50',
+    borderClass: 'border-amber-200',
+    reportColor: '#B77900',
+    reportBackground: '#FFF8E8',
+    isAvailableForOperation: false,
+    countsAsStopped: false,
+    requiresDriver: false,
+    priority: 4,
+  },
+  {
     value: FLEET_OPERATIONAL_STATUS.waitingDriver,
     key: 'waitingDriver',
     shortLabel: 'Sem motorista',
@@ -82,7 +97,7 @@ export const FLEET_STATUS_DEFINITIONS: FleetStatusDefinition[] = [
     isAvailableForOperation: true,
     countsAsStopped: true,
     requiresDriver: false,
-    priority: 4,
+    priority: 5,
   },
   {
     value: FLEET_OPERATIONAL_STATUS.waitingMaintenance,
@@ -97,7 +112,7 @@ export const FLEET_STATUS_DEFINITIONS: FleetStatusDefinition[] = [
     isAvailableForOperation: false,
     countsAsStopped: true,
     requiresDriver: false,
-    priority: 5,
+    priority: 6,
   },
   {
     value: FLEET_OPERATIONAL_STATUS.unavailable,
@@ -112,7 +127,7 @@ export const FLEET_STATUS_DEFINITIONS: FleetStatusDefinition[] = [
     isAvailableForOperation: false,
     countsAsStopped: true,
     requiresDriver: false,
-    priority: 6,
+    priority: 7,
   },
   {
     value: FLEET_OPERATIONAL_STATUS.stopped,
@@ -127,7 +142,7 @@ export const FLEET_STATUS_DEFINITIONS: FleetStatusDefinition[] = [
     isAvailableForOperation: false,
     countsAsStopped: true,
     requiresDriver: false,
-    priority: 7,
+    priority: 8,
   },
   {
     value: FLEET_OPERATIONAL_STATUS.unclassified,
@@ -142,7 +157,7 @@ export const FLEET_STATUS_DEFINITIONS: FleetStatusDefinition[] = [
     isAvailableForOperation: false,
     countsAsStopped: false,
     requiresDriver: false,
-    priority: 8,
+    priority: 9,
   },
 ];
 
@@ -160,6 +175,9 @@ const STATUS_ALIASES: Record<string, FleetOperationalStatus> = {
   adisposicao: FLEET_OPERATIONAL_STATUS.available,
   liberado: FLEET_OPERATIONAL_STATUS.available,
   reserva: FLEET_OPERATIONAL_STATUS.available,
+  aconfirmar: FLEET_OPERATIONAL_STATUS.pending,
+  pendente: FLEET_OPERATIONAL_STATUS.pending,
+  aguardandoconfirmacao: FLEET_OPERATIONAL_STATUS.pending,
   aguardandomotorista: FLEET_OPERATIONAL_STATUS.waitingDriver,
   semmotorista: FLEET_OPERATIONAL_STATUS.waitingDriver,
   esperandomotorista: FLEET_OPERATIONAL_STATUS.waitingDriver,
@@ -190,6 +208,8 @@ export const toLegacyDailyStatus = (
       return 'Em manutenção';
     case FLEET_OPERATIONAL_STATUS.available:
       return 'Disponível';
+    case FLEET_OPERATIONAL_STATUS.pending:
+      return 'A confirmar';
     case FLEET_OPERATIONAL_STATUS.waitingDriver:
       return 'Aguardando motorista';
     case FLEET_OPERATIONAL_STATUS.waitingMaintenance:

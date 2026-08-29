@@ -108,6 +108,7 @@ export default function PresencaTempoRealPublica({
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [draftHydrated, setDraftHydrated] = useState(false);
+  const [draftFeedback, setDraftFeedback] = useState('');
 
   useEffect(() => {
     setDraftHydrated(false);
@@ -181,6 +182,13 @@ export default function PresencaTempoRealPublica({
       [employeeId]: { observacao: current[employeeId]?.observacao || '', status },
     }));
     setError('');
+    setDraftFeedback('Alterações ainda não enviadas');
+  };
+
+  const saveDraft = () => {
+    writeDraft(token, { date, selectedGroupId: group?.id || selectedGroupId, items, result: null });
+    setDraftFeedback('Rascunho salvo neste aparelho · Ainda não enviado');
+    setError('');
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -207,6 +215,7 @@ export default function PresencaTempoRealPublica({
         return;
       }
       setResult(response);
+      setDraftFeedback('');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível enviar a presença.');
     } finally {
@@ -245,9 +254,9 @@ export default function PresencaTempoRealPublica({
       return (
         <main className="presence-public presence-public--center">
           <section className="presence-public__state-card">
-            <AlertTriangle className="presence-public__state-icon presence-public__state-icon--warning" />
-            <h1>Link indisponível</h1>
-            <p>O endereço expirou, foi renovado ou está inativo. Solicite o link atual ao responsável.</p>
+            <CheckCircle2 className="presence-public__success-icon" />
+            <h1>Presença de hoje concluída</h1>
+            <p>Esta equipe já enviou a situação do dia. O formulário será liberado automaticamente amanhã.</p>
           </section>
         </main>
       );
@@ -268,7 +277,7 @@ export default function PresencaTempoRealPublica({
           <div className="presence-public__search"><Search className="h-5 w-5" /><input autoFocus inputMode="search" enterKeyHint="search" autoComplete="off" value={groupSearch} onChange={event => setGroupSearch(event.target.value)} placeholder="Buscar equipe ou responsável" aria-label="Buscar equipe ou responsável" /></div>
           <p className="presence-public__search-meta" aria-live="polite">{filteredGroups.length} {filteredGroups.length === 1 ? 'equipe encontrada' : 'equipes encontradas'}</p>
           <section className="presence-public__group-list">
-            {filteredGroups.length === 0 ? <p className="presence-public__empty">Nenhuma equipe encontrada.</p> : filteredGroups.map(item => (
+            {filteredGroups.length === 0 ? <p className="presence-public__empty">{activeGroups.length === 0 ? 'Todas as equipes já enviaram a presença de hoje. Elas estarão disponíveis novamente amanhã.' : 'Nenhuma equipe encontrada.'}</p> : filteredGroups.map(item => (
               <button key={item.id} type="button" onClick={() => setSelectedGroupId(item.id)} className="presence-public__group-button">
                 <div><strong>{item.nome}</strong><span>{item.responsavel} · {item.frenteServico}</span></div>
                 <div className="presence-public__group-count"><b>{item.funcionarioIds.length}</b><span>pessoas</span></div>
@@ -325,7 +334,7 @@ export default function PresencaTempoRealPublica({
         <section className="presence-public__progress-card">
           <div><strong>{reviewed}</strong><span> de {groupEmployees.length} conferidos</span></div><b>{progress}%</b>
           <div className="presence-public__progress-track"><i style={{ width: `${progress}%` }} /></div>
-          <label>Data do apontamento<input type="date" value={date} onChange={event => setDate(event.target.value)} max={todayInput()} /></label>
+          <label>Data do apontamento<input type="date" value={date} onChange={event => setDate(event.target.value)} min={todayInput()} max={todayInput()} /></label>
         </section>
         <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador" aria-label="Buscar colaborador" /></div>
         <form onSubmit={submit} className="presence-public__form">
@@ -343,13 +352,14 @@ export default function PresencaTempoRealPublica({
                     {PRIMARY_STATUSES.map(status => <button key={status} type="button" onClick={() => setStatus(employee.id, status)} data-selected={selected === status}>{selected === status && <Check className="h-4 w-4" />}{status}</button>)}
                   </div>
                   <select value={SECONDARY_STATUSES.includes(selected as PresencaStatus) ? selected : ''} onChange={event => event.target.value && setStatus(employee.id, event.target.value as PresencaStatus)}><option value="">Outras situações</option>{SECONDARY_STATUSES.map(status => <option key={status}>{status}</option>)}</select>
-                  <textarea value={items[employee.id]?.observacao || ''} onChange={event => setItems(current => ({ ...current, [employee.id]: { ...current[employee.id], observacao: event.target.value } }))} rows={2} placeholder="Observação opcional" />
+                  <textarea value={items[employee.id]?.observacao || ''} onChange={event => { setItems(current => ({ ...current, [employee.id]: { ...current[employee.id], observacao: event.target.value } })); setDraftFeedback('Alterações ainda não enviadas'); }} rows={2} placeholder="Observação opcional" />
                 </article>
               );
             })}
           </section>
           {error && <div role="alert" className="presence-public__error"><AlertTriangle className="h-5 w-5" /><span>{error}</span></div>}
-          <div className="presence-public__submit-bar"><div><Clock3 className="h-5 w-5" /><strong>{pending}</strong><span>pendente{pending === 1 ? '' : 's'}</span></div><button type="submit" disabled={submitting || pending > 0}>{submitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}{submitting ? 'Enviando' : 'Revisar e enviar'}</button></div>
+          {draftFeedback && <div role="status" className="presence-public__draft-status"><Clock3 className="h-5 w-5" /><span>{draftFeedback}</span></div>}
+          <div className="presence-public__submit-bar"><div className="presence-public__pending-count"><Clock3 className="h-5 w-5" /><strong>{pending}</strong><span>pendente{pending === 1 ? '' : 's'}</span></div><div className="presence-public__submit-actions"><button type="button" onClick={saveDraft} disabled={submitting}>Salvar rascunho</button><button type="submit" disabled={submitting || pending > 0}>{submitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}{submitting ? 'Enviando' : 'Enviar presença'}</button></div></div>
         </form>
       </div>
     </main>

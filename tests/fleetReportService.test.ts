@@ -60,7 +60,8 @@ const equipment: Equipamento[] = Array.from({ length: 32 }, (_, index) => ({
 const statusForIndex = (index: number): ControleEquipamentoDiario['status'] => {
   if (index < 25) return 'Em operação';
   if (index < 30) return 'Em manutenção';
-  return 'Disponível';
+  if (index === 30) return 'Disponível';
+  return 'A confirmar';
 };
 
 const records: ControleEquipamentoDiario[] = equipment.map((truck, index) => ({
@@ -103,19 +104,21 @@ const report = createFleetReportViewModel(
 assert.equal(report.metrics.total, 32);
 assert.equal(report.metrics.operating, 25);
 assert.equal(report.metrics.maintenance, 5);
-assert.equal(report.metrics.available, 2);
-assert.equal(report.metrics.operating + report.metrics.maintenance + report.metrics.available, 32);
+assert.equal(report.metrics.available, 1);
+assert.equal(report.metrics.pending, 1);
+assert.equal(report.metrics.operating + report.metrics.maintenance + report.metrics.available + report.metrics.pending, 32);
 assert.equal(report.metrics.integrityDifference, 0);
 assert.equal(report.operating.length, 25);
 assert.equal(report.maintenance.length, 5);
-assert.equal(report.available.length, 2);
+assert.equal(report.available.length, 1);
+assert.equal(report.pending.length, 1);
 assert.equal(report.companyLabel, 'RENEA INFRAESTRUTURA S.A.');
 assert.equal(getTotalCBs(report), 32);
 assert.equal(getOperatingCBs(report), 25);
 assert.equal(getMaintenanceCBs(report), 5);
-assert.equal(getAvailableCBs(report), 2);
+assert.equal(getAvailableCBs(report), 1);
 assert.equal(getStoppedHours(report) >= 5.9, true);
-assert.equal(getAvailabilityRate(report), (27 / 32) * 100);
+assert.equal(getAvailabilityRate(report), (26 / 32) * 100);
 
 const maintenanceOnly = filterFleetStates(report.allRows, {
   ...filters,

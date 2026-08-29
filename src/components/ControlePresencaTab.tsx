@@ -359,9 +359,9 @@ export default function ControlePresencaTab({
     saveBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `presenca-${today}.csv`);
   };
 
-  const exportExcel = async () => {
+  const exportExcelRecords = async (records: PresencaApontamento[], reportDate: string, reportTitle: string) => {
     const workbook = new ExcelJS.Workbook();
-    configureCorporateWorkbook(workbook, 'Presença em tempo real');
+    configureCorporateWorkbook(workbook, reportTitle);
     const sheet = workbook.addWorksheet('Presença');
     sheet.columns = [
       { header: 'Data', key: 'data', width: 14 },
@@ -374,28 +374,33 @@ export default function ControlePresencaTab({
       { header: 'Observação', key: 'observacao', width: 36 },
       { header: 'Horário', key: 'horario', width: 12 },
     ];
-    exportRows.forEach(row => sheet.addRow(row));
-    styleCorporateWorksheet(sheet, { title: 'Presença em tempo real', headerRow: 1, lastColumn: 9, recordCount: exportRows.length });
-    addCorporateSummarySheet(workbook, 'Presença em tempo real', [
-      ['Registros exportados', exportRows.length],
-      ['Data de referência', (recordDate || today).split('-').reverse().join('/')],
+    records.forEach(record => sheet.addRow([
+      record.data, record.grupoNome, record.responsavel, record.frenteServico,
+      record.funcionarioNome, record.funcao, record.status, record.observacao, record.horaEnvio,
+    ]));
+    styleCorporateWorksheet(sheet, { title: reportTitle, headerRow: 1, lastColumn: 9, recordCount: records.length });
+    addCorporateSummarySheet(workbook, reportTitle, [
+      ['Registros exportados', records.length],
+      ['Presentes', records.filter(record => record.status === 'Presente').length],
+      ['Ausentes', records.filter(record => record.status === 'Ausente').length],
+      ['Data de referência', reportDate.split('-').reverse().join('/')],
     ]);
-    await downloadCorporateWorkbook(workbook, `RENEA_presenca_${today}.xlsx`);
+    await downloadCorporateWorkbook(workbook, `RENEA_situacao_diaria_${reportDate}.xlsx`);
   };
 
-  const exportPdf = async () => generateUniversalPdfReport({
-    title: 'Presença em tempo real',
+  const exportPdfRecords = async (records: PresencaApontamento[], reportDate: string, reportTitle: string, pendingCount: number) => generateUniversalPdfReport({
+    title: reportTitle,
     subtitle: 'Efetivo recebido diretamente das equipes de campo',
     company: 'RENEA INFRAESTRUTURA · Sistema Integrado de Gestão Operacional',
     orientation: 'landscape',
-    fileName: `RENEA_presenca_${today}.pdf`,
-    period: recordDate || today,
+    fileName: `RENEA_situacao_diaria_${reportDate}.pdf`,
+    period: reportDate,
     filters: [recordGroup === 'todos' ? 'Todas as equipes' : `Equipe: ${recordGroup}`, recordStatus === 'todos' ? 'Todos os status' : `Status: ${recordStatus}`],
     summary: [
-      { label: 'Registros', value: filteredRecords.length },
-      { label: 'Presentes', value: filteredRecords.filter(record => record.status === 'Presente').length },
-      { label: 'Ausentes', value: filteredRecords.filter(record => record.status === 'Ausente').length },
-      { label: 'Equipes pendentes', value: pendingGroups.length },
+      { label: 'Registros', value: records.length },
+      { label: 'Presentes', value: records.filter(record => record.status === 'Presente').length },
+      { label: 'Ausentes', value: records.filter(record => record.status === 'Ausente').length },
+      { label: 'Equipes pendentes', value: pendingCount },
     ],
     columns: [
       { header: 'Data', dataKey: 'data' },
@@ -408,7 +413,7 @@ export default function ControlePresencaTab({
       { header: 'Observação', dataKey: 'observacao' },
       { header: 'Horário', dataKey: 'horario' },
     ],
-    rows: filteredRecords.map(record => ({
+    rows: records.map(record => ({
       data: record.data,
       equipe: record.grupoNome,
       responsavel: record.responsavel,
@@ -420,6 +425,11 @@ export default function ControlePresencaTab({
       horario: record.horaEnvio,
     })),
   });
+
+  const exportExcel = () => exportExcelRecords(filteredRecords, recordDate || today, 'Relatório de presença');
+  const exportPdf = () => exportPdfRecords(filteredRecords, recordDate || today, 'Relatório de presença', pendingGroups.length);
+  const exportDailyExcel = () => exportExcelRecords(dayRecords, referenceDate, 'Relatório da situação do dia');
+  const exportDailyPdf = () => exportPdfRecords(dayRecords, referenceDate, 'Relatório da situação do dia', pendingGroups.length);
 
   const openRecordEditor = (record: PresencaApontamento) => {
     setEditingRecord(record);
@@ -525,9 +535,14 @@ export default function ControlePresencaTab({
             </div>
 
             <article className={`${PANEL} overflow-hidden`}>
-              <div className="flex items-center justify-between gap-3 border-b border-[#e4e0d6] px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e0d6] px-5 py-4">
                 <div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Equipes</p><h2 className="mt-1 text-xl font-black tracking-tight text-[#101a22]">Situação do dia</h2></div>
-                <button type="button" onClick={() => setView('equipes')} className="inline-flex items-center gap-1 text-sm font-bold text-emerald-800 hover:text-emerald-950">Gerenciar <ChevronRight className="h-4 w-4" /></button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={`${FIELD} w-auto`} aria-label="Data do relatório diário" />
+                  <button type="button" onClick={() => void exportDailyExcel()} className={PRIMARY_BUTTON} disabled={dayRecords.length === 0} title="Baixar situação do dia em Excel"><FileSpreadsheet className="h-4 w-4" /> Excel</button>
+                  <button type="button" onClick={() => void exportDailyPdf()} className={SECONDARY_BUTTON} disabled={dayRecords.length === 0} title="Imprimir situação do dia em PDF"><FileText className="h-4 w-4" /> PDF</button>
+                  <button type="button" onClick={() => setView('equipes')} className="inline-flex items-center gap-1 px-2 text-sm font-bold text-emerald-800 hover:text-emerald-950">Gerenciar <ChevronRight className="h-4 w-4" /></button>
+                </div>
               </div>
               <div className="divide-y divide-[#ebe7dc]">
                 {teamRows.length === 0 ? (
@@ -596,7 +611,7 @@ export default function ControlePresencaTab({
             <select value={recordGroup} onChange={event => setRecordGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{safeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select>
             <select value={recordStatus} onChange={event => setRecordStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select>
             <div className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={recordSearch} onChange={event => setRecordSearch(event.target.value)} placeholder="Buscar colaborador, função ou responsável" className={`${FIELD} pl-10`} /></div>
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={exportExcel} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={exportPdf} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{selectedRecordIds.length > 0 && <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800"><Trash2 className="h-4 w-4" /> Excluir ({selectedRecordIds.length})</button>}</div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void exportExcel()} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={() => void exportPdf()} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{selectedRecordIds.length > 0 && <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800"><Trash2 className="h-4 w-4" /> Excluir ({selectedRecordIds.length})</button>}</div>
           </div>
           <label className="flex min-h-11 items-center gap-2 px-1 text-xs font-bold text-[#53605a]"><input type="checkbox" checked={filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id))} onChange={event => setSelectedRecordIds(event.target.checked ? filteredRecords.map(record => record.id) : [])} className="h-4 w-4 accent-emerald-700" /> Selecionar registros filtrados</label>
           <div className="grid gap-3">

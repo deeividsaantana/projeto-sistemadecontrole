@@ -17,6 +17,12 @@ import { withIdempotency } from './_shared/idempotency.js';
 
 const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
 const isGeneralToken = token => token.startsWith('geral-');
+const todayInSaoPaulo = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(new Date());
 // A configuração pública pode ser reutilizada por poucos segundos sem perder
 // a sensação de tempo real. O cabeçalho no-store continua impedindo cache do
 // navegador; esta janela curta evita leituras excessivas no Firestore.
@@ -122,6 +128,34 @@ const getPublicConfig = (snapshot, token) => {
   };
 };
 
+const filterSubmittedGroups = (config, submittedGroupIds) => {
+  const submitted = submittedGroupIds instanceof Set ? submittedGroupIds : new Set(submittedGroupIds || []);
+  const gruposEquipe = config.gruposEquipe.filter(group => !submitted.has(group.id));
+  const employeeIds = new Set(gruposEquipe.flatMap(group => group.funcionarioIds || []));
+  const funcionarios = config.funcionarios.filter(employee => employeeIds.has(employee.id));
+  const companyIds = new Set(funcionarios.map(employee => employee.empresaId).filter(Boolean));
+  const workIds = new Set(gruposEquipe.map(group => group.obraId).filter(Boolean));
+  return {
+    ...config,
+    gruposEquipe,
+    funcionarios,
+    empresas: config.empresas.filter(company => companyIds.has(company.id)),
+    obras: config.obras.filter(work => workIds.has(work.id)),
+  };
+};
+
+const loadSubmittedGroupIds = async (database, date) => {
+  const snapshot = await database.collection('sistemarenea_public_submissions')
+    .where('payload.data', '==', date)
+    .get();
+  return new Set(snapshot.docs.flatMap(document => {
+    const data = document.data();
+    if (data?.kind !== 'presence') return [];
+    const groupId = cleanString(data?.payload?.grupoId, 160);
+    return groupId ? [groupId] : [];
+  }));
+};
+
 const buildPresenceRecords = ({ group, employees, date, items, token, submissionId: requestedSubmissionId = '' }) => {
   const employeeMap = new Map(employees.map(employee => [employee.id, employee]));
   const allowedIds = new Set(group.funcionarioIds || []);
@@ -173,8 +207,10 @@ const buildPresenceRecords = ({ group, employees, date, items, token, submission
 export const __testing = {
   activeGroupsForToken,
   buildPresenceRecords,
+  filterSubmittedGroups,
   getPublicConfig,
   resolveGroupEmployeeIds,
+  todayInSaoPaulo,
 };
 
 export const handler = async event => {
@@ -193,7 +229,9 @@ export const handler = async event => {
       const snapshot = await loadPresenceSnapshot(database);
       const config = getPublicConfig(snapshot, token);
       if (!config) return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
-      return jsonResponse(200, { success: true, data: config }, {
+      const submittedGroupIds = await loadSubmittedGroupIds(database, todayInSaoPaulo());
+      const availableConfig = filterSubmittedGroups(config, submittedGroupIds);
+      return jsonResponse(200, { success: true, data: availableConfig }, {
         'Cache-Control': 'no-store',
       });
     }
@@ -205,6 +243,9 @@ export const handler = async event => {
     const date = cleanString(body.data, 10);
     if (!token || !groupId || !isIsoDate(date) || !Array.isArray(body.items) || body.items.length === 0 || body.items.length > 500) {
       return jsonResponse(400, { success: false, message: 'Dados de presença incompletos ou inválidos.' });
+    }
+    if (date !== todayInSaoPaulo()) {
+      return jsonResponse(400, { success: false, message: 'O link público aceita somente a presença da data atual.' });
     }
     const idempotencyKey = assertIdempotencyKey(event, { required: true });
     const publicContext = {

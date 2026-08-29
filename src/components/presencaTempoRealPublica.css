@@ -426,6 +426,41 @@
   background: #fff4ef;
 }
 
+.presence-public__draft-status {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  border: 1px solid #d7cda9;
+  border-radius: 1rem;
+  background: #fff9df;
+  padding: .85rem 1rem;
+  color: #735d13;
+  font-size: .88rem;
+  font-weight: 750;
+}
+
+.presence-public__submit-actions {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+}
+
+.presence-public__submit-actions > button:first-child {
+  border: 1px solid #c9d0cc;
+  background: #fff;
+  color: #153f32;
+}
+
+@media (max-width: 640px) {
+  .presence-public__submit-actions {
+    width: 100%;
+  }
+
+  .presence-public__submit-actions > button {
+    flex: 1;
+  }
+}
+
 .presence-public__submit-bar {
   position: fixed;
   right: 0;
@@ -442,29 +477,29 @@
   backdrop-filter: blur(18px);
 }
 
-.presence-public__submit-bar > div {
+.presence-public__pending-count {
   display: grid;
   grid-template-columns: auto auto;
   align-items: center;
   gap: 0 6px;
 }
 
-.presence-public__submit-bar > div svg {
+.presence-public__pending-count svg {
   grid-row: 1 / 3;
   color: var(--presence-green);
 }
 
-.presence-public__submit-bar > div strong {
+.presence-public__pending-count strong {
   font-size: 15px;
   line-height: 1;
 }
 
-.presence-public__submit-bar > div span {
+.presence-public__pending-count span {
   color: var(--presence-muted);
   font-size: 10px;
 }
 
-.presence-public__submit-bar > button,
+.presence-public__submit-actions > button,
 .presence-public__primary {
   display: inline-flex;
   min-height: 48px;
@@ -480,7 +515,7 @@
   background: var(--presence-green-strong);
 }
 
-.presence-public__submit-bar > button:disabled {
+.presence-public__submit-actions > button:disabled {
   color: #87918c;
   background: #dce1dc;
 }

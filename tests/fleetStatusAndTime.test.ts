@@ -27,6 +27,8 @@ assert.equal(normalizeOperationalStatus('rodando'), FLEET_OPERATIONAL_STATUS.ope
 assert.equal(normalizeOperationalStatus('Em Manutenção'), FLEET_OPERATIONAL_STATUS.maintenance);
 assert.equal(normalizeOperationalStatus('A disposição'), FLEET_OPERATIONAL_STATUS.available);
 assert.equal(normalizeOperationalStatus('Disponível'), FLEET_OPERATIONAL_STATUS.available);
+assert.equal(normalizeOperationalStatus('A confirmar'), FLEET_OPERATIONAL_STATUS.pending);
+assert.notEqual(FLEET_OPERATIONAL_STATUS.available, FLEET_OPERATIONAL_STATUS.pending);
 assert.equal(normalizeOperationalStatus('Esperando motorista'), FLEET_OPERATIONAL_STATUS.waitingDriver);
 assert.equal(normalizeOperationalStatus('aguardando oficina'), FLEET_OPERATIONAL_STATUS.waitingMaintenance);
 assert.equal(normalizeOperationalStatus('status desconhecido'), FLEET_OPERATIONAL_STATUS.unclassified);
@@ -36,6 +38,7 @@ assert.equal(statusCountsAsStopped(FLEET_OPERATIONAL_STATUS.operating), false);
 assert.equal(statusIsOperationallyAvailable(FLEET_OPERATIONAL_STATUS.waitingDriver), true);
 assert.equal(statusIsOperationallyAvailable(FLEET_OPERATIONAL_STATUS.unavailable), false);
 assert.equal(getFleetStatusDefinition(FLEET_OPERATIONAL_STATUS.available).shortLabel, 'À disposição');
+assert.equal(getFleetStatusDefinition(FLEET_OPERATIONAL_STATUS.pending).shortLabel, 'A confirmar');
 
 const sequence: FleetEvent[] = [
   {

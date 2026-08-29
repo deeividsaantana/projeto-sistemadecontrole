@@ -54,3 +54,5 @@ import './fleetReconciliation.test';
 import './fleetReportService.test';
 import './fleetImportService.test';
 import './fleetExcelExport.test';
+import './operationalDrivers.test';
+import './weeklyFleetReport.test';

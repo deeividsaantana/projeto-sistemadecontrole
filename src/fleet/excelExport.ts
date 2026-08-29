@@ -167,14 +167,15 @@ const createSummarySheet = (
     { width: 18 },
     { width: 18 },
     { width: 18 },
+    { width: 18 },
   ];
   styleTitle(
     sheet,
-    'A1:F1',
+    'A1:G1',
     'RELATÓRIO DIÁRIO DE SITUAÇÃO OPERACIONAL',
     'FROTAS OPERACIONAIS · Complexo do Alto Tietê',
   );
-  sheet.mergeCells('A3:F3');
+  sheet.mergeCells('A3:G3');
   sheet.getCell('A3').value = viewModel.companyLabel;
   sheet.getCell('A3').alignment = { horizontal: 'center' };
   sheet.getCell('A3').font = { name: FONT_NAME, size: 10, bold: true, color: { argb: `FF${GREEN}` } };
@@ -184,6 +185,7 @@ const createSummarySheet = (
     ['EM OPERAÇÃO', viewModel.metrics.operating, SOFT_GREEN],
     ['EM MANUTENÇÃO', viewModel.metrics.maintenance + viewModel.metrics.waitingMaintenance, SOFT_RED],
     ['À DISPOSIÇÃO', viewModel.metrics.available, SOFT_BLUE],
+    ['A CONFIRMAR', viewModel.metrics.pending, SOFT_YELLOW],
     ['HORAS PARADAS', viewModel.metrics.stoppedDurationLabel, SOFT_YELLOW],
   ] as const;
   metrics.forEach(([label, value, fill], index) => {
@@ -226,7 +228,7 @@ const createSummarySheet = (
   sheet.getCell('B14').numFmt = '0.0%';
   sheet.getCell('B15').numFmt = '0.0%';
   const categories = summarizeFleetCategories(viewModel.allRows);
-  sheet.getRow(19).values = ['Categoria', 'Total', 'Em operação', 'Em manutenção', 'A confirmar', 'Prefixos'];
+  sheet.getRow(19).values = ['Categoria', 'Total', 'Em operação', 'Em manutenção', 'À disposição', 'A confirmar', 'Prefixos'];
   styleHeaderRow(sheet.getRow(19));
   categories.forEach((category, index) => {
     sheet.getRow(20 + index).values = [
@@ -234,14 +236,15 @@ const createSummarySheet = (
       category.total,
       category.operating,
       category.maintenance,
+      category.available,
       category.pending,
       category.prefixes.join(', '),
     ];
   });
   styleBodyRows(sheet, 19, 19 + categories.length);
-  sheet.getColumn(6).width = 52;
+  sheet.getColumn(7).width = 52;
   for (let row = 20; row <= 19 + categories.length; row += 1) {
-    sheet.getCell(row, 6).alignment = { vertical: 'middle', wrapText: true };
+    sheet.getCell(row, 7).alignment = { vertical: 'middle', wrapText: true };
   }
   sheet.pageSetup = {
     orientation: 'landscape',
@@ -438,6 +441,26 @@ export const buildFleetWorkbook = (
     ],
     widths: [16, 24, 14, 32, 13, 20, 16, 16, 25, 55],
     rows: viewModel.available.map(availableRow),
+    statusColumn: 6,
+    wrapColumns: [10],
+  });
+  createDataSheet(workbook, {
+    name: 'A CONFIRMAR',
+    tableName: 'ConfirmacaoCBs',
+    columns: [
+      'Grupo',
+      'Tipo',
+      'Matrícula',
+      'Nome / Motorista',
+      'Prefixo',
+      'Status Atual',
+      'Horário',
+      'Tempo Parado',
+      'Local',
+      'Observação',
+    ],
+    widths: [16, 24, 14, 32, 13, 20, 16, 16, 25, 55],
+    rows: viewModel.pending.map(availableRow),
     statusColumn: 6,
     wrapColumns: [10],
   });

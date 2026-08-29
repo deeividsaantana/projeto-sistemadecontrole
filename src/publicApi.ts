@@ -74,8 +74,8 @@ export const loadPublicPresenceConfig = async (token: string): Promise<PublicPre
   const response = await callPublicApi<PublicPresenceConfig>(
     `/.netlify/functions/public-presenca?token=${encodeURIComponent(token)}`,
   );
-  if (!response.data || !Array.isArray(response.data.gruposEquipe) || response.data.gruposEquipe.length === 0) {
-    throw new Error('Nenhuma equipe foi retornada pelo serviço de presença.');
+  if (!response.data || !Array.isArray(response.data.gruposEquipe)) {
+    throw new Error('A lista de equipes retornada pelo serviço é inválida.');
   }
   return response.data;
 };

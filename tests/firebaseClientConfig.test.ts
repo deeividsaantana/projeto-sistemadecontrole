@@ -23,11 +23,11 @@ test('configuracao Firebase aceita variaveis Vite por ambiente', () => {
   assert.deepEqual(getMissingFirebaseClientConfigKeys(config), []);
 });
 
-test('configuracao Firebase preserva fallback local atual', () => {
+test('configuracao Firebase preserva fallback do projeto atual', () => {
   const config = resolveFirebaseClientConfig({});
 
-  assert.equal(config.projectId, 'sistemarenea');
-  assert.equal(config.authDomain, 'sistemarenea.firebaseapp.com');
-  assert.equal(config.storageBucket, 'sistemarenea.firebasestorage.app');
+  assert.equal(config.projectId, 'sistemaerp-787f6');
+  assert.equal(config.authDomain, 'sistemaerp-787f6.firebaseapp.com');
+  assert.equal(config.storageBucket, 'sistemaerp-787f6.firebasestorage.app');
   assert.deepEqual(getMissingFirebaseClientConfigKeys(config), []);
 });
