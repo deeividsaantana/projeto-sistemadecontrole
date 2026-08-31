@@ -35,6 +35,9 @@ test('relatório semanal limita o período aos sete dias e separa os status', ()
   assert.equal(report.endDate, '2026-08-29');
   assert.equal(report.days.length, 7);
   assert.equal(report.records.length, 3);
+  assert.equal(report.totals.total, 3);
+  assert.equal(report.averages.operating, 1 / 7);
+  assert.equal(report.averages.availabilityRate, 150 / 7);
   assert.deepEqual(report.days.at(-1), {
     date: '2026-08-29',
     total: 2,
@@ -50,6 +53,6 @@ test('Excel semanal contém resumo e detalhamento', () => {
   const report = buildWeeklyFleetReport([record('1', '2026-08-29', 'Em operação')], '2026-08-29');
   const workbook = buildWeeklyFleetWorkbook(report);
   assert.deepEqual(workbook.worksheets.map(sheet => sheet.name), ['RESUMO SEMANAL', 'DETALHAMENTO']);
-  assert.equal(workbook.getWorksheet('RESUMO SEMANAL')?.rowCount, 8);
+  assert.equal(workbook.getWorksheet('RESUMO SEMANAL')?.rowCount, 16);
   assert.equal(workbook.getWorksheet('DETALHAMENTO')?.rowCount, 2);
 });
