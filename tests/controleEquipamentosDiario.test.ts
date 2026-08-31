@@ -19,6 +19,7 @@ assert.match(navigation, /Controle Operacional de Frotas/);
 assert.match(component, /useFleetReport/);
 assert.match(component, /FleetFilterBar/);
 assert.match(component, /FleetDataTable/);
+assert.match(component, /FleetDailyReference/);
 assert.match(component, /FleetBulkActions/);
 assert.match(component, /ConfirmDialog/);
 assert.match(component, /previewFleetImport/);

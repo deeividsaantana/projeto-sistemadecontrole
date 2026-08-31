@@ -1,6 +1,10 @@
 import ExcelJS from 'exceljs';
 import type { FleetCurrentState, FleetReportViewModel } from './domain';
 import { summarizeFleetCategories } from './categorySummary';
+import { OPERATIONAL_FLEET_REFERENCE } from './operationalFleetReference';
+import { normalizePrefix } from '../utils/canonicalIdentity';
+import reneaLogoUrl from '../assets/images/renea_logo_new.png';
+import spmarLogoUrl from '../assets/images/spmar_logo.png';
 
 const FONT_NAME = 'Aptos Narrow';
 const FONT_SIZE = 11;
@@ -29,6 +33,34 @@ export interface FleetExcelResult {
   sheets: string[];
   rows: number;
 }
+
+const loadImageBase64 = async (url: string): Promise<string | undefined> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return undefined;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    let binary = '';
+    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+    return `data:image/png;base64,${btoa(binary)}`;
+  } catch {
+    return undefined;
+  }
+};
+
+const addHeaderLogos = (
+  workbook: ExcelJS.Workbook,
+  sheet: ExcelJS.Worksheet,
+  logos: { renea?: string; spmar?: string },
+): void => {
+  if (logos.renea) {
+    const imageId = workbook.addImage({ base64: logos.renea, extension: 'png' });
+    sheet.addImage(imageId, { tl: { col: 0.08, row: 0.2 }, br: { col: 1.35, row: 1.75 }, editAs: 'oneCell' } as any);
+  }
+  if (logos.spmar) {
+    const imageId = workbook.addImage({ base64: logos.spmar, extension: 'png' });
+    sheet.addImage(imageId, { tl: { col: 7.55, row: 0.2 }, br: { col: 8.95, row: 1.72 }, editAs: 'oneCell' } as any);
+  }
+};
 
 const applyBaseSheet = (sheet: ExcelJS.Worksheet): void => {
   sheet.views = [{ state: 'frozen', ySplit: 1, showGridLines: false }];
@@ -154,11 +186,11 @@ const addTable = (
   });
 };
 
-const createSummarySheet = (
+const createDetailedSummarySheet = (
   workbook: ExcelJS.Workbook,
   viewModel: FleetReportViewModel,
 ): void => {
-  const sheet = workbook.addWorksheet('RESUMO');
+  const sheet = workbook.addWorksheet('ANÁLISE');
   sheet.views = [{ showGridLines: false }];
   sheet.columns = [
     { width: 18 },
@@ -254,6 +286,134 @@ const createSummarySheet = (
     fitToHeight: 1,
     margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
   };
+};
+
+const createSummarySheet = (
+  workbook: ExcelJS.Workbook,
+  viewModel: FleetReportViewModel,
+  logos: { renea?: string; spmar?: string } = {},
+): void => {
+  const sheet = workbook.addWorksheet('RESUMO', { views: [{ showGridLines: false }] });
+  sheet.columns = [
+    { width: 14 }, { width: 18 }, { width: 19 }, { width: 18 }, { width: 15 },
+    { width: 15 }, { width: 15 }, { width: 29 }, { width: 42 },
+  ];
+  const statesByPrefix = new Map(viewModel.allRows.map(state => [normalizePrefix(state.equipment.prefix), state]));
+  const stateFor = (prefix: string) => statesByPrefix.get(normalizePrefix(prefix));
+  const basculantes = OPERATIONAL_FLEET_REFERENCE.filter(item => item.group === 'Basculantes');
+  const support = OPERATIONAL_FLEET_REFERENCE.filter(item => item.group === 'Apoio');
+  const countStatus = (items: ReadonlyArray<typeof OPERATIONAL_FLEET_REFERENCE[number]>, status: string) =>
+    items.filter(item => stateFor(item.prefix)?.operationalStatus === status).length;
+  const operating = countStatus(OPERATIONAL_FLEET_REFERENCE, 'Em operação');
+  const maintenance = OPERATIONAL_FLEET_REFERENCE.filter(item => {
+    const status = stateFor(item.prefix)?.operationalStatus;
+    return status === 'Em manutenção' || status === 'Aguardando manutenção';
+  }).length;
+  const missing = OPERATIONAL_FLEET_REFERENCE.filter(item => !stateFor(item.prefix)).length;
+  const available = OPERATIONAL_FLEET_REFERENCE.filter(item => {
+    const status = stateFor(item.prefix)?.operationalStatus;
+    return status === 'À disposição' || status === 'Aguardando motorista';
+  }).length;
+  const statusLabel = (item: typeof OPERATIONAL_FLEET_REFERENCE[number]) => {
+    const state = stateFor(item.prefix);
+    return state?.operationalStatus || 'A confirmar';
+  };
+  const relationRows = OPERATIONAL_FLEET_REFERENCE.map(item => {
+    const state = stateFor(item.prefix);
+    return [
+      viewModel.reportDateLabel,
+      item.group,
+      item.prefix,
+      item.equipmentType,
+      statusLabel(item),
+      state?.departureTime || '',
+      state?.driver?.employeeCode || '',
+      state?.driver?.employeeName || '',
+      state?.note || state?.maintenanceReason || '',
+    ] as Array<string | number | Date | null>;
+  });
+
+  sheet.mergeCells('A1:I1');
+  sheet.getCell('A1').value = 'RELATÓRIO DIÁRIO DE SITUAÇÃO OPERACIONAL';
+  sheet.getCell('A1').font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF111111' } };
+  sheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+  sheet.getRow(1).height = 29;
+  sheet.mergeCells('A2:I2');
+  sheet.getCell('A2').value = `SITUAÇÃO OPERACIONAL DAS FROTAS — ${viewModel.reportDateLabel}`;
+  sheet.getCell('A2').font = { name: 'Arial', size: 11, bold: true, color: { argb: `FF${GREEN}` } };
+  sheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
+  sheet.getRow(2).height = 21;
+  addHeaderLogos(workbook, sheet, logos);
+  const topMetrics = [
+    ['TOTAL BASCULANTES', basculantes.length, 'FFFFFFFF'],
+    ['BASCULANTES EM OPERAÇÃO', countStatus(basculantes, 'Em operação'), SOFT_GREEN],
+    ['BASCULANTES EM MANUTENÇÃO', basculantes.filter(item => ['Em manutenção', 'Aguardando manutenção'].includes(statusLabel(item))).length, SOFT_RED],
+    ['SITUAÇÃO A CONFIRMAR', missing, SOFT_YELLOW],
+    ['APOIO INFORMADO', support.filter(item => Boolean(stateFor(item.prefix))).length, SOFT_BLUE],
+  ] as const;
+  topMetrics.forEach(([label, value, fill], index) => {
+    const column = index + 1;
+    const labelCell = sheet.getCell(4, column);
+    const valueCell = sheet.getCell(5, column);
+    labelCell.value = label;
+    valueCell.value = value;
+    [labelCell, valueCell].forEach(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill.startsWith('FF') ? fill : `FF${fill}` } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = { top: { style: 'thin', color: { argb: `FF${BORDER}` } }, bottom: { style: 'thin', color: { argb: `FF${BORDER}` } }, left: { style: 'thin', color: { argb: `FF${BORDER}` } }, right: { style: 'thin', color: { argb: `FF${BORDER}` } } };
+    });
+    labelCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF333333' } };
+    valueCell.font = { name: 'Arial', size: 18, bold: true, color: { argb: `FF${GREEN}` } };
+  });
+  sheet.getRow(4).height = 27;
+  sheet.getRow(5).height = 30;
+  // Compatibilidade com integrações antigas que leem os indicadores na linha 6.
+  // A linha fica oculta para manter o layout aprovado sem duplicar visualmente os cards.
+  sheet.getRow(6).values = ['', viewModel.metrics.total, viewModel.metrics.operating, viewModel.metrics.maintenance + viewModel.metrics.waitingMaintenance, viewModel.metrics.available, viewModel.metrics.pending, viewModel.metrics.stoppedDurationLabel];
+  sheet.getRow(6).hidden = true;
+  sheet.getRow(6).height = 0;
+
+  sheet.mergeCells('A7:E7');
+  sheet.getCell('A7').value = 'RESUMO DINÂMICO POR GRUPO E SITUAÇÃO';
+  sheet.mergeCells('F7:I7');
+  sheet.getCell('F7').value = `EQUIPAMENTOS A DISPOSIÇÃO / A CONFIRMAR — ${available + missing}`;
+  [sheet.getCell('A7'), sheet.getCell('F7')].forEach(cell => {
+    cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: `FF${GREEN}` } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = { bottom: { style: 'thin', color: { argb: `FF${GREEN}` } } };
+  });
+  sheet.getRow(7).height = 22;
+  ['GRUPO', 'Em operação', 'Em manutenção', 'À disposição / Falta de Motorista', 'Situação a confirmar'].forEach((label, index) => { sheet.getCell(8, index + 1).value = label; });
+  sheet.mergeCells('F8:I8');
+  sheet.getCell('F8').value = OPERATIONAL_FLEET_REFERENCE.filter(item => {
+    const state = stateFor(item.prefix);
+    return !state || state.operationalStatus === 'À disposição' || state.operationalStatus === 'Aguardando motorista';
+  }).map(item => item.prefix).join(', ') || 'Nenhum equipamento';
+  const summaryRows = [
+    ['Apoio', countStatus(support, 'Em operação'), support.filter(item => ['Em manutenção', 'Aguardando manutenção'].includes(statusLabel(item))).length, support.filter(item => ['À disposição', 'Aguardando motorista'].includes(statusLabel(item))).length, support.filter(item => !stateFor(item.prefix)).length],
+    ['Basculantes', countStatus(basculantes, 'Em operação'), basculantes.filter(item => ['Em manutenção', 'Aguardando manutenção'].includes(statusLabel(item))).length, basculantes.filter(item => ['À disposição', 'Aguardando motorista'].includes(statusLabel(item))).length, basculantes.filter(item => !stateFor(item.prefix)).length],
+    ['Total', operating, maintenance, available, missing],
+  ];
+  summaryRows.forEach((row, index) => { sheet.getRow(9 + index).values = row; });
+  styleHeaderRow(sheet.getRow(8));
+  styleBodyRows(sheet, 8, 11);
+  sheet.getCell('F8').alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  sheet.getCell('F8').font = { name: 'Arial', size: 11, bold: true, color: { argb: `FF${DARK}` } };
+  for (let row = 8; row <= 11; row += 1) for (let col = 6; col <= 9; col += 1) sheet.getCell(row, col).border = { top: { style: 'thin', color: { argb: `FF${BORDER}` } }, bottom: { style: 'thin', color: { argb: `FF${BORDER}` } }, left: { style: 'thin', color: { argb: `FF${BORDER}` } }, right: { style: 'thin', color: { argb: `FF${BORDER}` } } };
+
+  sheet.mergeCells('A13:I13');
+  sheet.getCell('A13').value = 'RELAÇÃO COMPLETA POR PREFIXO';
+  sheet.getCell('A13').font = { name: 'Arial', size: 11, bold: true, color: { argb: `FF${GREEN}` } };
+  sheet.getCell('A13').alignment = { horizontal: 'center', vertical: 'middle' };
+  addTable(sheet, 'RelacaoCompletaFrotas', 'A14', ['Data', 'Grupo', 'Prefixo', 'Tipo', 'Situação', 'Hora(s)', 'Matrícula', 'Motorista(s)', 'Observação'], relationRows);
+  styleHeaderRow(sheet.getRow(14));
+  styleBodyRows(sheet, 14, 14 + relationRows.length, 5);
+  for (let row = 15; row <= 14 + relationRows.length; row += 1) {
+    sheet.getCell(row, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getCell(row, 3).font = { name: 'Arial', size: 10, bold: true, color: { argb: `FF${DARK}` } };
+    sheet.getCell(row, 9).alignment = { vertical: 'top', wrapText: true };
+  }
+  sheet.pageSetup = { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.2, right: 0.2, top: 0.3, bottom: 0.3, header: 0.1, footer: 0.1 }, printArea: `A1:I${14 + relationRows.length}`, printTitlesRow: '1:14' };
 };
 
 const operationRow = (state: FleetCurrentState): Array<string | number | Date | null> => [
@@ -377,6 +537,7 @@ const createHistorySheet = (
 
 export const buildFleetWorkbook = (
   viewModel: FleetReportViewModel,
+  logos: { renea?: string; spmar?: string } = {},
 ): ExcelJS.Workbook => {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'RENEA Infraestrutura';
@@ -385,7 +546,7 @@ export const buildFleetWorkbook = (
   workbook.modified = new Date();
   workbook.properties.date1904 = false;
   workbook.calcProperties.fullCalcOnLoad = true;
-  createSummarySheet(workbook, viewModel);
+  createSummarySheet(workbook, viewModel, logos);
   createDataSheet(workbook, {
     name: 'OPERAÇÃO',
     tableName: 'OperacaoCBs',
@@ -471,7 +632,8 @@ export const buildFleetWorkbook = (
 export const exportFleetExcel = async (
   viewModel: FleetReportViewModel,
 ): Promise<FleetExcelResult> => {
-  const workbook = buildFleetWorkbook(viewModel);
+  const [renea, spmar] = await Promise.all([loadImageBase64(reneaLogoUrl), loadImageBase64(spmarLogoUrl)]);
+  const workbook = buildFleetWorkbook(viewModel, { renea, spmar });
   const buffer = await workbook.xlsx.writeBuffer();
   const fileName = `RELATORIO_FROTAS_ALTO_TIETE_${viewModel.reportDate}.xlsx`;
   const blob = new Blob([buffer], {

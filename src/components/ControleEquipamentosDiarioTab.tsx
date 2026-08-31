@@ -48,6 +48,7 @@ import FleetDetailDrawer from './fleet/FleetDetailDrawer';
 import DailyRecordForm from './fleet/DailyRecordForm';
 import FleetReportLayout from './fleet/FleetReportLayout';
 import ConfirmDialog from './fleet/ConfirmDialog';
+import FleetDailyReference from './fleet/FleetDailyReference';
 
 interface Props {
   registros: ControleEquipamentoDiario[];
@@ -59,7 +60,7 @@ interface Props {
   onSave: (registro: ControleEquipamentoDiario, isNew: boolean) => void | Promise<void>;
   onImport: (registros: ControleEquipamentoDiario[]) => void;
   onDeleteMany: (ids: string[]) => void;
-  onOpenMaintenance: () => void;
+  onOpenMaintenance?: () => void;
   onOpenEmployeeRegistration: () => void;
 }
 
@@ -411,6 +412,7 @@ export default function ControleEquipamentosDiarioTab({
       {message && <div role={messageTone==='error'?'alert':'status'} className={`rounded-md border px-3 py-2 text-xs font-bold ${messageTone==='success'?'border-emerald-200 bg-emerald-50 text-emerald-800':messageTone==='error'?'border-rose-200 bg-rose-50 text-rose-800':'border-sky-200 bg-sky-50 text-sky-800'}`}>{message}</div>}
       {activeView === 'today' && <>
       <FleetKpiStrip metrics={viewModel.metrics}/>
+      <FleetDailyReference records={registros} date={filters.date}/>
       {viewModel.integrityWarnings.length>0 && <details className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"><summary className="cursor-pointer text-xs font-black text-amber-900">Conferência pendente: {viewModel.integrityWarnings.length} aviso(s) nos dados filtrados</summary><ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-amber-900">{viewModel.integrityWarnings.map(warning=><li key={warning}>{warning}</li>)}</ul></details>}
       <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
       <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state=>setConfirmation({kind:'delete',ids:[state.recordId]})}/>

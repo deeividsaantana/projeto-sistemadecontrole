@@ -56,3 +56,4 @@ import './fleetImportService.test';
 import './fleetExcelExport.test';
 import './operationalDrivers.test';
 import './weeklyFleetReport.test';
+import './operationalFleetReference.test';
