@@ -3,8 +3,11 @@ import type { FleetCurrentState, FleetReportViewModel } from './domain';
 import { summarizeFleetCategories } from './categorySummary';
 import { OPERATIONAL_FLEET_REFERENCE } from './operationalFleetReference';
 import { normalizePrefix } from '../utils/canonicalIdentity';
-import reneaLogoUrl from '../assets/images/renea_logo_new.png';
-import spmarLogoUrl from '../assets/images/spmar_logo.png';
+// Keep these as runtime URLs rather than static asset imports. The Excel exporter
+// is also exercised directly by the Node test runner, where importing a PNG as
+// an ESM module is unsupported. Vite still resolves these URLs in the browser.
+const reneaLogoUrl = new URL('../assets/images/renea_logo_new.png', import.meta.url).href;
+const spmarLogoUrl = new URL('../assets/images/spmar_logo.png', import.meta.url).href;
 
 const FONT_NAME = 'Aptos Narrow';
 const FONT_SIZE = 11;
