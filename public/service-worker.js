@@ -1,13 +1,13 @@
-const CACHE_NAME = 'renea-erp-shell-v343';
+const CACHE_NAME = 'renea-erp-shell-v344-fleet-form';
 const SHELL = ['/manifest.webmanifest', '/favicon.png'];
-const STATIC_PATHS = ['/assets/'];
-const STATIC_DESTINATIONS = new Set(['script', 'style', 'image', 'font', 'manifest']);
+// JavaScript e CSS usam nomes versionados pelo build e devem seguir direto para a rede.
+// O Service Worker guarda somente recursos visuais estáveis.
+const STATIC_DESTINATIONS = new Set(['image', 'font', 'manifest']);
 
 const isStaticRequest = request => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return false;
   if (url.pathname.startsWith('/.netlify/functions/')) return false;
-  if (STATIC_PATHS.some(path => url.pathname.startsWith(path))) return true;
   return STATIC_DESTINATIONS.has(request.destination);
 };
 

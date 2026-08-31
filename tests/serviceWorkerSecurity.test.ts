@@ -16,3 +16,9 @@ test('service worker exclui Functions e respostas no-store do cache runtime', ()
   assert.match(serviceWorker, /url\.pathname\.startsWith\('\/\.netlify\/functions\/'\)/);
   assert.match(serviceWorker, /response\.headers\.get\('Cache-Control'\) !== 'no-store'/);
 });
+
+test('service worker nao prende scripts e estilos de versões anteriores', () => {
+  assert.match(serviceWorker, /renea-erp-shell-v344-fleet-form/);
+  assert.doesNotMatch(serviceWorker, /STATIC_PATHS/);
+  assert.doesNotMatch(serviceWorker, /\['script', 'style'/);
+});
