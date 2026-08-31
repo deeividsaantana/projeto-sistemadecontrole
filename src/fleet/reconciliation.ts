@@ -50,6 +50,38 @@ export const isOperationalFleet = (equipment: Equipamento): boolean => {
     || /^(cb|cp|cv|ca|cc)\d+$/i.test(normalizePrefix(equipment.prefixo));
 };
 
+export interface OperationalFleetClassification {
+  group: string;
+  equipmentType: string;
+}
+
+/** Mantém Grupo e Tipo como conceitos distintos, inclusive em cadastros legados. */
+export const classifyOperationalFleet = (equipment: Pick<Equipamento, 'prefixo' | 'familia' | 'tipo' | 'nome'>): OperationalFleetClassification => {
+  const prefix = normalizePrefix(equipment.prefixo);
+  const description = normalizeComparable(
+    `${equipment.familia ?? ''} ${equipment.tipo ?? ''} ${equipment.nome ?? ''}`,
+  );
+  if (prefix.startsWith('CP') || description.includes('pipa')) {
+    return { group: 'Apoio', equipmentType: 'Caminhão Pipa' };
+  }
+  if (prefix.startsWith('CA') || description.includes('comboio')) {
+    return { group: 'Apoio', equipmentType: 'Caminhão Comboio' };
+  }
+  if (prefix.startsWith('CV') || description.includes('cavalo mecanico')) {
+    return { group: 'Apoio', equipmentType: 'Cavalo Mecânico' };
+  }
+  if (prefix.startsWith('CC') || description.includes('carroceria')) {
+    return { group: 'Apoio', equipmentType: 'Caminhão Carroceria' };
+  }
+  if (prefix.startsWith('CB') || description.includes('basculante')) {
+    return { group: 'Basculantes', equipmentType: 'Caminhão Basculante' };
+  }
+  return {
+    group: equipment.familia?.trim() || 'Apoio',
+    equipmentType: equipment.tipo?.trim() || equipment.nome?.trim() || 'Equipamento operacional',
+  };
+};
+
 export const reconcileCompany = (
   companyId: string | undefined,
   companyName: string | undefined,
@@ -241,6 +273,7 @@ const buildFleetIdentity = (
 ): FleetIdentity => {
   const company = reconcileCompany(equipment.empresaId, undefined, companies).value;
   const plate = equipment.placa || equipment.seriePlaca || '';
+  const classification = classifyOperationalFleet(equipment);
   return {
     equipmentId: equipment.id,
     prefix: equipment.prefixo,
@@ -248,8 +281,8 @@ const buildFleetIdentity = (
     plate,
     normalizedPlate: normalizePlate(plate),
     equipmentName: equipment.nome,
-    equipmentType: equipment.tipo,
-    family: equipment.familia || equipment.tipo,
+    equipmentType: classification.equipmentType,
+    family: classification.group,
     registrationStatus: equipment.status,
     companyId: company?.id || equipment.empresaId || '',
     companyName: company?.nome || 'Empresa não localizada',

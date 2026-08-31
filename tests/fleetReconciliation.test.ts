@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Empresa, Equipamento, Funcionario, GrupoEquipe } from '../src/types';
 import {
+  classifyOperationalFleet,
   lookupDriverByCode,
   lookupEquipmentByPrefix,
   reconcileCompany,
@@ -94,3 +95,12 @@ assert.equal(truck?.equipmentId, 'equipment-cb770');
 assert.equal(truck?.normalizedPrefix, 'CB770');
 assert.equal(truck?.normalizedPlate, 'ABC1D23');
 assert.equal(truck?.companyName, 'RENEA INFRAESTRUTURA S.A.');
+
+assert.deepEqual(
+  classifyOperationalFleet({ prefixo: 'CB770', familia: 'Basculante', tipo: 'Basculante', nome: 'Basculante' }),
+  { group: 'Basculantes', equipmentType: 'Caminhão Basculante' },
+);
+assert.deepEqual(
+  classifyOperationalFleet({ prefixo: 'CP075', familia: 'Basculante', tipo: 'Caminhão', nome: 'Caminhão' }),
+  { group: 'Apoio', equipmentType: 'Caminhão Pipa' },
+);

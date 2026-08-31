@@ -677,6 +677,7 @@ export interface ControleEquipamentoDiario {
   equipamentoId: string;
   prefixo: string;
   familia: string;
+  tipoEquipamento?: string;
   status: StatusControleEquipamentoDiario;
   horaSaida: string;
   horaEntradaManutencao: string;

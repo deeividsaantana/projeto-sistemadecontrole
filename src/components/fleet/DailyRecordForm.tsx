@@ -15,7 +15,7 @@ import {
   type FleetPersistedRecord,
 } from '../../fleet/domain';
 import { FLEET_STATUS_DEFINITIONS, normalizeOperationalStatus, toLegacyDailyStatus } from '../../fleet/status';
-import { findEmployeeTeam, isDumpTruck, lookupDriverByCode, lookupEquipmentByPrefix } from '../../fleet/reconciliation';
+import { classifyOperationalFleet, findEmployeeTeam, isOperationalFleet, lookupDriverByCode, lookupEquipmentByPrefix } from '../../fleet/reconciliation';
 import { getOperationalToday } from '../../fleet/time';
 import { normalizeEmployeeCode, normalizePrefix } from '../../utils/canonicalIdentity';
 
@@ -31,7 +31,7 @@ interface Props {
   onClose: () => void;
   onOpenEmployeeRegistration: () => void;
   onOpenDriverRegistry?: () => void;
-  onOpenMaintenance: () => void;
+  onOpenMaintenance?: () => void;
 }
 
 interface FormState {
@@ -92,7 +92,7 @@ const initialForm = (
     maintenanceEntryTime: record?.horaEntradaManutencao || '',
     releaseTime: record?.horaLiberacao || '',
     availableSince: record?.disponivelDesde || '',
-    location: record?.local || '',
+    location: record?.local || 'Pátio Aracaré',
     maintenanceOrderId: record?.ordemServicoId || '',
     maintenanceReason: record?.motivoManutencao || '',
     note: record?.observacao || '',
@@ -135,8 +135,8 @@ export default function DailyRecordForm({
   const [equipmentLookupError, setEquipmentLookupError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [saving, setSaving] = useState(false);
-  const dumpTrucks = useMemo(
-    () => equipment.filter(item => isDumpTruck(item) && item.status !== 'Desmobilizado'),
+  const operationalFleet = useMemo(
+    () => equipment.filter(item => isOperationalFleet(item) && item.status !== 'Desmobilizado'),
     [equipment],
   );
   const activeEmployees = useMemo(
@@ -207,7 +207,7 @@ export default function DailyRecordForm({
     }));
   };
   const applyEquipment = (equipmentId: string) => {
-    const selected = dumpTrucks.find(item => item.id === equipmentId);
+    const selected = operationalFleet.find(item => item.id === equipmentId);
     if (!selected) {
       setForm(current => ({
         ...current,
@@ -236,9 +236,9 @@ export default function DailyRecordForm({
   };
   const lookupPrefix = () => {
     if (!form.prefix.trim()) return;
-    const selected = lookupEquipmentByPrefix(form.prefix, dumpTrucks, companies);
+    const selected = lookupEquipmentByPrefix(form.prefix, operationalFleet, companies);
     if (!selected) {
-      setEquipmentLookupError('Caminhão basculante não localizado pelo prefixo.');
+      setEquipmentLookupError('Frota operacional não localizada pelo prefixo.');
       return;
     }
     setEquipmentLookupError('');
@@ -292,6 +292,9 @@ export default function DailyRecordForm({
         ordemServicoId: form.maintenanceOrderId,
       };
       const selectedEquipment = equipment.find(item => item.id === form.equipmentId);
+      const classification = selectedEquipment
+        ? classifyOperationalFleet(selectedEquipment)
+        : { group: 'Apoio', equipmentType: 'Equipamento operacional' };
       const selectedEmployee = employees.find(item => item.id === form.employeeId);
       const team = findEmployeeTeam(selectedEmployee, teams);
       const saved: FleetPersistedRecord = {
@@ -303,7 +306,8 @@ export default function DailyRecordForm({
         nomeMotorista: form.employeeName,
         equipamentoId: form.equipmentId,
         prefixo: form.prefix,
-        familia: selectedEquipment?.familia || selectedEquipment?.tipo || 'Frota operacional',
+        familia: classification.group,
+        tipoEquipamento: classification.equipmentType,
         status: nextLegacyStatus,
         horaSaida: form.departureTime,
         horaEntradaManutencao: form.maintenanceEntryTime,
@@ -336,7 +340,7 @@ export default function DailyRecordForm({
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div>
             <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">Controle operacional</p>
-            <h2 id="daily-record-title" className="text-lg font-black text-slate-950">{record ? `Editar ${record.prefixo}` : 'Novo lançamento de basculante'}</h2>
+            <h2 id="daily-record-title" className="text-lg font-black text-slate-950">{record ? `Editar ${record.prefixo}` : 'Novo lançamento de frota'}</h2>
           </div>
           <button type="button" onClick={onClose} className="flex size-10 items-center justify-center rounded-md border border-slate-200 text-slate-600" aria-label="Fechar formulário"><X size={18} /></button>
         </header>
@@ -345,15 +349,16 @@ export default function DailyRecordForm({
             <legend className="px-2 text-[10px] font-black uppercase tracking-wider text-slate-600">Identificação operacional</legend>
             <label className="text-xs font-bold text-slate-700">Data<input required type="date" value={form.date} onChange={event => update('date', event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">Matrícula / código<div className="mt-1 flex"><input value={form.employeeCode} onChange={event => update('employeeCode', event.target.value)} onBlur={lookupEmployeeCode} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupEmployeeCode(); } }} placeholder="103177" className="h-10 min-w-0 flex-1 rounded-l-md border border-slate-300 px-3"/><button type="button" onClick={lookupEmployeeCode} className="rounded-r-md border border-l-0 border-slate-300 bg-slate-50 px-3 text-xs font-black">Buscar</button></div></label>
-            <label className="text-xs font-bold text-slate-700">Motorista<select value={form.employeeId} onChange={event => applyEmployee(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-2"><option value="">Selecione / não cadastrado</option>{activeEmployees.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(employee=><option key={employee.id} value={employee.id}>{employee.matricula ? `${employee.matricula} · ` : ''}{employee.nome}</option>)}</select></label>
+            <label className="text-xs font-bold text-slate-700">Motorista<select value={form.employeeId} onChange={event => applyEmployee(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-2"><option value="">Selecione / informe manualmente</option>{activeEmployees.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(employee=><option key={employee.id} value={employee.id}>{employee.matricula ? `${employee.matricula} · ` : ''}{employee.nome}</option>)}</select></label>
             <label className="text-xs font-bold text-slate-700">Nome apresentado<input value={form.employeeName} disabled={Boolean(form.employeeId)} onChange={event => update('employeeName', event.target.value)} placeholder="Nome do motorista" className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 disabled:bg-slate-100"/></label>
+            {!form.employeeId && !form.temporaryDriver && <button type="button" onClick={()=>{update('temporaryDriver',true);setEmployeeLookupError('')}} className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 text-xs font-black text-emerald-800"><UserPlus size={14}/>Adicionar motorista manual</button>}
+            {form.temporaryDriver && <p className="self-end rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800">Preencha matrícula e nome. O motorista ficará registrado neste lançamento.</p>}
             {employeeLookupError && <div className="rounded-md border border-amber-200 bg-amber-50 p-3 sm:col-span-2 lg:col-span-4"><div className="flex gap-2 text-xs text-amber-900"><AlertCircle size={16} className="shrink-0"/><span>{employeeLookupError}</span></div><div className="mt-2 flex flex-wrap gap-2">{onOpenDriverRegistry&&<button type="button" onClick={onOpenDriverRegistry} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 text-xs font-black text-amber-800"><UserPlus size={14}/>Abrir mini lista</button>}<button type="button" onClick={()=>{update('temporaryDriver',true);setEmployeeLookupError('')}} className="min-h-9 rounded-md bg-amber-700 px-3 text-xs font-black text-white">Registrar temporariamente</button><button type="button" onClick={()=>{setEmployeeLookupError('');update('employeeCode','');update('employeeName','')}} className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-xs font-black">Cancelar</button></div></div>}
             <label className="text-xs font-bold text-slate-700">Empresa do motorista<input value={form.employeeCompany} readOnly placeholder="Preenchida pelo cadastro" className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-slate-100 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">Equipe<input value={form.teamName} readOnly placeholder="Preenchida pelo vínculo" className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-slate-100 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">Prefixo<div className="mt-1 flex"><input value={form.prefix} onChange={event => update('prefix', event.target.value.toUpperCase())} onBlur={lookupPrefix} placeholder="CB770" className="h-10 min-w-0 flex-1 rounded-l-md border border-slate-300 px-3 font-black"/><button type="button" onClick={lookupPrefix} className="rounded-r-md border border-l-0 border-slate-300 bg-slate-50 px-3 text-xs font-black">Buscar</button></div></label>
-            <label className="text-xs font-bold text-slate-700">Caminhão basculante<select value={form.equipmentId} onChange={event => applyEquipment(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-2"><option value="">Selecione</option>{dumpTrucks.sort((a,b)=>a.prefixo.localeCompare(b.prefixo,'pt-BR',{numeric:true})).map(item=><option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select></label>
+            <label className="text-xs font-bold text-slate-700">Frota / equipamento<select value={form.equipmentId} onChange={event => applyEquipment(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-2"><option value="">Selecione</option>{operationalFleet.sort((a,b)=>a.prefixo.localeCompare(b.prefixo,'pt-BR',{numeric:true})).map(item=>{const classification=classifyOperationalFleet(item);return <option key={item.id} value={item.id}>{item.prefixo} · {classification.equipmentType}</option>})}</select></label>
             {equipmentLookupError && <p className="rounded-md border border-rose-200 bg-rose-50 p-2 text-xs font-bold text-rose-700 sm:col-span-2 lg:col-span-4">{equipmentLookupError}</p>}
-            <label className="text-xs font-bold text-slate-700">Placa<input value={form.plate} readOnly className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-slate-100 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">Empresa do equipamento<input value={form.equipmentCompany} readOnly className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-slate-100 px-3"/></label>
           </fieldset>
           <fieldset className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -363,9 +368,9 @@ export default function DailyRecordForm({
             <label className="text-xs font-bold text-slate-700">Entrada manutenção<input type="time" value={form.maintenanceEntryTime} onChange={event => update('maintenanceEntryTime', event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">Liberação<input type="time" value={form.releaseTime} onChange={event => update('releaseTime', event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">À disposição desde<input type="time" value={form.availableSince} onChange={event => update('availableSince', event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label>
-            <label className="text-xs font-bold text-slate-700">Local<input value={form.location} onChange={event => update('location', event.target.value)} placeholder="Aracaré, KM, frente..." className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label>
+            <label className="text-xs font-bold text-slate-700">Local de saída<input value={form.location} onChange={event => update('location', event.target.value)} placeholder="Pátio Aracaré" className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">OS vinculada<select value={form.maintenanceOrderId} onChange={event=>update('maintenanceOrderId',event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-2"><option value="">Sem OS</option>{relevantOrders.map(order=><option key={order.id} value={order.id}>{order.numero} · {order.status}</option>)}</select></label>
-            <button type="button" onClick={onOpenMaintenance} className="mt-auto h-10 rounded-md border border-emerald-300 bg-white px-3 text-xs font-black text-emerald-700">Abrir área de manutenção</button>
+            {onOpenMaintenance && <button type="button" onClick={onOpenMaintenance} className="mt-auto h-10 rounded-md border border-emerald-300 bg-white px-3 text-xs font-black text-emerald-700">Abrir área de manutenção</button>}
             <label className="text-xs font-bold text-slate-700 sm:col-span-2">Ocorrência / motivo<textarea value={form.maintenanceReason} onChange={event => update('maintenanceReason', event.target.value)} rows={3} className="mt-1 w-full rounded-md border border-slate-300 p-3" placeholder="Quebra, preventiva, pneu, elétrica..."/></label>
             <label className="text-xs font-bold text-slate-700 sm:col-span-2">Observação operacional<textarea value={form.note} onChange={event => update('note', event.target.value)} rows={3} className="mt-1 w-full rounded-md border border-slate-300 p-3" placeholder="Liberado às 08:54; voltou à operação..."/></label>
           </fieldset>

@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { classifyOperationalFleet } from './reconciliation';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ControleEquipamentoDiario } from '../types';
@@ -20,6 +21,8 @@ export interface WeeklyFleetReport {
   endDate: string;
   days: WeeklyFleetDay[];
   records: ControleEquipamentoDiario[];
+  totals: Omit<WeeklyFleetDay, 'date' | 'availabilityRate'>;
+  averages: Omit<WeeklyFleetDay, 'date' | 'availabilityRate'> & { availabilityRate: number };
 }
 
 export interface WeeklyExportResult {
@@ -75,7 +78,22 @@ export const buildWeeklyFleetReport = (
       availabilityRate: daily.length ? ((operating + available) / daily.length) * 100 : 0,
     };
   });
-  return { startDate, endDate, days, records: weeklyRecords };
+  const totals = days.reduce((sum, day) => ({
+    total: sum.total + day.total,
+    operating: sum.operating + day.operating,
+    maintenance: sum.maintenance + day.maintenance,
+    available: sum.available + day.available,
+    pending: sum.pending + day.pending,
+  }), { total: 0, operating: 0, maintenance: 0, available: 0, pending: 0 });
+  const averages = {
+    total: totals.total / days.length,
+    operating: totals.operating / days.length,
+    maintenance: totals.maintenance / days.length,
+    available: totals.available / days.length,
+    pending: totals.pending / days.length,
+    availabilityRate: days.reduce((sum, day) => sum + day.availabilityRate, 0) / days.length,
+  };
+  return { startDate, endDate, days, records: weeklyRecords, totals, averages };
 };
 
 const downloadBlob = (blob: Blob, fileName: string): void => {
@@ -86,7 +104,7 @@ const downloadBlob = (blob: Blob, fileName: string): void => {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 const loadImageData = async (url: string): Promise<string | undefined> => {
@@ -145,26 +163,28 @@ export const exportWeeklyFleetPdf = async (
   });
 
   const summaryY = ((pdf as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 75) + 7;
-  const totals = report.days.reduce((sum, day) => ({
-    total: sum.total + day.total,
-    operating: sum.operating + day.operating,
-    maintenance: sum.maintenance + day.maintenance,
-    available: sum.available + day.available,
-    pending: sum.pending + day.pending,
-  }), { total: 0, operating: 0, maintenance: 0, available: 0, pending: 0 });
   pdf.setFontSize(9);
   pdf.setTextColor('#252A2F');
-  pdf.text(`Acumulado da semana: ${totals.total} lançamentos · ${totals.operating} em operação · ${totals.maintenance} em manutenção · ${totals.available} à disposição · ${totals.pending} a confirmar`, 9, summaryY);
+  pdf.text(`Acumulado: ${report.totals.total} lançamentos · ${report.totals.operating} em operação · ${report.totals.maintenance} em manutenção · ${report.totals.available} à disposição · ${report.totals.pending} a confirmar`, 9, summaryY);
+  pdf.text(`Média diária: ${report.averages.total.toFixed(1).replace('.', ',')} frotas · ${report.averages.operating.toFixed(1).replace('.', ',')} em operação · disponibilidade média ${report.averages.availabilityRate.toFixed(1).replace('.', ',')}%`, 9, summaryY + 4.5);
 
   autoTable(pdf, {
-    startY: summaryY + 5,
+    startY: summaryY + 10,
     margin: { left: 9, right: 9 },
     head: [['Data', 'Grupo', 'Tipo', 'Prefixo', 'Situação', 'Hora de saída', 'Matrícula', 'Motorista / operador', 'Observação']],
-    body: report.records.map(record => [
-      formatDate(record.data), record.familia || '—', 'Frota operacional', record.prefixo || '—',
+    body: report.records.map(record => {
+      const classification = classifyOperationalFleet({
+        prefixo: record.prefixo,
+        familia: record.familia,
+        tipo: record.tipoEquipamento || '',
+        nome: record.tipoEquipamento || '',
+      });
+      return [
+      formatDate(record.data), classification.group, classification.equipmentType, record.prefixo || '—',
       record.status || '—', record.horaSaida || '—', record.codigoFuncionario || '—',
       record.nomeMotorista || '—', record.observacao || '—',
-    ]),
+      ];
+    }),
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 6.5, cellPadding: 1.5, textColor: '#10223A' },
     headStyles: { fillColor: '#15824B', textColor: '#FFFFFF', fontStyle: 'bold' },
@@ -189,6 +209,20 @@ export const buildWeeklyFleetWorkbook = (report: WeeklyFleetReport): ExcelJS.Wor
   workbook.creator = 'Sistema RENEA';
   workbook.created = new Date();
   const summary = workbook.addWorksheet('RESUMO SEMANAL', { views: [{ showGridLines: false }] });
+  summary.mergeCells('A1:G1');
+  summary.getCell('A1').value = 'RELATÓRIO SEMANAL DE SITUAÇÃO OPERACIONAL DAS FROTAS';
+  summary.getCell('A1').font = { name: 'Aptos Narrow', size: 16, bold: true, color: { argb: 'FF10223A' } };
+  summary.getCell('A1').alignment = { horizontal: 'center' };
+  summary.mergeCells('A2:G2');
+  summary.getCell('A2').value = `Complexo do Alto Tietê · ${formatDate(report.startDate)} a ${formatDate(report.endDate)}`;
+  summary.getCell('A2').alignment = { horizontal: 'center' };
+  summary.addRow(['INDICADORES DA SEMANA', 'Acumulado', 'Média diária', '', '', '', '']);
+  summary.addRow(['Total de frotas', report.totals.total, report.averages.total, '', '', '', '']);
+  summary.addRow(['Em operação', report.totals.operating, report.averages.operating, '', '', '', '']);
+  summary.addRow(['Em manutenção', report.totals.maintenance, report.averages.maintenance, '', '', '', '']);
+  summary.addRow(['À disposição', report.totals.available, report.averages.available, '', '', '', '']);
+  summary.addRow(['A confirmar', report.totals.pending, report.averages.pending, '', '', '', '']);
+  summary.addRow(['Disponibilidade média', '', report.averages.availabilityRate / 100, '', '', '', '']);
   summary.columns = [
     { header: 'Data', key: 'date', width: 16 },
     { header: 'Total de frotas', key: 'total', width: 18 },
@@ -203,28 +237,35 @@ export const buildWeeklyFleetWorkbook = (report: WeeklyFleetReport): ExcelJS.Wor
     maintenance: day.maintenance, available: day.available, pending: day.pending,
     availability: day.total ? day.availabilityRate / 100 : null,
   })));
-  summary.getRow(1).font = { name: 'Aptos Narrow', bold: true, color: { argb: 'FFFFFFFF' } };
-  summary.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10223A' } };
+  summary.getRow(3).font = { name: 'Aptos Narrow', bold: true, color: { argb: 'FFFFFFFF' } };
+  summary.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10223A' } };
+  summary.getRow(10).font = { name: 'Aptos Narrow', bold: true, color: { argb: 'FF15824B' } };
+  summary.getRow(10).getCell(3).numFmt = '0.0%';
+  summary.getRow(11).font = { name: 'Aptos Narrow', bold: true, color: { argb: 'FFFFFFFF' } };
+  summary.getRow(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10223A' } };
   summary.getColumn('availability').numFmt = '0.0%';
-  summary.autoFilter = { from: 'A1', to: 'G8' };
-  summary.views = [{ state: 'frozen', ySplit: 1, showGridLines: false }];
+  summary.autoFilter = { from: 'A11', to: 'G18' };
+  summary.views = [{ state: 'frozen', ySplit: 11, showGridLines: false }];
   summary.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 };
 
   const details = workbook.addWorksheet('DETALHAMENTO', { views: [{ state: 'frozen', ySplit: 1, showGridLines: false }] });
   details.columns = [
     { header: 'Data', key: 'date', width: 14 }, { header: 'Grupo', key: 'group', width: 18 },
-    { header: 'Prefixo', key: 'prefix', width: 14 }, { header: 'Situação', key: 'status', width: 22 },
+    { header: 'Tipo', key: 'equipmentType', width: 24 }, { header: 'Prefixo', key: 'prefix', width: 14 }, { header: 'Situação', key: 'status', width: 22 },
     { header: 'Hora de saída', key: 'departure', width: 16 }, { header: 'Matrícula', key: 'employeeCode', width: 15 },
     { header: 'Motorista / operador', key: 'driver', width: 36 }, { header: 'Observação', key: 'note', width: 50 },
   ];
-  details.addRows(report.records.map(record => ({
-    date: formatDate(record.data), group: record.familia || '—', prefix: record.prefixo || '—',
+  details.addRows(report.records.map(record => {
+    const classification = classifyOperationalFleet({ prefixo: record.prefixo, familia: record.familia, tipo: record.tipoEquipamento || '', nome: record.tipoEquipamento || '' });
+    return ({
+    date: formatDate(record.data), group: classification.group, equipmentType: classification.equipmentType, prefix: record.prefixo || '—',
     status: record.status || '—', departure: record.horaSaida || '—', employeeCode: record.codigoFuncionario || '—',
     driver: record.nomeMotorista || '—', note: record.observacao || '—',
-  })));
+    });
+  }));
   details.getRow(1).font = { name: 'Aptos Narrow', bold: true, color: { argb: 'FFFFFFFF' } };
   details.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF15824B' } };
-  details.autoFilter = { from: 'A1', to: `H${Math.max(2, report.records.length + 1)}` };
+  details.autoFilter = { from: 'A1', to: `I${Math.max(2, report.records.length + 1)}` };
   details.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
   return workbook;
 };
