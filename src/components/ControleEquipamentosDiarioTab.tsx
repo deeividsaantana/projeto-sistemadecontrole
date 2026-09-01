@@ -1,4 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import {
   CalendarDays,
   Database,
@@ -128,6 +130,7 @@ export default function ControleEquipamentosDiarioTab({
   canApproveFleet = false,
   onApproveFleetRecord,
 }: Props) {
+  const pageRef = useRef<HTMLElement>(null);
   const operationalDrivers = useMemo(() => [...(operationalDriversProp || OPERATIONAL_DRIVERS)], [operationalDriversProp]);
   const context = useMemo(() => ({
     records: registros,
@@ -166,6 +169,13 @@ export default function ControleEquipamentosDiarioTab({
   const [driverSearch, setDriverSearch] = useState('');
   const [driverEditor, setDriverEditor] = useState<Partial<Funcionario> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  useGSAP(() => {
+    gsap.fromTo(
+      '[data-fleet-enter]',
+      { autoAlpha: 0, y: 14 },
+      { autoAlpha: 1, y: 0, duration: 0.48, stagger: 0.075, ease: 'power2.out', clearProps: 'transform,visibility,opacity' },
+    );
+  }, { scope: pageRef });
   const filteredOperationalDrivers = useMemo(() => {
     const query = driverSearch.trim().toLocaleUpperCase('pt-BR');
     if (!query) return operationalDrivers;
@@ -395,38 +405,40 @@ export default function ControleEquipamentosDiarioTab({
     }
   };
   return (
-    <main className="mx-auto max-w-[1760px] space-y-4 text-slate-800">
-      <header className="flex flex-col gap-4 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Complexo do Alto Tietê</p>
-          <h1 className="mt-1 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">Controle Operacional de Frotas</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">Situação diária, motoristas, saídas, pendências e relatórios em uma única visão operacional.</p>
+    <main ref={pageRef} className="mx-auto max-w-[1760px] space-y-5 text-slate-800">
+      <header data-fleet-enter className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white px-5 py-6 shadow-[0_14px_35px_rgba(15,23,42,0.05)] sm:px-7 lg:flex lg:items-center lg:justify-between">
+        <span className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full border-[26px] border-emerald-50"/>
+        <span className="pointer-events-none absolute -right-7 bottom-0 h-1 w-52 bg-emerald-600"/>
+        <div className="relative">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Complexo do Alto Tietê · operação diária</p>
+          <h1 className="mt-2 max-w-4xl text-[clamp(2rem,3.2vw,3.4rem)] font-black leading-[0.96] tracking-[-0.055em] text-slate-950">Controle Operacional de Frotas</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">Situação diária, motoristas, saídas, pendências e relatórios em uma única visão operacional.</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-          <button type="button" onClick={openNewRecord} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-black text-white hover:bg-emerald-700"><Plus size={15}/>Novo lançamento</button>
-          {onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-700 bg-white px-3 text-xs font-black text-emerald-800"><Plus size={15}/>Novo equipamento / tipo</button>}
-          <button type="button" onClick={handleRefresh} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
-          <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-50"><Printer size={15}/>{exporting==='pdf'?'Gerando...':'Relatório PDF'}</button>
-          <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-50"><FileSpreadsheet size={15}/>{exporting==='excel'?'Gerando...':'Exportar Excel'}</button>
+        <div className="relative mt-6 grid grid-cols-2 gap-2 lg:mt-0 lg:max-w-[520px]">
+          <button type="button" onClick={openNewRecord} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-black text-white shadow-[0_8px_18px_rgba(4,120,87,0.18)] transition hover:-translate-y-0.5 hover:bg-emerald-800"><Plus size={16}/>Novo lançamento</button>
+          {onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-xs font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-emerald-100"><Plus size={16}/>Novo equipamento / tipo</button>}
+          <button type="button" onClick={handleRefresh} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
+          <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"><Printer size={15}/>{exporting==='pdf'?'Gerando...':'Relatório PDF'}</button>
+          <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"><FileSpreadsheet size={15}/>{exporting==='excel'?'Gerando...':'Exportar Excel'}</button>
           <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-          <button type="button" onClick={() => inputRef.current?.click()} className="col-span-2 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 sm:col-span-1"><Upload size={15}/>Importar</button>
+          <button type="button" onClick={() => inputRef.current?.click()} className="col-span-2 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><Upload size={15}/>Importar planilha</button>
         </div>
       </header>
-      <nav className="flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Visões do controle de frotas">
+      <nav data-fleet-enter className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_8px_22px_rgba(15,23,42,0.035)]" aria-label="Visões do controle de frotas">
         {([
           ['today', 'Situação do dia', CalendarDays],
           ['history', 'Histórico semanal', History],
           ['registry', 'Cadastros vinculados', Database],
         ] as const).map(([id, label, Icon]) => (
-          <button key={String(id)} type="button" onClick={() => setActiveView(id as FleetView)} className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-black transition-colors ${activeView === id ? 'border-emerald-700 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+          <button key={String(id)} type="button" onClick={() => setActiveView(id as FleetView)} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-sm font-black transition-colors ${activeView === id ? 'bg-emerald-700 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
             <Icon size={16}/>{label}
           </button>
         ))}
       </nav>
       {message && <div role={messageTone==='error'?'alert':'status'} className={`rounded-md border px-3 py-2 text-xs font-bold ${messageTone==='success'?'border-emerald-200 bg-emerald-50 text-emerald-800':messageTone==='error'?'border-rose-200 bg-rose-50 text-rose-800':'border-sky-200 bg-sky-50 text-sky-800'}`}>{message}</div>}
       {activeView === 'today' && <>
-      <FleetKpiStrip metrics={viewModel.metrics}/>
-      <FleetDailyReference records={registros} date={filters.date}/>
+      <div data-fleet-enter><FleetKpiStrip metrics={viewModel.metrics}/></div>
+      <div data-fleet-enter><FleetDailyReference records={registros} date={filters.date}/></div>
       {viewModel.integrityWarnings.length>0 && <details className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"><summary className="cursor-pointer text-xs font-black text-amber-900">Conferência pendente: {viewModel.integrityWarnings.length} aviso(s) nos dados filtrados</summary><ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-amber-900">{viewModel.integrityWarnings.map(warning=><li key={warning}>{warning}</li>)}</ul></details>}
       <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
       <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state=>setConfirmation({kind:'delete',ids:[state.recordId]})} canApprove={canApproveFleet} onApprove={(state,status)=>onApproveFleetRecord?.(state.recordId,status)}/>
