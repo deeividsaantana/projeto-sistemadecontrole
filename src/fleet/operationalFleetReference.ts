@@ -9,6 +9,8 @@ export interface OperationalFleetReferenceItem {
   equipmentType: string;
 }
 
+export const OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY = 'renea_referencia_frota_operacional';
+
 const BASCULANTE_PREFIXES = [
   'CB726', 'CB727', 'CB730', 'CB732', 'CB735', 'CB738', 'CB739', 'CB740',
   'CB743', 'CB748', 'CB749', 'CB754', 'CB755', 'CB758', 'CB765', 'CB767',
@@ -58,6 +60,7 @@ export interface OperationalFleetDayReconciliation {
 export const reconcileOperationalFleetDay = (
   records: readonly ControleEquipamentoDiario[],
   date: string,
+  reference: readonly OperationalFleetReferenceItem[] = OPERATIONAL_FLEET_REFERENCE,
 ): OperationalFleetDayReconciliation => {
   const dailyRecords = new Map<string, ControleEquipamentoDiario[]>();
 
@@ -70,9 +73,9 @@ export const reconcileOperationalFleetDay = (
     });
 
   const expectedPrefixes = new Set(
-    OPERATIONAL_FLEET_REFERENCE.map(item => normalizePrefix(item.prefix)),
+    reference.map(item => normalizePrefix(item.prefix)),
   );
-  const items = OPERATIONAL_FLEET_REFERENCE.map(item => {
+  const items = reference.map(item => {
     const matchingRecords = dailyRecords.get(normalizePrefix(item.prefix)) || [];
     const latestRecord = [...matchingRecords].sort((left, right) =>
       String(right.atualizadoEm || right.criadoEm).localeCompare(String(left.atualizadoEm || left.criadoEm)))[0];

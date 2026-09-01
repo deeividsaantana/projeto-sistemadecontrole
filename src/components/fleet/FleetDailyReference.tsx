@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Truck } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Pencil, Plus, Save, Trash2, Truck } from 'lucide-react';
 import type { ControleEquipamentoDiario } from '../../types';
 import {
   reconcileOperationalFleetDay,
+  OPERATIONAL_FLEET_REFERENCE,
+  OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY,
   type OperationalFleetReferenceGroup,
   type OperationalFleetReferenceStatus,
 } from '../../fleet/operationalFleetReference';
@@ -48,9 +50,21 @@ const FleetChip = ({ item }: { item: OperationalFleetReferenceStatus }) => (
 
 export default function FleetDailyReference({ records, date }: Props) {
   const [visibility, setVisibility] = useState<VisibilityFilter>('pending');
+  const [editing, setEditing] = useState(false);
+  const [reference, setReference] = useState(() => {
+    try {
+      const raw = localStorage.getItem(OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) && parsed.length ? parsed : [...OPERATIONAL_FLEET_REFERENCE];
+    } catch { return [...OPERATIONAL_FLEET_REFERENCE]; }
+  });
+  useEffect(() => {
+    if (!editing) return;
+    localStorage.setItem(OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY, JSON.stringify(reference));
+  }, [editing, reference]);
   const reconciliation = useMemo(
-    () => reconcileOperationalFleetDay(records, date),
-    [date, records],
+    () => reconcileOperationalFleetDay(records, date, reference),
+    [date, records, reference],
   );
   const progress = reconciliation.total
     ? Math.round((reconciliation.informed / reconciliation.total) * 100)
@@ -67,7 +81,7 @@ export default function FleetDailyReference({ records, date }: Props) {
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Conferência automática · {formatDate(date)}</p>
             <h2 id="fleet-reference-title" className="mt-1 text-lg font-black text-slate-950">Relação operacional do dia</h2>
-            <p className="mt-1 text-xs text-slate-500">Base esperada: 32 basculantes e 7 equipamentos de apoio. Não informados entram automaticamente como “A confirmar”.</p>
+            <p className="mt-1 text-xs text-slate-500">Base editável: {reference.length} equipamentos. Não informados entram automaticamente como “A confirmar”.</p>
           </div>
         </div>
         <div className="grid grid-cols-2 overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-center sm:grid-cols-4">
@@ -95,7 +109,9 @@ export default function FleetDailyReference({ records, date }: Props) {
           </div>
         </div>
 
-        <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700"><strong>Fechamento da relação:</strong> {reconciliation.operating} em operação + {reconciliation.maintenance} em manutenção + {reconciliation.missing} a confirmar = {reconciliation.operating + reconciliation.maintenance + reconciliation.missing} de {reconciliation.total} equipamentos esperados. <span className="text-slate-500">{reconciliation.informed} já informados.</span></p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700"><p><strong>Fechamento da relação:</strong> {reconciliation.operating} em operação + {reconciliation.maintenance} em manutenção + {reconciliation.missing} a confirmar = {reconciliation.operating + reconciliation.maintenance + reconciliation.missing} de {reconciliation.total} equipamentos esperados. <span className="text-slate-500">{reconciliation.informed} já informados.</span></p><button type="button" onClick={() => setEditing(value => !value)} className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-emerald-200 bg-white px-2.5 text-[11px] font-black text-emerald-800 hover:bg-emerald-50">{editing ? <Save size={14}/> : <Pencil size={14}/>} {editing ? 'Concluir edição' : 'Editar relação'}</button></div>
+
+        {editing && <section className="mt-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3" aria-label="Editor da relação operacional"><div className="mb-2 flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-wide text-emerald-800">Cadastro operacional</p><p className="text-xs text-emerald-900">Altere, remova ou inclua equipamentos esperados no dia.</p></div><button type="button" onClick={() => setReference(items => [...items, { prefix: `NOVO-${items.length + 1}`, group: 'Basculantes', equipmentType: 'Caminhão Basculante' }])} className="inline-flex min-h-8 items-center gap-1.5 rounded-md bg-emerald-700 px-2.5 text-[11px] font-black text-white hover:bg-emerald-800"><Plus size={14}/>Adicionar equipamento</button></div><div className="max-h-72 overflow-auto rounded-md border border-emerald-100 bg-white"><table className="w-full min-w-[620px] text-left text-xs"><thead className="sticky top-0 bg-emerald-100 text-[10px] uppercase tracking-wide text-emerald-900"><tr><th className="px-3 py-2">Prefixo</th><th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Tipo de equipamento</th><th className="px-3 py-2 text-right">Ação</th></tr></thead><tbody className="divide-y divide-emerald-50">{reference.map((item, index) => <tr key={`${item.prefix}-${index}`}><td className="px-3 py-1.5"><input aria-label={`Prefixo ${index + 1}`} value={item.prefix} onChange={event => setReference(items => items.map((current, currentIndex) => currentIndex === index ? { ...current, prefix: event.target.value.toUpperCase() } : current))} className="h-8 w-28 rounded border border-slate-300 px-2 font-mono text-xs"/></td><td className="px-3 py-1.5"><select aria-label={`Grupo ${index + 1}`} value={item.group} onChange={event => setReference(items => items.map((current, currentIndex) => currentIndex === index ? { ...current, group: event.target.value as OperationalFleetReferenceGroup } : current))} className="h-8 rounded border border-slate-300 px-2 text-xs"><option value="Basculantes">Basculantes</option><option value="Apoio">Apoio</option></select></td><td className="px-3 py-1.5"><input aria-label={`Tipo ${index + 1}`} value={item.equipmentType} onChange={event => setReference(items => items.map((current, currentIndex) => currentIndex === index ? { ...current, equipmentType: event.target.value } : current))} className="h-8 w-full rounded border border-slate-300 px-2 text-xs"/></td><td className="px-3 py-1.5 text-right"><button type="button" aria-label={`Excluir ${item.prefix}`} onClick={() => setReference(items => items.filter((_, currentIndex) => currentIndex !== index))} className="rounded p-1.5 text-rose-700 hover:bg-rose-50"><Trash2 size={15}/></button></td></tr>)}</tbody></table></div></section>}
 
         {reconciliation.missing === 0 && visibility === 'pending' ? (
           <div className="mt-4 flex items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-800"><CheckCircle2 size={20}/><div><strong className="block text-sm">Relação completa</strong><span className="text-xs">Os 39 equipamentos foram informados nesta data.</span></div></div>

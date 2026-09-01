@@ -405,16 +405,14 @@ export default function ControleEquipamentosDiarioTab({
     }
   };
   return (
-    <main ref={pageRef} className="mx-auto max-w-[1760px] space-y-5 text-slate-800">
-      <header data-fleet-enter className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white px-5 py-6 shadow-[0_14px_35px_rgba(15,23,42,0.05)] sm:px-7 lg:flex lg:items-center lg:justify-between">
-        <span className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full border-[26px] border-emerald-50"/>
-        <span className="pointer-events-none absolute -right-7 bottom-0 h-1 w-52 bg-emerald-600"/>
-        <div className="relative">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Complexo do Alto Tietê · operação diária</p>
-          <h1 className="mt-2 max-w-4xl text-[clamp(2rem,3.2vw,3.4rem)] font-black leading-[0.96] tracking-[-0.055em] text-slate-950">Controle Operacional de Frotas</h1>
+    <main ref={pageRef} className="fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
+      <header data-fleet-enter className="border-b border-slate-200 px-1 pb-6 pt-2 lg:flex lg:items-end lg:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Complexo do Alto Tietê · operação diária</p>
+          <h1 className="mt-2 max-w-4xl text-[clamp(2rem,3.2vw,3.05rem)] font-black leading-[1] tracking-[-0.055em] text-slate-950">Controle operacional de frotas</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">Situação diária, motoristas, saídas, pendências e relatórios em uma única visão operacional.</p>
         </div>
-        <div className="relative mt-6 grid grid-cols-2 gap-2 lg:mt-0 lg:max-w-[520px]">
+        <div className="mt-6 grid grid-cols-2 gap-2 lg:mt-0 lg:max-w-[520px]">
           <button type="button" onClick={openNewRecord} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-black text-white shadow-[0_8px_18px_rgba(4,120,87,0.18)] transition hover:-translate-y-0.5 hover:bg-emerald-800"><Plus size={16}/>Novo lançamento</button>
           {onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-xs font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-emerald-100"><Plus size={16}/>Novo equipamento / tipo</button>}
           <button type="button" onClick={handleRefresh} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
@@ -424,13 +422,13 @@ export default function ControleEquipamentosDiarioTab({
           <button type="button" onClick={() => inputRef.current?.click()} className="col-span-2 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><Upload size={15}/>Importar planilha</button>
         </div>
       </header>
-      <nav data-fleet-enter className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_8px_22px_rgba(15,23,42,0.035)]" aria-label="Visões do controle de frotas">
+      <nav data-fleet-enter className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-transparent" aria-label="Visões do controle de frotas">
         {([
           ['today', 'Situação do dia', CalendarDays],
           ['history', 'Histórico semanal', History],
           ['registry', 'Cadastros vinculados', Database],
         ] as const).map(([id, label, Icon]) => (
-          <button key={String(id)} type="button" onClick={() => setActiveView(id as FleetView)} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-sm font-black transition-colors ${activeView === id ? 'bg-emerald-700 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+          <button key={String(id)} type="button" onClick={() => setActiveView(id as FleetView)} className={`inline-flex min-h-12 shrink-0 items-center gap-2 border-b-[3px] px-4 text-sm font-black transition-colors ${activeView === id ? 'border-emerald-700 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
             <Icon size={16}/>{label}
           </button>
         ))}
