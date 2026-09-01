@@ -412,6 +412,7 @@ export const reconcileFleetRecord = (
     maintenanceOrderId: record.ordemServicoId,
     stoppedMinutes,
     stoppedDurationLabel: formatDurationMinutes(stoppedMinutes),
+    approvalStatus: record.aprovacao?.status || 'PENDENTE',
     events,
     reviewMessages: [...new Set(reviewMessages.filter(Boolean))],
     source: record.origem === 'PLANILHA' ? 'SPREADSHEET' : 'SYSTEM',

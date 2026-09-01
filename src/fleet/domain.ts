@@ -20,6 +20,16 @@ export const FLEET_OPERATIONAL_STATUS = {
   unclassified: 'Não classificado',
 } as const;
 
+/** Basculantes são identificados operacionalmente pelo prefixo, sem placa. */
+export const isBasculanteWithoutPlate = (equipment: {
+  family?: string;
+  equipmentType?: string;
+}): boolean => {
+  const family = String(equipment.family ?? '').toLocaleLowerCase('pt-BR');
+  const type = String(equipment.equipmentType ?? '').toLocaleLowerCase('pt-BR');
+  return family.includes('basculante') && type.includes('caminhão basculante');
+};
+
 export type FleetOperationalStatus =
   typeof FLEET_OPERATIONAL_STATUS[keyof typeof FLEET_OPERATIONAL_STATUS];
 
@@ -114,6 +124,7 @@ export interface FleetCurrentState {
   maintenanceOrderId?: string;
   stoppedMinutes?: number;
   stoppedDurationLabel: string;
+  approvalStatus?: 'PENDENTE' | 'APROVADO' | 'REJEITADO';
   events: FleetEvent[];
   reviewMessages: string[];
   source: 'SYSTEM' | 'SPREADSHEET';

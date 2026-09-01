@@ -20,6 +20,8 @@ interface Props {
   onEdit: (state: FleetCurrentState) => void;
   onDetails: (state: FleetCurrentState) => void;
   onDelete: (state: FleetCurrentState) => void;
+  canApprove?: boolean;
+  onApprove?: (state: FleetCurrentState, status: 'APROVADO' | 'REJEITADO') => void;
 }
 
 const getSortValue = (row: FleetCurrentState, key: SortKey): string | number => {
@@ -48,6 +50,8 @@ export default function FleetDataTable({
   onEdit,
   onDetails,
   onDelete,
+  canApprove = false,
+  onApprove,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('prefix');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -153,7 +157,8 @@ export default function FleetDataTable({
             <col className="w-[95px]" />
             <col className="w-[130px]" />
             <col />
-            <col className="w-[112px]" />
+          <col className="w-[98px]" />
+          <col className="w-[132px]" />
           </colgroup>
           <thead className="bg-slate-200 text-[9px] uppercase tracking-wider text-slate-700">
             <tr>
@@ -176,6 +181,7 @@ export default function FleetDataTable({
               <th className="border-b border-slate-300 p-2 text-center">{header('Parado', 'stopped')}</th>
               <th className="border-b border-slate-300 p-2">{header('Local', 'location')}</th>
               <th className="border-b border-slate-300 p-2">Observação</th>
+              <th className="border-b border-slate-300 p-2 text-center">Aprovação</th>
               <th className="border-b border-slate-300 p-2 text-center">Ações</th>
             </tr>
           </thead>
@@ -195,12 +201,13 @@ export default function FleetDataTable({
                   <td className="p-2 text-center font-mono font-bold">{row.stoppedDurationLabel}</td>
                   <td className="truncate p-2" title={row.location}>{row.location || 'Não informado'}</td>
                   <td className="p-2"><p className="line-clamp-2 leading-5 text-slate-600" title={[row.maintenanceReason, row.note].filter(Boolean).join('. ')}>{row.maintenanceReason ? `${row.maintenanceReason}. ` : ''}{row.note || '—'}</p></td>
-                  <td className="p-2"><div className="flex justify-center gap-1"><button type="button" onClick={() => onDetails(row)} title="Ver detalhes" className="rounded-md border border-slate-200 p-2 text-slate-600 hover:bg-slate-100"><Eye size={14} /></button><button type="button" onClick={() => onEdit(row)} title="Editar" className="rounded-md border border-emerald-200 p-2 text-emerald-700 hover:bg-emerald-50"><Pencil size={14} /></button><button type="button" onClick={() => onDelete(row)} title="Excluir" className="rounded-md border border-rose-200 p-2 text-rose-700 hover:bg-rose-50"><Trash2 size={14} /></button></div></td>
+                  <td className="p-2 text-center"><span className={`rounded-full px-2 py-1 text-[9px] font-black ${row.approvalStatus === 'APROVADO' ? 'bg-emerald-100 text-emerald-800' : row.approvalStatus === 'REJEITADO' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>{row.approvalStatus || 'PENDENTE'}</span></td>
+                  <td className="p-2"><div className="flex justify-center gap-1"><button type="button" onClick={() => onDetails(row)} title="Ver detalhes" className="rounded-md border border-slate-200 p-2 text-slate-600 hover:bg-slate-100"><Eye size={14} /></button>{canApprove && row.approvalStatus === 'PENDENTE' && onApprove && <><button type="button" onClick={() => onApprove(row, 'APROVADO')} title="Aprovar" className="rounded-md border border-emerald-200 p-2 text-emerald-700 hover:bg-emerald-50">✓</button><button type="button" onClick={() => onApprove(row, 'REJEITADO')} title="Rejeitar" className="rounded-md border border-rose-200 p-2 text-rose-700 hover:bg-rose-50">×</button></>}<button type="button" onClick={() => onEdit(row)} title="Editar" className="rounded-md border border-emerald-200 p-2 text-emerald-700 hover:bg-emerald-50"><Pencil size={14} /></button><button type="button" onClick={() => onDelete(row)} title="Excluir" className="rounded-md border border-rose-200 p-2 text-rose-700 hover:bg-rose-50"><Trash2 size={14} /></button></div></td>
                 </tr>
               );
             })}
             {!pageRows.length && (
-              <tr><td colSpan={12} className="p-12 text-center text-sm text-slate-500">Nenhuma frota encontrada para os filtros.</td></tr>
+              <tr><td colSpan={13} className="p-12 text-center text-sm text-slate-500">Nenhuma frota encontrada para os filtros.</td></tr>
             )}
           </tbody>
         </table>

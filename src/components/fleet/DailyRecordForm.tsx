@@ -15,7 +15,7 @@ import {
   type FleetPersistedRecord,
 } from '../../fleet/domain';
 import { FLEET_STATUS_DEFINITIONS, normalizeOperationalStatus, toLegacyDailyStatus } from '../../fleet/status';
-import { classifyOperationalFleet, findEmployeeTeam, isOperationalFleet, lookupDriverByCode, lookupEquipmentByPrefix } from '../../fleet/reconciliation';
+import { classifyOperationalFleet, findEmployeeTeam, lookupDriverByCode, lookupEquipmentByPrefix } from '../../fleet/reconciliation';
 import { getOperationalToday } from '../../fleet/time';
 import { normalizeEmployeeCode, normalizePrefix } from '../../utils/canonicalIdentity';
 
@@ -31,6 +31,7 @@ interface Props {
   onClose: () => void;
   onOpenEmployeeRegistration: () => void;
   onOpenDriverRegistry?: () => void;
+  onOpenEquipmentRegistry?: () => void;
   onOpenMaintenance?: () => void;
 }
 
@@ -126,6 +127,7 @@ export default function DailyRecordForm({
   onSave,
   onClose,
   onOpenDriverRegistry,
+  onOpenEquipmentRegistry,
   onOpenMaintenance,
 }: Props) {
   const [form, setForm] = useState<FormState>(
@@ -136,7 +138,7 @@ export default function DailyRecordForm({
   const [submitError, setSubmitError] = useState('');
   const [saving, setSaving] = useState(false);
   const operationalFleet = useMemo(
-    () => equipment.filter(item => isOperationalFleet(item) && item.status !== 'Desmobilizado'),
+    () => equipment.filter(item => item.status !== 'Desmobilizado' && Boolean(item.prefixo?.trim())),
     [equipment],
   );
   const activeEmployees = useMemo(
@@ -319,6 +321,7 @@ export default function DailyRecordForm({
         observacao: form.note,
         origem: existing?.origem || 'SISTEMA',
         revisao: form.temporaryDriver ? ['Motorista temporário requer cadastro/vínculo.'] : [],
+        aprovacao: existing?.aprovacao || { status: 'PENDENTE', solicitadoEm: now, solicitadoPor: 'Operação' },
         eventos: [...(existing?.eventos || []), timelineEvent],
         criadoEm: existing?.criadoEm || now,
         atualizadoEm: now,
@@ -358,7 +361,8 @@ export default function DailyRecordForm({
             <label className="text-xs font-bold text-slate-700">Equipe<input value={form.teamName} readOnly placeholder="Preenchida pelo vínculo" className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-slate-100 px-3"/></label>
             <label className="text-xs font-bold text-slate-700">Prefixo<div className="mt-1 flex"><input value={form.prefix} onChange={event => update('prefix', event.target.value.toUpperCase())} onBlur={lookupPrefix} placeholder="CB770" className="h-10 min-w-0 flex-1 rounded-l-md border border-slate-300 px-3 font-black"/><button type="button" onClick={lookupPrefix} className="rounded-r-md border border-l-0 border-slate-300 bg-slate-50 px-3 text-xs font-black">Buscar</button></div></label>
             <label className="text-xs font-bold text-slate-700">Frota / equipamento<select value={form.equipmentId} onChange={event => applyEquipment(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-2"><option value="">Selecione</option>{operationalFleet.sort((a,b)=>a.prefixo.localeCompare(b.prefixo,'pt-BR',{numeric:true})).map(item=>{const classification=classifyOperationalFleet(item);return <option key={item.id} value={item.id}>{item.prefixo} · {classification.equipmentType}</option>})}</select></label>
-            {equipmentLookupError && <p className="rounded-md border border-rose-200 bg-rose-50 p-2 text-xs font-bold text-rose-700 sm:col-span-2 lg:col-span-4">{equipmentLookupError}</p>}
+            {equipmentLookupError && <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-rose-200 bg-rose-50 p-2 text-xs font-bold text-rose-700 sm:col-span-2 lg:col-span-4"><span>{equipmentLookupError}</span>{onOpenEquipmentRegistry&&<button type="button" onClick={onOpenEquipmentRegistry} className="min-h-9 rounded-md border border-rose-300 bg-white px-3 text-xs font-black text-rose-800">Cadastrar equipamento / tipo</button>}</div>}
+            {onOpenEquipmentRegistry && <button type="button" onClick={onOpenEquipmentRegistry} className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 text-xs font-black text-emerald-800"><UserPlus size={14}/>Novo equipamento / tipo</button>}
             <label className="text-xs font-bold text-slate-700">Empresa do equipamento<input value={form.equipmentCompany} readOnly className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-slate-100 px-3"/></label>
           </fieldset>
           <fieldset className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Geist Variable", "Segoe UI Variable", "Aptos", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Geist Variable", "Segoe UI Variable", "Aptos Display", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Outfit", "Geist Variable", "Segoe UI Variable", "Aptos", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", "Geist Variable", "Segoe UI Variable", "Aptos Display", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer components {
@@ -170,4 +170,111 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
   .fleet-report-page thead { display: table-header-group; }
   .fleet-report-page tr { break-inside: avoid; page-break-inside: avoid; }
   .fleet-report-page img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+
+/* RENEA ERP shell: one authoritative layer for desktop navigation and context. */
+.erp-shell {
+  display: flex;
+  min-height: 100dvh;
+  width: 100%;
+  background: var(--renea-stone);
+}
+.erp-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  width: 18.9rem;
+  min-width: 18.9rem;
+  height: 100dvh;
+  flex-direction: column;
+  border-right: 1px solid #0a4235;
+  background: #042f25;
+  color: #e0f0e8;
+}
+.erp-sidebar__brand {
+  display: flex;
+  align-items: center;
+  min-height: 4.7rem;
+  margin: 0;
+  padding: 1.1rem 1.35rem 1rem;
+  border: 0;
+  border-bottom: 1px solid #0d4a3b;
+  border-radius: 0;
+  background: transparent;
+}
+.erp-sidebar__brand img { display: block; width: 9.5rem; height: auto; }
+.erp-sidebar__tenant { display: grid; min-width: 0; gap: .3rem; margin: 1rem 1rem .85rem; padding: .9rem; border: 1px solid #15624e; border-radius: .6rem; background: #073b2f; }
+.erp-sidebar__tenant-label { color: #9bc9b8; font-size: .62rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.erp-sidebar__tenant strong { min-width: 0; overflow: hidden; color: #f4fffa; font-size: .82rem; font-weight: 760; text-overflow: ellipsis; white-space: nowrap; }
+.erp-sidebar__tenant-code { min-width: 0; overflow: hidden; color: #b9d8cb; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.erp-sidebar__search {
+  display: flex;
+  height: 2.4rem;
+  align-items: center;
+  gap: .5rem;
+  margin: .15rem 1rem 1.1rem;
+  padding: 0 .7rem;
+  border: 1px solid #17614e;
+  border-radius: .48rem;
+  background: #073b2f;
+  color: #b2d3c5;
+}
+.erp-sidebar__search:focus-within { border-color: #39ad80; box-shadow: 0 0 0 3px rgb(57 173 128 / .16); }
+.erp-sidebar__search svg { width: 1rem; height: 1rem; flex: 0 0 auto; }
+.erp-sidebar__search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #edfff7; font-size: .76rem; }
+.erp-sidebar__search input::placeholder { color: #9cc5b6; }
+.erp-sidebar__search kbd { border: 1px solid #25715d; border-radius: .24rem; padding: .1rem .25rem; color: #a8ccbe; font-size: .58rem; }
+.erp-sidebar__nav { flex: 1; overflow-y: auto; padding: 0 .75rem .75rem; }
+.erp-sidebar__group { margin-bottom: 1.15rem; }
+.erp-sidebar__group > p { margin: 0 .55rem .42rem; color: #9ec6b8; font-size: .62rem; font-weight: 800; letter-spacing: .105em; text-transform: uppercase; }
+.erp-sidebar__group > div { display: grid; gap: .15rem; }
+.erp-sidebar__item { display: flex; min-height: 2.55rem; align-items: center; gap: .72rem; width: 100%; padding: .5rem .65rem; border: 0; border-left: 2px solid transparent; border-radius: .45rem; background: transparent; color: #c2ddd1; font: inherit; font-size: .78rem; font-weight: 600; text-align: left; cursor: pointer; transition: background-color .18s ease, color .18s ease, border-color .18s ease; }
+.erp-sidebar__item svg { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; color: #96c2b1; stroke-width: 1.8; }
+.erp-sidebar__item span { flex: 1; line-height: 1.2; }
+.erp-sidebar__item-arrow { opacity: 0; width: .85rem !important; color: #c8e6da !important; }
+.erp-sidebar__item:hover { background: #0a4839; color: #fff; }
+.erp-sidebar__item:hover svg, .erp-sidebar__item.is-active svg { color: #fff; }
+.erp-sidebar__item:hover .erp-sidebar__item-arrow, .erp-sidebar__item.is-active .erp-sidebar__item-arrow { opacity: 1; }
+.erp-sidebar__item.is-active { border-left-color: #7ee0b6; background: #087553; color: #fff; box-shadow: 0 5px 16px rgb(0 39 28 / .3); font-weight: 750; }
+.erp-sidebar__empty { padding: 1rem .5rem; color: #b0d1c3; font-size: .72rem; }
+.erp-sidebar__footer { padding: .8rem .85rem 1rem; border-top: 1px solid #0d4a3b; }
+.erp-sidebar__status { display: flex; align-items: center; gap: .42rem; padding: 0 .45rem .65rem; color: #b4d4c6; font-size: .67rem; font-weight: 650; }
+.erp-sidebar__status span { width: .42rem; height: .42rem; border-radius: 50%; background: #21bd7e; }
+.erp-sidebar__collapse { display: flex; width: 100%; align-items: center; gap: .55rem; padding: .5rem .35rem; border: 0; border-radius: .4rem; background: transparent; color: #d9eee4; text-align: left; cursor: pointer; }
+.erp-sidebar__collapse:hover { background: #0a4839; }
+.erp-sidebar__avatar { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: 50%; background: #168c68; color: #fff; font-size: .62rem; font-weight: 800; }
+.erp-sidebar__user { display: grid; flex: 1; min-width: 0; gap: .12rem; }
+.erp-sidebar__user strong { overflow: hidden; font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
+.erp-sidebar__user small { color: #a8ccbe; font-size: .58rem; }
+.erp-sidebar__collapse > svg { width: .9rem; height: .9rem; color: #b5d7c9; }
+.erp-workspace { display: flex; min-width: 0; min-height: 100dvh; flex: 1; flex-direction: column; background: #f5f7fb; }
+.erp-topbar { display: flex; min-height: 4.6rem; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 0 1.9rem; border-bottom: 1px solid #dde4ef; background: #fff; }
+.erp-topbar__breadcrumb { display: flex; min-width: 0; align-items: center; gap: .7rem; color: #61718a; font-size: .78rem; }
+.erp-topbar__breadcrumb strong { overflow: hidden; color: #10213c; font-weight: 760; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topbar__chevron { color: #a3aea7; }
+.erp-topbar__actions { display: flex; align-items: center; gap: .9rem; }
+.erp-topbar__status { display: flex; align-items: center; gap: .4rem; color: #496178; font-size: .7rem; font-weight: 650; }
+.erp-topbar__status span { width: .42rem; height: .42rem; border-radius: 50%; background: #0a9867; }
+.erp-topbar__date { display: grid; gap: .13rem; padding: 0 .9rem; border-left: 1px solid #e0e5df; color: #708098; font-size: .6rem; text-align: right; }
+.erp-topbar__date strong { color: #243955; font-size: .72rem; font-weight: 720; }
+.erp-topbar__user { display: flex; align-items: center; gap: .5rem; padding-left: .8rem; border-left: 1px solid #e0e5df; }
+.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid #bfd1f6; border-radius: 50%; background: #eaf1ff; color: #245cc4; font-size: .62rem; font-weight: 800; }
+.erp-topbar__user > span:last-child { display: grid; min-width: 0; gap: .1rem; }
+.erp-topbar__user strong { max-width: 10rem; overflow: hidden; color: #243955; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topbar__user small { max-width: 10rem; overflow: hidden; color: #8190a5; font-size: .6rem; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topbar__command { min-height: 2.3rem; padding: 0 .95rem; border: 1px solid #bdd0f7; border-radius: .42rem; background: #f4f8ff; color: #285fcb; font: inherit; font-size: .7rem; font-weight: 720; cursor: pointer; }
+.erp-topbar__command:hover { border-color: #4d88ff; background: #eaf1ff; }
+#main-tab-viewport { max-width: none; }
+
+@media (max-width: 1180px) {
+  .erp-sidebar { width: 16.25rem; min-width: 16.25rem; }
+  .erp-topbar { padding-inline: 1.1rem; }
+  .erp-topbar__command { display: none; }
+}
+@media (max-width: 1023px) {
+  .erp-shell { min-height: auto; }
+  .erp-workspace { min-height: calc(100dvh - 4.25rem); }
+  .erp-topbar { display: none; }
+  #main-workspace { overflow-y: auto; }
+  #mobile-header { position: sticky; top: 0; z-index: 40; }
 }

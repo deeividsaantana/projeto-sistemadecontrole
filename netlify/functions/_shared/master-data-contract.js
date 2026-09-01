@@ -141,6 +141,21 @@ export const MASTER_DATA_ENTITIES = Object.freeze({
       area_responsible: text(240),
     },
   },
+  operational_drivers: {
+    table: 'operational_drivers',
+    label: 'Motoristas operacionais',
+    required: ['registration', 'name'],
+    searchColumns: ['registration', 'name', 'job_title', 'collaborator_id'],
+    fields: {
+      ...commonFields,
+      collaborator_id: uuid(),
+      company_id: uuid(),
+      registration: text(80),
+      name: text(240),
+      job_title: text(160),
+      phone: text(40),
+    },
+  },
   suppliers: {
     table: 'suppliers',
     label: 'Fornecedores',

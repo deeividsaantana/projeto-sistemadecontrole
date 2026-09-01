@@ -6,9 +6,6 @@
 [functions]
   node_bundler = "esbuild"
 
-[functions."sync-manutencao"]
-  schedule = "*/10 * * * *"
-
 [functions."cleanup-cloud-data"]
   schedule = "15 3 * * *"
 

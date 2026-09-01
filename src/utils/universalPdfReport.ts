@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import reneaLogo from '../assets/images/renea_logo_new.png';
+import spmarLogo from '../assets/images/spmar_logo.png';
 
 export type UniversalPdfColumn = { header: string; dataKey: string };
 export type UniversalPdfReportOptions = {
@@ -41,7 +42,7 @@ export async function generateUniversalPdfReport(options: UniversalPdfReportOpti
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 12;
-  const logo = await imageAsDataUrl(reneaLogo);
+  const [logo, partnerLogo] = await Promise.all([imageAsDataUrl(reneaLogo), imageAsDataUrl(spmarLogo)]);
   const emittedAt = new Date();
   const emission = emittedAt.toLocaleString('pt-BR');
   const institutional = options.company || 'RENEA · Sistema Integrado de Gestão Operacional';
@@ -53,8 +54,9 @@ export async function generateUniversalPdfReport(options: UniversalPdfReportOpti
     doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, pageWidth, headerHeight, 'F');
     if (logo) {
-      try { doc.addImage(logo, 'PNG', margin, 8, 35, 13, undefined, 'FAST'); } catch { /* text fallback below */ }
+      try { doc.addImage(logo, 'PNG', -5, -9, 76, 42, undefined, 'FAST'); } catch { /* text fallback below */ }
     }
+    if (partnerLogo) { try { doc.addImage(partnerLogo, 'PNG', pageWidth - margin - 53, 5, 53, 11.5, undefined, 'FAST'); } catch { /* optional partner logo */ } }
     if (!logo) { doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(30, 41, 59); doc.text('RENEA', margin, 17); }
     doc.setTextColor(30, 41, 59); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text(institutional, margin + 42, 11);
     doc.setFontSize(14); doc.text(options.title.toUpperCase(), margin + 42, 18);

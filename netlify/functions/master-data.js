@@ -130,7 +130,7 @@ const gatewayStatus = async context => jsonResponse(200, {
     supportedEntities: [
       'companies', 'locations', 'work_branches', 'equipment', 'vehicles',
       'collaborators', 'suppliers', 'materials', 'convoys', 'fuel_types',
-      'lubricant_products', 'service_stages',
+      'lubricant_products', 'service_stages', 'operational_drivers',
     ],
   },
 });

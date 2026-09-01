@@ -32,7 +32,6 @@ const DELETABLE_TABS = [
   { id: 'tickets-jazida', label: 'Tickets Jazida' },
   { id: 'estacas', label: 'Controle de estacas' },
   { id: 'materiais', label: 'Materiais' },
-  { id: 'manutencao', label: 'Manutenção' },
   { id: 'presenca', label: 'Presença e controle' },
   { id: 'apontamentos', label: 'Apontamentos' },
   { id: 'periodos-arquivados', label: 'Períodos arquivados' },
@@ -49,6 +48,7 @@ interface ConfiguracoesTabProps {
   onArchivePeriod: (dataInicio: string, dataFim: string, nome?: string) => { success: boolean; message: string };
   onRestoreArchivedPeriod: (id: string) => { success: boolean; message: string };
   onDeleteTabData: (tabId: DeletableTabId) => { success: boolean; message: string };
+  onRestoreLastDeletion?: () => { success: boolean; message: string };
 }
 
 export default function ConfiguracoesTab({
@@ -60,6 +60,7 @@ export default function ConfiguracoesTab({
   onArchivePeriod,
   onRestoreArchivedPeriod,
   onDeleteTabData,
+  onRestoreLastDeletion = () => ({ success: false, message: 'Nenhum backup automático de exclusão foi encontrado.' }),
 }: ConfiguracoesTabProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -669,7 +670,7 @@ export default function ConfiguracoesTab({
               <div className="rounded-xl bg-rose-500/10 p-3 text-rose-300"><Trash2 className="h-5 w-5" /></div>
               <div>
                 <h2 className="font-mono text-sm font-extrabold uppercase tracking-wider text-white">Exclusão completa por aba</h2>
-                <p className="mt-1 text-xxs leading-relaxed text-slate-400">Escolha uma aba para apagar somente o conjunto de dados pertencente a ela. As demais áreas não serão alteradas.</p>
+                <p className="mt-1 text-xxs leading-relaxed text-slate-400">Escolha uma aba para apagar somente o conjunto de dados pertencente a ela. Antes da exclusão, o sistema cria automaticamente um backup recuperável neste dispositivo.</p>
               </div>
             </div>
 
@@ -730,6 +731,18 @@ export default function ConfiguracoesTab({
                 {deleteMessage}
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => {
+                const response = onRestoreLastDeletion();
+                setDeleteStatus(response.success ? 'success' : 'error');
+                setDeleteMessage(response.message);
+              }}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 text-xs font-extrabold text-amber-200 transition-colors hover:bg-amber-500/20"
+            >
+              <RefreshCw className="h-4 w-4" /> Restaurar dados anteriores à última exclusão
+            </button>
           </div>
 
         </div>

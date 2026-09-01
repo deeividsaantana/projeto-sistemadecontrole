@@ -3,6 +3,7 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'obras',
   'equipamentos',
   'funcionarios',
+  'motoristasOperacionais',
   'comboios',
   'combustiveis',
   'lubrificantes',

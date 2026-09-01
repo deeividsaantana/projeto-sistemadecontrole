@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   obras: 'renea_obras',
   equipamentos: 'renea_equipamentos',
   funcionarios: 'renea_funcionarios',
+  motoristasOperacionais: 'renea_motoristas_operacionais',
   comboios: 'renea_comboios',
   combustiveis: 'renea_combustiveis',
   lubrificantes: 'renea_lubrificantes',
@@ -31,12 +32,14 @@ export const STORAGE_KEYS = {
   colaboradoresPlanilhaV1: 'renea_colaboradores_planilha_v1',
   planilhasOperacionaisV2: 'renea_planilhas_operacionais_v2',
   materiaisPlanilhaV1: 'renea_materiais_planilha_v1',
+  materiaisResetV1: 'renea_materiais_reset_v1',
   publicLinksRotationPendingV31: 'renea_public_links_rotation_pending_v31',
   sessionLastActivity: 'renea_session_last_activity',
   autoSync: 'renea_auto_sync',
   lastCloudSync: 'renea_last_cloud_sync',
   lastCloudSyncIso: 'renea_last_cloud_sync_iso',
   oneDriveFuelBatch: 'renea_onedrive_fuel_batch',
+  lastDeletionRecovery: 'renea_last_deletion_recovery',
 } as const;
 
 export type StorageKey = typeof STORAGE_KEYS[keyof typeof STORAGE_KEYS];
@@ -46,6 +49,7 @@ export const CORE_DATA_STORAGE_KEYS = [
   STORAGE_KEYS.obras,
   STORAGE_KEYS.equipamentos,
   STORAGE_KEYS.funcionarios,
+  STORAGE_KEYS.motoristasOperacionais,
   STORAGE_KEYS.comboios,
   STORAGE_KEYS.combustiveis,
   STORAGE_KEYS.lubrificantes,

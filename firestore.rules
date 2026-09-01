@@ -183,6 +183,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Reservas atômicas de presença são criadas somente pelo Admin SDK para
+    // impedir duplicidade concorrente por equipe/data.
+    match /sistemarenea_presence_locks/{docId} {
+      allow read, write: if false;
+    }
+
     // Cadastros segmentados, auditoria, usuários e lotes de importação são
     // manipulados exclusivamente por funções Netlify usando o Admin SDK.
     // Não há acesso direto do navegador, mesmo para usuários autenticados.

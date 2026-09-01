@@ -8,6 +8,7 @@ const JSON_ARRAY_STORAGE_KEYS = new Set([
   'renea_obras',
   'renea_equipamentos',
   'renea_funcionarios',
+  'renea_motoristas_operacionais',
   'renea_comboios',
   'renea_combustiveis',
   'renea_lubrificantes',
@@ -39,6 +40,7 @@ const JSON_ARRAY_STORAGE_KEYS = new Set([
 
 const JSON_OBJECT_STORAGE_KEYS = new Set([
   'renea_controle_estacas',
+  'renea_last_deletion_recovery',
 ]);
 
 interface MirroredValue {

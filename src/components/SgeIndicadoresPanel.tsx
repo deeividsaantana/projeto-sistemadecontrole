@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   BarChart3,
   Building2,
-  ClipboardX,
   Database,
   Download,
   Gauge,
@@ -286,7 +285,6 @@ const SgeIndicadoresPanel: React.FC = () => {
     { id: 'resumo', label: 'Resumo', icon: BarChart3 },
     { id: 'frota', label: 'Disponibilidade e MTBF', icon: Gauge },
     { id: 'produtividade', label: 'Produtividade', icon: Truck },
-    { id: 'pendencias', label: `Pendências (${pendingJourneys.length})`, icon: ClipboardX },
     { id: 'terceiros', label: 'Fechamento de terceiros', icon: Building2 },
   ];
 

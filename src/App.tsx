@@ -64,6 +64,7 @@ import {
 } from './utils/initialData';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
+import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
 import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
 import {
@@ -75,14 +76,12 @@ import { mergeImportedRecords } from './utils/importMerge';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
-const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
 const ConsultaGeralTab = lazy(() => import('./components/ConsultaGeralTab'));
 const UsuariosTab = lazy(() => import('./components/UsuariosTab'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
-const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
+const RelatoriosTab = lazy(() => import('./components/RelatoriosGeraisTab'));
 const ConfiguracoesTab = lazy(() => import('./components/ConfiguracoesTab'));
-const ManutencaoEquipamentosTab = lazy(() => import('./components/ManutencaoEquipamentosTab'));
 const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
 const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
@@ -100,7 +99,7 @@ let INITIAL_MATERIAIS_CADASTRO: MaterialCadastro[] = [];
 let INITIAL_MATERIAIS_REGISTROS: MaterialRegistro[] = [];
 // Motion and Logo Import
 import { motion } from 'motion/react';
-import reneaLogo from './assets/images/logo-renea-dark.svg';
+import reneaLogo from './assets/images/logo-renea-transparent.png';
 
 // Firebase Imports
 import { auth, db } from './firebase';
@@ -108,6 +107,7 @@ import {
   onAuthStateChanged,
   type User,
 } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import {
   downloadFirebaseBackup,
   formatFirebaseSyncError,
@@ -165,7 +165,7 @@ import {
 } from './app/navigation/navigation';
 import { NavigationMenu } from './app/shell/NavigationMenu';
 import { DesktopTopBar } from './app/shell/DesktopTopBar';
-import { DesktopModuleTabs } from './app/shell/DesktopModuleTabs';
+import { DesktopSidebar } from './app/shell/DesktopSidebar';
 import {
   getApontamentoTokenFromUrl,
   getPresenceTokenFromUrl,
@@ -333,6 +333,7 @@ export default function App() {
   const [obras, setObras] = useState<ObraLocal[]>([]);
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+  const [motoristasOperacionais, setMotoristasOperacionais] = useState<Funcionario[]>([...OPERATIONAL_DRIVERS]);
   const [comboios, setComboios] = useState<Comboio[]>([]);
   const [combustiveis, setCombustiveis] = useState<TipoCombustivel[]>([]);
   const [lubrificantes, setLubrificantes] = useState<ProdutoLubrificacao[]>([]);
@@ -391,13 +392,19 @@ export default function App() {
       // histórica administrativa de materiais.
       if (externalTicketLink || externalPresenceToken || externalApontamentoToken) return;
       try {
-        const [, materialData] = await Promise.all([
+        await Promise.all([
           hydrateInitialOperationalSeedData(),
           loadInitialMateriaisData(),
         ]);
         if (cancelled) return;
-        INITIAL_MATERIAIS_CADASTRO = materialData.cadastro;
-        INITIAL_MATERIAIS_REGISTROS = materialData.registros;
+        // Materiais começam vazios nesta versão; a base histórica não é reidratada.
+        INITIAL_MATERIAIS_CADASTRO = [];
+        INITIAL_MATERIAIS_REGISTROS = [];
+        if (!readStoredFlag(localStorage, STORAGE_KEYS.materiaisResetV1)) {
+          localStorage.removeItem(STORAGE_KEYS.materiaisCadastro);
+          localStorage.removeItem(STORAGE_KEYS.materiaisRegistros);
+          writeStoredFlag(localStorage, STORAGE_KEYS.materiaisResetV1, true);
+        }
       } catch (error) {
         console.error('Falha ao carregar a base historica inicial:', error);
       }
@@ -446,6 +453,7 @@ export default function App() {
       setObras(INITIAL_OBRAS);
       setEquipamentos(INITIAL_EQUIPAMENTOS);
       setFuncionarios(INITIAL_FUNCIONARIOS);
+      setMotoristasOperacionais([...OPERATIONAL_DRIVERS]);
       setComboios(INITIAL_COMBOIOS);
       setCombustiveis(INITIAL_TIPOS_COMBUSTIVEL);
       setLubrificantes(INITIAL_PRODUTOS_LUBRIFICACAO);
@@ -474,6 +482,7 @@ export default function App() {
       const savedObras = localStorage.getItem('renea_obras');
       const savedEquipamentos = localStorage.getItem('renea_equipamentos');
       const savedFuncionarios = localStorage.getItem('renea_funcionarios');
+      const savedMotoristasOperacionais = localStorage.getItem(STORAGE_KEYS.motoristasOperacionais);
       const savedComboios = localStorage.getItem('renea_comboios');
       const savedCombustiveis = localStorage.getItem('renea_combustiveis');
       const savedLubrificantes = localStorage.getItem('renea_lubrificantes');
@@ -499,7 +508,8 @@ export default function App() {
       const savedNotifications = localStorage.getItem('renea_notifications');
       const shouldMigratePresencePeople = !readStoredFlag(localStorage, STORAGE_KEYS.colaboradoresPlanilhaV1);
       const shouldMigrateSpreadsheetSeed = !readStoredFlag(localStorage, STORAGE_KEYS.planilhasOperacionaisV2);
-      const shouldMigrateMateriaisSeed = !readStoredFlag(localStorage, STORAGE_KEYS.materiaisPlanilhaV1);
+      const materiaisReset = readStoredFlag(localStorage, STORAGE_KEYS.materiaisResetV1);
+      const shouldMigrateMateriaisSeed = !materiaisReset && !readStoredFlag(localStorage, STORAGE_KEYS.materiaisPlanilhaV1);
       const parsedEquipamentos = parseStoredJson(savedEquipamentos, 'renea_equipamentos', INITIAL_EQUIPAMENTOS);
       const parsedEmpresas = parseStoredJson(savedEmpresas, 'renea_empresas', INITIAL_EMPRESAS);
       const parsedComboios = parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS);
@@ -508,8 +518,8 @@ export default function App() {
       const parsedControleEstacas = normalizeStakeControl(
         parseStoredJson(savedControleEstacas, 'renea_controle_estacas', INITIAL_CONTROLE_ESTACAS),
       );
-      const parsedMateriaisCadastro = parseStoredJson(savedMateriaisCadastro, 'renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO);
-      const parsedMateriaisRegistros = parseStoredJson(savedMateriaisRegistros, 'renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS);
+      const parsedMateriaisCadastro = materiaisReset ? [] : parseStoredJson(savedMateriaisCadastro, 'renea_materiais_cadastro', INITIAL_MATERIAIS_CADASTRO);
+      const parsedMateriaisRegistros = materiaisReset ? [] : parseStoredJson(savedMateriaisRegistros, 'renea_materiais_registros', INITIAL_MATERIAIS_REGISTROS);
       const parsedGruposEquipe = normalizeTeamGroups(
         shouldMigratePresencePeople
           ? INITIAL_GRUPOS_EQUIPES
@@ -559,6 +569,7 @@ export default function App() {
       setObras(parseStoredJson(savedObras, 'renea_obras', INITIAL_OBRAS));
       setEquipamentos(loadedEquipamentos);
       setFuncionarios(shouldMigratePresencePeople ? INITIAL_FUNCIONARIOS : parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS));
+      setMotoristasOperacionais(parseStoredJson(savedMotoristasOperacionais, STORAGE_KEYS.motoristasOperacionais, [...OPERATIONAL_DRIVERS]));
       setComboios(loadedComboios);
       setCombustiveis(parseStoredJson(savedCombustiveis, 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL));
       setLubrificantes(parseStoredJson(savedLubrificantes, 'renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO));
@@ -758,6 +769,7 @@ export default function App() {
         obras: customObras,
         equipamentos: customEquipamentos,
         funcionarios: customFuncionarios,
+        motoristasOperacionais: parseStoredJson<Funcionario[]>(localStorage.getItem(STORAGE_KEYS.motoristasOperacionais), STORAGE_KEYS.motoristasOperacionais, motoristasOperacionais),
         comboios: customComboios,
         combustiveis: customCombustiveis,
         lubrificantes: customLubrificantes,
@@ -851,6 +863,7 @@ export default function App() {
           ['obras', 'renea_obras'],
           ['equipamentos', 'renea_equipamentos'],
           ['funcionarios', 'renea_funcionarios'],
+          ['motoristasOperacionais', STORAGE_KEYS.motoristasOperacionais],
           ['comboios', 'renea_comboios'],
           ['combustiveis', 'renea_combustiveis'],
           ['lubrificantes', 'renea_lubrificantes'],
@@ -911,6 +924,9 @@ export default function App() {
         if (Object.hasOwn(data, 'funcionarios')) {
           setFuncionarios(normalizeRuntimeCollection<Funcionario>(data.funcionarios));
         }
+        if (Object.hasOwn(data, 'motoristasOperacionais')) {
+          setMotoristasOperacionais(normalizeRuntimeCollection<Funcionario>(data.motoristasOperacionais));
+        }
         if (Object.hasOwn(data, 'comboios')) {
           setComboios(normalizeRuntimeCollection<Comboio>(data.comboios));
         }
@@ -953,10 +969,10 @@ export default function App() {
         if (Object.hasOwn(data, 'apontamentoRamoRegistros')) {
           setApontamentoRamoRegistros(normalizeRuntimeCollection<ApontamentoRamoRegistro>(data.apontamentoRamoRegistros));
         }
-        if (Object.hasOwn(data, 'materiaisCadastro')) {
+        if (Object.hasOwn(data, 'materiaisCadastro') && !readStoredFlag(localStorage, STORAGE_KEYS.materiaisResetV1)) {
           setMateriaisCadastro(normalizeRuntimeCollection<MaterialCadastro>(data.materiaisCadastro));
         }
-        if (Object.hasOwn(data, 'materiaisRegistros')) {
+        if (Object.hasOwn(data, 'materiaisRegistros') && !readStoredFlag(localStorage, STORAGE_KEYS.materiaisResetV1)) {
           setMateriaisRegistros(normalizeRuntimeCollection<MaterialRegistro>(data.materiaisRegistros));
         }
         if (Object.hasOwn(data, 'partesDiariasEquipamentos')) {
@@ -1041,11 +1057,22 @@ export default function App() {
     };
 
     const initialCheck = window.setTimeout(pullRemoteChanges, 3_000);
-    const interval = window.setInterval(pullRemoteChanges, 30_000);
+    // O manifesto dispara a atualização imediatamente quando outro cliente
+    // publica uma nova geração. O intervalo permanece apenas como fallback
+    // para reconectar quando o listener fica offline.
+    const unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
+      const updatedAt = String(snapshot.data()?.updatedAt || '');
+      const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
+      if (updatedAt && localCloudVersion && updatedAt !== localCloudVersion) void handleDownloadFromFirebase();
+    }, error => {
+      console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
+    });
+    const interval = window.setInterval(pullRemoteChanges, 60_000);
     return () => {
       cancelled = true;
       window.clearTimeout(initialCheck);
       window.clearInterval(interval);
+      unsubscribeManifest();
     };
   }, [isAutoSyncEnabled, externalPresenceToken, externalApontamentoToken, externalTicketLink]);
 
@@ -1180,7 +1207,7 @@ export default function App() {
           getLS('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
           getLS('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
           getLS('renea_tickets_jazida', []),
-          [],
+          getLS('renea_history_logs', []),
           getLS('renea_listas_presenca', INITIAL_PRESENCAS),
           getLS('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
           getLS('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
@@ -1461,6 +1488,30 @@ export default function App() {
       },
       { registroId: normalizedItem.id, valorAnterior: previous, valorNovo: normalizedItem, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
     );
+  };
+
+  const handleSaveOperationalDriver = (item: Funcionario, isNew: boolean) => {
+    const matricula = String(item.matricula || '').trim();
+    const duplicate = motoristasOperacionais.some(driver => driver.id !== item.id && String(driver.matricula || '').trim() === matricula);
+    if (!matricula || !item.nome.trim() || duplicate) {
+      window.alert(duplicate ? 'Já existe motorista operacional com esta matrícula.' : 'Informe matrícula e nome.');
+      return;
+    }
+    const next = isNew ? [...motoristasOperacionais, item] : motoristasOperacionais.map(driver => driver.id === item.id ? item : driver);
+    saveAndLog('Motoristas operacionais', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o motorista "${item.nome}" (${matricula}).`, historyLogs, () => {
+      setMotoristasOperacionais(next);
+      writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
+      if (isAutoSyncEnabled) void handleUploadToFirebase();
+    }, { registroId: item.id, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' });
+  };
+
+  const handleDeleteOperationalDriver = (id: string) => {
+    const next = motoristasOperacionais.filter(driver => driver.id !== id);
+    saveAndLog('Motoristas operacionais', 'Excluiu', `Excluiu o motorista operacional "${id}".`, historyLogs, () => {
+      setMotoristasOperacionais(next);
+      writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
+      if (isAutoSyncEnabled) void handleUploadToFirebase();
+    }, { registroId: id, tipoOperacao: 'DELETE' });
   };
 
   const handleDeleteFuncionario = (id: string) => {
@@ -2957,6 +3008,23 @@ export default function App() {
     );
   };
 
+  const handleApproveControleEquipamentoDiario = (id: string, status: 'APROVADO' | 'REJEITADO') => {
+    if (!['admin', 'gestor'].includes(currentUserRole)) return;
+    const current = controleEquipamentosDiario.find(item => item.id === id);
+    if (!current) return;
+    const now = new Date().toISOString();
+    handleSaveControleEquipamentoDiario({
+      ...current,
+      aprovacao: {
+        ...(current.aprovacao || { status: 'PENDENTE', solicitadoEm: current.criadoEm, solicitadoPor: 'Operação' }),
+        status,
+        decididoEm: now,
+        decididoPor: activeUserName,
+      },
+      atualizadoEm: now,
+    }, false);
+  };
+
   const handleImportControleEquipamentosDiario = (registros: ControleEquipamentoDiario[]) => {
     if (!registros.length) return;
     const result = mergeImportedRecords(controleEquipamentosDiario, registros, item => normalizeImportText(item.chave || `${item.data}|${item.codigoFuncionario}`));
@@ -3000,6 +3068,7 @@ export default function App() {
     obras?: ObraLocal[];
     equipamentos?: Equipamento[];
     funcionarios?: Funcionario[];
+    motoristasOperacionais?: Funcionario[];
     comboios?: Comboio[];
     combustiveis?: TipoCombustivel[];
     lubrificantes?: ProdutoLubrificacao[];
@@ -3030,6 +3099,7 @@ export default function App() {
     const nextObras = imported.obras ?? obras;
     const nextEquipamentos = imported.equipamentos ?? equipamentos;
     const nextFuncionarios = imported.funcionarios ?? funcionarios;
+    const nextMotoristasOperacionais = imported.motoristasOperacionais ?? motoristasOperacionais;
     const nextComboios = imported.comboios ?? comboios;
     const nextCombustiveis = imported.combustiveis ?? combustiveis;
     const nextLubrificantes = imported.lubrificantes ?? lubrificantes;
@@ -3071,6 +3141,7 @@ export default function App() {
       { key: 'renea_obras', value: JSON.stringify(nextObras) },
       { key: 'renea_equipamentos', value: JSON.stringify(nextEquipamentos) },
       { key: 'renea_funcionarios', value: JSON.stringify(nextFuncionarios) },
+      { key: STORAGE_KEYS.motoristasOperacionais, value: JSON.stringify(nextMotoristasOperacionais) },
       { key: 'renea_comboios', value: JSON.stringify(nextComboios) },
       { key: 'renea_combustiveis', value: JSON.stringify(nextCombustiveis) },
       { key: 'renea_lubrificantes', value: JSON.stringify(nextLubrificantes) },
@@ -3100,6 +3171,7 @@ export default function App() {
     setObras(nextObras);
     setEquipamentos(nextEquipamentos);
     setFuncionarios(nextFuncionarios);
+    setMotoristasOperacionais(nextMotoristasOperacionais);
     setComboios(nextComboios);
     setCombustiveis(nextCombustiveis);
     setLubrificantes(nextLubrificantes);
@@ -3196,7 +3268,7 @@ export default function App() {
       descricao: 'Limpou completamente todas as tabelas de dados do sistema.'
     };
     const clearedArrayKeys = [
-      'renea_empresas', 'renea_obras', 'renea_equipamentos', 'renea_funcionarios',
+      'renea_empresas', 'renea_obras', 'renea_equipamentos', 'renea_funcionarios', 'renea_motoristas_operacionais',
       'renea_comboios', 'renea_combustiveis', 'renea_lubrificantes', 'renea_etapas',
       'renea_abastecimentos', 'renea_lubrificacoes', 'renea_tickets_jazida',
       'renea_listas_presenca', 'renea_ordens_servico', 'renea_grupos_equipes',
@@ -3219,6 +3291,7 @@ export default function App() {
     setObras([]);
     setEquipamentos([]);
     setFuncionarios([]);
+    setMotoristasOperacionais([]);
     setComboios([]);
     setCombustiveis([]);
     setLubrificantes([]);
@@ -3257,6 +3330,7 @@ export default function App() {
       obras: 'Obras/Locais',
       equipamentos: 'Equipamentos',
       funcionarios: 'Funcionários',
+      motoristasOperacionais: 'Motoristas operacionais',
       comboios: 'Comboios',
       combustiveis: 'Tipos de combustível',
       lubrificantes: 'Lubrificantes/Etapas',
@@ -3280,6 +3354,21 @@ export default function App() {
       writeStorageValue(localStorage, key, JSON.stringify(value));
     };
 
+    try {
+      writeStorageValue(localStorage, STORAGE_KEYS.lastDeletionRecovery, JSON.stringify({
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        scopes: uniqueScopes,
+        labels: uniqueScopes.map(key => labels[key] || key),
+        backup: JSON.parse(handleExportFullData()),
+      }));
+    } catch {
+      return {
+        success: false,
+        message: 'A exclusão foi cancelada porque não foi possível criar o backup automático de recuperação.',
+      };
+    }
+
     saveAndLog(
       'Banco de Dados',
       mode === 'clear' ? 'Excluiu' : 'Editou',
@@ -3300,6 +3389,9 @@ export default function App() {
               break;
             case 'funcionarios':
               persist('renea_funcionarios', nextValue(INITIAL_FUNCIONARIOS), setFuncionarios);
+              break;
+            case 'motoristasOperacionais':
+              persist(STORAGE_KEYS.motoristasOperacionais, nextValue([...OPERATIONAL_DRIVERS]), setMotoristasOperacionais);
               break;
             case 'comboios':
               persist('renea_comboios', nextValue(INITIAL_COMBOIOS), setComboios);
@@ -3372,7 +3464,7 @@ export default function App() {
 
   const handleDeleteTabData = (tabId: string): { success: boolean; message: string } => {
     const scopesByTab: Record<string, string[]> = {
-      cadastros: ['empresas', 'obras', 'equipamentos', 'funcionarios', 'comboios', 'combustiveis', 'lubrificantes', 'etapas'],
+      cadastros: ['empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios', 'combustiveis', 'lubrificantes', 'etapas'],
       lancamentos: ['abastecimentos', 'lubrificacoes'],
       'controle-equipamentos': ['controleEquipamentos'],
       'tickets-jazida': ['ticketsJazida'],
@@ -3618,6 +3710,7 @@ export default function App() {
       obras,
       equipamentos,
       funcionarios,
+      motoristasOperacionais,
       comboios,
       combustiveis,
       lubrificantes,
@@ -3658,6 +3751,21 @@ export default function App() {
       return true;
     } catch (e) {
       return false;
+    }
+  };
+
+  const handleRestoreLastDeletion = (): { success: boolean; message: string } => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.lastDeletionRecovery);
+      if (!raw) return { success: false, message: 'Nenhum backup automático de exclusão foi encontrado neste dispositivo.' };
+      const parsed = JSON.parse(raw) as { labels?: string[]; backup?: unknown };
+      if (!parsed.backup || !handleImportFullData(JSON.stringify(parsed.backup))) {
+        return { success: false, message: 'O último backup automático não passou na validação de integridade.' };
+      }
+      const label = Array.isArray(parsed.labels) && parsed.labels.length ? ` (${parsed.labels.join(', ')})` : '';
+      return { success: true, message: `Dados anteriores à última exclusão restaurados com sucesso${label}.` };
+    } catch {
+      return { success: false, message: 'Não foi possível ler o último backup automático de exclusão.' };
     }
   };
 
@@ -4017,11 +4125,19 @@ export default function App() {
         </div>
       )}
 
-      {/* 3. MAIN WORKSPACE CONTAINER */}
-      <main className="flex-1 flex flex-col overflow-y-auto" id="main-workspace">
-        <DesktopTopBar
+      {/* Desktop ERP shell: the sidebar is the single source of navigation. */}
+      <div className="erp-shell">
+        <DesktopSidebar
           activeTab={activeTab}
-          logoSrc={reneaLogo}
+          groups={filteredNavigationGroups}
+          menuSearch={menuSearch}
+          onMenuSearchChange={setMenuSearch}
+          onNavigate={tab => navigateTo(tab)}
+          onLogout={() => void handleLogout()}
+        />
+        <main className="erp-workspace" id="main-workspace">
+        {activeTab !== 'dashboard' && <DesktopTopBar
+          activeTab={activeTab}
           currentUser={currentUser}
           isNotificationOpen={isNotifDropdownOpen}
           notifications={notifications}
@@ -4032,12 +4148,7 @@ export default function App() {
           onMarkAllNotificationsAsRead={handleMarkAllAsRead}
           onClearNotifications={handleClearNotifications}
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
-        />
-        <DesktopModuleTabs
-          activeTab={activeTab}
-          groups={filteredNavigationGroups}
-          onNavigate={tab => navigateTo(tab)}
-        />
+        />}
         {/* Dynamic Inner Tab Viewport */}
         <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full mx-auto print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3.5 sm:p-4 md:p-7 2xl:p-10 max-w-[1440px]'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
@@ -4091,23 +4202,6 @@ export default function App() {
                 vinculos={vinculosOperadorEquipamento}
                 onLink={handleVincularOperadorEquipamento}
                 onUnlink={handleEncerrarVinculoOperadorEquipamento}
-                onNavigate={navigateTo}
-              />
-            )}
-
-            {activeTab === 'pendencias' && (
-              <PendenciasTab
-                tickets={ticketsJazida}
-                abastecimentos={abastecimentos}
-                materiais={materiaisRegistros}
-                estacas={controleEstacas}
-                ordensServico={ordensServico}
-                partesDiarias={partesDiariasEquipamentos}
-                controlesEquipamentos={controleEquipamentosDiario}
-                empresas={empresas}
-                equipamentos={equipamentos}
-                funcionarios={funcionarios}
-                gruposEquipe={gruposEquipe}
                 onNavigate={navigateTo}
               />
             )}
@@ -4178,13 +4272,18 @@ export default function App() {
                 equipamentos={equipamentos}
                 empresas={empresas}
                 funcionarios={funcionarios}
+                operationalDrivers={motoristasOperacionais}
                 gruposEquipe={gruposEquipe}
                 ordensServico={ordensServico}
                 onSave={handleSaveControleEquipamentoDiario}
                 onImport={handleImportControleEquipamentosDiario}
                 onDeleteMany={handleDeleteControleEquipamentosDiario}
-                onOpenMaintenance={() => navigateTo('manutencao')}
                 onOpenEmployeeRegistration={() => navigateTo('cadastros')}
+                onOpenEquipmentRegistration={() => navigateTo('cadastros')}
+                onSaveOperationalDriver={handleSaveOperationalDriver}
+                onDeleteOperationalDriver={handleDeleteOperationalDriver}
+                canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
+                onApproveFleetRecord={handleApproveControleEquipamentoDiario}
               />
             )}
 
@@ -4214,21 +4313,6 @@ export default function App() {
               />
             )}
 
-
-            {activeTab === 'manutencao' && (
-              <ManutencaoEquipamentosTab 
-                equipamentos={equipamentos}
-                funcionarios={funcionarios}
-                obras={obras}
-                empresas={empresas}
-                partesDiarias={partesDiariasEquipamentos}
-                ordensServico={ordensServico}
-                onSaveOrdemServico={handleSaveOrdemServico}
-                onDeleteOrdemServico={handleDeleteOrdemServico}
-                onSaveEquipamento={handleSaveEquipamento}
-                onUpdateEquipamentoStatus={handleUpdateEquipamentoStatus}
-              />
-            )}
 
             {activeTab === 'tickets-jazida' && (
               <TicketsJazidaTab 
@@ -4298,12 +4382,14 @@ export default function App() {
                 onArchivePeriod={handleArchivePeriod}
                 onRestoreArchivedPeriod={handleRestoreArchivedPeriod}
                 onDeleteTabData={handleDeleteTabData}
+                onRestoreLastDeletion={handleRestoreLastDeletion}
               />
             )}
             </motion.div>
           </Suspense>
         </div>
-      </main>
+        </main>
+      </div>
 
       <OfflineStatusV29 />
       <ToastViewport toasts={activeToasts} />

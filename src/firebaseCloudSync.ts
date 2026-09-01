@@ -17,6 +17,7 @@ const INTERMEDIATE_TABLE_IDS = [
   'obras',
   'equipamentos',
   'funcionarios',
+  'motoristasOperacionais',
   'comboios',
   'combustiveis',
   'lubrificantes',

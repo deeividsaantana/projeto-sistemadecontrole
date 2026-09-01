@@ -667,6 +667,15 @@ export interface EventoControleEquipamentoDiario {
   ordemServicoId?: string;
 }
 
+export interface AprovacaoOperacional {
+  status: 'PENDENTE' | 'APROVADO' | 'REJEITADO';
+  solicitadoEm: string;
+  solicitadoPor?: string;
+  decididoEm?: string;
+  decididoPor?: string;
+  observacao?: string;
+}
+
 export interface ControleEquipamentoDiario {
   id: string;
   chave: string;
@@ -688,6 +697,7 @@ export interface ControleEquipamentoDiario {
   observacao: string;
   origem: 'SISTEMA' | 'PLANILHA';
   revisao: string[];
+  aprovacao?: AprovacaoOperacional;
   criadoEm: string;
   atualizadoEm: string;
 }

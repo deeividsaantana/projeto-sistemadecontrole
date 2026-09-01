@@ -3,7 +3,6 @@ import {createRoot} from 'react-dom/client';
 import { AppProviders } from './app/providers/AppProviders';
 import { APP_VERSION } from './app/version';
 import './index.css';
-import './zero-theme.css';
 import '@fontsource-variable/geist';
 import { isPublicLinkUrl } from './app/routing/publicRoutes';
 import { restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';

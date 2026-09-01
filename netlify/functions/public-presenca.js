@@ -278,14 +278,34 @@ export const handler = async event => {
       }
       const stableSubmissionId = `presence_${stableHash(idempotencyKey).slice(0, 48)}`;
       const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token, submissionId: stableSubmissionId });
-      await database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`).set({
+      const lockId = `presence_${stableHash(`${group.id}|${date}`).slice(0, 48)}`;
+      const lockRef = database.collection('sistemarenea_presence_locks').doc(lockId);
+      const submissionRef = database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`);
+      const submission = {
         kind: 'presence',
         status: 'pending',
         createdAt: serverTimestamp(),
         createdAtIso,
         sourceIpHash: requestIpHash(event),
         payload: { grupoId: group.id, grupoNome: cleanString(group.nome, 160), data: date, records },
-      });
+      };
+      try {
+        // O bloqueio e a submissão nascem na mesma transação. Assim não existe
+        // reserva órfã se a gravação do registro falhar.
+        await database.runTransaction(async transaction => {
+          const lock = await transaction.get(lockRef);
+          if (lock.exists) {
+            const error = new Error('Já existe presença registrada para esta equipe nesta data.');
+            error.statusCode = 409;
+            throw error;
+          }
+          transaction.create(lockRef, { grupoId: group.id, data: date, submissionId, createdAt: serverTimestamp() });
+          transaction.create(submissionRef, submission);
+        });
+      } catch (error) {
+        if (error?.statusCode === 409) throw error;
+        throw new Error('Não foi possível registrar a presença desta equipe com segurança.');
+      }
       return jsonResponse(201, {
         success: true,
         data: { submissionId, createdAtIso },

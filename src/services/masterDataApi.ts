@@ -7,6 +7,7 @@ export const MASTER_DATA_ENTITIES = [
   'equipment',
   'vehicles',
   'collaborators',
+  'operational_drivers',
   'suppliers',
   'materials',
   'convoys',

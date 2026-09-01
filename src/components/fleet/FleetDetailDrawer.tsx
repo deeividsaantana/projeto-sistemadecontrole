@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Clock3, Pencil, Wrench, X } from 'lucide-react';
 import type { FleetCurrentState } from '../../fleet/domain';
+import { isBasculanteWithoutPlate } from '../../fleet/domain';
 import { formatBrazilianDateTime } from '../../fleet/time';
 import FleetStatusBadge from './FleetStatusBadge';
 
@@ -55,7 +56,7 @@ export default function FleetDetailDrawer({ state, onClose, onEdit }: Props) {
             <div><span className="block text-[9px] font-black uppercase text-slate-400">Motorista atual</span><strong className="mt-1 block text-slate-900">{state.driver?.employeeName || 'Sem motorista'}</strong></div>
             <div><span className="block text-[9px] font-black uppercase text-slate-400">Matrícula</span><strong className="mt-1 block text-slate-900">{state.driver?.employeeCode || 'Não informada'}</strong></div>
             <div><span className="block text-[9px] font-black uppercase text-slate-400">Empresa</span><strong className="mt-1 block text-slate-900">{state.equipment.companyName}</strong></div>
-            <div><span className="block text-[9px] font-black uppercase text-slate-400">Placa</span><strong className="mt-1 block text-slate-900">{state.equipment.plate || 'Não informada'}</strong></div>
+            {!isBasculanteWithoutPlate(state.equipment) && <div><span className="block text-[9px] font-black uppercase text-slate-400">Placa</span><strong className="mt-1 block text-slate-900">{state.equipment.plate || 'Não informada'}</strong></div>}
             <div><span className="block text-[9px] font-black uppercase text-slate-400">Saída</span><strong className="mt-1 block font-mono text-slate-900">{state.departureTime || '—'}</strong></div>
             <div><span className="block text-[9px] font-black uppercase text-slate-400">Tempo parado</span><strong className="mt-1 block font-mono text-slate-900">{state.stoppedDurationLabel}</strong></div>
             <div className="col-span-2"><span className="block text-[9px] font-black uppercase text-slate-400">Local</span><strong className="mt-1 block text-slate-900">{state.location || 'Não informado'}</strong></div>
