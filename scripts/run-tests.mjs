@@ -1,11 +1,16 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 
-const suites = ['tests/run-core.ts', 'tests/run-platform.ts', 'tests/run-fleet.ts'];
+const suites = [...readFileSync('tests/run.ts', 'utf8').matchAll(/import '\.\/(.+\.test)';/g)]
+  .map((match) => {
+    const base = `tests/${match[1]}`;
+    return existsSync(`${base}.ts`) ? `${base}.ts` : `${base}.tsx`;
+  });
 
 for (const suite of suites) {
   const result = spawnSync(
     process.execPath,
-    ['--max-old-space-size=2048', 'node_modules/tsx/dist/cli.mjs', suite],
+    ['--max-old-space-size=1024', 'node_modules/tsx/dist/cli.mjs', suite],
     { stdio: 'inherit' },
   );
 
