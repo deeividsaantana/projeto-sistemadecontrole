@@ -1,18 +1,14 @@
 .presence-public {
   --presence-ink: #18231f;
   --presence-muted: #69736e;
-  --presence-line: #d9ded8;
-  --presence-surface: #fffef9;
-  --presence-canvas: #f4f2ea;
-  --presence-green: #24664d;
-  --presence-green-strong: #174a38;
+  --presence-line: #e2e8e4;
+  --presence-surface: #ffffff;
+  --presence-canvas: #ffffff;
+  --presence-green: #008c5a;
+  --presence-green-strong: #063c31;
   min-height: 100svh;
   color: var(--presence-ink);
-  background-color: var(--presence-canvas);
-  background-image:
-    linear-gradient(rgba(24, 35, 31, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(24, 35, 31, 0.025) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background: var(--presence-canvas);
 }
 
 .presence-public,
@@ -48,11 +44,10 @@
   display: grid;
   grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
   align-items: center;
-  min-height: 72px;
-  padding: max(12px, env(safe-area-inset-top)) 18px 12px;
-  border-bottom: 1px solid rgba(24, 35, 31, 0.1);
-  background: rgba(244, 242, 234, 0.94);
-  backdrop-filter: blur(18px);
+  min-height: 64px;
+  padding: max(10px, env(safe-area-inset-top)) 18px 10px;
+  border-bottom: 0;
+  background: var(--presence-green-strong);
 }
 
 .presence-public__header > button {
@@ -61,10 +56,10 @@
   height: 44px;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--presence-line);
-  border-radius: 14px;
-  color: var(--presence-ink);
-  background: var(--presence-surface);
+  border: 1px solid rgb(255 255 255 / .32);
+  border-radius: 8px;
+  color: #fff;
+  background: transparent;
 }
 
 .presence-public__header > button:disabled {
@@ -76,7 +71,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: var(--presence-green-strong);
+  color: #fff;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -87,14 +82,14 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #2c8a63;
-  box-shadow: 0 0 0 5px rgba(44, 138, 99, 0.12);
+  background: #7ce0b4;
+  box-shadow: none;
 }
 
 .presence-public__logo {
   display: block;
   width: auto;
-  height: 28px;
+  height: 26px;
   max-width: 148px;
 }
 
@@ -105,7 +100,7 @@
 .presence-public__content {
   width: min(100%, 760px);
   margin: 0 auto;
-  padding: 30px 16px 132px;
+  padding: 24px 16px 132px;
 }
 
 .presence-public__content--narrow {
@@ -156,7 +151,7 @@
   min-height: 52px;
   padding: 0 16px;
   border: 1px solid var(--presence-line);
-  border-radius: 16px;
+  border-radius: 10px;
   color: #78817c;
   background: var(--presence-surface);
 }
@@ -189,7 +184,7 @@
 .presence-public__group-list,
 .presence-public__employee-list {
   display: grid;
-  gap: 10px;
+  gap: 0;
   margin-top: 14px;
 }
 
@@ -199,10 +194,11 @@
   align-items: center;
   gap: 14px;
   width: 100%;
-  min-height: 84px;
-  padding: 15px 14px 15px 18px;
-  border: 1px solid var(--presence-line);
-  border-radius: 18px;
+  min-height: 80px;
+  padding: 15px 14px 15px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--presence-line);
+  border-radius: 0;
   color: var(--presence-ink);
   text-align: left;
   background: var(--presence-surface);
@@ -211,9 +207,9 @@
 
 .presence-public__group-button:hover,
 .presence-public__group-button:focus-visible {
-  border-color: rgba(36, 102, 77, 0.55);
+  border-color: var(--presence-green);
   outline: 0;
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .presence-public__group-button strong,
@@ -267,7 +263,7 @@
   margin-bottom: 14px;
   padding: 18px;
   border: 1px solid var(--presence-line);
-  border-radius: 20px;
+  border-radius: 10px;
   background: var(--presence-surface);
 }
 
@@ -325,7 +321,7 @@
 .presence-public__employee-card {
   padding: 17px;
   border: 1px solid var(--presence-line);
-  border-radius: 20px;
+  border-radius: 10px;
   background: var(--presence-surface);
 }
 
@@ -386,7 +382,7 @@
   color: #4f5a54;
   font-size: 11px;
   font-weight: 750;
-  background: #fbfaf5;
+  background: #fff;
 }
 
 .presence-public__status-grid button[data-selected='true'] {
@@ -420,7 +416,7 @@
   margin-top: 14px;
   padding: 14px;
   border: 1px solid #e8b9ae;
-  border-radius: 14px;
+  border-radius: 10px;
   color: #8c3027;
   font-size: 12px;
   background: #fff4ef;
@@ -472,9 +468,8 @@
   justify-content: space-between;
   gap: 14px;
   padding: 13px max(16px, calc((100vw - 760px) / 2)) max(13px, env(safe-area-inset-bottom));
-  border-top: 1px solid rgba(24, 35, 31, 0.1);
-  background: rgba(255, 254, 249, 0.96);
-  backdrop-filter: blur(18px);
+  border-top: 1px solid var(--presence-line);
+  background: #fff;
 }
 
 .presence-public__pending-count {
@@ -508,7 +503,7 @@
   gap: 9px;
   padding: 0 18px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 8px;
   color: white;
   font-size: 12px;
   font-weight: 850;
@@ -526,7 +521,7 @@
   width: min(100%, 520px);
   padding: 30px;
   border: 1px solid var(--presence-line);
-  border-radius: 24px;
+  border-radius: 12px;
   background: var(--presence-surface);
 }
 
@@ -674,7 +669,7 @@
   padding: 13px 8px;
   border: 1px solid var(--presence-line);
   border-radius: 14px;
-  background: #fbfaf5;
+  background: #fff;
   animation: presence-success-rise 420ms ease-out both;
 }
 
@@ -722,7 +717,7 @@
   border-radius: 16px;
   color: var(--presence-muted);
   text-align: center;
-  background: rgba(255, 254, 249, 0.62);
+  background: #fff;
 }
 
 @keyframes presence-loading {

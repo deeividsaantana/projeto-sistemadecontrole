@@ -12,7 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { Empresa, Funcionario, GrupoEquipe, ObraLocal, PresencaStatus } from '../types';
-import reneaLogo from '../assets/images/logo-renea-dark.svg';
+import reneaLogo from '../assets/images/logo-renea-branco.png';
 import './presencaTempoRealPublica.css';
 
 const PRIMARY_STATUSES: PresencaStatus[] = ['Presente', 'Ausente', 'Falta justificada', 'Atestado'];

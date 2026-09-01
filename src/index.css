@@ -14,10 +14,10 @@
 :root {
   --renea-ink: #17211e;
   --renea-muted: #69726d;
-  --renea-line: #d7d4ca;
-  --renea-paper: #fffdf8;
-  --renea-stone: #f4f1e9;
-  --renea-soft: #eceae3;
+  --renea-line: #e2e8e4;
+  --renea-paper: #ffffff;
+  --renea-stone: #ffffff;
+  --renea-soft: #ffffff;
   --renea-green: #063c31;
   --renea-green-deep: #022b24;
   --renea-focus: rgb(13 89 70 / 0.22);
@@ -35,18 +35,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-body::before {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  content: "";
-  opacity: .018;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
-}
-
 ::selection { background: rgb(6 60 49 / .22); color: var(--renea-green-deep); }
-* { scrollbar-width: thin; scrollbar-color: #a8b1ac #eceae3; }
+* { scrollbar-width: thin; scrollbar-color: #a8b1ac #f4f7f5; }
 h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.025em; text-wrap: balance; }
 
 #app-root { min-height: 100dvh; background: var(--renea-stone); color: var(--renea-ink); }
@@ -94,11 +84,11 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 #app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus { border-color: var(--renea-green); box-shadow: 0 0 0 3px var(--renea-focus); }
 
 #app-root table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
-#app-root thead { background: #ece9e0; color: #3e4843; letter-spacing: .025em; }
+#app-root thead { background: #fafcfb; color: #3e4843; letter-spacing: .025em; }
 #app-root tbody tr { transition: background-color 180ms ease; }
 #app-root tbody tr:hover { background-color: #edf2ed; }
 
-#mobile-header { background: rgb(255 253 248 / .96); border-bottom: 1px solid var(--renea-line); box-shadow: none; }
+#mobile-header { background: #fff; border-bottom: 1px solid var(--renea-line); box-shadow: none; }
 #mobile-drawer { background: rgb(2 43 36 / .62); backdrop-filter: blur(10px); }
 #mobile-drawer > div { background: var(--renea-paper); border-color: var(--renea-line); box-shadow: -24px 0 60px rgb(2 43 36 / .2); }
 #mobile-drawer :is(.text-slate-400, .text-slate-300) { color: #52625c; }
@@ -247,7 +237,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 .erp-sidebar__user strong { overflow: hidden; font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
 .erp-sidebar__user small { color: #a8ccbe; font-size: .58rem; }
 .erp-sidebar__collapse > svg { width: .9rem; height: .9rem; color: #b5d7c9; }
-.erp-workspace { display: flex; min-width: 0; min-height: 100dvh; flex: 1; flex-direction: column; background: #f5f7fb; }
+.erp-workspace { display: flex; min-width: 0; min-height: 100dvh; flex: 1; flex-direction: column; background: #fff; }
 .erp-topbar { display: flex; min-height: 4.6rem; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 0 1.9rem; border-bottom: 1px solid #dde4ef; background: #fff; }
 .erp-topbar__breadcrumb { display: flex; min-width: 0; align-items: center; gap: .7rem; color: #61718a; font-size: .78rem; }
 .erp-topbar__breadcrumb strong { overflow: hidden; color: #10213c; font-weight: 760; text-overflow: ellipsis; white-space: nowrap; }
@@ -280,7 +270,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 }
 
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
-.erp-shell { background: #edf2ee; }
+.erp-shell { background: #fff; }
 .erp-sidebar { width: 17.5rem; min-width: 17.5rem; background: #062f25; border-right: 1px solid #185443; }
 .erp-sidebar__brand { min-height: 5.5rem; padding: 1.35rem 1.25rem; border-bottom: 1px solid #185443; background: #062a21; }
 .erp-sidebar__brand img { width: 10.5rem; }
@@ -293,43 +283,35 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 .erp-sidebar__item:hover { transform: translateX(3px); background: #0d4c3a; }
 .erp-sidebar__item.is-active { border-left-color: #79dbb5; background: #07805f; box-shadow: 0 10px 25px rgb(0 35 25 / .28); }
 .erp-sidebar__footer { padding: 1rem; border-top: 1px solid #185443; background: #062a21; }
-.erp-workspace { background: #f3f5f2; }
-.erp-topbar { min-height: 5rem; padding-inline: 2rem; border-bottom-color: #dbe3dd; background: rgb(255 255 255 / .94); }
+.erp-workspace { background: #fff; }
+.erp-topbar { min-height: 5rem; padding-inline: 2rem; border-bottom-color: #e2e8e4; background: #fff; }
 .erp-topbar__command { border-color: #b7d8ca; border-radius: .75rem; background: #eff9f3; color: #0c6b4e; transition: transform .45s cubic-bezier(.32,.72,0,1), background-color .45s cubic-bezier(.32,.72,0,1); }
 .erp-topbar__command:hover { transform: translateY(-1px); border-color: #6ab393; background: #e3f5ea; }
-#main-tab-viewport { background: radial-gradient(circle at 78% 8%, rgb(215 239 225 / .5), transparent 26rem), #f3f5f2; }
+#main-tab-viewport { background: #fff; }
 
 /* RENEA operational workspace: shared light surface language used by the rebuilt
    executive panel and the fleet control. The navigation remains dark green by
    design; content never inherits that dark treatment. */
-.erp-dashboard {
-  background:
-    radial-gradient(circle at 82% 3%, rgb(212 239 221 / .58), transparent 23rem),
-    linear-gradient(180deg, #f8f8f4 0%, #f1f5f1 100%);
-}
+.erp-dashboard { background: #fff; }
 .erp-dashboard .erp-surface {
-  border: 1px solid #dce6df;
+  border: 1px solid #e2e8e4;
   border-radius: .9rem;
-  background: rgb(255 255 253 / .94);
-  box-shadow: 0 .9rem 2.1rem rgb(23 60 42 / .055);
+  background: #fff;
+  box-shadow: none;
 }
 .erp-dashboard .erp-availability {
-  background:
-    radial-gradient(circle at 92% 15%, rgb(220 245 226 / .85), transparent 12rem),
-    rgb(255 255 253 / .96);
+  background: #fff;
 }
-.erp-dashboard .erp-dayline {
-  box-shadow: 0 .55rem 1.75rem rgb(23 60 42 / .035);
-}
-.erp-dashboard table thead { background: #f1f5f1; }
-.erp-dashboard table tbody tr { border-top: 1px solid #e6eee8; }
-.erp-dashboard table tbody tr:hover { background: #f6faf7; }
-.erp-shortcuts { box-shadow: 0 .65rem 1.9rem rgb(23 60 42 / .04); }
+.erp-dashboard .erp-dayline { box-shadow: none; }
+.erp-dashboard table thead { background: #fafcfb; }
+.erp-dashboard table tbody tr { border-top: 1px solid #e8eeea; }
+.erp-dashboard table tbody tr:hover { background: #f8fbf9; }
+.erp-shortcuts { box-shadow: none; }
 
 .erp-topbar {
   min-height: 4.55rem;
   border-bottom-color: #dce5df;
-  background: rgb(255 255 253 / .96);
+  background: #fff;
 }
 .erp-topbar__breadcrumb { color: #65766d; font-size: .8rem; }
 .erp-topbar__breadcrumb strong { color: #183428; }
@@ -340,7 +322,19 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 .erp-topbar__avatar { border-color: #b8d9c8; background: #eff8f2; color: #087345; }
 
 .fleet-control > header button { box-shadow: none; }
-.fleet-control > header button:first-child { box-shadow: 0 .65rem 1.5rem rgb(8 115 69 / .16); }
+.fleet-control > header button:first-child { box-shadow: none; }
+
+/* Single white workspace: legacy utility colors stay neutral outside the sidebar. */
+#main-tab-viewport [class*="bg-[#fffefa]"],
+#main-tab-viewport [class*="bg-[#f7f5ef]"],
+#main-tab-viewport [class*="bg-[#f0eee6]"],
+#main-tab-viewport [class*="bg-[#e8e5db]"] { background-color: #fff !important; }
+#main-tab-viewport [class*="border-[#ddd9cd]"],
+#main-tab-viewport [class*="border-[#d8d4c8]"],
+#main-tab-viewport [class*="border-[#e4e0d6]"] { border-color: #e2e8e4 !important; }
+#main-tab-viewport [class*="shadow-"] { box-shadow: none !important; }
+#main-tab-viewport [class*="bg-[#14231e]"] { background-color: #087653 !important; color: #fff !important; }
+#main-tab-viewport [class*="bg-[#14231e]"] [class*="text-white"] { color: #fff !important; }
 @media (max-width: 1023px) {
-  .erp-dashboard { background: #f5f7f4; }
+  .erp-dashboard { background: #fff; }
 }

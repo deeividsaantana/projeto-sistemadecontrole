@@ -62,9 +62,9 @@ const STATUS_STYLES: Record<PresencaStatus, string> = {
   Outro: 'border-violet-200 bg-violet-50 text-violet-800',
 };
 
-const PANEL = 'rounded-[1.35rem] border border-[#ddd9cd] bg-[#fffefa]';
-const FIELD = 'min-h-11 w-full rounded-xl border border-[#d8d4c8] bg-white px-3 text-sm text-[#14231e] outline-none transition focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10';
-const SECONDARY_BUTTON = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#d8d4c8] bg-white px-4 text-sm font-semibold text-[#26362f] transition hover:border-emerald-700 hover:text-emerald-800 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-700/15';
+const PANEL = 'rounded-xl border border-[#e2e8e4] bg-white';
+const FIELD = 'min-h-11 w-full rounded-lg border border-[#e2e8e4] bg-white px-3 text-sm text-[#14231e] outline-none transition focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10';
+const SECONDARY_BUTTON = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#e2e8e4] bg-white px-4 text-sm font-semibold text-[#26362f] transition hover:border-emerald-700 hover:text-emerald-800 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-700/15';
 const PRIMARY_BUTTON = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#087653] px-4 text-sm font-bold text-white transition hover:bg-[#066344] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-700/20 disabled:cursor-not-allowed disabled:opacity-45';
 
 interface ControlePresencaTabProps {
@@ -465,7 +465,6 @@ export default function ControlePresencaTab({
     <section id="presenca-tempo-real" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-[#14231e] lg:pb-8">
       <header className={`${PANEL} overflow-hidden`}>
         <div className="relative grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-72 opacity-30 lg:block" style={{ backgroundImage: 'linear-gradient(#d9d5c9 1px, transparent 1px), linear-gradient(90deg, #d9d5c9 1px, transparent 1px)', backgroundSize: '28px 28px', maskImage: 'linear-gradient(90deg, transparent, black)' }} />
           <div className="relative">
             <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-8 w-auto" />
             <div className="mt-7 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-800">
@@ -482,12 +481,12 @@ export default function ControlePresencaTab({
           </div>
         </div>
 
-        <nav aria-label="Seções do controle de presença" className="grid grid-cols-4 border-t border-[#e4e0d6] bg-[#f7f5ef] p-1.5 sm:flex sm:gap-1.5">
+        <nav aria-label="Seções do controle de presença" className="grid grid-cols-4 border-t border-[#e2e8e4] bg-white p-1.5 sm:flex sm:gap-1.5">
           {navItems.map(item => {
             const Icon = item.icon;
             const active = view === item.id;
             return (
-              <button key={item.id} type="button" onClick={() => setView(item.id)} aria-current={active ? 'page' : undefined} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-bold transition sm:min-w-32 sm:text-sm ${active ? 'bg-[#14231e] text-white shadow-sm' : 'text-[#65716b] hover:bg-white hover:text-[#14231e]'}`}>
+              <button key={item.id} type="button" onClick={() => setView(item.id)} aria-current={active ? 'page' : undefined} className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-3 text-[11px] font-bold transition sm:min-w-32 sm:text-sm ${active ? 'bg-emerald-700 text-white' : 'text-[#65716b] hover:bg-emerald-50 hover:text-[#14231e]'}`}>
                 <Icon className="h-4 w-4" /> <span>{item.label}</span>
               </button>
             );
