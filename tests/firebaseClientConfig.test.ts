@@ -27,7 +27,10 @@ test('configuracao Firebase aceita variaveis Vite por ambiente', () => {
   assert.deepEqual(getMissingFirebaseClientConfigKeys(config), []);
 });
 
-test('configuracao Firebase preserva fallback do projeto atual', () => {
+// O projeto de producao e sistemarenea. Este retrato embutido e de um projeto
+// antigo e serve apenas para a aplicacao abrir sem configuracao, em
+// desenvolvimento; em producao ele significa banco errado.
+test('fallback embutido continua sendo o projeto legado, nao o de producao', () => {
   const config = resolveFirebaseClientConfig({});
 
   assert.equal(config.projectId, 'sistemaerp-787f6');
