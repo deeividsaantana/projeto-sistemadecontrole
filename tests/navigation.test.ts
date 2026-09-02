@@ -16,7 +16,7 @@ test('perfil administrador mantém acesso a todos os módulos atuais', () => {
 test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ROLE_ACCESS.gestor.includes('configuracoes'), false);
   assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'consulta-geral', 'reports']);
-  assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), true);
+  assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), false);
   assert.equal(ROLE_ACCESS.gestor.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.admin.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.admin.includes('inteligencia'), false);
@@ -24,7 +24,7 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ROLE_ACCESS.admin.includes('partes-diarias'), false);
   assert.equal(ROLE_ACCESS.gestor.includes('usuarios'), false);
   assert.equal(ROLE_ACCESS.admin.includes('usuarios'), true);
-  assert.equal(ROLE_ACCESS.operador.includes('pendencias'), true);
+  assert.equal(ROLE_ACCESS.operador.includes('pendencias'), false);
   assert.equal(ROLE_ACCESS.operador.includes('lancamentos'), true);
   assert.equal(ROLE_ACCESS.operador.includes('configuracoes'), false);
   assert.equal(ROLE_ACCESS.operador.includes('partes-diarias'), false);
