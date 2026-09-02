@@ -447,6 +447,12 @@
   color: #153f32;
 }
 
+.presence-public__submit-actions > button[data-saved="true"] {
+  border-color: #8fc9aa;
+  background: #e8f5ed;
+  color: #0d5b3b;
+}
+
 @media (max-width: 640px) {
   .presence-public__submit-actions {
     width: 100%;
@@ -596,6 +602,46 @@
   stroke-dasharray: 18;
   stroke-dashoffset: 18;
   animation: presence-success-draw 360ms 570ms ease-out forwards;
+}
+
+.presence-public__success-card--draft .presence-public__success-icon {
+  color: #a56d08;
+  background: #fff1c7;
+  filter: drop-shadow(0 8px 16px rgba(165, 109, 8, 0.16));
+}
+
+.presence-public__success-card--draft .presence-public__success-total {
+  border-color: #dcc487;
+  background: #fff8df;
+}
+
+.presence-public__success-card--draft .presence-public__success-total::after {
+  border-color: rgba(165, 109, 8, 0.3);
+}
+
+.presence-public__draft-badge {
+  display: inline-flex;
+  margin: 0 auto 10px;
+  border: 1px solid #e2c678;
+  border-radius: 999px;
+  background: #fff8df;
+  padding: 5px 10px;
+  color: #8a5b05;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.presence-public__draft-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 18px;
+  color: #80570d !important;
+  font-size: 11px !important;
+  font-weight: 800;
 }
 
 .presence-public__success-card h1 {

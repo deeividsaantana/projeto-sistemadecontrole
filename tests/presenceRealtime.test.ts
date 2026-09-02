@@ -50,8 +50,12 @@ test('apontador salva rascunho local sem transmitir ao painel', () => {
   assert.match(publicPresenceSource, /const saveDraft = async \(\) =>/);
   assert.match(publicPresenceSource, /Rascunho salvo neste aparelho · Ainda não enviado/);
   assert.match(publicPresenceSource, /type="button" onClick=\{\(\) => void saveDraft\(\)\}/);
-  assert.match(publicPresenceSource, /savingDraft \? <RefreshCw className="h-5 w-5 animate-spin" \/> : <Save/);
-  assert.match(publicPresenceSource, /savingDraft \? 'Salvando' : 'Salvar rascunho'/);
+  assert.match(publicPresenceSource, /savingDraft \? <RefreshCw className="h-5 w-5 animate-spin" \/> : draftSaved/);
+  assert.match(publicPresenceSource, /draftSaved \? <CheckCircle2 className="h-5 w-5" \/> : <Save/);
+  assert.match(publicPresenceSource, /savingDraft \? 'Salvando' : draftSaved \? 'Rascunho salvo' : 'Salvar rascunho'/);
+  assert.match(publicPresenceSource, /showDraftSuccessScreen && group/);
+  assert.match(publicPresenceSource, /<h1>Rascunho salvo<\/h1>/);
+  assert.match(publicPresenceSource, /Este rascunho ainda não foi enviado para o controle de presença/);
   assert.match(publicPresenceSource, /type="submit"/);
   assert.match(publicPresenceSource, /'Enviar presença'/);
 });

@@ -172,6 +172,9 @@ export default function PresencaTempoRealPublica({
   const [items, setItems] = useState<Record<string, ItemState>>({});
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [showDraftSuccessScreen, setShowDraftSuccessScreen] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState('');
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
   // Comprovante animado do envio. Aparece logo apos enviar e volta a aparecer
@@ -400,12 +403,14 @@ export default function PresencaTempoRealPublica({
       [employeeId]: { observacao: current[employeeId]?.observacao || '', status },
     }));
     setError('');
+    setDraftSaved(false);
     setDraftFeedback('Alterações ainda não enviadas');
   };
 
   const saveDraft = async () => {
     if (savingDraft || submitting) return;
     setSavingDraft(true);
+    setDraftSaved(false);
     setError('');
     try {
       // O pequeno intervalo mantém o retorno visual perceptível mesmo quando
@@ -413,6 +418,9 @@ export default function PresencaTempoRealPublica({
       await new Promise(resolve => window.setTimeout(resolve, 1_200));
       writeDraft(token, { date, selectedGroupId: group?.id || selectedGroupId, items, result: null });
       setDraftFeedback('Rascunho salvo neste aparelho · Ainda não enviado');
+      setDraftSaved(true);
+      setDraftSavedAt(new Date().toISOString());
+      setShowDraftSuccessScreen(true);
     } finally {
       setSavingDraft(false);
     }
@@ -614,6 +622,39 @@ export default function PresencaTempoRealPublica({
             ))}
           </section>
         </div>
+      </main>
+    );
+  }
+
+  if (showDraftSuccessScreen && group) {
+    const draftCounts = groupEmployees.reduce<Record<string, number>>((summary, employee) => {
+      const status = items[employee.id]?.status || 'Pendente';
+      summary[status] = (summary[status] || 0) + 1;
+      return summary;
+    }, {});
+    const draftOutsideCount = (draftCounts.Ausente || 0) + (draftCounts['Falta justificada'] || 0)
+      + (draftCounts.Atestado || 0) + (draftCounts.Férias || 0) + (draftCounts.Afastado || 0) + (draftCounts.Outro || 0);
+    return (
+      <main className="presence-public presence-public--center">
+        <section className="presence-public__success-card presence-public__success-card--draft">
+          <img src={reneaLogo} alt="RENEA Infraestrutura" className="presence-public__logo" />
+          <CheckCircle2 className="presence-public__success-icon" />
+          <p className="presence-public__draft-badge">Não enviado</p>
+          <h1>Rascunho salvo</h1>
+          <p>{group.nome} ficou salvo somente neste aparelho.</p>
+          <time>{draftSavedAt ? new Date(draftSavedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
+          <div className="presence-public__success-total"><strong>{reviewed}</strong><span>conferidos de {groupEmployees.length}</span></div>
+          <div className="presence-public__summary-grid">
+            <div><strong>{draftCounts.Presente || 0}</strong><span>Presentes</span></div>
+            <div><strong>{draftOutsideCount}</strong><span>Fora</span></div>
+            <div><strong>{draftCounts.Atestado || 0}</strong><span>Atestados</span></div>
+            <div><strong>{draftCounts.Pendente || 0}</strong><span>Pendentes</span></div>
+          </div>
+          <p className="presence-public__draft-warning"><Clock3 className="h-4 w-4" /> Este rascunho ainda não foi enviado para o controle de presença.</p>
+          <button type="button" onClick={() => setShowDraftSuccessScreen(false)} className="presence-public__primary">
+            Continuar preenchendo <ChevronRight className="h-4 w-4" />
+          </button>
+        </section>
       </main>
     );
   }
@@ -840,14 +881,14 @@ export default function PresencaTempoRealPublica({
                     {PRIMARY_STATUSES.map(status => <button key={status} type="button" onClick={() => setStatus(employee.id, status)} data-selected={selected === status}>{selected === status && <Check className="h-4 w-4" />}{status}</button>)}
                   </div>
                   <select value={SECONDARY_STATUSES.includes(selected as PresencaStatus) ? selected : ''} onChange={event => event.target.value && setStatus(employee.id, event.target.value as PresencaStatus)}><option value="">Outras situações</option>{SECONDARY_STATUSES.map(status => <option key={status}>{status}</option>)}</select>
-                  <textarea value={items[employee.id]?.observacao || ''} onChange={event => { setItems(current => ({ ...current, [employee.id]: { ...current[employee.id], observacao: event.target.value } })); setDraftFeedback('Alterações ainda não enviadas'); }} rows={2} placeholder="Observação opcional" />
+                  <textarea value={items[employee.id]?.observacao || ''} onChange={event => { setItems(current => ({ ...current, [employee.id]: { ...current[employee.id], observacao: event.target.value } })); setDraftSaved(false); setDraftFeedback('Alterações ainda não enviadas'); }} rows={2} placeholder="Observação opcional" />
                 </article>
               );
             })}
           </section>
           {error && <div role="alert" className="presence-public__error"><AlertTriangle className="h-5 w-5" /><span>{error}</span></div>}
           {draftFeedback && <div role="status" className="presence-public__draft-status"><Clock3 className="h-5 w-5" /><span>{draftFeedback}</span></div>}
-          <div className="presence-public__submit-bar"><div className="presence-public__pending-count"><Clock3 className="h-5 w-5" /><strong>{pending}</strong><span>pendente{pending === 1 ? '' : 's'}</span></div><div className="presence-public__submit-actions"><button type="button" onClick={() => void saveDraft()} disabled={submitting || savingDraft}>{savingDraft ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}{savingDraft ? 'Salvando' : 'Salvar rascunho'}</button><button type="submit" disabled={submitting || savingDraft || pending > 0}>{submitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}{submitting ? 'Enviando' : 'Enviar presença'}</button></div></div>
+          <div className="presence-public__submit-bar"><div className="presence-public__pending-count"><Clock3 className="h-5 w-5" /><strong>{pending}</strong><span>pendente{pending === 1 ? '' : 's'}</span></div><div className="presence-public__submit-actions"><button type="button" onClick={() => void saveDraft()} disabled={submitting || savingDraft} data-saved={draftSaved || undefined}>{savingDraft ? <RefreshCw className="h-5 w-5 animate-spin" /> : draftSaved ? <CheckCircle2 className="h-5 w-5" /> : <Save className="h-5 w-5" />}{savingDraft ? 'Salvando' : draftSaved ? 'Rascunho salvo' : 'Salvar rascunho'}</button><button type="submit" disabled={submitting || savingDraft || pending > 0}>{submitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}{submitting ? 'Enviando' : 'Enviar presença'}</button></div></div>
         </form>
       </div>
     </main>
