@@ -31,6 +31,14 @@ test('historico ignora envios de outro tipo e datas invalidas', () => {
   assert.deepEqual(datas, ['2026-09-02']);
 });
 
+test('historico ignora apontamento cancelado para que o dia possa ser refeito', () => {
+  const history = __testing.indexGroupHistory([
+    { ...submission('2026-09-02', [{ funcionarioId: 'employee-1', status: 'Presente' }]), status: 'cancelled' },
+  ]);
+
+  assert.deepEqual(history.datas, []);
+});
+
 test('historico limita a janela consultavel pelo link publico', () => {
   const documents = Array.from({ length: 45 }, (_, index) => {
     const day = String(index + 1).padStart(2, '0');

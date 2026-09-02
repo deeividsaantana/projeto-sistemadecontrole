@@ -132,6 +132,7 @@ import {
   addPublicPresenceMember,
   resetPresenceDay,
   removePublicPresenceMember,
+  resetPublicPresenceDay,
   updatePublicPresenceDayNote,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
@@ -2568,7 +2569,11 @@ export default function App() {
       try {
         const incomingPresence = submissions.flatMap(item => item.kind === 'presence' ? (item.payload.records || []) : []);
         const incomingPointing = submissions.flatMap(item => item.kind === 'apontamento' && item.payload.record ? [item.payload.record] : []);
-        const storedPresence = parseStoredJson<PresencaApontamento[]>(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', []);
+        const presenceResets = submissions.filter(item => item.kind === 'presence-reset' && item.payload.grupoId && item.payload.data);
+        const storedPresenceBeforeReset = parseStoredJson<PresencaApontamento[]>(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', []);
+        const storedPresence = presenceResets.reduce((records, reset) => records.filter(record => !(
+          record.grupoId === reset.payload.grupoId && record.data === reset.payload.data
+        )), storedPresenceBeforeReset);
         const storedPointing = parseStoredJson<ApontamentoRamoRegistro[]>(localStorage.getItem('renea_apontamento_ramo_registros'), 'renea_apontamento_ramo_registros', []);
         const nextPresence = mergePresenceRecords(storedPresence, incomingPresence);
         const nextPointing = mergeRecordsById(storedPointing, incomingPointing);
@@ -2596,11 +2601,13 @@ export default function App() {
           usuario: item.kind === 'apontamento'
             ? (item.payload.record?.responsavel || 'Link de apontamento')
             : (item.payload.grupoNome || 'Link de presença'),
-          acao: 'Criou' as const,
+          acao: item.kind === 'presence-reset' ? 'Excluiu' as const : 'Criou' as const,
           tela: item.kind === 'apontamento' ? 'Apontamentos' : 'Controle de Presença',
           descricao: item.kind === 'apontamento'
             ? `Recebeu apontamento público de ${item.payload.record?.ramoNome || item.payload.ramoId} em ${item.payload.data}.`
-            : item.kind === 'equipe'
+            : item.kind === 'presence-reset'
+              ? `Resetou a presença da equipe ${item.payload.grupoNome || item.payload.grupoId} em ${item.payload.data} para refazer o apontamento.`
+              : item.kind === 'equipe'
               ? `${item.payload.operacao === 'remover' ? 'Removeu' : 'Incluiu'} ${item.payload.funcionarioNome || item.payload.funcionarioId} ${item.payload.operacao === 'remover' ? 'da' : 'na'} equipe ${item.payload.grupoNome || item.payload.grupoId} pelo link de presença.`
               : `Recebeu presença pública do grupo ${item.payload.grupoNome || item.payload.grupoId} em ${item.payload.data}.`,
         })));
@@ -2611,9 +2618,12 @@ export default function App() {
           type: 'success' as const,
           title: item.kind === 'apontamento'
             ? 'Apontamento recebido'
+            : item.kind === 'presence-reset' ? 'Presença liberada para refazer'
             : item.kind === 'equipe' ? `Colaborador ${item.payload.operacao === 'remover' ? 'removido da' : 'incluído na'} equipe` : 'Presença recebida',
           message: item.kind === 'apontamento'
             ? `${item.payload.record?.ramoNome || 'Ramo'} enviou um apontamento de campo.`
+            : item.kind === 'presence-reset'
+              ? `${item.payload.grupoNome || 'Equipe'} resetou a presença de ${item.payload.data} para refazer.`
             : item.kind === 'equipe'
               ? `${item.payload.funcionarioNome || 'Colaborador'} ${item.payload.operacao === 'remover' ? 'saiu da' : 'entrou na'} equipe ${item.payload.grupoNome || 'sem nome'} pelo link de presença.`
               : `${item.payload.grupoNome || 'Equipe'} enviou ${item.payload.records?.length || 0} registro(s) de presença.`,
@@ -2855,6 +2865,22 @@ export default function App() {
       return response;
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Não foi possível remover este colaborador.' };
+    }
+  };
+
+  const handleResetExternalPresenceDay = async (grupoId: string, data: string) => {
+    try {
+      const response = await resetPublicPresenceDay(externalPresenceToken, grupoId, data);
+      if (response.success) {
+        setExternalDataSelecionada(data);
+        setExternalMeusRegistros([]);
+        setExternalObservacaoDia('');
+        setExternalPresenceHistory(current => ({ ...current, [data]: [] }));
+        setExternalPresenceDayNotes(current => ({ ...current, [data]: '' }));
+      }
+      return response;
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível resetar a presença.' };
     }
   };
 
@@ -4160,6 +4186,7 @@ export default function App() {
           onUpdateRecord={handleUpdateExternalPresencaRecord}
           onAddMember={handleAddExternalPresencaMember}
           onRemoveMember={handleRemoveExternalPresencaMember}
+          onResetDay={handleResetExternalPresenceDay}
           onSaveDayNote={handleSaveExternalDayNote}
         />
       </Suspense>

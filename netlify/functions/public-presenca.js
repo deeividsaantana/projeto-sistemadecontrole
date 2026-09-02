@@ -233,7 +233,7 @@ const loadSubmittedGroupIds = async (database, date) => {
     .get();
   return new Set(snapshot.docs.flatMap(document => {
     const data = document.data();
-    if (data?.kind !== 'presence') return [];
+    if (data?.kind !== 'presence' || data?.status === 'cancelled') return [];
     const groupId = cleanString(data?.payload?.grupoId, 160);
     return groupId ? [groupId] : [];
   }));
@@ -249,7 +249,7 @@ const findGroupSubmissionDocs = async (database, grupoId, date) => {
     .get();
   return snapshot.docs.filter(document => {
     const data = document.data();
-    return data?.kind === 'presence' && data?.payload?.data === date;
+    return data?.kind === 'presence' && data?.status !== 'cancelled' && data?.payload?.data === date;
   });
 };
 
@@ -287,7 +287,7 @@ const indexGroupHistory = documents => {
   const notesByDate = new Map();
   documents.forEach(document => {
     const data = typeof document.data === 'function' ? document.data() : document;
-    if (data?.kind !== 'presence') return;
+    if (data?.kind !== 'presence' || data?.status === 'cancelled') return;
     const date = cleanString(data?.payload?.data, 10);
     if (!isIsoDate(date)) return;
     const records = Array.isArray(data?.payload?.records) ? data.payload.records : [];
@@ -648,6 +648,67 @@ export const handler = async event => {
 
     if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST, PATCH, DELETE' });
     const body = parseJsonBody(event);
+
+    // Cancela o apontamento de hoje e libera a equipe para refazê-lo. O envio
+    // anterior não é apagado: fica marcado como cancelado para auditoria.
+    if (cleanString(body.action, 40) === 'resetar-dia') {
+      const token = cleanString(body.token, 180);
+      const groupId = cleanString(body.grupoId, 160);
+      const date = cleanString(body.data, 10);
+      if (!token || !groupId || !isIsoDate(date) || date !== todayInSaoPaulo()) {
+        return jsonResponse(400, { success: false, message: 'Somente a presença de hoje pode ser refeita pelo link.' });
+      }
+      const idempotencyKey = assertIdempotencyKey(event, { required: true });
+      const publicContext = {
+        database,
+        organizationId: 'public-presenca',
+        userId: stableHash(token).slice(0, 32),
+        requestId: event.headers?.['x-request-id'] || '',
+      };
+      return await withIdempotency(event, publicContext, idempotencyKey, async () => {
+        const snapshot = await loadPresenceSnapshot(database);
+        const group = activeGroupsForToken(snapshot, token).find(item => item.id === groupId);
+        if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
+        const submissionDocs = await findGroupSubmissionDocs(database, groupId, date);
+        if (submissionDocs.length === 0) {
+          return jsonResponse(404, { success: false, message: 'Não existe presença enviada hoje para refazer.' });
+        }
+        const lockRef = database.collection('sistemarenea_presence_locks')
+          .doc(`presence_${stableHash(`${groupId}|${date}`).slice(0, 48)}`);
+        const resetRef = database.collection('sistemarenea_public_submissions')
+          .doc(`reset_${stableHash(idempotencyKey).slice(0, 48)}`);
+        const nowIso = new Date().toISOString();
+        await database.runTransaction(async transaction => {
+          const lock = await transaction.get(lockRef);
+          const currentDocs = [];
+          for (const submission of submissionDocs) currentDocs.push(await transaction.get(submission.ref));
+          currentDocs.filter(document => document.exists).forEach(document => transaction.update(document.ref, {
+            status: 'cancelled',
+            cancelledAt: serverTimestamp(),
+            cancelledAtIso: nowIso,
+            cancelReason: 'refazer-pelo-link-publico',
+          }));
+          if (lock.exists) transaction.delete(lockRef);
+          transaction.create(resetRef, {
+            kind: 'presence-reset',
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            createdAtIso: nowIso,
+            sourceIpHash: requestIpHash(event),
+            payload: {
+              grupoId: group.id,
+              grupoNome: cleanString(group.nome, 160),
+              data: date,
+            },
+          });
+        });
+        return jsonResponse(200, {
+          success: true,
+          data: { grupoId, data: date },
+          message: 'Presença de hoje resetada. O checklist está liberado para refazer.',
+        });
+      });
+    }
 
     // Remoção do vínculo da equipe. O cadastro do colaborador permanece ativo;
     // somente a participação nesta equipe deixa de valer a partir de agora.

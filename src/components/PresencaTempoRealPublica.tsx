@@ -9,6 +9,7 @@ import {
   Clock3,
   History,
   RefreshCw,
+  RotateCcw,
   Save,
   Search,
   Send,
@@ -57,6 +58,13 @@ interface MemberRemoveResult {
   funcionarioId?: string;
 }
 
+interface ResetDayResult {
+  success: boolean;
+  message: string;
+  grupoId?: string;
+  data?: string;
+}
+
 interface Props {
   token: string;
   gruposEquipe: GrupoEquipe[];
@@ -87,6 +95,7 @@ interface Props {
   ) => Promise<RecordUpdateResult>;
   onAddMember?: (grupoId: string, funcionarioId: string) => Promise<MemberAddResult>;
   onRemoveMember?: (grupoId: string, funcionarioId: string) => Promise<MemberRemoveResult>;
+  onResetDay?: (grupoId: string, data: string) => Promise<ResetDayResult>;
   observacaoDia?: string;
   onSaveDayNote?: (grupoId: string, observacaoDia: string) => Promise<{ success: boolean; message: string }>;
 }
@@ -168,6 +177,7 @@ export default function PresencaTempoRealPublica({
   onUpdateRecord,
   onAddMember,
   onRemoveMember,
+  onResetDay,
   observacaoDia = '',
   onSaveDayNote,
 }: Props) {
@@ -208,6 +218,9 @@ export default function PresencaTempoRealPublica({
   const [removeConfirmEmployeeId, setRemoveConfirmEmployeeId] = useState('');
   const [removingEmployeeId, setRemovingEmployeeId] = useState('');
   const [memberFeedback, setMemberFeedback] = useState('');
+  const [resetDayConfirm, setResetDayConfirm] = useState(false);
+  const [resettingDay, setResettingDay] = useState(false);
+  const [resetDayError, setResetDayError] = useState('');
   // Observação do dia: vale para a equipe toda, não para uma pessoa.
   const [dayNote, setDayNote] = useState('');
   const [dayNoteSaving, setDayNoteSaving] = useState(false);
@@ -536,6 +549,55 @@ export default function PresencaTempoRealPublica({
     );
   };
 
+  const resetDay = async () => {
+    if (!group || !onResetDay || resettingDay || viewingPastDay) return;
+    setResettingDay(true);
+    setResetDayError('');
+    try {
+      const resetDate = dataAtual || date;
+      const response = await onResetDay(group.id, resetDate);
+      if (!response.success) {
+        setResetDayError(response.message);
+        return;
+      }
+      const emptyItems = Object.fromEntries(groupEmployees.map(employee => [employee.id, { observacao: '' }]));
+      currentDayDraftRef.current = emptyItems;
+      setItems(emptyItems);
+      setResult(null);
+      setShowSuccessScreen(false);
+      setResetDayConfirm(false);
+      setDraftSaved(false);
+      setDraftFeedback('Dia resetado · Refaça o checklist e envie novamente');
+      writeDraft(token, { date: resetDate, selectedGroupId: group.id, items: emptyItems, result: null });
+    } catch (caught) {
+      setResetDayError(caught instanceof Error ? caught.message : 'Não foi possível resetar a presença.');
+    } finally {
+      setResettingDay(false);
+    }
+  };
+
+  const resetDayControl = onResetDay && !viewingPastDay && (Boolean(result) || meusRegistros.length > 0) ? (
+    <div className="presence-public__reset-day">
+      {resetDayConfirm ? (
+        <div className="presence-public__reset-confirm" role="group" aria-label="Confirmar reset da presença de hoje">
+          <p><AlertTriangle className="h-5 w-5" /> O envio de hoje será cancelado e o checklist ficará vazio para refazer.</p>
+          {resetDayError && <div role="alert" className="presence-public__card-error">{resetDayError}</div>}
+          <div>
+            <button type="button" onClick={() => { setResetDayConfirm(false); setResetDayError(''); }} disabled={resettingDay}>Cancelar</button>
+            <button type="button" data-danger onClick={() => void resetDay()} disabled={resettingDay}>
+              {resettingDay ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              {resettingDay ? 'Resetando' : 'Sim, resetar e refazer'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setResetDayConfirm(true)}>
+          <RotateCcw className="h-4 w-4" /> Resetar o dia para refazer
+        </button>
+      )}
+    </div>
+  ) : null;
+
   const dayNoteSection = group && onSaveDayNote && !viewingPastDay ? (
     <section className="presence-public__daynote">
       <label htmlFor="presenca-observacao-dia">Observação do dia</label>
@@ -775,6 +837,7 @@ export default function PresencaTempoRealPublica({
           <button type="button" onClick={() => setShowSuccessScreen(false)} className="presence-public__primary">
             {viewingPastDay ? 'Ver a lista deste dia' : 'Voltar e alterar a lista'} <ChevronRight className="h-4 w-4" />
           </button>
+          {resetDayControl}
           {dayOptions.length > 1 && onSelectDate && (
             <section className="presence-public__receipt-history" aria-label="Histórico de apontamentos da equipe">
               <p><History className="h-4 w-4" /> Histórico da equipe</p>
@@ -823,6 +886,7 @@ export default function PresencaTempoRealPublica({
             <button type="button" className="presence-public__receipt-link" onClick={() => setShowSuccessScreen(true)}>
               <CheckCircle2 className="h-4 w-4" /> Ver comprovante do dia
             </button>
+            {resetDayControl}
           </section>
           {dayOptions.length > 1 && onSelectDate && (
             <section className="presence-public__daybar" aria-label="Dias com apontamento enviado">

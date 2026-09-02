@@ -457,6 +457,60 @@
   background: #f0f8f2;
 }
 
+.presence-public__reset-day {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.presence-public__reset-day > button,
+.presence-public__reset-confirm button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border: 1px solid #ddc8bd;
+  border-radius: 11px;
+  color: #8c4639;
+  font-size: 12px;
+  font-weight: 800;
+  background: #fffaf7;
+}
+
+.presence-public__success-card .presence-public__reset-day > button {
+  width: 100%;
+}
+
+.presence-public__reset-confirm {
+  padding: 13px;
+  border: 1px solid #e2b9aa;
+  border-radius: 12px;
+  background: #fff7f2;
+}
+
+.presence-public__reset-confirm p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 11px;
+  color: #7f382d;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.presence-public__reset-confirm > div:last-child {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.presence-public__reset-confirm button[data-danger] {
+  border-color: #a83f32;
+  color: #fff;
+  background: #a83f32;
+}
+
 @media (max-width: 520px) {
   .presence-public__remove-confirm {
     grid-template-columns: 1fr 1fr;

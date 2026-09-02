@@ -19,8 +19,8 @@ const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
  */
 export type PublicSubmission = {
   id: string;
-  kind: 'presence' | 'apontamento' | 'equipe';
-  status: 'pending' | 'processed';
+  kind: 'presence' | 'presence-reset' | 'apontamento' | 'equipe';
+  status: 'pending' | 'processed' | 'cancelled';
   createdAtIso: string;
   payload: {
     grupoId?: string;
@@ -38,7 +38,7 @@ export type PublicSubmission = {
 
 const normalizeSubmissionSnapshot = (items: Array<{ id: string; data: () => Record<string, unknown> }>): PublicSubmission[] => items
   .map(item => ({ id: item.id, ...item.data() }) as PublicSubmission)
-  .filter(item => item.kind === 'presence' || item.kind === 'apontamento' || item.kind === 'equipe')
+  .filter(item => item.kind === 'presence' || item.kind === 'presence-reset' || item.kind === 'apontamento' || item.kind === 'equipe')
   .filter(item => item.payload && typeof item.payload.data === 'string')
   .sort((a, b) => String(a.createdAtIso || '').localeCompare(String(b.createdAtIso || '')));
 

@@ -68,4 +68,7 @@ test('rascunho e troca de dia evitam bloqueio perceptivel da interface', () => {
   assert.match(publicPresenceSource, /currentDayDraftRef/);
   assert.match(publicPresenceSource, /Remover da equipe/);
   assert.match(publicPresenceSource, /Sim, remover/);
+  assert.match(publicPresenceSource, /Resetar o dia para refazer/);
+  assert.match(publicPresenceSource, /Sim, resetar e refazer/);
+  assert.match(functionSource, /kind: 'presence-reset'/);
 });

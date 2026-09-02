@@ -19,6 +19,7 @@ import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadin
 import {
   addPublicPresenceMember,
   removePublicPresenceMember,
+  resetPublicPresenceDay,
   updatePublicPresenceDayNote,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
@@ -197,6 +198,17 @@ export default function PublicLinksApp() {
               setMeuGrupo(current => current?.id === grupoId
                 ? { ...current, funcionarioIds: (current.funcionarioIds || []).filter(id => id !== funcionarioId) }
                 : current);
+            }
+            return response;
+          }}
+          onResetDay={async (grupoId, data) => {
+            const response = await resetPublicPresenceDay(presenceToken, grupoId, data);
+            if (response.success) {
+              setDataSelecionada(data);
+              setMeusRegistros([]);
+              setObservacaoDia('');
+              setPresenceHistory(current => ({ ...current, [data]: [] }));
+              setPresenceDayNotes(current => ({ ...current, [data]: '' }));
             }
             return response;
           }}
