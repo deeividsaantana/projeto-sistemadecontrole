@@ -18,6 +18,7 @@ import {
 import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
 import {
   addPublicPresenceMember,
+  removePublicPresenceMember,
   updatePublicPresenceDayNote,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
@@ -54,6 +55,8 @@ export default function PublicLinksApp() {
   const [dataSelecionada, setDataSelecionada] = useState('');
   const [dataAtual, setDataAtual] = useState('');
   const [observacaoDia, setObservacaoDia] = useState('');
+  const [presenceHistory, setPresenceHistory] = useState<Record<string, PresencaApontamento[]>>({});
+  const [presenceDayNotes, setPresenceDayNotes] = useState<Record<string, string>>({});
   const [presenceLoading, setPresenceLoading] = useState(Boolean(presenceToken));
   const [presenceError, setPresenceError] = useState('');
 
@@ -80,11 +83,23 @@ export default function PublicLinksApp() {
       setDataSelecionada(config.dataSelecionada || '');
       setDataAtual(config.dataAtual || '');
       setObservacaoDia(config.observacaoDia || '');
+      setPresenceHistory(config.historicoPorData || { [config.dataSelecionada || '']: config.meusRegistros || [] });
+      setPresenceDayNotes(config.observacoesPorData || { [config.dataSelecionada || '']: config.observacaoDia || '' });
     } catch (error) {
       setPresenceError(error instanceof Error ? error.message : 'Não foi possível carregar as equipes.');
     } finally {
       setPresenceLoading(false);
     }
+  };
+
+  const selectPresenceDate = (data: string) => {
+    if (Object.prototype.hasOwnProperty.call(presenceHistory, data)) {
+      setDataSelecionada(data);
+      setMeusRegistros(presenceHistory[data] || []);
+      setObservacaoDia(presenceDayNotes[data] || '');
+      return;
+    }
+    void reloadPresence(data);
   };
 
   useEffect(() => {
@@ -165,7 +180,7 @@ export default function PublicLinksApp() {
           dataSelecionada={dataSelecionada}
           dataAtual={dataAtual}
           observacaoDia={observacaoDia}
-          onSelectDate={data => void reloadPresence(data)}
+          onSelectDate={selectPresenceDate}
           isLoadingCloud={presenceLoading}
           loadError={presenceError}
           onRetry={() => void reloadPresence()}
@@ -173,6 +188,18 @@ export default function PublicLinksApp() {
           onUpdateRecord={(grupoId, funcionarioId, status, observacao) =>
             updatePublicPresenceRecord(presenceToken, grupoId, funcionarioId, status, observacao)}
           onAddMember={(grupoId, funcionarioId) => addPublicPresenceMember(presenceToken, grupoId, funcionarioId)}
+          onRemoveMember={async (grupoId, funcionarioId) => {
+            const response = await removePublicPresenceMember(presenceToken, grupoId, funcionarioId);
+            if (response.success) {
+              setGruposEquipe(current => current.map(group => group.id === grupoId
+                ? { ...group, funcionarioIds: (group.funcionarioIds || []).filter(id => id !== funcionarioId) }
+                : group));
+              setMeuGrupo(current => current?.id === grupoId
+                ? { ...current, funcionarioIds: (current.funcionarioIds || []).filter(id => id !== funcionarioId) }
+                : current);
+            }
+            return response;
+          }}
           onSaveDayNote={async (grupoId, nota) => {
             const resposta = await updatePublicPresenceDayNote(presenceToken, grupoId, nota);
             setObservacaoDia(resposta.observacaoDia);

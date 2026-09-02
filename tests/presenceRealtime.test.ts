@@ -59,3 +59,11 @@ test('apontador salva rascunho local sem transmitir ao painel', () => {
   assert.match(publicPresenceSource, /type="submit"/);
   assert.match(publicPresenceSource, /'Enviar presença'/);
 });
+
+test('rascunho e troca de dia evitam bloqueio perceptivel da interface', () => {
+  assert.match(publicPresenceSource, /const draftWriteTimer = window\.setTimeout/);
+  assert.doesNotMatch(publicPresenceSource, /setTimeout\(resolve, 1_200\)/);
+  assert.match(publicAppSource, /presenceHistory/);
+  assert.match(publicPresenceSource, /Remover da equipe/);
+  assert.match(publicPresenceSource, /Sim, remover/);
+});

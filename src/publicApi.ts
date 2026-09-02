@@ -78,6 +78,8 @@ export interface PublicPresenceConfig {
   dataSelecionada?: string;
   /** Observação do dia inteiro da equipe, quando houver. */
   observacaoDia?: string;
+  historicoPorData?: Record<string, PresencaApontamento[]>;
+  observacoesPorData?: Record<string, string>;
   dataAtual?: string;
 }
 
@@ -153,6 +155,25 @@ export const addPublicPresenceMember = async (
     success: true,
     message: response.message || 'Colaborador incluído na equipe.',
     funcionario: response.data?.funcionario,
+  };
+};
+
+/** Remove o vínculo com a equipe sem desativar o colaborador no efetivo. */
+export const removePublicPresenceMember = async (
+  token: string,
+  grupoId: string,
+  funcionarioId: string,
+) => {
+  const payload = { action: 'remover-colaborador', token, grupoId, funcionarioId };
+  const response = await callPublicApi<{ funcionarioId: string }>('/.netlify/functions/public-presenca', {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': stableRequestKey('presenca-remover-membro', payload) },
+    body: JSON.stringify(payload),
+  });
+  return {
+    success: true,
+    message: response.message || 'Colaborador removido da equipe.',
+    funcionarioId: response.data?.funcionarioId || funcionarioId,
   };
 };
 

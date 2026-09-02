@@ -107,7 +107,10 @@ const loadTeamAdditions = async (database, groupIds) => {
     const groupId = cleanString(data?.grupoId, 160);
     const employeeId = cleanString(data?.funcionarioId, 160);
     if (!groupId || !employeeId) return;
-    byGroup.set(groupId, [...(byGroup.get(groupId) || []), employeeId]);
+    const current = byGroup.get(groupId) || { additions: [], removals: [] };
+    if (data?.removed === true) current.removals.push(employeeId);
+    else current.additions.push(employeeId);
+    byGroup.set(groupId, current);
   }));
   return byGroup;
 };
@@ -118,9 +121,14 @@ const applyTeamAdditions = (groups, additionsByGroup, employees) => {
   if (!additionsByGroup || additionsByGroup.size === 0) return groups;
   const activeIds = new Set(employees.map(employee => employee.id));
   return groups.map(group => {
-    const extras = (additionsByGroup.get(group.id) || []).filter(id => activeIds.has(id));
-    if (extras.length === 0) return group;
-    return { ...group, funcionarioIds: [...new Set([...(group.funcionarioIds || []), ...extras])] };
+    const override = additionsByGroup.get(group.id) || [];
+    const extras = (Array.isArray(override) ? override : override.additions || []).filter(id => activeIds.has(id));
+    const removals = new Set(Array.isArray(override) ? [] : override.removals || []);
+    if (extras.length === 0 && removals.size === 0) return group;
+    return {
+      ...group,
+      funcionarioIds: [...new Set([...(group.funcionarioIds || []).filter(id => !removals.has(id)), ...extras])],
+    };
   });
 };
 
@@ -441,12 +449,18 @@ export const handler = async event => {
       let datasDisponiveis = [];
       let dataSelecionada = today;
       let observacaoDia = '';
+      let historicoPorData = {};
+      let observacoesPorData = {};
       if (meuGrupo) {
         const history = await loadGroupHistory(database, meuGrupo.id);
         datasDisponiveis = history.datas;
         dataSelecionada = isIsoDate(requestedDate) && history.byDate.has(requestedDate) ? requestedDate : today;
         meusRegistros = history.byDate.get(dataSelecionada) || [];
         observacaoDia = history.notesByDate.get(dataSelecionada) || '';
+        historicoPorData = Object.fromEntries(history.datas.map(date => [date, history.byDate.get(date) || []]));
+        historicoPorData[today] ??= [];
+        observacoesPorData = Object.fromEntries(history.datas.map(date => [date, history.notesByDate.get(date) || '']));
+        observacoesPorData[today] ??= '';
       }
       return jsonResponse(200, {
         success: true,
@@ -461,6 +475,8 @@ export const handler = async event => {
           datasDisponiveis,
           dataSelecionada,
           observacaoDia,
+          historicoPorData,
+          observacoesPorData,
           dataAtual: today,
         },
       }, {
@@ -598,6 +614,77 @@ export const handler = async event => {
     if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST, PATCH' });
     const body = parseJsonBody(event);
 
+    // Remoção do vínculo da equipe. O cadastro do colaborador permanece ativo;
+    // somente a participação nesta equipe deixa de valer a partir de agora.
+    if (cleanString(body.action, 40) === 'remover-colaborador') {
+      const token = cleanString(body.token, 180);
+      const groupId = cleanString(body.grupoId, 160);
+      const funcionarioId = cleanString(body.funcionarioId, 160);
+      if (!token || !groupId || !funcionarioId) {
+        return jsonResponse(400, { success: false, message: 'Dados da remoção incompletos ou inválidos.' });
+      }
+      const idempotencyKey = assertIdempotencyKey(event, { required: true });
+      const publicContext = {
+        database,
+        organizationId: 'public-presenca',
+        userId: stableHash(token).slice(0, 32),
+        requestId: event.headers?.['x-request-id'] || '',
+      };
+      return await withIdempotency(event, publicContext, idempotencyKey, async () => {
+        const snapshot = await loadPresenceSnapshot(database);
+        const employees = (snapshot.funcionarios || []).filter(item => item?.ativo);
+        const tokenGroups = activeGroupsForToken(snapshot, token);
+        const overridesByGroup = await loadTeamAdditions(database, tokenGroups.map(item => item.id));
+        const authorizedGroups = applyTeamAdditions(resolveGroupEmployeeIds(tokenGroups, employees), overridesByGroup, employees);
+        const group = authorizedGroups.find(item => item.id === groupId);
+        if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
+        const employee = employees.find(item => item.id === funcionarioId);
+        if (!employee || !group.funcionarioIds.includes(funcionarioId)) {
+          return jsonResponse(400, { success: false, message: 'Este colaborador não pertence mais à equipe.' });
+        }
+        const nowIso = new Date().toISOString();
+        const funcionarioNome = cleanString(employee.nome, 180);
+        const funcao = cleanString(employee.cargo, 120);
+        const memberRef = database.collection(TEAM_MEMBERS_COLLECTION).doc(teamMemberDocId(groupId, funcionarioId));
+        const submissionRef = database.collection('sistemarenea_public_submissions')
+          .doc(`team_${stableHash(idempotencyKey).slice(0, 48)}`);
+        await database.runTransaction(async transaction => {
+          transaction.set(memberRef, {
+            grupoId: group.id,
+            funcionarioId,
+            funcionarioNome,
+            funcao,
+            removed: true,
+            origem: 'link-publico',
+            tokenUsado: `validado-${stableHash(token).slice(0, 12)}`,
+            updatedAt: serverTimestamp(),
+            updatedAtIso: nowIso,
+          });
+          transaction.create(submissionRef, {
+            kind: 'equipe',
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            createdAtIso: nowIso,
+            sourceIpHash: requestIpHash(event),
+            payload: {
+              operacao: 'remover',
+              grupoId: group.id,
+              grupoNome: cleanString(group.nome, 160),
+              data: todayInSaoPaulo(),
+              funcionarioId,
+              funcionarioNome,
+              funcao,
+            },
+          });
+        });
+        return jsonResponse(200, {
+          success: true,
+          data: { funcionarioId },
+          message: `${funcionarioNome} removido da equipe ${group.nome}.`,
+        });
+      });
+    }
+
     // Inclusão de colaborador direto da frente de serviço. O link continua sem
     // poder criar, editar ou desativar cadastro: ele apenas vincula alguém que
     // já existe no efetivo ativo à equipe daquele token.
@@ -666,16 +753,17 @@ export const handler = async event => {
           // a inclusão não fica valendo só no link, invisível para a obra.
           await database.runTransaction(async transaction => {
             const existing = await transaction.get(memberRef);
-            if (existing.exists) {
+            if (existing.exists && existing.data()?.removed !== true) {
               const error = new Error(`${funcionarioNome} já foi incluído nesta equipe.`);
               error.statusCode = 409;
               throw error;
             }
-            transaction.create(memberRef, {
+            transaction.set(memberRef, {
               grupoId: group.id,
               funcionarioId,
               funcionarioNome,
               funcao,
+              removed: false,
               origem: 'link-publico',
               tokenUsado: `validado-${stableHash(token).slice(0, 12)}`,
               createdAt: serverTimestamp(),
@@ -688,6 +776,7 @@ export const handler = async event => {
               createdAtIso: nowIso,
               sourceIpHash: requestIpHash(event),
               payload: {
+                operacao: 'adicionar',
                 grupoId: group.id,
                 grupoNome: cleanString(group.nome, 160),
                 data: todayInSaoPaulo(),

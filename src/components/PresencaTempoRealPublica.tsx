@@ -12,6 +12,7 @@ import {
   Save,
   Search,
   Send,
+  Trash2,
   UserPlus,
   Users,
   X,
@@ -50,6 +51,12 @@ interface MemberAddResult {
   funcionario?: Funcionario;
 }
 
+interface MemberRemoveResult {
+  success: boolean;
+  message: string;
+  funcionarioId?: string;
+}
+
 interface Props {
   token: string;
   gruposEquipe: GrupoEquipe[];
@@ -79,6 +86,7 @@ interface Props {
     observacao: string,
   ) => Promise<RecordUpdateResult>;
   onAddMember?: (grupoId: string, funcionarioId: string) => Promise<MemberAddResult>;
+  onRemoveMember?: (grupoId: string, funcionarioId: string) => Promise<MemberRemoveResult>;
   observacaoDia?: string;
   onSaveDayNote?: (grupoId: string, observacaoDia: string) => Promise<{ success: boolean; message: string }>;
 }
@@ -159,6 +167,7 @@ export default function PresencaTempoRealPublica({
   onSubmitPresenca,
   onUpdateRecord,
   onAddMember,
+  onRemoveMember,
   observacaoDia = '',
   onSaveDayNote,
 }: Props) {
@@ -195,6 +204,9 @@ export default function PresencaTempoRealPublica({
   const [addingEmployeeId, setAddingEmployeeId] = useState('');
   const [addError, setAddError] = useState('');
   const [addFeedback, setAddFeedback] = useState('');
+  const [removeConfirmEmployeeId, setRemoveConfirmEmployeeId] = useState('');
+  const [removingEmployeeId, setRemovingEmployeeId] = useState('');
+  const [memberFeedback, setMemberFeedback] = useState('');
   // Observação do dia: vale para a equipe toda, não para uma pessoa.
   const [dayNote, setDayNote] = useState('');
   const [dayNoteSaving, setDayNoteSaving] = useState(false);
@@ -214,7 +226,11 @@ export default function PresencaTempoRealPublica({
 
   useEffect(() => {
     if (!draftHydrated) return;
-    writeDraft(token, { date, selectedGroupId, items, result });
+    const draftWriteTimer = window.setTimeout(() => {
+      writeDraft(token, { date, selectedGroupId, items, result });
+    }, 250);
+
+    return () => window.clearTimeout(draftWriteTimer);
   }, [date, draftHydrated, items, result, selectedGroupId, token]);
 
   const activeGroups = useMemo(() => (Array.isArray(gruposEquipe) ? gruposEquipe : [])
@@ -321,6 +337,7 @@ export default function PresencaTempoRealPublica({
   }, [deferredAddSearch, funcionariosDisponiveis, groupEmployees]);
 
   const canAddMembers = Boolean(onAddMember && group && !viewingPastDay);
+  const canRemoveMembers = Boolean(onRemoveMember && group && !viewingPastDay);
 
   useEffect(() => {
     setDayNote(observacaoDia);
@@ -362,6 +379,34 @@ export default function PresencaTempoRealPublica({
       setAddError(caught instanceof Error ? caught.message : 'Não foi possível incluir este colaborador.');
     } finally {
       setAddingEmployeeId('');
+    }
+  };
+
+  const removeMember = async (employee: Funcionario) => {
+    if (!group || !onRemoveMember || removingEmployeeId) return;
+    setRemovingEmployeeId(employee.id);
+    setCardErrors(current => ({ ...current, [employee.id]: '' }));
+    setMemberFeedback('');
+    try {
+      const response = await onRemoveMember(group.id, employee.id);
+      if (!response.success) {
+        setCardErrors(current => ({ ...current, [employee.id]: response.message }));
+        return;
+      }
+      setItems(current => {
+        const next = { ...current };
+        delete next[employee.id];
+        return next;
+      });
+      setRemoveConfirmEmployeeId('');
+      setMemberFeedback(response.message);
+    } catch (caught) {
+      setCardErrors(current => ({
+        ...current,
+        [employee.id]: caught instanceof Error ? caught.message : 'Não foi possível remover este colaborador.',
+      }));
+    } finally {
+      setRemovingEmployeeId('');
     }
   };
 
@@ -413,9 +458,6 @@ export default function PresencaTempoRealPublica({
     setDraftSaved(false);
     setError('');
     try {
-      // O pequeno intervalo mantém o retorno visual perceptível mesmo quando
-      // a gravação local termina quase instantaneamente.
-      await new Promise(resolve => window.setTimeout(resolve, 1_200));
       writeDraft(token, { date, selectedGroupId: group?.id || selectedGroupId, items, result: null });
       setDraftFeedback('Rascunho salvo neste aparelho · Ainda não enviado');
       setDraftSaved(true);
@@ -458,6 +500,30 @@ export default function PresencaTempoRealPublica({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const removeMemberControl = (employee: Funcionario) => {
+    if (!canRemoveMembers) return null;
+    const confirming = removeConfirmEmployeeId === employee.id;
+    const removing = removingEmployeeId === employee.id;
+    return (
+      <div className="presence-public__remove-member">
+        {confirming ? (
+          <div className="presence-public__remove-confirm" role="group" aria-label={`Confirmar remoção de ${employee.nome}`}>
+            <span>Remover este colaborador da equipe?</span>
+            <button type="button" onClick={() => setRemoveConfirmEmployeeId('')} disabled={removing}>Cancelar</button>
+            <button type="button" data-danger onClick={() => void removeMember(employee)} disabled={removing}>
+              {removing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {removing ? 'Removendo' : 'Sim, remover'}
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setRemoveConfirmEmployeeId(employee.id)} disabled={Boolean(removingEmployeeId)}>
+            <Trash2 className="h-4 w-4" /> Remover da equipe
+          </button>
+        )}
+      </div>
+    );
   };
 
   const dayNoteSection = group && onSaveDayNote && !viewingPastDay ? (
@@ -779,6 +845,7 @@ export default function PresencaTempoRealPublica({
             </section>
           )}
           {addMemberSection}
+          {memberFeedback && <p role="status" className="presence-public__member-feedback"><Check className="h-4 w-4" /> {memberFeedback}</p>}
           <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar por nome ou matrícula" aria-label="Buscar colaborador" /></div>
           <p className="presence-public__search-meta" aria-live="polite">{viewingPastDay ? 'Dia anterior: consulta apenas. Alterações somente no dia de hoje.' : 'Toque em uma situação para atualizar na hora'}</p>
           <section className="presence-public__employee-list">
@@ -817,6 +884,7 @@ export default function PresencaTempoRealPublica({
                       )}
                       {cardError && <div role="alert" className="presence-public__card-error">{cardError}</div>}
                       {!cardError && feedback && <div role="status" className="presence-public__card-feedback">{feedback}</div>}
+                      {removeMemberControl(employee)}
                     </>
                   )}
                 </article>
@@ -865,6 +933,7 @@ export default function PresencaTempoRealPublica({
         )}
         {dayNoteSection}
         {addMemberSection}
+        {memberFeedback && <p role="status" className="presence-public__member-feedback"><Check className="h-4 w-4" /> {memberFeedback}</p>}
         <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador" aria-label="Buscar colaborador" /></div>
         <form onSubmit={submit} className="presence-public__form">
           <section className="presence-public__employee-list">
@@ -882,6 +951,8 @@ export default function PresencaTempoRealPublica({
                   </div>
                   <select value={SECONDARY_STATUSES.includes(selected as PresencaStatus) ? selected : ''} onChange={event => event.target.value && setStatus(employee.id, event.target.value as PresencaStatus)}><option value="">Outras situações</option>{SECONDARY_STATUSES.map(status => <option key={status}>{status}</option>)}</select>
                   <textarea value={items[employee.id]?.observacao || ''} onChange={event => { setItems(current => ({ ...current, [employee.id]: { ...current[employee.id], observacao: event.target.value } })); setDraftSaved(false); setDraftFeedback('Alterações ainda não enviadas'); }} rows={2} placeholder="Observação opcional" />
+                  {cardErrors[employee.id] && <div role="alert" className="presence-public__card-error">{cardErrors[employee.id]}</div>}
+                  {removeMemberControl(employee)}
                 </article>
               );
             })}

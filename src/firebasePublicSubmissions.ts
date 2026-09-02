@@ -14,8 +14,8 @@ import type { ApontamentoRamoRegistro, PresencaApontamento } from './types';
 const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
 
 /**
- * `equipe` carrega a inclusão de um colaborador feita pelo link público. O
- * painel a incorpora ao cadastro do grupo; as demais permanecem como estavam.
+ * `equipe` carrega inclusão ou remoção de um colaborador feita pelo link
+ * público. O painel incorpora a alteração sem tocar no cadastro da pessoa.
  */
 export type PublicSubmission = {
   id: string;
@@ -32,6 +32,7 @@ export type PublicSubmission = {
     funcionarioId?: string;
     funcionarioNome?: string;
     funcao?: string;
+    operacao?: 'adicionar' | 'remover';
   };
 };
 

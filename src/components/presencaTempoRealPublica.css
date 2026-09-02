@@ -402,6 +402,71 @@
   resize: vertical;
 }
 
+.presence-public__remove-member {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid #eee9df;
+}
+
+.presence-public__remove-member > button,
+.presence-public__remove-confirm button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border: 1px solid #e0d4cc;
+  border-radius: 10px;
+  color: #8c4639;
+  font-size: 11px;
+  font-weight: 750;
+  background: #fffaf7;
+}
+
+.presence-public__remove-confirm {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.presence-public__remove-confirm span {
+  color: #70443b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.presence-public__remove-confirm button[data-danger] {
+  border-color: #b94a3a;
+  color: #fff;
+  background: #a83f32;
+}
+
+.presence-public__member-feedback {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 0;
+  padding: 11px 13px;
+  border: 1px solid #b9d4c0;
+  border-radius: 10px;
+  color: #24664d;
+  font-size: 12px;
+  font-weight: 750;
+  background: #f0f8f2;
+}
+
+@media (max-width: 520px) {
+  .presence-public__remove-confirm {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .presence-public__remove-confirm span {
+    grid-column: 1 / -1;
+  }
+}
+
 .presence-public__employee-card select:focus,
 .presence-public__employee-card textarea:focus,
 .presence-public__progress-card input:focus {

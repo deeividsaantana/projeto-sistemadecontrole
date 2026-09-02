@@ -76,6 +76,17 @@ test('inclusao de quem saiu do efetivo ativo e ignorada, sem quebrar a equipe', 
   assert.deepEqual(group.funcionarioIds, ['employee-1']);
 });
 
+test('remocao pelo link prevalece inclusive sobre o vinculo original da equipe', () => {
+  const employees = snapshot.funcionarios.filter(employee => employee.ativo);
+  const [group] = __testing.applyTeamAdditions(
+    __testing.resolveGroupEmployeeIds([snapshot.gruposEquipe[0]], employees),
+    new Map([['group-1', { additions: [], removals: ['employee-1'] }]]),
+    employees,
+  );
+
+  assert.deepEqual(group.funcionarioIds, []);
+});
+
 test('cada equipe/colaborador tem um identificador estavel e proprio', () => {
   assert.equal(
     __testing.teamMemberDocId('group-1', 'employee-3'),

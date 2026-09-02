@@ -130,6 +130,7 @@ import {
 } from './firebasePublicSubmissions';
 import {
   addPublicPresenceMember,
+  removePublicPresenceMember,
   updatePublicPresenceDayNote,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
@@ -370,6 +371,8 @@ export default function App() {
   const [externalDataSelecionada, setExternalDataSelecionada] = useState('');
   const [externalDataAtual, setExternalDataAtual] = useState('');
   const [externalObservacaoDia, setExternalObservacaoDia] = useState('');
+  const [externalPresenceHistory, setExternalPresenceHistory] = useState<Record<string, PresencaApontamento[]>>({});
+  const [externalPresenceDayNotes, setExternalPresenceDayNotes] = useState<Record<string, string>>({});
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
   const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
   const [externalTicketLoadError, setExternalTicketLoadError] = useState('');
@@ -1122,6 +1125,8 @@ export default function App() {
       setExternalDataSelecionada(config.dataSelecionada || '');
       setExternalDataAtual(config.dataAtual || '');
       setExternalObservacaoDia(config.observacaoDia || '');
+      setExternalPresenceHistory(config.historicoPorData || { [config.dataSelecionada || '']: config.meusRegistros || [] });
+      setExternalPresenceDayNotes(config.observacoesPorData || { [config.dataSelecionada || '']: config.observacaoDia || '' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Não foi possível carregar as equipes.';
       setExternalPresenceLoadError(message);
@@ -2571,21 +2576,17 @@ export default function App() {
         // equipe. A leitura vem do armazenamento local, e não do estado, para
         // que uma fila processada em sequência não sobrescreva a anterior.
         const incomingMembers = submissions.flatMap(item => item.kind === 'equipe' && item.payload.grupoId && item.payload.funcionarioId
-          ? [{ grupoId: item.payload.grupoId, funcionarioId: item.payload.funcionarioId }]
+          ? [{ grupoId: item.payload.grupoId, funcionarioId: item.payload.funcionarioId, operacao: item.payload.operacao || 'adicionar' as const }]
           : []);
         const storedGroups = parseStoredJson<GrupoEquipe[]>(localStorage.getItem('renea_grupos_equipes'), 'renea_grupos_equipes', []);
-        const nextGroups = incomingMembers.length === 0 ? storedGroups : storedGroups.map(group => {
-          const additions = incomingMembers
-            .filter(member => member.grupoId === group.id)
-            .map(member => member.funcionarioId)
-            .filter(id => !(group.funcionarioIds || []).includes(id));
-          if (additions.length === 0) return group;
-          return {
-            ...group,
-            funcionarioIds: [...(group.funcionarioIds || []), ...additions],
-            updatedAt: new Date().toISOString(),
-          };
-        });
+        const nextGroups = incomingMembers.reduce((groups, member) => groups.map(group => {
+          if (group.id !== member.grupoId) return group;
+          const currentIds = group.funcionarioIds || [];
+          const funcionarioIds = member.operacao === 'remover'
+            ? currentIds.filter(id => id !== member.funcionarioId)
+            : [...new Set([...currentIds, member.funcionarioId])];
+          return { ...group, funcionarioIds, updatedAt: new Date().toISOString() };
+        }), storedGroups);
 
         const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
         const nextHistory = mergeRecordsById(storedHistory, submissions.map(item => ({
@@ -2599,7 +2600,7 @@ export default function App() {
           descricao: item.kind === 'apontamento'
             ? `Recebeu apontamento público de ${item.payload.record?.ramoNome || item.payload.ramoId} em ${item.payload.data}.`
             : item.kind === 'equipe'
-              ? `Incluiu ${item.payload.funcionarioNome || item.payload.funcionarioId} na equipe ${item.payload.grupoNome || item.payload.grupoId} pelo link de presença.`
+              ? `${item.payload.operacao === 'remover' ? 'Removeu' : 'Incluiu'} ${item.payload.funcionarioNome || item.payload.funcionarioId} ${item.payload.operacao === 'remover' ? 'da' : 'na'} equipe ${item.payload.grupoNome || item.payload.grupoId} pelo link de presença.`
               : `Recebeu presença pública do grupo ${item.payload.grupoNome || item.payload.grupoId} em ${item.payload.data}.`,
         })));
 
@@ -2609,11 +2610,11 @@ export default function App() {
           type: 'success' as const,
           title: item.kind === 'apontamento'
             ? 'Apontamento recebido'
-            : item.kind === 'equipe' ? 'Colaborador incluído na equipe' : 'Presença recebida',
+            : item.kind === 'equipe' ? `Colaborador ${item.payload.operacao === 'remover' ? 'removido da' : 'incluído na'} equipe` : 'Presença recebida',
           message: item.kind === 'apontamento'
             ? `${item.payload.record?.ramoNome || 'Ramo'} enviou um apontamento de campo.`
             : item.kind === 'equipe'
-              ? `${item.payload.funcionarioNome || 'Colaborador'} entrou na equipe ${item.payload.grupoNome || 'sem nome'} pelo link de presença.`
+              ? `${item.payload.funcionarioNome || 'Colaborador'} ${item.payload.operacao === 'remover' ? 'saiu da' : 'entrou na'} equipe ${item.payload.grupoNome || 'sem nome'} pelo link de presença.`
               : `${item.payload.grupoNome || 'Equipe'} enviou ${item.payload.records?.length || 0} registro(s) de presença.`,
           timestamp: new Date(item.createdAtIso || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           read: false,
@@ -2774,6 +2775,16 @@ export default function App() {
     return result;
   };
 
+  const selectExternalPresenceDate = (data: string) => {
+    if (Object.prototype.hasOwnProperty.call(externalPresenceHistory, data)) {
+      setExternalDataSelecionada(data);
+      setExternalMeusRegistros(externalPresenceHistory[data] || []);
+      setExternalObservacaoDia(externalPresenceDayNotes[data] || '');
+      return;
+    }
+    void reloadExternalPresence(data);
+  };
+
   const handleSubmitPresencaLink = async (
     grupo: GrupoEquipe,
     data: string,
@@ -2802,6 +2813,23 @@ export default function App() {
       return await addPublicPresenceMember(externalPresenceToken, grupoId, funcionarioId);
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Não foi possível incluir este colaborador.' };
+    }
+  };
+
+  const handleRemoveExternalPresencaMember = async (grupoId: string, funcionarioId: string) => {
+    try {
+      const response = await removePublicPresenceMember(externalPresenceToken, grupoId, funcionarioId);
+      if (response.success) {
+        setGruposEquipe(current => current.map(group => group.id === grupoId
+          ? { ...group, funcionarioIds: (group.funcionarioIds || []).filter(id => id !== funcionarioId) }
+          : group));
+        setExternalMeuGrupo(current => current?.id === grupoId
+          ? { ...current, funcionarioIds: (current.funcionarioIds || []).filter(id => id !== funcionarioId) }
+          : current);
+      }
+      return response;
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível remover este colaborador.' };
     }
   };
 
@@ -4099,13 +4127,14 @@ export default function App() {
           dataSelecionada={externalDataSelecionada}
           dataAtual={externalDataAtual}
           observacaoDia={externalObservacaoDia}
-          onSelectDate={data => void reloadExternalPresence(data)}
+          onSelectDate={selectExternalPresenceDate}
           isLoadingCloud={isExternalPresenceLoading}
           loadError={externalPresenceLoadError}
           onRetry={() => void reloadExternalPresence()}
           onSubmitPresenca={handleSubmitPresencaLink}
           onUpdateRecord={handleUpdateExternalPresencaRecord}
           onAddMember={handleAddExternalPresencaMember}
+          onRemoveMember={handleRemoveExternalPresencaMember}
           onSaveDayNote={handleSaveExternalDayNote}
         />
       </Suspense>
