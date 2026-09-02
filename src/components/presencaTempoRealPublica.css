@@ -711,6 +711,121 @@
   animation: presence-success-rise 420ms 860ms ease-out both;
 }
 
+.presence-public__done-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--presence-green-strong);
+}
+
+.presence-public__done-title svg {
+  flex: none;
+  color: var(--presence-green);
+}
+
+.presence-public__summary-grid--compact {
+  margin: 4px 0 14px;
+}
+
+.presence-public__daybar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 14px 0 4px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.presence-public__daybar::-webkit-scrollbar {
+  display: none;
+}
+
+.presence-public__day {
+  flex: none;
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid var(--presence-line);
+  border-radius: 999px;
+  color: #4f5a54;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--presence-surface);
+}
+
+.presence-public__day[data-selected='true'] {
+  border-color: var(--presence-green-strong);
+  color: #fff;
+  background: var(--presence-green-strong);
+}
+
+.presence-public__day:disabled {
+  opacity: .55;
+}
+
+.presence-public__readonly-note {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border-left: 2px solid var(--presence-line);
+  color: var(--presence-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.presence-public__status-pill {
+  justify-self: end;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: var(--presence-green-strong);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: #e4eee7;
+}
+
+.presence-public__save-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  margin-top: 9px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--presence-green-strong);
+}
+
+.presence-public__save-note:disabled {
+  color: #87918c;
+  background: #dce1dc;
+}
+
+.presence-public__card-error,
+.presence-public__card-feedback {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.presence-public__card-error {
+  border: 1px solid #e8b9ae;
+  color: #8c3027;
+  background: #fff4ef;
+}
+
+.presence-public__card-feedback {
+  border: 1px solid #bfd0c4;
+  color: var(--presence-green-strong);
+  background: #edf3ed;
+}
+
 .presence-public__empty {
   padding: 28px 16px;
   border: 1px dashed var(--presence-line);

@@ -279,6 +279,15 @@ export interface GrupoEquipe {
   updatedAt: string;
 }
 
+export interface HistoricoEdicaoPresencaLink {
+  statusAnterior: string;
+  statusNovo: PresencaStatus;
+  observacaoAnterior: string;
+  observacaoNova: string;
+  editadoEm: string;
+  origem: string;
+}
+
 export interface PresencaApontamento {
   id: string;
   data: string; // YYYY-MM-DD
@@ -298,6 +307,7 @@ export interface PresencaApontamento {
   updatedAt?: string;
   atualizadoPor?: string;
   motivoAlteracao?: string;
+  historicoEdicoes?: HistoricoEdicaoPresencaLink[];
 }
 
 export interface HistoricoPresenca {

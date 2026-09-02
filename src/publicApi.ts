@@ -7,6 +7,7 @@ import type {
   Empresa,
   GrupoEquipe,
   ObraLocal,
+  PresencaApontamento,
   PresencaStatus,
   TicketJazida,
   TurnoApontamento,
@@ -68,11 +69,17 @@ export interface PublicPresenceConfig {
   funcionarios: Funcionario[];
   empresas: Empresa[];
   obras: ObraLocal[];
+  meuGrupo?: GrupoEquipe | null;
+  meusRegistros?: PresencaApontamento[];
+  datasDisponiveis?: string[];
+  dataSelecionada?: string;
+  dataAtual?: string;
 }
 
-export const loadPublicPresenceConfig = async (token: string): Promise<PublicPresenceConfig> => {
+export const loadPublicPresenceConfig = async (token: string, data = ''): Promise<PublicPresenceConfig> => {
+  const dateParam = data ? `&data=${encodeURIComponent(data)}` : '';
   const response = await callPublicApi<PublicPresenceConfig>(
-    `/.netlify/functions/public-presenca?token=${encodeURIComponent(token)}`,
+    `/.netlify/functions/public-presenca?token=${encodeURIComponent(token)}${dateParam}`,
   );
   if (!response.data || !Array.isArray(response.data.gruposEquipe)) {
     throw new Error('A lista de equipes retornada pelo serviço é inválida.');
@@ -97,6 +104,26 @@ export const submitPublicPresence = async (
     message: response.message || 'Presença enviada com segurança.',
     submissionId: response.data?.submissionId,
     createdAtIso: response.data?.createdAtIso,
+  };
+};
+
+export const updatePublicPresenceRecord = async (
+  token: string,
+  grupoId: string,
+  funcionarioId: string,
+  status: PresencaStatus,
+  observacao: string,
+) => {
+  const payload = { token, grupoId, funcionarioId, status, observacao };
+  const response = await callPublicApi<{ record: PresencaApontamento }>('/.netlify/functions/public-presenca', {
+    method: 'PATCH',
+    headers: { 'X-Idempotency-Key': stableRequestKey('presenca-update', payload) },
+    body: JSON.stringify(payload),
+  });
+  return {
+    success: true,
+    message: response.message || 'Situação atualizada com segurança.',
+    record: response.data?.record,
   };
 };
 

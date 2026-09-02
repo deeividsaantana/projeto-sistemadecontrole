@@ -5,6 +5,7 @@ import type {
   Funcionario,
   GrupoEquipe,
   ObraLocal,
+  PresencaApontamento,
   TicketJazida,
 } from './types';
 import {
@@ -22,6 +23,7 @@ import {
   searchPendingPublicTickets,
   submitPublicApontamento,
   submitPublicPresence,
+  updatePublicPresenceRecord,
   validatePublicTicketAccess,
   type PublicApontamentoPayload,
 } from './publicApi';
@@ -42,6 +44,11 @@ export default function PublicLinksApp() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [obras, setObras] = useState<ObraLocal[]>([]);
+  const [meuGrupo, setMeuGrupo] = useState<GrupoEquipe | null>(null);
+  const [meusRegistros, setMeusRegistros] = useState<PresencaApontamento[]>([]);
+  const [datasDisponiveis, setDatasDisponiveis] = useState<string[]>([]);
+  const [dataSelecionada, setDataSelecionada] = useState('');
+  const [dataAtual, setDataAtual] = useState('');
   const [presenceLoading, setPresenceLoading] = useState(Boolean(presenceToken));
   const [presenceError, setPresenceError] = useState('');
 
@@ -51,16 +58,21 @@ export default function PublicLinksApp() {
   const [ticketLoading, setTicketLoading] = useState(Boolean(ticketLink));
   const [ticketError, setTicketError] = useState('');
 
-  const reloadPresence = async () => {
+  const reloadPresence = async (data = '') => {
     if (!presenceToken) return;
     setPresenceLoading(true);
     setPresenceError('');
     try {
-      const config = await loadPublicPresenceConfig(presenceToken);
+      const config = await loadPublicPresenceConfig(presenceToken, data);
       setGruposEquipe(config.gruposEquipe);
       setFuncionarios(config.funcionarios);
       setEmpresas(config.empresas || []);
       setObras(config.obras);
+      setMeuGrupo(config.meuGrupo || null);
+      setMeusRegistros(config.meusRegistros || []);
+      setDatasDisponiveis(config.datasDisponiveis || []);
+      setDataSelecionada(config.dataSelecionada || '');
+      setDataAtual(config.dataAtual || '');
     } catch (error) {
       setPresenceError(error instanceof Error ? error.message : 'Não foi possível carregar as equipes.');
     } finally {
@@ -139,10 +151,18 @@ export default function PublicLinksApp() {
           funcionarios={funcionarios}
           empresas={empresas}
           obras={obras}
+          meuGrupo={meuGrupo}
+          meusRegistros={meusRegistros}
+          datasDisponiveis={datasDisponiveis}
+          dataSelecionada={dataSelecionada}
+          dataAtual={dataAtual}
+          onSelectDate={data => void reloadPresence(data)}
           isLoadingCloud={presenceLoading}
           loadError={presenceError}
           onRetry={() => void reloadPresence()}
           onSubmitPresenca={(grupo, data, items) => submitPublicPresence(presenceToken, grupo.id, data, items)}
+          onUpdateRecord={(grupoId, funcionarioId, status, observacao) =>
+            updatePublicPresenceRecord(presenceToken, grupoId, funcionarioId, status, observacao)}
         />
       </Suspense>
     );

@@ -1,7 +1,8 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -11,7 +12,7 @@ import {
   Send,
   Users,
 } from 'lucide-react';
-import type { Empresa, Funcionario, GrupoEquipe, ObraLocal, PresencaStatus } from '../types';
+import type { Empresa, Funcionario, GrupoEquipe, ObraLocal, PresencaApontamento, PresencaStatus } from '../types';
 import reneaLogo from '../assets/images/logo-renea-branco.png';
 import './presencaTempoRealPublica.css';
 
@@ -25,12 +26,24 @@ interface SubmissionResult {
   createdAtIso?: string;
 }
 
+interface RecordUpdateResult {
+  success: boolean;
+  message: string;
+  record?: PresencaApontamento;
+}
+
 interface Props {
   token: string;
   gruposEquipe: GrupoEquipe[];
   funcionarios: Funcionario[];
   empresas: Empresa[];
   obras: ObraLocal[];
+  meuGrupo?: GrupoEquipe | null;
+  meusRegistros?: PresencaApontamento[];
+  datasDisponiveis?: string[];
+  dataSelecionada?: string;
+  dataAtual?: string;
+  onSelectDate?: (data: string) => void;
   isLoadingCloud: boolean;
   loadError: string;
   onRetry: () => void;
@@ -39,6 +52,12 @@ interface Props {
     data: string,
     items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>,
   ) => Promise<SubmissionResult>;
+  onUpdateRecord: (
+    grupoId: string,
+    funcionarioId: string,
+    status: PresencaStatus,
+    observacao: string,
+  ) => Promise<RecordUpdateResult>;
 }
 
 type ItemState = { status?: PresencaStatus; observacao: string };
@@ -47,6 +66,19 @@ const todayInput = () => {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 10);
+};
+
+// Rótulo curto para a régua de dias: "Hoje" para a data corrente e
+// "seg 01/09" para os dias anteriores já enviados pela equipe.
+const formatDayLabel = (iso: string, today: string) => {
+  if (!iso) return '';
+  if (iso === today) return 'Hoje';
+  const [year, month, day] = iso.split('-').map(Number);
+  if (!year || !month || !day) return iso;
+  const weekday = new Date(Date.UTC(year, month - 1, day))
+    .toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' })
+    .replace('.', '');
+  return `${weekday} ${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
 };
 
 const safeText = (value: unknown) => typeof value === 'string' ? value : '';
@@ -91,10 +123,17 @@ export default function PresencaTempoRealPublica({
   funcionarios = [],
   empresas = [],
   obras = [],
+  meuGrupo = null,
+  meusRegistros = [],
+  datasDisponiveis = [],
+  dataSelecionada = '',
+  dataAtual = '',
+  onSelectDate,
   isLoadingCloud,
   loadError,
   onRetry,
   onSubmitPresenca,
+  onUpdateRecord,
 }: Props) {
   const generalLink = isGeneralToken(token);
   const [date, setDate] = useState(todayInput());
@@ -109,6 +148,10 @@ export default function PresencaTempoRealPublica({
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftFeedback, setDraftFeedback] = useState('');
+  const [savingEmployeeId, setSavingEmployeeId] = useState('');
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [savedFeedback, setSavedFeedback] = useState<Record<string, string>>({});
+  const [observacaoDrafts, setObservacaoDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setDraftHydrated(false);
@@ -139,7 +182,7 @@ export default function PresencaTempoRealPublica({
 
   const group = useMemo(() => generalLink
     ? activeGroups.find(item => item.id === selectedGroupId)
-    : activeGroups.find(item => item.token === token), [activeGroups, generalLink, selectedGroupId, token]);
+    : (meuGrupo || activeGroups.find(item => item.token === token)), [activeGroups, generalLink, meuGrupo, selectedGroupId, token]);
 
   const groupEmployees = useMemo(() => {
     if (!group) return [];
@@ -163,18 +206,82 @@ export default function PresencaTempoRealPublica({
 
   useEffect(() => {
     if (!group) return;
-    setItems(current => Object.fromEntries(groupEmployees.map(employee => [
-      employee.id,
-      current[employee.id] || { observacao: '' },
-    ])));
+    setItems(current => Object.fromEntries(groupEmployees.map(employee => {
+      const existing = current[employee.id];
+      if (existing?.status) return [employee.id, existing];
+      const remote = meusRegistros.find(record => record.funcionarioId === employee.id);
+      if (remote) return [employee.id, { status: remote.status, observacao: remote.observacao || '' }];
+      return [employee.id, existing || { observacao: '' }];
+    })));
     setEmployeeSearch('');
     setError('');
     setResult(current => current?.submissionId ? current : null);
-  }, [group, groupEmployees]);
+  }, [group, groupEmployees, meusRegistros]);
 
   const reviewed = groupEmployees.filter(employee => Boolean(items[employee.id]?.status)).length;
   const pending = Math.max(0, groupEmployees.length - reviewed);
   const progress = groupEmployees.length ? Math.round((reviewed / groupEmployees.length) * 100) : 0;
+  // Ao trocar de dia, a lista passa a refletir exatamente o que foi enviado
+  // naquela data. O rascunho local do dia corrente não é tocado na primeira
+  // carga, apenas quando o responsável realmente navega para outro dia.
+  const seededDateRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!dataSelecionada) return;
+    const previousDate = seededDateRef.current;
+    seededDateRef.current = dataSelecionada;
+    if (previousDate === null || previousDate === dataSelecionada) return;
+    setItems(Object.fromEntries(meusRegistros.map(record => [
+      record.funcionarioId,
+      { status: record.status, observacao: record.observacao || '' },
+    ])));
+    setObservacaoDrafts({});
+    setSavedFeedback({});
+    setCardErrors({});
+    setEmployeeSearch('');
+  }, [dataSelecionada, meusRegistros]);
+
+  const alreadySubmitted = meusRegistros.length > 0 || Boolean(result?.submissionId);
+  // Dias anteriores abrem em consulta: o serviço público só aceita alteração
+  // na data corrente, então a interface não oferece edição fora dela.
+  const viewingPastDay = Boolean(dataSelecionada && dataAtual && dataSelecionada !== dataAtual);
+  // O dia corrente encabeça a régua mesmo sem envio ainda, para que a volta
+  // de um dia anterior seja sempre possível.
+  const dayOptions = useMemo(() => {
+    const previousDays = datasDisponiveis.filter(dia => dia !== dataAtual);
+    return dataAtual ? [dataAtual, ...previousDays] : previousDays;
+  }, [dataAtual, datasDisponiveis]);
+
+  const updateStatus = async (employeeId: string, status: PresencaStatus, observacaoOverride?: string) => {
+    if (!group || viewingPastDay) return;
+    const observacaoValue = (observacaoOverride ?? items[employeeId]?.observacao ?? '').trim();
+    setSavingEmployeeId(employeeId);
+    setCardErrors(current => ({ ...current, [employeeId]: '' }));
+    try {
+      const response = await onUpdateRecord(group.id, employeeId, status, observacaoValue);
+      if (!response.success) {
+        setCardErrors(current => ({ ...current, [employeeId]: response.message }));
+        return;
+      }
+      setItems(current => ({ ...current, [employeeId]: { status, observacao: observacaoValue } }));
+      setObservacaoDrafts(current => {
+        if (!(employeeId in current)) return current;
+        const next = { ...current };
+        delete next[employeeId];
+        return next;
+      });
+      setSavedFeedback(current => ({
+        ...current,
+        [employeeId]: `Atualizado às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+      }));
+    } catch (caught) {
+      setCardErrors(current => ({
+        ...current,
+        [employeeId]: caught instanceof Error ? caught.message : 'Não foi possível salvar a alteração.',
+      }));
+    } finally {
+      setSavingEmployeeId('');
+    }
+  };
 
   const setStatus = (employeeId: string, status: PresencaStatus) => {
     setItems(current => ({
@@ -290,30 +397,95 @@ export default function PresencaTempoRealPublica({
     );
   }
 
-  if (result) {
+  if (alreadySubmitted) {
     const counts = Object.values(items).reduce<Record<string, number>>((summary, item) => {
       const status = item.status || 'Outro';
       summary[status] = (summary[status] || 0) + 1;
       return summary;
     }, {});
     return (
-      <main className="presence-public presence-public--center">
-        <section className="presence-public__success-card">
+      <main className="presence-public">
+        <header className="presence-public__header">
+          <button type="button" onClick={() => generalLink && setSelectedGroupId('')} aria-label="Voltar às equipes" disabled={!generalLink}><ArrowLeft className="h-5 w-5" /></button>
           <img src={reneaLogo} alt="RENEA Infraestrutura" className="presence-public__logo" />
-          <CheckCircle2 className="presence-public__success-icon" />
-          <h1>Presença enviada</h1>
-          <p>{group.nome} atualizada no controle em tempo real.</p>
-          <time>{new Date(result.createdAtIso || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
-          <div className="presence-public__success-total"><strong>{groupEmployees.length}</strong><span>colaboradores</span></div>
-          <div className="presence-public__summary-grid">
+          <span><i /> Ao vivo</span>
+        </header>
+        <div className="presence-public__content">
+          <section className="presence-public__intro presence-public__intro--form">
+            <p className="presence-public__eyebrow">Registro de campo</p>
+            {viewingPastDay
+              ? <h1 className="presence-public__done-title"><CalendarDays className="h-7 w-7" /> Apontamento de {formatDayLabel(dataSelecionada, dataAtual)}</h1>
+              : <h1 className="presence-public__done-title"><CheckCircle2 className="h-7 w-7" /> Apontamento realizado</h1>}
+            <p>{group.nome} · {workName} · {reviewed} de {groupEmployees.length} colaboradores registrados{!viewingPastDay && result?.createdAtIso ? ` · enviado às ${new Date(result.createdAtIso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
+          </section>
+          {dayOptions.length > 1 && onSelectDate && (
+            <section className="presence-public__daybar" aria-label="Dias com apontamento enviado">
+              {dayOptions.map(dia => (
+                <button
+                  key={dia}
+                  type="button"
+                  className="presence-public__day"
+                  data-selected={dia === dataSelecionada}
+                  aria-current={dia === dataSelecionada ? 'date' : undefined}
+                  disabled={isLoadingCloud}
+                  onClick={() => onSelectDate(dia)}
+                >
+                  {formatDayLabel(dia, dataAtual)}
+                </button>
+              ))}
+            </section>
+          )}
+          <div className="presence-public__summary-grid presence-public__summary-grid--compact">
             <div><strong>{counts.Presente || 0}</strong><span>Presentes</span></div>
             <div><strong>{counts.Ausente || 0}</strong><span>Ausentes</span></div>
             <div><strong>{counts.Atestado || 0}</strong><span>Atestados</span></div>
             <div><strong>{(counts['Falta justificada'] || 0) + (counts.Férias || 0) + (counts.Afastado || 0) + (counts.Outro || 0)}</strong><span>Outros</span></div>
           </div>
-          {result.submissionId && <p className="presence-public__audit-id">ID do envio: {result.submissionId}</p>}
-          <button type="button" onClick={() => { setResult(null); setItems({}); if (generalLink) setSelectedGroupId(''); }} className="presence-public__primary"><ArrowLeft className="h-4 w-4" /> Voltar às equipes</button>
-        </section>
+          <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar por nome ou matrícula" aria-label="Buscar colaborador" /></div>
+          <p className="presence-public__search-meta" aria-live="polite">{viewingPastDay ? 'Dia anterior: consulta apenas. Alterações somente no dia de hoje.' : 'Toque em uma situação para atualizar na hora'}</p>
+          <section className="presence-public__employee-list">
+            {visibleEmployees.map(employee => {
+              const currentStatus = items[employee.id]?.status;
+              const savedObservacao = items[employee.id]?.observacao || '';
+              const draftObservacao = observacaoDrafts[employee.id] ?? savedObservacao;
+              const observacaoDirty = draftObservacao.trim() !== savedObservacao.trim();
+              const isSaving = savingEmployeeId === employee.id;
+              const cardError = cardErrors[employee.id];
+              const feedback = savedFeedback[employee.id];
+              return (
+                <article key={employee.id} className="presence-public__employee-card">
+                  <div className="presence-public__employee-heading">
+                    <span className="presence-public__avatar">{safeText(employee.nome).split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</span>
+                    <div><h2>{employee.nome}</h2><p>{employee.cargo} · {companyName(employee)}{employee.matricula ? ` · Mat. ${employee.matricula}` : ''}</p></div>
+                    {currentStatus && <span className="presence-public__status-pill">{currentStatus}</span>}
+                  </div>
+                  {viewingPastDay ? (
+                    savedObservacao && <p className="presence-public__readonly-note">{savedObservacao}</p>
+                  ) : (
+                    <>
+                      <div className="presence-public__status-grid">
+                        {PRIMARY_STATUSES.map(status => (
+                          <button key={status} type="button" disabled={isSaving} onClick={() => void updateStatus(employee.id, status)} data-selected={currentStatus === status}>
+                            {currentStatus === status && <Check className="h-4 w-4" />}{status}
+                          </button>
+                        ))}
+                      </div>
+                      <select value={SECONDARY_STATUSES.includes(currentStatus as PresencaStatus) ? currentStatus : ''} disabled={isSaving} onChange={event => event.target.value && void updateStatus(employee.id, event.target.value as PresencaStatus)}><option value="">Outras situações</option>{SECONDARY_STATUSES.map(status => <option key={status}>{status}</option>)}</select>
+                      <textarea value={draftObservacao} disabled={isSaving} onChange={event => setObservacaoDrafts(current => ({ ...current, [employee.id]: event.target.value }))} rows={2} placeholder="Observação opcional" />
+                      {observacaoDirty && (
+                        <button type="button" className="presence-public__save-note" disabled={isSaving || !currentStatus} onClick={() => void updateStatus(employee.id, currentStatus as PresencaStatus, draftObservacao)}>
+                          {isSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar observação
+                        </button>
+                      )}
+                      {cardError && <div role="alert" className="presence-public__card-error">{cardError}</div>}
+                      {!cardError && feedback && <div role="status" className="presence-public__card-feedback">{feedback}</div>}
+                    </>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+        </div>
       </main>
     );
   }
@@ -336,6 +508,23 @@ export default function PresencaTempoRealPublica({
           <div className="presence-public__progress-track"><i style={{ width: `${progress}%` }} /></div>
           <label>Data do apontamento<input type="date" value={date} onChange={event => setDate(event.target.value)} min={todayInput()} max={todayInput()} /></label>
         </section>
+        {dayOptions.length > 1 && onSelectDate && (
+          <section className="presence-public__daybar" aria-label="Dias com apontamento enviado">
+            {dayOptions.map(dia => (
+              <button
+                key={dia}
+                type="button"
+                className="presence-public__day"
+                data-selected={dia === dataSelecionada}
+                aria-current={dia === dataSelecionada ? 'date' : undefined}
+                disabled={isLoadingCloud}
+                onClick={() => onSelectDate(dia)}
+              >
+                {formatDayLabel(dia, dataAtual)}
+              </button>
+            ))}
+          </section>
+        )}
         <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador" aria-label="Buscar colaborador" /></div>
         <form onSubmit={submit} className="presence-public__form">
           <section className="presence-public__employee-list">

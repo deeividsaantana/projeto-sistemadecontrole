@@ -5,6 +5,9 @@ node_modules/
 dist/
 dist-ssr/
 
+# Pacotes de build antigos (nao versionar: dezenas de MB)
+*.zip
+
 # Variáveis de ambiente (NUNCA subir segredos pro Git)
 .env
 .env.local

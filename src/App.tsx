@@ -135,6 +135,7 @@ import {
   searchPendingPublicTickets,
   submitPublicApontamento,
   submitPublicPresence,
+  updatePublicPresenceRecord,
   validatePublicTicketAccess,
   type PublicApontamentoPayload,
 } from './publicApi';
@@ -359,6 +360,11 @@ export default function App() {
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [externalPresenceLoadError, setExternalPresenceLoadError] = useState('');
+  const [externalMeuGrupo, setExternalMeuGrupo] = useState<GrupoEquipe | null>(null);
+  const [externalMeusRegistros, setExternalMeusRegistros] = useState<PresencaApontamento[]>([]);
+  const [externalDatasDisponiveis, setExternalDatasDisponiveis] = useState<string[]>([]);
+  const [externalDataSelecionada, setExternalDataSelecionada] = useState('');
+  const [externalDataAtual, setExternalDataAtual] = useState('');
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
   const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
   const [externalTicketLoadError, setExternalTicketLoadError] = useState('');
@@ -1087,16 +1093,21 @@ export default function App() {
     });
   }, [cloudRecoveryPending, externalApontamentoToken, externalPresenceToken, externalTicketLink, isLoggedIn]);
 
-  const reloadExternalPresence = async () => {
+  const reloadExternalPresence = async (data = '') => {
     if (!externalPresenceToken) return;
     setIsExternalPresenceLoading(true);
     setExternalPresenceLoadError('');
     try {
-      const config = await loadPublicPresenceConfig(externalPresenceToken);
+      const config = await loadPublicPresenceConfig(externalPresenceToken, data);
       setGruposEquipe(normalizeTeamGroups(config.gruposEquipe));
       setFuncionarios(normalizeRuntimeCollection<Funcionario>(config.funcionarios));
       setEmpresas(normalizeRuntimeCollection<Empresa>(config.empresas));
       setObras(normalizeRuntimeCollection<ObraLocal>(config.obras));
+      setExternalMeuGrupo(config.meuGrupo || null);
+      setExternalMeusRegistros(config.meusRegistros || []);
+      setExternalDatasDisponiveis(config.datasDisponiveis || []);
+      setExternalDataSelecionada(config.dataSelecionada || '');
+      setExternalDataAtual(config.dataAtual || '');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Não foi possível carregar as equipes.';
       setExternalPresenceLoadError(message);
@@ -2680,6 +2691,19 @@ export default function App() {
     }
   };
 
+  const handleUpdateExternalPresencaRecord = async (
+    grupoId: string,
+    funcionarioId: string,
+    status: PresencaStatus,
+    observacao: string
+  ) => {
+    try {
+      return await updatePublicPresenceRecord(externalPresenceToken, grupoId, funcionarioId, status, observacao);
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível salvar a alteração.' };
+    }
+  };
+
   const handleUpdatePresencaLink = (id: string, status: PresencaStatus, observacao: string, motivo: string) => {
     const item = presencasLink.find(row => row.id === id);
     if (!item) return;
@@ -3954,10 +3978,17 @@ export default function App() {
           funcionarios={funcionarios}
           empresas={empresas}
           obras={obras}
+          meuGrupo={externalMeuGrupo}
+          meusRegistros={externalMeusRegistros}
+          datasDisponiveis={externalDatasDisponiveis}
+          dataSelecionada={externalDataSelecionada}
+          dataAtual={externalDataAtual}
+          onSelectDate={data => void reloadExternalPresence(data)}
           isLoadingCloud={isExternalPresenceLoading}
           loadError={externalPresenceLoadError}
           onRetry={() => void reloadExternalPresence()}
           onSubmitPresenca={handleSubmitPresencaLink}
+          onUpdateRecord={handleUpdateExternalPresencaRecord}
         />
       </Suspense>
     );
