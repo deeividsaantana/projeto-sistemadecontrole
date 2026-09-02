@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import type {
   ApontamentoRamo,
   Empresa,
@@ -66,7 +66,7 @@ export default function PublicLinksApp() {
   const [ticketLoading, setTicketLoading] = useState(Boolean(ticketLink));
   const [ticketError, setTicketError] = useState('');
 
-  const reloadPresence = async (data = '') => {
+  const reloadPresence = useCallback(async (data = '') => {
     if (!presenceToken) return;
     setPresenceLoading(true);
     setPresenceError('');
@@ -90,21 +90,60 @@ export default function PublicLinksApp() {
     } finally {
       setPresenceLoading(false);
     }
-  };
+  }, [presenceToken]);
 
-  const selectPresenceDate = (data: string) => {
-    if (Object.prototype.hasOwnProperty.call(presenceHistory, data)) {
-      setDataSelecionada(data);
-      setMeusRegistros(presenceHistory[data] || []);
-      setObservacaoDia(presenceDayNotes[data] || '');
-      return;
+  const selectPresenceDate = useCallback((data: string) => {
+    setPresenceHistory(currentHistory => {
+      if (Object.prototype.hasOwnProperty.call(currentHistory, data)) {
+        setDataSelecionada(data);
+        setMeusRegistros(currentHistory[data] || []);
+        setPresenceDayNotes(currentNotes => {
+          setObservacaoDia(currentNotes[data] || '');
+          return currentNotes;
+        });
+      } else {
+        void reloadPresence(data);
+      }
+      return currentHistory;
+    });
+  }, [reloadPresence]);
+
+  // Identidade estavel: entregues como props pro link publico, permitem que
+  // o cartao memoizado de cada colaborador ignore re-renderizacoes desta
+  // pagina que nao tem nada a ver com o toque que a pessoa acabou de dar.
+  const handleRetryPresence = useCallback(() => { void reloadPresence(); }, [reloadPresence]);
+
+  const handleSubmitPresenca = useCallback((grupo: GrupoEquipe, data: string, items: Array<{ funcionarioId: string; status: PresencaApontamento['status']; observacao: string }>, nota: string) =>
+    submitPublicPresence(presenceToken, grupo.id, data, items, nota), [presenceToken]);
+
+  const handleUpdateRecord = useCallback((grupoId: string, funcionarioId: string, status: PresencaApontamento['status'], observacao: string) =>
+    updatePublicPresenceRecord(presenceToken, grupoId, funcionarioId, status, observacao), [presenceToken]);
+
+  const handleAddMember = useCallback((grupoId: string, funcionarioId: string) =>
+    addPublicPresenceMember(presenceToken, grupoId, funcionarioId), [presenceToken]);
+
+  const handleRemoveMember = useCallback(async (grupoId: string, funcionarioId: string) => {
+    const response = await removePublicPresenceMember(presenceToken, grupoId, funcionarioId);
+    if (response.success) {
+      setGruposEquipe(current => current.map(group => group.id === grupoId
+        ? { ...group, funcionarioIds: (group.funcionarioIds || []).filter(id => id !== funcionarioId) }
+        : group));
+      setMeuGrupo(current => current?.id === grupoId
+        ? { ...current, funcionarioIds: (current.funcionarioIds || []).filter(id => id !== funcionarioId) }
+        : current);
     }
-    void reloadPresence(data);
-  };
+    return response;
+  }, [presenceToken]);
+
+  const handleSaveDayNote = useCallback(async (grupoId: string, nota: string) => {
+    const resposta = await updatePublicPresenceDayNote(presenceToken, grupoId, nota);
+    setObservacaoDia(resposta.observacaoDia);
+    return resposta;
+  }, [presenceToken]);
 
   useEffect(() => {
     void reloadPresence();
-  }, [presenceToken]);
+  }, [reloadPresence]);
 
   useEffect(() => {
     if (!apontamentoToken) return;
@@ -183,28 +222,12 @@ export default function PublicLinksApp() {
           onSelectDate={selectPresenceDate}
           isLoadingCloud={presenceLoading}
           loadError={presenceError}
-          onRetry={() => void reloadPresence()}
-          onSubmitPresenca={(grupo, data, items, nota) => submitPublicPresence(presenceToken, grupo.id, data, items, nota)}
-          onUpdateRecord={(grupoId, funcionarioId, status, observacao) =>
-            updatePublicPresenceRecord(presenceToken, grupoId, funcionarioId, status, observacao)}
-          onAddMember={(grupoId, funcionarioId) => addPublicPresenceMember(presenceToken, grupoId, funcionarioId)}
-          onRemoveMember={async (grupoId, funcionarioId) => {
-            const response = await removePublicPresenceMember(presenceToken, grupoId, funcionarioId);
-            if (response.success) {
-              setGruposEquipe(current => current.map(group => group.id === grupoId
-                ? { ...group, funcionarioIds: (group.funcionarioIds || []).filter(id => id !== funcionarioId) }
-                : group));
-              setMeuGrupo(current => current?.id === grupoId
-                ? { ...current, funcionarioIds: (current.funcionarioIds || []).filter(id => id !== funcionarioId) }
-                : current);
-            }
-            return response;
-          }}
-          onSaveDayNote={async (grupoId, nota) => {
-            const resposta = await updatePublicPresenceDayNote(presenceToken, grupoId, nota);
-            setObservacaoDia(resposta.observacaoDia);
-            return resposta;
-          }}
+          onRetry={handleRetryPresence}
+          onSubmitPresenca={handleSubmitPresenca}
+          onUpdateRecord={handleUpdateRecord}
+          onAddMember={handleAddMember}
+          onRemoveMember={handleRemoveMember}
+          onSaveDayNote={handleSaveDayNote}
         />
       </Suspense>
     );

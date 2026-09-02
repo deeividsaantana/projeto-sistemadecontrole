@@ -236,6 +236,112 @@ const EmployeeCard = memo(function EmployeeCard({
   );
 });
 
+// Cartao da tela "ja enviado" (edicao pontual, em tempo real). Mesma razao
+// do EmployeeCard acima: sem memo, cada toque em uma situacao redesenhava a
+// equipe inteira -- e essa e a tela que o encarregado usa o turno todo pra
+// corrigir situacao a situacao.
+interface SubmittedEmployeeCardProps {
+  employee: Funcionario;
+  empresaNome: string;
+  currentStatus?: PresencaStatus;
+  draftObservacao: string;
+  observacaoDirty: boolean;
+  isSaving: boolean;
+  cardError: string;
+  feedback: string;
+  onUpdateStatus: (employeeId: string, status: PresencaStatus, observacaoOverride?: string) => void;
+  onObservacaoChange: (employeeId: string, value: string) => void;
+  podeRemover: boolean;
+  confirmandoRemocao: boolean;
+  removendo: boolean;
+  removocaoEmCurso: boolean;
+  onPedirRemocao: (funcionarioId: string) => void;
+  onCancelarRemocao: () => void;
+  onConfirmarRemocao: (employee: Funcionario) => void;
+}
+
+const SubmittedEmployeeCard = memo(function SubmittedEmployeeCard({
+  employee,
+  empresaNome,
+  currentStatus,
+  draftObservacao,
+  observacaoDirty,
+  isSaving,
+  cardError,
+  feedback,
+  onUpdateStatus,
+  onObservacaoChange,
+  podeRemover,
+  confirmandoRemocao,
+  removendo,
+  removocaoEmCurso,
+  onPedirRemocao,
+  onCancelarRemocao,
+  onConfirmarRemocao,
+}: SubmittedEmployeeCardProps) {
+  return (
+    <article className="presence-public__employee-card">
+      <div className="presence-public__employee-heading">
+        <span className="presence-public__avatar">{safeText(employee.nome).split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</span>
+        <div><h2>{employee.nome}</h2><p>{employee.cargo} · {empresaNome}{employee.matricula ? ` · Mat. ${employee.matricula}` : ''}</p></div>
+        {currentStatus && <span className="presence-public__status-pill">{currentStatus}</span>}
+      </div>
+      <div className="presence-public__status-grid">
+        {PRIMARY_STATUSES.map(status => (
+          <button key={status} type="button" disabled={isSaving} onClick={() => onUpdateStatus(employee.id, status)} data-selected={currentStatus === status}>
+            {currentStatus === status && <Check className="h-4 w-4" />}{status}
+          </button>
+        ))}
+      </div>
+      <select
+        value={SECONDARY_STATUSES.includes(currentStatus as PresencaStatus) ? currentStatus : ''}
+        disabled={isSaving}
+        onChange={event => event.target.value && onUpdateStatus(employee.id, event.target.value as PresencaStatus)}
+      >
+        <option value="">Outras situações</option>
+        {SECONDARY_STATUSES.map(status => <option key={status}>{status}</option>)}
+      </select>
+      <textarea
+        value={draftObservacao}
+        disabled={isSaving}
+        onChange={event => onObservacaoChange(employee.id, event.target.value)}
+        rows={2}
+        placeholder="Observação opcional"
+      />
+      {observacaoDirty && (
+        <button
+          type="button"
+          className="presence-public__save-note"
+          disabled={isSaving || !currentStatus}
+          onClick={() => onUpdateStatus(employee.id, currentStatus as PresencaStatus, draftObservacao)}
+        >
+          {isSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar observação
+        </button>
+      )}
+      {cardError && <div role="alert" className="presence-public__card-error">{cardError}</div>}
+      {!cardError && feedback && <div role="status" className="presence-public__card-feedback">{feedback}</div>}
+      {podeRemover && (
+        <div className="presence-public__remove-member">
+          {confirmandoRemocao ? (
+            <div className="presence-public__remove-confirm" role="group" aria-label={`Confirmar remoção de ${employee.nome}`}>
+              <span>Remover este colaborador da equipe?</span>
+              <button type="button" onClick={onCancelarRemocao} disabled={removendo}>Cancelar</button>
+              <button type="button" data-danger onClick={() => onConfirmarRemocao(employee)} disabled={removendo}>
+                {removendo ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {removendo ? 'Removendo' : 'Sim, remover'}
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => onPedirRemocao(employee.id)} disabled={removocaoEmCurso}>
+              <Trash2 className="h-4 w-4" /> Remover da equipe
+            </button>
+          )}
+        </div>
+      )}
+    </article>
+  );
+});
+
 export default function PresencaTempoRealPublica({
   token,
   gruposEquipe = [],
@@ -295,6 +401,10 @@ export default function PresencaTempoRealPublica({
   const [addFeedback, setAddFeedback] = useState('');
   const [removeConfirmEmployeeId, setRemoveConfirmEmployeeId] = useState('');
   const [removingEmployeeId, setRemovingEmployeeId] = useState('');
+  const removingEmployeeIdRef = useRef('');
+  useEffect(() => { removingEmployeeIdRef.current = removingEmployeeId; }, [removingEmployeeId]);
+  const itemsRef = useRef<Record<string, ItemState>>({});
+  useEffect(() => { itemsRef.current = items; }, [items]);
   const [memberFeedback, setMemberFeedback] = useState('');
   // Observação do dia: vale para a equipe toda, não para uma pessoa.
   const [dayNote, setDayNote] = useState('');
@@ -475,8 +585,11 @@ export default function PresencaTempoRealPublica({
     }
   };
 
-  const removeMember = async (employee: Funcionario) => {
-    if (!group || !onRemoveMember || removingEmployeeId) return;
+  // Estavel por toda a vida do componente: nao depende de removingEmployeeId
+  // (lido pela ref), entao um cartao tocando "remover" nao invalida a
+  // identidade que os outros cartoes memoizados recebem como prop.
+  const removeMember = useCallback(async (employee: Funcionario) => {
+    if (!group || !onRemoveMember || removingEmployeeIdRef.current) return;
     setRemovingEmployeeId(employee.id);
     setCardErrors(current => ({ ...current, [employee.id]: '' }));
     setMemberFeedback('');
@@ -502,31 +615,42 @@ export default function PresencaTempoRealPublica({
     } finally {
       setRemovingEmployeeId('');
     }
-  };
+  }, [group, onRemoveMember]);
 
-  const updateStatus = async (employeeId: string, status: PresencaStatus, observacaoOverride?: string) => {
+  // Otimista: a tela muda no toque, antes da rede responder. Quem aponta em
+  // campo nao pode esperar um round-trip pra ver o proprio toque acontecer.
+  // Se o servidor recusar, volta pro estado anterior e mostra o erro no
+  // cartao. Estavel (useCallback + itemsRef) pelo mesmo motivo do removeMember.
+  const updateStatus = useCallback(async (employeeId: string, status: PresencaStatus, observacaoOverride?: string) => {
     if (!group || viewingPastDay) return;
-    const observacaoValue = (observacaoOverride ?? items[employeeId]?.observacao ?? '').trim();
-    setSavingEmployeeId(employeeId);
+    const previous = itemsRef.current[employeeId];
+    const observacaoValue = (observacaoOverride ?? previous?.observacao ?? '').trim();
+    const next = { status, observacao: observacaoValue };
+    itemsRef.current = { ...itemsRef.current, [employeeId]: next };
+    setItems(current => ({ ...current, [employeeId]: next }));
     setCardErrors(current => ({ ...current, [employeeId]: '' }));
+    setSavingEmployeeId(employeeId);
     try {
       const response = await onUpdateRecord(group.id, employeeId, status, observacaoValue);
       if (!response.success) {
+        itemsRef.current = { ...itemsRef.current, [employeeId]: previous || next };
+        setItems(current => ({ ...current, [employeeId]: previous || current[employeeId] }));
         setCardErrors(current => ({ ...current, [employeeId]: response.message }));
         return;
       }
-      setItems(current => ({ ...current, [employeeId]: { status, observacao: observacaoValue } }));
       setObservacaoDrafts(current => {
         if (!(employeeId in current)) return current;
-        const next = { ...current };
-        delete next[employeeId];
-        return next;
+        const draft = { ...current };
+        delete draft[employeeId];
+        return draft;
       });
       setSavedFeedback(current => ({
         ...current,
         [employeeId]: `Atualizado às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
       }));
     } catch (caught) {
+      itemsRef.current = { ...itemsRef.current, [employeeId]: previous || next };
+      setItems(current => ({ ...current, [employeeId]: previous || current[employeeId] }));
       setCardErrors(current => ({
         ...current,
         [employeeId]: caught instanceof Error ? caught.message : 'Não foi possível salvar a alteração.',
@@ -534,7 +658,7 @@ export default function PresencaTempoRealPublica({
     } finally {
       setSavingEmployeeId('');
     }
-  };
+  }, [group, viewingPastDay, onUpdateRecord]);
 
   // Identidade estavel: e o que permite ao cartao memoizado ignorar o toque
   // dado no colaborador do lado.
@@ -564,6 +688,10 @@ export default function PresencaTempoRealPublica({
 
   const pedirRemocao = useCallback((employeeId: string) => setRemoveConfirmEmployeeId(employeeId), []);
   const cancelarRemocao = useCallback(() => setRemoveConfirmEmployeeId(''), []);
+
+  const setObservacaoDraft = useCallback((employeeId: string, value: string) => {
+    setObservacaoDrafts(current => ({ ...current, [employeeId]: value }));
+  }, []);
 
   const saveDraft = async () => {
     if (savingDraft || submitting) return;
@@ -615,30 +743,6 @@ export default function PresencaTempoRealPublica({
     }
   };
 
-
-  const removeMemberControl = (employee: Funcionario) => {
-    if (!canRemoveMembers) return null;
-    const confirming = removeConfirmEmployeeId === employee.id;
-    const removing = removingEmployeeId === employee.id;
-    return (
-      <div className="presence-public__remove-member">
-        {confirming ? (
-          <div className="presence-public__remove-confirm" role="group" aria-label={`Confirmar remoção de ${employee.nome}`}>
-            <span>Remover este colaborador da equipe?</span>
-            <button type="button" onClick={cancelarRemocao} disabled={removing}>Cancelar</button>
-            <button type="button" data-danger onClick={() => void removeMember(employee)} disabled={removing}>
-              {removing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              {removing ? 'Removendo' : 'Sim, remover'}
-            </button>
-          </div>
-        ) : (
-          <button type="button" onClick={() => pedirRemocao(employee.id)} disabled={Boolean(removingEmployeeId)}>
-            <Trash2 className="h-4 w-4" /> Remover da equipe
-          </button>
-        )}
-      </div>
-    );
-  };
 
   const dayNoteSection = group && onSaveDayNote && !viewingPastDay ? (
     <section className="presence-public__daynote">
@@ -968,40 +1072,39 @@ export default function PresencaTempoRealPublica({
               const savedObservacao = items[employee.id]?.observacao || '';
               const draftObservacao = observacaoDrafts[employee.id] ?? savedObservacao;
               const observacaoDirty = draftObservacao.trim() !== savedObservacao.trim();
-              const isSaving = savingEmployeeId === employee.id;
-              const cardError = cardErrors[employee.id];
-              const feedback = savedFeedback[employee.id];
+              if (viewingPastDay) {
+                return (
+                  <article key={employee.id} className="presence-public__employee-card">
+                    <div className="presence-public__employee-heading">
+                      <span className="presence-public__avatar">{safeText(employee.nome).split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</span>
+                      <div><h2>{employee.nome}</h2><p>{employee.cargo} · {companyName(employee)}{employee.matricula ? ` · Mat. ${employee.matricula}` : ''}</p></div>
+                      {currentStatus && <span className="presence-public__status-pill">{currentStatus}</span>}
+                    </div>
+                    {savedObservacao && <p className="presence-public__readonly-note">{savedObservacao}</p>}
+                  </article>
+                );
+              }
               return (
-                <article key={employee.id} className="presence-public__employee-card">
-                  <div className="presence-public__employee-heading">
-                    <span className="presence-public__avatar">{safeText(employee.nome).split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</span>
-                    <div><h2>{employee.nome}</h2><p>{employee.cargo} · {companyName(employee)}{employee.matricula ? ` · Mat. ${employee.matricula}` : ''}</p></div>
-                    {currentStatus && <span className="presence-public__status-pill">{currentStatus}</span>}
-                  </div>
-                  {viewingPastDay ? (
-                    savedObservacao && <p className="presence-public__readonly-note">{savedObservacao}</p>
-                  ) : (
-                    <>
-                      <div className="presence-public__status-grid">
-                        {PRIMARY_STATUSES.map(status => (
-                          <button key={status} type="button" disabled={isSaving} onClick={() => void updateStatus(employee.id, status)} data-selected={currentStatus === status}>
-                            {currentStatus === status && <Check className="h-4 w-4" />}{status}
-                          </button>
-                        ))}
-                      </div>
-                      <select value={SECONDARY_STATUSES.includes(currentStatus as PresencaStatus) ? currentStatus : ''} disabled={isSaving} onChange={event => event.target.value && void updateStatus(employee.id, event.target.value as PresencaStatus)}><option value="">Outras situações</option>{SECONDARY_STATUSES.map(status => <option key={status}>{status}</option>)}</select>
-                      <textarea value={draftObservacao} disabled={isSaving} onChange={event => setObservacaoDrafts(current => ({ ...current, [employee.id]: event.target.value }))} rows={2} placeholder="Observação opcional" />
-                      {observacaoDirty && (
-                        <button type="button" className="presence-public__save-note" disabled={isSaving || !currentStatus} onClick={() => void updateStatus(employee.id, currentStatus as PresencaStatus, draftObservacao)}>
-                          {isSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar observação
-                        </button>
-                      )}
-                      {cardError && <div role="alert" className="presence-public__card-error">{cardError}</div>}
-                      {!cardError && feedback && <div role="status" className="presence-public__card-feedback">{feedback}</div>}
-                      {removeMemberControl(employee)}
-                    </>
-                  )}
-                </article>
+                <SubmittedEmployeeCard
+                  key={employee.id}
+                  employee={employee}
+                  empresaNome={companyName(employee)}
+                  currentStatus={currentStatus}
+                  draftObservacao={draftObservacao}
+                  observacaoDirty={observacaoDirty}
+                  isSaving={savingEmployeeId === employee.id}
+                  cardError={cardErrors[employee.id] || ''}
+                  feedback={savedFeedback[employee.id] || ''}
+                  onUpdateStatus={updateStatus}
+                  onObservacaoChange={setObservacaoDraft}
+                  podeRemover={canRemoveMembers}
+                  confirmandoRemocao={removeConfirmEmployeeId === employee.id}
+                  removendo={removingEmployeeId === employee.id}
+                  removocaoEmCurso={Boolean(removingEmployeeId)}
+                  onPedirRemocao={pedirRemocao}
+                  onCancelarRemocao={cancelarRemocao}
+                  onConfirmarRemocao={removeMember}
+                />
               );
             })}
           </section>
