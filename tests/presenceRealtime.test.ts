@@ -19,7 +19,7 @@ test('presenca usa somente os componentes novos e remove camadas antigas', () =>
 test('link publico exige revisao explicita de todos os colaboradores', () => {
   assert.match(publicPresenceSource, /const pending = Math\.max\(0, groupEmployees\.length - reviewed\)/);
   assert.match(publicPresenceSource, /if \(pending > 0\)/);
-  assert.match(publicPresenceSource, /disabled=\{submitting \|\| pending > 0\}/);
+  assert.match(publicPresenceSource, /disabled=\{submitting \|\| savingDraft \|\| pending > 0\}/);
   assert.doesNotMatch(publicPresenceSource, /status:\s*'Presente'/);
 });
 
@@ -47,9 +47,11 @@ test('situacao diaria oferece PDF e Excel e oculta equipes ja enviadas', () => {
 });
 
 test('apontador salva rascunho local sem transmitir ao painel', () => {
-  assert.match(publicPresenceSource, /const saveDraft = \(\) =>/);
+  assert.match(publicPresenceSource, /const saveDraft = async \(\) =>/);
   assert.match(publicPresenceSource, /Rascunho salvo neste aparelho · Ainda não enviado/);
-  assert.match(publicPresenceSource, /type="button" onClick=\{saveDraft\}/);
+  assert.match(publicPresenceSource, /type="button" onClick=\{\(\) => void saveDraft\(\)\}/);
+  assert.match(publicPresenceSource, /savingDraft \? <RefreshCw className="h-5 w-5 animate-spin" \/> : <Save/);
+  assert.match(publicPresenceSource, /savingDraft \? 'Salvando' : 'Salvar rascunho'/);
   assert.match(publicPresenceSource, /type="submit"/);
   assert.match(publicPresenceSource, /'Enviar presença'/);
 });

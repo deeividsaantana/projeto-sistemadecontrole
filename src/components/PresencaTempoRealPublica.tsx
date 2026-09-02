@@ -9,6 +9,7 @@ import {
   Clock3,
   History,
   RefreshCw,
+  Save,
   Search,
   Send,
   UserPlus,
@@ -170,6 +171,7 @@ export default function PresencaTempoRealPublica({
   const deferredEmployeeSearch = useDeferredValue(employeeSearch);
   const [items, setItems] = useState<Record<string, ItemState>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
   // Comprovante animado do envio. Aparece logo apos enviar e volta a aparecer
@@ -401,10 +403,19 @@ export default function PresencaTempoRealPublica({
     setDraftFeedback('Alterações ainda não enviadas');
   };
 
-  const saveDraft = () => {
-    writeDraft(token, { date, selectedGroupId: group?.id || selectedGroupId, items, result: null });
-    setDraftFeedback('Rascunho salvo neste aparelho · Ainda não enviado');
+  const saveDraft = async () => {
+    if (savingDraft || submitting) return;
+    setSavingDraft(true);
     setError('');
+    try {
+      // O pequeno intervalo mantém o retorno visual perceptível mesmo quando
+      // a gravação local termina quase instantaneamente.
+      await new Promise(resolve => window.setTimeout(resolve, 500));
+      writeDraft(token, { date, selectedGroupId: group?.id || selectedGroupId, items, result: null });
+      setDraftFeedback('Rascunho salvo neste aparelho · Ainda não enviado');
+    } finally {
+      setSavingDraft(false);
+    }
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -836,7 +847,7 @@ export default function PresencaTempoRealPublica({
           </section>
           {error && <div role="alert" className="presence-public__error"><AlertTriangle className="h-5 w-5" /><span>{error}</span></div>}
           {draftFeedback && <div role="status" className="presence-public__draft-status"><Clock3 className="h-5 w-5" /><span>{draftFeedback}</span></div>}
-          <div className="presence-public__submit-bar"><div className="presence-public__pending-count"><Clock3 className="h-5 w-5" /><strong>{pending}</strong><span>pendente{pending === 1 ? '' : 's'}</span></div><div className="presence-public__submit-actions"><button type="button" onClick={saveDraft} disabled={submitting}>Salvar rascunho</button><button type="submit" disabled={submitting || pending > 0}>{submitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}{submitting ? 'Enviando' : 'Enviar presença'}</button></div></div>
+          <div className="presence-public__submit-bar"><div className="presence-public__pending-count"><Clock3 className="h-5 w-5" /><strong>{pending}</strong><span>pendente{pending === 1 ? '' : 's'}</span></div><div className="presence-public__submit-actions"><button type="button" onClick={() => void saveDraft()} disabled={submitting || savingDraft}>{savingDraft ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}{savingDraft ? 'Salvando' : 'Salvar rascunho'}</button><button type="submit" disabled={submitting || savingDraft || pending > 0}>{submitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}{submitting ? 'Enviando' : 'Enviar presença'}</button></div></div>
         </form>
       </div>
     </main>
