@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Building2, CheckCircle2, Database, RefreshCw, Search, Truck, Users } from 'lucide-react';
-import type { ApontamentoRamo, Empresa, Equipamento, Funcionario, ObraLocal } from '../types';
+import type { Empresa, Equipamento, Funcionario, ObraLocal } from '../types';
 import { isSupplier, isVehicle, registrySummary } from '../masterData/centralRegistry';
 import { downloadCentralRegistryWorkbook } from '../masterData/centralWorkbookExport';
 
@@ -11,14 +11,13 @@ interface Props {
   obras: ObraLocal[];
   equipamentos: Equipamento[];
   funcionarios: Funcionario[];
-  ramos: ApontamentoRamo[];
   onSelectModule: (module: CentralModule) => void;
   onSync: () => Promise<{ success: boolean; message: string }>;
 }
 
 const normalize = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-export default function CentralRegistryOverview({ empresas, obras, equipamentos, funcionarios, ramos, onSelectModule, onSync }: Props) {
+export default function CentralRegistryOverview({ empresas, obras, equipamentos, funcionarios, onSelectModule, onSync }: Props) {
   const [query, setQuery] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -34,9 +33,8 @@ export default function CentralRegistryOverview({ empresas, obras, equipamentos,
       ...equipamentos.map(item => ({ module: (isVehicle(item) ? 'veiculos' : 'equipamentos') as 'veiculos' | 'equipamentos', title: `${item.prefixo} — ${item.nome}`, detail: `${item.placa || item.seriePlaca || 'Sem placa/série'} · ${item.status}` })),
       ...empresas.map(item => ({ module: (isSupplier(item) ? 'fornecedores' : 'empresas') as 'fornecedores' | 'empresas', title: item.nome, detail: `${item.cnpj || 'Sem CNPJ'} · ${item.responsavel || 'Sem responsável'}` })),
       ...obras.map(item => ({ module: 'obras' as const, title: item.nome, detail: `${item.endereco || 'Sem endereço'} · ${item.status}` })),
-      ...ramos.map(item => ({ module: 'etapas' as const, title: item.ramoNome, detail: `${item.canteiroNome} · ${item.responsavel || 'Sem responsável'}` })),
     ].filter(item => normalize(`${item.title} ${item.detail}`).includes(q)).slice(0, 8);
-  }, [query, empresas, equipamentos, funcionarios, obras, ramos]);
+  }, [query, empresas, equipamentos, funcionarios, obras]);
 
   const synchronize = async () => {
     if (syncing) return;
@@ -52,7 +50,7 @@ export default function CentralRegistryOverview({ empresas, obras, equipamentos,
     if (exporting) return;
     setExporting(true);
     try {
-      await downloadCentralRegistryWorkbook({ empresas, obras, equipamentos, funcionarios, ramos });
+      await downloadCentralRegistryWorkbook({ empresas, obras, equipamentos, funcionarios });
       setSyncResult({ success: true, message: 'BASE_CADASTROS compatível com Power Query exportada com sucesso.' });
     } catch (error) {
       setSyncResult({ success: false, message: error instanceof Error ? error.message : 'Falha ao exportar a base mestre.' });
@@ -110,7 +108,7 @@ export default function CentralRegistryOverview({ empresas, obras, equipamentos,
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
           <div className="flex items-center gap-2 font-black text-slate-800"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Status da integração</div>
           <p className="mt-1 text-slate-500">Última sincronização: {lastSync}</p>
-          <p className={syncResult?.success === false ? 'mt-1 text-rose-600' : 'mt-1 text-emerald-700'}>{syncResult?.message || `${(empresas.length + obras.length + equipamentos.length + funcionarios.length + ramos.length).toLocaleString('pt-BR')} registros mestres disponíveis.`}</p>
+          <p className={syncResult?.success === false ? 'mt-1 text-rose-600' : 'mt-1 text-emerald-700'}>{syncResult?.message || `${(empresas.length + obras.length + equipamentos.length + funcionarios.length).toLocaleString('pt-BR')} registros mestres disponíveis.`}</p>
         </div>
       </div>
     </section>

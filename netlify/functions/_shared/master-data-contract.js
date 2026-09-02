@@ -46,18 +46,6 @@ export const MASTER_DATA_ENTITIES = Object.freeze({
       status: text(80),
     },
   },
-  work_branches: {
-    table: 'work_branches',
-    label: 'Ramos',
-    required: ['name'],
-    searchColumns: ['name', 'description', 'code'],
-    fields: {
-      ...commonFields,
-      location_id: uuid(),
-      name: text(200),
-      description: text(1000),
-    },
-  },
   equipment: {
     table: 'equipment',
     label: 'Equipamentos',
@@ -169,23 +157,6 @@ export const MASTER_DATA_ENTITIES = Object.freeze({
       email: email(),
     },
   },
-  materials: {
-    table: 'materials',
-    label: 'Materiais',
-    required: ['name', 'default_unit'],
-    searchColumns: ['name', 'category', 'default_unit', 'code'],
-    fields: {
-      ...commonFields,
-      default_supplier_id: uuid(),
-      name: text(240),
-      category: text(120),
-      default_unit: text(40),
-      density: number(0.000001, 1_000_000),
-      reference_value: number(0, 1_000_000_000),
-      status: text(80),
-      notes: text(2000),
-    },
-  },
   convoys: {
     table: 'convoys',
     label: 'Comboios',
@@ -228,7 +199,6 @@ export const MASTER_DATA_ENTITIES = Object.freeze({
     searchColumns: ['name', 'code'],
     fields: {
       ...commonFields,
-      work_branch_id: uuid(),
       name: text(200),
     },
   },
@@ -238,9 +208,7 @@ export const MASTER_DATA_ENTITY_NAMES = Object.freeze(Object.keys(MASTER_DATA_EN
 export const MASTER_DATA_REVIEW_ENTITIES = Object.freeze([
   'companies',
   'suppliers',
-  'materials',
   'locations',
-  'work_branches',
   'collaborators',
   'equipment',
   'vehicles',

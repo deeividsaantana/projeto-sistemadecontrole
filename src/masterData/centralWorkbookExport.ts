@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import type { ApontamentoRamo, Empresa, Equipamento, Funcionario, ObraLocal } from '../types';
+import type { Empresa, Equipamento, Funcionario, ObraLocal } from '../types';
 import { isSupplier, isVehicle } from './centralRegistry';
 
 interface CentralWorkbookData {
@@ -7,7 +7,6 @@ interface CentralWorkbookData {
   obras: ObraLocal[];
   equipamentos: Equipamento[];
   funcionarios: Funcionario[];
-  ramos: ApontamentoRamo[];
 }
 
 export const CENTRAL_EXPORT_SHEETS = [
@@ -20,7 +19,6 @@ export const CENTRAL_EXPORT_SHEETS = [
   'CAD_EMPRESAS',
   'CAD_FORNECEDORES',
   'CAD_LOCAIS',
-  'CAD_RAMOS',
 ] as const;
 
 const rowsFor = (data: CentralWorkbookData) => ({
@@ -30,7 +28,6 @@ const rowsFor = (data: CentralWorkbookData) => ({
   'CAD_EMPRESAS': data.empresas.map(item => [item.id, item.nome, (item.tipos || ['EMPRESA']).join(', '), item.cnpj, item.status || 'ATIVO']),
   'CAD_FORNECEDORES': data.empresas.filter(isSupplier).map(item => [item.id, item.nome, item.cnpj, item.status || 'ATIVO']),
   'CAD_LOCAIS': data.obras.map(item => [item.id, item.nome, 'LOCAL', item.status === 'Concluída' ? 'INATIVO' : 'ATIVO']),
-  'CAD_RAMOS': data.ramos.map(item => [item.id, item.ramoNome, item.status === 'ativo' ? 'ATIVO' : 'INATIVO', 'WEBAPP']),
 });
 
 const headers: Record<keyof ReturnType<typeof rowsFor>, string[]> = {
@@ -40,7 +37,6 @@ const headers: Record<keyof ReturnType<typeof rowsFor>, string[]> = {
   CAD_EMPRESAS: ['ID Empresa', 'Nome', 'Tipo(s)', 'CNPJ', 'Status'],
   CAD_FORNECEDORES: ['ID Fornecedor', 'Fornecedor', 'CNPJ', 'Status'],
   CAD_LOCAIS: ['ID Local', 'Local', 'Tipo', 'Status'],
-  CAD_RAMOS: ['ID Ramo', 'Ramo / Trecho', 'Status', 'Fontes'],
 };
 
 export const createCentralRegistryWorkbook = (data: CentralWorkbookData): ExcelJS.Workbook => {
@@ -77,7 +73,6 @@ export const createCentralRegistryWorkbook = (data: CentralWorkbookData): ExcelJ
     ['Empresas', data.empresas.length],
     ['Fornecedores', data.empresas.filter(isSupplier).length],
     ['Locais', data.obras.length],
-    ['Ramos', data.ramos.length],
   ]);
 
   const sourceRows = rowsFor(data);

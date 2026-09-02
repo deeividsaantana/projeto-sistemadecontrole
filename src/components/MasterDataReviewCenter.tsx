@@ -25,12 +25,9 @@ import {
   X,
 } from 'lucide-react';
 import type {
-  ApontamentoRamo,
   Empresa,
   Equipamento,
   Funcionario,
-  MaterialCadastro,
-  MaterialRegistro,
   ObraLocal,
 } from '../types';
 import {
@@ -51,9 +48,6 @@ interface MasterDataReviewCenterProps {
   empresas: Empresa[];
   obras: ObraLocal[];
   funcionarios: Funcionario[];
-  materiais: MaterialCadastro[];
-  registrosMateriais: MaterialRegistro[];
-  ramos: ApontamentoRamo[];
   equipamentos: Equipamento[];
   onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
 }
@@ -126,9 +120,6 @@ export default function MasterDataReviewCenter({
   empresas,
   obras,
   funcionarios,
-  materiais,
-  registrosMateriais,
-  ramos,
   equipamentos,
   onApplyMasterWorkbook,
 }: MasterDataReviewCenterProps) {
@@ -146,11 +137,8 @@ export default function MasterDataReviewCenter({
     empresas,
     obras,
     funcionarios,
-    materiais,
-    registrosMateriais,
-    ramos,
     equipamentos,
-  }), [empresas, obras, funcionarios, materiais, registrosMateriais, ramos, equipamentos]);
+  }), [empresas, obras, funcionarios, equipamentos]);
 
   const gatewayQuery = useQuery({
     queryKey: ['master-data-gateway-status'],
@@ -305,7 +293,7 @@ export default function MasterDataReviewCenter({
           </div>
           <h2 className="text-lg font-extrabold text-white">Central de importação, aliases e duplicidades</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-400">
-            Analisa empresas, fornecedores, materiais, locais, ramos, colaboradores, equipamentos, veículos e identificadores SGE.
+            Analisa empresas, fornecedores, locais, colaboradores, equipamentos, veículos e identificadores SGE.
             Depois da conferência, os cadastros válidos podem ser aplicados ao ERP; duplicidades e linhas inválidas continuam preservadas para revisão.
           </p>
         </div>
@@ -359,7 +347,7 @@ export default function MasterDataReviewCenter({
             <div>
               <strong className="text-sm text-emerald-100">Atualizar os cadastros usados pelo sistema</strong>
               <p className="mt-1 max-w-3xl text-[10px] leading-relaxed text-slate-300">
-                Empresas, locais, colaboradores, materiais, ramos, equipamentos e veículos serão criados ou atualizados pela chave mestre.
+                Empresas, locais, colaboradores, equipamentos e veículos serão criados ou atualizados pela chave mestre.
                 Linhas incompletas, duplicadas e vínculos não localizados permanecem na fila de revisão, sem descarte.
               </p>
             </div>

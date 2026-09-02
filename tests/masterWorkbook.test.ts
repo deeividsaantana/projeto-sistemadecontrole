@@ -8,9 +8,7 @@ import {
 const existingIndex: ExistingMasterIndex = {
   companies: new Map(),
   suppliers: new Map(),
-  materials: new Map(),
   locations: new Map([['canteiro central', ['obra-1']]]),
-  work_branches: new Map(),
   collaborators: new Map(),
   equipment: new Map(),
   vehicles: new Map(),
@@ -30,15 +28,12 @@ const rows = analyzeMasterRows({
   suppliers: [
     row('CAD_FORNECEDORES', 2, { 'ID Fornecedor': 'FOR-1', Fornecedor: '', CNPJ: '', Status: 'ATIVO' }),
   ],
-  materials: [
-    row('CAD_MATERIAIS', 2, { 'ID Mestre': 'MAT-1', 'Código original': 'BR-01', 'Descrição completa': 'Brita 1', 'Unidade padrão': '' }),
-  ],
   locations: [
     row('CAD_LOCAIS', 2, { 'ID Local': 'LOC-1', Local: 'Canteiro Central', Tipo: 'CANTEIRO', Status: 'ATIVO' }),
   ],
 }, existingIndex);
 
-assert.equal(rows.length, 5);
+assert.equal(rows.length, 4);
 
 const companies = rows.filter(item => item.entity === 'companies');
 assert.equal(companies.length, 2);
@@ -50,10 +45,6 @@ assert.equal(companies[0].canonicalKey, '12345678000190');
 const supplier = rows.find(item => item.entity === 'suppliers');
 assert.equal(supplier?.status, 'invalid');
 assert.match(supplier?.reviewNote || '', /Fornecedor não informado/);
-
-const material = rows.find(item => item.entity === 'materials');
-assert.equal(material?.status, 'invalid');
-assert.match(material?.reviewNote || '', /Unidade padrão não informada/);
 
 const location = rows.find(item => item.entity === 'locations');
 assert.equal(location?.status, 'matched');

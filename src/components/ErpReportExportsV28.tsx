@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ExcelJS from 'exceljs';
 import { Download, FileSpreadsheet, Printer } from 'lucide-react';
 import type {
-  ControleEstacas, Equipamento, MaterialRegistro,
+  ControleEstacas, Equipamento,
   PresencaApontamento, TicketJazida,
 } from '../types';
 import { buildStakeSummary } from '../utils/stakeOperations';
@@ -11,7 +11,6 @@ import { generateUniversalPdfReport } from '../utils/universalPdfReport';
 type Props = {
   tickets: TicketJazida[];
   estacas: ControleEstacas;
-  materiais: MaterialRegistro[];
   presencas: PresencaApontamento[];
   equipamentos: Equipamento[];
 };
@@ -27,7 +26,7 @@ const downloadBlob = (content: BlobPart, type: string, filename: string) => {
 
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
-export default function ErpReportExportsV28({ tickets, estacas, materiais, presencas, equipamentos }: Props) {
+export default function ErpReportExportsV28({ tickets, estacas, presencas, equipamentos }: Props) {
   const [exporting, setExporting] = useState(false);
   const exportExcel = async () => {
     setExporting(true);
@@ -46,7 +45,6 @@ export default function ErpReportExportsV28({ tickets, estacas, materiais, prese
       };
       addSheet('Estacas - Lotes', ['Data', 'NF', 'Código', 'Descrição', 'Perfil', 'Comprimento m', 'Peso kg', 'Valor', 'Status NF'], estacas.lotes.map(item => [item.data, item.notaFiscal, item.materialCodigo, item.descricao, item.perfilModelo, item.comprimentoM, item.pesoKg, item.valorTotal, item.nfConferida ? 'Conferida' : 'Pendente']));
       addSheet('Estacas - Cravações', ['Data', 'Item', 'Identificação', 'Perfil', 'Comprimento m', 'Cravado m', 'Sobra m', 'Perda m', 'Lote'], estacas.cravacoes.map(item => [item.data, item.item, item.identificacao, item.perfil, item.comprimentoM, item.comprimentoCravadoM, item.sobraM, item.perdaM, item.loteId || 'Pendente']));
-      addSheet('Materiais', ['Data', 'Material', 'Unidade', 'Quantidade', 'Fornecedor', 'Placa', 'Nota', 'Destino', 'Valor unitário', 'Total'], materiais.map(item => [item.data, item.material, item.unidade, item.quantidade, item.fornecedor, item.placa, item.nota, item.destino, item.valorUnitario, item.total]));
       addSheet('Relatório Comercial', ['Data do descarte', 'Placa', 'Aut. descarte', 'Nº vale', 'Peso/Volume', 'Valor R$', 'Material', 'Pagamento'], tickets.map(item => [item.data, item.placa, item.notaFiscalNumero || item.ticketNumero, item.ticketNumero, item.quantidadeM3, 0, item.tipoMaterial, 'VENDA A PRAZO']));
       addSheet('Efetivo', ['Data', 'Grupo', 'Colaborador', 'Função', 'Status', 'Responsável', 'Frente'], presencas.map(item => [item.data, item.grupoNome, item.funcionarioNome, item.funcao, item.status, item.responsavel, item.frenteServico]));
       addSheet('Equipamentos', ['Prefixo', 'Equipamento', 'Tipo', 'Empresa', 'Local', 'Status'], equipamentos.map(item => [item.prefixo, item.nome, item.tipo, item.empresaId, item.localAtualId, item.status]));
@@ -70,11 +68,11 @@ export default function ErpReportExportsV28({ tickets, estacas, materiais, prese
       title: 'Fechamento Executivo', subtitle: 'Visão consolidada dos módulos operacionais',
       columns: [{ header: 'Indicador', dataKey: 'indicador' }, { header: 'Resultado', dataKey: 'resultado' }],
       rows: [
-        ['Viagens / tickets', tickets.length], ['Materiais', materiais.length], ['Efetivo presente', presencas.filter(item => item.status === 'Presente').length],
+        ['Viagens / tickets', tickets.length], ['Efetivo presente', presencas.filter(item => item.status === 'Presente').length],
         ['Equipamentos', equipamentos.length], ['Estacas recebidas', `${stake.recebidoM.toLocaleString('pt-BR')} m`],
         ['Estacas cravadas', `${stake.cravadoM.toLocaleString('pt-BR')} m`], ['Saldo de estacas', `${stake.sobraM.toLocaleString('pt-BR')} m`], ['Notas fiscais pendentes', stake.notasPendentes],
       ].map(([indicador, resultado]) => ({ indicador, resultado })),
-      summary: [{ label: 'Módulos consolidados', value: 5 }, { label: 'Registros operacionais', value: tickets.length + materiais.length + presencas.length }],
+      summary: [{ label: 'Módulos consolidados', value: 4 }, { label: 'Registros operacionais', value: tickets.length + presencas.length }],
       fileName: `RENEA_FECHAMENTO_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };

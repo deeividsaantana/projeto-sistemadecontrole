@@ -10,7 +10,6 @@ import express from 'express';
 import { toExpressHandler } from './netlifyAdapter.js';
 
 import { handler as publicPresenca } from '../../netlify/functions/public-presenca.js';
-import { handler as publicApontamento } from '../../netlify/functions/public-apontamento.js';
 import { handler as publicTickets } from '../../netlify/functions/public-tickets.js';
 import { handler as masterData } from '../../netlify/functions/master-data.js';
 import { handler as usageTelemetry } from '../../netlify/functions/usage-telemetry.js';
@@ -25,9 +24,6 @@ app.get('/.netlify/functions/public-presenca', toExpressHandler(publicPresenca))
 app.post('/.netlify/functions/public-presenca', toExpressHandler(publicPresenca));
 app.patch('/.netlify/functions/public-presenca', toExpressHandler(publicPresenca));
 app.delete('/.netlify/functions/public-presenca', toExpressHandler(publicPresenca));
-
-app.get('/.netlify/functions/public-apontamento', toExpressHandler(publicApontamento));
-app.post('/.netlify/functions/public-apontamento', toExpressHandler(publicApontamento));
 
 app.get('/.netlify/functions/public-tickets', toExpressHandler(publicTickets));
 app.post('/.netlify/functions/public-tickets', toExpressHandler(publicTickets));

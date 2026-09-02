@@ -128,8 +128,8 @@ const gatewayStatus = async context => jsonResponse(200, {
     },
     role: context.role,
     supportedEntities: [
-      'companies', 'locations', 'work_branches', 'equipment', 'vehicles',
-      'collaborators', 'suppliers', 'materials', 'convoys', 'fuel_types',
+      'companies', 'locations', 'equipment', 'vehicles',
+      'collaborators', 'suppliers', 'convoys', 'fuel_types',
       'lubricant_products', 'service_stages', 'operational_drivers',
     ],
   },

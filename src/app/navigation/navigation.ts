@@ -1,11 +1,9 @@
 import {
-  BarChart3,
   ClipboardList,
   FileText,
   FolderPlus,
   Hammer,
   LayoutDashboard,
-  Package,
   Settings,
   ShieldCheck,
   Truck,
@@ -39,14 +37,12 @@ export const NAVIGATION_GROUPS = [
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
-      { id: 'materiais', label: 'Materiais', icon: Package },
     ],
   },
   {
     label: 'Equipes e campo',
     items: [
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
-      { id: 'apontamentos', label: 'Apontamentos', icon: BarChart3 },
     ],
   },
   {
@@ -74,9 +70,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'lancamentos',
     'tickets-jazida',
     'estacas',
-    'materiais',
     'presenca',
-    'apontamentos',
   ],
   leitura: ['dashboard', 'consulta-geral', 'reports'],
 };

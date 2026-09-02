@@ -60,8 +60,6 @@ const promoted = promoteMasterWorkbook(analysis, {
   empresas: [],
   obras: [],
   funcionarios: [],
-  materiais: [],
-  ramos: [],
   equipamentos: [],
 });
 

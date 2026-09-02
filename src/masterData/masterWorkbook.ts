@@ -1,11 +1,8 @@
 import type ExcelJS from 'exceljs';
 import type {
-  ApontamentoRamo,
   Empresa,
   Equipamento,
   Funcionario,
-  MaterialCadastro,
-  MaterialRegistro,
   ObraLocal,
 } from '../types';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
@@ -65,9 +62,7 @@ export type ExistingMasterIndex = Record<MasterDataReviewEntity, Map<string, str
 const MASTER_SHEETS: Record<string, { entity: MasterDataReviewEntity; label: string }> = {
   CAD_EMPRESAS: { entity: 'companies', label: 'Empresas' },
   CAD_FORNECEDORES: { entity: 'suppliers', label: 'Fornecedores' },
-  CAD_MATERIAIS: { entity: 'materials', label: 'Materiais' },
   CAD_LOCAIS: { entity: 'locations', label: 'Locais' },
-  CAD_RAMOS: { entity: 'work_branches', label: 'Ramos' },
   CAD_COLABORADORES: { entity: 'collaborators', label: 'Colaboradores' },
   CAD_EQUIPAMENTOS: { entity: 'equipment', label: 'Equipamentos' },
   CAD_VEICULOS: { entity: 'vehicles', label: 'Veículos' },
@@ -81,9 +76,7 @@ export const MASTER_DATA_REVIEW_ENTITIES = Object.freeze(
 export const MASTER_DATA_ENTITY_LABELS: Record<MasterDataReviewEntity, string> = {
   companies: 'Empresas',
   suppliers: 'Fornecedores',
-  materials: 'Materiais',
   locations: 'Locais',
-  work_branches: 'Ramos',
   collaborators: 'Colaboradores',
   equipment: 'Equipamentos',
   vehicles: 'Veículos',
@@ -179,40 +172,6 @@ const supplierRow = (source: MasterWorkbookSourceRow) => {
   };
 };
 
-const materialRow = (source: MasterWorkbookSourceRow) => {
-  const legacyId = getValue(source.raw, ['ID Mestre']);
-  const code = getValue(source.raw, ['Código original', 'Codigo original']);
-  const name = getValue(source.raw, ['Descrição completa', 'Descricao completa', 'Material']);
-  const defaultUnit = getValue(source.raw, ['Unidade padrão', 'Unidade padrao']);
-  const length = getValue(source.raw, ['Comprimento (m)']);
-  const unitWeight = getValue(source.raw, ['Peso unitário (kg)', 'Peso unitario (kg)']);
-  return {
-    displayValue: name || code || legacyId,
-    canonicalKey: normalizeMasterText(code) || normalizeMasterText(name),
-    normalized: {
-      legacy_id: legacyId || null,
-      code: code || null,
-      name: name || null,
-      category: getValue(source.raw, ['Tipo']) || 'Outros',
-      default_unit: defaultUnit || null,
-      notes: getValue(source.raw, ['Observações', 'Observacoes']) || null,
-      metadata: {
-        profileModel: getValue(source.raw, ['Perfil / Modelo']) || null,
-        steel: getValue(source.raw, ['Aço', 'Aco']) || null,
-        lengthMeters: length ? Number(String(length).replace(',', '.')) || null : null,
-        ncm: getValue(source.raw, ['NCM']) || null,
-        unitWeightKg: unitWeight ? Number(String(unitWeight).replace(',', '.')) || null : null,
-        source: getValue(source.raw, ['Fonte']) || null,
-      },
-    },
-    issues: [
-      ...(!name ? ['Descrição do material não informada.'] : []),
-      ...(!defaultUnit ? ['Unidade padrão não informada.'] : []),
-      ...(!code ? ['Código original ausente; a conferência usará a descrição.'] : []),
-    ],
-  };
-};
-
 const locationRow = (source: MasterWorkbookSourceRow) => {
   const legacyId = getValue(source.raw, ['ID Local']);
   const name = getValue(source.raw, ['Local']);
@@ -230,26 +189,6 @@ const locationRow = (source: MasterWorkbookSourceRow) => {
       },
     },
     issues: !name ? ['Local não informado.'] : [],
-  };
-};
-
-const branchRow = (source: MasterWorkbookSourceRow) => {
-  const legacyId = getValue(source.raw, ['ID Ramo']);
-  const name = getValue(source.raw, ['Ramo / Trecho', 'Ramo', 'Trecho']);
-  const status = getValue(source.raw, ['Status']);
-  return {
-    displayValue: name || legacyId,
-    canonicalKey: normalizeMasterText(name),
-    normalized: {
-      legacy_id: legacyId || null,
-      name: name || null,
-      active: activeFromStatus(status),
-      metadata: {
-        sourceStatus: status || null,
-        sources: getValue(source.raw, ['Fontes']) || null,
-      },
-    },
-    issues: !name ? ['Ramo ou trecho não informado.'] : [],
   };
 };
 
@@ -375,9 +314,7 @@ const vehicleRow = (source: MasterWorkbookSourceRow) => {
 const mapSourceRow = (entity: MasterDataReviewEntity, source: MasterWorkbookSourceRow) => {
   if (entity === 'companies') return companyRow(source);
   if (entity === 'suppliers') return supplierRow(source);
-  if (entity === 'materials') return materialRow(source);
   if (entity === 'locations') return locationRow(source);
-  if (entity === 'work_branches') return branchRow(source);
   if (entity === 'collaborators') return collaboratorRow(source);
   if (entity === 'equipment') return equipmentRow(source);
   return vehicleRow(source);
@@ -386,9 +323,7 @@ const mapSourceRow = (entity: MasterDataReviewEntity, source: MasterWorkbookSour
 const newExistingIndex = (): ExistingMasterIndex => ({
   companies: new Map(),
   suppliers: new Map(),
-  materials: new Map(),
   locations: new Map(),
-  work_branches: new Map(),
   collaborators: new Map(),
   equipment: new Map(),
   vehicles: new Map(),
@@ -409,17 +344,11 @@ export const buildExistingMasterIndex = ({
   empresas,
   obras,
   funcionarios,
-  materiais,
-  registrosMateriais,
-  ramos,
   equipamentos,
 }: {
   empresas: Empresa[];
   obras: ObraLocal[];
   funcionarios: Funcionario[];
-  materiais: MaterialCadastro[];
-  registrosMateriais: MaterialRegistro[];
-  ramos: ApontamentoRamo[];
   equipamentos: Equipamento[];
 }): ExistingMasterIndex => {
   const index = newExistingIndex();
@@ -436,12 +365,6 @@ export const buildExistingMasterIndex = ({
     normalizeMasterText(item.matricula) || normalizeMasterText(item.nome),
     item.id,
   ));
-  materiais.forEach(item => addExisting(index, 'materials', normalizeMasterText(item.nome), item.id));
-  ramos.forEach(item => addExisting(index, 'work_branches', normalizeMasterText(item.ramoNome), item.id));
-  registrosMateriais.forEach(item => {
-    const supplier = String(item.fornecedor || '').trim();
-    addExisting(index, 'suppliers', normalizeMasterText(supplier), `supplier:${normalizeMasterText(supplier)}`);
-  });
   equipamentos.forEach(item => {
     const prefix = normalizeMasterText(item.prefixo);
     addExisting(index, 'equipment', prefix, item.id);
@@ -496,9 +419,7 @@ export const analyzeMasterRows = (
     const missingCanonicalIdentity = !row.canonicalKey || !row.displayValue;
     const missingRequiredFields = (row.entity === 'companies' && !normalized.name)
       || (row.entity === 'suppliers' && !normalized.company_name)
-      || (row.entity === 'materials' && (!normalized.name || !normalized.default_unit))
       || (row.entity === 'locations' && !normalized.name)
-      || (row.entity === 'work_branches' && !normalized.name)
       || (row.entity === 'collaborators' && !normalized.name)
       || (row.entity === 'equipment' && (!normalized.prefix || !normalized.name))
       || (row.entity === 'vehicles' && (!normalized.prefix || !normalized.name || !normalized.license_plate));

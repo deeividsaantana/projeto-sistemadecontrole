@@ -20,14 +20,9 @@ import {
   GrupoEquipe,
   PresencaApontamento,
   HistoricoPresenca,
-  ApontamentoRamo,
-  ApontamentoRamoRegistro,
   TicketJazida,
-  MaterialCadastro,
-  MaterialRegistro,
   ParteDiariaEquipamento
 } from '../types';
-import { APONTAMENTO_LINK_TOKEN } from './apontamentoRamosConfig';
 import { generateSecurePublicToken } from './publicLinkSecurity';
 
 const mergeByKey = <T,>(base: T[], imported: T[], getKey: (item: T) => string) => {
@@ -50,17 +45,6 @@ const mergePreferImportedByKey = <T,>(base: T[], imported: T[], getKey: (item: T
     if (!baseKeys.has(getKey(item))) merged.push(item);
   });
   return merged;
-};
-
-export const loadInitialMateriaisData = async (): Promise<{
-  cadastro: MaterialCadastro[];
-  registros: MaterialRegistro[];
-}> => {
-  const data = await import('./initialMateriaisData');
-  return {
-    cadastro: data.INITIAL_MATERIAIS_CADASTRO,
-    registros: data.INITIAL_MATERIAIS_REGISTROS,
-  };
 };
 
 let operationalSeedHydrated = false;
@@ -1150,32 +1134,6 @@ export const INITIAL_GRUPOS_EQUIPES: GrupoEquipe[] = INITIAL_GRUPOS_EQUIPES_LEGA
 export const INITIAL_PRESENCAS_LINK: PresencaApontamento[] = [];
 
 export const INITIAL_HISTORICO_PRESENCAS: HistoricoPresenca[] = [];
-
-const APONTAMENTO_RAMOS_BASE = [
-  { canteiroNome: 'Rua Padre Eustáquio', ramoNome: 'Ramo 200' },
-  { canteiroNome: 'Rua Padre Eustáquio', ramoNome: 'Ramo 300' },
-  { canteiroNome: 'Rua Padre Eustáquio', ramoNome: 'Ramo 500' },
-  { canteiroNome: 'Rua Padre Eustáquio', ramoNome: 'Ramo 900' },
-  { canteiroNome: 'Rua Padre Eustáquio', ramoNome: 'Ramo 2000' },
-  { canteiroNome: 'Rua Padre Eustáquio', ramoNome: 'Agulha' },
-  { canteiroNome: 'SP066 Ibar', ramoNome: 'Ramo 200 Alargamento' },
-  { canteiroNome: 'SP066 Ibar', ramoNome: 'Ramo 600 Ferradura' },
-  { canteiroNome: 'Canteiro da Marginal', ramoNome: 'Ramo 800' },
-  { canteiroNome: 'Canteiro da Marginal', ramoNome: 'Ramo 500 Marginal' },
-  { canteiroNome: 'Canteiro da Marginal', ramoNome: 'Ramo 1000' }
-];
-
-export const INITIAL_APONTAMENTO_RAMOS: ApontamentoRamo[] = APONTAMENTO_RAMOS_BASE.map((item, index) => ({
-  id: `ramo-renea-${index + 1}`,
-  canteiroNome: item.canteiroNome,
-  ramoNome: item.ramoNome,
-  responsavel: 'Apontador RENEA',
-  token: APONTAMENTO_LINK_TOKEN,
-  status: 'ativo',
-  linkAtivo: true
-}));
-
-export const INITIAL_APONTAMENTO_RAMO_REGISTROS: ApontamentoRamoRegistro[] = [];
 
 export const INITIAL_PARTES_DIARIAS_EQUIPAMENTOS: ParteDiariaEquipamento[] = [];
 

@@ -16,9 +16,6 @@ import {
   TipoCombustivel, 
   ProdutoLubrificacao, 
   EtapaServico,
-  MaterialCadastro,
-  MaterialRegistro,
-  ApontamentoRamo,
   OrdemServico,
   ParteDiariaEquipamento,
 } from '../types';
@@ -63,9 +60,6 @@ interface CadastrosTabProps {
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
   etapas: EtapaServico[];
-  materiaisCadastro: MaterialCadastro[];
-  materiaisRegistros: MaterialRegistro[];
-  apontamentoRamos: ApontamentoRamo[];
   ordensServico: OrdemServico[];
   partesDiariasEquipamentos: ParteDiariaEquipamento[];
 
@@ -99,9 +93,6 @@ export default function CadastrosTab({
   combustiveis,
   lubrificantes,
   etapas,
-  materiaisCadastro,
-  materiaisRegistros,
-  apontamentoRamos,
   ordensServico,
   partesDiariasEquipamentos,
   onSaveEmpresa,
@@ -687,7 +678,6 @@ export default function CadastrosTab({
         obras={obras}
         equipamentos={equipamentos}
         funcionarios={funcionarios}
-        ramos={apontamentoRamos}
         onSelectModule={module => { setSubTab(module); setIsFormOpen(false); clearAdvancedFilters(); resetFormState(); }}
         onSync={onSyncCentralRegistry}
       />
@@ -708,9 +698,6 @@ export default function CadastrosTab({
         empresas={empresas}
         obras={obras}
         funcionarios={funcionarios}
-        materiais={materiaisCadastro}
-        registrosMateriais={materiaisRegistros}
-        ramos={apontamentoRamos}
         equipamentos={equipamentos}
         onApplyMasterWorkbook={onApplyMasterWorkbook}
       />

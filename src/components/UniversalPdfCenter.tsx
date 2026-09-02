@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { FileText } from 'lucide-react';
-import type { Abastecimento, ControleEstacas, Equipamento, Funcionario, MaterialRegistro, PresencaApontamento, TicketJazida } from '../types';
+import type { Abastecimento, ControleEstacas, Equipamento, Funcionario, PresencaApontamento, TicketJazida } from '../types';
 import { generateUniversalPdfReport, type UniversalPdfColumn } from '../utils/universalPdfReport';
 
 type Props = {
-  abastecimentos: Abastecimento[]; estacas: ControleEstacas; tickets: TicketJazida[]; materiais: MaterialRegistro[];
+  abastecimentos: Abastecimento[]; estacas: ControleEstacas; tickets: TicketJazida[];
   equipamentos: Equipamento[]; funcionarios: Funcionario[]; presencas: PresencaApontamento[];
   dataInicio: string; dataFim: string;
 };
@@ -19,7 +19,6 @@ export default function UniversalPdfCenter(props: Props) {
     { id: 'cravacoes', label: 'Cravações', columns: [['Data','data'],['Estaca','identificacao'],['Perfil','perfil'],['Comprimento (m)','comprimentoM'],['Cravado (m)','comprimentoCravadoM'],['Sobra (m)','sobraM'],['Responsável','responsavel']].map(([header,dataKey])=>({header,dataKey})), rows: props.estacas.cravacoes.filter(within) },
     { id: 'estacas', label: 'Estacas / Lotes', columns: [['Data','data'],['NF','notaFiscal'],['Material','descricao'],['Perfil','perfilModelo'],['Comprimento (m)','comprimentoM'],['Peso (kg)','pesoKg'],['Status','status']].map(([header,dataKey])=>({header,dataKey})), rows: props.estacas.lotes.filter(within) },
     { id: 'jazida', label: 'Jazida / Tickets', columns: [['Data','data'],['Ticket','ticketNumero'],['Material','tipoMaterial'],['Quantidade (m³)','quantidadeM3'],['Placa','placa'],['Status','statusFluxo'],['Responsável','responsavel']].map(([header,dataKey])=>({header,dataKey})), rows: props.tickets.filter(within).map(item => ({ ...item, responsavel: item.responsavelLiberacao })) },
-    { id: 'materiais', label: 'Materiais', columns: [['Data','data'],['Material','material'],['Unidade','unidade'],['Quantidade','quantidade'],['Fornecedor','fornecedor'],['Nota','nota'],['Destino','destino'],['Total','total']].map(([header,dataKey])=>({header,dataKey})), rows: props.materiais.filter(within) },
     { id: 'equipamentos', label: 'Equipamentos', columns: [['Prefixo','prefixo'],['Equipamento','nome'],['Tipo','tipo'],['Marca','marca'],['Modelo','modelo'],['Placa/Série','seriePlaca'],['Status','status']].map(([header,dataKey])=>({header,dataKey})), rows: props.equipamentos },
     { id: 'efetivo', label: 'Efetivo', columns: [['Data','data'],['Colaborador','funcionarioNome'],['Função','funcao'],['Grupo','grupoNome'],['Status','status'],['Responsável','responsavel'],['Frente','frenteServico']].map(([header,dataKey])=>({header,dataKey})), rows: props.presencas.filter(within) },
     { id: 'colaboradores', label: 'Colaboradores / Cadastros', columns: [['Matrícula','matricula'],['Colaborador','nome'],['Função','cargo'],['Área','area'],['Líder','liderNome'],['Responsável','responsavelArea'],['Status','statusExibicao']].map(([header,dataKey])=>({header,dataKey})), rows: props.funcionarios.map(item => ({ ...item, statusExibicao: item.status || (item.ativo ? 'ATIVO' : 'INATIVO') })) },

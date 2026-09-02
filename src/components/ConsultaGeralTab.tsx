@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Building2, Fuel, HardHat, Package, Search, TicketCheck, Truck, Users } from 'lucide-react';
-import type { Abastecimento, ApontamentoRamoRegistro, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, MaterialRegistro, ObraLocal, OrdemServico, ParteDiariaEquipamento, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
+import { Building2, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
+import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, ParteDiariaEquipamento, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 
 type GeneralRow = {
@@ -27,13 +27,11 @@ type Props = {
   funcionarios: Funcionario[];
   abastecimentos: Abastecimento[];
   tickets: TicketJazida[];
-  materiais: MaterialRegistro[];
   ordensServico: OrdemServico[];
   partesDiarias: ParteDiariaEquipamento[];
   controlesEquipamentos: ControleEquipamentoDiario[];
   gruposEquipe: GrupoEquipe[];
   presencas: PresencaApontamento[];
-  apontamentos: ApontamentoRamoRegistro[];
   vinculos: VinculoOperadorEquipamento[];
   onLink: (funcionarioId: string, equipamentoId: string, observacao?: string) => void;
   onUnlink: (vinculoId: string) => void;
@@ -42,7 +40,7 @@ type Props = {
 
 const normalize = normalizeComparable;
 
-export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, materiais, ordensServico, partesDiarias, controlesEquipamentos, gruposEquipe, presencas, apontamentos, vinculos, onLink, onUnlink, onNavigate }: Props) {
+export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, ordensServico, partesDiarias, controlesEquipamentos, gruposEquipe, presencas, vinculos, onLink, onUnlink, onNavigate }: Props) {
   const [query, setQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState('Todos');
   const [statusFilter, setStatusFilter] = useState('Todos');
@@ -87,14 +85,12 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
     ...funcionarios.map(item => { const linked = equipamentos.filter(equipment => equipment.operadorResponsavelId === item.id || normalize(equipment.operadorResponsavelNome) === normalize(item.nome)); return { id: `funcionario-${item.id}`, module: 'Colaboradores', title: item.nome, detail: [item.matricula, item.cargo].filter(Boolean).join(' · '), meta: linked.length ? `Frota vinculada: ${linked.map(eq => eq.prefixo).join(', ')}` : [item.area, item.liderNome].filter(Boolean).join(' · ') || 'Sem equipamento vinculado', status: item.status || (item.ativo ? 'ATIVO' : 'INATIVO'), tab: 'cadastros' }; }),
     ...abastecimentos.map(item => ({ id: `abastecimento-${item.id}`, module: 'Combustível', title: `${item.prefixoInformado || equipamentos.find(eq => eq.id === item.equipamentoId)?.prefixo || 'Sem prefixo'} · ${item.quantidadeLitros} L`, detail: `${item.data} ${item.hora || ''}`.trim(), meta: item.responsavel || item.origem || 'Origem não informada', status: item.status || 'OK', tab: 'lancamentos' })),
     ...tickets.map(item => ({ id: `ticket-${item.id}`, module: 'Tickets', title: `Ticket ${item.ticketNumero || 'sem número'}`, detail: `${item.prefixo || 'Sem prefixo'} · ${item.placa || 'Sem placa'}`, meta: `${item.data} · ${item.tipoMaterial || 'Material não informado'}`, status: item.statusFluxo || item.status || 'Pendente', tab: 'tickets-jazida' })),
-    ...materiais.map(item => ({ id: `material-${item.id}`, module: 'Materiais', title: item.material || 'Material sem descrição', detail: `${item.quantidade || 0} ${item.unidade || ''}`.trim(), meta: [item.data, item.fornecedor, item.nota].filter(Boolean).join(' · '), status: item.status || 'Registrado', tab: 'materiais' })),
     ...ordensServico.map(item => { const equipment = equipamentos.find(eq=>eq.id===item.equipamentoId); return ({ id: `os-${item.id}`, module: 'Frota', title: `${item.numero} · ${equipment?.prefixo || 'Frota não localizada'}`, detail: item.descricao || item.motivo || 'Sem descrição', meta: `${item.dataAbertura} · ${item.responsavel}`, date: item.dataAbertura, company: empresas.find(company=>company.id===equipment?.empresaId)?.nome, equipmentType: equipment?.tipo || equipment?.familia, prefix: equipment?.prefixo, maintenance: true, status: item.status, tab: 'controle-equipamentos' }); }),
     ...controlesEquipamentos.map(item => { const equipment = equipamentos.find(eq=>eq.id===item.equipamentoId || normalize(eq.prefixo)===normalize(item.prefixo)); return ({ id: `controle-${item.id}`, module: 'Basculantes', title: `${item.prefixo} · ${item.nomeMotorista || 'Aguardando motorista'}`, detail: [item.motivoManutencao, item.observacao].filter(Boolean).join(' · ') || item.familia, meta: `${item.data} · Saída ${item.horaSaida || '—'} · Retorno ${item.horaLiberacao || '—'}`, date: item.data, driver: item.nomeMotorista, company: empresas.find(company=>company.id===equipment?.empresaId)?.nome, equipmentType: item.familia || equipment?.tipo, prefix: item.prefixo, maintenance: item.status.toLocaleLowerCase('pt-BR').includes('manutenção'), status: item.status, tab: 'controle-equipamentos' }); }),
     ...gruposEquipe.map(item => ({ id: `grupo-${item.id}`, module: 'Equipes', title: item.nome, detail: `${item.responsavel} · ${item.funcionarioIds.length} colaborador(es)`, meta: item.frenteServico, status: item.status, tab: 'presenca' })),
     ...presencas.map(item => ({ id: `presenca-${item.id}`, module: 'Presenças', title: item.funcionarioNome, detail: `${item.grupoNome} · ${item.funcao}`, meta: `${item.data} ${item.horaEnvio}`, date: item.data, driver: item.funcionarioNome, status: item.status, tab: 'presenca' })),
-    ...apontamentos.map(item => ({ id: `apontamento-${item.id}`, module: 'Apontamentos', title: `${item.ramoNome} · ${item.responsavel}`, detail: item.descricaoAtividade || 'Sem descrição', meta: `${item.data} ${item.horaEnvio} · ${item.empresa}`, date: item.data, company: item.empresa, location: item.ramoNome, status: 'Registrado', tab: 'apontamentos' })),
     ];
-  }, [empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, materiais, ordensServico, partesDiarias, controlesEquipamentos, gruposEquipe, presencas, apontamentos, vinculos]);
+  }, [empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, ordensServico, partesDiarias, controlesEquipamentos, gruposEquipe, presencas, vinculos]);
 
   const modules = ['Todos', ...Array.from(new Set(rows.map(row => row.module)))];
   const statuses = ['Todos', ...Array.from(new Set(rows.map(row => row.status).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'))];
@@ -121,7 +117,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
 
   const cards = [
     ['Empresas', empresas.length, Building2], ['Obras', obras.length, HardHat], ['Frota', equipamentos.length, Truck],
-    ['Colaboradores', funcionarios.length, Users], ['Combustível', abastecimentos.length, Fuel], ['Tickets', tickets.length, TicketCheck], ['Materiais', materiais.length, Package],
+    ['Colaboradores', funcionarios.length, Users], ['Combustível', abastecimentos.length, Fuel], ['Tickets', tickets.length, TicketCheck],
   ] as const;
 
   return (

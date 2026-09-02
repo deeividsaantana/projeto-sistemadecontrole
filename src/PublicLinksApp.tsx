@@ -1,6 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import type {
-  ApontamentoRamo,
   Empresa,
   Funcionario,
   FuncionarioDisponivel,
@@ -10,7 +9,6 @@ import type {
   TicketJazida,
 } from './types';
 import {
-  getApontamentoTokenFromUrl,
   getPresenceTokenFromUrl,
   getTicketAccessTokenFromUrl,
   isTicketLinkUrl,
@@ -20,27 +18,22 @@ import {
   addPublicPresenceMember,
   removePublicPresenceMember,
   updatePublicPresenceDayNote,
-  loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
   reservePublicTicketNumberViaApi,
   savePublicTicketViaApi,
   searchPendingPublicTickets,
-  submitPublicApontamento,
   submitPublicPresence,
   updatePublicPresenceRecord,
   validatePublicTicketAccess,
-  type PublicApontamentoPayload,
 } from './publicApi';
 
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
-const ApontamentoRamoLinkExterno = lazy(() => import('./components/ApontamentoRamoLinkExterno'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 
 const emptyTickets: TicketJazida[] = [];
 
 export default function PublicLinksApp() {
   const presenceToken = getPresenceTokenFromUrl();
-  const apontamentoToken = getApontamentoTokenFromUrl();
   const ticketAccessToken = getTicketAccessTokenFromUrl();
   const ticketLink = isTicketLinkUrl();
 
@@ -59,9 +52,6 @@ export default function PublicLinksApp() {
   const [presenceDayNotes, setPresenceDayNotes] = useState<Record<string, string>>({});
   const [presenceLoading, setPresenceLoading] = useState(Boolean(presenceToken));
   const [presenceError, setPresenceError] = useState('');
-
-  const [ramos, setRamos] = useState<ApontamentoRamo[]>([]);
-  const [apontamentoLoading, setApontamentoLoading] = useState(Boolean(apontamentoToken));
 
   const [ticketLoading, setTicketLoading] = useState(Boolean(ticketLink));
   const [ticketError, setTicketError] = useState('');
@@ -146,26 +136,6 @@ export default function PublicLinksApp() {
   }, [reloadPresence]);
 
   useEffect(() => {
-    if (!apontamentoToken) return;
-    let cancelled = false;
-    setApontamentoLoading(true);
-    loadPublicApontamentoConfig(apontamentoToken)
-      .then(config => {
-        if (!cancelled) setRamos(config.ramos);
-      })
-      .catch(error => {
-        console.error('Falha ao carregar link público de apontamento:', error);
-        if (!cancelled) setRamos([]);
-      })
-      .finally(() => {
-        if (!cancelled) setApontamentoLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [apontamentoToken]);
-
-  useEffect(() => {
     if (!ticketLink) return;
     let cancelled = false;
     setTicketLoading(true);
@@ -233,20 +203,6 @@ export default function PublicLinksApp() {
     );
   }
 
-  if (apontamentoToken) {
-    return (
-      <Suspense fallback={<ScreenLoadingFallback label="Abrindo apontamento..." />}>
-        <ApontamentoRamoLinkExterno
-          token={apontamentoToken}
-          ramos={ramos}
-          registros={[]}
-          isLoadingCloud={apontamentoLoading}
-          onSubmitApontamento={(ramo, payload: PublicApontamentoPayload) =>
-            submitPublicApontamento(apontamentoToken, ramo.id, payload)}
-        />
-      </Suspense>
-    );
-  }
 
   return (
     <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white">

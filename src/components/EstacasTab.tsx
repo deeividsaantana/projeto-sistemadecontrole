@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import ExcelJS from 'exceljs';
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Hammer, PackagePlus, Pencil, Trash2, X } from 'lucide-react';
-import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal, ApontamentoRamo } from '../types';
+import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal } from '../types';
 import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
 import { uploadOperationalAttachment } from '../services/operationalAttachments';
 import StakeDrivingMap from './StakeDrivingMap';
@@ -9,7 +9,6 @@ import StakeDrivingMap from './StakeDrivingMap';
 type Props = {
   controle: ControleEstacas;
   obras: ObraLocal[];
-  ramos: ApontamentoRamo[];
   onChange: (next: ControleEstacas, description: string) => void;
 };
 
@@ -60,7 +59,7 @@ const emptyDriving = (): Omit<CravacaoEstaca, 'id' | 'criadoEm'> => ({
   observacao: '', origem: 'Manual',
 });
 
-export default function EstacasTab({ controle, obras, ramos, onChange }: Props) {
+export default function EstacasTab({ controle, obras, onChange }: Props) {
   const [mode, setMode] = useState<'lotes' | 'cravacoes' | 'notas'>('lotes');
   const [lot, setLot] = useState(emptyLot);
   const [driving, setDriving] = useState(emptyDriving);
@@ -372,7 +371,6 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
         <>
           <StakeDrivingMap
             items={controle.cravacoes}
-            ramos={ramos}
             obras={obras}
             activeId={activeDrivingId}
             onActiveIdChange={setActiveDrivingId}
@@ -388,7 +386,6 @@ export default function EstacasTab({ controle, obras, ramos, onChange }: Props) 
             <input type="number" step="0.01" placeholder="Perda (m)" value={driving.perdaM || ''} onChange={e => setDriving({ ...driving, perdaM: Number(e.target.value) })} className="input-dark" />
             <select value={driving.loteId || ''} onChange={e => setDriving({ ...driving, loteId: e.target.value || undefined })} className="input-dark"><option value="">Associação automática</option>{controle.lotes.map(item => <option key={item.id} value={item.id}>NF {item.notaFiscal} · {item.perfilModelo || item.descricao}</option>)}</select>
             <select value={driving.obraLocalId || ''} onChange={e => setDriving({ ...driving, obraLocalId: e.target.value || undefined })} className="input-dark"><option value="">Obra/local</option>{obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
-            <select value={driving.ramoId || ''} onChange={e => setDriving({ ...driving, ramoId: e.target.value || undefined })} className="input-dark"><option value="">Ramo</option>{ramos.map(item => <option key={item.id} value={item.id}>{item.ramoNome}</option>)}</select>
             <input placeholder="Responsável" value={driving.responsavel} onChange={e => setDriving({ ...driving, responsavel: e.target.value })} className="input-dark" />
             <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><Hammer className="h-4 w-4" /> {editingDrivingId ? 'Salvar alterações' : 'Registrar cravação'}</button>
             {editingDrivingId && <button type="button" onClick={cancelDrivingEdit} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:border-slate-400"><X className="h-4 w-4" /> Cancelar edição</button>}

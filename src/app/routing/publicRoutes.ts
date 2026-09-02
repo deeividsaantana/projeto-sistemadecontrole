@@ -18,15 +18,6 @@ export const getPresenceTokenFromUrl = (location?: PublicLocation) => {
   return match ? decodeURIComponent(match[1]) : '';
 };
 
-export const getApontamentoTokenFromUrl = (location?: PublicLocation) => {
-  const resolvedLocation = getLocation(location);
-  if (!resolvedLocation) return '';
-  const byQuery = new URLSearchParams(resolvedLocation.search).get('apontamento');
-  if (byQuery) return decodeURIComponent(byQuery);
-  const match = resolvedLocation.pathname.match(/\/apontamento-link\/([^/?#]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
-};
-
 export const isTicketLinkUrl = (location?: PublicLocation) => {
   const resolvedLocation = getLocation(location);
   if (!resolvedLocation) return false;
@@ -39,7 +30,6 @@ export const isPublicLinkUrl = (location?: PublicLocation) => {
   if (!resolvedLocation) return false;
   return Boolean(
     getPresenceTokenFromUrl(resolvedLocation)
-    || getApontamentoTokenFromUrl(resolvedLocation)
     || isTicketLinkUrl(resolvedLocation),
   );
 };

@@ -1,4 +1,4 @@
-import type { MaterialCadastro, MaterialRegistro, ParteDiariaEquipamento } from '../types';
+import type { ParteDiariaEquipamento } from '../types';
 
 export interface OperationalIndicator {
   nome: string;
@@ -45,82 +45,6 @@ const duplicateCount = <T,>(items: T[], getKey: (item: T) => string) => {
     else seen.add(key);
   });
   return duplicates.size;
-};
-
-export const buildMaterialOperationalAnalysis = (
-  registros: MaterialRegistro[],
-  materiais: MaterialCadastro[] = [],
-): OperationalAnalysis => {
-  const totalRegistros = registros.length;
-  const totalQuantidade = registros.reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
-  const totalValor = registros.reduce((sum, item) => sum + Number(item.total || 0), 0);
-  const materiaisUnicos = new Set(registros.map(item => normalize(item.material)).filter(Boolean)).size;
-  const semFornecedor = registros.filter(item => !item.fornecedor?.trim()).length;
-  const semOrigemDestino = registros.filter(item => !item.origem?.trim() && !item.destino?.trim()).length;
-  const semNota = registros.filter(item => !item.nota?.trim()).length;
-  const semValor = registros.filter(item => !Number(item.total || 0) && !Number(item.valorUnitario || 0)).length;
-  const divergentes = registros.filter(item => item.status === 'Divergência' || item.status === 'Pendente').length;
-  const duplicidades = duplicateCount(registros, item =>
-    [item.data, normalize(item.material), normalize(item.placa || item.prefixo || ''), normalize(item.nota || ''), Number(item.quantidade || 0).toFixed(3)].join('|'),
-  );
-
-  const problemas = [
-    semFornecedor ? `${semFornecedor} lançamento(s) sem fornecedor informado.` : '',
-    semOrigemDestino ? `${semOrigemDestino} lançamento(s) sem origem nem destino.` : '',
-    semNota ? `${semNota} lançamento(s) sem nota/documento de referência.` : '',
-    semValor ? `${semValor} lançamento(s) sem valor unitário ou total para análise financeira.` : '',
-    divergentes ? `${divergentes} lançamento(s) com status pendente ou divergente.` : '',
-    duplicidades ? `${duplicidades} possível(is) duplicidade(s) por data, material, veículo/documento e quantidade.` : '',
-  ].filter(Boolean);
-
-  const confianca: OperationalAnalysis['confianca'] = !totalRegistros
-    ? 'Baixa'
-    : problemas.length > 3
-      ? 'Média'
-      : 'Alta';
-
-  return {
-    resumoExecutivo: totalRegistros
-      ? [
-        `A importação trouxe ${totalRegistros} lançamento(s), ${materiaisUnicos} material(is) distinto(s) e ${formatNumber(totalQuantidade)} unidade(s) movimentada(s).`,
-        totalValor > 0
-          ? `O valor total informado soma ${totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
-          : 'Não há valor total suficiente para estimar impacto financeiro com confiança.',
-        `${materiais.length} material(is) podem alimentar ou atualizar o catálogo.`,
-      ]
-      : ['Nenhum lançamento de material foi reconhecido para análise.'],
-    principaisProblemas: problemas.length
-      ? problemas
-      : ['Nenhum problema estrutural evidente foi encontrado nos lançamentos importados.'],
-    oportunidadesMelhoria: [
-      'Padronizar origem, destino, fornecedor, placa/prefixo e nota para rastrear cada viagem ou entrega.',
-      'Usar catálogo único de materiais para evitar nomes diferentes para o mesmo insumo.',
-      'Preencher valores unitários e totais quando o objetivo incluir custo por obra, fornecedor ou material.',
-    ],
-    automacoesRecomendadas: [
-      'Aplicar importação por modelo padrão com validação de campos obrigatórios antes da confirmação.',
-      'Criar alerta automático para possível duplicidade de nota, placa, material e quantidade.',
-      'Gerar dashboard por material, fornecedor, origem/destino, placa e custo total.',
-    ],
-    indicadores: [
-      { nome: 'Lançamentos', valor: String(totalRegistros), interpretacao: 'Volume importado para conferência.' },
-      { nome: 'Materiais distintos', valor: String(materiaisUnicos), interpretacao: 'Variedade de insumos movimentados.' },
-      { nome: 'Quantidade total', valor: formatNumber(totalQuantidade), interpretacao: 'Soma das quantidades informadas, sem converter unidades diferentes.' },
-      { nome: 'Valor total', valor: totalValor ? totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem base', interpretacao: 'Só deve ser usado quando a planilha tiver valores confiáveis.' },
-      { nome: 'Possíveis duplicidades', valor: String(duplicidades), interpretacao: 'Itens que merecem revisão antes de gravar.' },
-    ],
-    planoAcao: [
-      { acao: 'Conferir registros sem fornecedor, nota, origem ou destino.', impacto: 'Alto', dificuldade: 'Baixa', tempoEstimado: 'Imediato', ganhoEsperado: 'Melhor rastreabilidade e menos retrabalho.' },
-      { acao: 'Padronizar nomes de materiais pelo catálogo.', impacto: 'Médio', dificuldade: 'Baixa', tempoEstimado: '30 a 60 minutos', ganhoEsperado: 'Dashboards mais confiáveis por material.' },
-      { acao: 'Implantar alerta de duplicidade na importação.', impacto: 'Médio', dificuldade: 'Média', tempoEstimado: '1 a 2 horas', ganhoEsperado: 'Redução de lançamentos repetidos.' },
-    ],
-    proximosPassos: [
-      'Revisar a amostra importada no modal.',
-      'Corrigir campos obrigatórios antes de confirmar quando houver muitos alertas.',
-      'Confirmar a importação e acompanhar os indicadores no painel de materiais.',
-    ],
-    confianca,
-  };
 };
 
 export const buildParteDiariaOperationalAnalysis = (

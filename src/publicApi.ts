@@ -1,8 +1,4 @@
 import type {
-  ApontamentoQuantidadeItem,
-  ApontamentoRamo,
-  ClimaApontamento,
-  CondicaoApontamento,
   Funcionario,
   FuncionarioDisponivel,
   Empresa,
@@ -11,7 +7,6 @@ import type {
   PresencaApontamento,
   PresencaStatus,
   TicketJazida,
-  TurnoApontamento,
 } from './types';
 
 interface ApiEnvelope<T> {
@@ -212,44 +207,6 @@ export const resetPresenceDay = async (grupoId: string, data: string) => {
   };
 };
 
-export interface PublicApontamentoConfig {
-  ramos: ApontamentoRamo[];
-}
-
-export interface PublicApontamentoPayload {
-  data: string;
-  empresa: string;
-  responsavel: string;
-  funcaoApontador: string;
-  funcoes: ApontamentoQuantidadeItem[];
-  equipamentos: ApontamentoQuantidadeItem[];
-  clima: Record<TurnoApontamento, ClimaApontamento>;
-  condicao: Record<TurnoApontamento, CondicaoApontamento>;
-  descricaoAtividade: string;
-  observacao: string;
-}
-
-export const loadPublicApontamentoConfig = async (token: string): Promise<PublicApontamentoConfig> => {
-  const response = await callPublicApi<PublicApontamentoConfig>(
-    `/.netlify/functions/public-apontamento?token=${encodeURIComponent(token)}`,
-  );
-  if (!response.data) throw new Error('Configuração de apontamento não encontrada.');
-  return response.data;
-};
-
-export const submitPublicApontamento = async (
-  token: string,
-  ramoId: string,
-  payload: PublicApontamentoPayload,
-) => {
-  const requestPayload = { token, ramoId, ...payload };
-  const response = await callPublicApi<never>('/.netlify/functions/public-apontamento', {
-    method: 'POST',
-    headers: { 'X-Idempotency-Key': stableRequestKey('apontamento', requestPayload) },
-    body: JSON.stringify(requestPayload),
-  });
-  return { success: true, message: response.message || 'Apontamento enviado com segurança.' };
-};
 
 const ticketAccessHeaders = (accessToken: string) => ({
   'X-Renea-Ticket-Access': accessToken,

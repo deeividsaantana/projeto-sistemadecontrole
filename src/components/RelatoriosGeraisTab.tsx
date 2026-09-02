@@ -5,9 +5,9 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import reneaLogo from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
-import type { Abastecimento, ApontamentoRamoRegistro, Comboio, ControleEstacas, Empresa, Equipamento, Funcionario, Lubrificacao, MaterialRegistro, ObraLocal, ParteDiariaEquipamento, PresencaApontamento, ProdutoLubrificacao, TipoCombustivel, TicketJazida, ListaPresenca } from '../types';
+import type { Abastecimento, Comboio, ControleEstacas, Empresa, Equipamento, Funcionario, Lubrificacao, ObraLocal, ParteDiariaEquipamento, PresencaApontamento, ProdutoLubrificacao, TipoCombustivel, TicketJazida, ListaPresenca } from '../types';
 
-type Props = { empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; listasPresenca: ListaPresenca[]; apontamentoRamoRegistros: ApontamentoRamoRegistro[]; ticketsJazida: TicketJazida[]; controleEstacas: ControleEstacas; materiaisRegistros: MaterialRegistro[]; presencasLink: PresencaApontamento[]; partesDiariasEquipamentos: ParteDiariaEquipamento[] };
+type Props = { empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; listasPresenca: ListaPresenca[]; ticketsJazida: TicketJazida[]; controleEstacas: ControleEstacas; presencasLink: PresencaApontamento[]; partesDiariasEquipamentos: ParteDiariaEquipamento[] };
 type ReportRow = { date: string; module: string; item: string; status: string; owner: string; detail: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -29,7 +29,6 @@ export default function RelatoriosGeraisTab(props: Props) {
       ...props.presencasLink.map(item => ({ date: item.data, module: 'Presença', item: `${item.grupoNome} · ${item.funcionarioNome}`, status: item.status, owner: item.responsavel, detail: item.observacao || item.frenteServico })),
       ...props.partesDiariasEquipamentos.map(item => ({ date: item.data, module: 'Frotas', item: `${item.prefixo} · ${item.tipoEquipamento}`, status: item.status, owner: item.operadorNome || item.apontador, detail: `${fmt(item.totalHorasTrabalhadas)} h trabalhadas` })),
       ...props.ticketsJazida.map(item => ({ date: item.data, module: 'Tickets', item: `Ticket ${item.ticketNumero || '—'} · ${item.prefixo || '—'}`, status: item.statusFluxo || item.status || 'Registrado', owner: item.responsavelLiberacao || item.nomeLegivel || 'Não informado', detail: item.tipoMaterial || 'Operação de jazida' })),
-      ...props.apontamentoRamoRegistros.map(item => ({ date: item.data, module: 'Apontamentos', item: item.ramoNome, status: 'Registrado', owner: item.responsavel, detail: item.descricaoAtividade || 'Apontamento operacional' })),
     ].filter(row => row.date >= start && row.date <= end);
   }, [props, start, end]);
 

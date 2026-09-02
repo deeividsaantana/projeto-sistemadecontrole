@@ -44,9 +44,7 @@ import { stageTravelDataset } from '../services/masterDataApi';
 import { getSecurePublicTicketLink } from '../publicApi';
 import { jsPDF } from 'jspdf';
 import {
-  ApontamentoRamo,
   Equipamento,
-  MaterialCadastro,
   ObraLocal,
   TicketJazida,
   TipoMaterialJazida,
@@ -60,9 +58,7 @@ import spmarLogo from '../assets/images/spmar_logo.png';
 interface TicketsJazidaTabProps {
   tickets: TicketJazida[];
   equipamentos: Equipamento[];
-  materiais: MaterialCadastro[];
   obras: ObraLocal[];
-  ramos: ApontamentoRamo[];
   onSaveTicket: (item: TicketJazida, isNew: boolean) => void;
   onDeleteTicket: (id: string) => void;
   onDeleteTickets: (ids: string[]) => void;
@@ -287,9 +283,7 @@ const generateTicketBookPdf = async (
 export default function TicketsJazidaTab({
   tickets,
   equipamentos,
-  materiais,
   obras,
-  ramos,
   onSaveTicket,
   onDeleteTicket,
   onDeleteTickets,
@@ -377,36 +371,20 @@ export default function TicketsJazidaTab({
     .sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR')), [equipmentByPrefix]);
 
   const findEquipmentByPrefix = (value: string) => equipmentByPrefix.get(normalizeEquipmentKey(value));
-  const materialByName = useMemo(() => new Map(
-    materiais
-      .filter(item => item.status === 'Ativo')
-      .map(item => [normalizeMasterLabel(item.nome), item]),
-  ), [materiais]);
   const locationByName = useMemo(() => new Map(
     obras.map(item => [normalizeMasterLabel(item.nome), item]),
   ), [obras]);
-  const branchByName = useMemo(() => new Map(
-    ramos
-      .filter(item => item.status === 'ativo')
-      .map(item => [normalizeMasterLabel(item.ramoNome), item]),
-  ), [ramos]);
-  const materialOptions = useMemo(() => [...new Set([
-    ...TIPOS_MATERIAL,
-    ...materiais.filter(item => item.status === 'Ativo').map(item => item.nome),
-  ])], [materiais]);
+  const materialOptions = useMemo(() => [...new Set(TIPOS_MATERIAL)], []);
   const destinationOptions = useMemo(() => [...new Set([
     ...DESTINOS_OBRA,
     ...obras.map(item => item.nome),
-    ...ramos.filter(item => item.status === 'ativo').map(item => item.ramoNome),
-  ])], [obras, ramos]);
+  ])], [obras]);
   const originLocationId = useMemo(() => obras.find(item =>
     normalizeMasterLabel(item.nome).includes('JAZIDA')
     && normalizeMasterLabel(item.nome).includes('SABESP')
   )?.id, [obras]);
-  const resolveMaterialId = (value: string) => materialByName.get(normalizeMasterLabel(value))?.id;
   const resolveDestinationIds = (value: string) => ({
     localDestinoId: locationByName.get(normalizeMasterLabel(value))?.id,
-    ramoId: branchByName.get(normalizeMasterLabel(value))?.id,
   });
 
   const fillEquipmentFields = (equipment?: Equipamento) => {
@@ -679,10 +657,8 @@ export default function TicketsJazidaTab({
       impressaoEmBranco: false,
       ocultarNumeroImpressao: false,
       equipamentoId: selectedEquipment?.id || existing?.equipamentoId,
-      materialId: resolveMaterialId(tipoMaterial) || existing?.materialId,
       localOrigemId: originLocationId || existing?.localOrigemId,
       localDestinoId: destinationIds.localDestinoId || existing?.localDestinoId,
-      ramoId: destinationIds.ramoId || existing?.ramoId,
     }, isNew);
 
     setImportMessage(saveMode === 'draft'
@@ -792,10 +768,8 @@ export default function TicketsJazidaTab({
       loteImpressaoId: batchId,
       loteImpressaoCriadoEm: createdAt,
       equipamentoId: blank ? undefined : selectedEquipment?.id,
-      materialId: blank ? undefined : resolveMaterialId(batchTipoMaterial),
       localOrigemId: blank ? undefined : originLocationId,
       localDestinoId: blank ? undefined : destinationIds.localDestinoId,
-      ramoId: blank ? undefined : destinationIds.ramoId,
     };
   };
 
@@ -1415,10 +1389,8 @@ export default function TicketsJazidaTab({
             criadoEm: new Date().toISOString(),
             atualizadoEm: new Date().toISOString(),
             equipamentoId: equipamentoEncontrado?.id,
-            materialId: resolveMaterialId(materialNormalizado),
             localOrigemId: originLocationId,
             localDestinoId: destinationIds.localDestinoId,
-            ramoId: destinationIds.ramoId,
           });
         });
       });

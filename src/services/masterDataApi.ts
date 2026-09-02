@@ -3,13 +3,11 @@ import { auth } from '../firebase';
 export const MASTER_DATA_ENTITIES = [
   'companies',
   'locations',
-  'work_branches',
   'equipment',
   'vehicles',
   'collaborators',
   'operational_drivers',
   'suppliers',
-  'materials',
   'convoys',
   'fuel_types',
   'lubricant_products',
@@ -20,9 +18,7 @@ export type MasterDataEntity = typeof MASTER_DATA_ENTITIES[number];
 export type MasterDataReviewEntity =
   | 'companies'
   | 'suppliers'
-  | 'materials'
   | 'locations'
-  | 'work_branches'
   | 'collaborators'
   | 'equipment'
   | 'vehicles';

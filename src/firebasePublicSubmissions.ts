@@ -9,7 +9,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import type { Unsubscribe } from 'firebase/firestore';
-import type { ApontamentoRamoRegistro, PresencaApontamento } from './types';
+import type { PresencaApontamento } from './types';
 
 const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
 
@@ -19,16 +19,14 @@ const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
  */
 export type PublicSubmission = {
   id: string;
-  kind: 'presence' | 'presence-reset' | 'apontamento' | 'equipe';
+  kind: 'presence' | 'presence-reset' | 'equipe';
   status: 'pending' | 'processed' | 'cancelled';
   createdAtIso: string;
   payload: {
     grupoId?: string;
     grupoNome?: string;
-    ramoId?: string;
     data: string;
     records?: PresencaApontamento[];
-    record?: ApontamentoRamoRegistro;
     funcionarioId?: string;
     funcionarioNome?: string;
     funcao?: string;
@@ -38,7 +36,7 @@ export type PublicSubmission = {
 
 const normalizeSubmissionSnapshot = (items: Array<{ id: string; data: () => Record<string, unknown> }>): PublicSubmission[] => items
   .map(item => ({ id: item.id, ...item.data() }) as PublicSubmission)
-  .filter(item => item.kind === 'presence' || item.kind === 'presence-reset' || item.kind === 'apontamento' || item.kind === 'equipe')
+  .filter(item => item.kind === 'presence' || item.kind === 'presence-reset' || item.kind === 'equipe')
   .filter(item => item.payload && typeof item.payload.data === 'string')
   .sort((a, b) => String(a.createdAtIso || '').localeCompare(String(b.createdAtIso || '')));
 

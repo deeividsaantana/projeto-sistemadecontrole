@@ -1,14 +1,10 @@
 import type {
-  ApontamentoRamo,
   Empresa,
   Equipamento,
   Funcionario,
-  MaterialCadastro,
-  MaterialCategoria,
   ObraLocal,
 } from '../types';
 import { normalizeAvailabilityTarget } from '../utils/equipmentOperations';
-import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import {
   normalizeMasterText,
   type MasterWorkbookAnalysis,
@@ -19,8 +15,6 @@ export interface MasterDataCollections {
   empresas: Empresa[];
   obras: ObraLocal[];
   funcionarios: Funcionario[];
-  materiais: MaterialCadastro[];
-  ramos: ApontamentoRamo[];
   equipamentos: Equipamento[];
 }
 
@@ -88,16 +82,6 @@ const employeeByName = (funcionarios: Funcionario[], value: unknown) => {
   return key ? funcionarios.find(item => normalizeMasterText(item.nome) === key) : undefined;
 };
 
-const materialCategory = (value: unknown): MaterialCategoria => {
-  const normalized = normalizeMasterText(value);
-  if (normalized.includes('agregado') || normalized.includes('brita') || normalized.includes('areia')) return 'Agregado';
-  if (normalized.includes('solo') || normalized.includes('terra')) return 'Solo';
-  if (normalized.includes('bota fora')) return 'Bota fora';
-  if (normalized.includes('residuo')) return 'Resíduo';
-  if (normalized.includes('operacional')) return 'Operacional';
-  return 'Outros';
-};
-
 const equipmentStatus = (row: MasterWorkbookReviewRow): Equipamento['status'] => {
   const source = normalizeMasterText(row.normalized.status);
   if (source.includes('desmobil')) return 'Desmobilizado';
@@ -117,11 +101,9 @@ const promotionPriority: Record<MasterWorkbookReviewRow['entity'], number> = {
   companies: 1,
   locations: 2,
   collaborators: 3,
-  materials: 4,
-  work_branches: 5,
-  equipment: 6,
-  vehicles: 7,
-  suppliers: 8,
+  equipment: 4,
+  vehicles: 5,
+  suppliers: 6,
 };
 
 export const promoteMasterWorkbook = (
@@ -131,8 +113,6 @@ export const promoteMasterWorkbook = (
   let empresas = [...current.empresas];
   let obras = [...current.obras];
   let funcionarios = [...current.funcionarios];
-  let materiais = [...current.materiais];
-  let ramos = [...current.ramos];
   let equipamentos = [...current.equipamentos];
   const reviewRows: MasterWorkbookReviewRow[] = [];
   const counts: Record<string, MasterDataPromotionCount> = {};
@@ -140,7 +120,6 @@ export const promoteMasterWorkbook = (
     counts[entity] ||= newCount();
     return counts[entity];
   };
-  const sharedRamoToken = ramos.find(item => item.token)?.token || generateSecurePublicToken('apontamento');
 
   const applicableRows = analysis.rows
     .filter(row => {
@@ -257,46 +236,6 @@ export const promoteMasterWorkbook = (
       continue;
     }
 
-    if (row.entity === 'materials') {
-      const existing = findCandidate(materiais, row)
-        || materiais.find(item => normalizeMasterText(item.nome) === normalizeMasterText(normalized.name));
-      const metadata = normalized.metadata as Record<string, unknown> | undefined;
-      const value: MaterialCadastro = {
-        id: existing?.id || deterministicId('material', row),
-        nome: text(normalized.name),
-        categoria: materialCategory(normalized.category),
-        unidadePadrao: text(normalized.default_unit),
-        densidade: existing?.densidade,
-        valorReferencia: existing?.valorReferencia,
-        fornecedorPadrao: existing?.fornecedorPadrao,
-        status: 'Ativo',
-        observacao: text(normalized.notes)
-          || text(metadata?.profileModel)
-          || existing?.observacao,
-      };
-      materiais = upsertById(materiais, value, existing);
-      existing ? count.updated += 1 : count.created += 1;
-      continue;
-    }
-
-    if (row.entity === 'work_branches') {
-      const existing = findCandidate(ramos, row)
-        || ramos.find(item => normalizeMasterText(item.ramoNome) === normalizeMasterText(normalized.name));
-      const value: ApontamentoRamo = {
-        id: existing?.id || deterministicId('ramo', row),
-        canteiroNome: existing?.canteiroNome || obras[0]?.nome || 'Canteiro principal',
-        ramoNome: text(normalized.name),
-        responsavel: existing?.responsavel || '',
-        token: existing?.token || sharedRamoToken,
-        status: normalized.active === false ? 'inativo' : 'ativo',
-        linkAtivo: existing?.linkAtivo ?? true,
-        observacao: existing?.observacao,
-      };
-      ramos = upsertById(ramos, value, existing);
-      existing ? count.updated += 1 : count.created += 1;
-      continue;
-    }
-
     if (row.entity === 'equipment' || row.entity === 'vehicles') {
       const prefix = text(normalized.prefix);
       const existing = findCandidate(equipamentos, row)
@@ -358,8 +297,6 @@ export const promoteMasterWorkbook = (
     empresas,
     obras,
     funcionarios,
-    materiais,
-    ramos,
     equipamentos,
     counts,
     reviewRows,

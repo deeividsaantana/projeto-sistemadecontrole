@@ -99,52 +99,6 @@ export interface EtapaServico {
   nome: string; // ex: Terraplenagem, Drenagem, Pavimentação, etc.
 }
 
-export type MaterialCategoria =
-  | 'Agregado'
-  | 'Solo'
-  | 'Bota fora'
-  | 'Resíduo'
-  | 'Operacional'
-  | 'Outros';
-
-export type MaterialStatus = 'Conferido' | 'Pendente' | 'Divergência' | 'Cancelado';
-
-export interface MaterialCadastro {
-  id: string;
-  nome: string;
-  categoria: MaterialCategoria;
-  unidadePadrao: string;
-  densidade?: number;
-  valorReferencia?: number;
-  fornecedorPadrao?: string;
-  status: 'Ativo' | 'Inativo';
-  observacao?: string;
-}
-
-export interface MaterialRegistro {
-  id: string;
-  data: string; // YYYY-MM-DD
-  aba: string; // aba/origem da planilha importada ou "Manual"
-  material: string;
-  unidade: string;
-  quantidade: number;
-  suporte?: number;
-  fornecedor?: string;
-  placa?: string;
-  prefixo?: string;
-  nota?: string;
-  origem?: string;
-  destino?: string;
-  valorUnitario?: number;
-  total?: number;
-  volumeCacamba?: number;
-  totalM3?: number;
-  status?: MaterialStatus;
-  observacao?: string;
-  criadoEm?: string;
-  atualizadoEm?: string;
-}
-
 export type StatusRegistroCombustivel =
   | 'OK'
   | 'Cancelado'
@@ -451,46 +405,6 @@ export interface OrdemServico {
   saiuManutencaoEm?: string;
 }
 
-export type TurnoApontamento = 'Manhã' | 'Tarde' | 'Noite';
-export type ClimaApontamento = 'Chuvoso' | 'Nublado' | 'Ensolarado';
-export type CondicaoApontamento = 'Praticável' | 'Impraticável';
-
-export interface ApontamentoRamo {
-  id: string;
-  canteiroNome: string;
-  ramoNome: string;
-  responsavel: string;
-  token: string;
-  status: 'ativo' | 'inativo';
-  linkAtivo: boolean;
-  observacao?: string;
-}
-
-export interface ApontamentoQuantidadeItem {
-  nome: string;
-  quantidade: number;
-}
-
-export interface ApontamentoRamoRegistro {
-  id: string;
-  data: string;
-  horaEnvio: string;
-  ramoId: string;
-  canteiroNome: string;
-  ramoNome: string;
-  empresa: string;
-  responsavel: string;
-  funcaoApontador: string;
-  funcoes: ApontamentoQuantidadeItem[];
-  equipamentos: ApontamentoQuantidadeItem[];
-  clima: Record<TurnoApontamento, ClimaApontamento>;
-  condicao: Record<TurnoApontamento, CondicaoApontamento>;
-  descricaoAtividade: string;
-  observacao: string;
-  tokenUsado: string;
-  createdAt: string;
-}
-
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 
@@ -605,8 +519,6 @@ export interface PeriodoArquivado {
     ordensServico: OrdemServico[];
     presencasLink: PresencaApontamento[];
     historicoPresencas: HistoricoPresenca[];
-    apontamentoRamoRegistros: ApontamentoRamoRegistro[];
-    materiaisRegistros: MaterialRegistro[];
     partesDiariasEquipamentos: ParteDiariaEquipamento[];
     controleEquipamentosDiario?: ControleEquipamentoDiario[];
     estacas?: ControleEstacas;

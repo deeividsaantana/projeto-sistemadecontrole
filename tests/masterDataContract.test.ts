@@ -17,13 +17,11 @@ import {
 assert.deepEqual([...MASTER_DATA_ENTITY_NAMES], [
   'companies',
   'locations',
-  'work_branches',
   'equipment',
   'vehicles',
   'collaborators',
   'operational_drivers',
   'suppliers',
-  'materials',
   'convoys',
   'fuel_types',
   'lubricant_products',
@@ -69,10 +67,6 @@ assert.deepEqual(
 assert.throws(() => sanitizeMasterDataPayload('companies', { company_type: 'owner' }));
 assert.throws(() => sanitizeMasterDataPayload('companies', { name: 'Empresa', campo_inventado: true }));
 assert.throws(() => sanitizeMasterDataPayload('equipment', { prefix: 'EQ-01', name: 'Escavadeira', available_hours: -1 }));
-assert.deepEqual(
-  sanitizeMasterDataPayload('materials', { name: 'Brita 1', default_unit: 'm³', density: '1,55' }),
-  { name: 'Brita 1', default_unit: 'm³', density: 1.55 },
-);
 
 assert.equal(sanitizeSearchTerm('  Bomba *(01), "S10"  '), 'Bomba 01 S10');
 
