@@ -132,7 +132,6 @@ import {
   addPublicPresenceMember,
   resetPresenceDay,
   removePublicPresenceMember,
-  resetPublicPresenceDay,
   updatePublicPresenceDayNote,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
@@ -2868,22 +2867,6 @@ export default function App() {
     }
   };
 
-  const handleResetExternalPresenceDay = async (grupoId: string, data: string) => {
-    try {
-      const response = await resetPublicPresenceDay(externalPresenceToken, grupoId, data);
-      if (response.success) {
-        setExternalDataSelecionada(data);
-        setExternalMeusRegistros([]);
-        setExternalObservacaoDia('');
-        setExternalPresenceHistory(current => ({ ...current, [data]: [] }));
-        setExternalPresenceDayNotes(current => ({ ...current, [data]: '' }));
-      }
-      return response;
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível resetar a presença.' };
-    }
-  };
-
   const handleUpdateExternalPresencaRecord = async (
     grupoId: string,
     funcionarioId: string,
@@ -4186,7 +4169,6 @@ export default function App() {
           onUpdateRecord={handleUpdateExternalPresencaRecord}
           onAddMember={handleAddExternalPresencaMember}
           onRemoveMember={handleRemoveExternalPresencaMember}
-          onResetDay={handleResetExternalPresenceDay}
           onSaveDayNote={handleSaveExternalDayNote}
         />
       </Suspense>

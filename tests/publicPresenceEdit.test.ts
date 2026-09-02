@@ -111,3 +111,80 @@ test('edicao pontual rejeita situacao invalida', () => {
     submissionDocId: 'presence_abc',
   }), /situação de presença inválida/i);
 });
+
+// --- Busca do envio do dia na edição pontual -------------------------------
+// Editar uma situação é a ação mais repetida do turno. Ela não pode custar uma
+// varredura no histórico inteiro da equipe, que ganha um documento por dia
+// trabalhado e deixaria cada edição mais lenta que a anterior.
+
+const fakeDatabase = ({ lock = null, submission = null, scan = [] } = {}) => {
+  const leituras = { pontuais: 0, varreduras: 0 };
+  const doc = data => ({ exists: data !== null, id: 'doc-envio', ref: { id: 'doc-envio' }, data: () => data });
+  const database = {
+    collection(nome) {
+      return {
+        doc: () => ({
+          get: async () => {
+            leituras.pontuais += 1;
+            return doc(nome === 'sistemarenea_presence_locks' ? lock : submission);
+          },
+        }),
+        where: () => ({
+          get: async () => {
+            leituras.varreduras += 1;
+            return { docs: scan.map(doc) };
+          },
+        }),
+      };
+    },
+  };
+  return { database, leituras };
+};
+
+const envio = (data = '2026-09-02', extra = {}) => ({
+  kind: 'presence',
+  payload: { grupoId: 'group-1', data, records: [] },
+  ...extra,
+});
+
+test('a edicao acha o envio pela reserva do dia, sem varrer o historico', async () => {
+  const { database, leituras } = fakeDatabase({
+    lock: { grupoId: 'group-1', data: '2026-09-02', submissionId: 'presence_abc' },
+    submission: envio(),
+  });
+
+  const encontrado = await __testing.findDaySubmissionDoc(database, 'group-1', '2026-09-02');
+
+  assert.equal(encontrado?.id, 'doc-envio');
+  assert.equal(leituras.varreduras, 0, 'nao varre o historico da equipe');
+  assert.equal(leituras.pontuais, 2, 'reserva + envio, nada alem disso');
+});
+
+test('sem reserva gravada, a varredura antiga ainda resgata o envio', async () => {
+  const { database, leituras } = fakeDatabase({ lock: null, scan: [envio()] });
+
+  const encontrado = await __testing.findDaySubmissionDoc(database, 'group-1', '2026-09-02');
+
+  assert.equal(encontrado?.id, 'doc-envio');
+  assert.equal(leituras.varreduras, 1);
+});
+
+test('reserva apontando para envio cancelado nao reabre o dia', async () => {
+  const { database } = fakeDatabase({
+    lock: { submissionId: 'presence_abc' },
+    submission: envio('2026-09-02', { status: 'cancelled' }),
+    scan: [],
+  });
+
+  assert.equal(await __testing.findDaySubmissionDoc(database, 'group-1', '2026-09-02'), null);
+});
+
+test('reserva de outra data nao contamina a edicao de hoje', async () => {
+  const { database } = fakeDatabase({
+    lock: { submissionId: 'presence_abc' },
+    submission: envio('2026-09-01'),
+    scan: [],
+  });
+
+  assert.equal(await __testing.findDaySubmissionDoc(database, 'group-1', '2026-09-02'), null);
+});

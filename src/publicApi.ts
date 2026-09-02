@@ -177,26 +177,6 @@ export const removePublicPresenceMember = async (
   };
 };
 
-/** Cancela o envio de hoje e libera um checklist vazio para refazer. */
-export const resetPublicPresenceDay = async (
-  token: string,
-  grupoId: string,
-  data: string,
-) => {
-  const payload = { action: 'resetar-dia', token, grupoId, data };
-  const response = await callPublicApi<{ grupoId: string; data: string }>('/.netlify/functions/public-presenca', {
-    method: 'POST',
-    headers: { 'X-Idempotency-Key': stableRequestKey('presenca-resetar-dia', payload) },
-    body: JSON.stringify(payload),
-  });
-  return {
-    success: true,
-    message: response.message || 'Presença liberada para refazer.',
-    grupoId: response.data?.grupoId || grupoId,
-    data: response.data?.data || data,
-  };
-};
-
 /** Registra ou apaga a observação do dia da equipe, sem tocar em situações. */
 export const updatePublicPresenceDayNote = async (
   token: string,

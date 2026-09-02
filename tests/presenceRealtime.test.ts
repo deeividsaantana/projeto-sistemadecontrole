@@ -68,7 +68,17 @@ test('rascunho e troca de dia evitam bloqueio perceptivel da interface', () => {
   assert.match(publicPresenceSource, /currentDayDraftRef/);
   assert.match(publicPresenceSource, /Remover da equipe/);
   assert.match(publicPresenceSource, /Sim, remover/);
-  assert.match(publicPresenceSource, /Resetar o dia para refazer/);
-  assert.match(publicPresenceSource, /Sim, resetar e refazer/);
-  assert.match(functionSource, /kind: 'presence-reset'/);
+});
+
+test('zerar o dia nao fica no link da equipe: e acao exclusiva do painel', () => {
+  // O encarregado corrige situacao a situacao pelo link. Apagar o dia inteiro
+  // e decisao de quem administra a obra, atras de login, e nao de quem esta
+  // com o link no bolso — qualquer um com o endereco poderia derrubar o
+  // apontamento fechado da equipe.
+  assert.doesNotMatch(publicPresenceSource, /Resetar o dia/);
+  assert.doesNotMatch(publicPresenceSource, /resetar e refazer/i);
+  assert.doesNotMatch(functionSource, /'resetar-dia'/);
+  assert.doesNotMatch(functionSource, /kind: 'presence-reset'/);
+  // A porta de entrada continua sendo o DELETE autenticado por conta de equipe.
+  assert.match(functionSource, /requireStaffUser\(event\)/);
 });

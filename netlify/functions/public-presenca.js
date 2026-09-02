@@ -239,10 +239,12 @@ const loadSubmittedGroupIds = async (database, date) => {
   }));
 };
 
+const PRESENCE_LOCKS_COLLECTION = 'sistemarenea_presence_locks';
+const presenceLockId = (grupoId, date) => `presence_${stableHash(`${grupoId}|${date}`).slice(0, 48)}`;
+
 // Um envio existente pode ter no máximo um documento por equipe/data, graças
-// ao lock transacional criado no POST original. Reaproveitado tanto para
-// expor o apontamento já enviado no GET quanto para localizá-lo na edição
-// pontual por colaborador (PATCH).
+// ao lock transacional criado no POST original. A varredura completa fica
+// reservada para quem precisa de certeza absoluta (zerar o dia pelo painel).
 const findGroupSubmissionDocs = async (database, grupoId, date) => {
   const snapshot = await database.collection('sistemarenea_public_submissions')
     .where('payload.grupoId', '==', grupoId)
@@ -251,6 +253,31 @@ const findGroupSubmissionDocs = async (database, grupoId, date) => {
     const data = document.data();
     return data?.kind === 'presence' && data?.status !== 'cancelled' && data?.payload?.data === date;
   });
+};
+
+// A edição pontual acontece o tempo todo durante o turno e não pode ficar
+// mais lenta a cada dia trabalhado. A reserva do dia guarda o id do envio,
+// então duas leituras diretas bastam — no lugar de varrer todo o histórico
+// da equipe, que cresce um documento por dia. Envios anteriores à reserva
+// com esse campo continuam alcançáveis pela varredura.
+const findDaySubmissionDoc = async (database, grupoId, date) => {
+  const lockSnapshot = await database
+    .collection(PRESENCE_LOCKS_COLLECTION)
+    .doc(presenceLockId(grupoId, date))
+    .get();
+  const submissionId = cleanString(lockSnapshot.data()?.submissionId, 160);
+  if (submissionId) {
+    const document = await database
+      .collection('sistemarenea_public_submissions')
+      .doc(`presence_${submissionId}`)
+      .get();
+    const data = document.data();
+    if (document.exists && data?.kind === 'presence' && data?.status !== 'cancelled' && data?.payload?.data === date) {
+      return document;
+    }
+  }
+  const [fallback] = await findGroupSubmissionDocs(database, grupoId, date);
+  return fallback || null;
 };
 
 // Observação do dia inteiro, da equipe: chuva, parada de frente, acidente.
@@ -264,9 +291,6 @@ const findDayNote = documents => {
   }
   return '';
 };
-
-const PRESENCE_LOCKS_COLLECTION = 'sistemarenea_presence_locks';
-const presenceLockId = (grupoId, date) => `presence_${stableHash(`${grupoId}|${date}`).slice(0, 48)}`;
 
 const loadGroupRecordsForDate = async (database, grupoId, date) => {
   const docs = await findGroupSubmissionDocs(database, grupoId, date);
@@ -416,6 +440,7 @@ export const __testing = {
   buildPresenceRecords,
   filterSubmittedGroups,
   presenceLockId,
+  findDaySubmissionDoc,
   getPublicConfig,
   resolveGroupEmployeeIds,
   teamMemberDocId,
@@ -514,11 +539,11 @@ export const handler = async event => {
           if (!activeGroupsForToken(snapshot, token).some(item => item.id === groupId)) {
             return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
           }
-          const docs = await findGroupSubmissionDocs(database, groupId, date);
-          if (docs.length === 0) {
+          const submissionDoc = await findDaySubmissionDoc(database, groupId, date);
+          if (!submissionDoc) {
             return jsonResponse(404, { success: false, message: 'Envie o apontamento da equipe antes de registrar a observação do dia.' });
           }
-          await docs[0].ref.update({
+          await submissionDoc.ref.update({
             'payload.observacaoDia': observacaoDia,
             status: 'pending',
             updatedAt: serverTimestamp(),
@@ -558,11 +583,11 @@ export const handler = async event => {
         if (!employee || !group.funcionarioIds.includes(funcionarioId)) {
           return jsonResponse(400, { success: false, message: 'Este colaborador não pertence à equipe do link.' });
         }
-        const docs = await findGroupSubmissionDocs(database, groupId, date);
-        if (docs.length === 0) {
+        const submissionDoc = await findDaySubmissionDoc(database, groupId, date);
+        if (!submissionDoc) {
           return jsonResponse(404, { success: false, message: 'Envie o apontamento completo da equipe antes de editar uma situação individual.' });
         }
-        const submissionRef = docs[0].ref;
+        const submissionRef = submissionDoc.ref;
         const now = new Date();
         const nowIso = now.toISOString();
         const horaEnvio = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
@@ -648,67 +673,6 @@ export const handler = async event => {
 
     if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST, PATCH, DELETE' });
     const body = parseJsonBody(event);
-
-    // Cancela o apontamento de hoje e libera a equipe para refazê-lo. O envio
-    // anterior não é apagado: fica marcado como cancelado para auditoria.
-    if (cleanString(body.action, 40) === 'resetar-dia') {
-      const token = cleanString(body.token, 180);
-      const groupId = cleanString(body.grupoId, 160);
-      const date = cleanString(body.data, 10);
-      if (!token || !groupId || !isIsoDate(date) || date !== todayInSaoPaulo()) {
-        return jsonResponse(400, { success: false, message: 'Somente a presença de hoje pode ser refeita pelo link.' });
-      }
-      const idempotencyKey = assertIdempotencyKey(event, { required: true });
-      const publicContext = {
-        database,
-        organizationId: 'public-presenca',
-        userId: stableHash(token).slice(0, 32),
-        requestId: event.headers?.['x-request-id'] || '',
-      };
-      return await withIdempotency(event, publicContext, idempotencyKey, async () => {
-        const snapshot = await loadPresenceSnapshot(database);
-        const group = activeGroupsForToken(snapshot, token).find(item => item.id === groupId);
-        if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
-        const submissionDocs = await findGroupSubmissionDocs(database, groupId, date);
-        if (submissionDocs.length === 0) {
-          return jsonResponse(404, { success: false, message: 'Não existe presença enviada hoje para refazer.' });
-        }
-        const lockRef = database.collection('sistemarenea_presence_locks')
-          .doc(`presence_${stableHash(`${groupId}|${date}`).slice(0, 48)}`);
-        const resetRef = database.collection('sistemarenea_public_submissions')
-          .doc(`reset_${stableHash(idempotencyKey).slice(0, 48)}`);
-        const nowIso = new Date().toISOString();
-        await database.runTransaction(async transaction => {
-          const lock = await transaction.get(lockRef);
-          const currentDocs = [];
-          for (const submission of submissionDocs) currentDocs.push(await transaction.get(submission.ref));
-          currentDocs.filter(document => document.exists).forEach(document => transaction.update(document.ref, {
-            status: 'cancelled',
-            cancelledAt: serverTimestamp(),
-            cancelledAtIso: nowIso,
-            cancelReason: 'refazer-pelo-link-publico',
-          }));
-          if (lock.exists) transaction.delete(lockRef);
-          transaction.create(resetRef, {
-            kind: 'presence-reset',
-            status: 'pending',
-            createdAt: serverTimestamp(),
-            createdAtIso: nowIso,
-            sourceIpHash: requestIpHash(event),
-            payload: {
-              grupoId: group.id,
-              grupoNome: cleanString(group.nome, 160),
-              data: date,
-            },
-          });
-        });
-        return jsonResponse(200, {
-          success: true,
-          data: { grupoId, data: date },
-          message: 'Presença de hoje resetada. O checklist está liberado para refazer.',
-        });
-      });
-    }
 
     // Remoção do vínculo da equipe. O cadastro do colaborador permanece ativo;
     // somente a participação nesta equipe deixa de valer a partir de agora.
