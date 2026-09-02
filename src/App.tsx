@@ -811,6 +811,13 @@ export default function App() {
         notifications: customNotifications,
         historyLogs: customHistory,
       };
+
+      // Recarrega as claims antes de qualquer gravação. Usuários que receberam
+      // o perfil staff/admin depois do login podem estar com um token antigo,
+      // embora a conta já esteja corretamente autorizada no Firebase Auth.
+      if (auth.currentUser) {
+        await auth.currentUser.getIdToken(true);
+      }
       const uploadResult = await uploadFirebaseBackup(db, data);
       
       const nowStr = new Date(uploadResult.updatedAt).toLocaleString('pt-BR');
@@ -2360,7 +2367,10 @@ export default function App() {
     type: NotificationType = 'info'
   ): AppNotification => createNotification(title, message, type, 'Netlify App', 'notif-pres');
 
-  const uploadLocalSnapshotToFirebase = () => {
+  const uploadLocalSnapshotToFirebase = (overrides: {
+    funcionarios?: Funcionario[];
+    gruposEquipe?: GrupoEquipe[];
+  } = {}) => {
     const getLS = (key: string, def: any) => {
       const val = localStorage.getItem(key);
       return parseStoredJson(val, key, def);
@@ -2369,7 +2379,7 @@ export default function App() {
       getLS('renea_empresas', INITIAL_EMPRESAS),
       getLS('renea_obras', INITIAL_OBRAS),
       getLS('renea_equipamentos', INITIAL_EQUIPAMENTOS),
-      getLS('renea_funcionarios', INITIAL_FUNCIONARIOS),
+      overrides.funcionarios ?? getLS('renea_funcionarios', INITIAL_FUNCIONARIOS),
       getLS('renea_comboios', INITIAL_COMBOIOS),
       getLS('renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL),
       getLS('renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO),
@@ -2380,7 +2390,7 @@ export default function App() {
       [],
       getLS('renea_listas_presenca', INITIAL_PRESENCAS),
       getLS('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
-      getLS('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
+      overrides.gruposEquipe ?? getLS('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
       getLS('renea_presencas_link', INITIAL_PRESENCAS_LINK),
       getLS('renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS),
       getLS('renea_notifications', getInitialNotifications()),
@@ -2735,7 +2745,7 @@ export default function App() {
 
   // Sincronização das equipes com a planilha do efetivo. Chega já conferida
   // pelo administrativo: aqui só grava, registra e sincroniza.
-  const handleSyncEquipesPlanilha = (
+  const handleSyncEquipesPlanilha = async (
     proximosFuncionarios: Funcionario[],
     proximasEquipes: GrupoEquipe[],
     resumo: { criar: number; atualizar: number; desativar: number; colaboradoresNovos: number },
@@ -2756,9 +2766,12 @@ export default function App() {
     );
     // O retrato remoto precisa refletir a mudança para que os links públicos,
     // que leem da nuvem, enxerguem as equipes novas.
-    void uploadLocalSnapshotToFirebase().then(result => {
-      if (!result.success) console.warn('Equipes sincronizadas localmente; o envio à nuvem falhou:', result.message);
+    const result = await uploadLocalSnapshotToFirebase({
+      funcionarios: proximosFuncionarios,
+      gruposEquipe: proximasEquipes,
     });
+    if (!result.success) console.warn('Equipes sincronizadas localmente; o envio à nuvem falhou:', result.message);
+    return result;
   };
 
   const handleSubmitPresencaLink = async (

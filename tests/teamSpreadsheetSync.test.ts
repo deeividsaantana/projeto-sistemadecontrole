@@ -8,11 +8,11 @@ import {
 } from '../src/utils/teamSpreadsheetSync';
 import type { Funcionario, GrupoEquipe } from '../src/types';
 
-const linha = (mat: string, nome: string, enc: string, area = 'TERRAPLENAGEM') => ({
+const linha = (mat: string, nome: string, enc: string, area = 'TERRAPLENAGEM', matLider = '190001') => ({
   'MAT. COLAB.': mat,
   NOME: nome,
   'FUNÇÃO': 'AUXILIAR GERAL',
-  'MAT. LÍDER': '190001',
+  'MAT. LÍDER': matLider,
   'NOME ENCARREGADO': enc,
   'ÁREA': area,
   RESPONSAVEL: 'CONSTANTINO DEMETRIO FILHO',
@@ -34,7 +34,7 @@ test('cada encarregado vira uma equipe, com a composicao da planilha', () => {
   const { linhas } = parseEfetivoRows([
     linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS'),
     linha('102364', 'JOSE ILDO', 'RENILSON DOS SANTOS'),
-    linha('103205', 'ARIANY SOUSA', 'PAULO CESAR', 'SESMT'),
+    linha('103205', 'ARIANY SOUSA', 'PAULO CESAR', 'SESMT', '190002'),
   ]);
   const plan = buildTeamSyncPlan({ ...base, linhas, gruposEquipe: [] });
 
@@ -43,6 +43,35 @@ test('cada encarregado vira uma equipe, com a composicao da planilha', () => {
   const renilson = plan.entradas.find(e => e.responsavel === 'RENILSON DOS SANTOS')!;
   assert.equal(renilson.nome, 'TERRAPLENAGEM - RENILSON DOS SANTOS');
   assert.equal(renilson.total, 2);
+});
+
+test('matricula do lider agrupa a equipe mesmo quando o nome varia ou esta vazio', () => {
+  const { linhas, ignoradas } = parseEfetivoRows([
+    linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS', 'TERRAPLENAGEM', '0190001'),
+    linha('102364', 'JOSE ILDO', 'Renilson', 'TERRAPLENAGEM', '190001'),
+    linha('103205', 'ARIANY SOUSA', '', 'TERRAPLENAGEM', '190001'),
+  ]);
+  const plan = buildTeamSyncPlan({ ...base, linhas, gruposEquipe: [] });
+
+  assert.equal(ignoradas.length, 0);
+  assert.equal(plan.entradas.length, 1);
+  assert.equal(plan.entradas[0].total, 3);
+  assert.equal(plan.entradas[0].grupo.liderMatricula, '190001');
+  assert.equal(plan.entradas[0].grupo.id, 'grp-lider-190001');
+});
+
+test('equipe existente casa pela matricula do lider mesmo se o nome mudou', () => {
+  const existente: GrupoEquipe = {
+    id: 'grp-1', nome: 'EQUIPE ANTIGA', responsavel: 'NOME ANTIGO', liderMatricula: '190001',
+    frenteServico: 'TERRAPLENAGEM', obraId: 'obr-1', funcionarioIds: ['fun-101671'],
+    status: 'ativo', token: 'token-ja-distribuido', linkAtivo: true, createdAt: '', updatedAt: '',
+  };
+  const { linhas } = parseEfetivoRows([linha('101671', 'ANDERSON PEIXOTO', 'NOME ATUAL')]);
+  const plan = buildTeamSyncPlan({ ...base, linhas, gruposEquipe: [existente] });
+
+  assert.equal(plan.entradas[0].grupo.id, 'grp-1');
+  assert.equal(plan.entradas[0].grupo.token, 'token-ja-distribuido');
+  assert.equal(plan.entradas[0].grupo.responsavel, 'NOME ATUAL');
 });
 
 test('o token da equipe existente e preservado: o link em campo continua valendo', () => {
@@ -95,14 +124,27 @@ test('equipe fora da planilha e desativada, nunca apagada', () => {
 
 test('ninguem fica em duas equipes: vale o ultimo encarregado da planilha', () => {
   const { linhas } = parseEfetivoRows([
-    linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS'),
-    linha('101671', 'ANDERSON PEIXOTO', 'EDSON MARTINS DA SILVA'),
+    linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS', 'TERRAPLENAGEM', '190001'),
+    linha('101671', 'ANDERSON PEIXOTO', 'EDSON MARTINS DA SILVA', 'TERRAPLENAGEM', '190002'),
   ]);
   const plan = buildTeamSyncPlan({ ...base, linhas, gruposEquipe: [] });
 
   const comAnderson = plan.entradas.filter(e => e.grupo.funcionarioIds.includes('fun-101671'));
   assert.equal(comAnderson.length, 1);
   assert.equal(comAnderson[0].responsavel, 'EDSON MARTINS DA SILVA');
+});
+
+test('vinculo do encarregado atualiza tambem o cadastro do colaborador existente', () => {
+  const { linhas } = parseEfetivoRows([
+    linha('101671', 'ANDERSON PEIXOTO', 'EDSON MARTINS DA SILVA', 'DRENAGEM', '190002'),
+  ]);
+  const plan = buildTeamSyncPlan({ ...base, linhas, gruposEquipe: [] });
+  const applied = applyTeamSyncPlan(plan, base.funcionarios, []);
+  const anderson = applied.funcionarios.find(item => item.matricula === '101671')!;
+
+  assert.equal(anderson.liderMatricula, '190002');
+  assert.equal(anderson.liderNome, 'EDSON MARTINS DA SILVA');
+  assert.equal(anderson.area, 'DRENAGEM');
 });
 
 test('equipe sem mudanca nao e reescrita a toa', () => {
@@ -118,18 +160,18 @@ test('equipe sem mudanca nao e reescrita a toa', () => {
   assert.equal(plan.resumo.inalteradas, 1);
 });
 
-test('linha sem matricula ou sem encarregado e reportada, nao descartada em silencio', () => {
+test('linha sem matricula ou sem qualquer vinculo de encarregado e reportada', () => {
   const { linhas, ignoradas } = parseEfetivoRows([
     { ...linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS') },
     { ...linha('', 'SEM MATRICULA', 'RENILSON DOS SANTOS') },
-    { ...linha('102364', 'SEM ENCARREGADO', '') },
+    { ...linha('102364', 'SEM ENCARREGADO', '', 'CIVIL', '') },
     {},
   ]);
 
   assert.equal(linhas.length, 1);
   assert.equal(ignoradas.length, 2);
   assert.match(ignoradas[0].motivo, /sem matrícula/i);
-  assert.match(ignoradas[1].motivo, /sem encarregado/i);
+  assert.match(ignoradas[1].motivo, /sem vínculo com encarregado/i);
 });
 
 test('matricula casa mesmo com zero a esquerda ou formatacao diferente', () => {

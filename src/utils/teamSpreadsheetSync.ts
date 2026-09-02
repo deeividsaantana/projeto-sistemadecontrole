@@ -39,6 +39,8 @@ export interface TeamSyncPlan {
   entradas: TeamSyncEntry[];
   /** Colaboradores da planilha ausentes do cadastro, criados pela sincronização. */
   colaboradoresNovos: Funcionario[];
+  /** Colaboradores já cadastrados cujo vínculo de liderança vem da planilha. */
+  colaboradoresAtualizados: Funcionario[];
   /** Linhas descartadas, com o motivo, para o administrativo conferir. */
   ignoradas: Array<{ linha: number; motivo: string }>;
   resumo: {
@@ -106,15 +108,16 @@ export const parseEfetivoRows = (
       ignoradas.push({ linha: index + 1, motivo: `${nome || 'Linha sem nome'}: sem matrícula.` });
       return;
     }
-    if (!encarregado) {
-      ignoradas.push({ linha: index + 1, motivo: `${nome || matricula}: sem encarregado.` });
+    const matriculaLider = normalizeRegistration(valorDaColuna(row, ALIASES.matriculaLider));
+    if (!matriculaLider && !encarregado) {
+      ignoradas.push({ linha: index + 1, motivo: `${nome || matricula}: sem vínculo com encarregado.` });
       return;
     }
     linhas.push({
       matricula,
       nome,
       funcao: cleanImportValue(valorDaColuna(row, ALIASES.funcao)),
-      matriculaLider: normalizeRegistration(valorDaColuna(row, ALIASES.matriculaLider)),
+      matriculaLider,
       encarregado,
       area: cleanImportValue(valorDaColuna(row, ALIASES.area)),
       responsavel: cleanImportValue(valorDaColuna(row, ALIASES.responsavel)),
@@ -139,6 +142,11 @@ const nomeDaEquipe = (area: string, encarregado: string) => (area
   ? `${area.toUpperCase()} - ${encarregado.toUpperCase()}`
   : encarregado.toUpperCase());
 
+const chaveDoEncarregado = (matriculaLider: string, encarregado: string) => {
+  const matricula = normalizeRegistration(matriculaLider);
+  return matricula ? `mat:${matricula}` : `nome:${normalizeName(encarregado)}`;
+};
+
 export const buildTeamSyncPlan = ({
   linhas,
   ignoradas = [],
@@ -162,11 +170,22 @@ export const buildTeamSyncPlan = ({
   linhas.forEach(linha => vinculo.set(linha.matricula, linha));
 
   const colaboradoresNovos: Funcionario[] = [];
+  const colaboradoresAtualizados: Funcionario[] = [];
   const resolvido = new Map<string, Funcionario>();
   vinculo.forEach((linha, matricula) => {
     const existente = porMatricula.get(matricula);
     if (existente) {
-      resolvido.set(matricula, existente);
+      const atualizado: Funcionario = {
+        ...existente,
+        ...(linha.nome ? { nome: linha.nome } : {}),
+        ...(linha.funcao ? { cargo: linha.funcao } : {}),
+        liderMatricula: linha.matriculaLider || undefined,
+        liderNome: linha.encarregado || undefined,
+        area: linha.area || undefined,
+        responsavelArea: linha.responsavel || undefined,
+      };
+      colaboradoresAtualizados.push(atualizado);
+      resolvido.set(matricula, atualizado);
       return;
     }
     const novo: Funcionario = {
@@ -187,40 +206,62 @@ export const buildTeamSyncPlan = ({
     resolvido.set(matricula, novo);
   });
 
-  // Uma equipe por encarregado.
-  const porEncarregado = new Map<string, { encarregado: string; area: string; membros: Funcionario[] }>();
+  // Uma equipe por vínculo de encarregado. A matrícula é a chave estável;
+  // o nome é apenas a identificação legível e pode mudar ou vir vazio.
+  const porEncarregado = new Map<string, {
+    matriculaLider: string;
+    encarregado: string;
+    area: string;
+    membros: Funcionario[];
+  }>();
   vinculo.forEach((linha, matricula) => {
-    const chave = normalizeName(linha.encarregado);
+    const chave = chaveDoEncarregado(linha.matriculaLider, linha.encarregado);
     const atual = porEncarregado.get(chave)
-      || { encarregado: linha.encarregado, area: linha.area, membros: [] };
+      || {
+        matriculaLider: linha.matriculaLider,
+        encarregado: linha.encarregado || linha.matriculaLider,
+        area: linha.area,
+        membros: [],
+      };
     atual.membros.push(resolvido.get(matricula) as Funcionario);
+    if ((!atual.encarregado || atual.encarregado === atual.matriculaLider) && linha.encarregado) {
+      atual.encarregado = linha.encarregado;
+    }
     if (!atual.area && linha.area) atual.area = linha.area;
     porEncarregado.set(chave, atual);
   });
 
   const grupos = (Array.isArray(gruposEquipe) ? gruposEquipe : []).filter(Boolean);
-  // Casa pelo responsável para preservar o token: o link já distribuído em
-  // campo precisa continuar valendo depois da sincronização.
-  const grupoPorEncarregado = new Map<string, GrupoEquipe>();
-  grupos.forEach(group => {
-    const chave = normalizeName(group.responsavel || '');
+  // Primeiro casa pela matrícula do líder. Para registros antigos, ainda sem
+  // essa chave, usa o nome uma única vez para migrar sem trocar o link.
+  const grupoPorMatricula = new Map<string, GrupoEquipe>();
+  const grupoPorNome = new Map<string, GrupoEquipe>();
+  const preferirGrupo = (mapa: Map<string, GrupoEquipe>, chave: string, group: GrupoEquipe) => {
     if (!chave) return;
-    const anterior = grupoPorEncarregado.get(chave);
-    // Entre duplicadas, mantém a ativa; entre duas ativas, a de maior equipe.
+    const anterior = mapa.get(chave);
     if (!anterior
       || (anterior.status !== 'ativo' && group.status === 'ativo')
       || (anterior.status === group.status && (group.funcionarioIds?.length || 0) > (anterior.funcionarioIds?.length || 0))) {
-      grupoPorEncarregado.set(chave, group);
+      mapa.set(chave, group);
     }
+  };
+  grupos.forEach(group => {
+    preferirGrupo(grupoPorMatricula, normalizeRegistration(group.liderMatricula), group);
+    preferirGrupo(grupoPorNome, normalizeName(group.responsavel || ''), group);
   });
 
   const porId = new Map(cadastro.map(employee => [employee.id, employee]));
   const entradas: TeamSyncEntry[] = [];
+  const gruposReutilizados = new Set<string>();
 
-  porEncarregado.forEach((dados, chave) => {
+  porEncarregado.forEach(dados => {
     const membros = dados.membros;
     const ids = membros.map(employee => employee.id);
-    const existente = grupoPorEncarregado.get(chave);
+    const candidatoPorMatricula = grupoPorMatricula.get(normalizeRegistration(dados.matriculaLider));
+    const candidatoPorNome = grupoPorNome.get(normalizeName(dados.encarregado));
+    const existente = [candidatoPorMatricula, candidatoPorNome]
+      .find(candidate => candidate && !gruposReutilizados.has(candidate.id));
+    if (existente) gruposReutilizados.add(existente.id);
     const anteriores = existente?.funcionarioIds || [];
     const entram = membros.filter(employee => !anteriores.includes(employee.id));
     const saem = anteriores
@@ -234,6 +275,7 @@ export const buildTeamSyncPlan = ({
         ...existente,
         nome,
         responsavel: dados.encarregado,
+        liderMatricula: dados.matriculaLider || existente.liderMatricula,
         frenteServico: dados.area,
         obraId: existente.obraId || obraId,
         funcionarioIds: ids,
@@ -243,9 +285,12 @@ export const buildTeamSyncPlan = ({
         updatedAt: agoraIso,
       }
       : {
-        id: `grp-${normalizeName(dados.encarregado)}-${normalizeName(dados.area) || 'obra'}`,
+        id: dados.matriculaLider
+          ? `grp-lider-${dados.matriculaLider}`
+          : `grp-${normalizeName(dados.encarregado)}-${normalizeName(dados.area) || 'obra'}`,
         nome,
         responsavel: dados.encarregado,
+        liderMatricula: dados.matriculaLider || undefined,
         frenteServico: dados.area,
         obraId,
         funcionarioIds: ids,
@@ -277,10 +322,8 @@ export const buildTeamSyncPlan = ({
 
   // Equipe fora da planilha é desativada, nunca apagada: o histórico de
   // apontamentos já enviados continua referenciando o grupo.
-  const encarregadosDaPlanilha = new Set(porEncarregado.keys());
   grupos.forEach(group => {
-    const chave = normalizeName(group.responsavel || '');
-    if (encarregadosDaPlanilha.has(chave) && grupoPorEncarregado.get(chave) === group) return;
+    if (gruposReutilizados.has(group.id)) return;
     if (group.status !== 'ativo') return;
     entradas.push({
       acao: 'desativar',
@@ -300,6 +343,7 @@ export const buildTeamSyncPlan = ({
   return {
     entradas,
     colaboradoresNovos,
+    colaboradoresAtualizados,
     ignoradas,
     resumo: {
       criar: conta('criar'),
@@ -320,7 +364,10 @@ export const applyTeamSyncPlan = (
 ) => {
   const porId = new Map((Array.isArray(gruposEquipe) ? gruposEquipe : []).filter(Boolean).map(group => [group.id, group]));
   plan.entradas.forEach(entry => porId.set(entry.grupo.id, entry.grupo));
-  const cadastro = (Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean);
+  const atualizadosPorId = new Map(plan.colaboradoresAtualizados.map(employee => [employee.id, employee]));
+  const cadastro = (Array.isArray(funcionarios) ? funcionarios : [])
+    .filter(Boolean)
+    .map(employee => atualizadosPorId.get(employee.id) || employee);
   const idsExistentes = new Set(cadastro.map(employee => employee.id));
   return {
     funcionarios: [...cadastro, ...plan.colaboradoresNovos.filter(employee => !idsExistentes.has(employee.id))],

@@ -267,6 +267,8 @@ export interface GrupoEquipe {
   id: string;
   nome: string;
   responsavel: string;
+  /** Matrícula do encarregado; chave estável do vínculo vindo do efetivo. */
+  liderMatricula?: string;
   frenteServico: string;
   obraId?: string;
   funcionarioIds: string[];

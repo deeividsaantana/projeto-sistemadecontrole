@@ -90,7 +90,7 @@ interface ControlePresencaTabProps {
     funcionarios: Funcionario[],
     gruposEquipe: GrupoEquipe[],
     resumo: TeamSyncPlan['resumo'],
-  ) => void;
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 type View = 'ao-vivo' | 'equipes' | 'registros' | 'historico';
@@ -436,14 +436,24 @@ export default function ControlePresencaTab({
     }
   };
 
-  const confirmarSincronizacao = () => {
+  const confirmarSincronizacao = async () => {
     if (!syncPlan || !onSyncEquipesPlanilha) return;
+    setSyncBusy(true);
+    setSyncError('');
     const { funcionarios: proximosFuncionarios, gruposEquipe: proximasEquipes } =
       applyTeamSyncPlan(syncPlan, safeFuncionarios, safeGroups);
-    onSyncEquipesPlanilha(proximosFuncionarios, proximasEquipes, syncPlan.resumo);
-    setSyncPlan(null);
-    setSyncFileName('');
-    setFeedback(`Equipes sincronizadas: ${syncPlan.resumo.criar} criadas, ${syncPlan.resumo.atualizar} atualizadas, ${syncPlan.resumo.desativar} desativadas.`);
+    try {
+      const result = await onSyncEquipesPlanilha(proximosFuncionarios, proximasEquipes, syncPlan.resumo);
+      if (!result.success) {
+        setSyncError(`As equipes foram salvas neste computador, mas o Firebase não foi atualizado: ${result.message}`);
+        return;
+      }
+      setSyncPlan(null);
+      setSyncFileName('');
+      setFeedback(`Equipes sincronizadas no Firebase: ${syncPlan.resumo.criar} criadas, ${syncPlan.resumo.atualizar} atualizadas, ${syncPlan.resumo.desativar} desativadas.`);
+    } finally {
+      setSyncBusy(false);
+    }
   };
 
   const exportExcelRecords = async (records: PresencaApontamento[], reportDate: string, reportTitle: string) => {
@@ -816,7 +826,7 @@ export default function ControlePresencaTab({
             <footer className="flex flex-col gap-3 border-t border-[#ebe7dc] p-5 sm:flex-row sm:justify-end">
               <p className="flex-1 text-xs text-[#65716b]">Equipes fora da planilha ficam inativas, nunca são excluídas. Os links já distribuídos continuam valendo.</p>
               <button type="button" onClick={() => setSyncPlan(null)} className={SECONDARY_BUTTON}>Cancelar</button>
-              <button type="button" onClick={confirmarSincronizacao} className={PRIMARY_BUTTON}><Check className="h-4 w-4" /> Gravar sincronização</button>
+              <button type="button" onClick={() => void confirmarSincronizacao()} disabled={syncBusy} className={PRIMARY_BUTTON}>{syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {syncBusy ? 'Gravando no Firebase' : 'Gravar sincronização'}</button>
             </footer>
           </div>
         </div>

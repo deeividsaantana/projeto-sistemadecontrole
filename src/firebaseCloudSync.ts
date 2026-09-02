@@ -1,6 +1,5 @@
 import {
   doc,
-  deleteDoc,
   getDocFromServer,
   runTransaction,
   setDoc,
@@ -369,8 +368,15 @@ const performFirebaseBackupUpload = async (
     const fullPayload = JSON.stringify(rawItems);
     const contentHash = await hashText(fullPayload);
     const previousIds = previousManifest?.chunks?.[table];
-    const canReuse = previousManifest?.tableHashes?.[table] === contentHash
-      && Array.isArray(previousIds);
+    const hasMatchingPreviousChunks = previousManifest?.tableHashes?.[table] === contentHash
+      && Array.isArray(previousIds)
+      && previousIds.length > 0;
+    const previousChunksExist = hasMatchingPreviousChunks
+      ? (await runWithConcurrency(previousIds.map(documentId => async () => (
+          getDocumentFromServer(database, documentId)
+        )))).every(snapshot => snapshot.exists())
+      : false;
+    const canReuse = hasMatchingPreviousChunks && previousChunksExist;
 
     tableHashes[table] = contentHash;
     totalRecords[table] = rawItems.length;
@@ -446,11 +452,9 @@ const performFirebaseBackupUpload = async (
     FIREBASE_WRITE_TIMEOUT_MS,
   );
 
-  const currentHistoryChunks = new Set(chunks.historyLogs || []);
-  const obsoleteHistoryChunks = (previousManifest?.chunks?.historyLogs || []).filter(id => !currentHistoryChunks.has(id));
-  await runWithConcurrency(obsoleteHistoryChunks.map(documentId => async () => {
-    await deleteDoc(doc(database, CLOUD_COLLECTION, documentId));
-  }));
+  // As regras do Firestore proíbem exclusões pelo navegador para proteger o
+  // histórico operacional. Blocos antigos ficam órfãos e podem ser limpos por
+  // uma rotina administrativa; nunca devem transformar um envio válido em erro.
   await Promise.all([
     setDoc(doc(database, CLOUD_COLLECTION, LEGACY_DOCUMENT_ID), { historyLogs: [] }, { merge: true }),
     setDoc(doc(database, CLOUD_COLLECTION, 'historyLogs'), { value: [], updatedAt }, { merge: true }),
