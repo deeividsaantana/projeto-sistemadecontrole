@@ -120,3 +120,12 @@ test('o envio completo aceita o colaborador incluido depois da montagem da equip
   assert.equal(records.length, 2);
   assert.equal(records.find(record => record.funcionarioId === 'employee-3')?.funcionarioNome, 'Eudes dos Santos Matheus');
 });
+
+test('zerar o dia usa o mesmo identificador de reserva criado no envio', () => {
+  // Se o identificador divergir, os envios somem mas a reserva fica: a equipe
+  // continua travada e o link recusa o novo apontamento por duplicidade.
+  assert.equal(__testing.presenceLockId('group-1', '2026-09-02'), __testing.presenceLockId('group-1', '2026-09-02'));
+  assert.notEqual(__testing.presenceLockId('group-1', '2026-09-02'), __testing.presenceLockId('group-1', '2026-09-03'));
+  assert.notEqual(__testing.presenceLockId('group-1', '2026-09-02'), __testing.presenceLockId('group-2', '2026-09-02'));
+  assert.match(__testing.presenceLockId('group-1', '2026-09-02'), /^presence_[0-9a-f]{48}$/);
+});

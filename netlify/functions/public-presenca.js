@@ -8,6 +8,7 @@ import {
   jsonResponse,
   parseJsonBody,
   requestIpHash,
+  requireStaffUser,
   serverTimestamp,
   stableHash,
 } from './_shared/firebase-admin.js';
@@ -264,6 +265,9 @@ const findDayNote = documents => {
   return '';
 };
 
+const PRESENCE_LOCKS_COLLECTION = 'sistemarenea_presence_locks';
+const presenceLockId = (grupoId, date) => `presence_${stableHash(`${grupoId}|${date}`).slice(0, 48)}`;
+
 const loadGroupRecordsForDate = async (database, grupoId, date) => {
   const docs = await findGroupSubmissionDocs(database, grupoId, date);
   return docs.flatMap(document => {
@@ -411,6 +415,7 @@ export const __testing = {
   indexGroupHistory,
   buildPresenceRecords,
   filterSubmittedGroups,
+  presenceLockId,
   getPublicConfig,
   resolveGroupEmployeeIds,
   teamMemberDocId,
@@ -423,7 +428,7 @@ export const handler = async event => {
     const method = String(event.httpMethod || 'GET').toUpperCase();
     // GET é somente leitura e não deve abrir uma transação de escrita no
     // Firestore a cada carregamento do link. Escritas continuam protegidas.
-    if (method !== 'GET') {
+    if (method !== 'GET' && method !== 'DELETE') {
       await enforceRateLimit(database, event, `public-presenca-${method}`, 30, 3600);
     }
 
@@ -611,7 +616,37 @@ export const handler = async event => {
       });
     }
 
-    if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST, PATCH' });
+    // Zerar o dia de uma equipe. Diferente do restante deste arquivo, que é
+    // público e autenticado por token de link, esta ação exige conta de equipe:
+    // ela remove a reserva do dia e libera um novo envio pelo link.
+    if (method === 'DELETE') {
+      const staff = await requireStaffUser(event);
+      const grupoId = cleanString(event.queryStringParameters?.grupoId, 160);
+      const date = cleanString(event.queryStringParameters?.data, 10);
+      if (!grupoId || !isIsoDate(date)) {
+        return jsonResponse(400, { success: false, message: 'Informe a equipe e a data a zerar.' });
+      }
+      const docs = await findGroupSubmissionDocs(database, grupoId, date);
+      const registrosRemovidos = docs.reduce(
+        (total, document) => total + (Array.isArray(document.data()?.payload?.records) ? document.data().payload.records.length : 0),
+        0,
+      );
+      // A reserva sai junto com os envios. Apagar só os envios deixaria a
+      // equipe travada: o link continuaria recusando o dia por duplicidade.
+      const batch = database.batch();
+      docs.forEach(document => batch.delete(document.ref));
+      batch.delete(database.collection(PRESENCE_LOCKS_COLLECTION).doc(presenceLockId(grupoId, date)));
+      await batch.commit();
+      return jsonResponse(200, {
+        success: true,
+        data: { grupoId, data: date, enviosRemovidos: docs.length, registrosRemovidos, zeradoPor: cleanString(staff.email, 320) },
+        message: docs.length
+          ? `Dia ${date} zerado: ${registrosRemovidos} registro(s) removido(s). A equipe pode enviar de novo.`
+          : `Nenhum envio encontrado em ${date}; a reserva do dia foi liberada mesmo assim.`,
+      });
+    }
+
+    if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST, PATCH, DELETE' });
     const body = parseJsonBody(event);
 
     // Remoção do vínculo da equipe. O cadastro do colaborador permanece ativo;
@@ -840,7 +875,7 @@ export const handler = async event => {
       }
       const stableSubmissionId = `presence_${stableHash(idempotencyKey).slice(0, 48)}`;
       const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token, submissionId: stableSubmissionId });
-      const lockId = `presence_${stableHash(`${group.id}|${date}`).slice(0, 48)}`;
+      const lockId = presenceLockId(group.id, date);
       const lockRef = database.collection('sistemarenea_presence_locks').doc(lockId);
       const submissionRef = database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`);
       const submission = {

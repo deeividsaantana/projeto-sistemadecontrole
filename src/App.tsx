@@ -130,6 +130,7 @@ import {
 } from './firebasePublicSubmissions';
 import {
   addPublicPresenceMember,
+  resetPresenceDay,
   removePublicPresenceMember,
   updatePublicPresenceDayNote,
   loadPublicApontamentoConfig,
@@ -2746,6 +2747,30 @@ export default function App() {
 
   // Sincronização das equipes com a planilha do efetivo. Chega já conferida
   // pelo administrativo: aqui só grava, registra e sincroniza.
+  // Zera o dia de uma equipe no serviço e limpa o retrato local. A reserva do
+  // dia sai junto, senão o link continuaria recusando um novo envio.
+  const handleResetPresencaDia = async (grupoId: string, data: string) => {
+    try {
+      const resposta = await resetPresenceDay(grupoId, data);
+      const restantes = presencasLink.filter(item => !(item.grupoId === grupoId && item.data === data));
+      const grupo = gruposEquipe.find(item => item.id === grupoId);
+      saveAndLog(
+        'Controle de Presença',
+        'Excluiu',
+        `Zerou o apontamento de ${data} da equipe "${grupo?.nome || grupoId}"; a equipe pode enviar de novo pelo link.`,
+        historyLogs,
+        () => {
+          setPresencasLink(restantes);
+          writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(restantes));
+        },
+      );
+      void uploadLocalSnapshotToFirebase();
+      return resposta;
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível zerar o dia.' };
+    }
+  };
+
   const handleSyncEquipesPlanilha = async (
     proximosFuncionarios: Funcionario[],
     proximasEquipes: GrupoEquipe[],
@@ -4477,6 +4502,7 @@ export default function App() {
                 onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
                 onUpdatePresencaLink={handleUpdatePresencaLink}
                 onDeletePresencaLink={handleDeletePresencaLink}
+                onResetPresencaDia={handleResetPresencaDia}
                 onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
               />
             )}

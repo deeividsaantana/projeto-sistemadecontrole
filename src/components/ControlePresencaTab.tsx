@@ -85,6 +85,8 @@ interface ControlePresencaTabProps {
   onDeleteGrupoEquipe: (id: string) => void;
   onUpdatePresencaLink: (id: string, status: PresencaStatus, observacao: string, motivo: string) => void;
   onDeletePresencaLink?: (ids: string[]) => void;
+  /** Apaga os envios e a reserva do dia, liberando um novo apontamento. */
+  onResetPresencaDia?: (grupoId: string, data: string) => Promise<{ success: boolean; message: string }>;
   /** Grava a sincronização já conferida pelo administrativo. */
   onSyncEquipesPlanilha?: (
     funcionarios: Funcionario[],
@@ -170,6 +172,7 @@ export default function ControlePresencaTab({
   onDeleteGrupoEquipe,
   onUpdatePresencaLink,
   onDeletePresencaLink,
+  onResetPresencaDia,
   onSyncEquipesPlanilha,
 }: ControlePresencaTabProps) {
   const today = localToday();
@@ -203,6 +206,7 @@ export default function ControlePresencaTab({
   const [syncFileName, setSyncFileName] = useState('');
   const [syncError, setSyncError] = useState('');
   const [syncBusy, setSyncBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   const createEmptyGroup = (): GrupoEquipe => ({
     id: '',
@@ -453,6 +457,27 @@ export default function ControlePresencaTab({
       setFeedback(`Equipes sincronizadas no Firebase: ${syncPlan.resumo.criar} criadas, ${syncPlan.resumo.atualizar} atualizadas, ${syncPlan.resumo.desativar} desativadas.`);
     } finally {
       setSyncBusy(false);
+    }
+  };
+
+  // Zerar o dia é a saída quando o apontamento sai errado: sem apagar a
+  // reserva, a equipe fica travada e não consegue reenviar pelo link.
+  const zerarDia = async () => {
+    if (!onResetPresencaDia || recordGroup === 'todos' || resetBusy) return;
+    const equipe = safeGroups.find(group => group.id === recordGroup);
+    const quantos = safeRecords.filter(item => item.grupoId === recordGroup && item.data === recordDate).length;
+    const confirmado = window.confirm(
+      `Zerar o dia ${recordDate} da equipe "${equipe?.nome || recordGroup}"?\n\n`
+      + `${quantos} registro(s) serão apagados e a equipe poderá enviar a presença de novo pelo link.\n\n`
+      + 'Esta ação não pode ser desfeita.',
+    );
+    if (!confirmado) return;
+    setResetBusy(true);
+    try {
+      const resposta = await onResetPresencaDia(recordGroup, recordDate);
+      setFeedback(resposta.message);
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -727,6 +752,18 @@ export default function ControlePresencaTab({
             <select value={recordGroup} onChange={event => setRecordGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{safeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select>
             <select value={recordStatus} onChange={event => setRecordStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select>
             <div className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={recordSearch} onChange={event => setRecordSearch(event.target.value)} placeholder="Buscar colaborador, função ou responsável" className={`${FIELD} pl-10`} /></div>
+            {onResetPresencaDia && (
+              <button
+                type="button"
+                onClick={() => void zerarDia()}
+                disabled={recordGroup === 'todos' || resetBusy}
+                title={recordGroup === 'todos' ? 'Escolha uma equipe para zerar o dia' : 'Apaga o apontamento do dia e libera novo envio pelo link'}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 text-sm font-bold text-rose-800 transition hover:border-rose-400 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {resetBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                Zerar o dia
+              </button>
+            )}
             <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void exportExcel()} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={() => void exportPdf()} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{selectedRecordIds.length > 0 && <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800"><Trash2 className="h-4 w-4" /> Excluir ({selectedRecordIds.length})</button>}</div>
           </div>
           <label className="flex min-h-11 items-center gap-2 px-1 text-xs font-bold text-[#53605a]"><input type="checkbox" checked={filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id))} onChange={event => setSelectedRecordIds(event.target.checked ? filteredRecords.map(record => record.id) : [])} className="h-4 w-4 accent-emerald-700" /> Selecionar registros filtrados</label>

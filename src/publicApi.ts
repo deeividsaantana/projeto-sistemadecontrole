@@ -192,6 +192,26 @@ export const updatePublicPresenceDayNote = async (
   return { success: true, message: response.message || 'Observação registrada.', observacaoDia: response.data?.observacaoDia ?? observacaoDia };
 };
 
+/**
+ * Zera o dia de uma equipe: apaga os envios e a reserva, liberando um novo
+ * apontamento pelo link. Exige conta de equipe — não é ação de link público.
+ */
+export const resetPresenceDay = async (grupoId: string, data: string) => {
+  const { auth } = await import('./firebase');
+  const user = auth.currentUser;
+  if (!user) throw new Error('Faça login novamente para zerar o dia.');
+  const idToken = await user.getIdToken();
+  const response = await callPublicApi<{ enviosRemovidos: number; registrosRemovidos: number }>(
+    `/.netlify/functions/public-presenca?grupoId=${encodeURIComponent(grupoId)}&data=${encodeURIComponent(data)}`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${idToken}` } },
+  );
+  return {
+    success: true,
+    message: response.message || 'Dia zerado.',
+    registrosRemovidos: response.data?.registrosRemovidos || 0,
+  };
+};
+
 export interface PublicApontamentoConfig {
   ramos: ApontamentoRamo[];
 }
