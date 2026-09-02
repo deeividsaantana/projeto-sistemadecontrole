@@ -69,6 +69,7 @@ interface Props {
     grupo: GrupoEquipe,
     data: string,
     items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>,
+    observacaoDia: string,
   ) => Promise<SubmissionResult>;
   onUpdateRecord: (
     grupoId: string,
@@ -77,6 +78,8 @@ interface Props {
     observacao: string,
   ) => Promise<RecordUpdateResult>;
   onAddMember?: (grupoId: string, funcionarioId: string) => Promise<MemberAddResult>;
+  observacaoDia?: string;
+  onSaveDayNote?: (grupoId: string, observacaoDia: string) => Promise<{ success: boolean; message: string }>;
 }
 
 type ItemState = { status?: PresencaStatus; observacao: string };
@@ -155,6 +158,8 @@ export default function PresencaTempoRealPublica({
   onSubmitPresenca,
   onUpdateRecord,
   onAddMember,
+  observacaoDia = '',
+  onSaveDayNote,
 }: Props) {
   const generalLink = isGeneralToken(token);
   const [date, setDate] = useState(todayInput());
@@ -185,6 +190,10 @@ export default function PresencaTempoRealPublica({
   const [addingEmployeeId, setAddingEmployeeId] = useState('');
   const [addError, setAddError] = useState('');
   const [addFeedback, setAddFeedback] = useState('');
+  // Observação do dia: vale para a equipe toda, não para uma pessoa.
+  const [dayNote, setDayNote] = useState('');
+  const [dayNoteSaving, setDayNoteSaving] = useState(false);
+  const [dayNoteFeedback, setDayNoteFeedback] = useState('');
 
   useEffect(() => {
     setDraftHydrated(false);
@@ -308,6 +317,27 @@ export default function PresencaTempoRealPublica({
 
   const canAddMembers = Boolean(onAddMember && group && !viewingPastDay);
 
+  useEffect(() => {
+    setDayNote(observacaoDia);
+    setDayNoteFeedback('');
+  }, [observacaoDia, dataSelecionada]);
+
+  const dayNoteDirty = dayNote.trim() !== (observacaoDia || '').trim();
+
+  const saveDayNote = async () => {
+    if (!group || !onSaveDayNote || dayNoteSaving) return;
+    setDayNoteSaving(true);
+    try {
+      const response = await onSaveDayNote(group.id, dayNote.trim());
+      setDayNoteFeedback(response.message);
+    } catch (caught) {
+      setDayNoteFeedback(caught instanceof Error ? caught.message : 'Não foi possível salvar a observação.');
+    } finally {
+      setDayNoteSaving(false);
+    }
+  };
+
+
   const addMember = async (employee: FuncionarioDisponivel) => {
     if (!group || !onAddMember || addingEmployeeId) return;
     setAddingEmployeeId(employee.id);
@@ -395,7 +425,7 @@ export default function PresencaTempoRealPublica({
         funcionarioId: employee.id,
         status: items[employee.id].status as PresencaStatus,
         observacao: items[employee.id].observacao.trim(),
-      })));
+      })), dayNote.trim());
       if (!response.success) {
         setError(response.message);
         return;
@@ -410,6 +440,26 @@ export default function PresencaTempoRealPublica({
       setSubmitting(false);
     }
   };
+
+  const dayNoteSection = group && onSaveDayNote && !viewingPastDay ? (
+    <section className="presence-public__daynote">
+      <label htmlFor="presenca-observacao-dia">Observação do dia</label>
+      <textarea
+        id="presenca-observacao-dia"
+        rows={2}
+        value={dayNote}
+        disabled={dayNoteSaving}
+        onChange={event => { setDayNote(event.target.value); setDayNoteFeedback(''); }}
+        placeholder="Chuva, parada de frente, acidente… vale para a equipe toda"
+      />
+      {alreadySubmitted && dayNoteDirty && (
+        <button type="button" onClick={() => void saveDayNote()} disabled={dayNoteSaving}>
+          {dayNoteSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar observação do dia
+        </button>
+      )}
+      {dayNoteFeedback && <p role="status">{dayNoteFeedback}</p>}
+    </section>
+  ) : null;
 
   // O bloco de inclusão acompanha as duas telas de lista — antes e depois do
   // envio — porque alguém pode chegar na frente a qualquer momento do dia.
@@ -669,6 +719,13 @@ export default function PresencaTempoRealPublica({
             <div><strong>{counts.Atestado || 0}</strong><span>Atestados</span></div>
             <div><strong>{(counts['Falta justificada'] || 0) + (counts.Férias || 0) + (counts.Afastado || 0) + (counts.Outro || 0)}</strong><span>Outros</span></div>
           </div>
+          {dayNoteSection}
+          {viewingPastDay && observacaoDia && (
+            <section className="presence-public__daynote presence-public__daynote--readonly">
+              <label>Observação do dia</label>
+              <p>{observacaoDia}</p>
+            </section>
+          )}
           {addMemberSection}
           <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar por nome ou matrícula" aria-label="Buscar colaborador" /></div>
           <p className="presence-public__search-meta" aria-live="polite">{viewingPastDay ? 'Dia anterior: consulta apenas. Alterações somente no dia de hoje.' : 'Toque em uma situação para atualizar na hora'}</p>
@@ -754,6 +811,7 @@ export default function PresencaTempoRealPublica({
             ))}
           </section>
         )}
+        {dayNoteSection}
         {addMemberSection}
         <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador" aria-label="Buscar colaborador" /></div>
         <form onSubmit={submit} className="presence-public__form">

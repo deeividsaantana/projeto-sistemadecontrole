@@ -76,6 +76,8 @@ export interface PublicPresenceConfig {
   meusRegistros?: PresencaApontamento[];
   datasDisponiveis?: string[];
   dataSelecionada?: string;
+  /** Observação do dia inteiro da equipe, quando houver. */
+  observacaoDia?: string;
   dataAtual?: string;
 }
 
@@ -95,8 +97,9 @@ export const submitPublicPresence = async (
   grupoId: string,
   data: string,
   items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>,
+  observacaoDia = '',
 ) => {
-  const payload = { token, grupoId, data, items };
+  const payload = { token, grupoId, data, items, observacaoDia };
   const response = await callPublicApi<{ submissionId: string; createdAtIso: string }>('/.netlify/functions/public-presenca', {
     method: 'POST',
     headers: { 'X-Idempotency-Key': stableRequestKey('presenca', payload) },
@@ -151,6 +154,21 @@ export const addPublicPresenceMember = async (
     message: response.message || 'Colaborador incluído na equipe.',
     funcionario: response.data?.funcionario,
   };
+};
+
+/** Registra ou apaga a observação do dia da equipe, sem tocar em situações. */
+export const updatePublicPresenceDayNote = async (
+  token: string,
+  grupoId: string,
+  observacaoDia: string,
+) => {
+  const payload = { action: 'observacao-dia', token, grupoId, observacaoDia };
+  const response = await callPublicApi<{ observacaoDia: string }>('/.netlify/functions/public-presenca', {
+    method: 'PATCH',
+    headers: { 'X-Idempotency-Key': stableRequestKey('presenca-nota-dia', payload) },
+    body: JSON.stringify(payload),
+  });
+  return { success: true, message: response.message || 'Observação registrada.', observacaoDia: response.data?.observacaoDia ?? observacaoDia };
 };
 
 export interface PublicApontamentoConfig {

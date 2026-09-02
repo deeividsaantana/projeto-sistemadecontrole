@@ -18,6 +18,7 @@ import {
 import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
 import {
   addPublicPresenceMember,
+  updatePublicPresenceDayNote,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
   reservePublicTicketNumberViaApi,
@@ -52,6 +53,7 @@ export default function PublicLinksApp() {
   const [datasDisponiveis, setDatasDisponiveis] = useState<string[]>([]);
   const [dataSelecionada, setDataSelecionada] = useState('');
   const [dataAtual, setDataAtual] = useState('');
+  const [observacaoDia, setObservacaoDia] = useState('');
   const [presenceLoading, setPresenceLoading] = useState(Boolean(presenceToken));
   const [presenceError, setPresenceError] = useState('');
 
@@ -77,6 +79,7 @@ export default function PublicLinksApp() {
       setDatasDisponiveis(config.datasDisponiveis || []);
       setDataSelecionada(config.dataSelecionada || '');
       setDataAtual(config.dataAtual || '');
+      setObservacaoDia(config.observacaoDia || '');
     } catch (error) {
       setPresenceError(error instanceof Error ? error.message : 'Não foi possível carregar as equipes.');
     } finally {
@@ -161,14 +164,20 @@ export default function PublicLinksApp() {
           datasDisponiveis={datasDisponiveis}
           dataSelecionada={dataSelecionada}
           dataAtual={dataAtual}
+          observacaoDia={observacaoDia}
           onSelectDate={data => void reloadPresence(data)}
           isLoadingCloud={presenceLoading}
           loadError={presenceError}
           onRetry={() => void reloadPresence()}
-          onSubmitPresenca={(grupo, data, items) => submitPublicPresence(presenceToken, grupo.id, data, items)}
+          onSubmitPresenca={(grupo, data, items, nota) => submitPublicPresence(presenceToken, grupo.id, data, items, nota)}
           onUpdateRecord={(grupoId, funcionarioId, status, observacao) =>
             updatePublicPresenceRecord(presenceToken, grupoId, funcionarioId, status, observacao)}
           onAddMember={(grupoId, funcionarioId) => addPublicPresenceMember(presenceToken, grupoId, funcionarioId)}
+          onSaveDayNote={async (grupoId, nota) => {
+            const resposta = await updatePublicPresenceDayNote(presenceToken, grupoId, nota);
+            setObservacaoDia(resposta.observacaoDia);
+            return resposta;
+          }}
         />
       </Suspense>
     );

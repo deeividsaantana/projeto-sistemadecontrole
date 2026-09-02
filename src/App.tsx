@@ -130,6 +130,7 @@ import {
 } from './firebasePublicSubmissions';
 import {
   addPublicPresenceMember,
+  updatePublicPresenceDayNote,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
   reservePublicTicketNumberViaApi,
@@ -368,6 +369,7 @@ export default function App() {
   const [externalDatasDisponiveis, setExternalDatasDisponiveis] = useState<string[]>([]);
   const [externalDataSelecionada, setExternalDataSelecionada] = useState('');
   const [externalDataAtual, setExternalDataAtual] = useState('');
+  const [externalObservacaoDia, setExternalObservacaoDia] = useState('');
   const [isExternalApontamentoLoading, setIsExternalApontamentoLoading] = useState<boolean>(Boolean(getApontamentoTokenFromUrl()));
   const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
   const [externalTicketLoadError, setExternalTicketLoadError] = useState('');
@@ -1112,6 +1114,7 @@ export default function App() {
       setExternalDatasDisponiveis(config.datasDisponiveis || []);
       setExternalDataSelecionada(config.dataSelecionada || '');
       setExternalDataAtual(config.dataAtual || '');
+      setExternalObservacaoDia(config.observacaoDia || '');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Não foi possível carregar as equipes.';
       setExternalPresenceLoadError(message);
@@ -2761,12 +2764,23 @@ export default function App() {
   const handleSubmitPresencaLink = async (
     grupo: GrupoEquipe,
     data: string,
-    items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>
+    items: Array<{ funcionarioId: string; status: PresencaStatus; observacao: string }>,
+    observacaoDia = '',
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      return await submitPublicPresence(externalPresenceToken, grupo.id, data, items);
+      return await submitPublicPresence(externalPresenceToken, grupo.id, data, items, observacaoDia);
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Não foi possível enviar a presença.' };
+    }
+  };
+
+  const handleSaveExternalDayNote = async (grupoId: string, observacao: string) => {
+    try {
+      const resposta = await updatePublicPresenceDayNote(externalPresenceToken, grupoId, observacao);
+      setExternalObservacaoDia(resposta.observacaoDia);
+      return resposta;
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível salvar a observação.' };
     }
   };
 
@@ -4071,6 +4085,7 @@ export default function App() {
           datasDisponiveis={externalDatasDisponiveis}
           dataSelecionada={externalDataSelecionada}
           dataAtual={externalDataAtual}
+          observacaoDia={externalObservacaoDia}
           onSelectDate={data => void reloadExternalPresence(data)}
           isLoadingCloud={isExternalPresenceLoading}
           loadError={externalPresenceLoadError}
@@ -4078,6 +4093,7 @@ export default function App() {
           onSubmitPresenca={handleSubmitPresencaLink}
           onUpdateRecord={handleUpdateExternalPresencaRecord}
           onAddMember={handleAddExternalPresencaMember}
+          onSaveDayNote={handleSaveExternalDayNote}
         />
       </Suspense>
     );

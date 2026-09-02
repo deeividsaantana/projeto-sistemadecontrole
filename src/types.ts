@@ -304,6 +304,8 @@ export interface HistoricoEdicaoPresencaLink {
 
 export interface PresencaApontamento {
   id: string;
+  /** Observação do dia inteiro da equipe (chuva, parada de frente). */
+  observacaoDia?: string;
   data: string; // YYYY-MM-DD
   horaEnvio: string; // HH:MM
   grupoId: string;

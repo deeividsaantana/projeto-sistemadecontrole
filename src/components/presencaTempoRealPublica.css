@@ -1082,6 +1082,69 @@
   margin: 10px 0 0;
 }
 
+/* Observacao do dia inteiro: chuva, parada de frente. Nao e sobre ninguem em
+   especial, entao fica fora dos cartoes de colaborador. */
+.presence-public__daynote {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 4px;
+  padding: 14px;
+  border: 1px solid var(--presence-line);
+  border-radius: 12px;
+  background: var(--presence-surface);
+}
+
+.presence-public__daynote label {
+  color: var(--presence-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.presence-public__daynote textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--presence-line);
+  border-radius: 10px;
+  color: var(--presence-ink);
+  font-size: 14px;
+  resize: vertical;
+  background: var(--presence-surface);
+}
+
+.presence-public__daynote textarea:focus-visible {
+  border-color: var(--presence-green);
+  outline: 0;
+}
+
+.presence-public__daynote button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--presence-green-strong);
+}
+
+.presence-public__daynote p {
+  margin: 0;
+  color: var(--presence-green-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.presence-public__daynote--readonly p {
+  color: var(--presence-ink);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .presence-public *,
   .presence-public *::before,

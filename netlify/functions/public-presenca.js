@@ -244,6 +244,18 @@ const findGroupSubmissionDocs = async (database, grupoId, date) => {
   });
 };
 
+// Observação do dia inteiro, da equipe: chuva, parada de frente, acidente.
+// Vive no envio, não no colaborador, porque não é sobre ninguém em especial.
+const findDayNote = documents => {
+  for (const document of documents) {
+    const data = typeof document.data === 'function' ? document.data() : document;
+    if (data?.kind !== 'presence') continue;
+    const nota = cleanString(data?.payload?.observacaoDia, 600);
+    if (nota) return nota;
+  }
+  return '';
+};
+
 const loadGroupRecordsForDate = async (database, grupoId, date) => {
   const docs = await findGroupSubmissionDocs(database, grupoId, date);
   return docs.flatMap(document => {
@@ -260,6 +272,7 @@ const HISTORY_DAYS_LIMIT = 30;
 
 const indexGroupHistory = documents => {
   const byDate = new Map();
+  const notesByDate = new Map();
   documents.forEach(document => {
     const data = typeof document.data === 'function' ? document.data() : document;
     if (data?.kind !== 'presence') return;
@@ -267,9 +280,11 @@ const indexGroupHistory = documents => {
     if (!isIsoDate(date)) return;
     const records = Array.isArray(data?.payload?.records) ? data.payload.records : [];
     byDate.set(date, [...(byDate.get(date) || []), ...records]);
+    const nota = cleanString(data?.payload?.observacaoDia, 600);
+    if (nota) notesByDate.set(date, nota);
   });
   const datas = [...byDate.keys()].sort().reverse().slice(0, HISTORY_DAYS_LIMIT);
-  return { byDate, datas };
+  return { byDate, notesByDate, datas };
 };
 
 const loadGroupHistory = async (database, grupoId) => {
@@ -425,11 +440,13 @@ export const handler = async event => {
       let meusRegistros = [];
       let datasDisponiveis = [];
       let dataSelecionada = today;
+      let observacaoDia = '';
       if (meuGrupo) {
         const history = await loadGroupHistory(database, meuGrupo.id);
         datasDisponiveis = history.datas;
         dataSelecionada = isIsoDate(requestedDate) && history.byDate.has(requestedDate) ? requestedDate : today;
         meusRegistros = history.byDate.get(dataSelecionada) || [];
+        observacaoDia = history.notesByDate.get(dataSelecionada) || '';
       }
       return jsonResponse(200, {
         success: true,
@@ -443,6 +460,7 @@ export const handler = async event => {
           meusRegistros,
           datasDisponiveis,
           dataSelecionada,
+          observacaoDia,
           dataAtual: today,
         },
       }, {
@@ -454,6 +472,45 @@ export const handler = async event => {
       const body = parseJsonBody(event);
       const token = cleanString(body.token, 180);
       const groupId = cleanString(body.grupoId, 160);
+
+      // A observação do dia muda ao longo do turno — a chuva chega às 14h.
+      // Editá-la não toca em situação de ninguém.
+      if (cleanString(body.action, 40) === 'observacao-dia') {
+        const observacaoDia = cleanString(body.observacaoDia, 600);
+        if (!token || !groupId) {
+          return jsonResponse(400, { success: false, message: 'Dados da observação incompletos.' });
+        }
+        const idempotencyKeyNota = assertIdempotencyKey(event, { required: true });
+        const contextoNota = {
+          database,
+          organizationId: 'public-presenca',
+          userId: stableHash(token).slice(0, 32),
+          requestId: event.headers?.['x-request-id'] || '',
+        };
+        return await withIdempotency(event, contextoNota, idempotencyKeyNota, async () => {
+          const date = todayInSaoPaulo();
+          const snapshot = await loadPresenceSnapshot(database);
+          if (!activeGroupsForToken(snapshot, token).some(item => item.id === groupId)) {
+            return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
+          }
+          const docs = await findGroupSubmissionDocs(database, groupId, date);
+          if (docs.length === 0) {
+            return jsonResponse(404, { success: false, message: 'Envie o apontamento da equipe antes de registrar a observação do dia.' });
+          }
+          await docs[0].ref.update({
+            'payload.observacaoDia': observacaoDia,
+            status: 'pending',
+            updatedAt: serverTimestamp(),
+            updatedAtIso: new Date().toISOString(),
+          });
+          return jsonResponse(200, {
+            success: true,
+            data: { observacaoDia },
+            message: observacaoDia ? 'Observação do dia registrada.' : 'Observação do dia removida.',
+          });
+        });
+      }
+
       const funcionarioId = cleanString(body.funcionarioId, 160);
       const status = cleanString(body.status, 40);
       const observacao = cleanString(body.observacao, 500);
@@ -703,7 +760,13 @@ export const handler = async event => {
         createdAt: serverTimestamp(),
         createdAtIso,
         sourceIpHash: requestIpHash(event),
-        payload: { grupoId: group.id, grupoNome: cleanString(group.nome, 160), data: date, records },
+        payload: {
+        grupoId: group.id,
+        grupoNome: cleanString(group.nome, 160),
+        data: date,
+        observacaoDia: cleanString(body.observacaoDia, 600),
+        records,
+      },
       };
       try {
         // O bloqueio e a submissão nascem na mesma transação. Assim não existe
