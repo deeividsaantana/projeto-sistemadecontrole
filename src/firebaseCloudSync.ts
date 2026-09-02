@@ -455,10 +455,15 @@ const performFirebaseBackupUpload = async (
   // As regras do Firestore proíbem exclusões pelo navegador para proteger o
   // histórico operacional. Blocos antigos ficam órfãos e podem ser limpos por
   // uma rotina administrativa; nunca devem transformar um envio válido em erro.
-  await Promise.all([
+  const compatibilityWrites = await Promise.allSettled([
     setDoc(doc(database, CLOUD_COLLECTION, LEGACY_DOCUMENT_ID), { historyLogs: [] }, { merge: true }),
     setDoc(doc(database, CLOUD_COLLECTION, 'historyLogs'), { value: [], updatedAt }, { merge: true }),
   ]);
+  if (compatibilityWrites.some(result => result.status === 'rejected')) {
+    // O manifesto v2 já foi confirmado. Esses espelhos existem apenas para
+    // versões antigas e uma recusa neles não invalida o backup atual.
+    console.warn('Backup v2 confirmado; não foi possível atualizar um espelho legado do Firebase.');
+  }
 
   return {
     updatedAt,
