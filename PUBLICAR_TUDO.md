@@ -8,6 +8,15 @@ O arquivo `PUBLICAR_TUDO.cmd` concentra configuração, teste e publicação.
 2. Informe o e-mail que será administrador.
 3. Quando solicitado, baixe a conta de serviço Firebase e arraste o arquivo
    JSON para a janela.
+4. Informe os dados do app web do Firebase que o assistente pedir. Eles ficam em
+   *Configurações do projeto → Geral → Seus apps → app da Web → Configuração do
+   SDK*. O assistente sugere o que consegue deduzir; normalmente só o
+   `messagingSenderId` e o `appId` precisam ser digitados. São valores públicos,
+   guardados em `.publicar-tudo.local.json` e reaproveitados nas próximas vezes.
+
+   Isto não é opcional: o pacote do navegador é compilado nesta máquina, e sem
+   esses valores em `.env.local` o sistema publica apontando para um projeto
+   Firebase antigo — abre normalmente, e nenhum dado da obra aparece.
 4. Conclua os logins oficiais do Netlify e Firebase que abrirem no navegador.
 
 O assistente executa automaticamente:

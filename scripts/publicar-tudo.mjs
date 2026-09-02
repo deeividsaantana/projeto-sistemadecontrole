@@ -226,6 +226,76 @@ const ensureSecretOutsideRepository = secretPath => {
   return resolvedPath;
 };
 
+const FIREBASE_WEB_ENV_PATH = path.join(ROOT, '.env.local');
+
+// Campos do app web do Firebase. Os três primeiros saem do próprio projeto; os
+// dois últimos só existem no console e precisam ser informados uma vez.
+const FIREBASE_WEB_FIELDS = [
+  { key: 'VITE_FIREBASE_API_KEY', label: 'Chave da API web', fallback: () => FIREBASE_WEB_API_KEY },
+  { key: 'VITE_FIREBASE_AUTH_DOMAIN', label: 'Domínio de autenticação', fallback: () => `${FIREBASE_PROJECT_ID}.firebaseapp.com` },
+  { key: 'VITE_FIREBASE_DATABASE_URL', label: 'URL do Realtime Database', fallback: () => FIREBASE_DATABASE_URL },
+  { key: 'VITE_FIREBASE_PROJECT_ID', label: 'ID do projeto', fallback: () => FIREBASE_PROJECT_ID },
+  { key: 'VITE_FIREBASE_STORAGE_BUCKET', label: 'Bucket do Storage', fallback: () => `${FIREBASE_PROJECT_ID}.firebasestorage.app` },
+  { key: 'VITE_FIREBASE_MESSAGING_SENDER_ID', label: 'ID do remetente (messagingSenderId)', fallback: () => '' },
+  { key: 'VITE_FIREBASE_APP_ID', label: 'ID do app (appId)', fallback: () => '' },
+  { key: 'VITE_FIREBASE_MEASUREMENT_ID', label: 'ID de medição (opcional)', fallback: () => '', optional: true },
+];
+
+const readFirebaseWebConfig = async prompt => {
+  const stored = (localConfig.firebaseWebConfig && typeof localConfig.firebaseWebConfig === 'object')
+    ? localConfig.firebaseWebConfig
+    : {};
+  const resolved = {};
+  let asked = false;
+  for (const field of FIREBASE_WEB_FIELDS) {
+    const known = String(process.env[field.key] || stored[field.key] || '').trim();
+    if (known) {
+      resolved[field.key] = known;
+      continue;
+    }
+    const suggestion = field.fallback();
+    if (suggestion || field.optional) {
+      resolved[field.key] = suggestion;
+      continue;
+    }
+    if (!asked) {
+      asked = true;
+      console.log('\nO navegador precisa saber com qual projeto Firebase falar. Sem estes');
+      console.log('valores o sistema abre vazio, conversando com um projeto que não é o da obra.');
+      console.log(`Copie de: https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID}/settings/general`);
+      console.log('em "Seus apps" → app da Web → Configuração do SDK.');
+    }
+    let value = '';
+    while (!value) {
+      value = String(await prompt.question(`\n${field.label}: `)).trim();
+      if (!value) warn('Este valor é obrigatório.');
+    }
+    resolved[field.key] = value;
+  }
+  return resolved;
+};
+
+// O vite build roda nesta máquina e lê .env.local da raiz. Sem escrever aqui, o
+// pacote publicado sai com o projeto embutido, e nenhum dado da obra aparece.
+const writeFirebaseWebEnv = webConfig => {
+  const lines = FIREBASE_WEB_FIELDS
+    .map(field => [field.key, String(webConfig?.[field.key] || '').trim()])
+    .filter(([, value]) => value)
+    .map(([key, value]) => dotenvLine(key, value));
+  if (lines.length === 0) return false;
+  fs.writeFileSync(FIREBASE_WEB_ENV_PATH, `${lines.join('\n')}\n`, { encoding: 'utf8', mode: 0o600 });
+  return true;
+};
+
+const ensureFirebaseWebEnv = () => {
+  const stored = localConfig.firebaseWebConfig;
+  if (!stored || typeof stored !== 'object') {
+    warn('Configuração do app web do Firebase não registrada; execute PUBLICAR_TUDO.cmd --setup para informá-la.');
+    return;
+  }
+  if (writeFirebaseWebEnv(stored)) ok(`Build apontado para o projeto Firebase ${stored.VITE_FIREBASE_PROJECT_ID}.`);
+};
+
 const readServiceAccount = async prompt => {
   const fromJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   const fromBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64
@@ -280,6 +350,7 @@ const configureFirstRun = async () => {
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
   let serviceAccountRaw;
   let adminEmail;
+  let firebaseWebConfig;
   try {
     const defaultEmail = String(process.env.ADMIN_EMAIL || '').split(',')[0].trim();
     const nonInteractive = String(process.env.RENEA_NONINTERACTIVE || '').toLowerCase() === 'true';
@@ -296,7 +367,7 @@ const configureFirstRun = async () => {
     }
     serviceAccountRaw = await readServiceAccount(prompt);
     parseServiceAccount(serviceAccountRaw);
-
+    firebaseWebConfig = await readFirebaseWebConfig(prompt);
   } finally {
     prompt.close();
   }
@@ -308,7 +379,7 @@ const configureFirstRun = async () => {
   }
   runDlx('netlify-cli', ['login']);
   if (!fs.existsSync(path.join(ROOT, '.netlify', 'state.json'))) {
-    runDlx('netlify-cli', ['link', '--id', NETLIFY_SITE_ID]);
+    runDlx('netlify-cli', netlifyLinkArgs());
   } else {
     info('Vínculo local do Netlify já encontrado; mantendo a sessão existente.');
   }
@@ -356,14 +427,19 @@ const configureFirstRun = async () => {
     runDlx('firebase-tools', ['login']);
   }
 
+  localConfig.firebaseWebConfig = firebaseWebConfig;
   fs.writeFileSync(LOCAL_CONFIG_PATH, `${JSON.stringify({
     version: 1,
     firebaseProjectId: FIREBASE_PROJECT_ID,
     adminEmail,
     netlifySiteId: NETLIFY_SITE_ID || readLinkedSiteId() || undefined,
     netlifySiteUrl: NETLIFY_SITE_URL,
+    // Valores públicos do app web, guardados para que as próximas publicações
+    // não voltem a perguntar. Nenhuma chave privada entra aqui.
+    firebaseWebConfig,
     configuredAt: new Date().toISOString(),
   }, null, 2)}\n`, 'utf8');
+  writeFirebaseWebEnv(firebaseWebConfig);
   ok('Configuração inicial concluída e marcada somente neste computador.');
 };
 
@@ -503,6 +579,7 @@ const ensureRepositorySafety = () => {
 };
 
 const runProjectValidation = () => {
+  ensureFirebaseWebEnv();
   info('Validando TypeScript');
   if (packageTools.kind === 'pnpm') commandResult(process.execPath, ['node_modules/typescript/bin/tsc', '--noEmit']);
   else runPackage(['run', 'lint']);
