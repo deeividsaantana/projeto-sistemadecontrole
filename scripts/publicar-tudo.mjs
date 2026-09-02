@@ -238,10 +238,30 @@ const FIREBASE_WEB_FIELDS = [
   { key: 'VITE_FIREBASE_DATABASE_URL', label: 'URL do Realtime Database', fallback: () => FIREBASE_DATABASE_URL },
   { key: 'VITE_FIREBASE_PROJECT_ID', label: 'ID do projeto', fallback: () => FIREBASE_PROJECT_ID },
   { key: 'VITE_FIREBASE_STORAGE_BUCKET', label: 'Bucket do Storage', fallback: () => `${FIREBASE_PROJECT_ID}.firebasestorage.app` },
-  { key: 'VITE_FIREBASE_MESSAGING_SENDER_ID', label: 'ID do remetente (messagingSenderId)', fallback: () => '' },
-  { key: 'VITE_FIREBASE_APP_ID', label: 'ID do app (appId)', fallback: () => '' },
+  {
+    key: 'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    label: 'ID do remetente (messagingSenderId)',
+    fallback: () => '',
+    // Somente dígitos. Colar o rótulo junto ou cortar o número passava batido.
+    validate: value => /^\d{6,}$/.test(value) || 'Deve conter apenas números, como 333772297925.',
+  },
+  {
+    key: 'VITE_FIREBASE_APP_ID',
+    label: 'ID do app (appId)',
+    fallback: () => '',
+    // O formato completo é 1:<remetente>:web:<hash>. Um valor cortado no meio
+    // era aceito em silêncio e seguia para o pacote publicado.
+    validate: value => /^\d+:\d+:web:[0-9a-zA-Z]+$/.test(value)
+      || 'Copie o appId inteiro, no formato 1:333772297925:web:xxxxxxxxxxxx.',
+  },
   { key: 'VITE_FIREBASE_MEASUREMENT_ID', label: 'ID de medição (opcional)', fallback: () => '', optional: true },
 ];
+
+// A validação também vale para o que já está guardado: um valor gravado errado
+// antes desta verificação seria reaproveitado para sempre, em silêncio.
+const invalidWebConfigFields = webConfig => FIREBASE_WEB_FIELDS
+  .filter(field => field.validate)
+  .filter(field => field.validate(String(webConfig?.[field.key] || '').trim()) !== true);
 
 const readFirebaseWebConfig = async prompt => {
   const stored = (localConfig.firebaseWebConfig && typeof localConfig.firebaseWebConfig === 'object')
@@ -250,11 +270,14 @@ const readFirebaseWebConfig = async prompt => {
   const resolved = {};
   let asked = false;
   for (const field of FIREBASE_WEB_FIELDS) {
-    const known = String(process.env[field.key] || stored[field.key] || '').trim();
-    if (known) {
+    // Em --setup o que está guardado é ignorado: e a unica forma de corrigir um
+    // valor digitado errado numa execucao anterior.
+    const known = String(process.env[field.key] || (forceSetup ? '' : stored[field.key]) || '').trim();
+    if (known && (!field.validate || field.validate(known) === true)) {
       resolved[field.key] = known;
       continue;
     }
+    if (known) warn(`${field.label}: valor guardado é inválido e será perguntado de novo.`);
     const suggestion = field.fallback();
     if (suggestion || field.optional) {
       resolved[field.key] = suggestion;
@@ -270,7 +293,15 @@ const readFirebaseWebConfig = async prompt => {
     let value = '';
     while (!value) {
       value = String(await prompt.question(`\n${field.label}: `)).trim();
-      if (!value) warn('Este valor é obrigatório.');
+      if (!value) {
+        warn('Este valor é obrigatório.');
+        continue;
+      }
+      const problema = field.validate ? field.validate(value) : true;
+      if (problema !== true) {
+        warn(problema);
+        value = '';
+      }
     }
     resolved[field.key] = value;
   }
@@ -294,6 +325,13 @@ const ensureFirebaseWebEnv = () => {
   if (!stored || typeof stored !== 'object') {
     warn('Configuração do app web do Firebase não registrada; execute PUBLICAR_TUDO.cmd --setup para informá-la.');
     return;
+  }
+  const invalidos = invalidWebConfigFields(stored);
+  if (invalidos.length > 0) {
+    throw new Error(
+      `Configuração do app web inválida em: ${invalidos.map(field => field.key).join(', ')}. `
+      + 'Execute PUBLICAR_TUDO.cmd --setup para informá-la de novo.',
+    );
   }
   if (writeFirebaseWebEnv(stored)) ok(`Build apontado para o projeto Firebase ${stored.VITE_FIREBASE_PROJECT_ID}.`);
 };
@@ -426,6 +464,10 @@ const configureFirstRun = async () => {
     info('Usando a credencial local do Firebase para publicar regras, sem abrir login adicional.');
   } else {
     info('Autenticando a ferramenta oficial do Firebase');
+    if (refreshNetlifyLogin) {
+      info('Removendo a sessão Firebase antiga para conectar a conta correta');
+      runDlx('firebase-tools', ['logout'], { allowFailure: true });
+    }
     runDlx('firebase-tools', ['login']);
   }
 
