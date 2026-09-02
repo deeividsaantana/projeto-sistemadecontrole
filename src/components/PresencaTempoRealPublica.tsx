@@ -179,6 +179,7 @@ export default function PresencaTempoRealPublica({
   const deferredGroupSearch = useDeferredValue(groupSearch);
   const deferredEmployeeSearch = useDeferredValue(employeeSearch);
   const [items, setItems] = useState<Record<string, ItemState>>({});
+  const currentDayDraftRef = useRef<Record<string, ItemState>>({});
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -219,6 +220,7 @@ export default function PresencaTempoRealPublica({
       setDate(draft.date);
       setSelectedGroupId(draft.selectedGroupId);
       setItems(draft.items);
+      currentDayDraftRef.current = draft.items;
       setResult(draft.result);
     }
     setDraftHydrated(true);
@@ -288,14 +290,6 @@ export default function PresencaTempoRealPublica({
   // naquela data. O rascunho local do dia corrente não é tocado na primeira
   // carga, apenas quando o responsável realmente navega para outro dia.
   const seededDateRef = useRef<string | null>(null);
-  const currentDayDraftRef = useRef<Record<string, ItemState>>({});
-
-  useEffect(() => {
-    if (dataSelecionada && dataSelecionada === dataAtual) {
-      currentDayDraftRef.current = items;
-    }
-  }, [dataAtual, dataSelecionada, items]);
-
   useEffect(() => {
     if (!dataSelecionada) return;
     const previousDate = seededDateRef.current;
@@ -406,6 +400,7 @@ export default function PresencaTempoRealPublica({
       setItems(current => {
         const next = { ...current };
         delete next[employee.id];
+        currentDayDraftRef.current = next;
         return next;
       });
       setRemoveConfirmEmployeeId('');
@@ -453,10 +448,14 @@ export default function PresencaTempoRealPublica({
   };
 
   const setStatus = (employeeId: string, status: PresencaStatus) => {
-    setItems(current => ({
-      ...current,
-      [employeeId]: { observacao: current[employeeId]?.observacao || '', status },
-    }));
+    setItems(current => {
+      const next = {
+        ...current,
+        [employeeId]: { observacao: current[employeeId]?.observacao || '', status },
+      };
+      currentDayDraftRef.current = next;
+      return next;
+    });
     setError('');
     setDraftSaved(false);
     setDraftFeedback('Alterações ainda não enviadas');
@@ -960,7 +959,7 @@ export default function PresencaTempoRealPublica({
                     {PRIMARY_STATUSES.map(status => <button key={status} type="button" onClick={() => setStatus(employee.id, status)} data-selected={selected === status}>{selected === status && <Check className="h-4 w-4" />}{status}</button>)}
                   </div>
                   <select value={SECONDARY_STATUSES.includes(selected as PresencaStatus) ? selected : ''} onChange={event => event.target.value && setStatus(employee.id, event.target.value as PresencaStatus)}><option value="">Outras situações</option>{SECONDARY_STATUSES.map(status => <option key={status}>{status}</option>)}</select>
-                  <textarea value={items[employee.id]?.observacao || ''} onChange={event => { setItems(current => ({ ...current, [employee.id]: { ...current[employee.id], observacao: event.target.value } })); setDraftSaved(false); setDraftFeedback('Alterações ainda não enviadas'); }} rows={2} placeholder="Observação opcional" />
+                  <textarea value={items[employee.id]?.observacao || ''} onChange={event => { const observacao = event.target.value; setItems(current => { const next = { ...current, [employee.id]: { ...current[employee.id], observacao } }; currentDayDraftRef.current = next; return next; }); setDraftSaved(false); setDraftFeedback('Alterações ainda não enviadas'); }} rows={2} placeholder="Observação opcional" />
                   {cardErrors[employee.id] && <div role="alert" className="presence-public__card-error">{cardErrors[employee.id]}</div>}
                   {removeMemberControl(employee)}
                 </article>
