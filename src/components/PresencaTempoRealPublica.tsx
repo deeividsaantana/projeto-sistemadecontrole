@@ -288,20 +288,30 @@ export default function PresencaTempoRealPublica({
   // naquela data. O rascunho local do dia corrente não é tocado na primeira
   // carga, apenas quando o responsável realmente navega para outro dia.
   const seededDateRef = useRef<string | null>(null);
+  const currentDayDraftRef = useRef<Record<string, ItemState>>({});
+
+  useEffect(() => {
+    if (dataSelecionada && dataSelecionada === dataAtual) {
+      currentDayDraftRef.current = items;
+    }
+  }, [dataAtual, dataSelecionada, items]);
+
   useEffect(() => {
     if (!dataSelecionada) return;
     const previousDate = seededDateRef.current;
     seededDateRef.current = dataSelecionada;
     if (previousDate === null || previousDate === dataSelecionada) return;
-    setItems(Object.fromEntries(meusRegistros.map(record => [
-      record.funcionarioId,
-      { status: record.status, observacao: record.observacao || '' },
-    ])));
+    setItems(dataSelecionada === dataAtual
+      ? currentDayDraftRef.current
+      : Object.fromEntries(meusRegistros.map(record => [
+        record.funcionarioId,
+        { status: record.status, observacao: record.observacao || '' },
+      ])));
     setObservacaoDrafts({});
     setSavedFeedback({});
     setCardErrors({});
     setEmployeeSearch('');
-  }, [dataSelecionada, meusRegistros]);
+  }, [dataAtual, dataSelecionada, meusRegistros]);
 
   const alreadySubmitted = meusRegistros.length > 0 || Boolean(result?.submissionId);
   // Dias anteriores abrem em consulta: o serviço público só aceita alteração

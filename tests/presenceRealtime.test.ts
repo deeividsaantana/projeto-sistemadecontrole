@@ -64,6 +64,7 @@ test('rascunho e troca de dia evitam bloqueio perceptivel da interface', () => {
   assert.match(publicPresenceSource, /const draftWriteTimer = window\.setTimeout/);
   assert.doesNotMatch(publicPresenceSource, /setTimeout\(resolve, 1_200\)/);
   assert.match(publicAppSource, /presenceHistory/);
+  assert.match(publicPresenceSource, /currentDayDraftRef/);
   assert.match(publicPresenceSource, /Remover da equipe/);
   assert.match(publicPresenceSource, /Sim, remover/);
 });
