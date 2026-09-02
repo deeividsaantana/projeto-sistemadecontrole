@@ -46,17 +46,26 @@ Netlify, sem editar `scripts/publicar-tudo.mjs`:
 1. Crie o site na conta nova. Ela precisa ser de **outro time**: o limite de
    créditos vale para o time inteiro, então um site novo dentro do mesmo time
    continua bloqueado.
-2. Pegue o `Site ID` em *Site configuration → General → Site details*.
-3. Defina as duas variáveis antes de executar o publicador:
+2. Aponte o publicador para ele. O endereço basta — o vínculo é feito pelo nome
+   do site e o identificador é descoberto sozinho:
 
 ```bat
-set RENEA_NETLIFY_SITE_ID=<site-id-da-conta-nova>
 set RENEA_NETLIFY_SITE_URL=https://<subdominio-novo>.netlify.app
 PUBLICAR_TUDO.cmd
 ```
 
+Com domínio próprio não há nome derivável; nesse caso informe o `Site ID`, que
+fica em *Site configuration → General → Site details*:
+
+```bat
+set RENEA_NETLIFY_SITE_ID=<site-id-da-conta-nova>
+set RENEA_NETLIFY_SITE_URL=https://erp.exemplo.com.br
+PUBLICAR_TUDO.cmd
+```
+
 O publicador grava a escolha em `.publicar-tudo.local.json`, que fica fora do
-Git. Nas próximas vezes basta rodar `PUBLICAR_TUDO.cmd`.
+Git. Nas próximas vezes basta rodar `PUBLICAR_TUDO.cmd`. O site padrão do
+projeto é `https://reneaerp.netlify.app`.
 
 Depois da primeira publicação no site novo, faltam dois passos manuais:
 

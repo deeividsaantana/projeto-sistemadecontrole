@@ -21,10 +21,11 @@ const EXPECTED_REMOTE = 'deeividsaantana/projeto-sistemadecontrole';
 const EXPECTED_REMOTE_URL = `https://github.com/${EXPECTED_REMOTE}.git`;
 const LEGACY_REMOTE = 'deeividsaantana/teste-70';
 // Site de produção padrão. Trocar de conta Netlify não exige mexer no código:
-// defina RENEA_NETLIFY_SITE_ID e RENEA_NETLIFY_SITE_URL, ou grave netlifySiteId
-// e netlifySiteUrl em .publicar-tudo.local.json, que fica fora do Git.
-const DEFAULT_NETLIFY_SITE_ID = '5f1b5305-eaba-4387-9ade-6020fe1fd80c';
-const DEFAULT_NETLIFY_SITE_URL = 'https://controolerenea.netlify.app';
+// defina RENEA_NETLIFY_SITE_URL (ou RENEA_NETLIFY_SITE_ID), ou grave
+// netlifySiteUrl/netlifySiteId em .publicar-tudo.local.json, fora do Git.
+// O identificador é opcional: sem ele o vínculo é feito pelo nome do site, e o
+// id descoberto fica gravado na configuração local para as próximas vezes.
+const DEFAULT_NETLIFY_SITE_URL = 'https://reneaerp.netlify.app';
 
 const readLocalConfig = () => {
   try {
@@ -37,8 +38,25 @@ const readLocalConfig = () => {
 
 const localConfig = readLocalConfig();
 const cleanSiteUrl = value => String(value || '').trim().replace(/\/+$/, '');
-const NETLIFY_SITE_ID = String(process.env.RENEA_NETLIFY_SITE_ID || localConfig.netlifySiteId || DEFAULT_NETLIFY_SITE_ID).trim();
 const NETLIFY_SITE_URL = cleanSiteUrl(process.env.RENEA_NETLIFY_SITE_URL || localConfig.netlifySiteUrl || DEFAULT_NETLIFY_SITE_URL);
+const NETLIFY_SITE_ID = String(process.env.RENEA_NETLIFY_SITE_ID || localConfig.netlifySiteId || '').trim();
+// O nome do site é o subdomínio de netlify.app. Domínio próprio não tem nome
+// derivável, e aí o identificador passa a ser obrigatório.
+const NETLIFY_SITE_NAME = (NETLIFY_SITE_URL.match(/^https:\/\/([^.]+)\.netlify\.app$/) || [])[1] || '';
+
+const rememberNetlifySite = siteId => {
+  if (!siteId || localConfig.netlifySiteId === siteId) return;
+  try {
+    fs.writeFileSync(LOCAL_CONFIG_PATH, `${JSON.stringify({
+      ...localConfig,
+      netlifySiteId: siteId,
+      netlifySiteUrl: NETLIFY_SITE_URL,
+    }, null, 2)}\n`, 'utf8');
+    localConfig.netlifySiteId = siteId;
+  } catch {
+    // Guardar o id é conveniência. Falhar aqui não pode interromper a publicação.
+  }
+};
 const LOCAL_TOOLS_DIR = path.join(ROOT, '.publicar-tudo-tools');
 const LOCAL_NPM_CLI = path.join(LOCAL_TOOLS_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const LOCAL_TOOLS_BIN = path.join(LOCAL_TOOLS_DIR, 'node_modules', '.bin');
@@ -342,7 +360,7 @@ const configureFirstRun = async () => {
     version: 1,
     firebaseProjectId: FIREBASE_PROJECT_ID,
     adminEmail,
-    netlifySiteId: NETLIFY_SITE_ID,
+    netlifySiteId: NETLIFY_SITE_ID || readLinkedSiteId() || undefined,
     netlifySiteUrl: NETLIFY_SITE_URL,
     configuredAt: new Date().toISOString(),
   }, null, 2)}\n`, 'utf8');
@@ -414,15 +432,32 @@ const ensurePublicTicketAccess = () => {
   ok('Link público de tickets protegido por token rotacionável.');
 };
 
-const ensureNetlifyLink = () => {
-  const statePath = path.join(ROOT, '.netlify', 'state.json');
-  let linkedSiteId = '';
+const readLinkedSiteId = () => {
   try {
-    linkedSiteId = String(JSON.parse(fs.readFileSync(statePath, 'utf8')).siteId || '');
-  } catch {}
-  if (linkedSiteId === NETLIFY_SITE_ID) return;
-  info('Vinculando esta pasta ao site Netlify de produção');
-  runDlx('netlify-cli', ['link', '--id', NETLIFY_SITE_ID]);
+    return String(JSON.parse(fs.readFileSync(path.join(ROOT, '.netlify', 'state.json'), 'utf8')).siteId || '');
+  } catch {
+    return '';
+  }
+};
+
+const netlifyLinkArgs = () => {
+  if (NETLIFY_SITE_ID) return ['link', '--id', NETLIFY_SITE_ID];
+  if (NETLIFY_SITE_NAME) return ['link', '--name', NETLIFY_SITE_NAME];
+  throw new Error('Defina RENEA_NETLIFY_SITE_URL com o endereço .netlify.app do site, ou RENEA_NETLIFY_SITE_ID com o identificador.');
+};
+
+const ensureNetlifyLink = () => {
+  const linkedSiteId = readLinkedSiteId();
+  // Sem identificador configurado, um vínculo já existente é aceito: o id real
+  // é lido do próprio vínculo e guardado, e daí em diante a conferência volta a
+  // ser exata. Use --setup para forçar um novo vínculo.
+  if (linkedSiteId && (NETLIFY_SITE_ID ? linkedSiteId === NETLIFY_SITE_ID : !forceSetup)) {
+    rememberNetlifySite(linkedSiteId);
+    return;
+  }
+  info(`Vinculando esta pasta ao site Netlify de produção (${NETLIFY_SITE_URL})`);
+  runDlx('netlify-cli', netlifyLinkArgs());
+  rememberNetlifySite(readLinkedSiteId());
   ok(`Pasta vinculada ao site ${NETLIFY_SITE_URL}.`);
 };
 
@@ -556,10 +591,11 @@ const publish = async () => {
   ok('Push concluído.');
 
   info('Publicando site e funções no Netlify');
+  const deploySiteId = NETLIFY_SITE_ID || readLinkedSiteId();
   runDlx('netlify-cli', [
     'deploy',
     '--prod',
-    '--site', NETLIFY_SITE_ID,
+    ...(deploySiteId ? ['--site', deploySiteId] : []),
     '--message', `PUBLICAR_TUDO-${new Date().toISOString().slice(0, 10)}`,
     '--json',
   ]);
