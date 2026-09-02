@@ -24,6 +24,13 @@ import {
   X,
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
+import {
+  applyTeamSyncPlan,
+  buildTeamSyncPlan,
+  parseEfetivoRows,
+  type TeamSyncPlan,
+} from '../utils/teamSpreadsheetSync';
+import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import {
   addCorporateSummarySheet,
@@ -78,6 +85,12 @@ interface ControlePresencaTabProps {
   onDeleteGrupoEquipe: (id: string) => void;
   onUpdatePresencaLink: (id: string, status: PresencaStatus, observacao: string, motivo: string) => void;
   onDeletePresencaLink?: (ids: string[]) => void;
+  /** Grava a sincronização já conferida pelo administrativo. */
+  onSyncEquipesPlanilha?: (
+    funcionarios: Funcionario[],
+    gruposEquipe: GrupoEquipe[],
+    resumo: TeamSyncPlan['resumo'],
+  ) => void;
 }
 
 type View = 'ao-vivo' | 'equipes' | 'registros' | 'historico';
@@ -157,6 +170,7 @@ export default function ControlePresencaTab({
   onDeleteGrupoEquipe,
   onUpdatePresencaLink,
   onDeletePresencaLink,
+  onSyncEquipesPlanilha,
 }: ControlePresencaTabProps) {
   const today = localToday();
   const safeFuncionarios = useMemo(() => (Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean), [funcionarios]);
@@ -183,6 +197,12 @@ export default function ControlePresencaTab({
   const [editStatus, setEditStatus] = useState<PresencaStatus>('Presente');
   const [editObservation, setEditObservation] = useState('');
   const [editReason, setEditReason] = useState('');
+  // Sincronização pela planilha do efetivo: o plano é montado e conferido
+  // antes de qualquer gravação.
+  const [syncPlan, setSyncPlan] = useState<TeamSyncPlan | null>(null);
+  const [syncFileName, setSyncFileName] = useState('');
+  const [syncError, setSyncError] = useState('');
+  const [syncBusy, setSyncBusy] = useState(false);
 
   const createEmptyGroup = (): GrupoEquipe => ({
     id: '',
@@ -357,6 +377,73 @@ export default function ControlePresencaTab({
       ...exportRows,
     ]);
     saveBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `presenca-${today}.csv`);
+  };
+
+  // Lê a aba "Efetivo" e monta o plano. Nada é gravado aqui.
+  const lerPlanilhaEfetivo = async (file: File) => {
+    setSyncBusy(true);
+    setSyncError('');
+    setSyncPlan(null);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
+      const sheet = workbook.getWorksheet('Efetivo')
+        || workbook.worksheets.find(item => /efetivo/i.test(item.name));
+      if (!sheet) throw new Error('A planilha não tem a aba "Efetivo".');
+
+      // O cabeçalho não fica na primeira linha: a aba abre com um título.
+      let headerRow = 0;
+      let headers: string[] = [];
+      for (let row = 1; row <= Math.min(sheet.rowCount, 10); row += 1) {
+        const values = (sheet.getRow(row).values as unknown[]).slice(1).map(value => String(value ?? '').trim());
+        if (values.some(value => /mat/i.test(value)) && values.some(value => /encarregado/i.test(value))) {
+          headerRow = row;
+          headers = values;
+          break;
+        }
+      }
+      if (!headerRow) throw new Error('Não encontrei o cabeçalho com "MAT. COLAB." e "NOME ENCARREGADO".');
+
+      const rows: Array<Record<string, unknown>> = [];
+      for (let row = headerRow + 1; row <= sheet.rowCount; row += 1) {
+        const values = (sheet.getRow(row).values as unknown[]).slice(1);
+        const registro: Record<string, unknown> = {};
+        headers.forEach((header, index) => {
+          if (header) registro[header] = values[index];
+        });
+        if (Object.values(registro).some(value => value !== undefined && value !== null && String(value).trim())) {
+          rows.push(registro);
+        }
+      }
+
+      const { linhas, ignoradas } = parseEfetivoRows(rows);
+      if (linhas.length === 0) throw new Error('Nenhuma linha aproveitável: confira as colunas de matrícula e encarregado.');
+      const plano = buildTeamSyncPlan({
+        linhas,
+        ignoradas,
+        funcionarios: safeFuncionarios,
+        gruposEquipe: safeGroups,
+        obraId: safeObras[0]?.id || '',
+        empresaId: safeEmpresas[0]?.id || '',
+        criarToken: () => generateSecurePublicToken('presenca'),
+      });
+      setSyncFileName(file.name);
+      setSyncPlan(plano);
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : 'Não foi possível ler a planilha.');
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const confirmarSincronizacao = () => {
+    if (!syncPlan || !onSyncEquipesPlanilha) return;
+    const { funcionarios: proximosFuncionarios, gruposEquipe: proximasEquipes } =
+      applyTeamSyncPlan(syncPlan, safeFuncionarios, safeGroups);
+    onSyncEquipesPlanilha(proximosFuncionarios, proximasEquipes, syncPlan.resumo);
+    setSyncPlan(null);
+    setSyncFileName('');
+    setFeedback(`Equipes sincronizadas: ${syncPlan.resumo.criar} criadas, ${syncPlan.resumo.atualizar} atualizadas, ${syncPlan.resumo.desativar} desativadas.`);
   };
 
   const exportExcelRecords = async (records: PresencaApontamento[], reportDate: string, reportTitle: string) => {
@@ -585,6 +672,26 @@ export default function ControlePresencaTab({
         <div className="space-y-4">
           <div className={`${PANEL} flex flex-col gap-3 p-4 sm:flex-row sm:items-center`}>
             <div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={teamSearch} onChange={event => setTeamSearch(event.target.value)} placeholder="Buscar equipe, responsável ou frente" className={`${FIELD} pl-10`} /></div>
+            {syncError && (
+              <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">{syncError}</div>
+            )}
+            {onSyncEquipesPlanilha && (
+              <label className={`${SECONDARY_BUTTON} cursor-pointer`}>
+                {syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                {syncBusy ? 'Lendo planilha' : 'Sincronizar pela planilha'}
+                <input
+                  type="file"
+                  accept=".xlsx,.xlsm"
+                  className="hidden"
+                  disabled={syncBusy}
+                  onChange={event => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (file) void lerPlanilhaEfetivo(file);
+                  }}
+                />
+              </label>
+            )}
             <button type="button" onClick={openNewGroup} className={PRIMARY_BUTTON}><Plus className="h-4 w-4" /> Nova equipe</button>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
@@ -643,6 +750,75 @@ export default function ControlePresencaTab({
               </article>
             );
           })}
+        </div>
+      )}
+
+      {syncPlan && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label="Conferir sincronização das equipes">
+          <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white">
+            <header className="flex items-start justify-between gap-4 border-b border-[#ebe7dc] p-5">
+              <div>
+                <h2 className="text-lg font-black text-[#101a22]">Conferir antes de gravar</h2>
+                <p className="mt-1 text-sm text-[#65716b]">{syncFileName} · {syncPlan.resumo.pessoasNaPlanilha} pessoas na planilha</p>
+              </div>
+              <button type="button" onClick={() => setSyncPlan(null)} aria-label="Fechar" className="rounded-lg p-2 text-[#65716b] hover:bg-[#f2f0e8]"><X className="h-5 w-5" /></button>
+            </header>
+
+            <div className="grid grid-cols-2 gap-3 border-b border-[#ebe7dc] p-5 sm:grid-cols-4">
+              {[
+                { rotulo: 'Equipes novas', valor: syncPlan.resumo.criar },
+                { rotulo: 'Atualizadas', valor: syncPlan.resumo.atualizar },
+                { rotulo: 'Desativadas', valor: syncPlan.resumo.desativar },
+                { rotulo: 'Colaboradores criados', valor: syncPlan.resumo.colaboradoresNovos },
+              ].map(item => (
+                <div key={item.rotulo} className="rounded-xl bg-[#f7f5ef] p-3">
+                  <strong className="text-2xl font-black text-[#101a22]">{item.valor}</strong>
+                  <span className="mt-1 block text-xs text-[#65716b]">{item.rotulo}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5">
+              {syncPlan.resumo.inalteradas > 0 && (
+                <p className="mb-3 text-xs text-[#65716b]">{syncPlan.resumo.inalteradas} equipe(s) sem alteração, não listadas.</p>
+              )}
+              <ul className="space-y-2">
+                {syncPlan.entradas.filter(entry => entry.acao !== 'inalterada').map(entry => (
+                  <li key={entry.grupo.id} className="rounded-xl border border-[#e2e8e4] p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] ${
+                        entry.acao === 'criar' ? 'bg-emerald-100 text-emerald-800'
+                          : entry.acao === 'desativar' ? 'bg-rose-100 text-rose-800'
+                            : 'bg-amber-100 text-amber-900'}`}
+                      >{entry.acao}</span>
+                      <strong className="text-sm font-bold text-[#101a22]">{entry.nome}</strong>
+                      <span className="text-xs text-[#65716b]">{entry.total} pessoa(s)</span>
+                    </div>
+                    {entry.entram.length > 0 && (
+                      <p className="mt-2 text-xs text-emerald-800"><b>Entram:</b> {entry.entram.map(item => item.nome).join(', ')}</p>
+                    )}
+                    {entry.saem.length > 0 && (
+                      <p className="mt-1 text-xs text-rose-800"><b>Saem:</b> {entry.saem.map(item => item.nome).join(', ')}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {syncPlan.ignoradas.length > 0 && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-bold text-amber-900">{syncPlan.ignoradas.length} linha(s) ignorada(s)</p>
+                  <ul className="mt-1 space-y-0.5 text-xs text-amber-900">
+                    {syncPlan.ignoradas.slice(0, 8).map(item => <li key={item.linha}>Linha {item.linha}: {item.motivo}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <footer className="flex flex-col gap-3 border-t border-[#ebe7dc] p-5 sm:flex-row sm:justify-end">
+              <p className="flex-1 text-xs text-[#65716b]">Equipes fora da planilha ficam inativas, nunca são excluídas. Os links já distribuídos continuam valendo.</p>
+              <button type="button" onClick={() => setSyncPlan(null)} className={SECONDARY_BUTTON}>Cancelar</button>
+              <button type="button" onClick={confirmarSincronizacao} className={PRIMARY_BUTTON}><Check className="h-4 w-4" /> Gravar sincronização</button>
+            </footer>
+          </div>
         </div>
       )}
 

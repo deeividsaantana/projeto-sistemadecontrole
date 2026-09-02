@@ -2730,6 +2730,34 @@ export default function App() {
     );
   };
 
+  // Sincronização das equipes com a planilha do efetivo. Chega já conferida
+  // pelo administrativo: aqui só grava, registra e sincroniza.
+  const handleSyncEquipesPlanilha = (
+    proximosFuncionarios: Funcionario[],
+    proximasEquipes: GrupoEquipe[],
+    resumo: { criar: number; atualizar: number; desativar: number; colaboradoresNovos: number },
+  ) => {
+    saveAndLog(
+      'Grupos / Equipes',
+      'Editou',
+      `Sincronizou as equipes pela planilha do efetivo: ${resumo.criar} criada(s), ${resumo.atualizar} atualizada(s), ${resumo.desativar} desativada(s) e ${resumo.colaboradoresNovos} colaborador(es) incluído(s) no cadastro.`,
+      historyLogs,
+      () => {
+        setGruposEquipe(proximasEquipes);
+        setFuncionarios(proximosFuncionarios);
+        commitStorageBatch(localStorage, [
+          { key: 'renea_grupos_equipes', value: JSON.stringify(proximasEquipes) },
+          { key: 'renea_funcionarios', value: JSON.stringify(proximosFuncionarios) },
+        ]);
+      },
+    );
+    // O retrato remoto precisa refletir a mudança para que os links públicos,
+    // que leem da nuvem, enxerguem as equipes novas.
+    void uploadLocalSnapshotToFirebase().then(result => {
+      if (!result.success) console.warn('Equipes sincronizadas localmente; o envio à nuvem falhou:', result.message);
+    });
+  };
+
   const handleSubmitPresencaLink = async (
     grupo: GrupoEquipe,
     data: string,
@@ -4391,6 +4419,7 @@ export default function App() {
                 onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
                 onUpdatePresencaLink={handleUpdatePresencaLink}
                 onDeletePresencaLink={handleDeletePresencaLink}
+                onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
               />
             )}
 
