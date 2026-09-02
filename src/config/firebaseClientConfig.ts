@@ -21,6 +21,13 @@ type FirebaseEnv = Partial<Record<
   string
 >>;
 
+/**
+ * Retrato embutido de um projeto Firebase antigo. Existe apenas para que a
+ * aplicação não quebre ao abrir sem configuração, em desenvolvimento. Não é o
+ * projeto de produção: publicar sem as variáveis VITE_FIREBASE_* faz o sistema
+ * conversar com outro banco, em silêncio, e nenhum dado da obra aparece.
+ * `resolveFirebaseClientConfig` reporta quando isto está em uso.
+ */
 const defaultFirebaseClientConfig: FirebaseClientConfig = {
   apiKey: 'AIzaSyBPcOluz5J84fdSMRFekHwa-6TCk2ts4K8',
   authDomain: 'sistemaerp-787f6.firebaseapp.com',
@@ -37,6 +44,27 @@ const pickEnv = (env: FirebaseEnv, key: keyof FirebaseEnv, fallback: string) => 
   return value || fallback;
 };
 
+/** Variáveis sem as quais o navegador cai no projeto embutido. */
+const REQUIRED_ENV_KEYS: Array<keyof FirebaseEnv> = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_DATABASE_URL',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID',
+];
+
+/**
+ * Variáveis ausentes no build. Diferente de `getMissingFirebaseClientConfigKeys`,
+ * que inspeciona o resultado já preenchido pelos padrões e por isso nunca acusa
+ * nada, esta função olha o ambiente e revela a falta antes de ela virar um banco
+ * errado em produção.
+ */
+export const getMissingFirebaseEnvKeys = (
+  env: FirebaseEnv = import.meta.env,
+): Array<keyof FirebaseEnv> => REQUIRED_ENV_KEYS.filter(key => !String(env[key] || '').trim());
+
 export const resolveFirebaseClientConfig = (
   env: FirebaseEnv = import.meta.env,
 ): FirebaseClientConfig => ({
@@ -49,6 +77,9 @@ export const resolveFirebaseClientConfig = (
   appId: pickEnv(env, 'VITE_FIREBASE_APP_ID', defaultFirebaseClientConfig.appId),
   measurementId: pickEnv(env, 'VITE_FIREBASE_MEASUREMENT_ID', defaultFirebaseClientConfig.measurementId || ''),
 });
+
+/** Projeto embutido, para comparar com o que o build realmente vai usar. */
+export const FALLBACK_FIREBASE_PROJECT_ID = defaultFirebaseClientConfig.projectId;
 
 export const getMissingFirebaseClientConfigKeys = (
   config: FirebaseClientConfig,
