@@ -11,7 +11,7 @@ const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || 'https://sist
 
 const getServiceAccount = () => {
   if (!FIREBASE_SERVICE_ACCOUNT_KEY) {
-    throw new Error('Conta de serviço Firebase não configurada no Netlify. Execute PUBLICAR_TUDO.cmd.');
+    throw new Error('Conta de serviço Firebase não configurada no serviço. Defina FIREBASE_SERVICE_ACCOUNT_KEY_BASE64.');
   }
   try {
     return JSON.parse(FIREBASE_SERVICE_ACCOUNT_KEY);

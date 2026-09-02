@@ -11,6 +11,7 @@
     "clean": "node scripts/clean.mjs",
     "lint": "tsc --noEmit",
     "test": "node scripts/run-tests.mjs",
+    "start": "node server/index.js",
     "provision:staff": "node scripts/provision-staff.mjs",
     "publicar": "node scripts/publicar-tudo.mjs",
     "publicar:check": "node scripts/publicar-tudo.mjs --check"
