@@ -7,9 +7,9 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#059669" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- As fontes sao empacotadas com o aplicativo (src/main.tsx). Buscar Outfit
+         em fonts.googleapis.com deixava a obra sem tela quando aquele dominio
+         nao respondia: a folha de estilo externa bloqueia a renderizacao. -->
     <title>Sistema RENEA ERP 3.4</title>
   </head>
   <body>
