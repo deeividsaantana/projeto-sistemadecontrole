@@ -12,7 +12,23 @@ import {
   sanitizeSearchTerm,
 } from '../netlify/functions/_shared/master-data-contract.js';
 
-assert.equal(MASTER_DATA_ENTITY_NAMES.length, 12);
+// A lista explícita substitui a contagem: uma entidade adicionada ou removida
+// por engano continua quebrando o teste, agora dizendo qual.
+assert.deepEqual([...MASTER_DATA_ENTITY_NAMES], [
+  'companies',
+  'locations',
+  'work_branches',
+  'equipment',
+  'vehicles',
+  'collaborators',
+  'operational_drivers',
+  'suppliers',
+  'materials',
+  'convoys',
+  'fuel_types',
+  'lubricant_products',
+  'service_stages',
+]);
 assert.equal(assertMasterDataEntity('equipment').definition.table, 'equipment');
 assert.throws(() => assertMasterDataEntity('abastecimentos'));
 
