@@ -20,8 +20,25 @@ const MANUTENCAO_SOURCE_URL = 'https://dynamic-manatee-66561d.netlify.app/';
 const EXPECTED_REMOTE = 'deeividsaantana/projeto-sistemadecontrole';
 const EXPECTED_REMOTE_URL = `https://github.com/${EXPECTED_REMOTE}.git`;
 const LEGACY_REMOTE = 'deeividsaantana/teste-70';
-const NETLIFY_SITE_ID = '5f1b5305-eaba-4387-9ade-6020fe1fd80c';
-const NETLIFY_SITE_URL = 'https://controolerenea.netlify.app';
+// Site de produção padrão. Trocar de conta Netlify não exige mexer no código:
+// defina RENEA_NETLIFY_SITE_ID e RENEA_NETLIFY_SITE_URL, ou grave netlifySiteId
+// e netlifySiteUrl em .publicar-tudo.local.json, que fica fora do Git.
+const DEFAULT_NETLIFY_SITE_ID = '5f1b5305-eaba-4387-9ade-6020fe1fd80c';
+const DEFAULT_NETLIFY_SITE_URL = 'https://controolerenea.netlify.app';
+
+const readLocalConfig = () => {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(LOCAL_CONFIG_PATH, 'utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const localConfig = readLocalConfig();
+const cleanSiteUrl = value => String(value || '').trim().replace(/\/+$/, '');
+const NETLIFY_SITE_ID = String(process.env.RENEA_NETLIFY_SITE_ID || localConfig.netlifySiteId || DEFAULT_NETLIFY_SITE_ID).trim();
+const NETLIFY_SITE_URL = cleanSiteUrl(process.env.RENEA_NETLIFY_SITE_URL || localConfig.netlifySiteUrl || DEFAULT_NETLIFY_SITE_URL);
 const LOCAL_TOOLS_DIR = path.join(ROOT, '.publicar-tudo-tools');
 const LOCAL_NPM_CLI = path.join(LOCAL_TOOLS_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const LOCAL_TOOLS_BIN = path.join(LOCAL_TOOLS_DIR, 'node_modules', '.bin');
@@ -325,6 +342,8 @@ const configureFirstRun = async () => {
     version: 1,
     firebaseProjectId: FIREBASE_PROJECT_ID,
     adminEmail,
+    netlifySiteId: NETLIFY_SITE_ID,
+    netlifySiteUrl: NETLIFY_SITE_URL,
     configuredAt: new Date().toISOString(),
   }, null, 2)}\n`, 'utf8');
   ok('Configuração inicial concluída e marcada somente neste computador.');
@@ -404,7 +423,7 @@ const ensureNetlifyLink = () => {
   if (linkedSiteId === NETLIFY_SITE_ID) return;
   info('Vinculando esta pasta ao site Netlify de produção');
   runDlx('netlify-cli', ['link', '--id', NETLIFY_SITE_ID]);
-  ok('Pasta vinculada ao site merry-crumble-98d743.');
+  ok(`Pasta vinculada ao site ${NETLIFY_SITE_URL}.`);
 };
 
 const ensureRepositoryReady = () => {

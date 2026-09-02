@@ -38,6 +38,37 @@ PUBLICAR_TUDO.cmd --check
 Esse modo não faz commit, push ou deploy. Ele confere os arquivos e, quando as
 dependências estão disponíveis, repete o TypeScript e o build.
 
+## Trocar de conta ou de site no Netlify
+
+O site de produção deixou de ser fixo no código. Para publicar em outro site
+Netlify, sem editar `scripts/publicar-tudo.mjs`:
+
+1. Crie o site na conta nova. Ela precisa ser de **outro time**: o limite de
+   créditos vale para o time inteiro, então um site novo dentro do mesmo time
+   continua bloqueado.
+2. Pegue o `Site ID` em *Site configuration → General → Site details*.
+3. Defina as duas variáveis antes de executar o publicador:
+
+```bat
+set RENEA_NETLIFY_SITE_ID=<site-id-da-conta-nova>
+set RENEA_NETLIFY_SITE_URL=https://<subdominio-novo>.netlify.app
+PUBLICAR_TUDO.cmd
+```
+
+O publicador grava a escolha em `.publicar-tudo.local.json`, que fica fora do
+Git. Nas próximas vezes basta rodar `PUBLICAR_TUDO.cmd`.
+
+Depois da primeira publicação no site novo, faltam dois passos manuais:
+
+- **Firebase → Authentication → Settings → Authorized domains**: adicione o novo
+  domínio. Sem isso o login para de funcionar.
+- **Links públicos**: presença, apontamento e tickets passam a apontar para o
+  domínio novo. Os links já distribuídos continuam válidos enquanto o site
+  antigo estiver no ar; gere e redistribua os novos antes de desligá-lo.
+
+As variáveis de ambiente do Firebase são reenviadas pelo próprio publicador a
+partir do `.env` local, então não é preciso recriá-las à mão no painel.
+
 ## Segurança
 
 - `.env`, conta de serviço, vínculo local do Netlify e marca da primeira
