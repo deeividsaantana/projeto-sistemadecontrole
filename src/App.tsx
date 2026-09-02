@@ -10,6 +10,7 @@ import {
   Equipamento, 
   VinculoOperadorEquipamento,
   Funcionario, 
+  FuncionarioDisponivel,
   Comboio, 
   TipoCombustivel, 
   ProdutoLubrificacao, 
@@ -128,6 +129,7 @@ import {
   type PublicSubmission,
 } from './firebasePublicSubmissions';
 import {
+  addPublicPresenceMember,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
   reservePublicTicketNumberViaApi,
@@ -361,6 +363,7 @@ export default function App() {
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [externalPresenceLoadError, setExternalPresenceLoadError] = useState('');
   const [externalMeuGrupo, setExternalMeuGrupo] = useState<GrupoEquipe | null>(null);
+  const [externalFuncionariosDisponiveis, setExternalFuncionariosDisponiveis] = useState<FuncionarioDisponivel[]>([]);
   const [externalMeusRegistros, setExternalMeusRegistros] = useState<PresencaApontamento[]>([]);
   const [externalDatasDisponiveis, setExternalDatasDisponiveis] = useState<string[]>([]);
   const [externalDataSelecionada, setExternalDataSelecionada] = useState('');
@@ -1103,6 +1106,7 @@ export default function App() {
       setFuncionarios(normalizeRuntimeCollection<Funcionario>(config.funcionarios));
       setEmpresas(normalizeRuntimeCollection<Empresa>(config.empresas));
       setObras(normalizeRuntimeCollection<ObraLocal>(config.obras));
+      setExternalFuncionariosDisponiveis(config.funcionariosDisponiveis || []);
       setExternalMeuGrupo(config.meuGrupo || null);
       setExternalMeusRegistros(config.meusRegistros || []);
       setExternalDatasDisponiveis(config.datasDisponiveis || []);
@@ -2550,26 +2554,54 @@ export default function App() {
         const nextPresence = mergePresenceRecords(storedPresence, incomingPresence);
         const nextPointing = mergeRecordsById(storedPointing, incomingPointing);
 
+        // Colaboradores incluídos pelo apontador no link entram no cadastro da
+        // equipe. A leitura vem do armazenamento local, e não do estado, para
+        // que uma fila processada em sequência não sobrescreva a anterior.
+        const incomingMembers = submissions.flatMap(item => item.kind === 'equipe' && item.payload.grupoId && item.payload.funcionarioId
+          ? [{ grupoId: item.payload.grupoId, funcionarioId: item.payload.funcionarioId }]
+          : []);
+        const storedGroups = parseStoredJson<GrupoEquipe[]>(localStorage.getItem('renea_grupos_equipes'), 'renea_grupos_equipes', []);
+        const nextGroups = incomingMembers.length === 0 ? storedGroups : storedGroups.map(group => {
+          const additions = incomingMembers
+            .filter(member => member.grupoId === group.id)
+            .map(member => member.funcionarioId)
+            .filter(id => !(group.funcionarioIds || []).includes(id));
+          if (additions.length === 0) return group;
+          return {
+            ...group,
+            funcionarioIds: [...(group.funcionarioIds || []), ...additions],
+            updatedAt: new Date().toISOString(),
+          };
+        });
+
         const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
         const nextHistory = mergeRecordsById(storedHistory, submissions.map(item => ({
           id: `log-public-${item.id}`,
           timestamp: new Date(item.createdAtIso || Date.now()).toLocaleString('pt-BR'),
-          usuario: item.kind === 'presence' ? (item.payload.grupoNome || 'Link de presença') : (item.payload.record?.responsavel || 'Link de apontamento'),
+          usuario: item.kind === 'apontamento'
+            ? (item.payload.record?.responsavel || 'Link de apontamento')
+            : (item.payload.grupoNome || 'Link de presença'),
           acao: 'Criou' as const,
-          tela: item.kind === 'presence' ? 'Controle de Presença' : 'Apontamentos',
-          descricao: item.kind === 'presence'
-            ? `Recebeu presença pública do grupo ${item.payload.grupoNome || item.payload.grupoId} em ${item.payload.data}.`
-            : `Recebeu apontamento público de ${item.payload.record?.ramoNome || item.payload.ramoId} em ${item.payload.data}.`,
+          tela: item.kind === 'apontamento' ? 'Apontamentos' : 'Controle de Presença',
+          descricao: item.kind === 'apontamento'
+            ? `Recebeu apontamento público de ${item.payload.record?.ramoNome || item.payload.ramoId} em ${item.payload.data}.`
+            : item.kind === 'equipe'
+              ? `Incluiu ${item.payload.funcionarioNome || item.payload.funcionarioId} na equipe ${item.payload.grupoNome || item.payload.grupoId} pelo link de presença.`
+              : `Recebeu presença pública do grupo ${item.payload.grupoNome || item.payload.grupoId} em ${item.payload.data}.`,
         })));
 
         const storedNotifications = parseStoredJson<AppNotification[]>(localStorage.getItem('renea_notifications'), 'renea_notifications', []);
         const nextNotifications = mergeRecordsById(storedNotifications, submissions.map(item => ({
           id: `notification-public-${item.id}`,
           type: 'success' as const,
-          title: item.kind === 'presence' ? 'Presença recebida' : 'Apontamento recebido',
-          message: item.kind === 'presence'
-            ? `${item.payload.grupoNome || 'Equipe'} enviou ${item.payload.records?.length || 0} registro(s) de presença.`
-            : `${item.payload.record?.ramoNome || 'Ramo'} enviou um apontamento de campo.`,
+          title: item.kind === 'apontamento'
+            ? 'Apontamento recebido'
+            : item.kind === 'equipe' ? 'Colaborador incluído na equipe' : 'Presença recebida',
+          message: item.kind === 'apontamento'
+            ? `${item.payload.record?.ramoNome || 'Ramo'} enviou um apontamento de campo.`
+            : item.kind === 'equipe'
+              ? `${item.payload.funcionarioNome || 'Colaborador'} entrou na equipe ${item.payload.grupoNome || 'sem nome'} pelo link de presença.`
+              : `${item.payload.grupoNome || 'Equipe'} enviou ${item.payload.records?.length || 0} registro(s) de presença.`,
           timestamp: new Date(item.createdAtIso || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           read: false,
           source: 'Sistema Local' as const,
@@ -2583,6 +2615,10 @@ export default function App() {
         setApontamentoRamoRegistros(nextPointing);
         setHistoryLogs(nextHistory);
         setNotifications(nextNotifications);
+        if (incomingMembers.length > 0) {
+          writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(nextGroups));
+          setGruposEquipe(nextGroups);
+        }
 
         let syncResult = await uploadLocalSnapshotToFirebase();
         if (!syncResult.success && /conflito|outro computador|vers[aã]o mais recente/i.test(syncResult.message)) {
@@ -2615,6 +2651,21 @@ export default function App() {
           setApontamentoRamoRegistros(refreshedPointing);
           setHistoryLogs(refreshedHistory);
           setNotifications(refreshedNotifications);
+          if (incomingMembers.length > 0) {
+            // O retrato vencedor pode já ter a equipe mudada por outro
+            // computador. A inclusão é reaplicada sobre ele, nunca por cima.
+            const refreshedGroups = parseStoredJson<GrupoEquipe[]>(localStorage.getItem('renea_grupos_equipes'), 'renea_grupos_equipes', [])
+              .map(group => {
+                const additions = incomingMembers
+                  .filter(member => member.grupoId === group.id)
+                  .map(member => member.funcionarioId)
+                  .filter(id => !(group.funcionarioIds || []).includes(id));
+                if (additions.length === 0) return group;
+                return { ...group, funcionarioIds: [...(group.funcionarioIds || []), ...additions], updatedAt: new Date().toISOString() };
+              });
+            writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(refreshedGroups));
+            setGruposEquipe(refreshedGroups);
+          }
           syncResult = await uploadLocalSnapshotToFirebase();
         }
         if (!syncResult.success) throw new Error(syncResult.message);
@@ -2688,6 +2739,14 @@ export default function App() {
       return await submitPublicPresence(externalPresenceToken, grupo.id, data, items);
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Não foi possível enviar a presença.' };
+    }
+  };
+
+  const handleAddExternalPresencaMember = async (grupoId: string, funcionarioId: string) => {
+    try {
+      return await addPublicPresenceMember(externalPresenceToken, grupoId, funcionarioId);
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Não foi possível incluir este colaborador.' };
     }
   };
 
@@ -3976,6 +4035,7 @@ export default function App() {
           token={externalPresenceToken}
           gruposEquipe={gruposEquipe}
           funcionarios={funcionarios}
+          funcionariosDisponiveis={externalFuncionariosDisponiveis}
           empresas={empresas}
           obras={obras}
           meuGrupo={externalMeuGrupo}
@@ -3989,6 +4049,7 @@ export default function App() {
           onRetry={() => void reloadExternalPresence()}
           onSubmitPresenca={handleSubmitPresencaLink}
           onUpdateRecord={handleUpdateExternalPresencaRecord}
+          onAddMember={handleAddExternalPresencaMember}
         />
       </Suspense>
     );

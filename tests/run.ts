@@ -15,6 +15,7 @@ import './presenceRealtime.test';
 import './publicPresenceBackend.test';
 import './publicPresenceEdit.test';
 import './publicPresenceHistory.test';
+import './publicPresenceTeamMembers.test';
 import './runtimeDataSafety.test';
 import './publicLinkSecurity.test';
 import './navigation.test';

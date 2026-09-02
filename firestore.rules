@@ -189,6 +189,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Colaboradores incluídos na equipe pelo link público. Só o Admin SDK
+    // escreve; o navegador nunca lê nem grava, mesmo autenticado — o painel
+    // recebe a inclusão pela fila de envios públicos.
+    match /sistemarenea_presence_team_members/{docId} {
+      allow read, write: if false;
+    }
+
     // Cadastros segmentados, auditoria, usuários e lotes de importação são
     // manipulados exclusivamente por funções Netlify usando o Admin SDK.
     // Não há acesso direto do navegador, mesmo para usuários autenticados.

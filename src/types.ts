@@ -279,6 +279,20 @@ export interface GrupoEquipe {
   updatedAt: string;
 }
 
+/**
+ * Colaborador do efetivo ativo que ainda não está em nenhuma equipe do link
+ * público. O apontador escolhe daqui para incluir alguém que chegou na frente
+ * de serviço. É um recorte propositalmente pobre do cadastro: sem telefone,
+ * sem vínculo hierárquico e sem datas.
+ */
+export interface FuncionarioDisponivel {
+  id: string;
+  nome: string;
+  cargo: string;
+  matricula: string;
+  empresaId: string;
+}
+
 export interface HistoricoEdicaoPresencaLink {
   statusAnterior: string;
   statusNovo: PresencaStatus;

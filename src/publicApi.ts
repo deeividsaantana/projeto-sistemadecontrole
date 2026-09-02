@@ -4,6 +4,7 @@ import type {
   ClimaApontamento,
   CondicaoApontamento,
   Funcionario,
+  FuncionarioDisponivel,
   Empresa,
   GrupoEquipe,
   ObraLocal,
@@ -67,6 +68,8 @@ const stableRequestKey = (kind: string, payload: unknown) => {
 export interface PublicPresenceConfig {
   gruposEquipe: GrupoEquipe[];
   funcionarios: Funcionario[];
+  /** Efetivo ativo fora das equipes do link, oferecido para inclusão em campo. */
+  funcionariosDisponiveis?: FuncionarioDisponivel[];
   empresas: Empresa[];
   obras: ObraLocal[];
   meuGrupo?: GrupoEquipe | null;
@@ -124,6 +127,29 @@ export const updatePublicPresenceRecord = async (
     success: true,
     message: response.message || 'Situação atualizada com segurança.',
     record: response.data?.record,
+  };
+};
+
+/**
+ * Vincula um colaborador do efetivo ativo à equipe do link. O serviço público
+ * recusa quem já está em outra equipe ativa, para que ninguém seja contado
+ * duas vezes no efetivo do dia.
+ */
+export const addPublicPresenceMember = async (
+  token: string,
+  grupoId: string,
+  funcionarioId: string,
+) => {
+  const payload = { action: 'adicionar-colaborador', token, grupoId, funcionarioId };
+  const response = await callPublicApi<{ funcionario: Funcionario }>('/.netlify/functions/public-presenca', {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': stableRequestKey('presenca-membro', payload) },
+    body: JSON.stringify(payload),
+  });
+  return {
+    success: true,
+    message: response.message || 'Colaborador incluído na equipe.',
+    funcionario: response.data?.funcionario,
   };
 };
 

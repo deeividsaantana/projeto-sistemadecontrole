@@ -13,9 +13,13 @@ import type { ApontamentoRamoRegistro, PresencaApontamento } from './types';
 
 const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
 
+/**
+ * `equipe` carrega a inclusão de um colaborador feita pelo link público. O
+ * painel a incorpora ao cadastro do grupo; as demais permanecem como estavam.
+ */
 export type PublicSubmission = {
   id: string;
-  kind: 'presence' | 'apontamento';
+  kind: 'presence' | 'apontamento' | 'equipe';
   status: 'pending' | 'processed';
   createdAtIso: string;
   payload: {
@@ -25,12 +29,15 @@ export type PublicSubmission = {
     data: string;
     records?: PresencaApontamento[];
     record?: ApontamentoRamoRegistro;
+    funcionarioId?: string;
+    funcionarioNome?: string;
+    funcao?: string;
   };
 };
 
 const normalizeSubmissionSnapshot = (items: Array<{ id: string; data: () => Record<string, unknown> }>): PublicSubmission[] => items
   .map(item => ({ id: item.id, ...item.data() }) as PublicSubmission)
-  .filter(item => item.kind === 'presence' || item.kind === 'apontamento')
+  .filter(item => item.kind === 'presence' || item.kind === 'apontamento' || item.kind === 'equipe')
   .filter(item => item.payload && typeof item.payload.data === 'string')
   .sort((a, b) => String(a.createdAtIso || '').localeCompare(String(b.createdAtIso || '')));
 

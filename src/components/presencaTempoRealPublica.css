@@ -920,6 +920,168 @@
   }
 }
 
+/* Inclusao de colaborador direto da frente de servico. O bloco fica recolhido
+   por padrao para nao competir com a conferencia, que e a tarefa principal. */
+.presence-public__add-member {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.presence-public__add-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px dashed var(--presence-green);
+  border-radius: 12px;
+  color: var(--presence-green-strong);
+  font-size: 13px;
+  font-weight: 800;
+  background: #f3f8f4;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.presence-public__add-toggle:hover,
+.presence-public__add-toggle:focus-visible {
+  border-style: solid;
+  outline: 0;
+  background: #e9f2ec;
+}
+
+.presence-public__add-panel {
+  padding: 14px;
+  border: 1px solid var(--presence-line);
+  border-radius: 12px;
+  background: var(--presence-surface);
+  animation: presence-success-rise 320ms ease-out both;
+}
+
+.presence-public__add-help {
+  margin: 0 0 12px;
+  color: var(--presence-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.presence-public__add-list {
+  display: grid;
+  gap: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  margin-top: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.presence-public__add-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 66px;
+  padding: 12px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--presence-line);
+  color: var(--presence-ink);
+  text-align: left;
+  background: transparent;
+  transition: background 160ms ease;
+}
+
+.presence-public__add-option:hover,
+.presence-public__add-option:focus-visible {
+  outline: 0;
+  background: #f3f8f4;
+}
+
+.presence-public__add-option:disabled {
+  opacity: .6;
+}
+
+.presence-public__add-option strong,
+.presence-public__add-option span {
+  display: block;
+}
+
+.presence-public__add-option strong {
+  font-size: 14px;
+}
+
+.presence-public__add-option div span {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--presence-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presence-public__add-option svg:last-child {
+  color: var(--presence-green);
+}
+
+.presence-public__add-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--presence-green-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Atalho de volta ao comprovante a partir da lista conferivel. */
+.presence-public__receipt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  margin-top: 10px;
+  padding: 0 13px;
+  border: 1px solid var(--presence-line);
+  border-radius: 999px;
+  color: var(--presence-green-strong);
+  font-size: 12px;
+  font-weight: 750;
+  background: var(--presence-surface);
+}
+
+.presence-public__receipt-link:hover,
+.presence-public__receipt-link:focus-visible {
+  border-color: var(--presence-green);
+  outline: 0;
+}
+
+/* Historico dentro do comprovante: o apontador abre o link, ve o resumo do dia
+   e alcanca os dias anteriores sem passar pela lista. */
+.presence-public__receipt-history {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--presence-line);
+  text-align: left;
+  animation: presence-success-rise 420ms 900ms ease-out both;
+}
+
+.presence-public__receipt-history p {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--presence-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.presence-public__daybar--receipt {
+  margin: 10px 0 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .presence-public *,
   .presence-public *::before,

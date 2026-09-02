@@ -3,6 +3,7 @@ import type {
   ApontamentoRamo,
   Empresa,
   Funcionario,
+  FuncionarioDisponivel,
   GrupoEquipe,
   ObraLocal,
   PresencaApontamento,
@@ -16,6 +17,7 @@ import {
 } from './app/routing/publicRoutes';
 import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
 import {
+  addPublicPresenceMember,
   loadPublicApontamentoConfig,
   loadPublicPresenceConfig,
   reservePublicTicketNumberViaApi,
@@ -42,6 +44,7 @@ export default function PublicLinksApp() {
 
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+  const [funcionariosDisponiveis, setFuncionariosDisponiveis] = useState<FuncionarioDisponivel[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [obras, setObras] = useState<ObraLocal[]>([]);
   const [meuGrupo, setMeuGrupo] = useState<GrupoEquipe | null>(null);
@@ -66,6 +69,7 @@ export default function PublicLinksApp() {
       const config = await loadPublicPresenceConfig(presenceToken, data);
       setGruposEquipe(config.gruposEquipe);
       setFuncionarios(config.funcionarios);
+      setFuncionariosDisponiveis(config.funcionariosDisponiveis || []);
       setEmpresas(config.empresas || []);
       setObras(config.obras);
       setMeuGrupo(config.meuGrupo || null);
@@ -149,6 +153,7 @@ export default function PublicLinksApp() {
           token={presenceToken}
           gruposEquipe={gruposEquipe}
           funcionarios={funcionarios}
+          funcionariosDisponiveis={funcionariosDisponiveis}
           empresas={empresas}
           obras={obras}
           meuGrupo={meuGrupo}
@@ -163,6 +168,7 @@ export default function PublicLinksApp() {
           onSubmitPresenca={(grupo, data, items) => submitPublicPresence(presenceToken, grupo.id, data, items)}
           onUpdateRecord={(grupoId, funcionarioId, status, observacao) =>
             updatePublicPresenceRecord(presenceToken, grupoId, funcionarioId, status, observacao)}
+          onAddMember={(grupoId, funcionarioId) => addPublicPresenceMember(presenceToken, grupoId, funcionarioId)}
         />
       </Suspense>
     );

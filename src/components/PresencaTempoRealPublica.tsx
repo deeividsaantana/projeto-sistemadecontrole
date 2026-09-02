@@ -7,12 +7,23 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
+  History,
   RefreshCw,
   Search,
   Send,
+  UserPlus,
   Users,
+  X,
 } from 'lucide-react';
-import type { Empresa, Funcionario, GrupoEquipe, ObraLocal, PresencaApontamento, PresencaStatus } from '../types';
+import type {
+  Empresa,
+  Funcionario,
+  FuncionarioDisponivel,
+  GrupoEquipe,
+  ObraLocal,
+  PresencaApontamento,
+  PresencaStatus,
+} from '../types';
 import reneaLogo from '../assets/images/logo-renea-branco.png';
 import './presencaTempoRealPublica.css';
 
@@ -32,10 +43,17 @@ interface RecordUpdateResult {
   record?: PresencaApontamento;
 }
 
+interface MemberAddResult {
+  success: boolean;
+  message: string;
+  funcionario?: Funcionario;
+}
+
 interface Props {
   token: string;
   gruposEquipe: GrupoEquipe[];
   funcionarios: Funcionario[];
+  funcionariosDisponiveis?: FuncionarioDisponivel[];
   empresas: Empresa[];
   obras: ObraLocal[];
   meuGrupo?: GrupoEquipe | null;
@@ -58,6 +76,7 @@ interface Props {
     status: PresencaStatus,
     observacao: string,
   ) => Promise<RecordUpdateResult>;
+  onAddMember?: (grupoId: string, funcionarioId: string) => Promise<MemberAddResult>;
 }
 
 type ItemState = { status?: PresencaStatus; observacao: string };
@@ -121,6 +140,7 @@ export default function PresencaTempoRealPublica({
   token,
   gruposEquipe = [],
   funcionarios = [],
+  funcionariosDisponiveis = [],
   empresas = [],
   obras = [],
   meuGrupo = null,
@@ -134,6 +154,7 @@ export default function PresencaTempoRealPublica({
   onRetry,
   onSubmitPresenca,
   onUpdateRecord,
+  onAddMember,
 }: Props) {
   const generalLink = isGeneralToken(token);
   const [date, setDate] = useState(todayInput());
@@ -146,16 +167,24 @@ export default function PresencaTempoRealPublica({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
-  // Comprovante animado do envio. Aparece uma vez, logo apos enviar, e da
-  // passagem para a lista conferivel. Ao reabrir o link depois, o apontador
-  // cai direto na lista.
+  // Comprovante animado do envio. Aparece logo apos enviar e volta a aparecer
+  // sempre que o link e reaberto num dia ja enviado, para que o apontador veja
+  // quantos estao e em que situacao antes de decidir ajustar alguma coisa.
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  const receiptShownForRef = useRef('');
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftFeedback, setDraftFeedback] = useState('');
   const [savingEmployeeId, setSavingEmployeeId] = useState('');
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [savedFeedback, setSavedFeedback] = useState<Record<string, string>>({});
   const [observacaoDrafts, setObservacaoDrafts] = useState<Record<string, string>>({});
+  // Inclusao de colaborador direto da frente de servico.
+  const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
+  const [addSearch, setAddSearch] = useState('');
+  const deferredAddSearch = useDeferredValue(addSearch);
+  const [addingEmployeeId, setAddingEmployeeId] = useState('');
+  const [addError, setAddError] = useState('');
+  const [addFeedback, setAddFeedback] = useState('');
 
   useEffect(() => {
     setDraftHydrated(false);
@@ -255,6 +284,52 @@ export default function PresencaTempoRealPublica({
     return dataAtual ? [dataAtual, ...previousDays] : previousDays;
   }, [dataAtual, datasDisponiveis]);
 
+  // Ao abrir o link num dia que já foi enviado, o comprovante volta a aparecer
+  // uma vez: mostra quantos estão e em que situação, e é dali que se decide
+  // ajustar a lista. Trocar de dia reapresenta o comprovante daquele dia.
+  useEffect(() => {
+    if (!group || !dataSelecionada || meusRegistros.length === 0) return;
+    const receiptKey = `${group.id}|${dataSelecionada}`;
+    if (receiptShownForRef.current === receiptKey) return;
+    receiptShownForRef.current = receiptKey;
+    setShowSuccessScreen(true);
+  }, [dataSelecionada, group, meusRegistros]);
+
+  // Só entra na lista quem não está em nenhuma equipe do link. A busca aceita
+  // nome, cargo ou matrícula — é como o apontador identifica a pessoa no campo.
+  const addableEmployees = useMemo(() => {
+    const assigned = new Set(groupEmployees.map(employee => employee.id));
+    const query = deferredAddSearch.trim().toLocaleLowerCase('pt-BR');
+    return (Array.isArray(funcionariosDisponiveis) ? funcionariosDisponiveis : [])
+      .filter(employee => employee?.id && !assigned.has(employee.id))
+      .filter(employee => !query || [safeText(employee.nome), safeText(employee.cargo), safeText(employee.matricula)]
+        .some(value => value.toLocaleLowerCase('pt-BR').includes(query)));
+  }, [deferredAddSearch, funcionariosDisponiveis, groupEmployees]);
+
+  const canAddMembers = Boolean(onAddMember && group && !viewingPastDay);
+
+  const addMember = async (employee: FuncionarioDisponivel) => {
+    if (!group || !onAddMember || addingEmployeeId) return;
+    setAddingEmployeeId(employee.id);
+    setAddError('');
+    try {
+      const response = await onAddMember(group.id, employee.id);
+      if (!response.success) {
+        setAddError(response.message);
+        return;
+      }
+      setAddFeedback(response.message);
+      setAddSearch('');
+      // O recarregamento traz a equipe já com o novo integrante e o retira do
+      // catálogo de disponíveis, sem que o apontador precise fechar o link.
+      onRetry();
+    } catch (caught) {
+      setAddError(caught instanceof Error ? caught.message : 'Não foi possível incluir este colaborador.');
+    } finally {
+      setAddingEmployeeId('');
+    }
+  };
+
   const updateStatus = async (employeeId: string, status: PresencaStatus, observacaoOverride?: string) => {
     if (!group || viewingPastDay) return;
     const observacaoValue = (observacaoOverride ?? items[employeeId]?.observacao ?? '').trim();
@@ -326,6 +401,7 @@ export default function PresencaTempoRealPublica({
         return;
       }
       setResult(response);
+      receiptShownForRef.current = `${group.id}|${dataSelecionada || date}`;
       setShowSuccessScreen(true);
       setDraftFeedback('');
     } catch (caught) {
@@ -334,6 +410,85 @@ export default function PresencaTempoRealPublica({
       setSubmitting(false);
     }
   };
+
+  // O bloco de inclusão acompanha as duas telas de lista — antes e depois do
+  // envio — porque alguém pode chegar na frente a qualquer momento do dia.
+  const addMemberSection = canAddMembers && group ? (
+    <section className="presence-public__add-member">
+      <button
+        type="button"
+        className="presence-public__add-toggle"
+        aria-expanded={isAddPanelOpen}
+        onClick={() => {
+          setIsAddPanelOpen(open => !open);
+          setAddError('');
+          setAddFeedback('');
+        }}
+      >
+        {isAddPanelOpen ? <X className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+        <span>{isAddPanelOpen ? 'Fechar inclusão' : 'Adicionar colaborador à equipe'}</span>
+      </button>
+      {addFeedback && !isAddPanelOpen && (
+        <p role="status" className="presence-public__add-feedback"><Check className="h-4 w-4" /> {addFeedback}</p>
+      )}
+      {isAddPanelOpen && (
+        <div className="presence-public__add-panel">
+          <p className="presence-public__add-help">
+            Escolha quem chegou na frente de serviço. Só aparece aqui quem está no efetivo ativo e ainda não pertence a nenhuma equipe.
+          </p>
+          <div className="presence-public__search">
+            <Search className="h-5 w-5" />
+            <input
+              autoFocus
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              value={addSearch}
+              onChange={event => setAddSearch(event.target.value)}
+              placeholder="Buscar por nome, cargo ou matrícula"
+              aria-label="Buscar colaborador para incluir na equipe"
+            />
+          </div>
+          <p className="presence-public__search-meta" aria-live="polite">
+            {addableEmployees.length} {addableEmployees.length === 1 ? 'colaborador disponível' : 'colaboradores disponíveis'}
+          </p>
+          {addError && <div role="alert" className="presence-public__card-error">{addError}</div>}
+          {addFeedback && <div role="status" className="presence-public__card-feedback">{addFeedback}</div>}
+          <div className="presence-public__add-list">
+            {addableEmployees.length === 0 ? (
+              <p className="presence-public__empty">
+                {funcionariosDisponiveis.length === 0
+                  ? 'Todo o efetivo ativo já está distribuído entre as equipes.'
+                  : 'Nenhum colaborador encontrado com esse termo.'}
+              </p>
+            ) : addableEmployees.slice(0, 40).map(employee => (
+              <button
+                key={employee.id}
+                type="button"
+                className="presence-public__add-option"
+                disabled={Boolean(addingEmployeeId)}
+                onClick={() => void addMember(employee)}
+              >
+                <span className="presence-public__avatar">
+                  {safeText(employee.nome).split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}
+                </span>
+                <div>
+                  <strong>{employee.nome}</strong>
+                  <span>{employee.cargo}{employee.matricula ? ` · Mat. ${employee.matricula}` : ''}</span>
+                </div>
+                {addingEmployeeId === employee.id
+                  ? <RefreshCw className="h-5 w-5 animate-spin" />
+                  : <UserPlus className="h-5 w-5" />}
+              </button>
+            ))}
+          </div>
+          {addableEmployees.length > 40 && (
+            <p className="presence-public__search-meta">Refine a busca para ver os demais.</p>
+          )}
+        </div>
+      )}
+    </section>
+  ) : null;
 
   if (isLoadingCloud && activeGroups.length === 0) {
     return (
@@ -402,33 +557,66 @@ export default function PresencaTempoRealPublica({
     );
   }
 
-  if (showSuccessScreen && result) {
-    const counts = groupEmployees.reduce<Record<string, number>>((summary, employee) => {
-      const status = items[employee.id]?.status || 'Outro';
+  if (showSuccessScreen && (result || meusRegistros.length > 0)) {
+    // Recém-enviado, o comprovante conta o que está na tela. Reaberto, conta o
+    // que o serviço devolveu para aquele dia — inclusive quem foi incluído ou
+    // teve a situação alterada depois do envio original.
+    const receiptRoster = result
+      ? groupEmployees.map(employee => items[employee.id]?.status || 'Outro')
+      : meusRegistros.map(record => record.status || 'Outro');
+    const counts = receiptRoster.reduce<Record<string, number>>((summary, status) => {
       summary[status] = (summary[status] || 0) + 1;
       return summary;
     }, {});
     const foraCount = (counts.Ausente || 0) + (counts['Falta justificada'] || 0)
       + (counts.Atestado || 0) + (counts.Férias || 0) + (counts.Afastado || 0) + (counts.Outro || 0);
+    const receiptIso = result?.createdAtIso
+      || meusRegistros.map(record => record.updatedAt || record.createdAt).filter(Boolean).sort().at(-1)
+      || '';
+    const receiptDayLabel = formatDayLabel(dataSelecionada || dataAtual, dataAtual);
     return (
       <main className="presence-public presence-public--center">
         <section className="presence-public__success-card">
           <img src={reneaLogo} alt="RENEA Infraestrutura" className="presence-public__logo" />
           <CheckCircle2 className="presence-public__success-icon" />
-          <h1>Presença enviada</h1>
-          <p>{group.nome} atualizada no controle em tempo real.</p>
-          <time>{new Date(result.createdAtIso || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
-          <div className="presence-public__success-total"><strong>{counts.Presente || 0}</strong><span>presentes de {groupEmployees.length}</span></div>
+          <h1>{result ? 'Presença enviada' : 'Presença registrada'}</h1>
+          <p>
+            {result
+              ? `${group.nome} atualizada no controle em tempo real.`
+              : `${group.nome} · apontamento de ${receiptDayLabel.toLocaleLowerCase('pt-BR')} já enviado.`}
+          </p>
+          <time>{receiptIso ? new Date(receiptIso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
+          <div className="presence-public__success-total"><strong>{counts.Presente || 0}</strong><span>presentes de {receiptRoster.length}</span></div>
           <div className="presence-public__summary-grid">
             <div><strong>{counts.Presente || 0}</strong><span>Presentes</span></div>
             <div><strong>{foraCount}</strong><span>Fora</span></div>
             <div><strong>{counts.Ausente || 0}</strong><span>Ausentes</span></div>
             <div><strong>{counts.Atestado || 0}</strong><span>Atestados</span></div>
           </div>
-          {result.submissionId && <p className="presence-public__audit-id">ID do envio: {result.submissionId}</p>}
+          {result?.submissionId && <p className="presence-public__audit-id">ID do envio: {result.submissionId}</p>}
           <button type="button" onClick={() => setShowSuccessScreen(false)} className="presence-public__primary">
-            Conferir e ajustar lista <ChevronRight className="h-4 w-4" />
+            {viewingPastDay ? 'Ver a lista deste dia' : 'Voltar e alterar a lista'} <ChevronRight className="h-4 w-4" />
           </button>
+          {dayOptions.length > 1 && onSelectDate && (
+            <section className="presence-public__receipt-history" aria-label="Histórico de apontamentos da equipe">
+              <p><History className="h-4 w-4" /> Histórico da equipe</p>
+              <div className="presence-public__daybar presence-public__daybar--receipt">
+                {dayOptions.map(dia => (
+                  <button
+                    key={dia}
+                    type="button"
+                    className="presence-public__day"
+                    data-selected={dia === dataSelecionada}
+                    aria-current={dia === dataSelecionada ? 'date' : undefined}
+                    disabled={isLoadingCloud}
+                    onClick={() => onSelectDate(dia)}
+                  >
+                    {formatDayLabel(dia, dataAtual)}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
         </section>
       </main>
     );
@@ -454,6 +642,9 @@ export default function PresencaTempoRealPublica({
               ? <h1 className="presence-public__done-title"><CalendarDays className="h-7 w-7" /> Apontamento de {formatDayLabel(dataSelecionada, dataAtual)}</h1>
               : <h1 className="presence-public__done-title"><CheckCircle2 className="h-7 w-7" /> Apontamento realizado</h1>}
             <p>{group.nome} · {workName} · {reviewed} de {groupEmployees.length} colaboradores registrados{!viewingPastDay && result?.createdAtIso ? ` · enviado às ${new Date(result.createdAtIso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
+            <button type="button" className="presence-public__receipt-link" onClick={() => setShowSuccessScreen(true)}>
+              <CheckCircle2 className="h-4 w-4" /> Ver comprovante do dia
+            </button>
           </section>
           {dayOptions.length > 1 && onSelectDate && (
             <section className="presence-public__daybar" aria-label="Dias com apontamento enviado">
@@ -478,6 +669,7 @@ export default function PresencaTempoRealPublica({
             <div><strong>{counts.Atestado || 0}</strong><span>Atestados</span></div>
             <div><strong>{(counts['Falta justificada'] || 0) + (counts.Férias || 0) + (counts.Afastado || 0) + (counts.Outro || 0)}</strong><span>Outros</span></div>
           </div>
+          {addMemberSection}
           <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar por nome ou matrícula" aria-label="Buscar colaborador" /></div>
           <p className="presence-public__search-meta" aria-live="polite">{viewingPastDay ? 'Dia anterior: consulta apenas. Alterações somente no dia de hoje.' : 'Toque em uma situação para atualizar na hora'}</p>
           <section className="presence-public__employee-list">
@@ -562,6 +754,7 @@ export default function PresencaTempoRealPublica({
             ))}
           </section>
         )}
+        {addMemberSection}
         <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador" aria-label="Buscar colaborador" /></div>
         <form onSubmit={submit} className="presence-public__form">
           <section className="presence-public__employee-list">

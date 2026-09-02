@@ -85,11 +85,63 @@ const resolveGroupEmployeeIds = (groups, employees) => {
   });
 };
 
-const getPublicConfig = (snapshot, token) => {
+// O apontador pode incluir alguém que chegou na frente sem estar na equipe.
+// A inclusão nasce nesta coleção para valer no link imediatamente, mesmo com
+// o painel administrativo fechado, e segue para a fila pública, que a grava
+// definitivamente no cadastro da equipe.
+const TEAM_MEMBERS_COLLECTION = 'sistemarenea_presence_team_members';
+const teamMemberDocId = (groupId, employeeId) => `member_${stableHash(`${groupId}|${employeeId}`).slice(0, 48)}`;
+
+const loadTeamAdditions = async (database, groupIds) => {
+  const ids = [...new Set((groupIds || []).filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const chunks = [];
+  for (let index = 0; index < ids.length; index += 10) chunks.push(ids.slice(index, index + 10));
+  const snapshots = await Promise.all(chunks.map(chunk => database
+    .collection(TEAM_MEMBERS_COLLECTION)
+    .where('grupoId', 'in', chunk)
+    .get()));
+  const byGroup = new Map();
+  snapshots.forEach(snapshot => snapshot.docs.forEach(document => {
+    const data = document.data();
+    const groupId = cleanString(data?.grupoId, 160);
+    const employeeId = cleanString(data?.funcionarioId, 160);
+    if (!groupId || !employeeId) return;
+    byGroup.set(groupId, [...(byGroup.get(groupId) || []), employeeId]);
+  }));
+  return byGroup;
+};
+
+// A adição só vale para colaboradores ativos do cadastro. Um id que saiu do
+// efetivo é simplesmente ignorado, sem quebrar o link da equipe.
+const applyTeamAdditions = (groups, additionsByGroup, employees) => {
+  if (!additionsByGroup || additionsByGroup.size === 0) return groups;
+  const activeIds = new Set(employees.map(employee => employee.id));
+  return groups.map(group => {
+    const extras = (additionsByGroup.get(group.id) || []).filter(id => activeIds.has(id));
+    if (extras.length === 0) return group;
+    return { ...group, funcionarioIds: [...new Set([...(group.funcionarioIds || []), ...extras])] };
+  });
+};
+
+const sanitizeAvailableEmployee = employee => ({
+  id: cleanString(employee.id, 160),
+  nome: cleanString(employee.nome, 180),
+  cargo: cleanString(employee.cargo, 120),
+  matricula: cleanString(employee.matricula, 80),
+  empresaId: cleanString(employee.empresaId, 160),
+});
+
+// Teto defensivo do catálogo exposto ao link. O efetivo da obra cabe com
+// folga; o limite existe para que um cadastro fora de escala não transforme
+// a resposta pública em um despejo de dados.
+const AVAILABLE_EMPLOYEES_LIMIT = 800;
+
+const getPublicConfig = (snapshot, token, additionsByGroup = new Map()) => {
   const groups = activeGroupsForToken(snapshot, token);
   if (groups.length === 0) return null;
   const allEmployees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
-  const resolvedGroups = resolveGroupEmployeeIds(groups, allEmployees);
+  const resolvedGroups = applyTeamAdditions(resolveGroupEmployeeIds(groups, allEmployees), additionsByGroup, allEmployees);
   const employeeIds = new Set(resolvedGroups.flatMap(group => group.funcionarioIds));
   const employees = allEmployees
     .filter(employee => employeeIds.has(employee.id))
@@ -120,10 +172,32 @@ const getPublicConfig = (snapshot, token) => {
       responsavel: '',
       status: ['Ativa', 'Concluída', 'Planejada'].includes(work.status) ? work.status : 'Ativa',
     }));
+  // Catálogo para a inclusão em campo: o efetivo ativo que ainda não está em
+  // nenhuma equipe do link. Vai sem telefone e sem dados sensíveis — só o
+  // suficiente para o apontador reconhecer e escolher a pessoa certa.
+  const funcionariosDisponiveis = allEmployees
+    .filter(employee => !employeeIds.has(employee.id))
+    .map(sanitizeAvailableEmployee)
+    .filter(employee => employee.id && employee.nome)
+    .sort((first, second) => first.nome.localeCompare(second.nome, 'pt-BR'))
+    .slice(0, AVAILABLE_EMPLOYEES_LIMIT);
+  const availableCompanyIds = new Set(funcionariosDisponiveis.map(employee => employee.empresaId).filter(Boolean));
+  const allCompanies = [
+    ...companies,
+    ...(snapshot.empresas || [])
+      .filter(company => availableCompanyIds.has(company.id) && !companyIds.has(company.id))
+      .map(company => ({
+        id: cleanString(company.id, 160),
+        nome: cleanString(company.nome, 180),
+        cnpj: '', telefone: '', responsavel: '',
+        status: company.status === 'INATIVO' ? 'INATIVO' : 'ATIVO',
+      })),
+  ];
   return {
     gruposEquipe: resolvedGroups.map(group => sanitizeGroup(group, isGeneralToken(token) ? '' : token)),
     funcionarios: employees,
-    empresas: companies,
+    funcionariosDisponiveis,
+    empresas: allCompanies,
     obras: works,
   };
 };
@@ -310,11 +384,13 @@ const buildPresenceRecords = ({ group, employees, date, items, token, submission
 export const __testing = {
   activeGroupsForToken,
   applyRecordEdit,
+  applyTeamAdditions,
   indexGroupHistory,
   buildPresenceRecords,
   filterSubmittedGroups,
   getPublicConfig,
   resolveGroupEmployeeIds,
+  teamMemberDocId,
   todayInSaoPaulo,
 };
 
@@ -332,7 +408,9 @@ export const handler = async event => {
       const token = cleanString(event.queryStringParameters?.token, 180);
       if (!token) return jsonResponse(400, { success: false, message: 'Token de presença não informado.' });
       const snapshot = await loadPresenceSnapshot(database);
-      const config = getPublicConfig(snapshot, token);
+      const tokenGroupIds = activeGroupsForToken(snapshot, token).map(group => group.id);
+      const additionsByGroup = await loadTeamAdditions(database, tokenGroupIds);
+      const config = getPublicConfig(snapshot, token, additionsByGroup);
       if (!config) return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
       const today = todayInSaoPaulo();
       const submittedGroupIds = await loadSubmittedGroupIds(database, today);
@@ -358,6 +436,7 @@ export const handler = async event => {
         data: {
           gruposEquipe: availableConfig.gruposEquipe,
           funcionarios: config.funcionarios,
+          funcionariosDisponiveis: config.funcionariosDisponiveis,
           empresas: config.empresas,
           obras: config.obras,
           meuGrupo,
@@ -392,7 +471,9 @@ export const handler = async event => {
         const date = todayInSaoPaulo();
         const snapshot = await loadPresenceSnapshot(database);
         const employees = (snapshot.funcionarios || []).filter(item => item?.ativo);
-        const authorizedGroups = resolveGroupEmployeeIds(activeGroupsForToken(snapshot, token), employees);
+        const tokenGroups = activeGroupsForToken(snapshot, token);
+        const additionsByGroup = await loadTeamAdditions(database, tokenGroups.map(item => item.id));
+        const authorizedGroups = applyTeamAdditions(resolveGroupEmployeeIds(tokenGroups, employees), additionsByGroup, employees);
         const group = authorizedGroups.find(item => item.id === groupId);
         if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
         const employee = employees.find(item => item.id === funcionarioId);
@@ -459,6 +540,118 @@ export const handler = async event => {
 
     if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST, PATCH' });
     const body = parseJsonBody(event);
+
+    // Inclusão de colaborador direto da frente de serviço. O link continua sem
+    // poder criar, editar ou desativar cadastro: ele apenas vincula alguém que
+    // já existe no efetivo ativo à equipe daquele token.
+    if (cleanString(body.action, 40) === 'adicionar-colaborador') {
+      const token = cleanString(body.token, 180);
+      const groupId = cleanString(body.grupoId, 160);
+      const funcionarioId = cleanString(body.funcionarioId, 160);
+      if (!token || !groupId || !funcionarioId) {
+        return jsonResponse(400, { success: false, message: 'Dados da inclusão incompletos ou inválidos.' });
+      }
+      const idempotencyKey = assertIdempotencyKey(event, { required: true });
+      const publicContext = {
+        database,
+        organizationId: 'public-presenca',
+        userId: stableHash(token).slice(0, 32),
+        requestId: event.headers?.['x-request-id'] || '',
+      };
+      return await withIdempotency(event, publicContext, idempotencyKey, async () => {
+        const snapshot = await loadPresenceSnapshot(database);
+        const employees = (snapshot.funcionarios || []).filter(item => item?.ativo);
+        const tokenGroups = activeGroupsForToken(snapshot, token);
+        const additionsByGroup = await loadTeamAdditions(database, tokenGroups.map(item => item.id));
+        const authorizedGroups = applyTeamAdditions(resolveGroupEmployeeIds(tokenGroups, employees), additionsByGroup, employees);
+        const group = authorizedGroups.find(item => item.id === groupId);
+        if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
+        const employee = employees.find(item => item.id === funcionarioId);
+        if (!employee) {
+          return jsonResponse(400, { success: false, message: 'Este colaborador não está no efetivo ativo da obra.' });
+        }
+        if (group.funcionarioIds.includes(funcionarioId)) {
+          return jsonResponse(409, { success: false, message: `${employee.nome} já está nesta equipe.` });
+        }
+        // Ninguém pode ficar em duas equipes no mesmo dia: seria contado duas
+        // vezes no efetivo da obra. A checagem varre todas as equipes ativas,
+        // não só as visíveis por este token.
+        const otherGroups = resolveGroupEmployeeIds(
+          (snapshot.gruposEquipe || []).filter(item => item?.status === 'ativo' && item?.linkAtivo && item?.id !== groupId),
+          employees,
+        );
+        const otherAdditions = await database.collection(TEAM_MEMBERS_COLLECTION)
+          .where('funcionarioId', '==', funcionarioId)
+          .get();
+        const conflictingGroupIds = new Set([
+          ...otherGroups.filter(item => item.funcionarioIds.includes(funcionarioId)).map(item => item.id),
+          ...otherAdditions.docs
+            .map(document => cleanString(document.data()?.grupoId, 160))
+            .filter(id => id && id !== groupId),
+        ]);
+        if (conflictingGroupIds.size > 0) {
+          const [conflictingId] = [...conflictingGroupIds];
+          const conflictingName = (snapshot.gruposEquipe || []).find(item => item?.id === conflictingId)?.nome || 'outra equipe';
+          return jsonResponse(409, {
+            success: false,
+            message: `${employee.nome} já está na equipe ${conflictingName}. Peça ao administrativo para transferir antes de incluir aqui.`,
+          });
+        }
+        const now = new Date();
+        const nowIso = now.toISOString();
+        const funcionarioNome = cleanString(employee.nome, 180);
+        const funcao = cleanString(employee.cargo, 120);
+        const memberRef = database.collection(TEAM_MEMBERS_COLLECTION).doc(teamMemberDocId(groupId, funcionarioId));
+        const submissionRef = database.collection('sistemarenea_public_submissions')
+          .doc(`team_${stableHash(idempotencyKey).slice(0, 48)}`);
+        try {
+          // O vínculo e o aviso para o painel nascem juntos. Se a fila falhar,
+          // a inclusão não fica valendo só no link, invisível para a obra.
+          await database.runTransaction(async transaction => {
+            const existing = await transaction.get(memberRef);
+            if (existing.exists) {
+              const error = new Error(`${funcionarioNome} já foi incluído nesta equipe.`);
+              error.statusCode = 409;
+              throw error;
+            }
+            transaction.create(memberRef, {
+              grupoId: group.id,
+              funcionarioId,
+              funcionarioNome,
+              funcao,
+              origem: 'link-publico',
+              tokenUsado: `validado-${stableHash(token).slice(0, 12)}`,
+              createdAt: serverTimestamp(),
+              createdAtIso: nowIso,
+            });
+            transaction.create(submissionRef, {
+              kind: 'equipe',
+              status: 'pending',
+              createdAt: serverTimestamp(),
+              createdAtIso: nowIso,
+              sourceIpHash: requestIpHash(event),
+              payload: {
+                grupoId: group.id,
+                grupoNome: cleanString(group.nome, 160),
+                data: todayInSaoPaulo(),
+                funcionarioId,
+                funcionarioNome,
+                funcao,
+              },
+            });
+          });
+        } catch (error) {
+          if (error?.statusCode) throw error;
+          throw new Error('Não foi possível incluir este colaborador com segurança.');
+        }
+        return jsonResponse(201, {
+          success: true,
+          data: { funcionario: { id: funcionarioId, nome: funcionarioNome, cargo: funcao, empresaId: cleanString(employee.empresaId, 160), ativo: true } },
+          message: `${funcionarioNome} incluído na equipe ${group.nome}.`,
+        });
+      });
+    }
+
     const token = cleanString(body.token, 180);
     const groupId = cleanString(body.grupoId, 160);
     const date = cleanString(body.data, 10);
@@ -478,7 +671,9 @@ export const handler = async event => {
     return await withIdempotency(event, publicContext, idempotencyKey, async () => {
       const snapshot = await loadPresenceSnapshot(database);
       const employees = (snapshot.funcionarios || []).filter(employee => employee?.ativo);
-      const authorizedGroups = resolveGroupEmployeeIds(activeGroupsForToken(snapshot, token), employees);
+      const tokenGroups = activeGroupsForToken(snapshot, token);
+      const additionsByGroup = await loadTeamAdditions(database, tokenGroups.map(item => item.id));
+      const authorizedGroups = applyTeamAdditions(resolveGroupEmployeeIds(tokenGroups, employees), additionsByGroup, employees);
       const group = authorizedGroups.find(item => item.id === groupId);
       if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
       const existingSnapshot = await database.collection('sistemarenea_public_submissions')
