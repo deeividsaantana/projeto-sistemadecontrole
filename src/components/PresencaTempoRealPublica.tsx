@@ -410,7 +410,7 @@ export default function PresencaTempoRealPublica({
     try {
       // O pequeno intervalo mantém o retorno visual perceptível mesmo quando
       // a gravação local termina quase instantaneamente.
-      await new Promise(resolve => window.setTimeout(resolve, 500));
+      await new Promise(resolve => window.setTimeout(resolve, 1_200));
       writeDraft(token, { date, selectedGroupId: group?.id || selectedGroupId, items, result: null });
       setDraftFeedback('Rascunho salvo neste aparelho · Ainda não enviado');
     } finally {
