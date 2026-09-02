@@ -665,8 +665,8 @@ const runCheck = () => {
   if (fs.existsSync(TEMP_ENV_PATH)) throw new Error('Arquivo temporário de segredo não foi removido. Exclua .env.publicar-tudo.local.');
 
   if (!quickCheck) {
-    if (!fs.existsSync(path.join(ROOT, 'node_modules'))) {
-      warn('Dependências ainda não instaladas; a publicação executará a instalação automaticamente.');
+    if (!fs.existsSync(path.join(ROOT, 'node_modules')) || manifestFingerprint() !== (() => { try { return fs.readFileSync(DEPS_MARK_PATH, 'utf8').trim(); } catch { return ''; } })()) {
+      warn('Dependências desatualizadas; a publicação executará a instalação automaticamente.');
     } else {
       runProjectValidation();
     }
@@ -675,15 +675,44 @@ const runCheck = () => {
   else warn('Na primeira publicação será aberto o assistente de Netlify e Firebase.');
 };
 
+// node_modules existir não significa estar em dia: um git pull que traz
+// dependência nova deixava o build quebrar com "failed to resolve import".
+// A marca guarda o estado dos manifestos da última instalação.
+const DEPS_MARK_PATH = path.join(ROOT, 'node_modules', '.publicar-tudo-deps');
+
+const manifestFingerprint = () => ['package.json', 'package-lock.json', 'pnpm-lock.yaml']
+  .map(nome => {
+    const caminho = path.join(ROOT, nome);
+    if (!fs.existsSync(caminho)) return `${nome}:ausente`;
+    return `${nome}:${crypto.createHash('sha256').update(fs.readFileSync(caminho)).digest('hex')}`;
+  })
+  .join('|');
+
+const ensureProjectDependencies = () => {
+  const esperado = manifestFingerprint();
+  const instalado = fs.existsSync(path.join(ROOT, 'node_modules'))
+    ? (() => { try { return fs.readFileSync(DEPS_MARK_PATH, 'utf8').trim(); } catch { return ''; } })()
+    : null;
+  // Sem marca mas com node_modules: instalação anterior a esta verificação.
+  // Reinstala uma vez para garantir que o que está em disco casa com o lock.
+  if (instalado === esperado) return;
+
+  info(instalado === null ? 'Instalando dependências do projeto' : 'Dependências mudaram; atualizando antes de publicar');
+  if (packageTools.kind.startsWith('npm')) runPackage(['ci', '--no-audit', '--no-fund']);
+  else runPackage(['install', '--lockfile=false'], { env: { CI: 'true' } });
+  try {
+    fs.writeFileSync(DEPS_MARK_PATH, `${esperado}\n`, 'utf8');
+  } catch {
+    // A marca é conveniência: sem ela apenas se reinstala na próxima vez.
+  }
+  ok('Dependências do projeto em dia.');
+};
+
 const publish = async () => {
   ensureRepositoryReady();
   const branch = ensureRepositorySafety();
   ensureLocalNpm();
-  if (!fs.existsSync(path.join(ROOT, 'node_modules'))) {
-    info('Instalando dependências do projeto');
-    if (packageTools.kind.startsWith('npm')) runPackage(['ci', '--no-audit', '--no-fund']);
-    else runPackage(['install', '--lockfile=false'], { env: { CI: 'true' } });
-  }
+  ensureProjectDependencies();
 
   if (forceSetup || !fs.existsSync(LOCAL_CONFIG_PATH)) await configureFirstRun();
   ensureNetlifyLink();
