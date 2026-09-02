@@ -62,6 +62,7 @@ test('apontador salva rascunho local sem transmitir ao painel', () => {
 
 test('rascunho e troca de dia evitam bloqueio perceptivel da interface', () => {
   assert.match(publicPresenceSource, /const draftWriteTimer = window\.setTimeout/);
+  assert.match(publicPresenceSource, /dataSelecionada !== dataAtual/);
   assert.doesNotMatch(publicPresenceSource, /setTimeout\(resolve, 1_200\)/);
   assert.match(publicAppSource, /presenceHistory/);
   assert.match(publicPresenceSource, /currentDayDraftRef/);

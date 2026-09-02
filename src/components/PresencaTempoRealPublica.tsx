@@ -228,12 +228,13 @@ export default function PresencaTempoRealPublica({
 
   useEffect(() => {
     if (!draftHydrated) return;
+    if (dataSelecionada && dataAtual && dataSelecionada !== dataAtual) return;
     const draftWriteTimer = window.setTimeout(() => {
       writeDraft(token, { date, selectedGroupId, items, result });
     }, 250);
 
     return () => window.clearTimeout(draftWriteTimer);
-  }, [date, draftHydrated, items, result, selectedGroupId, token]);
+  }, [dataAtual, dataSelecionada, date, draftHydrated, items, result, selectedGroupId, token]);
 
   const activeGroups = useMemo(() => (Array.isArray(gruposEquipe) ? gruposEquipe : [])
     .filter(group => group?.status === 'ativo' && group?.linkAtivo)
