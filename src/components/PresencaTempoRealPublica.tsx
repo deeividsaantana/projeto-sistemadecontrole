@@ -146,6 +146,10 @@ export default function PresencaTempoRealPublica({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
+  // Comprovante animado do envio. Aparece uma vez, logo apos enviar, e da
+  // passagem para a lista conferivel. Ao reabrir o link depois, o apontador
+  // cai direto na lista.
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftFeedback, setDraftFeedback] = useState('');
   const [savingEmployeeId, setSavingEmployeeId] = useState('');
@@ -322,6 +326,7 @@ export default function PresencaTempoRealPublica({
         return;
       }
       setResult(response);
+      setShowSuccessScreen(true);
       setDraftFeedback('');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível enviar a presença.');
@@ -393,6 +398,38 @@ export default function PresencaTempoRealPublica({
             ))}
           </section>
         </div>
+      </main>
+    );
+  }
+
+  if (showSuccessScreen && result) {
+    const counts = groupEmployees.reduce<Record<string, number>>((summary, employee) => {
+      const status = items[employee.id]?.status || 'Outro';
+      summary[status] = (summary[status] || 0) + 1;
+      return summary;
+    }, {});
+    const foraCount = (counts.Ausente || 0) + (counts['Falta justificada'] || 0)
+      + (counts.Atestado || 0) + (counts.Férias || 0) + (counts.Afastado || 0) + (counts.Outro || 0);
+    return (
+      <main className="presence-public presence-public--center">
+        <section className="presence-public__success-card">
+          <img src={reneaLogo} alt="RENEA Infraestrutura" className="presence-public__logo" />
+          <CheckCircle2 className="presence-public__success-icon" />
+          <h1>Presença enviada</h1>
+          <p>{group.nome} atualizada no controle em tempo real.</p>
+          <time>{new Date(result.createdAtIso || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+          <div className="presence-public__success-total"><strong>{counts.Presente || 0}</strong><span>presentes de {groupEmployees.length}</span></div>
+          <div className="presence-public__summary-grid">
+            <div><strong>{counts.Presente || 0}</strong><span>Presentes</span></div>
+            <div><strong>{foraCount}</strong><span>Fora</span></div>
+            <div><strong>{counts.Ausente || 0}</strong><span>Ausentes</span></div>
+            <div><strong>{counts.Atestado || 0}</strong><span>Atestados</span></div>
+          </div>
+          {result.submissionId && <p className="presence-public__audit-id">ID do envio: {result.submissionId}</p>}
+          <button type="button" onClick={() => setShowSuccessScreen(false)} className="presence-public__primary">
+            Conferir e ajustar lista <ChevronRight className="h-4 w-4" />
+          </button>
+        </section>
       </main>
     );
   }
