@@ -13,9 +13,11 @@ const LOCAL_SECRET_DIR = path.join(process.env.LOCALAPPDATA || ROOT, 'RENEA');
 const INITIAL_PASSWORD_PATH = path.join(LOCAL_SECRET_DIR, 'senha-inicial-administrador.txt');
 const ONEDRIVE_SYNC_CONFIG_PATH = path.join(LOCAL_SECRET_DIR, 'onedrive-combustivel-sync.json');
 const PUBLIC_TICKET_TOKEN_PATH = path.join(LOCAL_SECRET_DIR, 'public-ticket-link-token.txt');
-const FIREBASE_PROJECT_ID = 'sistemarenea';
-const FIREBASE_DATABASE_URL = 'https://sistemarenea-default-rtdb.firebaseio.com';
-const FIREBASE_WEB_API_KEY = 'AIzaSyDGN9xLkhgsqDIMXSTU9G03LEeC4Jmjpo4';
+// Projeto Firebase da obra. O nome nao acompanha o da empresa por razoes
+// historicas; os prefixos 'sistemarenea_' das colecoes sao so nomenclatura.
+const FIREBASE_PROJECT_ID = 'sistemaerp-787f6';
+const FIREBASE_DATABASE_URL = 'https://sistemaerp-787f6-default-rtdb.firebaseio.com';
+const FIREBASE_WEB_API_KEY = 'AIzaSyBPcOluz5J84fdSMRFekHwa-6TCk2ts4K8';
 const MANUTENCAO_SOURCE_URL = 'https://dynamic-manatee-66561d.netlify.app/';
 const EXPECTED_REMOTE = 'deeividsaantana/projeto-sistemadecontrole';
 const EXPECTED_REMOTE_URL = `https://github.com/${EXPECTED_REMOTE}.git`;

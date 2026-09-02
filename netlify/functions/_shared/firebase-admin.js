@@ -7,7 +7,7 @@ import { extractBearerToken, mergeSecurityHeaders } from './api-security.js';
 const FIREBASE_SERVICE_ACCOUNT_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64
   ? Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf8')
   : process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '';
-const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || 'https://sistemarenea-default-rtdb.firebaseio.com';
+const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL || 'https://sistemaerp-787f6-default-rtdb.firebaseio.com';
 
 const getServiceAccount = () => {
   if (!FIREBASE_SERVICE_ACCOUNT_KEY) {

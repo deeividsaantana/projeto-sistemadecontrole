@@ -22,11 +22,10 @@ type FirebaseEnv = Partial<Record<
 >>;
 
 /**
- * Retrato embutido de um projeto Firebase antigo. Existe apenas para que a
- * aplicação não quebre ao abrir sem configuração, em desenvolvimento. Não é o
- * projeto de produção: publicar sem as variáveis VITE_FIREBASE_* faz o sistema
- * conversar com outro banco, em silêncio, e nenhum dado da obra aparece.
- * `resolveFirebaseClientConfig` reporta quando isto está em uso.
+ * Retrato do projeto da obra, embutido para que a aplicação abra mesmo sem
+ * configuração de ambiente. Vale como rede de segurança, não como fonte de
+ * verdade: um valor que mude no console e não aqui passa a divergir em silêncio.
+ * `getMissingFirebaseEnvKeys` denuncia o build que depende deste retrato.
  */
 const defaultFirebaseClientConfig: FirebaseClientConfig = {
   apiKey: 'AIzaSyBPcOluz5J84fdSMRFekHwa-6TCk2ts4K8',

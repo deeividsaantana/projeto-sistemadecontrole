@@ -16,15 +16,16 @@ if (missingFirebaseKeys.length > 0) {
   console.warn(`Configuração Firebase incompleta: ${missingFirebaseKeys.join(', ')}.`);
 }
 
-// Sem as variáveis do build, o sistema abre normalmente e conversa com o projeto
-// embutido — nenhum dado da obra aparece e a causa não fica visível em lugar
-// nenhum. O aviso nomeia o projeto em uso para que a troca de site ou de conta
-// não termine em um banco silenciosamente errado.
+// Sem as variáveis do build, o sistema recai no retrato embutido. Hoje ele
+// aponta para o projeto certo, então nada quebra — mas o dia em que o projeto
+// mudar no console e não aqui, a divergência apareceria como um sistema vazio,
+// sem pista nenhuma. O aviso nomeia o projeto em uso para que essa troca seja
+// percebida na hora.
 if (missingEnvKeys.length > 0) {
-  console.error(
+  console.warn(
     `[RENEA] Firebase sem configuração de ambiente: ${missingEnvKeys.join(', ')}. `
-    + `O sistema está usando o projeto embutido "${FALLBACK_FIREBASE_PROJECT_ID}" e não os dados da obra. `
-    + 'Defina as variáveis VITE_FIREBASE_* no painel do site e publique de novo.',
+    + `O sistema está usando o projeto embutido "${FALLBACK_FIREBASE_PROJECT_ID}". `
+    + 'Confirme que é o projeto correto e gere .env.local pelo PUBLICAR_TUDO.cmd.',
   );
 }
 
