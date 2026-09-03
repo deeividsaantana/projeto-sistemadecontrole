@@ -16,11 +16,9 @@ const TAB_LABELS = {
   'partes-diarias': 'Parte Diária de Equipamentos',
   lancamentos: 'Combustível',
   'tickets-jazida': 'Tickets Jazida',
-  materiais: 'Materiais',
   manutencao: 'Manutenção',
   presenca: 'Presença',
   'controle-presenca': 'Controle de Presença',
-  apontamentos: 'Apontamentos',
   cadastros: 'Cadastros Auxiliares',
   configuracoes: 'Apoio e Configuração',
 };
