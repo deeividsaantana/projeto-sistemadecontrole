@@ -5,6 +5,7 @@ import {
   setDoc,
   type Firestore,
 } from 'firebase/firestore';
+import { mergeCloudSnapshots } from './cloudMerge';
 
 const CLOUD_COLLECTION = 'sistemarenea_cloud';
 const CLOUD_MANIFEST_ID = 'main_data_v2';
@@ -475,13 +476,51 @@ const performFirebaseBackupUpload = async (
 
 let uploadQueue: Promise<void> = Promise.resolve();
 
+const CLOUD_CONFLICT_MAX_ATTEMPTS = 4;
+
+const isVersionConflict = (error: unknown) => (
+  error instanceof Error && error.message === 'CLOUD_VERSION_CONFLICT'
+);
+
+// Um conflito significa que outro usuário publicou durante o nosso envio — e não
+// que o nosso trabalho deva ser jogado fora. Recarregamos o que está na nuvem,
+// mesclamos com o que temos aqui (registro novo de cada lado é preservado) e
+// publicamos de novo. Sem isto, quem salva com mais frequência simplesmente
+// nunca conseguia publicar enquanto os colegas trabalhavam.
+const uploadWithConflictMerge = async (
+  database: Firestore,
+  data: FirebaseCloudData,
+): Promise<FirebaseUploadResult> => {
+  let payload = data;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= CLOUD_CONFLICT_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await performFirebaseBackupUpload(database, payload);
+    } catch (error) {
+      if (!isVersionConflict(error)) throw error;
+      lastError = error;
+      if (attempt === CLOUD_CONFLICT_MAX_ATTEMPTS) break;
+      const remote = await downloadFirebaseBackup(database);
+      payload = mergeCloudSnapshots(remote.data, payload) as FirebaseCloudData;
+      // Espera crescente com sorteio para dois clientes em conflito não
+      // voltarem a colidir exatamente no mesmo instante.
+      await new Promise(resolve => {
+        setTimeout(resolve, 250 * attempt + Math.floor(Math.random() * 250));
+      });
+    }
+  }
+  throw lastError instanceof Error
+    ? new Error('Outro usuário publicou ao mesmo tempo e não foi possível concluir o envio após várias tentativas. Seus dados continuam salvos neste aparelho.')
+    : lastError;
+};
+
 export const uploadFirebaseBackup = (
   database: Firestore,
   data: FirebaseCloudData,
 ): Promise<FirebaseUploadResult> => {
   const queuedUpload = uploadQueue.then(
-    () => performFirebaseBackupUpload(database, data),
-    () => performFirebaseBackupUpload(database, data),
+    () => uploadWithConflictMerge(database, data),
+    () => uploadWithConflictMerge(database, data),
   );
   uploadQueue = queuedUpload.then(() => undefined, () => undefined);
   return queuedUpload;
