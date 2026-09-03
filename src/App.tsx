@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { lazy, Suspense, useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { 
   Empresa, 
   ObraLocal, 
@@ -293,6 +293,9 @@ export default function App() {
 
   // Firebase Sync States
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
+  // Evita repetir o mesmo aviso de falha de sincronização a cada salvamento
+  // enquanto a causa não muda (ex.: ficar sem internet por vários lançamentos).
+  const lastSyncFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
@@ -1114,7 +1117,21 @@ export default function App() {
           getLS('renea_periodos_arquivados', []),
           getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
         ).then(res => {
-          if (!res.success) console.warn('Sincronização automática pendente:', res.message);
+          if (res.success) return;
+          console.warn('Sincronização automática pendente:', res.message);
+          // A falha precisa ser visível: antes disso o salvamento parecia ter
+          // dado certo e a base podia ficar dias sem chegar ao Firebase.
+          const now = Date.now();
+          const isRepeat = lastSyncFailureRef.current.message === res.message
+            && now - lastSyncFailureRef.current.at < 60_000;
+          lastSyncFailureRef.current = { message: res.message, at: now };
+          if (isRepeat) return;
+          addNotification(
+            'Sincronização com a nuvem falhou',
+            `${tableName} foi salvo neste aparelho, mas não chegou ao Firebase. Motivo: ${res.message}`,
+            'error',
+            'Sistema Local',
+          );
         });
     }, 100);
   };
