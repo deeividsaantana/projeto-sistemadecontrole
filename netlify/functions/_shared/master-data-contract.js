@@ -227,10 +227,13 @@ const contractError = (message, statusCode = 400) => {
   return error;
 };
 
+// Perfil ausente ou inválido cai no menor privilégio (leitura), nunca em admin:
+// negar acesso por padrão é seguro (a conta esbarra em 403 e pede correção);
+// conceder admin por padrão não é.
 export const normalizeStaffRole = value => (
   VALID_ROLES.has(String(value || '').trim().toLowerCase())
     ? String(value).trim().toLowerCase()
-    : 'admin'
+    : 'leitura'
 );
 
 export const assertRoleCan = (roleValue, action) => {

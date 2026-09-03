@@ -31,7 +31,10 @@ assert.equal(assertMasterDataEntity('equipment').definition.table, 'equipment');
 assert.throws(() => assertMasterDataEntity('abastecimentos'));
 
 assert.equal(normalizeStaffRole('gestor'), 'gestor');
-assert.equal(normalizeStaffRole('perfil-legado'), 'admin');
+// Perfil ausente/invalido cai no minimo privilegio (leitura), nunca em admin.
+assert.equal(normalizeStaffRole('perfil-legado'), 'leitura');
+assert.equal(normalizeStaffRole(''), 'leitura');
+assert.equal(normalizeStaffRole(undefined), 'leitura');
 assert.equal(assertRoleCan('operador', 'update'), 'operador');
 assert.throws(() => assertRoleCan('operador', 'archive'));
 assert.equal(assertRoleCan('leitura', 'read'), 'leitura');
