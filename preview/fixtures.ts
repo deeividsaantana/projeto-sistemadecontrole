@@ -58,9 +58,18 @@ export const abastecimentos: Abastecimento[] = Array.from({ length: 14 }, (_, i)
   responsavel: 'José da Silva Costa', observacao: '',
 } as Abastecimento));
 
+// Sem cast: assim o TypeScript confere o fixture contra o tipo real.
 export const ordensServico: OrdemServico[] = [
-  { id: 'os-1', numero: 'OS-0100', equipamentoId: 'eq-1', descricao: 'Troca de mangueira hidráulica', motivo: 'Vazamento', status: 'Em andamento', dataAbertura: dia(2), responsavel: 'Manutenção' } as OrdemServico,
-  { id: 'os-2', numero: 'OS-0101', equipamentoId: 'eq-2', descricao: 'Revisão preventiva 500h', motivo: 'Preventiva', status: 'Aguardando Peça', dataAbertura: dia(1), responsavel: 'Manutenção' } as OrdemServico,
+  {
+    id: 'os-1', numero: 'OS-0100', equipamentoId: 'eq-1', tipo: 'Corretiva', prioridade: 'Alta',
+    descricao: 'Troca de mangueira hidráulica', status: 'Em Andamento', dataAbertura: dia(2),
+    responsavel: 'Manutenção', observacao: '', motivo: 'Vazamento',
+  },
+  {
+    id: 'os-2', numero: 'OS-0101', equipamentoId: 'eq-2', tipo: 'Preventiva', prioridade: 'Média',
+    descricao: 'Revisão preventiva 500h', status: 'Aguardando Peça', dataAbertura: dia(1),
+    responsavel: 'Manutenção', observacao: '', motivo: 'Preventiva',
+  },
 ];
 
 export const ticketsJazida: TicketJazida[] = Array.from({ length: 6 }, (_, i) => ({
