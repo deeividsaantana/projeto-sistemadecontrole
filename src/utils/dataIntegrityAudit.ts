@@ -1,4 +1,4 @@
-import type { ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, OrdemServico, ParteDiariaEquipamento } from '../types';
+import type { ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, OrdemServico } from '../types';
 import { normalizeCompanyName, normalizeEmployeeCode, normalizePlate, normalizePrefix } from './canonicalIdentity';
 
 export type IntegrityIssue = {
@@ -18,7 +18,7 @@ const duplicates = <T,>(items: T[], key: (item: T) => string) => {
 
 export const auditOperationalIntegrity = (data: {
   empresas: Empresa[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; grupos: GrupoEquipe[];
-  controles: ControleEquipamentoDiario[]; partes: ParteDiariaEquipamento[]; ordens: OrdemServico[];
+  controles: ControleEquipamentoDiario[]; ordens: OrdemServico[];
 }): IntegrityIssue[] => {
   const issues: IntegrityIssue[] = [];
   const companyIds = new Set(data.empresas.map(item => item.id));
@@ -35,7 +35,6 @@ export const auditOperationalIntegrity = (data: {
   data.funcionarios.filter(item => item.empresaId && !companyIds.has(item.empresaId)).forEach(item => issues.push({ id: `employee-company-${item.id}`, category: 'Problema de vínculo', priority: 'Alta', title: `${item.nome} sem empresa válida`, detail: `A matrícula ${item.matricula || 'não informada'} aponta para uma empresa inexistente.`, module: 'cadastros' }));
   data.grupos.forEach(group => group.funcionarioIds.filter(id => !employeeIds.has(id)).forEach(id => issues.push({ id: `group-employee-${group.id}-${id}`, category: 'Problema de vínculo', priority: 'Alta', title: `${group.nome} contém colaborador órfão`, detail: `O ID ${id} não existe; reconciliar pela matrícula armazenada.`, module: 'presenca' })));
   data.controles.filter(item => item.equipamentoId && !equipmentIds.has(item.equipamentoId) && !data.equipamentos.some(eq => normalizePrefix(eq.prefixo) === normalizePrefix(item.prefixo))).forEach(item => issues.push({ id: `control-equipment-${item.id}`, category: 'Problema de vínculo', priority: 'Alta', title: `${item.prefixo} não reconciliado`, detail: 'Registro diário sem equipamento canônico correspondente.', module: 'controle-equipamentos' }));
-  data.partes.filter(item => item.operadorId && !employeeIds.has(item.operadorId) && !data.funcionarios.some(employee => normalizeEmployeeCode(employee.matricula) === normalizeEmployeeCode(item.matricula))).forEach(item => issues.push({ id: `part-employee-${item.id}`, category: 'Problema de vínculo', priority: 'Média', title: `Parte ${item.numero} com motorista órfão`, detail: `${item.operadorNome || 'Sem nome'} · ${item.matricula || 'Sem matrícula'}`, module: 'partes-diarias' }));
   data.ordens.filter(item => !equipmentIds.has(item.equipamentoId)).forEach(item => issues.push({ id: `order-equipment-${item.id}`, category: 'Problema de vínculo', priority: 'Crítica', title: `${item.numero} sem equipamento válido`, detail: item.descricao, module: 'manutencao' }));
   data.equipamentos.filter(item => item.status === 'Esperando motorista' && !item.operadorResponsavelId).forEach(item => issues.push({ id: `equipment-driver-${item.id}`, category: 'Equipamento sem motorista', priority: 'Média', title: `${item.prefixo} aguardando motorista`, detail: item.nome, module: 'consulta-geral' }));
   return issues;

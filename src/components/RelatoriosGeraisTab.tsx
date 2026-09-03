@@ -7,9 +7,9 @@ import type ExcelJS from 'exceljs';
 import { createCorporateWorkbook } from '../utils/excelCorporate';
 import reneaLogo from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
-import type { Abastecimento, Comboio, ControleEstacas, Empresa, Equipamento, Funcionario, Lubrificacao, ObraLocal, ParteDiariaEquipamento, PresencaApontamento, ProdutoLubrificacao, TipoCombustivel, TicketJazida, ListaPresenca } from '../types';
+import type { Abastecimento, Comboio, ControleEstacas, Empresa, Equipamento, Funcionario, Lubrificacao, ObraLocal, PresencaApontamento, ProdutoLubrificacao, TipoCombustivel, TicketJazida, ListaPresenca } from '../types';
 
-type Props = { empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; listasPresenca: ListaPresenca[]; ticketsJazida: TicketJazida[]; controleEstacas: ControleEstacas; presencasLink: PresencaApontamento[]; partesDiariasEquipamentos: ParteDiariaEquipamento[] };
+type Props = { empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; listasPresenca: ListaPresenca[]; ticketsJazida: TicketJazida[]; controleEstacas: ControleEstacas; presencasLink: PresencaApontamento[] };
 type ReportRow = { date: string; module: string; item: string; status: string; owner: string; detail: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -29,7 +29,6 @@ export default function RelatoriosGeraisTab(props: Props) {
       ...props.abastecimentos.map(item => ({ date: item.data, module: 'Combustível', item: `${equipmentName(item.equipamentoId, item.prefixoInformado)} · ${fmt(item.quantidadeLitros)} L`, status: item.status || 'OK', owner: item.responsavel || 'Não informado', detail: item.observacao || 'Lançamento de abastecimento' })),
       ...props.lubrificacoes.map(item => ({ date: item.data, module: 'Lubrificação', item: equipmentName(item.equipamentoId), status: item.status || 'OK', owner: item.responsavel || 'Não informado', detail: `${fmt(item.quantidade)} · ${item.compartimento}` })),
       ...props.presencasLink.map(item => ({ date: item.data, module: 'Presença', item: `${item.grupoNome} · ${item.funcionarioNome}`, status: item.status, owner: item.responsavel, detail: item.observacao || item.frenteServico })),
-      ...props.partesDiariasEquipamentos.map(item => ({ date: item.data, module: 'Frotas', item: `${item.prefixo} · ${item.tipoEquipamento}`, status: item.status, owner: item.operadorNome || item.apontador, detail: `${fmt(item.totalHorasTrabalhadas)} h trabalhadas` })),
       ...props.ticketsJazida.map(item => ({ date: item.data, module: 'Tickets', item: `Ticket ${item.ticketNumero || '—'} · ${item.prefixo || '—'}`, status: item.statusFluxo || item.status || 'Registrado', owner: item.responsavelLiberacao || item.nomeLegivel || 'Não informado', detail: item.tipoMaterial || 'Operação de jazida' })),
     ].filter(row => row.date >= start && row.date <= end);
   }, [props, start, end]);

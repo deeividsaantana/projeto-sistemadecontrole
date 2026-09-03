@@ -1,7 +1,6 @@
 import type {
   Equipamento,
   OrdemServico,
-  ParteDiariaEquipamento,
 } from '../types';
 
 export type FleetCategory = NonNullable<Equipamento['categoriaFrota']>;
@@ -14,12 +13,10 @@ export interface EquipmentValidationResult {
 export interface EquipmentOperationalSummary {
   equipment: Equipamento;
   availabilityPercent: number | null;
-  availabilitySource: 'Cadastro' | 'Histórico operacional' | 'Sem dados';
+  availabilitySource: 'Cadastro' | 'Sem dados';
   targetPercent: number | null;
   belowTarget: boolean;
   openWorkOrders: number;
-  pendingDailyParts: number;
-  latestDailyPart: ParteDiariaEquipamento | null;
   responsibleOperator: string;
 }
 
@@ -151,34 +148,19 @@ export const validateEquipmentMasterRecord = (
   return { errors, warnings };
 };
 
-const latestDailyPart = (
-  equipmentId: string,
-  dailyParts: ParteDiariaEquipamento[],
-) => dailyParts
-  .filter(item => item.equipamentoId === equipmentId)
-  .sort((first, second) => (
-    `${second.data}|${second.atualizadoEm}`.localeCompare(`${first.data}|${first.atualizadoEm}`)
-  ))[0] || null;
-
+// A disponibilidade vem do cadastro do equipamento (horas disponíveis e
+// indisponíveis) e das ordens de serviço. O histórico de partes diárias, que
+// antes era uma segunda fonte, foi removido do sistema.
 export const buildEquipmentOperationalSummaries = (
   equipment: Equipamento[],
-  dailyParts: ParteDiariaEquipamento[],
   workOrders: OrdemServico[],
 ): EquipmentOperationalSummary[] => equipment.map(item => {
-  const parts = dailyParts.filter(part => part.equipamentoId === item.id);
   const explicitAvailability = calculateAvailabilityPercent(
     item.horasDisponiveis || 0,
     item.horasIndisponiveis || 0,
   );
-  const workedHours = parts.reduce((total, part) => total + Math.max(0, Number(part.totalHorasTrabalhadas) || 0), 0);
-  const stoppedHours = parts.reduce(
-    (total, part) => total + Math.max(0, (Number(part.jornada) || 0) - (Number(part.totalHorasTrabalhadas) || 0)),
-    0,
-  );
-  const partsAvailability = calculateAvailabilityPercent(workedHours, stoppedHours);
-  const availabilityPercent = explicitAvailability ?? partsAvailability;
+  const availabilityPercent = explicitAvailability;
   const targetPercent = normalizeAvailabilityTarget(item.metaDisponibilidade);
-  const latestPart = latestDailyPart(item.id, parts);
   const openWorkOrders = workOrders.filter(order => (
     order.equipamentoId === item.id
     && order.status !== 'Concluída'
@@ -187,28 +169,21 @@ export const buildEquipmentOperationalSummaries = (
   return {
     equipment: item,
     availabilityPercent,
-    availabilitySource: explicitAvailability !== null
-      ? 'Cadastro'
-      : partsAvailability !== null
-        ? 'Histórico operacional'
-        : 'Sem dados',
+    availabilitySource: explicitAvailability !== null ? 'Cadastro' : 'Sem dados',
     targetPercent,
     belowTarget: availabilityPercent !== null
       && targetPercent !== null
       && availabilityPercent < targetPercent,
     openWorkOrders,
-    pendingDailyParts: parts.filter(part => part.status !== 'Conferido').length,
-    latestDailyPart: latestPart,
-    responsibleOperator: item.operadorResponsavelNome || latestPart?.operadorNome || '',
+    responsibleOperator: item.operadorResponsavelNome || '',
   };
 });
 
 export const buildMaintenanceFleetSummaries = (
   equipment: Equipamento[],
-  dailyParts: ParteDiariaEquipamento[],
   workOrders: OrdemServico[],
 ): MaintenanceFleetSummary[] => {
-  const operationalSummaries = buildEquipmentOperationalSummaries(equipment, dailyParts, workOrders);
+  const operationalSummaries = buildEquipmentOperationalSummaries(equipment, workOrders);
 
   return operationalSummaries.map(summary => {
     const equipmentOrders = workOrders
@@ -243,7 +218,7 @@ export const buildMaintenanceFleetSummaries = (
       belowTarget: maintenanceAvailabilityPercent !== null
         && summary.targetPercent !== null
         && maintenanceAvailabilityPercent < summary.targetPercent,
-      driverId: summary.equipment.operadorResponsavelId || summary.latestDailyPart?.operadorId || '',
+      driverId: summary.equipment.operadorResponsavelId || '',
       driverName: summary.responsibleOperator || 'Sem motorista definido',
       machineHours: Number(totals.machineHours.toFixed(2)),
       equipmentHours: Number(totals.equipmentHours.toFixed(2)),

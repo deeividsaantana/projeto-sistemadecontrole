@@ -54,7 +54,7 @@ test('snapshot detecta alteração posterior ao fechamento', () => {
   const dados: PeriodoArquivado['dados'] = {
     abastecimentos: [], lubrificacoes: [], ticketsJazida: [], listasPresenca: [],
     ordensServico: [], presencasLink: [], historicoPresencas: [],
-    partesDiariasEquipamentos: [], estacas: control,
+    estacas: control,
   };
   const snapshot: PeriodoArquivado = {
     id: 'snap-1', nome: 'Teste', dataInicio: '2026-07-01', dataFim: '2026-07-31',

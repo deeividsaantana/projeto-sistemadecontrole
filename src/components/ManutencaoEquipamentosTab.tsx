@@ -33,7 +33,6 @@ import type {
   Funcionario,
   ObraLocal,
   OrdemServico,
-  ParteDiariaEquipamento,
 } from '../types';
 import {
   buildMaintenanceFleetSummaries,
@@ -62,7 +61,6 @@ interface ManutencaoEquipamentosTabProps {
   funcionarios: Funcionario[];
   obras: ObraLocal[];
   empresas: Empresa[];
-  partesDiarias: ParteDiariaEquipamento[];
   ordensServico: OrdemServico[];
   onSaveOrdemServico: (item: OrdemServico, isNew: boolean) => void;
   onDeleteOrdemServico: (id: string) => void;
@@ -257,7 +255,6 @@ export default function ManutencaoEquipamentosTab({
   funcionarios,
   obras,
   empresas,
-  partesDiarias,
   ordensServico,
   onSaveOrdemServico,
   onDeleteOrdemServico,
@@ -277,8 +274,8 @@ export default function ManutencaoEquipamentosTab({
   const [isExporting, setIsExporting] = useState(false);
 
   const fleetSummaries = useMemo(
-    () => buildMaintenanceFleetSummaries(equipamentos, partesDiarias, ordensServico),
-    [equipamentos, partesDiarias, ordensServico],
+    () => buildMaintenanceFleetSummaries(equipamentos, ordensServico),
+    [equipamentos, ordensServico],
   );
   const activeEmployees = useMemo(
     () => funcionarios.filter(employee => employee.ativo).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
@@ -870,11 +867,6 @@ export default function ManutencaoEquipamentosTab({
                         </option>
                       ))}
                     </select>
-                    {selectedSummary.latestDailyPart && (
-                      <p className="mt-2 text-[10px] text-slate-500">
-                        Último registro operacional: {formatDate(selectedSummary.latestDailyPart.data)} por {selectedSummary.latestDailyPart.operadorNome}.
-                      </p>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">

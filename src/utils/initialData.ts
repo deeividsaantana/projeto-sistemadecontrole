@@ -20,8 +20,7 @@ import {
   GrupoEquipe,
   PresencaApontamento,
   HistoricoPresenca,
-  TicketJazida,
-  ParteDiariaEquipamento
+  TicketJazida
 } from '../types';
 import { generateSecurePublicToken } from './publicLinkSecurity';
 import { setInitialControleEstacas } from './initialEstacasData';
@@ -1140,7 +1139,6 @@ export const INITIAL_PRESENCAS_LINK: PresencaApontamento[] = [];
 
 export const INITIAL_HISTORICO_PRESENCAS: HistoricoPresenca[] = [];
 
-export const INITIAL_PARTES_DIARIAS_EQUIPAMENTOS: ParteDiariaEquipamento[] = [];
 
 
 export const INITIAL_ORDENS_SERVICO: OrdemServico[] = [];

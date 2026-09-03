@@ -1,4 +1,4 @@
-import type { Equipamento, Funcionario, ObraLocal, ParteDiariaEquipamento } from '../src/types';
+import type { Equipamento, Funcionario, ObraLocal } from '../src/types';
 
 export const obras: ObraLocal[] = [
   { id: 'obr-1', nome: 'Complexo do Alto Tietê', endereco: 'SP', responsavel: 'Eng. Ricardo', status: 'Ativa' },
@@ -10,30 +10,6 @@ export const equipamentos: Equipamento[] = [
 export const funcionarios: Funcionario[] = [
   { id: 'f-1', matricula: '103177', nome: 'José da Silva Costa', cargo: 'OPERADOR', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
   { id: 'f-2', matricula: '100787', nome: 'Marcos de Souza', cargo: 'MOTORISTA', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
-];
-
-const base = (id: string, numero: string, prefixo: string, status: ParteDiariaEquipamento['status']): ParteDiariaEquipamento => ({
-  id, numero, data: '2026-09-02', obraId: 'obr-1', obraNome: 'Complexo do Alto Tietê',
-  equipamentoId: prefixo === 'CB770' ? 'eq-1' : 'eq-2', prefixo,
-  tipoEquipamento: prefixo === 'CB770' ? 'Escavadeira hidráulica' : 'Basculante',
-  jornada: 10, operadorId: 'f-1', operadorNome: 'José da Silva Costa', matricula: '103177',
-  apontador: 'Aline Lima', encarregado: 'Renilson', horimetroInicial: 1200, horimetroFinal: 1208,
-  totalHorasTrabalhadas: 8,
-  atividades: [{ id: 'a1', descricao: 'Escavação de vala', centroCusto: 'CC-100', codigoPerda: '', tipoMarcacao: 'Horímetro', inicial: '1200', final: '1208', totalHoras: 8 }],
-  transportes: [{ id: 't1', descricao: 'Bota-fora', centroCusto: 'CC-100', destino: 'Aterro', materialTransportado: 'Solo', quantidadeViagens: 6, equipamentoCarga: 'CB770' }],
-  checklist: [
-    { codigo: 'C01', descricao: 'Nível de óleo do motor', resposta: 'Sim', observacao: '' },
-    { codigo: 'C02', descricao: 'Sistema de freios', resposta: status === 'Com deficiência' ? 'Não' : 'Sim', observacao: '' },
-    { codigo: 'C03', descricao: 'Iluminação', resposta: 'N/A', observacao: '' },
-  ],
-  outrosProblemas: status === 'Com deficiência' ? 'Vazamento no cilindro da lança.' : '',
-  status, observacao: '', criadoEm: '2026-09-02T10:00:00.000Z', atualizadoEm: '2026-09-02T18:00:00.000Z',
-});
-
-export const registros: ParteDiariaEquipamento[] = [
-  base('p1', '000101', 'CB770', 'Conferido'),
-  base('p2', '000102', 'CB1005', 'Com deficiência'),
-  base('p3', '000103', 'CB770', 'Pendente'),
 ];
 
 // --- Link público de presença ---

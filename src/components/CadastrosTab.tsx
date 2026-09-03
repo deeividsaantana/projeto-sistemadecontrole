@@ -17,7 +17,6 @@ import {
   ProdutoLubrificacao, 
   EtapaServico,
   OrdemServico,
-  ParteDiariaEquipamento,
 } from '../types';
 import MasterDataReviewCenter from './MasterDataReviewCenter';
 import type { MasterWorkbookAnalysis } from '../masterData/masterWorkbook';
@@ -61,7 +60,6 @@ interface CadastrosTabProps {
   lubrificantes: ProdutoLubrificacao[];
   etapas: EtapaServico[];
   ordensServico: OrdemServico[];
-  partesDiariasEquipamentos: ParteDiariaEquipamento[];
 
   onSaveEmpresa: (item: Empresa, isNew: boolean) => void;
   onDeleteEmpresa: (id: string) => void;
@@ -94,7 +92,6 @@ export default function CadastrosTab({
   lubrificantes,
   etapas,
   ordensServico,
-  partesDiariasEquipamentos,
   onSaveEmpresa,
   onDeleteEmpresa,
   onSaveObra,
@@ -1403,7 +1400,6 @@ export default function CadastrosTab({
           <EquipmentOperationsPanel
             equipamentos={equipamentos}
             ordensServico={ordensServico}
-            partesDiarias={partesDiariasEquipamentos}
           />
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">

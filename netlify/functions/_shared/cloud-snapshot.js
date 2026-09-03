@@ -9,7 +9,7 @@ const INTERMEDIATE_TABLE_IDS = [
   'lubrificantes', 'etapas', 'abastecimentos', 'lubrificacoes', 'ticketsJazida',
   'listasPresenca', 'ordensServico', 'gruposEquipe', 'presencasLink', 'historicoPresencas',
   'apontamentoRamos', 'apontamentoRamoRegistros', 'materiaisCadastro', 'materiaisRegistros',
-  'partesDiariasEquipamentos', 'controleEquipamentosDiario', 'periodosArquivados', 'notifications', 'historyLogs',
+  'controleEquipamentosDiario', 'periodosArquivados', 'notifications', 'historyLogs',
 ];
 
 const SNAPSHOT_CACHE_TTL_MS = 30_000;

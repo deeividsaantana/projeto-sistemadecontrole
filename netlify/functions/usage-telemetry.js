@@ -13,7 +13,6 @@ const COLLECTION = 'sistemarenea_usage';
 const TAB_LABELS = {
   dashboard: 'Painel de Controle',
   reports: 'Relatórios Gerais',
-  'partes-diarias': 'Parte Diária de Equipamentos',
   lancamentos: 'Combustível',
   'tickets-jazida': 'Tickets Jazida',
   manutencao: 'Manutenção',

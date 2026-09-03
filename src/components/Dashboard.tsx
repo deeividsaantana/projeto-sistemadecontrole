@@ -3,11 +3,11 @@ import { useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, Clock3, ShieldAlert, Truck, Users, Wrench } from 'lucide-react';
-import type { Abastecimento, Comboio, ControleEstacas, Empresa, Equipamento, Funcionario, HistoryLog, ListaPresenca, Lubrificacao, ObraLocal, OrdemServico, ParteDiariaEquipamento, PresencaApontamento, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../types';
+import type { Abastecimento, Comboio, ControleEstacas, Empresa, Equipamento, Funcionario, HistoryLog, ListaPresenca, Lubrificacao, ObraLocal, OrdemServico, PresencaApontamento, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../types';
 import { getOperationalFuelLiters, splitOperationalFuelRecords } from '../utils/fuelAnalyticsSafety';
 
 interface DashboardProps {
-  empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; historyLogs: HistoryLog[]; listasPresenca?: ListaPresenca[]; ordensServico?: OrdemServico[]; ticketsJazida?: TicketJazida[]; estacas?: ControleEstacas; presencasLink?: PresencaApontamento[]; partesDiariasEquipamentos?: ParteDiariaEquipamento[]; onNavigate: (tab: string) => void;
+  empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; historyLogs: HistoryLog[]; listasPresenca?: ListaPresenca[]; ordensServico?: OrdemServico[]; ticketsJazida?: TicketJazida[]; estacas?: ControleEstacas; presencasLink?: PresencaApontamento[]; onNavigate: (tab: string) => void;
 }
 const formatLiters = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
 const attendees = (list: ListaPresenca) => Array.isArray(list.funcionarios) ? list.funcionarios : [];

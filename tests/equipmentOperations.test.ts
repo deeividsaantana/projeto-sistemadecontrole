@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import type {
   Equipamento,
   OrdemServico,
-  ParteDiariaEquipamento,
 } from '../src/types';
 import {
   buildEquipmentOperationalSummaries,
@@ -30,34 +29,6 @@ const equipment = (overrides: Partial<Equipamento> = {}): Equipamento => ({
   ...overrides,
 });
 
-const dailyPart = (overrides: Partial<ParteDiariaEquipamento> = {}): ParteDiariaEquipamento => ({
-  id: 'parte-1',
-  numero: '0001',
-  data: '2026-07-30',
-  obraId: 'obra-1',
-  obraNome: 'Complexo Alto Tietê',
-  equipamentoId: 'eq-1',
-  prefixo: 'CB726',
-  tipoEquipamento: 'Caminhão',
-  jornada: 10,
-  operadorId: 'fun-1',
-  operadorNome: 'Wedley',
-  matricula: '100',
-  apontador: '',
-  encarregado: '',
-  horimetroInicial: 100,
-  horimetroFinal: 108,
-  totalHorasTrabalhadas: 8,
-  atividades: [],
-  transportes: [],
-  checklist: [],
-  outrosProblemas: '',
-  status: 'Pendente',
-  observacao: '',
-  criadoEm: '2026-07-30T08:00:00.000Z',
-  atualizadoEm: '2026-07-30T18:00:00.000Z',
-  ...overrides,
-});
 
 const workOrder: OrdemServico = {
   id: 'os-1',
@@ -85,14 +56,19 @@ const validation = validateEquipmentMasterRecord(equipment({
 }));
 assert.equal(validation.errors.length, 2);
 
+// A disponibilidade passa a vir apenas do cadastro do equipamento; o histórico
+// de partes diárias, que era a segunda fonte, foi removido do sistema.
 const summaries = buildEquipmentOperationalSummaries(
-  [equipment()],
-  [dailyPart()],
+  [equipment({ horasDisponiveis: 80, horasIndisponiveis: 20, operadorResponsavelNome: 'Wedley' })],
   [workOrder],
 );
 assert.equal(summaries.length, 1);
 assert.equal(summaries[0].availabilityPercent, 80);
-assert.equal(summaries[0].availabilitySource, 'Histórico operacional');
+assert.equal(summaries[0].availabilitySource, 'Cadastro');
 assert.equal(summaries[0].openWorkOrders, 1);
-assert.equal(summaries[0].pendingDailyParts, 1);
 assert.equal(summaries[0].responsibleOperator, 'Wedley');
+
+// Sem horas no cadastro nao ha como calcular disponibilidade.
+const semDados = buildEquipmentOperationalSummaries([equipment()], []);
+assert.equal(semDados[0].availabilityPercent, null);
+assert.equal(semDados[0].availabilitySource, 'Sem dados');

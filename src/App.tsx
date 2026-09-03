@@ -25,7 +25,6 @@ import {
   PresencaStatus,
   HistoricoPresenca,
   TicketJazida,
-  ParteDiariaEquipamento,
   ControleEquipamentoDiario,
   PeriodoArquivado,
   ControleEstacas
@@ -50,7 +49,6 @@ import {
   INITIAL_HISTORICO_PRESENCAS,
   INITIAL_TICKETS_JAZIDA,
   hydrateInitialOperationalSeedData,
-  INITIAL_PARTES_DIARIAS_EQUIPAMENTOS
 } from './utils/initialData';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
@@ -319,7 +317,6 @@ export default function App() {
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
   const [historicoPresencas, setHistoricoPresencas] = useState<HistoricoPresenca[]>([]);
-  const [partesDiariasEquipamentos, setPartesDiariasEquipamentos] = useState<ParteDiariaEquipamento[]>([]);
   const [controleEquipamentosDiario, setControleEquipamentosDiario] = useState<ControleEquipamentoDiario[]>([]);
   const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
   const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
@@ -391,7 +388,6 @@ export default function App() {
         { key: 'renea_grupos_equipes', value: JSON.stringify(INITIAL_GRUPOS_EQUIPES) },
         { key: 'renea_presencas_link', value: JSON.stringify(INITIAL_PRESENCAS_LINK) },
         { key: 'renea_historico_presencas', value: JSON.stringify(INITIAL_HISTORICO_PRESENCAS) },
-        { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS) },
         { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO) },
         { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
         { key: 'renea_periodos_arquivados', value: '[]' },
@@ -423,7 +419,6 @@ export default function App() {
       setGruposEquipe(INITIAL_GRUPOS_EQUIPES);
       setPresencasLink(INITIAL_PRESENCAS_LINK);
       setHistoricoPresencas(INITIAL_HISTORICO_PRESENCAS);
-      setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
       setControleEquipamentosDiario(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO);
       setControleEstacas(INITIAL_CONTROLE_ESTACAS);
       setPeriodosArquivados([]);
@@ -448,7 +443,6 @@ export default function App() {
       const savedGruposEquipe = localStorage.getItem('renea_grupos_equipes');
       const savedPresencasLink = localStorage.getItem('renea_presencas_link');
       const savedHistoricoPresencas = localStorage.getItem('renea_historico_presencas');
-      const savedPartesDiariasEquipamentos = localStorage.getItem('renea_partes_diarias_equipamentos');
       const savedControleEquipamentosDiario = localStorage.getItem('renea_controle_equipamentos_diario');
       const savedControleEstacas = localStorage.getItem('renea_controle_estacas');
       const savedPeriodosArquivados = localStorage.getItem('renea_periodos_arquivados');
@@ -514,7 +508,6 @@ export default function App() {
       setGruposEquipe(securedPublicLinks.gruposEquipe);
       setPresencasLink(parseStoredJson(savedPresencasLink, 'renea_presencas_link', INITIAL_PRESENCAS_LINK));
       setHistoricoPresencas(parseStoredJson(savedHistoricoPresencas, 'renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS));
-      setPartesDiariasEquipamentos(parseStoredJson(savedPartesDiariasEquipamentos, 'renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
       setControleEquipamentosDiario(parseStoredJson(savedControleEquipamentosDiario, 'renea_controle_equipamentos_diario', INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO));
       setControleEstacas(loadedControleEstacas);
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
@@ -534,9 +527,6 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(securedPublicLinks.gruposEquipe));
         writeStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31, true);
         setPublicLinksRotationPending(true);
-      }
-      if (!savedPartesDiariasEquipamentos) {
-        writeStorageValue(localStorage, 'renea_partes_diarias_equipamentos', JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS));
       }
       if (!savedControleEstacas) {
         writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(INITIAL_CONTROLE_ESTACAS));
@@ -672,7 +662,6 @@ export default function App() {
     customPresencasLink = presencasLink,
     customHistoricoPresencas = historicoPresencas,
     customNotifications = notifications,
-    customPartesDiariasEquipamentos = partesDiariasEquipamentos,
     customPeriodosArquivados = periodosArquivados,
     customControleEstacas = controleEstacas
   ): Promise<{ success: boolean; message: string }> => {
@@ -695,7 +684,6 @@ export default function App() {
         gruposEquipe: customGruposEquipe,
         presencasLink: customPresencasLink,
         historicoPresencas: customHistoricoPresencas,
-        partesDiariasEquipamentos: customPartesDiariasEquipamentos,
         controleEquipamentosDiario: parseStoredJson<ControleEquipamentoDiario[]>(localStorage.getItem('renea_controle_equipamentos_diario'), 'renea_controle_equipamentos_diario', INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO),
         periodosArquivados: customPeriodosArquivados,
         vinculosOperadorEquipamento: parseStoredJson<VinculoOperadorEquipamento[]>(localStorage.getItem('renea_vinculos_operador_equipamento'), 'renea_vinculos_operador_equipamento', []),
@@ -790,7 +778,6 @@ export default function App() {
           ['gruposEquipe', 'renea_grupos_equipes'],
           ['presencasLink', 'renea_presencas_link'],
           ['historicoPresencas', 'renea_historico_presencas'],
-          ['partesDiariasEquipamentos', 'renea_partes_diarias_equipamentos'],
           ['controleEquipamentosDiario', 'renea_controle_equipamentos_diario'],
           ['periodosArquivados', 'renea_periodos_arquivados'],
           ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -872,9 +859,6 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'historicoPresencas')) {
           setHistoricoPresencas(normalizeRuntimeCollection<HistoricoPresenca>(data.historicoPresencas));
-        }
-        if (Object.hasOwn(data, 'partesDiariasEquipamentos')) {
-          setPartesDiariasEquipamentos(normalizeRuntimeCollection<ParteDiariaEquipamento>(data.partesDiariasEquipamentos));
         }
         if (Object.hasOwn(data, 'controleEquipamentosDiario')) {
           setControleEquipamentosDiario(normalizeRuntimeCollection<ControleEquipamentoDiario>(data.controleEquipamentosDiario));
@@ -1112,7 +1096,6 @@ export default function App() {
           getLS('renea_presencas_link', INITIAL_PRESENCAS_LINK),
           getLS('renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS),
           getLS('renea_notifications', getInitialNotifications()),
-          getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS),
           getLS('renea_periodos_arquivados', []),
           getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
         ).then(res => {
@@ -2271,7 +2254,6 @@ export default function App() {
       getLS('renea_presencas_link', INITIAL_PRESENCAS_LINK),
       getLS('renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS),
       getLS('renea_notifications', getInitialNotifications()),
-      getLS('renea_partes_diarias_equipamentos', INITIAL_PARTES_DIARIAS_EQUIPAMENTOS),
       getLS('renea_periodos_arquivados', []),
       getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
     );
@@ -2807,70 +2789,6 @@ export default function App() {
     );
   };
 
-  const handleSaveParteDiariaEquipamento = (registro: ParteDiariaEquipamento, isNew: boolean) => {
-    const updated = isNew
-      ? [registro, ...partesDiariasEquipamentos]
-      : partesDiariasEquipamentos.map(item => item.id === registro.id ? registro : item);
-
-    saveAndLog(
-      'Parte Diária de Equipamentos',
-      isNew ? 'Criou' : 'Editou',
-      `${isNew ? 'Criou' : 'Editou'} a parte nº ${registro.numero} do equipamento ${registro.prefixo} em ${registro.data}.`,
-      historyLogs,
-      () => {
-        setPartesDiariasEquipamentos(updated);
-        writeStorageValue(localStorage, 'renea_partes_diarias_equipamentos', JSON.stringify(updated));
-      }
-    );
-  };
-
-  const handleImportPartesDiariasEquipamentos = (registros: ParteDiariaEquipamento[]) => {
-    if (!registros.length) return;
-    const key = (item: ParteDiariaEquipamento) => normalizeImportText(
-      `${item.data}|${item.equipamentoId || item.prefixo}|${item.operadorId || item.matricula || item.operadorNome}`,
-    );
-    const result = mergeImportedRecords(partesDiariasEquipamentos, registros, key);
-    if (!result.created && !result.updated) return;
-    saveAndLog(
-      'Parte Diária de Equipamentos',
-      'Criou',
-      `Importou partes diárias: ${result.created} nova(s), ${result.updated} atualizada(s).`,
-      historyLogs,
-      () => {
-        setPartesDiariasEquipamentos(result.next);
-        writeStorageValue(localStorage, 'renea_partes_diarias_equipamentos', JSON.stringify(result.next));
-      }
-    );
-  };
-
-  const handleDeleteParteDiariaEquipamento = (id: string) => {
-    const registro = partesDiariasEquipamentos.find(item => item.id === id);
-    if (!registro) return;
-    if (!confirm(`Excluir a parte diária nº ${registro.numero} do equipamento ${registro.prefixo}?`)) return;
-
-    const updated = partesDiariasEquipamentos.filter(item => item.id !== id);
-    saveAndLog(
-      'Parte Diária de Equipamentos',
-      'Excluiu',
-      `Excluiu a parte nº ${registro.numero} do equipamento ${registro.prefixo}, datada de ${registro.data}.`,
-      historyLogs,
-      () => {
-        setPartesDiariasEquipamentos(updated);
-        writeStorageValue(localStorage, 'renea_partes_diarias_equipamentos', JSON.stringify(updated));
-      }
-    );
-  };
-
-  const handleDeletePartesDiariasEquipamentos = (ids: string[]) => {
-    const uniqueIds = Array.from(new Set(ids));
-    if (!uniqueIds.length || !confirm(`Excluir ${uniqueIds.length} parte(s) diária(s) selecionada(s)?`)) return;
-    const updated = partesDiariasEquipamentos.filter(item => !uniqueIds.includes(item.id));
-    saveAndLog('Parte Diária de Equipamentos', 'Excluiu', `Excluiu ${uniqueIds.length} parte(s) diária(s) em lote.`, historyLogs, () => {
-      setPartesDiariasEquipamentos(updated);
-      writeStorageValue(localStorage, 'renea_partes_diarias_equipamentos', JSON.stringify(updated));
-    });
-  };
-
   const handleSaveControleEquipamentoDiario = (registro: ControleEquipamentoDiario, isNew: boolean) => {
     const updated = isNew
       ? [registro, ...controleEquipamentosDiario]
@@ -2948,7 +2866,6 @@ export default function App() {
     gruposEquipe?: GrupoEquipe[];
     presencasLink?: PresencaApontamento[];
     historicoPresencas?: HistoricoPresenca[];
-    partesDiariasEquipamentos?: ParteDiariaEquipamento[];
     controleEquipamentosDiario?: ControleEquipamentoDiario[];
     controleEstacas?: ControleEstacas;
     periodosArquivados?: PeriodoArquivado[];
@@ -2975,7 +2892,6 @@ export default function App() {
     const nextGruposEquipe = imported.gruposEquipe ?? gruposEquipe;
     const nextPresencasLink = imported.presencasLink ?? presencasLink;
     const nextHistoricoPresencas = imported.historicoPresencas ?? historicoPresencas;
-    const nextPartesDiariasEquipamentos = imported.partesDiariasEquipamentos ?? partesDiariasEquipamentos;
     const nextControleEquipamentosDiario = imported.controleEquipamentosDiario ?? controleEquipamentosDiario;
     const nextControleEstacas = imported.controleEstacas ?? controleEstacas;
     const nextPeriodosArquivados = imported.periodosArquivados ?? periodosArquivados;
@@ -3013,7 +2929,6 @@ export default function App() {
       { key: 'renea_grupos_equipes', value: JSON.stringify(nextGruposEquipe) },
       { key: 'renea_presencas_link', value: JSON.stringify(nextPresencasLink) },
       { key: 'renea_historico_presencas', value: JSON.stringify(nextHistoricoPresencas) },
-      { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(nextPartesDiariasEquipamentos) },
       { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(nextControleEquipamentosDiario) },
       { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
       { key: 'renea_periodos_arquivados', value: JSON.stringify(nextPeriodosArquivados) },
@@ -3039,7 +2954,6 @@ export default function App() {
     setGruposEquipe(nextGruposEquipe);
     setPresencasLink(nextPresencasLink);
     setHistoricoPresencas(nextHistoricoPresencas);
-    setPartesDiariasEquipamentos(nextPartesDiariasEquipamentos);
     setControleEquipamentosDiario(nextControleEquipamentosDiario);
     setControleEstacas(nextControleEstacas);
     setPeriodosArquivados(nextPeriodosArquivados);
@@ -3065,7 +2979,6 @@ export default function App() {
       { key: 'renea_grupos_equipes', value: JSON.stringify(INITIAL_GRUPOS_EQUIPES) },
       { key: 'renea_presencas_link', value: JSON.stringify(INITIAL_PRESENCAS_LINK) },
       { key: 'renea_historico_presencas', value: JSON.stringify(INITIAL_HISTORICO_PRESENCAS) },
-      { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS) },
       { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO) },
       { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: [], cravacoes: [] }) },
       { key: 'renea_periodos_arquivados', value: '[]' },
@@ -3092,7 +3005,6 @@ export default function App() {
     setGruposEquipe(INITIAL_GRUPOS_EQUIPES);
     setPresencasLink(INITIAL_PRESENCAS_LINK);
     setHistoricoPresencas(INITIAL_HISTORICO_PRESENCAS);
-    setPartesDiariasEquipamentos(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS);
     setControleEquipamentosDiario(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO);
     setControleEstacas(INITIAL_CONTROLE_ESTACAS);
     setPeriodosArquivados([]);
@@ -3115,7 +3027,7 @@ export default function App() {
       'renea_abastecimentos', 'renea_lubrificacoes', 'renea_tickets_jazida',
       'renea_listas_presenca', 'renea_ordens_servico', 'renea_grupos_equipes',
       'renea_presencas_link', 'renea_historico_presencas',
-      'renea_partes_diarias_equipamentos', 'renea_periodos_arquivados', 'renea_notifications',
+      'renea_periodos_arquivados', 'renea_notifications',
       'renea_controle_equipamentos_diario',
       'renea_master_data_review_queue',
     ];
@@ -3144,7 +3056,6 @@ export default function App() {
     setGruposEquipe([]);
     setPresencasLink([]);
     setHistoricoPresencas([]);
-    setPartesDiariasEquipamentos([]);
     setControleEquipamentosDiario([]);
     setControleEstacas({ lotes: [], cravacoes: [] });
     setPeriodosArquivados([]);
@@ -3176,7 +3087,6 @@ export default function App() {
       presenca: 'Presença',
       ticketsJazida: 'Tickets Jazida',
       estacas: 'Estacas',
-      partesDiarias: 'Partes Diárias',
       controleEquipamentos: 'Controle de basculantes',
       manutencao: 'Manutenção',
       periodosArquivados: 'Arquivos de períodos',
@@ -3260,9 +3170,6 @@ export default function App() {
               writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(next));
               break;
             }
-            case 'partesDiarias':
-              persist('renea_partes_diarias_equipamentos', nextValue(INITIAL_PARTES_DIARIAS_EQUIPAMENTOS), setPartesDiariasEquipamentos);
-              break;
             case 'controleEquipamentos':
               persist('renea_controle_equipamentos_diario', nextValue(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO), setControleEquipamentosDiario);
               break;
@@ -3336,7 +3243,6 @@ export default function App() {
     const nextOrdensServico = mergeByIdKeepingLatest(ordensServico, data.ordensServico);
     const nextPresencasLink = mergeByIdKeepingLatest(presencasLink, data.presencasLink);
     const nextHistoricoPresencas = mergeByIdKeepingLatest(historicoPresencas, data.historicoPresencas);
-    const nextPartesDiariasEquipamentos = mergeByIdKeepingLatest(partesDiariasEquipamentos, data.partesDiariasEquipamentos);
     const nextControleEquipamentosDiario = mergeByIdKeepingLatest(controleEquipamentosDiario, data.controleEquipamentosDiario || []);
     const nextControleEstacas: ControleEstacas = data.estacas
       ? {
@@ -3353,7 +3259,6 @@ export default function App() {
       { key: 'renea_ordens_servico', value: JSON.stringify(nextOrdensServico) },
       { key: 'renea_presencas_link', value: JSON.stringify(nextPresencasLink) },
       { key: 'renea_historico_presencas', value: JSON.stringify(nextHistoricoPresencas) },
-      { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(nextPartesDiariasEquipamentos) },
       { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(nextControleEquipamentosDiario) },
       { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
     ]);
@@ -3365,7 +3270,6 @@ export default function App() {
     setOrdensServico(nextOrdensServico);
     setPresencasLink(nextPresencasLink);
     setHistoricoPresencas(nextHistoricoPresencas);
-    setPartesDiariasEquipamentos(nextPartesDiariasEquipamentos);
     setControleEquipamentosDiario(nextControleEquipamentosDiario);
     setControleEstacas(nextControleEstacas);
   };
@@ -3389,7 +3293,6 @@ export default function App() {
     const splitOrdensServico = splitByArchivePeriod<OrdemServico>(ordensServico, item => item.dataAbertura, dataInicio, dataFim);
     const splitPresencasLink = splitByArchivePeriod<PresencaApontamento>(presencasLink, item => item.data, dataInicio, dataFim);
     const splitHistoricoPresencas = splitByArchivePeriod<HistoricoPresenca>(historicoPresencas, item => item.data, dataInicio, dataFim);
-    const splitPartesDiariasEquipamentos = splitByArchivePeriod<ParteDiariaEquipamento>(partesDiariasEquipamentos, item => item.data, dataInicio, dataFim);
     const splitControleEquipamentosDiario = splitByArchivePeriod<ControleEquipamentoDiario>(controleEquipamentosDiario, item => item.data, dataInicio, dataFim);
     const splitEstacasLotes = splitByArchivePeriod<ControleEstacas['lotes'][number]>(controleEstacas.lotes, item => item.data, dataInicio, dataFim);
     const splitEstacasCravacoes = splitByArchivePeriod<ControleEstacas['cravacoes'][number]>(controleEstacas.cravacoes, item => item.data, dataInicio, dataFim);
@@ -3402,7 +3305,6 @@ export default function App() {
       ordensServico: splitOrdensServico.selected,
       presencasLink: splitPresencasLink.selected,
       historicoPresencas: splitHistoricoPresencas.selected,
-      partesDiariasEquipamentos: splitPartesDiariasEquipamentos.selected,
       controleEquipamentosDiario: splitControleEquipamentosDiario.selected,
       estacas: {
         lotes: splitEstacasLotes.selected,
@@ -3450,7 +3352,6 @@ export default function App() {
           { key: 'renea_ordens_servico', value: JSON.stringify(splitOrdensServico.remaining) },
           { key: 'renea_presencas_link', value: JSON.stringify(splitPresencasLink.remaining) },
           { key: 'renea_historico_presencas', value: JSON.stringify(splitHistoricoPresencas.remaining) },
-          { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(splitPartesDiariasEquipamentos.remaining) },
           { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(splitControleEquipamentosDiario.remaining) },
           { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: splitEstacasLotes.remaining, cravacoes: splitEstacasCravacoes.remaining }) },
           { key: 'renea_periodos_arquivados', value: JSON.stringify(nextArchives) },
@@ -3462,7 +3363,6 @@ export default function App() {
         setOrdensServico(splitOrdensServico.remaining);
         setPresencasLink(splitPresencasLink.remaining);
         setHistoricoPresencas(splitHistoricoPresencas.remaining);
-        setPartesDiariasEquipamentos(splitPartesDiariasEquipamentos.remaining);
         setControleEquipamentosDiario(splitControleEquipamentosDiario.remaining);
         setControleEstacas({ lotes: splitEstacasLotes.remaining, cravacoes: splitEstacasCravacoes.remaining });
         setPeriodosArquivados(nextArchives);
@@ -3532,7 +3432,6 @@ export default function App() {
       gruposEquipe,
       presencasLink,
       historicoPresencas,
-      partesDiariasEquipamentos,
       controleEquipamentosDiario,
       controleEstacas,
       periodosArquivados,
@@ -3635,7 +3534,6 @@ export default function App() {
       const incomingOrdensServico = (parsed.ordensServico || []).filter((x: OrdemServico) => inRange(x.dataAbertura));
       const incomingPresencasLink = (parsed.presencasLink || []).filter((x: PresencaApontamento) => inRange(x.data));
       const incomingTicketsJazida = (parsed.ticketsJazida || []).filter((x: TicketJazida) => inRange(x.data));
-      const incomingPartesDiariasEquipamentos = (parsed.partesDiariasEquipamentos || []).filter((x: ParteDiariaEquipamento) => inRange(x.data));
       const incomingControleEquipamentosDiario = (parsed.controleEquipamentosDiario || []).filter((x: ControleEquipamentoDiario) => inRange(x.data));
       const incomingEstacasLotes = (parsed.controleEstacas?.lotes || []).filter((x: ControleEstacas['lotes'][number]) => inRange(x.data));
       const incomingEstacasCravacoes = (parsed.controleEstacas?.cravacoes || []).filter((x: ControleEstacas['cravacoes'][number]) => inRange(x.data));
@@ -3646,14 +3544,13 @@ export default function App() {
       const newOrdensServico = mergeById(ordensServico, incomingOrdensServico);
       const newPresencasLink = mergeById(presencasLink, incomingPresencasLink);
       const newTicketsJazida = mergeById(ticketsJazida, incomingTicketsJazida);
-      const newPartesDiariasEquipamentos = mergeById(partesDiariasEquipamentos, incomingPartesDiariasEquipamentos);
       const newControleEquipamentosDiario = mergeById(controleEquipamentosDiario, incomingControleEquipamentosDiario);
       const newControleEstacas: ControleEstacas = {
         lotes: mergeById(controleEstacas.lotes, incomingEstacasLotes),
         cravacoes: mergeById(controleEstacas.cravacoes, incomingEstacasCravacoes),
       };
 
-      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingTicketsJazida.length + incomingPartesDiariasEquipamentos.length + incomingControleEquipamentosDiario.length + incomingEstacasLotes.length + incomingEstacasCravacoes.length;
+      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingTicketsJazida.length + incomingControleEquipamentosDiario.length + incomingEstacasLotes.length + incomingEstacasCravacoes.length;
       const logMsg = `Importou seletivamente ${totalImportados} registro(s) datado(s) entre ${dataInicio || 'início'} e ${dataFim || 'fim'}, além dos cadastros base.`;
       const newLog: HistoryLog = {
         id: `log-${Date.now()}`,
@@ -3682,7 +3579,6 @@ export default function App() {
         { key: 'renea_grupos_equipes', value: JSON.stringify(newGruposEquipe) },
         { key: 'renea_presencas_link', value: JSON.stringify(newPresencasLink) },
         { key: 'renea_historico_presencas', value: JSON.stringify(newHistoricoPresencas) },
-        { key: 'renea_partes_diarias_equipamentos', value: JSON.stringify(newPartesDiariasEquipamentos) },
         { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(newControleEquipamentosDiario) },
         { key: 'renea_controle_estacas', value: JSON.stringify(newControleEstacas) },
         { key: 'renea_master_data_review_queue', value: JSON.stringify(newMasterDataReviewQueue) },
@@ -3705,7 +3601,6 @@ export default function App() {
       setGruposEquipe(newGruposEquipe);
       setPresencasLink(newPresencasLink);
       setHistoricoPresencas(newHistoricoPresencas);
-      setPartesDiariasEquipamentos(newPartesDiariasEquipamentos);
       setControleEquipamentosDiario(newControleEquipamentosDiario);
       setControleEstacas(newControleEstacas);
     setHistoryLogs([]);
@@ -3959,7 +3854,6 @@ export default function App() {
                 ticketsJazida={ticketsJazida}
                 estacas={controleEstacas}
                 presencasLink={presencasLink}
-                partesDiariasEquipamentos={partesDiariasEquipamentos}
                 onNavigate={navigateTo}
               />
             )}
@@ -3973,7 +3867,6 @@ export default function App() {
                 abastecimentos={abastecimentos}
                 tickets={ticketsJazida}
                 ordensServico={ordensServico}
-                partesDiarias={partesDiariasEquipamentos}
                 controlesEquipamentos={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
                 presencas={presencasLink}
@@ -3999,7 +3892,6 @@ export default function App() {
                 lubrificantes={lubrificantes}
                 etapas={etapas}
                 ordensServico={ordensServico}
-                partesDiariasEquipamentos={partesDiariasEquipamentos}
                 onSaveEmpresa={handleSaveEmpresa}
                 onDeleteEmpresa={handleDeleteEmpresa}
                 onSaveObra={handleSaveObra}
@@ -4116,7 +4008,6 @@ export default function App() {
                 ticketsJazida={ticketsJazida}
                 controleEstacas={controleEstacas}
                 presencasLink={presencasLink}
-                partesDiariasEquipamentos={partesDiariasEquipamentos}
               />
             )}
 

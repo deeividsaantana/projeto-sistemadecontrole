@@ -10,14 +10,12 @@ import {
 import type {
   Equipamento,
   OrdemServico,
-  ParteDiariaEquipamento,
 } from '../types';
 import { buildEquipmentOperationalSummaries } from '../utils/equipmentOperations';
 
 interface EquipmentOperationsPanelProps {
   equipamentos: Equipamento[];
   ordensServico: OrdemServico[];
-  partesDiarias: ParteDiariaEquipamento[];
 }
 
 const formatDate = (value?: string) => {
@@ -35,13 +33,12 @@ const availabilityTone = (value: number | null, belowTarget: boolean) => {
 export default function EquipmentOperationsPanel({
   equipamentos,
   ordensServico,
-  partesDiarias,
 }: EquipmentOperationsPanelProps) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<'Todos' | NonNullable<Equipamento['categoriaFrota']>>('Todos');
   const summaries = useMemo(
-    () => buildEquipmentOperationalSummaries(equipamentos, partesDiarias, ordensServico),
-    [equipamentos, partesDiarias, ordensServico],
+    () => buildEquipmentOperationalSummaries(equipamentos, ordensServico),
+    [equipamentos, ordensServico],
   );
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('pt-BR');

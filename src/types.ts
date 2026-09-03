@@ -519,71 +519,16 @@ export interface PeriodoArquivado {
     ordensServico: OrdemServico[];
     presencasLink: PresencaApontamento[];
     historicoPresencas: HistoricoPresenca[];
-    partesDiariasEquipamentos: ParteDiariaEquipamento[];
     controleEquipamentosDiario?: ControleEquipamentoDiario[];
     estacas?: ControleEstacas;
   };
 }
 
 export type RespostaChecklistEquipamento = 'Sim' | 'Não' | 'N/A';
-export type StatusParteDiariaEquipamento = 'Conferido' | 'Pendente' | 'Com deficiência' | 'Inconsistente';
-export type TipoMarcacaoParteDiaria = 'Relógio' | 'Horímetro';
 
-export interface ParteDiariaAtividade {
-  id: string;
-  descricao: string;
-  centroCusto: string;
-  codigoPerda: string;
-  tipoMarcacao: TipoMarcacaoParteDiaria;
-  inicial: string;
-  final: string;
-  totalHoras: number;
-}
 
-export interface ParteDiariaTransporte {
-  id: string;
-  descricao: string;
-  centroCusto: string;
-  destino: string;
-  materialTransportado: string;
-  quantidadeViagens: number;
-  equipamentoCarga: string;
-}
 
-export interface ParteDiariaChecklistItem {
-  codigo: string;
-  descricao: string;
-  resposta: RespostaChecklistEquipamento;
-  observacao?: string;
-}
 
-export interface ParteDiariaEquipamento {
-  id: string;
-  numero: string;
-  data: string;
-  obraId: string;
-  obraNome: string;
-  equipamentoId: string;
-  prefixo: string;
-  tipoEquipamento: string;
-  jornada: number;
-  operadorId: string;
-  operadorNome: string;
-  matricula: string;
-  apontador: string;
-  encarregado: string;
-  horimetroInicial: number;
-  horimetroFinal: number;
-  totalHorasTrabalhadas: number;
-  atividades: ParteDiariaAtividade[];
-  transportes: ParteDiariaTransporte[];
-  checklist: ParteDiariaChecklistItem[];
-  outrosProblemas: string;
-  status: StatusParteDiariaEquipamento;
-  observacao: string;
-  criadoEm: string;
-  atualizadoEm: string;
-}
 
 export type StatusControleEquipamentoDiario =
   | 'Em operação'

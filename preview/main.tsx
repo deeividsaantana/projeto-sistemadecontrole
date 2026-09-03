@@ -2,25 +2,12 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './preview.css';
 import UsuariosTab from '../src/components/UsuariosTab';
-import ParteDiariaEquipamentosTab from '../src/components/ParteDiariaEquipamentosTab';
 import PresencaTempoRealPublica from '../src/components/PresencaTempoRealPublica';
 import * as fx from './fixtures';
 
 const noop = () => {};
 const screens: Record<string, React.ReactNode> = {
   usuarios: <UsuariosTab />,
-  'parte-diaria': (
-    <ParteDiariaEquipamentosTab
-      registros={fx.registros}
-      equipamentos={fx.equipamentos}
-      funcionarios={fx.funcionarios}
-      obras={fx.obras}
-      onSave={noop}
-      onDelete={noop}
-      onDeleteMany={noop}
-      onImport={noop}
-    />
-  ),
   presenca: (
     <PresencaTempoRealPublica
       token="presenca-exemplo"

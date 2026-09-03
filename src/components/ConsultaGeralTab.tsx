@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Building2, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
-import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, ParteDiariaEquipamento, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
+import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 
 type GeneralRow = {
@@ -28,7 +28,6 @@ type Props = {
   abastecimentos: Abastecimento[];
   tickets: TicketJazida[];
   ordensServico: OrdemServico[];
-  partesDiarias: ParteDiariaEquipamento[];
   controlesEquipamentos: ControleEquipamentoDiario[];
   gruposEquipe: GrupoEquipe[];
   presencas: PresencaApontamento[];
@@ -40,7 +39,7 @@ type Props = {
 
 const normalize = normalizeComparable;
 
-export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, ordensServico, partesDiarias, controlesEquipamentos, gruposEquipe, presencas, vinculos, onLink, onUnlink, onNavigate }: Props) {
+export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, ordensServico, controlesEquipamentos, gruposEquipe, presencas, vinculos, onLink, onUnlink, onNavigate }: Props) {
   const [query, setQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState('Todos');
   const [statusFilter, setStatusFilter] = useState('Todos');
@@ -64,8 +63,6 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
       const openOrder = ordensServico.find(order => order.equipamentoId === equipment.id && !['Concluída', 'Cancelada'].includes(order.status));
       if (openOrder?.status === 'Aguardando Peça') return 'Aguardando manutenção';
       if (openOrder) return 'Em manutenção';
-      const latestPart = partesDiarias.filter(part => part.equipamentoId === equipment.id).sort((a, b) => `${b.data}|${b.atualizadoEm}`.localeCompare(`${a.data}|${a.atualizadoEm}`))[0];
-      if (latestPart?.data === today && latestPart.totalHorasTrabalhadas > 0) return 'Em serviço';
       if (equipment.status === 'Mobilizado' || equipment.status === 'Ativo') return 'Mobilizado';
       if (equipment.status === 'Desmobilizado') return 'Desmobilizado';
       if (equipment.status === 'Parado') return 'Equipamento parado';
@@ -75,8 +72,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
     };
     const linkedDriver = (equipment: Equipamento) => {
       const activeLink = vinculos.find(link => link.equipamentoId === equipment.id && link.status === 'ATIVO');
-      const latestPart = partesDiarias.filter(part => part.equipamentoId === equipment.id && part.operadorNome).sort((a, b) => `${b.data}|${b.atualizadoEm}`.localeCompare(`${a.data}|${a.atualizadoEm}`))[0];
-      return activeLink?.funcionarioNome || latestPart?.operadorNome || equipment.operadorResponsavelNome || funcionarios.find(person => person.id === equipment.operadorResponsavelId)?.nome || 'Motorista não vinculado';
+      return activeLink?.funcionarioNome || equipment.operadorResponsavelNome || funcionarios.find(person => person.id === equipment.operadorResponsavelId)?.nome || 'Motorista não vinculado';
     };
     return [
     ...empresas.map(item => ({ id: `empresa-${item.id}`, module: 'Empresas', title: item.nome, detail: item.cnpj || 'CNPJ não informado', meta: item.responsavel || 'Responsável não informado', status: item.status || 'ATIVO', tab: 'cadastros' })),
@@ -90,7 +86,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
     ...gruposEquipe.map(item => ({ id: `grupo-${item.id}`, module: 'Equipes', title: item.nome, detail: `${item.responsavel} · ${item.funcionarioIds.length} colaborador(es)`, meta: item.frenteServico, status: item.status, tab: 'presenca' })),
     ...presencas.map(item => ({ id: `presenca-${item.id}`, module: 'Presenças', title: item.funcionarioNome, detail: `${item.grupoNome} · ${item.funcao}`, meta: `${item.data} ${item.horaEnvio}`, date: item.data, driver: item.funcionarioNome, status: item.status, tab: 'presenca' })),
     ];
-  }, [empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, ordensServico, partesDiarias, controlesEquipamentos, gruposEquipe, presencas, vinculos]);
+  }, [empresas, obras, equipamentos, funcionarios, abastecimentos, tickets, ordensServico, controlesEquipamentos, gruposEquipe, presencas, vinculos]);
 
   const modules = ['Todos', ...Array.from(new Set(rows.map(row => row.module)))];
   const statuses = ['Todos', ...Array.from(new Set(rows.map(row => row.status).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'))];
