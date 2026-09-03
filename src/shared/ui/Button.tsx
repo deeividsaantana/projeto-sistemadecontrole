@@ -14,7 +14,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary: 'taste-primary border-[#1f211f] bg-[#1f211f] text-white hover:bg-[#343734] hover:border-[#343734]',
+  // Verde da marca, o mesmo do item ativo da navegação e das ações principais.
+  // A cor do texto usa valor literal em vez de `text-white`: a camada de
+  // compatibilidade do index.css converte `.text-white` em tinta escura, exceto
+  // para uma lista fixa de fundos — e isso deixava este botão com texto
+  // invisível sobre fundo escuro.
+  primary: 'border-[#087653] bg-[#087653] text-[#ffffff] hover:bg-[#066344] hover:border-[#066344]',
   secondary: 'border-slate-300 bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:bg-slate-50 hover:border-slate-400',
   subtle: 'border-slate-200 bg-slate-50 text-slate-700 hover:-translate-y-0.5 hover:bg-slate-100 hover:border-slate-300',
   ghost: 'border-transparent bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900',
