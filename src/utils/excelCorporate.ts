@@ -1,5 +1,16 @@
-import ExcelJS from 'exceljs';
-import JSZip from 'jszip';
+import type ExcelJS from 'exceljs';
+
+// ExcelJS (939 kB) e JSZip so entram na memoria quando alguem realmente exporta
+// ou importa uma planilha. Antes, abrir a aba de Combustivel ja baixava a
+// biblioteca inteira mesmo para quem so ia lancar um abastecimento.
+const loadExcelJS = async () => (await import('exceljs')).default;
+const loadJSZip = async () => (await import('jszip')).default;
+
+/** Cria uma planilha sem obrigar a tela a importar o ExcelJS estaticamente. */
+export const createCorporateWorkbook = async (): Promise<ExcelJS.Workbook> => {
+  const ExcelJSModule = await loadExcelJS();
+  return new ExcelJSModule.Workbook();
+};
 
 export const EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -185,6 +196,7 @@ export const validateExcelImportFile = (file: File, maxSizeMb = 25) => {
 };
 
 export const stripUnsupportedWorkbookVisuals = async (bytes: Uint8Array) => {
+  const JSZip = await loadJSZip();
   const zip = await JSZip.loadAsync(bytes);
   const removablePrefixes = ['xl/drawings/', 'xl/charts/', 'xl/media/', 'xl/tables/'];
   Object.keys(zip.files).forEach(path => {
@@ -225,7 +237,8 @@ export const stripUnsupportedWorkbookVisuals = async (bytes: Uint8Array) => {
 
 export const loadValidatedWorkbook = async (file: File, maxSizeMb = 25) => {
   validateExcelImportFile(file, maxSizeMb);
-  let workbook = new ExcelJS.Workbook();
+  const ExcelJSModule = await loadExcelJS();
+  let workbook = new ExcelJSModule.Workbook();
   try {
     const buffer = await file.arrayBuffer();
     const bytes = new Uint8Array(buffer);
@@ -240,7 +253,7 @@ export const loadValidatedWorkbook = async (file: File, maxSizeMb = 25) => {
       // células, tentamos novamente sem imagens e gráficos, preservando dados,
       // fórmulas, abas, estilos e validações da planilha original em disco.
       console.info('Nova tentativa de leitura sem elementos visuais incompatíveis.', firstError);
-      workbook = new ExcelJS.Workbook();
+      workbook = new ExcelJSModule.Workbook();
       const sanitizedBytes = await stripUnsupportedWorkbookVisuals(bytes);
       await workbook.xlsx.load(sanitizedBytes as any);
     }

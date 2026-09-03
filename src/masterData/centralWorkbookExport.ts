@@ -1,4 +1,5 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
+import { createCorporateWorkbook } from '../utils/excelCorporate';
 import type { Empresa, Equipamento, Funcionario, ObraLocal } from '../types';
 import { isSupplier, isVehicle } from './centralRegistry';
 
@@ -39,8 +40,8 @@ const headers: Record<keyof ReturnType<typeof rowsFor>, string[]> = {
   CAD_LOCAIS: ['ID Local', 'Local', 'Tipo', 'Status'],
 };
 
-export const createCentralRegistryWorkbook = (data: CentralWorkbookData): ExcelJS.Workbook => {
-  const workbook = new ExcelJS.Workbook();
+export const createCentralRegistryWorkbook = async (data: CentralWorkbookData): Promise<ExcelJS.Workbook> => {
+  const workbook = await createCorporateWorkbook();
   workbook.creator = 'Sistema RENEA — Base Central';
   workbook.created = new Date();
   const instructions = workbook.addWorksheet('INSTRUÇÕES');
@@ -94,7 +95,7 @@ export const createCentralRegistryWorkbook = (data: CentralWorkbookData): ExcelJ
 };
 
 export const downloadCentralRegistryWorkbook = async (data: CentralWorkbookData): Promise<void> => {
-  const workbook = createCentralRegistryWorkbook(data);
+  const workbook = await createCentralRegistryWorkbook(data);
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);

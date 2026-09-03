@@ -1,4 +1,5 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
+import { createCorporateWorkbook } from '../utils/excelCorporate';
 import type { FleetCurrentState, FleetReportViewModel } from './domain';
 import { summarizeFleetCategories } from './categorySummary';
 import { OPERATIONAL_FLEET_REFERENCE } from './operationalFleetReference';
@@ -538,11 +539,11 @@ const createHistorySheet = (
   }
 };
 
-export const buildFleetWorkbook = (
+export const buildFleetWorkbook = async (
   viewModel: FleetReportViewModel,
   logos: { renea?: string; spmar?: string } = {},
-): ExcelJS.Workbook => {
-  const workbook = new ExcelJS.Workbook();
+): Promise<ExcelJS.Workbook> => {
+  const workbook = await createCorporateWorkbook();
   workbook.creator = 'RENEA Infraestrutura';
   workbook.lastModifiedBy = 'Sistema RENEA';
   workbook.created = new Date();
@@ -636,7 +637,7 @@ export const exportFleetExcel = async (
   viewModel: FleetReportViewModel,
 ): Promise<FleetExcelResult> => {
   const [renea, spmar] = await Promise.all([loadImageBase64(reneaLogoUrl), loadImageBase64(spmarLogoUrl)]);
-  const workbook = buildFleetWorkbook(viewModel, { renea, spmar });
+  const workbook = await buildFleetWorkbook(viewModel, { renea, spmar });
   const buffer = await workbook.xlsx.writeBuffer();
   const fileName = `RELATORIO_FROTAS_ALTO_TIETE_${viewModel.reportDate}.xlsx`;
   const blob = new Blob([buffer], {

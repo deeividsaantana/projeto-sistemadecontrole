@@ -35,8 +35,8 @@ import {
   Upload,
   Download
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
-import { addCorporateSummarySheet, configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import type ExcelJS from 'exceljs';
+import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
@@ -886,7 +886,7 @@ export default function LancamentosTab({
 
   const handleDownloadModeloCombustivel = async () => {
     try {
-      const wb = new ExcelJS.Workbook();
+      const wb = await createCorporateWorkbook();
       configureCorporateWorkbook(wb, 'Modelo de Importação de Combustível');
 
       const ws = wb.addWorksheet('COMBUSTIVEL');
@@ -1002,7 +1002,7 @@ export default function LancamentosTab({
   const handleExportExcelAbastecimentos = async () => {
     setIsExportingExcel(true);
     try {
-      const wb = new ExcelJS.Workbook();
+      const wb = await createCorporateWorkbook();
       configureCorporateWorkbook(wb, 'Controle de Combustível');
       const ws = wb.addWorksheet('COMBUSTIVEL');
       const headers = [

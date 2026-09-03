@@ -49,9 +49,9 @@ test('relatório semanal limita o período aos sete dias e separa os status', ()
   });
 });
 
-test('Excel semanal contém resumo e detalhamento', () => {
+test('Excel semanal contém resumo e detalhamento', async () => {
   const report = buildWeeklyFleetReport([record('1', '2026-08-29', 'Em operação')], '2026-08-29');
-  const workbook = buildWeeklyFleetWorkbook(report);
+  const workbook = await buildWeeklyFleetWorkbook(report);
   assert.deepEqual(workbook.worksheets.map(sheet => sheet.name), ['RESUMO SEMANAL', 'DETALHAMENTO']);
   assert.equal(workbook.getWorksheet('RESUMO SEMANAL')?.rowCount, 16);
   assert.equal(workbook.getWorksheet('DETALHAMENTO')?.rowCount, 2);

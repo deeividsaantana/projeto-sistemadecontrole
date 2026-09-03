@@ -32,7 +32,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import type { Abastecimento, AlertaCombustivel, Comboio, Empresa, Equipamento, TipoCombustivel } from '../types';
 import {
   auditFuelDataset,
@@ -52,12 +52,7 @@ import {
   getFuelCostTotal,
   getFuelTankCapacity,
 } from '../utils/fuelOperations';
-import {
-  addCorporateSummarySheet,
-  configureCorporateWorkbook,
-  downloadCorporateWorkbook,
-  styleCorporateWorksheet,
-} from '../utils/excelCorporate';
+import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { auth } from '../firebase';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import { stageFuelDataset } from '../services/masterDataApi';
@@ -843,7 +838,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   };
 
   const exportExcel = async () => {
-    const workbook = new ExcelJS.Workbook();
+    const workbook = await createCorporateWorkbook();
     configureCorporateWorkbook(workbook, 'Controle de Combustível');
     const sheet = workbook.addWorksheet('ABASTECIMENTOS');
     const headers = [

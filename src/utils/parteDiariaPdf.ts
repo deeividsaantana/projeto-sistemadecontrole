@@ -1,4 +1,5 @@
-import { jsPDF } from 'jspdf';
+import type { jsPDF } from 'jspdf';
+import { loadJsPdf } from './pdfLoader';
 import type { ParteDiariaEquipamento } from '../types';
 
 export const CODIGOS_PERDA_PARTE_DIARIA = [
@@ -400,8 +401,8 @@ const drawAttachmentPage = (doc: jsPDF, record: ParteDiariaEquipamento) => {
   drawDetailSection('OBSERVAÇÕES COMPLETAS', [[record.observacao || 'Sem observações adicionais.']]);
 };
 
-export const createParteDiariaPdf = (record: ParteDiariaEquipamento, logoDataUrl = '') => {
-  const doc = new jsPDF('p', 'mm', 'a4');
+export const createParteDiariaPdf = async (record: ParteDiariaEquipamento, logoDataUrl = '') => {
+  const doc = new (await loadJsPdf())('p', 'mm', 'a4');
   drawMainPage(doc, record, logoDataUrl);
   drawAttachmentPage(doc, record);
   return doc;
@@ -409,7 +410,7 @@ export const createParteDiariaPdf = (record: ParteDiariaEquipamento, logoDataUrl
 
 export const downloadParteDiariaPdf = async (record: ParteDiariaEquipamento, logoUrl: string) => {
   const logoDataUrl = await loadImageAsDataUrl(logoUrl);
-  const doc = createParteDiariaPdf(record, logoDataUrl);
+  const doc = await createParteDiariaPdf(record, logoDataUrl);
   const safePrefix = (record.prefixo || 'equipamento').replace(/[^a-zA-Z0-9_-]/g, '_');
   doc.save(`parte_diaria_${record.numero || record.id}_${safePrefix}.pdf`);
 };

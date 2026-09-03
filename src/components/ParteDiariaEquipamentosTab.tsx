@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import {
   Activity,
   AlertTriangle,
@@ -47,7 +47,7 @@ import {
   CODIGOS_PERDA_PARTE_DIARIA,
   downloadParteDiariaPdf,
 } from '../utils/parteDiariaPdf';
-import { configureCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import { configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { cleanImportValue, getImportValue, normalizeImportText, parseDelimitedText, parseImportNumber, tableRowsToObjects, toImportIsoDate } from '../utils/importHelpers';
 import { buildParteDiariaOperationalAnalysis, type OperationalAnalysis } from '../utils/operationalAnalysis';
 import SgeIndicadoresPanel from './SgeIndicadoresPanel';
@@ -504,7 +504,7 @@ const ParteDiariaEquipamentosTab: React.FC<ParteDiariaEquipamentosTabProps> = ({
   };
 
   const downloadImportTemplate = async () => {
-    const workbook = new ExcelJS.Workbook();
+    const workbook = await createCorporateWorkbook();
     configureCorporateWorkbook(workbook, 'Modelo de Importação de Parte Diária');
     const sheet = workbook.addWorksheet('IMPORTAR_PARTES');
     sheet.addRow(PARTE_DIARIA_IMPORT_COLUMNS);

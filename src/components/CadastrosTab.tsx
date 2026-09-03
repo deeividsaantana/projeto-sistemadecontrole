@@ -4,8 +4,8 @@
  */
 
 import React, { useRef, useState } from 'react';
-import ExcelJS from 'exceljs';
-import { loadValidatedWorkbook } from '../utils/excelCorporate';
+import type ExcelJS from 'exceljs';
+import { createCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { 
   Empresa, 

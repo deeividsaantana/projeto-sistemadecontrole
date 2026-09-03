@@ -1,5 +1,6 @@
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type { jsPDF } from 'jspdf';
+import { loadJsPdf, loadAutoTable } from './pdfLoader';
+
 import reneaLogo from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
 
@@ -38,7 +39,8 @@ const safeFileName = (value: string) => value.normalize('NFD').replace(/[\u0300-
 const text = (value: unknown) => value === null || value === undefined || value === '' ? '—' : String(value);
 
 export async function generateUniversalPdfReport(options: UniversalPdfReportOptions) {
-  const doc = new jsPDF({ orientation: options.orientation || (options.columns.length > 7 ? 'landscape' : 'portrait'), unit: 'mm', format: 'a4' });
+  const doc = new (await loadJsPdf())({ orientation: options.orientation || (options.columns.length > 7 ? 'landscape' : 'portrait'), unit: 'mm', format: 'a4' });
+  const autoTable = await loadAutoTable();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 12;

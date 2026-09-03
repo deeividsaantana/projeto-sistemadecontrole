@@ -46,7 +46,7 @@ const viewModel: FleetReportViewModel = {
   integrityWarnings: [],
 };
 
-const workbook = buildFleetWorkbook(viewModel);
+const workbook = await buildFleetWorkbook(viewModel);
 assert.deepEqual(
   workbook.worksheets.map(sheet => sheet.name),
   ['RESUMO', 'OPERAÇÃO', 'MANUTENÇÃO', 'À DISPOSIÇÃO', 'A CONFIRMAR', 'HISTÓRICO'],

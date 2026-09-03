@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { CENTRAL_EXPORT_SHEETS, createCentralRegistryWorkbook } from '../src/masterData/centralWorkbookExport';
 
-const workbook = createCentralRegistryWorkbook({
+const workbook = await createCentralRegistryWorkbook({
   empresas: [{ id: 'FOR-0001', nome: 'Pedra Forte', cnpj: '', telefone: '', responsavel: '', tipos: ['FORNECEDOR'], status: 'ATIVO' }],
   obras: [{ id: 'LOC-0001', nome: 'Ramo 200', endereco: '', responsavel: '', status: 'Ativa' }],
   equipamentos: [{ id: 'VEI-0001', prefixo: 'CB1005', placa: 'FEJ6753', nome: 'Caminhão', tipo: 'Basculante', marca: '', modelo: '', seriePlaca: '', empresaId: 'FOR-0001', status: 'Ativo', localAtualId: 'LOC-0001', observacao: '', categoriaFrota: 'Veículo' }],

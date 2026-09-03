@@ -23,7 +23,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import {
   applyTeamSyncPlan,
   buildTeamSyncPlan,
@@ -32,12 +32,7 @@ import {
 } from '../utils/teamSpreadsheetSync';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
-import {
-  addCorporateSummarySheet,
-  configureCorporateWorkbook,
-  downloadCorporateWorkbook,
-  styleCorporateWorksheet,
-} from '../utils/excelCorporate';
+import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { generateUniversalPdfReport } from '../utils/universalPdfReport';
 import type {
   Empresa,
@@ -389,7 +384,7 @@ export default function ControlePresencaTab({
     setSyncError('');
     setSyncPlan(null);
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = await createCorporateWorkbook();
       await workbook.xlsx.load(await file.arrayBuffer());
       const sheet = workbook.getWorksheet('Efetivo')
         || workbook.worksheets.find(item => /efetivo/i.test(item.name));
@@ -482,7 +477,7 @@ export default function ControlePresencaTab({
   };
 
   const exportExcelRecords = async (records: PresencaApontamento[], reportDate: string, reportTitle: string) => {
-    const workbook = new ExcelJS.Workbook();
+    const workbook = await createCorporateWorkbook();
     configureCorporateWorkbook(workbook, reportTitle);
     const sheet = workbook.addWorksheet('Presença');
     sheet.columns = [

@@ -30,8 +30,8 @@ import {
   Download,
   Layers3
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
-import { downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
+import type ExcelJS from 'exceljs';
+import { createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } from '../utils/ticketNumberSequence';
 import { buildDuplicateTicketKeys, isDuplicateTicket, ticketDuplicateKey } from '../utils/ticketDuplicateDetection';
@@ -42,7 +42,8 @@ import { isReneaStoredValueValid, parseReneaStoredJson } from '../utils/resilien
 import { writeStorageValue } from '../data/localStore';
 import { stageTravelDataset } from '../services/masterDataApi';
 import { getSecurePublicTicketLink } from '../publicApi';
-import { jsPDF } from 'jspdf';
+import type { jsPDF } from 'jspdf';
+import { loadJsPdf } from '../utils/pdfLoader';
 import {
   Equipamento,
   ObraLocal,
@@ -261,7 +262,7 @@ const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTic
 };
 
 const generatePairedTicketPdf = async (releaseTicket: TicketJazida, receiptTicket: TicketJazida) => {
-  const doc = new jsPDF('p', 'mm', 'a4');
+  const doc = new (await loadJsPdf())('p', 'mm', 'a4');
   const logo = await loadTicketLogo();
   drawTicketPairOnPdf(doc, releaseTicket, receiptTicket, logo);
   doc.save(`ticket_liberacao_recebimento_${releaseTicket.ticketNumero}.pdf`);
@@ -271,7 +272,7 @@ const generateTicketBookPdf = async (
   pairs: Array<{ releaseTicket: TicketJazida; receiptTicket: TicketJazida }>,
   fileName: string
 ) => {
-  const doc = new jsPDF('p', 'mm', 'a4');
+  const doc = new (await loadJsPdf())('p', 'mm', 'a4');
   const logo = await loadTicketLogo();
   pairs.forEach((pair, index) => {
     if (index > 0) doc.addPage();
@@ -1074,7 +1075,7 @@ export default function TicketsJazidaTab({
   };
 
   const exportTicketControlExcel = async () => {
-    const wb = new ExcelJS.Workbook();
+    const wb = await createCorporateWorkbook();
     const summary = wb.addWorksheet('RESUMO DO DIA');
     summary.addRow(['CONFERÊNCIA DIÁRIA DE TICKETS - JAZIDA']);
     summary.addRow(['Data', controlDate.split('-').reverse().join('/')]);
@@ -1116,8 +1117,8 @@ export default function TicketsJazidaTab({
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `conferencia_jazida_${controlDate}.xlsx`; a.click(); URL.revokeObjectURL(a.href);
   };
 
-  const exportTicketControlPdf = () => {
-    const doc = new jsPDF('l', 'mm', 'a4');
+  const exportTicketControlPdf = async () => {
+    const doc = new (await loadJsPdf())('l', 'mm', 'a4');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text(`Conferência diária da Jazida - ${controlDate.split('-').reverse().join('/')}`, 12, 14);
     doc.setFontSize(8); doc.setFont('helvetica', 'normal');
     doc.text(`Criados: ${dailyControl.totalCriados} | Liberações: ${dailyControl.liberacoesRecebidas} | Recebimentos: ${dailyControl.recebimentosRecebidos} | Completos: ${dailyControl.paresCompletos} | Progresso: ${dailyControl.percentualConferencia}%`, 12, 21);
@@ -1462,7 +1463,7 @@ export default function TicketsJazidaTab({
         getBase64ImageFromUrl(reneaLogoFull),
         getBase64ImageFromUrl(spmarLogo),
       ]);
-      const wb = buildTicketSpreadsheetWorkbook({
+      const wb = await buildTicketSpreadsheetWorkbook({
         liberacoes: tickets.filter(item => matchesExportFilters(item, 'Liberação')),
         recebimentos: tickets.filter(item => matchesExportFilters(item, 'Recebimento')),
         duplicateKeys: duplicateTicketKeys,
@@ -1527,7 +1528,7 @@ export default function TicketsJazidaTab({
       const pair = getTicketPair(t);
       await generatePairedTicketPdf(pair.releaseTicket, pair.receiptTicket);
       return;
-      const doc = new jsPDF('p', 'mm', 'a5');
+      const doc = new (await loadJsPdf())('p', 'mm', 'a5');
       const pageWidth = doc.internal.pageSize.getWidth();
       let y = 14;
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
+import { createCorporateWorkbook } from '../utils/excelCorporate';
 import { Download, FileSpreadsheet, Printer } from 'lucide-react';
 import type {
   ControleEstacas, Equipamento,
@@ -31,7 +32,7 @@ export default function ErpReportExportsV28({ tickets, estacas, presencas, equip
   const exportExcel = async () => {
     setExporting(true);
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = await createCorporateWorkbook();
       workbook.creator = 'Sistema RENEA ERP 3.0';
       const addSheet = (name: string, headers: string[], rows: unknown[][]) => {
         const sheet = workbook.addWorksheet(name);

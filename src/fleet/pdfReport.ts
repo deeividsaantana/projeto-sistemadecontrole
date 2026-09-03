@@ -1,5 +1,10 @@
-import { jsPDF } from 'jspdf';
-import autoTable, { type CellHookData, type RowInput } from 'jspdf-autotable';
+import type { jsPDF } from 'jspdf';
+import { loadJsPdf, loadAutoTable } from '../utils/pdfLoader';
+import type { CellHookData, RowInput } from 'jspdf-autotable';
+
+// Carregado uma vez por geracao de PDF e guardado aqui: as funcoes auxiliares
+// que desenham as tabelas continuam sincronas.
+let autoTable!: Awaited<ReturnType<typeof loadAutoTable>>;
 import { FLEET_OPERATIONAL_STATUS, type FleetCurrentState, type FleetReportViewModel } from './domain';
 import { getFleetStatusDefinition } from './status';
 import { formatBrazilianDateTime } from './time';
@@ -561,13 +566,15 @@ const ensureSectionRoom = (
   return drawHeader(document, viewModel, reneaLogo, spmarLogo);
 };
 
-const buildFleetPdfDocument = (
+const buildFleetPdfDocument = async (
   viewModel: FleetReportViewModel,
   reneaLogo?: string,
   spmarLogo?: string,
   compress = false,
-): jsPDF => {
-  const document = new jsPDF({
+): Promise<jsPDF> => {
+  const [JsPdf, autoTableModule] = await Promise.all([loadJsPdf(), loadAutoTable()]);
+  autoTable = autoTableModule;
+  const document = new JsPdf({
     orientation: 'landscape',
     unit: 'mm',
     format: 'a4',
@@ -597,7 +604,7 @@ export const generateFleetPdf = async (
     loadImageData(reneaLogoUrl),
     loadImageData(spmarLogoUrl),
   ]);
-  const document = buildFleetPdfDocument(viewModel, reneaLogo, spmarLogo, true);
+  const document = await buildFleetPdfDocument(viewModel, reneaLogo, spmarLogo, true);
   const fileName = `RELATORIO_DIARIO_SITUACAO_OPERACIONAL_FROTAS_${viewModel.reportDate}.pdf`;
   document.save(fileName);
   return {
@@ -614,6 +621,6 @@ export const createFleetPdfArrayBuffer = async (
     loadImageData(reneaLogoUrl),
     loadImageData(spmarLogoUrl),
   ]);
-  const document = buildFleetPdfDocument(viewModel, reneaLogo, spmarLogo);
+  const document = await buildFleetPdfDocument(viewModel, reneaLogo, spmarLogo);
   return document.output('arraybuffer');
 };

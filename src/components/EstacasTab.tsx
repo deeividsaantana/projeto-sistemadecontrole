@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
+import { createCorporateWorkbook } from '../utils/excelCorporate';
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Hammer, PackagePlus, Pencil, Trash2, X } from 'lucide-react';
 import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal } from '../types';
 import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
@@ -184,7 +185,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
     setIsImporting(true);
     setMessage('');
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = await createCorporateWorkbook();
       await workbook.xlsx.load(await file.arrayBuffer() as any);
       const importedLots: LoteEstaca[] = [];
       const importedDrivings: CravacaoEstaca[] = [];

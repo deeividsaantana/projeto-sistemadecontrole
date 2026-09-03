@@ -1,7 +1,9 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
+import { createCorporateWorkbook } from '../utils/excelCorporate';
 import { classifyOperationalFleet } from './reconciliation';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type { jsPDF } from 'jspdf';
+import { loadJsPdf, loadAutoTable } from '../utils/pdfLoader';
+
 import type { ControleEquipamentoDiario } from '../types';
 const reneaLogoUrl = new URL('../assets/images/renea_logo_new.png', import.meta.url).href;
 const spmarLogoUrl = new URL('../assets/images/spmar_logo.png', import.meta.url).href;
@@ -126,7 +128,8 @@ const loadImageData = async (url: string): Promise<string | undefined> => {
 export const exportWeeklyFleetPdf = async (
   report: WeeklyFleetReport,
 ): Promise<WeeklyExportResult> => {
-  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pdf = new (await loadJsPdf())({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const autoTable = await loadAutoTable();
   const [reneaLogo, spmarLogo] = await Promise.all([
     loadImageData(reneaLogoUrl),
     loadImageData(spmarLogoUrl),
@@ -204,8 +207,8 @@ export const exportWeeklyFleetPdf = async (
   return { fileName, rows: report.records.length, pages };
 };
 
-export const buildWeeklyFleetWorkbook = (report: WeeklyFleetReport): ExcelJS.Workbook => {
-  const workbook = new ExcelJS.Workbook();
+export const buildWeeklyFleetWorkbook = async (report: WeeklyFleetReport): Promise<ExcelJS.Workbook> => {
+  const workbook = await createCorporateWorkbook();
   workbook.creator = 'Sistema RENEA';
   workbook.created = new Date();
   const summary = workbook.addWorksheet('RESUMO SEMANAL', { views: [{ showGridLines: false }] });
@@ -273,7 +276,7 @@ export const buildWeeklyFleetWorkbook = (report: WeeklyFleetReport): ExcelJS.Wor
 export const exportWeeklyFleetExcel = async (
   report: WeeklyFleetReport,
 ): Promise<WeeklyExportResult> => {
-  const workbook = buildWeeklyFleetWorkbook(report);
+  const workbook = await buildWeeklyFleetWorkbook(report);
   const buffer = await workbook.xlsx.writeBuffer();
   const fileName = `RELATORIO_SEMANAL_FROTAS_${report.startDate}_A_${report.endDate}.xlsx`;
   downloadBlob(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), fileName);

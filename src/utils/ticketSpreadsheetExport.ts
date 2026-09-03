@@ -1,6 +1,6 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import { TicketJazida, TipoTicketJazida } from '../types';
-import { configureCorporateWorkbook } from './excelCorporate';
+import { configureCorporateWorkbook, createCorporateWorkbook } from './excelCorporate';
 import { isDuplicateTicket } from './ticketDuplicateDetection';
 import { normalizeTicketNumber } from './ticketNumberSequence';
 import { buildTravelOperationControl, formatTravelDuration } from './travelOperations';
@@ -337,8 +337,8 @@ const addOperationalControlSheets = (
   styleControlSheet(indicators, [38, 22]);
 };
 
-export const buildTicketSpreadsheetWorkbook = (options: TicketSpreadsheetOptions) => {
-  const workbook = new ExcelJS.Workbook();
+export const buildTicketSpreadsheetWorkbook = async (options: TicketSpreadsheetOptions) => {
+  const workbook = await createCorporateWorkbook();
   configureCorporateWorkbook(workbook, 'Controle de viagens da jazida SABESP');
   configureSheet(workbook, 'Liberação', options.liberacoes, options.duplicateKeys, options.reneaLogoBase64, options.spmarLogoBase64);
   configureSheet(workbook, 'Recebimento', options.recebimentos, options.duplicateKeys, options.reneaLogoBase64, options.spmarLogoBase64);

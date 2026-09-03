@@ -45,18 +45,14 @@ import {
   TicketCheck,
   Truck,
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type ExcelJS from 'exceljs';
+import type { jsPDF } from 'jspdf';
+import { loadJsPdf, loadAutoTable } from '../utils/pdfLoader';
+
 import reneaLogo from '../assets/images/renea_logo_new.png';
 import reneaDashboardLogo from '../assets/images/logo-renea-dark.svg';
 import spmarLogo from '../assets/images/spmar_logo.png';
-import {
-  addCorporateSummarySheet,
-  configureCorporateWorkbook,
-  downloadCorporateWorkbook,
-  styleCorporateWorksheet,
-} from '../utils/excelCorporate';
+import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 
 type OperationalReportsDashboardProps = {
   empresas: Empresa[];
@@ -332,7 +328,7 @@ export default function OperationalReportsDashboard({
   const exportExcel = async () => {
     setIsExporting(true);
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = await createCorporateWorkbook();
       const title = mode === 'combustivel' ? 'Painel analítico de Combustível' : 'Painel analítico da Jazida';
       configureCorporateWorkbook(workbook, `${title} - ${periodLabel}`);
       const summaryMetrics: Array<[string, string | number]> = mode === 'combustivel'
@@ -424,7 +420,8 @@ export default function OperationalReportsDashboard({
   const exportPdf = async () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const doc = new (await loadJsPdf())({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const autoTable = await loadAutoTable();
       try {
         const [reneaData, spmarData] = await Promise.all([imageAsDataUrl(reneaLogo), imageAsDataUrl(spmarLogo)]);
         doc.addImage(reneaData, 'PNG', 12, 8, 34, 15);
