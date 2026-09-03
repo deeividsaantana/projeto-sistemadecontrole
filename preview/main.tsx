@@ -3,11 +3,48 @@ import { createRoot } from 'react-dom/client';
 import './preview.css';
 import UsuariosTab from '../src/components/UsuariosTab';
 import PresencaTempoRealPublica from '../src/components/PresencaTempoRealPublica';
+import Dashboard from '../src/components/Dashboard';
+import LancamentosTab from '../src/components/LancamentosTab';
 import * as fx from './fixtures';
 
 const noop = () => {};
 const screens: Record<string, React.ReactNode> = {
   usuarios: <UsuariosTab />,
+  combustivel: (
+    <LancamentosTab
+      empresas={fx.empresas}
+      equipamentos={fx.equipamentos}
+      comboios={fx.comboios}
+      combustiveis={fx.combustiveis}
+      lubrificantes={fx.lubrificantes}
+      abastecimentos={fx.abastecimentos}
+      lubrificacoes={[]}
+      onSaveAbastecimento={noop}
+      onDeleteAbastecimento={noop}
+      onDeleteAbastecimentos={noop}
+      onImportAbastecimentos={noop}
+      onSaveLubrificacao={noop}
+      onDeleteLubrificacao={noop}
+    />
+  ),
+  painel: (
+    <Dashboard
+      empresas={fx.empresas}
+      obras={fx.obras}
+      equipamentos={fx.equipamentos}
+      funcionarios={fx.equipeFuncionarios}
+      comboios={fx.comboios}
+      combustiveis={fx.combustiveis}
+      lubrificantes={fx.lubrificantes}
+      abastecimentos={fx.abastecimentos}
+      lubrificacoes={[]}
+      historyLogs={[]}
+      ordensServico={fx.ordensServico}
+      ticketsJazida={fx.ticketsJazida}
+      presencasLink={fx.registrosEnviados}
+      onNavigate={noop}
+    />
+  ),
   presenca: (
     <PresencaTempoRealPublica
       token="presenca-exemplo"

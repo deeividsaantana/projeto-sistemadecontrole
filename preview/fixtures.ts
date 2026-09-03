@@ -38,3 +38,35 @@ export const registrosEnviados: PresencaApontamento[] = equipeFuncionarios.slice
   funcao: f.cargo, grupoId: grupo.id, grupoNome: grupo.nome, status: i === 1 ? 'Ausente' : 'Presente',
   observacao: '', responsavel: 'Renilson', frenteServico: 'Ramo 200', horaEnvio: '08:02',
 } as PresencaApontamento));
+
+// --- Painel de Controle ---
+import type { Abastecimento, Comboio, OrdemServico, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../src/types';
+
+export const comboios: Comboio[] = [
+  { id: 'cmb-1', nome: 'Comboio 01', placa: 'ABC1D23', capacidadeLitros: 8000 } as Comboio,
+];
+export const combustiveis: TipoCombustivel[] = [{ id: 'tc-1', nome: 'Diesel S10' } as TipoCombustivel];
+export const lubrificantes: ProdutoLubrificacao[] = [{ id: 'pl-1', nome: 'Óleo 15W40' } as ProdutoLubrificacao];
+
+const dia = (n: number) => `2026-09-${String(n).padStart(2, '0')}`;
+export const abastecimentos: Abastecimento[] = Array.from({ length: 14 }, (_, i) => ({
+  id: `ab-${i}`, data: dia((i % 3) + 1), hora: '07:30',
+  equipamentoId: i % 2 ? 'eq-1' : 'eq-2', prefixoInformado: i % 2 ? 'CB770' : 'CB1005',
+  horimetroInicial: 1000 + i, kmInicial: 0, bombaInicial: 1000 * i,
+  quantidadeLitros: 120 + i * 7, bombaFinal: 1000 * i + 120,
+  tipoCombustivelId: 'tc-1', comboioId: 'cmb-1',
+  responsavel: 'José da Silva Costa', observacao: '',
+} as Abastecimento));
+
+export const ordensServico: OrdemServico[] = [
+  { id: 'os-1', numero: 'OS-0100', equipamentoId: 'eq-1', descricao: 'Troca de mangueira hidráulica', motivo: 'Vazamento', status: 'Em andamento', dataAbertura: dia(2), responsavel: 'Manutenção' } as OrdemServico,
+  { id: 'os-2', numero: 'OS-0101', equipamentoId: 'eq-2', descricao: 'Revisão preventiva 500h', motivo: 'Preventiva', status: 'Aguardando Peça', dataAbertura: dia(1), responsavel: 'Manutenção' } as OrdemServico,
+];
+
+export const ticketsJazida: TicketJazida[] = Array.from({ length: 6 }, (_, i) => ({
+  id: `tk-${i}`, data: dia((i % 3) + 1), ticketNumero: String(2200 + i),
+  tipoTicket: 'Liberação', prefixo: 'CB1005', placa: 'FEJ6753',
+  tipoMaterial: 'Solo', quantidadeM3: 12, unidadeQuantidade: 'm³',
+  destinoObra: 'Aterro', responsavelLiberacao: 'Renilson', nomeLegivel: 'Renilson',
+  empresa: 'RENEA', observacao: '', statusFluxo: 'Enviado', origemRegistro: 'Link',
+} as TicketJazida));
