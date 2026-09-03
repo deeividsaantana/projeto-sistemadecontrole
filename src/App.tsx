@@ -83,7 +83,6 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 // A base histórica de materiais fica em um chunk separado para não pesar no
 // login e nas demais telas. Ela é carregada antes da hidratação dos dados.
 // Motion and Logo Import
-import { motion } from 'motion/react';
 import reneaLogo from './assets/images/logo-renea-transparent.png';
 
 // Firebase Imports
@@ -3942,13 +3941,7 @@ export default function App() {
         {/* Dynamic Inner Tab Viewport */}
         <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full mx-auto print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3.5 sm:p-4 md:p-7 2xl:p-10 max-w-[1440px]'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="w-full h-full"
-            >
+            <div key={activeTab} className="renea-enter w-full h-full">
             {activeTab === 'dashboard' && (
               <Dashboard 
                 empresas={empresas}
@@ -4140,7 +4133,7 @@ export default function App() {
                 onRestoreLastDeletion={handleRestoreLastDeletion}
               />
             )}
-            </motion.div>
+            </div>
           </Suspense>
         </div>
         </main>

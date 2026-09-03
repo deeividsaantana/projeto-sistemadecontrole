@@ -24,6 +24,7 @@ import {
   ParteDiariaEquipamento
 } from '../types';
 import { generateSecurePublicToken } from './publicLinkSecurity';
+import { setInitialControleEstacas } from './initialEstacasData';
 
 const mergeByKey = <T,>(base: T[], imported: T[], getKey: (item: T) => string) => {
   const keys = new Set(base.map(item => getKey(item)).filter(Boolean));
@@ -73,6 +74,10 @@ export const hydrateInitialOperationalSeedData = async (): Promise<void> => {
     augustSeed.IMPORTED_AUG2026_TICKETS_JAZIDA,
     item => item.id
   );
+  setInitialControleEstacas({
+    lotes: augustSeed.IMPORTED_AUG2026_CONTROLE_ESTACAS.lotes,
+    cravacoes: augustSeed.IMPORTED_AUG2026_CONTROLE_ESTACAS.cravacoes,
+  });
   operationalSeedHydrated = true;
 };
 

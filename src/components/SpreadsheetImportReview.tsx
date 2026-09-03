@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, Columns3, FileSpreadsheet, Loader2, Search, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import type { OperationalAnalysis } from '../utils/operationalAnalysis';
 
@@ -57,23 +56,16 @@ export default function SpreadsheetImportReview({
   }, [columns, query, rows]);
 
   return (
-    <AnimatePresence>
+    <>
       {open && (
-        <motion.div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+        <div
+          className="renea-enter fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby="spreadsheet-import-title"
         >
-          <motion.div
-            initial={{ opacity: 0, y: 18, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-            className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
+          <div
+            className="renea-enter flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
               <div className="flex min-w-0 items-start gap-3">
@@ -179,9 +171,9 @@ export default function SpreadsheetImportReview({
                 {confirming ? 'Importando...' : `Confirmar ${validCount} registro(s)`}
               </button>
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

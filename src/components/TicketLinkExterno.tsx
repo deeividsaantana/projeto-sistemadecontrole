@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -665,10 +664,10 @@ export default function TicketLinkExterno({
         {screen === 'success' && form && (
           <div className="mx-auto max-w-lg space-y-6 py-8 text-center">
             <div className="relative mx-auto h-24 w-24">
-              <motion.div initial={{ scale: 0.55, opacity: 0.7 }} animate={{ scale: 1.35, opacity: 0 }} transition={{ duration: 0.75, ease: 'easeOut' }} className="absolute inset-2 rounded-full border-4 border-emerald-400" />
-              <motion.div initial={{ scale: 0, rotate: -18 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 280, damping: 16 }} className="absolute inset-2 grid place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 360, damping: 18 }}><Check className="h-10 w-10" strokeWidth={4} /></motion.div>
-              </motion.div>
+              <span className="renea-success-ring absolute inset-2 rounded-full border-4 border-emerald-400" />
+              <span className="renea-success-badge absolute inset-2 grid place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+                <span className="renea-success-check"><Check className="h-10 w-10" strokeWidth={4} /></span>
+              </span>
             </div>
             <div><p className="text-xs font-black uppercase text-emerald-700">Enviado com sucesso</p><h1 className="mt-1 text-3xl font-black">Ticket {form.ticketNumero}</h1><p className="mt-2 text-sm text-slate-500">{form.tipoTicket} registrada e disponível no painel administrativo.</p></div>
             <div className="grid gap-3">
