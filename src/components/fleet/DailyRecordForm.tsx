@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Save, UserPlus, X } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
@@ -137,6 +137,28 @@ export default function DailyRecordForm({
   const [equipmentLookupError, setEquipmentLookupError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [saving, setSaving] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const employeeCodeFieldRef = useRef<HTMLInputElement>(null);
+
+  // Foco automático na matrícula ao abrir o lançamento: é o campo que inicia
+  // a busca do motorista, o primeiro dado que o operador digita.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => employeeCodeFieldRef.current?.focus());
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const handleRootKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      formRef.current?.requestSubmit();
+    }
+  };
   const operationalFleet = useMemo(
     () => equipment.filter(item => item.status !== 'Desmobilizado' && Boolean(item.prefixo?.trim())),
     [equipment],
@@ -338,7 +360,7 @@ export default function DailyRecordForm({
     }
   };
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/40 sm:items-center sm:p-4" role="presentation">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/40 sm:items-center sm:p-4" role="presentation" onKeyDown={handleRootKeyDown}>
       <section role="dialog" aria-modal="true" aria-labelledby="daily-record-title" className="max-h-[100dvh] w-full overflow-y-auto bg-white sm:max-h-[94vh] sm:max-w-5xl sm:rounded-xl sm:border sm:border-slate-200 sm:shadow-2xl">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div>
@@ -347,11 +369,11 @@ export default function DailyRecordForm({
           </div>
           <button type="button" onClick={onClose} className="flex size-10 items-center justify-center rounded-md border border-slate-200 text-slate-600" aria-label="Fechar formulário"><X size={18} /></button>
         </header>
-        <form onSubmit={handleSubmit} className="space-y-5 p-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5 p-4">
           <fieldset className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2 lg:grid-cols-4">
             <legend className="px-2 text-[10px] font-black uppercase tracking-wider text-slate-600">Identificação operacional</legend>
             <label className="text-xs font-bold text-slate-700">Data<input required type="date" value={form.date} onChange={event => update('date', event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label>
-            <label className="text-xs font-bold text-slate-700">Matrícula / código<div className="mt-1 flex"><input value={form.employeeCode} onChange={event => update('employeeCode', event.target.value)} onBlur={lookupEmployeeCode} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupEmployeeCode(); } }} placeholder="103177" className="h-10 min-w-0 flex-1 rounded-l-md border border-slate-300 px-3"/><button type="button" onClick={lookupEmployeeCode} className="rounded-r-md border border-l-0 border-slate-300 bg-slate-50 px-3 text-xs font-black">Buscar</button></div></label>
+            <label className="text-xs font-bold text-slate-700">Matrícula / código<div className="mt-1 flex"><input ref={employeeCodeFieldRef} value={form.employeeCode} onChange={event => update('employeeCode', event.target.value)} onBlur={lookupEmployeeCode} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupEmployeeCode(); } }} placeholder="103177" className="h-10 min-w-0 flex-1 rounded-l-md border border-slate-300 px-3"/><button type="button" onClick={lookupEmployeeCode} className="rounded-r-md border border-l-0 border-slate-300 bg-slate-50 px-3 text-xs font-black">Buscar</button></div></label>
             <label className="text-xs font-bold text-slate-700">Motorista<select value={form.employeeId} onChange={event => applyEmployee(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-2"><option value="">Selecione / informe manualmente</option>{activeEmployees.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(employee=><option key={employee.id} value={employee.id}>{employee.matricula ? `${employee.matricula} · ` : ''}{employee.nome}</option>)}</select></label>
             <label className="text-xs font-bold text-slate-700">Nome apresentado<input value={form.employeeName} disabled={Boolean(form.employeeId)} onChange={event => update('employeeName', event.target.value)} placeholder="Nome do motorista" className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 disabled:bg-slate-100"/></label>
             {!form.employeeId && !form.temporaryDriver && <button type="button" onClick={()=>{update('temporaryDriver',true);setEmployeeLookupError('')}} className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 text-xs font-black text-emerald-800"><UserPlus size={14}/>Adicionar motorista manual</button>}
@@ -379,7 +401,7 @@ export default function DailyRecordForm({
             <label className="text-xs font-bold text-slate-700 sm:col-span-2">Observação operacional<textarea value={form.note} onChange={event => update('note', event.target.value)} rows={3} className="mt-1 w-full rounded-md border border-slate-300 p-3" placeholder="Liberado às 08:54; voltou à operação..."/></label>
           </fieldset>
           {submitError && <p role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{submitError}</p>}
-          <footer className="sticky bottom-0 -mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-slate-200 bg-white p-4 sm:flex-row sm:justify-end"><button type="button" disabled={saving} onClick={onClose} className="min-h-11 rounded-md border border-slate-300 bg-white px-5 text-sm font-black text-slate-700">Cancelar</button><button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60"><Save size={16}/>{saving ? 'Salvando...' : 'Salvar e registrar histórico'}</button></footer>
+          <footer className="sticky bottom-0 -mx-4 -mb-4 flex flex-col-reverse items-center gap-2 border-t border-slate-200 bg-white p-4 sm:flex-row sm:justify-end"><span className="hidden text-[10px] font-semibold text-slate-500 sm:mr-auto sm:inline">Ctrl+Enter salva · Esc fecha</span><button type="button" disabled={saving} onClick={onClose} className="min-h-11 rounded-md border border-slate-300 bg-white px-5 text-sm font-black text-slate-700">Cancelar</button><button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60"><Save size={16}/>{saving ? 'Salvando...' : 'Salvar e registrar histórico'}</button></footer>
         </form>
       </section>
     </div>
