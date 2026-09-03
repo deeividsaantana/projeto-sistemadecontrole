@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Empresa, 
   Equipamento, 
@@ -122,6 +122,16 @@ export default function LancamentosTab({
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const equipamentoFieldRef = useRef<HTMLSelectElement>(null);
+
+  // Foco automático no campo de Frota/Equipamento ao abrir o formulário: data e
+  // hora já vêm preenchidas por padrão, então é o próximo campo que o usuário
+  // precisa preencher primeiro.
+  useEffect(() => {
+    if (!isFormOpen) return;
+    const raf = requestAnimationFrame(() => equipamentoFieldRef.current?.focus());
+    return () => cancelAnimationFrame(raf);
+  }, [isFormOpen, mode]);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isParsingImport, setIsParsingImport] = useState(false);
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
@@ -706,9 +716,11 @@ export default function LancamentosTab({
     applyPumpSuggestion(novoComboioId, date, time, true);
   };
 
-  // Form Submit Handler
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Salva o lançamento atual. Quando `keepOpen` é true (botão "Salvar e novo"),
+  // o formulário permanece aberto para o próximo lançamento: campos que tendem a
+  // se repetir em sequência (comboio, produto/compartimento, responsável) são
+  // preservados, os demais são limpos, e o foco volta para a Frota/Equipamento.
+  const submitForm = (keepOpen: boolean) => {
     setValidationError('');
 
     const isNew = editingId === null;
@@ -735,6 +747,18 @@ export default function LancamentosTab({
         observacao: observacao.trim()
       }, isNew);
 
+      if (keepOpen && isNew) {
+        const preservedComboio = comboioId;
+        const preservedResponsavel = responsavel;
+        const preservedTipoCombustivel = tipoCombustivelId;
+        resetFormFields();
+        setComboioId(preservedComboio);
+        setResponsavel(preservedResponsavel);
+        setTipoCombustivelId(preservedTipoCombustivel);
+        requestAnimationFrame(() => equipamentoFieldRef.current?.focus());
+        return;
+      }
+
     } else if (mode === 'lubrificacoes') {
       if (!equipamentoId || !responsavel.trim() || lubQuantidade <= 0) {
         setValidationError('Preencha todos os campos obrigatórios (Frota, Quantidade, Responsável)!');
@@ -753,10 +777,44 @@ export default function LancamentosTab({
         observacao: observacao.trim()
       }, isNew);
 
+      if (keepOpen && isNew) {
+        const preservedProduto = produtoLubrificacaoId;
+        const preservedCompartimento = compartimento;
+        const preservedResponsavel = responsavel;
+        resetFormFields();
+        setProdutoLubrificacaoId(preservedProduto);
+        setCompartimento(preservedCompartimento);
+        setResponsavel(preservedResponsavel);
+        requestAnimationFrame(() => equipamentoFieldRef.current?.focus());
+        return;
+      }
     }
 
     setIsFormOpen(false);
     resetFormFields();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitForm(false);
+  };
+
+  const handleSaveAndNew = () => {
+    submitForm(true);
+  };
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.nativeEvent.isComposing) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsFormOpen(false);
+      resetFormFields();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      submitForm(false);
+    }
   };
 
   // Safe deletion confirmation toggle
@@ -1337,7 +1395,7 @@ export default function LancamentosTab({
             {editingId ? '✏️ Editando Lançamento' : '➕ Novo Lançamento'} • {mode === 'abastecimentos' ? 'Abastecimento de Combustível' : 'Manutenção / Lubrificação de Máquina'}
           </h3>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-5">
             
             {/* 1. ABASTECIMENTO FORM FIELDS */}
             {mode === 'abastecimentos' && (
@@ -1353,7 +1411,7 @@ export default function LancamentosTab({
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento *</label>
-                    <select value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
+                    <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
                       <option value="">Selecione...</option>
                       {equipamentos.map(eq => (
                         <option key={eq.id} value={eq.id} className="bg-slate-900 text-white">{eq.prefixo} — {eq.nome}</option>
@@ -1461,7 +1519,7 @@ export default function LancamentosTab({
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento *</label>
-                    <select value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
+                    <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
                       <option value="">Selecione...</option>
                       {equipamentos.map(eq => (
                         <option key={eq.id} value={eq.id} className="bg-slate-900 text-white">{eq.prefixo} — {eq.nome}</option>
@@ -1524,13 +1582,22 @@ export default function LancamentosTab({
             )}
 
             {/* Form Actions */}
-            <div className="flex gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="submit"
                 className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
               >
                 {editingId ? 'Salvar Lançamento' : 'Registrar na Obra'}
               </button>
+              {!editingId && (
+                <button
+                  type="button"
+                  onClick={handleSaveAndNew}
+                  className="px-5 py-2.5 bg-slate-850 hover:bg-slate-800 border border-emerald-600/40 text-emerald-400 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  Registrar e novo
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => { setIsFormOpen(false); resetFormFields(); }}
@@ -1538,6 +1605,9 @@ export default function LancamentosTab({
               >
                 Cancelar
               </button>
+              <span className="ml-auto text-[10px] font-semibold text-slate-500">
+                Ctrl+Enter salva · Esc cancela
+              </span>
             </div>
 
           </form>
