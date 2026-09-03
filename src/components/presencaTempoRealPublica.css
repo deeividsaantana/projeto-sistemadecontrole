@@ -1266,3 +1266,24 @@
     transition-duration: 0.01ms;
   }
 }
+
+/* Atalho de campo: completa como presente quem ainda nao foi marcado. Reduz de
+   uma dezena de toques para um o caso mais comum do dia a dia. */
+.presence-public__bulk {
+  display: flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  margin-top: .85rem;
+  border: 1px solid #1f7a58;
+  border-radius: .75rem;
+  background: #eaf6f0;
+  color: #0b5c42;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.presence-public__bulk:disabled { opacity: .5; cursor: not-allowed; }
+.presence-public__bulk:active:not(:disabled) { background: #d9efe4; }

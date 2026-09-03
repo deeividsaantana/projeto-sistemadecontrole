@@ -485,6 +485,7 @@ export default function PresencaTempoRealPublica({
   const reviewed = groupEmployees.filter(employee => Boolean(items[employee.id]?.status)).length;
   const pending = Math.max(0, groupEmployees.length - reviewed);
   const progress = groupEmployees.length ? Math.round((reviewed / groupEmployees.length) * 100) : 0;
+  const pendentes = groupEmployees.length - reviewed;
   // Ao trocar de dia, a lista passa a refletir exatamente o que foi enviado
   // naquela data. O rascunho local do dia corrente não é tocado na primeira
   // carga, apenas quando o responsável realmente navega para outro dia.
@@ -675,6 +676,24 @@ export default function PresencaTempoRealPublica({
     setDraftSaved(false);
     setDraftFeedback('Alterações ainda não enviadas');
   }, []);
+
+  // No campo, quase todo dia quase todo mundo esta presente: o trabalho real e
+  // marcar as excecoes. Este atalho preenche apenas quem ainda nao foi tocado —
+  // nunca sobrescreve uma escolha ja feita pelo encarregado.
+  const marcarRestantesPresentes = useCallback(() => {
+    setItems(current => {
+      const next = { ...current };
+      groupEmployees.forEach(employee => {
+        if (next[employee.id]?.status) return;
+        next[employee.id] = { observacao: next[employee.id]?.observacao || '', status: 'Presente' };
+      });
+      currentDayDraftRef.current = next;
+      return next;
+    });
+    setError('');
+    setDraftSaved(false);
+    setDraftFeedback('Alterações ainda não enviadas');
+  }, [groupEmployees]);
 
   const setObservacao = useCallback((employeeId: string, observacao: string) => {
     setItems(current => {
@@ -1130,6 +1149,17 @@ export default function PresencaTempoRealPublica({
           <div><strong>{reviewed}</strong><span> de {groupEmployees.length} conferidos</span></div><b>{progress}%</b>
           <div className="presence-public__progress-track"><i style={{ width: `${progress}%` }} /></div>
           <label>Data do apontamento<input type="date" value={date} onChange={event => setDate(event.target.value)} min={todayInput()} max={todayInput()} /></label>
+          {pendentes > 0 && (
+            <button
+              type="button"
+              className="presence-public__bulk"
+              onClick={marcarRestantesPresentes}
+              disabled={submitting || savingDraft}
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
+              Marcar {pendentes === 1 ? 'o restante' : `os ${pendentes} restantes`} como presente
+            </button>
+          )}
         </section>
         {dayOptions.length > 1 && onSelectDate && (
           <section className="presence-public__daybar" aria-label="Dias com apontamento enviado">
