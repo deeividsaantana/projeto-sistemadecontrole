@@ -344,6 +344,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 .erp-topbar__breadcrumb { color: #65766d; font-size: .8rem; }
 .erp-topbar__breadcrumb strong { color: #183428; }
 .erp-topbar__status { color: #486458; }
+.erp-topbar__status[data-offline] { color: #9a3412; }
+.erp-topbar__status[data-offline] span { background: #d97706; }
 .erp-topbar__date { border-left-color: #dce5df; color: #728178; }
 .erp-topbar__date strong, .erp-topbar__user strong { color: #1c382a; }
 .erp-topbar__user { border-left-color: #dce5df; }

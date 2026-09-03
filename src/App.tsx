@@ -919,13 +919,20 @@ export default function App() {
 
         if (!status.updatedAt) return;
         const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
-        if (!localCloudVersion) {
-          writeStorageValue(localStorage, 'renea_last_cloud_sync_iso', status.updatedAt);
-          return;
-        }
-
+        // Sem versão local registrada, este aparelho nunca completou uma
+        // sincronização — não é seguro presumir que já está em dia. Antes
+        // baixava a nuvem e o resultado ficava perdido no console; agora o
+        // aviso abaixo torna visível se essa primeira sincronização falhar.
         if (localCloudVersion !== status.updatedAt) {
-          await handleDownloadFromFirebase();
+          const result = await handleDownloadFromFirebase();
+          if (!cancelled && !result.success) {
+            addNotification(
+              'Não foi possível atualizar os dados',
+              `Este aparelho não conseguiu buscar a versão mais recente da nuvem. Motivo: ${result.message}`,
+              'error',
+              'Sistema Local',
+            );
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -3826,6 +3833,8 @@ export default function App() {
           isNotificationOpen={isNotifDropdownOpen}
           notifications={notifications}
           unreadCount={unreadCount}
+          isFirebaseConnected={isFirebaseConnected}
+          lastCloudSync={lastCloudSync}
           onNavigate={tab => navigateTo(tab)}
           onToggleNotifications={() => setIsNotifDropdownOpen(value => !value)}
           onCloseNotifications={() => setIsNotifDropdownOpen(false)}
