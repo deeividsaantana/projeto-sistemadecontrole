@@ -12,13 +12,15 @@ import {
 const COLLECTION = 'sistemarenea_usage';
 const TAB_LABELS = {
   dashboard: 'Painel de Controle',
+  'consulta-geral': 'Consulta Geral',
   reports: 'Relatórios Gerais',
+  'controle-equipamentos': 'Controle Operacional de Frotas',
   lancamentos: 'Combustível',
   'tickets-jazida': 'Tickets Jazida',
-  manutencao: 'Manutenção',
-  presenca: 'Presença',
-  'controle-presenca': 'Controle de Presença',
+  estacas: 'Controle de Estacas',
+  presenca: 'Presença e Controle',
   cadastros: 'Cadastros Auxiliares',
+  usuarios: 'Usuários',
   configuracoes: 'Apoio e Configuração',
 };
 
