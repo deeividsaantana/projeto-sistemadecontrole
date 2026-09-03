@@ -296,6 +296,10 @@ export default function App() {
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
+  // Quantos envios do link público de presença já estão no Firebase, pendentes
+  // de entrar neste retrato local. Serve só de diagnóstico visível: se ficar
+  // preso em um número maior que zero, o processamento em tempo real travou.
+  const [pendingPublicSubmissionsCount, setPendingPublicSubmissionsCount] = useState(0);
   const [oneDriveFuelSyncStatus, setOneDriveFuelSyncStatus] = useState<OneDriveFuelSyncStatus | null>(null);
 
   // Database States
@@ -2544,9 +2548,22 @@ export default function App() {
 
     const unsubscribe = subscribePendingPublicSubmissions(
       db,
-      submissions => void ingestPublicSubmissions(submissions),
+      submissions => {
+        if (cancelled) return;
+        // A query já filtra status == pending: esta contagem reflete o que
+        // ainda não foi incorporado a este retrato local, em tempo real.
+        setPendingPublicSubmissionsCount(submissions.length);
+        void ingestPublicSubmissions(submissions);
+      },
       error => {
-        if (!cancelled) console.warn('Falha ao acompanhar os envios públicos em tempo real:', error);
+        if (cancelled) return;
+        console.warn('Falha ao acompanhar os envios públicos em tempo real:', error);
+        addNotification(
+          'Presenças do link público podem não estar chegando',
+          `O acompanhamento em tempo real dos envios públicos falhou. Motivo: ${formatFirebaseSyncError(error)}`,
+          'error',
+          'Sistema Local',
+        );
       },
     );
     return () => {
@@ -3979,6 +3996,7 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 presencasLink={presencasLink}
                 historicoPresencas={historicoPresencas}
+                pendingPublicSubmissionsCount={pendingPublicSubmissionsCount}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
                 onUpdatePresencaLink={handleUpdatePresencaLink}

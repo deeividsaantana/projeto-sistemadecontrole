@@ -88,6 +88,13 @@ interface ControlePresencaTabProps {
     gruposEquipe: GrupoEquipe[],
     resumo: TeamSyncPlan['resumo'],
   ) => Promise<{ success: boolean; message: string }>;
+  /**
+   * Envios do link público que já chegaram no Firebase mas ainda não foram
+   * incorporados a este retrato local. Um número maior que zero por muito
+   * tempo indica que o processamento em tempo real travou, mesmo sem erro
+   * visível — o dado existe, só não foi puxado para cá ainda.
+   */
+  pendingPublicSubmissionsCount?: number;
 }
 
 type View = 'ao-vivo' | 'equipes' | 'registros' | 'historico';
@@ -169,6 +176,7 @@ export default function ControlePresencaTab({
   onDeletePresencaLink,
   onResetPresencaDia,
   onSyncEquipesPlanilha,
+  pendingPublicSubmissionsCount = 0,
 }: ControlePresencaTabProps) {
   const today = localToday();
   const safeFuncionarios = useMemo(() => (Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean), [funcionarios]);
@@ -615,6 +623,18 @@ export default function ControlePresencaTab({
         <div role="status" className="flex items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
           <span>{feedback}</span>
           <button type="button" onClick={() => setFeedback('')} aria-label="Fechar mensagem" className="rounded-lg p-1 hover:bg-emerald-100"><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {view === 'ao-vivo' && pendingPublicSubmissionsCount > 0 && (
+        <div role="status" className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {pendingPublicSubmissionsCount === 1
+              ? '1 envio do link público já chegou e está sendo processado agora.'
+              : `${pendingPublicSubmissionsCount} envios do link público já chegaram e estão sendo processados agora.`}
+            {' '}Se o número acima não crescer em alguns segundos, atualize a página.
+          </span>
         </div>
       )}
 
