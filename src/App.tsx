@@ -3746,12 +3746,20 @@ export default function App() {
       
       {/* Mobile navigation header */}
       <header className="lg:hidden flex items-center justify-between h-[4.25rem] bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
-        <img 
-          src={reneaLogo} 
-          alt="RENEA Infraestrutura" 
-          className="h-6 w-auto object-contain" 
-          referrerPolicy="no-referrer" 
+        <img
+          src={reneaLogo}
+          alt="RENEA Infraestrutura"
+          className="h-6 w-auto object-contain"
+          referrerPolicy="no-referrer"
         />
+
+        <div
+          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${isFirebaseConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+          title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
+        >
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isFirebaseConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          <span>{isFirebaseConnected ? 'Nuvem OK' : 'Sem nuvem'}</span>
+        </div>
 
         <div className="flex items-center gap-1">
           <button
