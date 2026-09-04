@@ -1942,8 +1942,12 @@ export default function App() {
       setHistoryLogs([]);
       addNotification('Planilha Mestre atualizada', message, preserved > 0 ? 'warning' : 'success', 'Sistema Local');
 
+      // Sem atraso, pelo mesmo motivo do saveAndLog: handleUploadToFirebase
+      // marca uploadsInFlightRef antes de qualquer await, e é essa marca que
+      // impede uma sincronização automática concorrente de sobrescrever este
+      // lote recém-aplicado com uma versão mais antiga da nuvem.
       if (isAutoSyncEnabled) {
-        window.setTimeout(() => void uploadLocalSnapshotToFirebase(), 150);
+        void uploadLocalSnapshotToFirebase();
       }
       return { success: true, message };
     } catch (error) {
