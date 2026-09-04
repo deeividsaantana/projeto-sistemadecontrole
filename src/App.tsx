@@ -3964,6 +3964,9 @@ export default function App() {
           groups={filteredNavigationGroups}
           menuSearch={menuSearch}
           onMenuSearchChange={setMenuSearch}
+          currentUser={currentUser}
+          isFirebaseConnected={isFirebaseConnected}
+          lastCloudSync={lastCloudSync}
           onNavigate={tab => navigateTo(tab)}
           onLogout={() => void handleLogout()}
         />

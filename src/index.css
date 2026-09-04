@@ -368,3 +368,20 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 @media (max-width: 1023px) {
   .erp-dashboard { background: #fff; }
 }
+
+/* O menu lateral é a única superfície escura do sistema. A camada de
+   compatibilidade acima clareia utilitários históricos (input, .text-white)
+   e, sem estas regras de mesma especificidade, deixava o campo de busca
+   branco e o nome do usuário ilegível dentro do verde. */
+#app-root .erp-sidebar :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+  border-color: #1c6650;
+  background-color: #063a2d;
+  color: #ffffff;
+}
+#app-root .erp-sidebar input::placeholder { color: #7fb8a1; }
+#app-root .erp-sidebar .text-white { color: #ffffff; }
+#app-root .erp-sidebar [aria-current="page"] { color: #ffffff; }
+
+/* Largura do menu recolhido precisa morar aqui: a regra base .erp-sidebar
+   fixa width/min-width e venceria a classe utilitaria por ordem no arquivo. */
+#app-root .erp-sidebar.erp-sidebar--recolhido { width: 5.25rem; min-width: 5.25rem; }

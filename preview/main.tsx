@@ -7,10 +7,28 @@ import Dashboard from '../src/components/Dashboard';
 import LancamentosTab from '../src/components/LancamentosTab';
 import PeriodoTab from '../src/components/PeriodoTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
+import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
+import { NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
 import * as fx from './fixtures';
 
 const noop = () => {};
 const screens: Record<string, React.ReactNode> = {
+  sidebar: (
+    <div className="erp-shell" style={{ height: '100dvh' }}>
+      <DesktopSidebar
+        activeTab="presenca"
+        groups={NAVIGATION_GROUPS.map(g => ({ label: g.label, items: [...g.items] }))}
+        menuSearch=""
+        currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
+        isFirebaseConnected
+        lastCloudSync="04/09/2026 21:40"
+        onMenuSearchChange={noop}
+        onNavigate={noop}
+        onLogout={noop}
+      />
+      <main style={{ flex: 1, background: '#fff' }} />
+    </div>
+  ),
   usuarios: <UsuariosTab />,
   periodo: (
     <PeriodoTab
