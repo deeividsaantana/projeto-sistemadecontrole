@@ -302,6 +302,7 @@ export default function App() {
   // salvar algo) leria a nuvem antes do envio terminar de publicá-la, e
   // sobrescreveria o lançamento que acabou de ser feito com a versão antiga.
   const uploadsInFlightRef = useRef(0);
+  const isCheckingSyncRef = useRef(false);
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
@@ -938,53 +939,53 @@ export default function App() {
     }
   };
 
+  // Confere a nuvem e baixa quando outro dispositivo publicou uma versão
+  // mais recente. Não é só um pulso periódico: também é chamada direto ao
+  // trocar de tela (navigateTo), para que abrir uma tela específica sempre
+  // confira a versão mais nova antes de confiar no que já estava carregado
+  // localmente — em vez de esperar o próximo pulso automático.
+  const pullRemoteChanges = async () => {
+    if (!isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
+    if (isCheckingSyncRef.current) return;
+    isCheckingSyncRef.current = true;
+    try {
+      const status = await getFirebaseConnectionStatus(db);
+      setIsFirebaseConnected(status.connected);
+
+      if (!status.updatedAt) return;
+      // Um envio em andamento ainda não publicou a versão mais nova na
+      // nuvem — baixar agora traria de volta a versão de antes dele e
+      // apagaria, na tela, o que acabou de ser lançado neste aparelho.
+      if (uploadsInFlightRef.current > 0) return;
+      const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
+      // Sem versão local registrada, este aparelho nunca completou uma
+      // sincronização — não é seguro presumir que já está em dia. Antes
+      // baixava a nuvem e o resultado ficava perdido no console; agora o
+      // aviso abaixo torna visível se essa primeira sincronização falhar.
+      if (localCloudVersion !== status.updatedAt) {
+        const result = await handleDownloadFromFirebase();
+        if (!result.success) {
+          addNotification(
+            'Não foi possível atualizar os dados',
+            `Este aparelho não conseguiu buscar a versão mais recente da nuvem. Motivo: ${result.message}`,
+            'error',
+            'Sistema Local',
+          );
+        }
+      }
+    } catch (error) {
+      setIsFirebaseConnected(false);
+      setCloudRecoveryPending(true);
+      console.warn('Verificacao automatica do Firebase falhou:', error);
+    } finally {
+      isCheckingSyncRef.current = false;
+    }
+  };
+
   // Com a sincronizacao automatica ativa, verifica periodicamente se outro
   // dispositivo publicou uma versao mais recente e atualiza este navegador.
   useEffect(() => {
     if (!isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
-
-    let cancelled = false;
-    let isChecking = false;
-
-    const pullRemoteChanges = async () => {
-      if (cancelled || isChecking) return;
-      isChecking = true;
-      try {
-        const status = await getFirebaseConnectionStatus(db);
-        if (cancelled) return;
-        setIsFirebaseConnected(status.connected);
-
-        if (!status.updatedAt) return;
-        // Um envio em andamento ainda não publicou a versão mais nova na
-        // nuvem — baixar agora traria de volta a versão de antes dele e
-        // apagaria, na tela, o que acabou de ser lançado neste aparelho.
-        if (uploadsInFlightRef.current > 0) return;
-        const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
-        // Sem versão local registrada, este aparelho nunca completou uma
-        // sincronização — não é seguro presumir que já está em dia. Antes
-        // baixava a nuvem e o resultado ficava perdido no console; agora o
-        // aviso abaixo torna visível se essa primeira sincronização falhar.
-        if (localCloudVersion !== status.updatedAt) {
-          const result = await handleDownloadFromFirebase();
-          if (!cancelled && !result.success) {
-            addNotification(
-              'Não foi possível atualizar os dados',
-              `Este aparelho não conseguiu buscar a versão mais recente da nuvem. Motivo: ${result.message}`,
-              'error',
-              'Sistema Local',
-            );
-          }
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setIsFirebaseConnected(false);
-          setCloudRecoveryPending(true);
-          console.warn('Verificacao automatica do Firebase falhou:', error);
-        }
-      } finally {
-        isChecking = false;
-      }
-    };
 
     const initialCheck = window.setTimeout(pullRemoteChanges, 3_000);
     // O manifesto dispara a atualização imediatamente quando outro cliente
@@ -1012,7 +1013,6 @@ export default function App() {
     window.addEventListener('online', onReconnect);
     window.addEventListener('focus', onReconnect);
     return () => {
-      cancelled = true;
       window.clearTimeout(initialCheck);
       window.clearInterval(interval);
       unsubscribeManifest();
@@ -3857,6 +3857,11 @@ export default function App() {
     window.requestAnimationFrame(() => {
       document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
     });
+    // Abrir uma tela específica confere a nuvem na hora, em vez de confiar
+    // só no retrato que já estava carregado desde o pulso automático
+    // anterior — quem entrou em Controle de Presença agora quer o dado de
+    // agora, não o de até 60 segundos atrás.
+    void pullRemoteChanges();
   };
 
   const renderNavigation = (mobile = false) => (
