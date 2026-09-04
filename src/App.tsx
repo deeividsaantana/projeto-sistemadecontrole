@@ -1035,7 +1035,11 @@ export default function App() {
   // Com a sincronizacao automatica ativa, verifica periodicamente se outro
   // dispositivo publicou uma versao mais recente e atualiza este navegador.
   useEffect(() => {
-    if (!isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
+    // Sem aguardar o login: este efeito rodava 3s após o app abrir, mesmo com
+    // a tela de login ainda na tela. Se a checagem caísse antes do token de
+    // autenticação estar pronto, o Firestore recusava a leitura por permissão
+    // — e o navegador nunca chegava a baixar os dados reais da nuvem.
+    if (!isLoggedIn || !isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
 
     const initialCheck = window.setTimeout(pullRemoteChanges, 3_000);
     // O manifesto dispara a atualização imediatamente quando outro cliente
@@ -1070,7 +1074,7 @@ export default function App() {
       window.removeEventListener('online', onReconnect);
       window.removeEventListener('focus', onReconnect);
     };
-  }, [isAutoSyncEnabled, externalPresenceToken, externalTicketLink]);
+  }, [isLoggedIn, isAutoSyncEnabled, externalPresenceToken, externalTicketLink]);
 
   // Se a nuvem estiver com um manifesto antigo/inconsistente, regrava o
   // retrato local já carregado uma única vez. Isso recupera os links sem
