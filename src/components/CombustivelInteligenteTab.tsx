@@ -56,7 +56,7 @@ import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWo
 import { auth } from '../firebase';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import { stageFuelDataset } from '../services/masterDataApi';
-import { PageHeader } from '../shared/ui';
+import { PageHeader, StatCard } from '../shared/ui';
 
 interface CombustivelInteligenteTabProps {
   empresas: Empresa[];
@@ -1109,63 +1109,53 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
       {view === 'painel' && (
         <div className="space-y-5">
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
                 label: 'Volume',
                 value: `${formatNumber(dashboard.totalLiters, 0)} L`,
                 detail: `${filteredRecords.length} abastecimento(s)`,
                 icon: Fuel,
-                tone: 'text-emerald-300',
+                tone: 'success' as const,
               },
               {
                 label: 'Frota atendida',
                 value: dashboard.uniqueEquipment,
                 detail: 'Equipamentos distintos',
                 icon: Truck,
-                tone: 'text-sky-300',
+                tone: 'info' as const,
               },
               {
                 label: 'Média por registro',
                 value: filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0',
                 detail: 'Litros por lançamento',
                 icon: Gauge,
-                tone: 'text-cyan-300',
+                tone: 'info' as const,
               },
               {
                 label: 'Importados',
                 value: filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length,
                 detail: 'Planilha, PDF ou foto',
                 icon: FileSpreadsheet,
-                tone: 'text-amber-300',
+                tone: 'warning' as const,
               },
               {
                 label: 'Custo informado',
                 value: dashboard.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
                 detail: 'Somente registros com R$/L',
                 icon: CircleDollarSign,
-                tone: 'text-lime-300',
+                tone: 'success' as const,
               },
               {
                 label: 'Conferência',
                 value: dashboard.pendingReview,
                 detail: `${dashboard.alerts} alerta(s), ${dashboard.critical} crítico(s)`,
                 icon: ClipboardCheck,
-                tone: dashboard.pendingReview ? 'text-amber-300' : 'text-emerald-300',
+                tone: dashboard.pendingReview ? 'warning' as const : 'success' as const,
               },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <article key={item.label} className="border border-[#e2e8e4] bg-white p-4">
-                  <div className="flex items-start justify-between">
-                    <span className="text-xs font-bold uppercase text-[#65716b]">{item.label}</span>
-                    <Icon className={item.tone} size={19} />
-                  </div>
-                  <strong className="mt-3 block text-2xl text-[#14231e]">{item.value}</strong>
-                  <span className="mt-1 block text-xs text-[#65716b]">{item.detail}</span>
-                </article>
-              );
-            })}
+            ].map((item) => (
+              <StatCard key={item.label} label={item.label} value={item.value} icon={item.icon} trend={item.detail} tone={item.tone} />
+            ))}
           </section>
           <section className="grid gap-5 xl:grid-cols-[1.35fr_.85fr]">
             <div className="border border-[#e2e8e4] bg-white">
