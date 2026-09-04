@@ -79,7 +79,7 @@ const drawHeader = (
   });
   document.setFontSize(8.5);
   document.setTextColor('#086B3D');
-  document.text(`Complexo do Alto Tietê · ${viewModel.reportDateLabel}`, PAGE_WIDTH / 2, 17, {
+  document.text(`Rodoanel Mário Covas · Alça Trecho Leste · ${viewModel.reportDateLabel}`, PAGE_WIDTH / 2, 17, {
     align: 'center',
   });
   document.setDrawColor('#10223A');

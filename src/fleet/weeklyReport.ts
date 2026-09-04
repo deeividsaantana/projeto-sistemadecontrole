@@ -142,7 +142,7 @@ export const exportWeeklyFleetPdf = async (
   pdf.text('RELATÓRIO SEMANAL DE SITUAÇÃO OPERACIONAL DAS FROTAS', 148.5, 12, { align: 'center' });
   pdf.setFontSize(9);
   pdf.setTextColor('#086B3D');
-  pdf.text(`Complexo do Alto Tietê · ${formatDate(report.startDate)} a ${formatDate(report.endDate)}`, 148.5, 18, { align: 'center' });
+  pdf.text(`Rodoanel Mário Covas · Alça Trecho Leste · ${formatDate(report.startDate)} a ${formatDate(report.endDate)}`, 148.5, 18, { align: 'center' });
   pdf.setDrawColor('#10223A');
   pdf.line(9, 23, 288, 23);
 
@@ -217,7 +217,7 @@ export const buildWeeklyFleetWorkbook = async (report: WeeklyFleetReport): Promi
   summary.getCell('A1').font = { name: 'Aptos Narrow', size: 16, bold: true, color: { argb: 'FF10223A' } };
   summary.getCell('A1').alignment = { horizontal: 'center' };
   summary.mergeCells('A2:G2');
-  summary.getCell('A2').value = `Complexo do Alto Tietê · ${formatDate(report.startDate)} a ${formatDate(report.endDate)}`;
+  summary.getCell('A2').value = `Rodoanel Mário Covas · Alça Trecho Leste · ${formatDate(report.startDate)} a ${formatDate(report.endDate)}`;
   summary.getCell('A2').alignment = { horizontal: 'center' };
   summary.addRow(['INDICADORES DA SEMANA', 'Acumulado', 'Média diária', '', '', '', '']);
   summary.addRow(['Total de frotas', report.totals.total, report.averages.total, '', '', '', '']);

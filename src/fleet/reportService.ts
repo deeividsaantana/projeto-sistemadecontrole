@@ -186,7 +186,7 @@ export const createFleetReportViewModel = (
     generatedAt: now.toISOString(),
     reportDate: filters.date,
     reportDateLabel: formatBrazilianDate(filters.date),
-    operationName: 'Operação - Alto Tietê',
+    operationName: 'Operação - Rodoanel Mário Covas · Alça Trecho Leste',
     companyLabel,
     filters: { ...filters },
     metrics,
@@ -200,7 +200,7 @@ export const createFleetReportViewModel = (
     sections: [
       {
         id: 'operating',
-        title: 'Operação - Alto Tietê',
+        title: 'Operação - Trecho Leste',
         emptyMessage: 'Nenhum CB em operação neste período.',
         rows: operating,
       },

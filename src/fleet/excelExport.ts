@@ -209,7 +209,7 @@ const createDetailedSummarySheet = (
     sheet,
     'A1:G1',
     'RELATÓRIO DIÁRIO DE SITUAÇÃO OPERACIONAL',
-    'FROTAS OPERACIONAIS · Complexo do Alto Tietê',
+    'FROTAS OPERACIONAIS · Rodoanel Mário Covas · Alça Trecho Leste',
   );
   sheet.mergeCells('A3:G3');
   sheet.getCell('A3').value = viewModel.companyLabel;

@@ -299,17 +299,22 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
 .erp-shell { background: #fff; }
+@keyframes renea-sidebar-drift {
+  from { background-position: center, 30% 14%; }
+  to   { background-position: center, 44% 32%; }
+}
 .erp-sidebar {
   width: 17rem;
   min-width: 17rem;
   background-color: #0c3d2f;
   background-image:
     linear-gradient(180deg, rgb(6 40 30 / .82) 0%, rgb(4 26 20 / .93) 55%, rgb(3 20 15 / .97) 100%),
-    url("./assets/renea-editorial/ponte-construcao.jpg");
-  background-position: center, right 30%;
+    url("./assets/renea-editorial/rodovia-duplicada.jpg");
+  background-position: center, 30% 14%;
   background-size: cover, cover;
   background-repeat: no-repeat, no-repeat;
   border-right: 1px solid #123f31;
+  animation: renea-sidebar-drift 70s ease-in-out infinite alternate;
 }
 .erp-sidebar__brand { min-height: 5.5rem; padding: 1.35rem 1.25rem; border-bottom: 1px solid #185443; background: #062a21; }
 .erp-sidebar__brand img { width: 10.5rem; }

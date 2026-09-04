@@ -408,7 +408,7 @@ export default function ControleEquipamentosDiarioTab({
     <main ref={pageRef} className="fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
       <header data-fleet-enter className="border-b border-slate-200 px-1 pb-6 pt-2 lg:flex lg:items-end lg:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Complexo do Alto Tietê · operação diária</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Rodoanel Mário Covas · Alça Trecho Leste · operação diária</p>
           <h1 className="mt-2 max-w-4xl text-[clamp(2rem,3.2vw,3.05rem)] font-black leading-[1] tracking-[-0.055em] text-slate-950">Controle operacional de frotas</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">Situação diária, motoristas, saídas, pendências e relatórios em uma única visão operacional.</p>
         </div>
