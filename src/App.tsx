@@ -1190,25 +1190,29 @@ export default function App() {
     }
 
     // A sincronização é obrigatória e silenciosa para manter todos os usuários alinhados.
-    setTimeout(() => {
-        handleUploadToFirebase().then(res => {
-          if (res.success) return;
-          console.warn('Sincronização automática pendente:', res.message);
-          // A falha precisa ser visível: antes disso o salvamento parecia ter
-          // dado certo e a base podia ficar dias sem chegar ao Firebase.
-          const now = Date.now();
-          const isRepeat = lastSyncFailureRef.current.message === res.message
-            && now - lastSyncFailureRef.current.at < 60_000;
-          lastSyncFailureRef.current = { message: res.message, at: now };
-          if (isRepeat) return;
-          addNotification(
-            'Sincronização com a nuvem falhou',
-            `${tableName} foi salvo neste aparelho, mas não chegou ao Firebase. Motivo: ${res.message}`,
-            'error',
-            'Sistema Local',
-          );
-        });
-    }, 100);
+    // Dispara na hora (sem atraso): handleUploadToFirebase marca
+    // uploadsInFlightRef antes de qualquer await, e esse é o sinal que impede
+    // uma sincronização automática concorrente de baixar a versão antiga da
+    // nuvem e sobrescrever, na tela, o que acabou de ser salvo aqui. Um
+    // atraso artificial antes desta chamada deixava essa proteção sem efeito
+    // durante a janela de espera.
+    handleUploadToFirebase().then(res => {
+      if (res.success) return;
+      console.warn('Sincronização automática pendente:', res.message);
+      // A falha precisa ser visível: antes disso o salvamento parecia ter
+      // dado certo e a base podia ficar dias sem chegar ao Firebase.
+      const now = Date.now();
+      const isRepeat = lastSyncFailureRef.current.message === res.message
+        && now - lastSyncFailureRef.current.at < 60_000;
+      lastSyncFailureRef.current = { message: res.message, at: now };
+      if (isRepeat) return;
+      addNotification(
+        'Sincronização com a nuvem falhou',
+        `${tableName} foi salvo neste aparelho, mas não chegou ao Firebase. Motivo: ${res.message}`,
+        'error',
+        'Sistema Local',
+      );
+    });
   };
 
   // Auth Handler
