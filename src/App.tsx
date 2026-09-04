@@ -934,10 +934,13 @@ export default function App() {
 
     let cancelled = false;
     let isChecking = false;
+    let hasReportedFirstCheck = false;
 
     const pullRemoteChanges = async () => {
       if (cancelled || isChecking) return;
       isChecking = true;
+      const isFirstCheck = !hasReportedFirstCheck;
+      hasReportedFirstCheck = true;
       try {
         const status = await getFirebaseConnectionStatus(db);
         if (cancelled) return;
@@ -959,6 +962,27 @@ export default function App() {
               'Sistema Local',
             );
           }
+          // Diagnóstico temporário: mostra o que a checagem inicial de cada
+          // abertura decidiu, incluindo quantos registros de presença vieram
+          // da nuvem, para saber se a tela some por causa de um download que
+          // trouxe uma versão sem o lançamento mais recente.
+          if (!cancelled && isFirstCheck && result.success) {
+            const presenceCount = parseStoredJson(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', [] as unknown[]).length;
+            addNotification(
+              'Dados atualizados da nuvem ao abrir',
+              `Esta abertura baixou uma versão nova da nuvem (gerada às ${new Date(status.updatedAt).toLocaleString('pt-BR')}). Após o download, este aparelho ficou com ${presenceCount} registro(s) de presença.`,
+              'info',
+              'Sistema Local',
+            );
+          }
+        } else if (!cancelled && isFirstCheck) {
+          const presenceCount = parseStoredJson(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', [] as unknown[]).length;
+          addNotification(
+            'Nenhuma versão nova ao abrir',
+            `Esta abertura já estava com a versão mais recente da nuvem (nenhum download foi feito). Este aparelho está com ${presenceCount} registro(s) de presença no armazenamento local.`,
+            'info',
+            'Sistema Local',
+          );
         }
       } catch (error) {
         if (!cancelled) {
