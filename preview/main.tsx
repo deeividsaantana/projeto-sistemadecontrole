@@ -41,6 +41,7 @@ const screens: Record<string, React.ReactNode> = {
       <DesktopSidebar activeTab="dashboard" groups={previewGroups} onNavigate={noop} />
       <main className="erp-workspace">
         <DesktopTopBar
+          activeTab="dashboard"
           groups={previewGroups}
           menuSearch=""
           currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}

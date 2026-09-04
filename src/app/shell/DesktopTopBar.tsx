@@ -4,10 +4,13 @@ import type { User } from 'firebase/auth';
 import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
 import type { NavigationGroupView } from './NavigationMenu';
+import { NAVIGATION_GROUPS } from '../navigation/navigation';
+import { Breadcrumb } from '../../shared/ui';
 
 const ICON_STROKE = 1.75;
 
 interface DesktopTopBarProps {
+  activeTab: string;
   groups: NavigationGroupView[];
   menuSearch: string;
   currentUser: User | null;
@@ -27,6 +30,7 @@ interface DesktopTopBarProps {
 }
 
 export function DesktopTopBar({
+  activeTab,
   groups,
   menuSearch,
   currentUser,
@@ -49,6 +53,16 @@ export function DesktopTopBar({
   const userInitials = userName.trim().slice(0, 2).toUpperCase();
 
   const visibleItems = useMemo(() => groups.flatMap(group => group.items), [groups]);
+
+  // A trilha vem do mapa completo de navegação, e não dos grupos já filtrados
+  // pela busca, para o usuário não perder a referência enquanto pesquisa.
+  const breadcrumbItems = useMemo(() => {
+    for (const group of NAVIGATION_GROUPS) {
+      const item = group.items.find(entry => entry.id === activeTab);
+      if (item) return [{ label: group.label }, { label: item.label }];
+    }
+    return [];
+  }, [activeTab]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -77,6 +91,7 @@ export function DesktopTopBar({
 
   return (
     <header className="erp-topbar hidden lg:flex" aria-label="Barra de contexto do sistema">
+      <Breadcrumb items={breadcrumbItems} className="hidden shrink-0 xl:flex" />
       <label className="relative block w-full max-w-sm">
         <span className="sr-only">Buscar no sistema</span>
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" strokeWidth={ICON_STROKE} />

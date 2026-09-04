@@ -3790,6 +3790,7 @@ export default function App() {
         />
         <main className="erp-workspace" id="main-workspace">
         <DesktopTopBar
+          activeTab={activeTab}
           groups={filteredNavigationGroups}
           menuSearch={menuSearch}
           onMenuSearchChange={setMenuSearch}

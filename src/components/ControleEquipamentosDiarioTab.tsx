@@ -49,7 +49,7 @@ import FleetBulkActions from './fleet/FleetBulkActions';
 import FleetDetailDrawer from './fleet/FleetDetailDrawer';
 import DailyRecordForm from './fleet/DailyRecordForm';
 import FleetReportLayout from './fleet/FleetReportLayout';
-import ConfirmDialog from './fleet/ConfirmDialog';
+import { ConfirmDialog } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import { PageHeader } from '../shared/ui';
 
