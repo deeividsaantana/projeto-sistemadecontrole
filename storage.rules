@@ -5,8 +5,10 @@ service firebase.storage {
       return request.auth != null && request.auth.token.staff == true;
     }
 
+    // Mesma regra do Firestore: escrita exige perfil explícito de escrita.
+    // Conta sem a claim role é somente leitura, como a interface já assume.
     function canWrite() {
-      return isStaff() && request.auth.token.role != 'leitura';
+      return isStaff() && request.auth.token.role in ['admin', 'gestor', 'operador'];
     }
 
     function allowedContentType() {

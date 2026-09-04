@@ -20,11 +20,12 @@ service cloud.firestore {
         && request.auth.token.staff == true;
     }
 
-    // Perfis antigos sem a claim role continuam administradores até serem
-    // reprovisionados. O perfil leitura é realmente somente leitura também no
-    // servidor, e não apenas na interface.
+    // Escrita exige um perfil explícito de escrita. Antes bastava não ser
+    // 'leitura', então uma conta sem a claim role — que a interface já trata
+    // como somente leitura — podia gravar direto no banco. Regra e interface
+    // agora dizem a mesma coisa, e a autorização não depende do navegador.
     function canWrite() {
-      return isStaff() && request.auth.token.role != 'leitura';
+      return isStaff() && request.auth.token.role in ['admin', 'gestor', 'operador'];
     }
 
     function hasBaseFields(data) {
