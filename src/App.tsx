@@ -521,12 +521,33 @@ export default function App() {
       setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
 
       if (shouldMigratePresencePeople) {
-        writeStorageValue(localStorage, 'renea_funcionarios', JSON.stringify(INITIAL_FUNCIONARIOS));
-        writeStorageValue(localStorage, 'renea_listas_presenca', JSON.stringify(INITIAL_PRESENCAS));
-        writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(securedPublicLinks.gruposEquipe));
-        writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(INITIAL_PRESENCAS_LINK));
-        writeStorageValue(localStorage, 'renea_historico_presencas', JSON.stringify(INITIAL_HISTORICO_PRESENCAS));
-        writeStorageValue(localStorage, 'renea_colaboradores_planilha_v1', 'true');
+        // Grava a marca de "já migrado" no mesmo lote atômico das tabelas que
+        // ela protege. Antes eram gravações separadas: se o navegador ficasse
+        // sem espaço bem no fim da lista, as tabelas já tinham sido resetadas
+        // mas a marca não gravava — e a próxima vez que o app abrisse repetia
+        // o reset, apagando de novo qualquer presença lançada nesse meio tempo.
+        try {
+          commitStorageBatch(localStorage, [
+            { key: 'renea_funcionarios', value: JSON.stringify(INITIAL_FUNCIONARIOS) },
+            { key: 'renea_listas_presenca', value: JSON.stringify(INITIAL_PRESENCAS) },
+            { key: 'renea_grupos_equipes', value: JSON.stringify(securedPublicLinks.gruposEquipe) },
+            { key: 'renea_presencas_link', value: JSON.stringify(INITIAL_PRESENCAS_LINK) },
+            { key: 'renea_historico_presencas', value: JSON.stringify(INITIAL_HISTORICO_PRESENCAS) },
+            { key: 'renea_colaboradores_planilha_v1', value: 'true' },
+          ]);
+          // Diagnóstico temporário: esta migração deveria rodar uma única vez
+          // por aparelho. Se este aviso aparecer de novo em aberturas
+          // seguintes, a marca de "já migrado" não está persistindo e cada
+          // reload está reiniciando colaboradores e presença sem avisar.
+          addNotification(
+            'Colaboradores e presença foram reiniciados neste aparelho',
+            'Uma migração única de dados rodou agora e substituiu funcionários, equipes e presença pelo cadastro padrão. Se isso aparecer de novo depois de recarregar a página, avise o suporte — a marca que evita repetir não está sendo salva.',
+            'warning',
+            'Sistema Local',
+          );
+        } catch (error) {
+          console.error('Migração de colaboradores/presença falhou; nada foi alterado neste aparelho.', error);
+        }
       }
       if (securedPublicLinks.changed) {
         writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(securedPublicLinks.gruposEquipe));
