@@ -7,6 +7,7 @@ import Dashboard from '../src/components/Dashboard';
 import LancamentosTab from '../src/components/LancamentosTab';
 import PeriodoTab from '../src/components/PeriodoTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
+import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
@@ -55,6 +56,21 @@ const screens: Record<string, React.ReactNode> = {
     </div>
   ),
   usuarios: <UsuariosTab />,
+  frotas: (
+    <ControleEquipamentosDiarioTab
+      registros={fx.controlesEquipamentos}
+      equipamentos={fx.equipamentos}
+      empresas={fx.empresas}
+      funcionarios={fx.funcionarios}
+      gruposEquipe={[fx.grupo]}
+      ordensServico={fx.ordensServico}
+      onSave={noop}
+      onImport={noop}
+      onDeleteMany={noop}
+      onOpenEmployeeRegistration={noop}
+      onOpenEquipmentRegistration={noop}
+    />
+  ),
   periodo: (
     <PeriodoTab
       presencas={fx.registrosEnviados}

@@ -101,7 +101,7 @@ export default function FleetDataTable({
     </button>
   );
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <strong className="text-xs text-slate-800">{rows.length} registro(s)</strong>
@@ -160,9 +160,9 @@ export default function FleetDataTable({
           <col className="w-[98px]" />
           <col className="w-[132px]" />
           </colgroup>
-          <thead className="bg-slate-200 text-[9px] uppercase tracking-wider text-slate-700">
+          <thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500">
             <tr>
-              <th className="border-b border-slate-300 p-2 text-center">
+              <th className="border-b border-slate-200 p-2 text-center">
                 <input
                   type="checkbox"
                   checked={allPageSelected}
@@ -171,25 +171,25 @@ export default function FleetDataTable({
                   className="size-4 accent-emerald-600"
                 />
               </th>
-              <th className="border-b border-slate-300 p-2">Grupo</th>
-              <th className="border-b border-slate-300 p-2">Tipo</th>
-              <th className="border-b border-slate-300 p-2">{header('Matrícula', 'employeeCode')}</th>
-              <th className="border-b border-slate-300 p-2">{header('Motorista', 'driver')}</th>
-              <th className="border-b border-slate-300 p-2">{header('Prefixo', 'prefix')}</th>
-              <th className="border-b border-slate-300 p-2">{header('Status', 'status')}</th>
-              <th className="border-b border-slate-300 p-2 text-center">{header('Saída', 'departure')}</th>
-              <th className="border-b border-slate-300 p-2 text-center">{header('Parado', 'stopped')}</th>
-              <th className="border-b border-slate-300 p-2">{header('Local', 'location')}</th>
-              <th className="border-b border-slate-300 p-2">Observação</th>
-              <th className="border-b border-slate-300 p-2 text-center">Aprovação</th>
-              <th className="border-b border-slate-300 p-2 text-center">Ações</th>
+              <th className="border-b border-slate-200 p-2">Grupo</th>
+              <th className="border-b border-slate-200 p-2">Tipo</th>
+              <th className="border-b border-slate-200 p-2">{header('Matrícula', 'employeeCode')}</th>
+              <th className="border-b border-slate-200 p-2">{header('Motorista', 'driver')}</th>
+              <th className="border-b border-slate-200 p-2">{header('Prefixo', 'prefix')}</th>
+              <th className="border-b border-slate-200 p-2">{header('Status', 'status')}</th>
+              <th className="border-b border-slate-200 p-2 text-center">{header('Saída', 'departure')}</th>
+              <th className="border-b border-slate-200 p-2 text-center">{header('Parado', 'stopped')}</th>
+              <th className="border-b border-slate-200 p-2">{header('Local', 'location')}</th>
+              <th className="border-b border-slate-200 p-2">Observação</th>
+              <th className="border-b border-slate-200 p-2 text-center">Aprovação</th>
+              <th className="border-b border-slate-200 p-2 text-center">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {pageRows.map((row, index) => {
               const selected = selectedIds.includes(row.recordId);
               return (
-                <tr key={row.recordId} className={selected ? 'bg-emerald-50' : index % 2 ? 'bg-slate-50/60' : 'bg-white'}>
+                <tr key={row.recordId} className={`transition-colors hover:bg-slate-50 ${selected ? 'bg-emerald-50' : index % 2 ? 'bg-slate-50/60' : 'bg-white'}`}>
                   <td className="p-2 text-center"><input type="checkbox" checked={selected} onChange={event => toggleRow(row.recordId, event.target.checked)} aria-label={`Selecionar ${row.equipment.prefix}`} className="size-4 accent-emerald-600" /></td>
                   <td className="truncate p-2 font-bold text-slate-700" title={row.equipment.family}>{row.equipment.family || '—'}</td>
                   <td className="truncate p-2 text-slate-600" title={row.equipment.equipmentType}>{row.equipment.equipmentType || '—'}</td>

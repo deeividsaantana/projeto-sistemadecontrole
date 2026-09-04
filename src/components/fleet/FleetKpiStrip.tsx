@@ -26,13 +26,13 @@ const kpis = (metrics: FleetMetrics) => [
 
 export default function FleetKpiStrip({ metrics }: Props) {
   return (
-    <section className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.05)] sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7" aria-label="Indicadores da frota">
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4 2xl:grid-cols-7" aria-label="Indicadores da frota">
       {kpis(metrics).map(item => (
-        <article key={item.label} className={`group relative min-h-[124px] overflow-hidden border-b border-slate-100 px-4 py-4 transition-colors hover:bg-slate-50 sm:[&:nth-child(odd)]:border-r lg:[&:nth-child(4n)]:border-r-0 2xl:border-b-0 2xl:border-r 2xl:last:border-r-0 ${item.tone}`}>
+        <article key={item.label} className={`group relative min-h-[122px] overflow-hidden rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-[0_12px_24px_rgba(15,23,42,0.08)] ${item.tone}`}>
           <span className={`grid size-9 place-items-center rounded-xl ${item.iconTone}`}><item.icon size={18} strokeWidth={2}/></span>
           <p className="mt-4 text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">{item.label}</p>
           <strong className="mt-1 block text-[clamp(1.55rem,2.1vw,2.15rem)] font-black leading-none tracking-tight">{item.value}</strong>
-          <span className={`absolute bottom-0 left-0 h-1 w-0 transition-all duration-500 group-hover:w-full ${item.line}`}/>
+          <span className={`absolute bottom-0 left-0 h-1 w-0 rounded-full transition-all duration-500 group-hover:w-full ${item.line}`}/>
         </article>
       ))}
     </section>
