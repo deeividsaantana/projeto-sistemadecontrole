@@ -285,7 +285,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 #main-tab-viewport { max-width: none; }
 
 @media (max-width: 1180px) {
-  .erp-sidebar { width: 16.25rem; min-width: 16.25rem; }
+  .erp-sidebar { width: 14.5rem; min-width: 14.5rem; }
   .erp-topbar { padding-inline: 1.1rem; }
   .erp-topbar__command { display: none; }
 }
@@ -300,11 +300,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
 .erp-shell { background: #fff; }
 .erp-sidebar {
-  width: 18.25rem;
-  min-width: 18.25rem;
-  background:
-    radial-gradient(120% 70% at 14% -12%, rgb(255 255 255 / .05), transparent 55%),
-    linear-gradient(185deg, #0a3c2d 0%, #052821 100%);
+  width: 15.5rem;
+  min-width: 15.5rem;
+  background: #0c3d2f;
   border-right: 1px solid #123f31;
 }
 .erp-sidebar__brand { min-height: 5.5rem; padding: 1.35rem 1.25rem; border-bottom: 1px solid #185443; background: #062a21; }
@@ -377,17 +375,11 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 }
 
 /* O menu lateral é a única superfície escura do sistema. A camada de
-   compatibilidade acima clareia utilitários históricos (input, .text-white)
-   e, sem estas regras de mesma especificidade, deixava o campo de busca
-   branco e o nome do usuário ilegível dentro do verde. */
-#app-root .erp-sidebar :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
-  border-color: #1c6650;
-  background-color: #063a2d;
-  color: #ffffff;
-}
-#app-root .erp-sidebar input::placeholder { color: #7fb8a1; }
+   compatibilidade acima clareia utilitários históricos (.text-white), e sem
+   esta regra de mesma especificidade o nome do usuário ficava ilegível
+   dentro do verde. O item ativo tem fundo branco com texto verde-escuro
+   (ver DesktopSidebar.tsx), então [aria-current="page"] não força mais cor. */
 #app-root .erp-sidebar .text-white { color: #ffffff; }
-#app-root .erp-sidebar [aria-current="page"] { color: #ffffff; }
 
 /* Largura do menu recolhido precisa morar aqui: a regra base .erp-sidebar
    fixa width/min-width e venceria a classe utilitaria por ordem no arquivo. */

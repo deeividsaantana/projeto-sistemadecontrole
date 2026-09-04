@@ -18,13 +18,7 @@ const screens: Record<string, React.ReactNode> = {
       <DesktopSidebar
         activeTab="presenca"
         groups={NAVIGATION_GROUPS.map(g => ({ label: g.label, items: [...g.items] }))}
-        menuSearch=""
-        currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
-        isFirebaseConnected
-        lastCloudSync="04/09/2026 21:40"
-        onMenuSearchChange={noop}
         onNavigate={noop}
-        onLogout={noop}
       />
       <main style={{ flex: 1, background: '#fff' }} />
     </div>

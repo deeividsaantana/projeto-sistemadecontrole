@@ -3962,17 +3962,13 @@ export default function App() {
         <DesktopSidebar
           activeTab={activeTab}
           groups={filteredNavigationGroups}
-          menuSearch={menuSearch}
-          onMenuSearchChange={setMenuSearch}
-          currentUser={currentUser}
-          isFirebaseConnected={isFirebaseConnected}
-          lastCloudSync={lastCloudSync}
           onNavigate={tab => navigateTo(tab)}
-          onLogout={() => void handleLogout()}
         />
         <main className="erp-workspace" id="main-workspace">
         <DesktopTopBar
-          activeTab={activeTab}
+          groups={filteredNavigationGroups}
+          menuSearch={menuSearch}
+          onMenuSearchChange={setMenuSearch}
           currentUser={currentUser}
           isNotificationOpen={isNotifDropdownOpen}
           notifications={notifications}
@@ -3985,6 +3981,7 @@ export default function App() {
           onMarkAllNotificationsAsRead={handleMarkAllAsRead}
           onClearNotifications={handleClearNotifications}
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
+          onLogout={() => void handleLogout()}
         />
         {/* Dynamic Inner Tab Viewport */}
         <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full mx-auto print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3.5 sm:p-4 md:p-7 2xl:p-10 max-w-[1440px]'}`}>
