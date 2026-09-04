@@ -79,6 +79,7 @@ export const ordensServico: OrdemServico[] = [
 export const ticketsJazida: TicketJazida[] = Array.from({ length: 6 }, (_, i) => ({
   id: `tk-${i}`, data: dia((i % 3) + 1), ticketNumero: String(2200 + i),
   tipoTicket: 'Liberação', prefixo: 'CB1005', placa: 'FEJ6753',
+  horaSaida: '08:30', horaChegada: '09:15',
   tipoMaterial: 'Solo', quantidadeM3: 12, unidadeQuantidade: 'm³',
   destinoObra: 'Aterro', responsavelLiberacao: 'Renilson', nomeLegivel: 'Renilson',
   empresa: 'RENEA', observacao: '', statusFluxo: 'Enviado', origemRegistro: 'Link',

@@ -711,7 +711,7 @@ export default function TicketsJazidaTab({
         if (!haystack.includes(q)) return false;
       }
       return true;
-    }).sort((a, b) => b.data.localeCompare(a.data) || (b.horaChegada || b.horaSaida).localeCompare(a.horaChegada || a.horaSaida));
+    }).sort((a, b) => b.data.localeCompare(a.data) || (b.horaChegada || b.horaSaida || '').localeCompare(a.horaChegada || a.horaSaida || ''));
   }, [tickets, ticketTab, fDataInicial, fDataFinal, fTicketNumero, fPrefixo, fPlaca, fTipoMaterial, fDestinoObra, fEmpresa, fStatus, q, duplicateTicketKeys]);
 
   const resumo = useMemo(() => {
