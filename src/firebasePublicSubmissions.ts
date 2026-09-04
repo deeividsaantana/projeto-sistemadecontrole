@@ -11,7 +11,7 @@ import {
 import type { Unsubscribe } from 'firebase/firestore';
 import type { PresencaApontamento } from './types';
 
-const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
+export const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
 
 /**
  * `equipe` carrega inclusão ou remoção de um colaborador feita pelo link
@@ -34,7 +34,7 @@ export type PublicSubmission = {
   };
 };
 
-const normalizeSubmissionSnapshot = (items: Array<{ id: string; data: () => Record<string, unknown> }>): PublicSubmission[] => items
+export const normalizeSubmissionSnapshot = (items: Array<{ id: string; data: () => Record<string, unknown> }>): PublicSubmission[] => items
   .map(item => ({ id: item.id, ...item.data() }) as PublicSubmission)
   .filter(item => item.kind === 'presence' || item.kind === 'presence-reset' || item.kind === 'equipe')
   .filter(item => item.payload && typeof item.payload.data === 'string')

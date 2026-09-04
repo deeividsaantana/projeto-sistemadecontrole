@@ -95,6 +95,12 @@ interface ControlePresencaTabProps {
    * visível — o dado existe, só não foi puxado para cá ainda.
    */
   pendingPublicSubmissionsCount?: number;
+  /**
+   * Reconstrói o histórico de presença a partir dos envios originais do link
+   * público (nunca apagados), para trazer de volta dias que sumiram do
+   * retrato consolidado sem apagar nada que já esteja presente.
+   */
+  onRestorePresenceHistory?: () => Promise<{ success: boolean; message: string }>;
 }
 
 type View = 'ao-vivo' | 'equipes' | 'registros' | 'historico';
@@ -177,6 +183,7 @@ export default function ControlePresencaTab({
   onResetPresencaDia,
   onSyncEquipesPlanilha,
   pendingPublicSubmissionsCount = 0,
+  onRestorePresenceHistory,
 }: ControlePresencaTabProps) {
   const today = localToday();
   const safeFuncionarios = useMemo(() => (Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean), [funcionarios]);
@@ -210,6 +217,7 @@ export default function ControlePresencaTab({
   const [syncError, setSyncError] = useState('');
   const [syncBusy, setSyncBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
+  const [restoringHistory, setRestoringHistory] = useState(false);
 
   const createEmptyGroup = (): GrupoEquipe => ({
     id: '',
@@ -481,6 +489,17 @@ export default function ControlePresencaTab({
       setFeedback(resposta.message);
     } finally {
       setResetBusy(false);
+    }
+  };
+
+  const restoreHistory = async () => {
+    if (!onRestorePresenceHistory || restoringHistory) return;
+    setRestoringHistory(true);
+    try {
+      const resposta = await onRestorePresenceHistory();
+      setFeedback(resposta.message);
+    } finally {
+      setRestoringHistory(false);
     }
   };
 
@@ -779,7 +798,7 @@ export default function ControlePresencaTab({
                 Zerar o dia
               </button>
             )}
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void exportExcel()} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={() => void exportPdf()} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{selectedRecordIds.length > 0 && <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800"><Trash2 className="h-4 w-4" /> Excluir ({selectedRecordIds.length})</button>}</div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void exportExcel()} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={() => void exportPdf()} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{onRestorePresenceHistory && <button type="button" onClick={() => void restoreHistory()} disabled={restoringHistory} className={`${SECONDARY_BUTTON} disabled:cursor-not-allowed disabled:opacity-60`} title="Busca de novo todos os envios já feitos pelo link público e traz de volta dias que sumiram, sem apagar nada"><RotateCcw className={`h-4 w-4 ${restoringHistory ? 'animate-spin' : ''}`} /><span className="hidden sm:inline">{restoringHistory ? 'Recuperando...' : 'Recuperar histórico'}</span></button>}{selectedRecordIds.length > 0 && <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800"><Trash2 className="h-4 w-4" /> Excluir ({selectedRecordIds.length})</button>}</div>
           </div>
           <label className="flex min-h-11 items-center gap-2 px-1 text-xs font-bold text-[#53605a]"><input type="checkbox" checked={filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id))} onChange={event => setSelectedRecordIds(event.target.checked ? filteredRecords.map(record => record.id) : [])} className="h-4 w-4 accent-emerald-700" /> Selecionar registros filtrados</label>
           <div className="grid gap-3">

@@ -109,6 +109,7 @@ import {
   subscribePendingPublicSubmissions,
   type PublicSubmission,
 } from './firebasePublicSubmissions';
+import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
 import {
   addPublicPresenceMember,
   resetPresenceDay,
@@ -2309,6 +2310,47 @@ export default function App() {
     );
   };
 
+  // Reconstrói o histórico de presença a partir da fila pública original
+  // (sistemarenea_public_submissions), que nunca é apagada nem sobrescrita
+  // pelo navegador. Existe porque um retrato consolidado corrompido em algum
+  // aparelho pode ter sido publicado por cima da nuvem, perdendo dias
+  // inteiros do histórico consolidado — mas os envios originais continuam
+  // intactos e servem de fonte para trazer de volta o que sumiu, sem apagar
+  // nada que já esteja presente.
+  const handleRestorePresenceHistory = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      const submissions = await fetchAllPresenceSubmissions(db);
+      const recoveredRecords = submissions.flatMap(item => item.payload.records || []);
+      if (recoveredRecords.length === 0) {
+        return { success: true, message: 'Nenhum envio de presença encontrado na fila pública para recuperar.' };
+      }
+      const storedPresence = parseStoredJson<PresencaApontamento[]>(
+        localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', [],
+      );
+      const beforeCount = storedPresence.length;
+      const merged = mergePresenceRecords(storedPresence, recoveredRecords);
+      const addedCount = merged.length - beforeCount;
+      writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(merged));
+      setPresencasLink(merged);
+      if (addedCount <= 0) {
+        return { success: true, message: 'O histórico local já tinha todos os registros da fila pública.' };
+      }
+      const uploadResult = await uploadLocalSnapshotToFirebase();
+      if (!uploadResult.success) {
+        return {
+          success: false,
+          message: `${addedCount} registro(s) recuperado(s) neste aparelho, mas não foi possível publicar na nuvem ainda. Motivo: ${uploadResult.message}`,
+        };
+      }
+      return {
+        success: true,
+        message: `${addedCount} registro(s) de presença recuperado(s) e publicado(s) na nuvem.`,
+      };
+    } catch (error) {
+      return { success: false, message: formatFirebaseSyncError(error) };
+    }
+  };
+
   useEffect(() => {
     if (!publicLinksRotationPending || !isLoggedIn || externalTicketLink || externalPresenceToken) return;
     let cancelled = false;
@@ -4051,6 +4093,7 @@ export default function App() {
                 presencasLink={presencasLink}
                 historicoPresencas={historicoPresencas}
                 pendingPublicSubmissionsCount={pendingPublicSubmissionsCount}
+                onRestorePresenceHistory={handleRestorePresenceHistory}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
                 onUpdatePresencaLink={handleUpdatePresencaLink}
