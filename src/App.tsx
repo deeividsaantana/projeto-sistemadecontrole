@@ -936,13 +936,10 @@ export default function App() {
 
     let cancelled = false;
     let isChecking = false;
-    let hasReportedFirstCheck = false;
 
     const pullRemoteChanges = async () => {
       if (cancelled || isChecking) return;
       isChecking = true;
-      const isFirstCheck = !hasReportedFirstCheck;
-      hasReportedFirstCheck = true;
       try {
         const status = await getFirebaseConnectionStatus(db);
         if (cancelled) return;
@@ -964,27 +961,6 @@ export default function App() {
               'Sistema Local',
             );
           }
-          // Diagnóstico temporário: mostra o que a checagem inicial de cada
-          // abertura decidiu, incluindo quantos registros de presença vieram
-          // da nuvem, para saber se a tela some por causa de um download que
-          // trouxe uma versão sem o lançamento mais recente.
-          if (!cancelled && isFirstCheck && result.success) {
-            const presenceCount = parseStoredJson(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', [] as unknown[]).length;
-            addNotification(
-              'Dados atualizados da nuvem ao abrir',
-              `Esta abertura baixou uma versão nova da nuvem (gerada às ${new Date(status.updatedAt).toLocaleString('pt-BR')}). Após o download, este aparelho ficou com ${presenceCount} registro(s) de presença.`,
-              'info',
-              'Sistema Local',
-            );
-          }
-        } else if (!cancelled && isFirstCheck) {
-          const presenceCount = parseStoredJson(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', [] as unknown[]).length;
-          addNotification(
-            'Nenhuma versão nova ao abrir',
-            `Esta abertura já estava com a versão mais recente da nuvem (nenhum download foi feito). Este aparelho está com ${presenceCount} registro(s) de presença no armazenamento local.`,
-            'info',
-            'Sistema Local',
-          );
         }
       } catch (error) {
         if (!cancelled) {
@@ -1009,11 +985,26 @@ export default function App() {
       console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
     });
     const interval = window.setInterval(pullRemoteChanges, 60_000);
+    // O canal em tempo real do Firestore pode cair sem avisar quando o
+    // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
+    // é um comportamento conhecido do navegador, não um erro para capturar.
+    // Sem isto, só um F5 completo forçava uma checagem nova; agora voltar
+    // para a aba ou recuperar a internet já faz o mesmo.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void pullRemoteChanges();
+    };
+    const onReconnect = () => void pullRemoteChanges();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onReconnect);
+    window.addEventListener('focus', onReconnect);
     return () => {
       cancelled = true;
       window.clearTimeout(initialCheck);
       window.clearInterval(interval);
       unsubscribeManifest();
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onReconnect);
+      window.removeEventListener('focus', onReconnect);
     };
   }, [isAutoSyncEnabled, externalPresenceToken, externalTicketLink]);
 
