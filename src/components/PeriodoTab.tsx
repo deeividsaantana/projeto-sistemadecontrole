@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import {
-  CalendarRange,
   ChevronRight,
   Download,
   Droplets,
@@ -17,6 +16,7 @@ import type {
   PresencaApontamento,
   TicketJazida,
 } from '../types';
+import { PageHeader, StatCard } from '../shared/ui';
 
 interface PeriodoTabProps {
   presencas: PresencaApontamento[];
@@ -28,7 +28,7 @@ interface PeriodoTabProps {
 
 type ModuloDetalhe = 'presenca' | 'frota' | 'combustivel' | 'tickets';
 
-const PANEL = 'rounded-xl border border-[#e2e8e4] bg-white';
+const PANEL = 'rounded-lg border border-[#e2e8e4] bg-white';
 const FIELD = 'min-h-11 w-full rounded-lg border border-[#e2e8e4] bg-white px-3 text-sm text-[#14231e] outline-none transition focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10';
 const CHIP = 'inline-flex min-h-9 items-center rounded-lg border border-[#e2e8e4] bg-white px-3 text-xs font-bold text-[#26362f] transition hover:border-emerald-700 hover:text-emerald-800';
 
@@ -188,21 +188,14 @@ export default function PeriodoTab({
 
   return (
     <section className="space-y-5 text-[#14231e]">
-      <header className={`${PANEL} p-5 sm:p-6`}>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700">
-              <CalendarRange className="h-4 w-4" /> Consolidado por período
-            </p>
-            <h1 className="mt-2 text-2xl font-black tracking-[-0.03em] sm:text-3xl">Registros de {formatDay(periodo.inicio)} a {formatDay(periodo.fim)}</h1>
-            <p className="mt-1 text-sm text-[#65716b]">Presença, frota, combustível e jazida no mesmo intervalo, com o detalhe de cada dia.</p>
-          </div>
-          <button type="button" onClick={exportarResumo} className={CHIP}>
-            <Download className="mr-2 h-4 w-4" /> Exportar resumo
-          </button>
-        </div>
+      <PageHeader
+        title={`Registros de ${formatDay(periodo.inicio)} a ${formatDay(periodo.fim)}`}
+        description="Presença, frota, combustível e jazida no mesmo intervalo, com o detalhe de cada dia."
+        actions={<button type="button" onClick={exportarResumo} className={CHIP}><Download className="mr-2 h-4 w-4" /> Exportar resumo</button>}
+      />
 
-        <div className="mt-5 grid gap-3 md:grid-cols-[repeat(2,minmax(0,180px))_1fr]">
+      <div className={`${PANEL} p-5 sm:p-6`}>
+        <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,180px))_1fr]">
           <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
             Do dia
             <input type="date" value={from} max={to} onChange={event => setFrom(event.target.value)} className={`${FIELD} mt-1`} />
@@ -217,18 +210,11 @@ export default function PeriodoTab({
             ))}
           </div>
         </div>
-      </header>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(card => (
-          <article key={card.label} className={`${PANEL} p-4 sm:p-5`}>
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">{card.label}</span>
-              <card.icone className="h-4 w-4 text-emerald-700" />
-            </div>
-            <strong className="mt-3 block text-3xl font-black tabular-nums tracking-[-0.04em]">{card.valor}</strong>
-            <span className="mt-1 block text-xs text-[#65716b]">{card.apoio}</span>
-          </article>
+          <StatCard key={card.label} label={card.label} value={card.valor} icon={card.icone} trend={card.apoio} />
         ))}
       </div>
 

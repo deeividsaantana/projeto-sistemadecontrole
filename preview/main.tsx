@@ -6,6 +6,7 @@ import PresencaTempoRealPublica from '../src/components/PresencaTempoRealPublica
 import Dashboard from '../src/components/Dashboard';
 import LancamentosTab from '../src/components/LancamentosTab';
 import PeriodoTab from '../src/components/PeriodoTab';
+import ConsultaGeralTab from '../src/components/ConsultaGeralTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
@@ -83,6 +84,24 @@ const screens: Record<string, React.ReactNode> = {
       onDeleteMany={noop}
       onOpenEmployeeRegistration={noop}
       onOpenEquipmentRegistration={noop}
+    />
+  ),
+  consulta: (
+    <ConsultaGeralTab
+      empresas={fx.empresas}
+      obras={fx.obras}
+      equipamentos={fx.equipamentos}
+      funcionarios={fx.funcionarios}
+      abastecimentos={fx.abastecimentos}
+      tickets={fx.ticketsJazida}
+      ordensServico={fx.ordensServico}
+      controlesEquipamentos={fx.controlesEquipamentos}
+      gruposEquipe={[fx.grupo]}
+      presencas={fx.presencasHistorico}
+      vinculos={[]}
+      onLink={noop}
+      onUnlink={noop}
+      onNavigate={noop}
     />
   ),
   periodo: (
