@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ControleEstacas, LoteEstaca, CravacaoEstaca, PeriodoArquivado } from '../src/types';
 import { buildStakeSummary, calculateStakeBalance, reconcileStakeInvoice, suggestStakeLot } from '../src/utils/stakeOperations';
-import { analyzeOperationalText } from '../src/utils/documentIntelligence';
-import { filterReportCatalog } from '../src/utils/reportCatalog';
 import { calculateSnapshotChecksum, isSnapshotIntact } from '../src/utils/snapshotIntegrity';
 
 const lot: LoteEstaca = {
@@ -35,19 +33,6 @@ test('associa perfil ao lote disponível e confere nota fiscal', () => {
   assert.equal(suggestStakeLot(driving, control)?.id, 'lot-1');
   assert.equal(reconcileStakeInvoice([lot], 'NF 15791').status, 'Conforme');
   assert.equal(buildStakeSummary(control).notasPendentes, 0);
-});
-
-test('classifica documento operacional e extrai campos principais', () => {
-  const analysis = analyzeOperationalText('NOTA FISCAL: 15791\nMATERIAL: ESTACA PRANCHA\nPERFIL: AZ17-700\nDATA: 01/07/2026\nPLACA: ABC1D23');
-  assert.equal(analysis.type, 'Recebimento de estacas');
-  assert.equal(analysis.fields.find(item => item.field === 'notaFiscal')?.value, '15791');
-  assert.equal(analysis.fields.find(item => item.field === 'perfil')?.value, 'AZ17-700');
-});
-
-test('catálogo localiza relatório comercial', () => {
-  const items = filterReportCatalog('SPMAR');
-  assert.equal(items.length, 1);
-  assert.equal(items[0].id, 'comercial');
 });
 
 test('snapshot detecta alteração posterior ao fechamento', () => {

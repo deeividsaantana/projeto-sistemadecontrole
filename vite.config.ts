@@ -29,8 +29,6 @@ export default defineConfig(() => {
               if (id.includes('/exceljs/') || id.includes('\\exceljs\\')) return 'vendor-excel';
               if (id.includes('/jspdf') || id.includes('\\jspdf')) return 'vendor-pdf';
               if (id.includes('/html2canvas/') || id.includes('\\html2canvas\\')) return 'vendor-canvas';
-              if (id.includes('/recharts/') || id.includes('\\recharts\\')) return 'vendor-charts';
-              if (id.includes('/motion/') || id.includes('\\motion\\')) return 'vendor-motion';
               if (id.includes('/react/') || id.includes('\\react\\') || id.includes('/react-dom/') || id.includes('\\react-dom\\')) {
                 return 'vendor-react';
               }
