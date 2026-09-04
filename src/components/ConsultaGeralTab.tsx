@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Building2, Eye, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
-import { PageHeader, Pagination, statusTone } from '../shared/ui';
+import { CountUp, PageHeader, Pagination, statusTone } from '../shared/ui';
 
 type GeneralRow = {
   id: string;
@@ -153,7 +153,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
       </section>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        {cards.map(([label, value, Icon]) => <button key={label} type="button" onClick={() => setModuleFilter(label)} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-emerald-300"><Icon className="h-5 w-5 text-emerald-600" /><strong className="mt-3 block text-2xl font-black text-slate-900">{value}</strong><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span></button>)}
+        {cards.map(([label, value, Icon]) => <button key={label} type="button" onClick={() => setModuleFilter(label)} className="group min-w-0 rounded-lg border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"><Icon className="h-5 w-5 text-emerald-600 transition-transform duration-200 group-hover:scale-110" /><strong className="mt-3 block text-2xl font-black tabular-nums text-slate-900"><CountUp value={value} /></strong><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span></button>)}
       </div>
 
       <section className="rounded-lg border border-slate-200 bg-white p-5">

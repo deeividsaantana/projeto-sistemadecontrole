@@ -42,6 +42,7 @@ import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
+import { CountUp } from '../shared/ui';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -1361,21 +1362,21 @@ export default function LancamentosTab({
 
           {/* Cards de resumo respeitando os filtros aplicados */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
+            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total de Litros</p>
               <p className="text-lg font-black text-emerald-400 font-mono mt-1">{resumoAbastecimentos.totalLitros.toLocaleString('pt-BR')} L</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
+            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Registros</p>
-              <p className="text-lg font-black text-white font-mono mt-1">{resumoAbastecimentos.totalRegistros}</p>
+              <p className="text-lg font-black text-white font-mono mt-1"><CountUp value={resumoAbastecimentos.totalRegistros} /></p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
+            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Média por Abastecimento</p>
               <p className="text-lg font-black text-white font-mono mt-1">{resumoAbastecimentos.mediaLitros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
+            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Frotas Distintas</p>
-              <p className="text-lg font-black text-white font-mono mt-1">{resumoAbastecimentos.frotasUnicas}</p>
+              <p className="text-lg font-black text-white font-mono mt-1"><CountUp value={resumoAbastecimentos.frotasUnicas} /></p>
             </div>
           </div>
         </div>
