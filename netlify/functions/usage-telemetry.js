@@ -13,6 +13,7 @@ const COLLECTION = 'sistemarenea_usage';
 const TAB_LABELS = {
   dashboard: 'Painel de Controle',
   'consulta-geral': 'Consulta Geral',
+  periodo: 'Registros por Período',
   reports: 'Relatórios Gerais',
   'controle-equipamentos': 'Controle Operacional de Frotas',
   lancamentos: 'Combustível',

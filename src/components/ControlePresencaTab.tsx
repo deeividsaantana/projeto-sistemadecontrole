@@ -268,6 +268,39 @@ export default function ControlePresencaTab({
     };
   }, [activeGroups, dayRecords, pendingGroups.length]);
 
+  /** Ultimos 7 dias com movimento, do mais antigo para o mais recente. */
+  const tendencia = useMemo(() => {
+    const base = new Date(`${referenceDate}T12:00:00`);
+    return Array.from({ length: 7 }, (_, index) => {
+      const dia = new Date(base);
+      dia.setDate(dia.getDate() - (6 - index));
+      const iso = dia.toISOString().slice(0, 10);
+      const doDia = safeRecords.filter(record => record.data === iso);
+      return {
+        iso,
+        rotulo: iso.slice(8, 10) + '/' + iso.slice(5, 7),
+        presentes: doDia.filter(record => record.status === 'Presente').length,
+        total: doDia.length,
+      };
+    });
+  }, [referenceDate, safeRecords]);
+
+  const picoTendencia = useMemo(
+    () => Math.max(1, ...tendencia.map(item => item.presentes)),
+    [tendencia],
+  );
+
+  /** Distribuicao completa das situacoes do dia, nao so presente/ausente. */
+  const distribuicao = useMemo(() => STATUS_OPTIONS
+    .map(status => ({ status, total: dayRecords.filter(record => record.status === status).length }))
+    .filter(item => item.total > 0), [dayRecords]);
+
+  /** Quem esta ausente hoje, para o administrativo agir sem trocar de aba. */
+  const ausentesDoDia = useMemo(
+    () => dayRecords.filter(record => record.status === 'Ausente' || record.status === 'Falta justificada'),
+    [dayRecords],
+  );
+
   const teamRows = useMemo(() => activeGroups.map(group => {
     const records = dayRecords.filter(record => record.grupoId === group.id);
     return {
@@ -676,11 +709,12 @@ export default function ControlePresencaTab({
               </div>
             </article>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 ['Ausentes', metrics.absent, 'text-rose-700'],
                 ['Justificados', metrics.justified, 'text-amber-700'],
                 ['Equipes pendentes', metrics.pending, 'text-[#101a22]'],
+                ['Equipes ativas', activeGroups.length, 'text-emerald-800'],
               ].map(([label, value, tone]) => (
                 <article key={String(label)} className={`${PANEL} p-4 sm:p-5`}>
                   <strong className={`block text-3xl font-black tabular-nums ${tone}`}>{value}</strong>
@@ -688,6 +722,74 @@ export default function ControlePresencaTab({
                 </article>
               ))}
             </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <article className={`${PANEL} p-5`}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Confirmados nos últimos 7 dias</p>
+                <div className="mt-5 flex h-28 items-end gap-2">
+                  {tendencia.map(item => (
+                    <div key={item.iso} className="flex flex-1 flex-col items-center gap-2" title={`${item.presentes} presente(s) em ${item.rotulo}`}>
+                      <span className="text-[10px] font-bold tabular-nums text-[#65716b]">{item.presentes || ''}</span>
+                      <div
+                        className={`w-full rounded-t-md transition-[height] duration-500 ${item.iso === referenceDate ? 'bg-[#087653]' : 'bg-[#bfded0]'}`}
+                        style={{ height: `${Math.max(4, (item.presentes / picoTendencia) * 100)}%` }}
+                      />
+                      <span className="text-[9px] font-bold tabular-nums text-[#79847e]">{item.rotulo}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className={`${PANEL} p-5`}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Situações registradas no dia</p>
+                {distribuicao.length === 0 ? (
+                  <p className="mt-6 text-sm text-[#65716b]">Nenhum envio recebido para {referenceDate.split('-').reverse().join('/')}.</p>
+                ) : (
+                  <ul className="mt-4 space-y-3">
+                    {distribuicao.map(item => (
+                      <li key={item.status}>
+                        <div className="flex items-center justify-between gap-3 text-xs font-bold">
+                          <span className="text-[#26362f]">{item.status}</span>
+                          <span className="tabular-nums text-[#65716b]">{item.total}</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eef2f0]">
+                          <div className="h-full rounded-full bg-[#087653]" style={{ width: `${(item.total / Math.max(1, dayRecords.length)) * 100}%` }} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+            </div>
+
+            {ausentesDoDia.length > 0 && (
+              <article className={`${PANEL} overflow-hidden`}>
+                <header className="flex items-center justify-between gap-3 border-b border-[#e4e0d6] px-5 py-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-700">Conferência</p>
+                    <h2 className="mt-1 text-lg font-black tracking-tight text-[#101a22]">Quem não está em campo hoje</h2>
+                  </div>
+                  <span className="text-sm font-black tabular-nums text-rose-700">{ausentesDoDia.length}</span>
+                </header>
+                <ul className="divide-y divide-[#ebe7dc]">
+                  {ausentesDoDia.slice(0, 8).map(record => (
+                    <li key={record.id} className="flex items-center gap-3 px-5 py-3">
+                      <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-[#101a22]">{record.funcionarioNome}</p>
+                        <p className="truncate text-xs text-[#65716b]">{record.grupoNome} · {record.observacao || 'Sem observação'}</p>
+                      </div>
+                      <button type="button" onClick={() => openRecordEditor(record)} className="shrink-0 text-xs font-bold text-emerald-800 hover:underline">Revisar</button>
+                    </li>
+                  ))}
+                </ul>
+                {ausentesDoDia.length > 8 && (
+                  <button type="button" onClick={() => { setRecordStatus('Ausente'); setRecordDate(referenceDate); setView('registros'); }} className="w-full border-t border-[#ebe7dc] px-5 py-3 text-xs font-bold text-emerald-800 hover:bg-[#f8fbf9]">
+                    Ver todos os {ausentesDoDia.length} registros
+                  </button>
+                )}
+              </article>
+            )}
 
             <article className={`${PANEL} overflow-hidden`}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e0d6] px-5 py-4">

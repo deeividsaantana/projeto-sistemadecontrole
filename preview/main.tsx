@@ -5,11 +5,22 @@ import UsuariosTab from '../src/components/UsuariosTab';
 import PresencaTempoRealPublica from '../src/components/PresencaTempoRealPublica';
 import Dashboard from '../src/components/Dashboard';
 import LancamentosTab from '../src/components/LancamentosTab';
+import PeriodoTab from '../src/components/PeriodoTab';
+import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import * as fx from './fixtures';
 
 const noop = () => {};
 const screens: Record<string, React.ReactNode> = {
   usuarios: <UsuariosTab />,
+  periodo: (
+    <PeriodoTab
+      presencas={fx.registrosEnviados}
+      controlesEquipamentos={fx.controlesEquipamentos}
+      abastecimentos={fx.abastecimentos}
+      ticketsJazida={fx.ticketsJazida}
+      equipamentos={fx.equipamentos}
+    />
+  ),
   combustivel: (
     <LancamentosTab
       empresas={fx.empresas}
@@ -43,6 +54,19 @@ const screens: Record<string, React.ReactNode> = {
       ticketsJazida={fx.ticketsJazida}
       presencasLink={fx.registrosEnviados}
       onNavigate={noop}
+    />
+  ),
+  'presenca-admin': (
+    <ControlePresencaTab
+      empresas={fx.empresas}
+      funcionarios={fx.equipeFuncionarios}
+      obras={fx.obras}
+      gruposEquipe={[fx.grupo]}
+      presencasLink={fx.presencasHistorico}
+      historicoPresencas={[]}
+      onSaveGrupoEquipe={noop}
+      onDeleteGrupoEquipe={noop}
+      onUpdatePresencaLink={noop}
     />
   ),
   presenca: (

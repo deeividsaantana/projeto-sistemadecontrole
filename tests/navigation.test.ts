@@ -15,7 +15,7 @@ test('perfil administrador mantém acesso a todos os módulos atuais', () => {
 
 test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ROLE_ACCESS.gestor.includes('configuracoes'), false);
-  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'consulta-geral', 'reports']);
+  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'consulta-geral', 'periodo', 'reports']);
   assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), false);
   assert.equal(ROLE_ACCESS.gestor.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.admin.includes('auditoria'), false);

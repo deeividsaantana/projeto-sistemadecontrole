@@ -65,6 +65,7 @@ import { mergeImportedRecords } from './utils/importMerge';
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const ConsultaGeralTab = lazy(() => import('./components/ConsultaGeralTab'));
+const PeriodoTab = lazy(() => import('./components/PeriodoTab'));
 const UsuariosTab = lazy(() => import('./components/UsuariosTab'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
@@ -4004,6 +4005,16 @@ export default function App() {
                 estacas={controleEstacas}
                 presencasLink={presencasLink}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'periodo' && (
+              <PeriodoTab
+                presencas={presencasLink}
+                controlesEquipamentos={controleEquipamentosDiario}
+                abastecimentos={abastecimentos}
+                ticketsJazida={ticketsJazida}
+                equipamentos={equipamentos}
               />
             )}
 

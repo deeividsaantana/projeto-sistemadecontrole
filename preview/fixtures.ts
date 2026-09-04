@@ -1,4 +1,5 @@
-import type { Equipamento, Funcionario, ObraLocal } from '../src/types';
+import type {
+  ControleEquipamentoDiario, Equipamento, Funcionario, ObraLocal } from '../src/types';
 
 export const obras: ObraLocal[] = [
   { id: 'obr-1', nome: 'Complexo do Alto Tietê', endereco: 'SP', responsavel: 'Eng. Ricardo', status: 'Ativa' },
@@ -79,3 +80,45 @@ export const ticketsJazida: TicketJazida[] = Array.from({ length: 6 }, (_, i) =>
   destinoObra: 'Aterro', responsavelLiberacao: 'Renilson', nomeLegivel: 'Renilson',
   empresa: 'RENEA', observacao: '', statusFluxo: 'Enviado', origemRegistro: 'Link',
 } as TicketJazida));
+
+export const controlesEquipamentos: ControleEquipamentoDiario[] = Array.from({ length: 9 }, (_, i) => ({
+  id: `cd-${i + 1}`,
+  chave: `cd-${i + 1}`,
+  data: `2026-09-0${(i % 3) + 1}`,
+  funcionarioId: `f-${(i % 3) + 1}`,
+  codigoFuncionario: `100${i + 1}`,
+  nomeMotorista: ['RENILSON DOS SANTOS', 'ROBERSON DA SILVA', 'SERGIO CONCEICAO'][i % 3],
+  equipamentoId: 'eq-1',
+  prefixo: `CB${770 + i}`,
+  familia: 'Caminhão basculante',
+  status: (['Em operação', 'Em manutenção', 'Disponível'] as const)[i % 3],
+  horaSaida: '07:10',
+  horaEntradaManutencao: i % 3 === 1 ? '09:20' : '',
+  horaLiberacao: '',
+  motivoManutencao: i % 3 === 1 ? 'Troca de pneu dianteiro' : undefined,
+  observacao: i % 2 ? 'Operando na frente 2.' : '',
+  origem: 'SISTEMA',
+  revisao: [],
+  criadoEm: '2026-09-01T10:00:00.000Z',
+  atualizadoEm: '2026-09-01T10:00:00.000Z',
+} as ControleEquipamentoDiario));
+
+/** Presenca de varios dias, para o painel e a tendencia de 7 dias. */
+export const presencasHistorico: PresencaApontamento[] = ['2026-09-01','2026-09-02','2026-09-03'].flatMap((data, d) =>
+  equipeFuncionarios.map((f, i) => ({
+    id: `ph-${d}-${i}`,
+    data,
+    horaEnvio: '07:0' + (i % 9),
+    grupoId: grupo.id,
+    grupoNome: grupo.nome,
+    responsavel: grupo.responsavel,
+    frenteServico: grupo.frenteServico,
+    funcionarioId: f.id,
+    funcionarioNome: f.nome,
+    funcao: f.cargo,
+    status: (i % 5 === 0 ? 'Ausente' : i % 7 === 0 ? 'Atestado' : 'Presente') as PresencaApontamento['status'],
+    observacao: i % 5 === 0 ? 'Sem transporte' : '',
+    tokenUsado: 'validado-preview',
+    createdAt: `${data}T10:00:00.000Z`,
+  } as PresencaApontamento)),
+);

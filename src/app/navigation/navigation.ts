@@ -1,4 +1,5 @@
 import {
+  CalendarRange,
   ClipboardList,
   FileText,
   FolderPlus,
@@ -27,6 +28,7 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
       { id: 'consulta-geral', label: 'Consulta Geral', icon: Search },
+      { id: 'periodo', label: 'Registros por Período', icon: CalendarRange },
       { id: 'reports', label: 'Relatórios Gerais', icon: FileText },
     ],
   },
@@ -72,7 +74,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'estacas',
     'presenca',
   ],
-  leitura: ['dashboard', 'consulta-geral', 'reports'],
+  leitura: ['dashboard', 'consulta-geral', 'periodo', 'reports'],
 };
 
 export const normalizeUserRole = (value: unknown): UserRole => {
