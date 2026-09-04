@@ -299,7 +299,14 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
 .erp-shell { background: #fff; }
-.erp-sidebar { width: 17.5rem; min-width: 17.5rem; background: #062f25; border-right: 1px solid #185443; }
+.erp-sidebar {
+  width: 18.25rem;
+  min-width: 18.25rem;
+  background:
+    radial-gradient(120% 70% at 14% -12%, rgb(255 255 255 / .05), transparent 55%),
+    linear-gradient(185deg, #0a3c2d 0%, #052821 100%);
+  border-right: 1px solid #123f31;
+}
 .erp-sidebar__brand { min-height: 5.5rem; padding: 1.35rem 1.25rem; border-bottom: 1px solid #185443; background: #062a21; }
 .erp-sidebar__brand img { width: 10.5rem; }
 .erp-sidebar__tenant { margin: 1.1rem 1rem .9rem; padding: 1rem; border: 1px solid #25705a; border-radius: 1rem; background: #0a3d30; box-shadow: inset 0 1px 0 rgb(255 255 255 / .06); }
