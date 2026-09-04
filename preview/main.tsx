@@ -13,6 +13,7 @@ import EstacasTab from '../src/components/EstacasTab';
 import CadastrosTab from '../src/components/CadastrosTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
+import CentralOperacionalTab from '../src/components/CentralOperacionalTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -183,6 +184,20 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  'central-operacional': (
+    <CentralOperacionalTab
+      equipamentos={fx.equipamentos}
+      controlesEquipamentos={fx.controlesEquipamentos}
+      gruposEquipe={[fx.grupo]}
+      presencasLink={fx.registrosEnviados}
+      ordensServico={fx.ordensServico}
+      ticketsJazida={fx.ticketsJazida}
+      obras={fx.obras}
+      podeAtualizar
+      onSaveControleEquipamento={noop}
+      onNavigate={noop}
     />
   ),
   painel: (

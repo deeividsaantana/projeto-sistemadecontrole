@@ -26,6 +26,10 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   // de navegação próprio — só quem acessa "configuracoes" chega lá.
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'usuarios'), false);
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'reports'), false);
+  // Central Operacional é tela de campo: operação usa, leitura não altera nada.
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'central-operacional'), true);
+  assert.equal(ROLE_ACCESS.operador.includes('central-operacional'), true);
+  assert.equal(ROLE_ACCESS.leitura.includes('central-operacional'), false);
   assert.equal(ROLE_ACCESS.operador.includes('pendencias'), false);
   assert.equal(ROLE_ACCESS.operador.includes('lancamentos'), true);
   assert.equal(ROLE_ACCESS.operador.includes('configuracoes'), false);

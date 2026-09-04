@@ -4,6 +4,7 @@ import {
   FolderPlus,
   Hammer,
   LayoutDashboard,
+  Radio,
   Settings,
   Truck,
   Activity,
@@ -32,6 +33,7 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
+      { id: 'central-operacional', label: 'Central Operacional', icon: Radio },
       { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
@@ -63,6 +65,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   operador: [
     'dashboard',
     'consulta-geral',
+    'central-operacional',
     'controle-equipamentos',
     'lancamentos',
     'tickets-jazida',

@@ -73,6 +73,7 @@ const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
+const CentralOperacionalTab = lazy(() => import('./components/CentralOperacionalTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -3912,6 +3913,21 @@ export default function App() {
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onOpenCadastros={allowedTabs.includes('cadastros') ? () => navigateTo('cadastros') : undefined}
+              />
+            )}
+
+            {activeTab === 'central-operacional' && (
+              <CentralOperacionalTab
+                equipamentos={equipamentos}
+                controlesEquipamentos={controleEquipamentosDiario}
+                gruposEquipe={gruposEquipe}
+                presencasLink={presencasLink}
+                ordensServico={ordensServico}
+                ticketsJazida={ticketsJazida}
+                obras={obras}
+                podeAtualizar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
+                onNavigate={navigateTo}
               />
             )}
 
