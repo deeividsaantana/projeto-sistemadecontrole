@@ -149,6 +149,7 @@ import {
 } from './app/navigation/navigation';
 import { NavigationMenu } from './app/shell/NavigationMenu';
 import { DesktopTopBar } from './app/shell/DesktopTopBar';
+import { NotificationCenter } from './app/shell/NotificationCenter';
 import { DesktopSidebar } from './app/shell/DesktopSidebar';
 import { APP_VERSION_LABEL } from './app/version';
 import {
@@ -3854,24 +3855,20 @@ export default function App() {
             <FolderPlus className="w-5 h-5" />
           </button>
 
-          {/* Notification Bell Mobile */}
-          <div className="relative">
-            <button 
-              onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
-              className="relative cursor-pointer rounded-xl p-2.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800"
-            >
-              {notifications.filter(n => !n.read).length > 0 ? (
-                <>
-                  <BellRing className="w-5 h-5 text-emerald-400 animate-bounce" />
-                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-emerald-500 text-white font-extrabold text-[8px] rounded-full flex items-center justify-center">
-                    {notifications.filter(n => !n.read).length}
-                  </span>
-                </>
-              ) : (
-                <Bell className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+          {/* Notification Bell Mobile: antes só alternava um estado que só o
+              painel do cabeçalho desktop (oculto em telas menores que 1024px)
+              usava para se mostrar — o toque no sino não abria nada visível
+              neste tamanho de tela. Agora usa o mesmo painel do desktop. */}
+          <NotificationCenter
+            isOpen={isNotifDropdownOpen}
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onToggle={() => setIsNotifDropdownOpen(value => !value)}
+            onClose={() => setIsNotifDropdownOpen(false)}
+            onMarkAllAsRead={handleMarkAllAsRead}
+            onClear={handleClearNotifications}
+            onMarkOneAsRead={handleMarkNotificationAsRead}
+          />
 
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
