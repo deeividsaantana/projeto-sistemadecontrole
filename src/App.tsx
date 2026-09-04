@@ -66,10 +66,8 @@ import { mergeImportedRecords } from './utils/importMerge';
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const ConsultaGeralTab = lazy(() => import('./components/ConsultaGeralTab'));
 const PeriodoTab = lazy(() => import('./components/PeriodoTab'));
-const UsuariosTab = lazy(() => import('./components/UsuariosTab'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
-const RelatoriosTab = lazy(() => import('./components/RelatoriosGeraisTab'));
 const ConfiguracoesTab = lazy(() => import('./components/ConfiguracoesTab'));
 const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
 const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
@@ -4049,10 +4047,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'usuarios' && allowedTabs.includes('usuarios') && (
-              <UsuariosTab />
-            )}
-
             {activeTab === 'cadastros' && allowedTabs.includes('cadastros') && (
               <CadastrosTab 
                 empresas={empresas}
@@ -4163,24 +4157,6 @@ export default function App() {
                 controle={controleEstacas}
                 obras={obras}
                 onChange={handleChangeControleEstacas}
-              />
-            )}
-
-            {activeTab === 'reports' && (
-              <RelatoriosTab 
-                empresas={empresas}
-                obras={obras}
-                equipamentos={equipamentos}
-                funcionarios={funcionarios}
-                comboios={comboios}
-                combustiveis={combustiveis}
-                lubrificantes={lubrificantes}
-                abastecimentos={abastecimentos}
-                lubrificacoes={lubrificacoes}
-                listasPresenca={listasPresenca}
-                ticketsJazida={ticketsJazida}
-                controleEstacas={controleEstacas}
-                presencasLink={presencasLink}
               />
             )}
 

@@ -7,6 +7,7 @@ import Dashboard from '../src/components/Dashboard';
 import LancamentosTab from '../src/components/LancamentosTab';
 import PeriodoTab from '../src/components/PeriodoTab';
 import ConsultaGeralTab from '../src/components/ConsultaGeralTab';
+import ConfiguracoesTab from '../src/components/ConfiguracoesTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
@@ -58,6 +59,18 @@ const screens: Record<string, React.ReactNode> = {
     </div>
   ),
   usuarios: <UsuariosTab />,
+  configuracoes: (
+    <ConfiguracoesTab
+      historyLogs={[]}
+      onImportFullData={() => true}
+      onImportFilteredByDate={() => ({ success: true, message: 'ok' })}
+      onExportFullData={() => '{}'}
+      periodosArquivados={[]}
+      onArchivePeriod={() => ({ success: true, message: 'ok' })}
+      onRestoreArchivedPeriod={() => ({ success: true, message: 'ok' })}
+      onDeleteTabData={() => ({ success: true, message: 'ok' })}
+    />
+  ),
   jazida: (
     <TicketsJazidaTab
       tickets={fx.ticketsJazida}

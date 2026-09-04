@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { HistoryLog, PeriodoArquivado } from '../types';
 import { isSnapshotIntact } from '../utils/snapshotIntegrity';
 import { loadUsageSummary, type UsageSummary } from '../usageTelemetry';
@@ -23,7 +23,10 @@ import {
   ShieldCheck,
   Database,
   Trash2,
+  Users,
 } from 'lucide-react';
+
+const UsuariosTab = lazy(() => import('./UsuariosTab'));
 
 const DELETABLE_TABS = [
   { id: 'cadastros', label: 'Cadastros auxiliares' },
@@ -64,7 +67,8 @@ export default function ConfiguracoesTab({
 }: ConfiguracoesTabProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+  const [section, setSection] = useState<'geral' | 'usuarios'>('geral');
+
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [importMsg, setImportMsg] = useState('');
 
@@ -296,9 +300,19 @@ export default function ConfiguracoesTab({
           </h1>
           <p className="text-xs text-slate-400 mt-1">Gerencie a segurança local, importe ou exporte backups, faça auditorias e acesse o manual.</p>
         </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setSection('geral')} className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-xs font-black uppercase tracking-wide transition ${section === 'geral' ? 'bg-emerald-600 text-white' : 'border border-slate-700 text-slate-300 hover:border-emerald-600'}`}><Settings className="h-4 w-4" /> Configurações</button>
+          <button type="button" onClick={() => setSection('usuarios')} className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-xs font-black uppercase tracking-wide transition ${section === 'usuarios' ? 'bg-emerald-600 text-white' : 'border border-slate-700 text-slate-300 hover:border-emerald-600'}`}><Users className="h-4 w-4" /> Usuários</button>
+        </div>
       </div>
 
-      {pendingFullImportText && (
+      {section === 'usuarios' && (
+        <Suspense fallback={<p className="text-xs text-slate-400">Carregando...</p>}>
+          <UsuariosTab />
+        </Suspense>
+      )}
+
+      {section === 'geral' && pendingFullImportText && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
           <div>
             <strong className="block text-xs uppercase tracking-wider text-amber-300">Confirmar restauração de backup</strong>
@@ -313,11 +327,12 @@ export default function ConfiguracoesTab({
         </div>
       )}
 
+      {section === 'geral' && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left 2 Columns: Credentials, Manuals and Backup actions */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Secure access status */}
           <div className="bg-slate-900 border border-slate-850 p-5 rounded-lg space-y-3 relative overflow-hidden">
             <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl w-fit">
@@ -856,6 +871,7 @@ export default function ConfiguracoesTab({
         </div>
 
       </div>
+      )}
 
     </div>
   );

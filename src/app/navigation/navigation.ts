@@ -1,7 +1,6 @@
 import {
   CalendarRange,
   ClipboardList,
-  FileText,
   FolderPlus,
   Hammer,
   LayoutDashboard,
@@ -29,7 +28,6 @@ export const NAVIGATION_GROUPS = [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
       { id: 'consulta-geral', label: 'Consulta Geral', icon: Search },
       { id: 'periodo', label: 'Registros por Período', icon: CalendarRange },
-      { id: 'reports', label: 'Relatórios Gerais', icon: FileText },
     ],
   },
   {
@@ -51,7 +49,6 @@ export const NAVIGATION_GROUPS = [
     label: 'Administração',
     items: [
       { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
-      { id: 'usuarios', label: 'Usuários', icon: Users },
       { id: 'configuracoes', label: 'Apoio e Configuração', icon: Settings },
     ],
   },
@@ -63,18 +60,17 @@ export const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
 
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
-  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => id !== 'configuracoes' && id !== 'usuarios'),
+  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => id !== 'configuracoes'),
   operador: [
     'dashboard',
     'consulta-geral',
-    'reports',
     'controle-equipamentos',
     'lancamentos',
     'tickets-jazida',
     'estacas',
     'presenca',
   ],
-  leitura: ['dashboard', 'consulta-geral', 'periodo', 'reports'],
+  leitura: ['dashboard', 'consulta-geral', 'periodo'],
 };
 
 export const normalizeUserRole = (value: unknown): UserRole => {

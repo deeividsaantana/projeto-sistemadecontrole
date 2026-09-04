@@ -129,7 +129,7 @@ export default function Dashboard({ obras, equipamentos, abastecimentos, history
     <article data-erp-enter className="mt-5 rounded-lg border border-slate-200 bg-white overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
         <p className="text-sm font-semibold text-slate-800">Últimos Registros</p>
-        <button type="button" onClick={() => onNavigate('reports')} className="text-sm font-semibold text-[#087345]">Ver todos <ChevronRight className="inline" size={16} /></button>
+        <button type="button" onClick={() => onNavigate('consulta-geral')} className="text-sm font-semibold text-[#087345]">Ver todos <ChevronRight className="inline" size={16} /></button>
       </header>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-left text-xs">
