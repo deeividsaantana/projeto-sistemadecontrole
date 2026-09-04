@@ -1,2 +1,2 @@
-export const APP_VERSION = '3.4.1';
-export const APP_VERSION_LABEL = 'ERP v3.4.1 — Cadastros e Manutenção';
+export const APP_VERSION = '3.4.2';
+export const APP_VERSION_LABEL = 'ERP v3.4.2 — Diagnóstico de sincronização';

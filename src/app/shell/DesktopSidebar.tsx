@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
 import { cn } from '../../shared/ui';
 import reneaLogo from '../../assets/images/logo-renea-branco.png';
+import { APP_VERSION_LABEL } from '../version';
 
 interface DesktopSidebarProps {
   activeTab: string;
@@ -76,6 +77,7 @@ export function DesktopSidebar({
           <span className="erp-sidebar__user"><strong>Usuário RENEA</strong><small>Sair da conta</small></span>
           <ChevronLeft aria-hidden="true" />
         </button>
+        <p className="mt-2 text-center text-[10px] text-[#7fa895]">{APP_VERSION_LABEL}</p>
       </div>
     </aside>
   );
