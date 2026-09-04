@@ -1,13 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ChevronRight,
   Download,
   Droplets,
   Search,
   Truck,
   Users,
   Wrench,
-  X,
 } from 'lucide-react';
 import type {
   Abastecimento,
@@ -16,7 +14,7 @@ import type {
   PresencaApontamento,
   TicketJazida,
 } from '../types';
-import { PageHeader, StatCard } from '../shared/ui';
+import { PageHeader, Pagination, StatCard, statusTone } from '../shared/ui';
 
 interface PeriodoTabProps {
   presencas: PresencaApontamento[];
@@ -26,7 +24,17 @@ interface PeriodoTabProps {
   equipamentos: Equipamento[];
 }
 
-type ModuloDetalhe = 'presenca' | 'frota' | 'combustivel' | 'tickets';
+type TipoRegistro = 'Presença' | 'Frota' | 'Combustível' | 'Tickets';
+
+interface PeriodoRow {
+  id: string;
+  data: string;
+  horario: string;
+  equipamento: string;
+  tipo: TipoRegistro;
+  descricao: string;
+  status: string;
+}
 
 const PANEL = 'rounded-lg border border-[#e2e8e4] bg-white';
 const FIELD = 'min-h-11 w-full rounded-lg border border-[#e2e8e4] bg-white px-3 text-sm text-[#14231e] outline-none transition focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10';
@@ -78,7 +86,10 @@ export default function PeriodoTab({
   const [from, setFrom] = useState(() => shiftDays(hoje, -6));
   const [to, setTo] = useState(hoje);
   const [busca, setBusca] = useState('');
-  const [detalhe, setDetalhe] = useState<{ dia: string; modulo: ModuloDetalhe } | null>(null);
+  const [tipoFilter, setTipoFilter] = useState<'Todos' | TipoRegistro>('Todos');
+  const [equipamentoFilter, setEquipamentoFilter] = useState('Todos');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const periodo = useMemo(() => {
     const inicio = from <= to ? from : to;
@@ -93,83 +104,57 @@ export default function PeriodoTab({
     };
   }, [abastecimentos, controlesEquipamentos, from, presencas, ticketsJazida, to]);
 
-  const dias = useMemo(() => {
-    const todas = new Set<string>([
-      ...periodo.presencas.map(item => item.data),
-      ...periodo.frota.map(item => item.data),
-      ...periodo.combustivel.map(item => item.data),
-      ...periodo.tickets.map(item => item.data),
-    ]);
-    return [...todas].sort((a, b) => b.localeCompare(a)).map(dia => {
-      const presencaDia = periodo.presencas.filter(item => item.data === dia);
-      const frotaDia = periodo.frota.filter(item => item.data === dia);
-      const combustivelDia = periodo.combustivel.filter(item => item.data === dia);
-      const ticketsDia = periodo.tickets.filter(item => item.data === dia);
-      return {
-        dia,
-        presentes: presencaDia.filter(item => item.status === 'Presente').length,
-        ausentes: presencaDia.filter(item => item.status === 'Ausente').length,
-        presencaTotal: presencaDia.length,
-        frotaTotal: frotaDia.length,
-        frotaOperando: frotaDia.filter(item => item.status === 'Em operação').length,
-        frotaManutencao: frotaDia.filter(item => item.status === 'Em manutenção' || item.status === 'Aguardando manutenção').length,
-        litros: combustivelDia.reduce((total, item) => total + (Number(item.quantidadeLitros) || 0), 0),
-        combustivelTotal: combustivelDia.length,
-        ticketsTotal: ticketsDia.length,
-        metrosCubicos: ticketsDia.reduce((total, item) => total + (Number(item.quantidadeM3) || 0), 0),
-      };
-    });
-  }, [periodo]);
-
   const totais = useMemo(() => ({
-    dias: dias.length,
-    presentes: dias.reduce((total, item) => total + item.presentes, 0),
-    presencaTotal: dias.reduce((total, item) => total + item.presencaTotal, 0),
+    presentes: periodo.presencas.filter(item => item.status === 'Presente').length,
+    presencaTotal: periodo.presencas.length,
     frotaTotal: periodo.frota.length,
-    frotaManutencao: dias.reduce((total, item) => total + item.frotaManutencao, 0),
-    litros: dias.reduce((total, item) => total + item.litros, 0),
+    frotaManutencao: periodo.frota.filter(item => item.status === 'Em manutenção' || item.status === 'Aguardando manutenção').length,
+    litros: periodo.combustivel.reduce((total, item) => total + (Number(item.quantidadeLitros) || 0), 0),
     ticketsTotal: periodo.tickets.length,
-    metrosCubicos: dias.reduce((total, item) => total + item.metrosCubicos, 0),
-  }), [dias, periodo]);
+    metrosCubicos: periodo.tickets.reduce((total, item) => total + (Number(item.quantidadeM3) || 0), 0),
+  }), [periodo]);
+
+  /** Achata os quatro módulos do período num único registro por linha, no
+   * mesmo formato de tabela usado em Consulta Geral. */
+  const registros = useMemo<PeriodoRow[]>(() => [
+    ...periodo.presencas.map(item => ({
+      id: `presenca-${item.id}`, data: item.data, horario: item.horaEnvio || '', equipamento: item.funcionarioNome || 'Colaborador não informado',
+      tipo: 'Presença' as const, descricao: `${item.grupoNome || 'Sem equipe'} · ${item.funcao || 'Função não informada'}`, status: item.status,
+    })),
+    ...periodo.frota.map(item => ({
+      id: `frota-${item.id}`, data: item.data, horario: item.horaSaida || item.horaEntradaManutencao || item.horaLiberacao || '', equipamento: item.prefixo || 'Sem prefixo',
+      tipo: 'Frota' as const, descricao: item.motivoManutencao || item.observacao || item.familia || item.nomeMotorista || 'Sem descrição', status: item.status,
+    })),
+    ...periodo.combustivel.map(item => {
+      const frota = equipamentos.find(equipamento => equipamento.id === item.equipamentoId);
+      return {
+        id: `combustivel-${item.id}`, data: item.data, horario: item.hora || '', equipamento: frota?.prefixo || item.prefixoInformado || 'Sem prefixo',
+        tipo: 'Combustível' as const, descricao: `${decimal(Number(item.quantidadeLitros) || 0, 1)} L`, status: item.status || 'OK',
+      };
+    }),
+    ...periodo.tickets.map(item => ({
+      id: `ticket-${item.id}`, data: item.data, horario: item.horaSaida || item.horaChegada || '', equipamento: item.prefixo || 'Sem prefixo',
+      tipo: 'Tickets' as const, descricao: `${item.tipoMaterial || 'Material não informado'} · ${decimal(Number(item.quantidadeM3) || 0, 1)} m³`, status: item.statusFluxo || item.status || 'Pendente',
+    })),
+  ].sort((a, b) => `${b.data} ${b.horario}`.localeCompare(`${a.data} ${a.horario}`)), [periodo, equipamentos]);
+
+  const equipamentosDoPeriodo = useMemo(() => ['Todos', ...Array.from(new Set(registros.map(item => item.equipamento))).sort((a, b) => a.localeCompare(b, 'pt-BR'))], [registros]);
 
   const filtroTexto = busca.trim().toLocaleLowerCase('pt-BR');
-  const combina = (...campos: unknown[]) => !filtroTexto
-    || campos.some(campo => String(campo ?? '').toLocaleLowerCase('pt-BR').includes(filtroTexto));
+  const registrosFiltrados = useMemo(() => registros
+    .filter(item => tipoFilter === 'Todos' || item.tipo === tipoFilter)
+    .filter(item => equipamentoFilter === 'Todos' || item.equipamento === equipamentoFilter)
+    .filter(item => !filtroTexto || `${item.equipamento} ${item.descricao} ${item.status}`.toLocaleLowerCase('pt-BR').includes(filtroTexto)),
+  [registros, tipoFilter, equipamentoFilter, filtroTexto]);
 
-  const registrosDetalhe = useMemo(() => {
-    if (!detalhe) return [];
-    const { dia, modulo } = detalhe;
-    if (modulo === 'presenca') {
-      return periodo.presencas
-        .filter(item => item.data === dia)
-        .filter(item => combina(item.funcionarioNome, item.grupoNome, item.funcao, item.responsavel, item.status));
-    }
-    if (modulo === 'frota') {
-      return periodo.frota
-        .filter(item => item.data === dia)
-        .filter(item => combina(item.prefixo, item.nomeMotorista, item.status, item.familia, item.observacao, item.motivoManutencao));
-    }
-    if (modulo === 'combustivel') {
-      return periodo.combustivel
-        .filter(item => item.data === dia)
-        .filter(item => {
-          const frota = equipamentos.find(equipamento => equipamento.id === item.equipamentoId);
-          return combina(frota?.prefixo, item.prefixoInformado, item.responsavel, item.observacao);
-        });
-    }
-    return periodo.tickets
-      .filter(item => item.data === dia)
-      .filter(item => combina(item.ticketNumero, item.prefixo, item.placa, item.tipoMaterial, item.destinoObra, item.nomeLegivel));
-  }, [combina, detalhe, equipamentos, periodo]);
+  const totalPages = Math.max(1, Math.ceil(registrosFiltrados.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedRegistros = registrosFiltrados.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const exportarResumo = () => downloadCsv(
     `periodo_${periodo.inicio}_a_${periodo.fim}.csv`,
-    ['Data', 'Presentes', 'Ausentes', 'Presença (registros)', 'Frota (lançamentos)', 'Em operação', 'Em manutenção', 'Abastecimentos', 'Litros', 'Tickets', 'm³'],
-    dias.map(item => [
-      formatDay(item.dia), item.presentes, item.ausentes, item.presencaTotal,
-      item.frotaTotal, item.frotaOperando, item.frotaManutencao,
-      item.combustivelTotal, decimal(item.litros, 1), item.ticketsTotal, decimal(item.metrosCubicos, 1),
-    ]),
+    ['Data', 'Horário', 'Equipamento', 'Tipo', 'Descrição', 'Status'],
+    registrosFiltrados.map(item => [formatDay(item.data), item.horario, item.equipamento, item.tipo, item.descricao, item.status]),
   );
 
   const presets: Array<[string, () => void]> = [
@@ -190,25 +175,44 @@ export default function PeriodoTab({
     <section className="space-y-5 text-[#14231e]">
       <PageHeader
         title={`Registros de ${formatDay(periodo.inicio)} a ${formatDay(periodo.fim)}`}
-        description="Presença, frota, combustível e jazida no mesmo intervalo, com o detalhe de cada dia."
-        actions={<button type="button" onClick={exportarResumo} className={CHIP}><Download className="mr-2 h-4 w-4" /> Exportar resumo</button>}
+        description="Presença, frota, combustível e jazida no mesmo intervalo."
+        actions={<button type="button" onClick={exportarResumo} className={CHIP}><Download className="mr-2 h-4 w-4" /> Exportar</button>}
       />
 
       <div className={`${PANEL} p-5 sm:p-6`}>
         <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,180px))_1fr]">
           <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
             Do dia
-            <input type="date" value={from} max={to} onChange={event => setFrom(event.target.value)} className={`${FIELD} mt-1`} />
+            <input type="date" value={from} max={to} onChange={event => { setFrom(event.target.value); setPage(1); }} className={`${FIELD} mt-1`} />
           </label>
           <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
             Até o dia
-            <input type="date" value={to} min={from} onChange={event => setTo(event.target.value)} className={`${FIELD} mt-1`} />
+            <input type="date" value={to} min={from} onChange={event => { setTo(event.target.value); setPage(1); }} className={`${FIELD} mt-1`} />
           </label>
           <div className="flex flex-wrap items-end gap-2">
             {presets.map(([label, aplicar]) => (
               <button key={label} type="button" onClick={aplicar} className={CHIP}>{label}</button>
             ))}
           </div>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
+            Tipo de registro
+            <select value={tipoFilter} onChange={event => { setTipoFilter(event.target.value as 'Todos' | TipoRegistro); setPage(1); }} className={`${FIELD} mt-1 font-bold`}>
+              <option>Todos</option><option>Presença</option><option>Frota</option><option>Combustível</option><option>Tickets</option>
+            </select>
+          </label>
+          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
+            Equipamento
+            <select value={equipamentoFilter} onChange={event => { setEquipamentoFilter(event.target.value); setPage(1); }} className={`${FIELD} mt-1 font-bold`}>
+              {equipamentosDoPeriodo.map(value => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="relative text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
+            Buscar
+            <Search className="pointer-events-none absolute left-3 top-[calc(50%+7px)] h-4 w-4 -translate-y-1/2 text-[#79847e]" />
+            <input value={busca} onChange={event => { setBusca(event.target.value); setPage(1); }} placeholder="Equipamento, descrição..." className={`${FIELD} mt-1 pl-9`} />
+          </label>
         </div>
       </div>
 
@@ -221,217 +225,41 @@ export default function PeriodoTab({
       <article className={`${PANEL} overflow-hidden`}>
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] px-5 py-4">
           <div>
-            <h2 className="text-sm font-black">Dia a dia</h2>
-            <p className="mt-1 text-xs text-[#65716b]">{totais.dias} dia(s) com movimento no intervalo. Clique em um número para abrir o detalhe.</p>
+            <h2 className="text-sm font-black">Registros</h2>
+            <p className="mt-1 text-xs text-[#65716b]">{registrosFiltrados.length} registro(s) no período selecionado.</p>
           </div>
+          <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-[#e2e8e4] px-2 text-xs font-bold text-[#65716b]"><option value={10}>10 por página</option><option value={25}>25 por página</option><option value={50}>50 por página</option></select>
         </header>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
-            <thead className="bg-[#f7f9f8] text-[10px] uppercase tracking-wider text-[#65716b]">
-              <tr>
-                {['Data', 'Presentes', 'Ausentes', 'Frota', 'Manutenção', 'Litros', 'Tickets', 'm³'].map(label => (
-                  <th key={label} className="border-b border-[#e2e8e4] px-4 py-3 font-bold">{label}</th>
+        {pagedRegistros.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead className="bg-[#f7f9f8] text-[10px] uppercase tracking-wider text-[#65716b]">
+                <tr>{['Data', 'Horário', 'Equipamento', 'Tipo', 'Descrição', 'Status'].map(label => <th key={label} className="border-b border-[#e2e8e4] px-4 py-3 font-bold">{label}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-[#eef2f0]">
+                {pagedRegistros.map(item => (
+                  <tr key={item.id} className="hover:bg-[#f8fbf9]">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums">{formatDay(item.data)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums text-[#65716b]">{item.horario || '—'}</td>
+                    <td className="px-4 py-3 font-black">{item.equipamento}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-[#65716b]">{item.tipo}</td>
+                    <td className="max-w-[280px] truncate px-4 py-3 text-[#65716b]" title={item.descricao}>{item.descricao}</td>
+                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(item.status)}`}>{item.status}</span></td>
+                  </tr>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#eef2f0]">
-              {dias.map(item => (
-                <tr key={item.dia} className="hover:bg-[#f8fbf9]">
-                  <td className="px-4 py-3 font-black tabular-nums">{formatDay(item.dia)}</td>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => setDetalhe({ dia: item.dia, modulo: 'presenca' })} className="font-bold tabular-nums text-emerald-800 hover:underline">
-                      {item.presentes}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-rose-700">{item.ausentes}</td>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => setDetalhe({ dia: item.dia, modulo: 'frota' })} className="font-bold tabular-nums text-emerald-800 hover:underline">
-                      {item.frotaTotal}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-amber-700">{item.frotaManutencao}</td>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => setDetalhe({ dia: item.dia, modulo: 'combustivel' })} className="font-bold tabular-nums text-emerald-800 hover:underline">
-                      {decimal(item.litros, 1)}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => setDetalhe({ dia: item.dia, modulo: 'tickets' })} className="font-bold tabular-nums text-emerald-800 hover:underline">
-                      {item.ticketsTotal}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">{decimal(item.metrosCubicos, 1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {dias.length === 0 && (
+              </tbody>
+            </table>
+          </div>
+        ) : (
           <p className="px-5 py-14 text-center text-sm text-[#65716b]">Nenhum registro entre {formatDay(periodo.inicio)} e {formatDay(periodo.fim)}.</p>
         )}
-      </article>
-
-      {detalhe && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5" onClick={() => setDetalhe(null)}>
-          <div
-            className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl bg-white  sm:rounded-lg"
-            onClick={event => event.stopPropagation()}
-          >
-            <header className="flex items-start justify-between gap-4 border-b border-[#e2e8e4] px-5 py-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Detalhe de {formatDay(detalhe.dia)}</p>
-                <h3 className="mt-1 text-lg font-black">{registrosDetalhe.length} registro(s)</h3>
-              </div>
-              <button type="button" onClick={() => setDetalhe(null)} aria-label="Fechar detalhe" className="rounded-lg p-2 text-[#65716b] hover:bg-[#f2f5f3]">
-                <X className="h-5 w-5" />
-              </button>
-            </header>
-
-            <div className="flex flex-wrap gap-2 border-b border-[#e2e8e4] px-5 py-3">
-              {([['presenca', 'Presença'], ['frota', 'Frota'], ['combustivel', 'Combustível'], ['tickets', 'Tickets']] as Array<[ModuloDetalhe, string]>).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setDetalhe({ dia: detalhe.dia, modulo: id })}
-                  className={`inline-flex min-h-9 items-center rounded-lg px-3 text-xs font-bold transition ${detalhe.modulo === id ? 'bg-emerald-700 text-white' : 'border border-[#e2e8e4] text-[#26362f] hover:border-emerald-700'}`}
-                >
-                  {label}
-                </button>
-              ))}
-              <label className="relative ml-auto min-w-[200px] flex-1 sm:max-w-xs">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" />
-                <input
-                  value={busca}
-                  onChange={event => setBusca(event.target.value)}
-                  placeholder="Filtrar neste dia"
-                  className={`${FIELD} pl-10`}
-                />
-              </label>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              {registrosDetalhe.length === 0 && (
-                <p className="py-12 text-center text-sm text-[#65716b]">Nenhum registro para este filtro.</p>
-              )}
-
-              {detalhe.modulo === 'frota' && (
-                <div className="grid gap-3">
-                  {(registrosDetalhe as ControleEquipamentoDiario[]).map(registro => (
-                    <article key={registro.id} className={`${PANEL} p-4`}>
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-black">{registro.prefixo} · {registro.familia || 'Sem família'}</p>
-                          <p className="mt-1 text-xs text-[#65716b]">{registro.nomeMotorista || 'Sem motorista'} · matrícula {registro.codigoFuncionario || '—'}</p>
-                        </div>
-                        <span className="rounded-lg border border-[#e2e8e4] px-3 py-1 text-xs font-bold text-[#26362f]">{registro.status}</span>
-                      </div>
-                      <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-3 lg:grid-cols-5">
-                        {[
-                          ['Saída', registro.horaSaida],
-                          ['Entrada manutenção', registro.horaEntradaManutencao],
-                          ['Liberação', registro.horaLiberacao],
-                          ['Origem', registro.origem],
-                          ['Aprovação', registro.aprovacao?.status || 'PENDENTE'],
-                        ].map(([rotulo, valor]) => (
-                          <div key={String(rotulo)}>
-                            <dt className="font-bold uppercase tracking-[0.1em] text-[#79847e]">{rotulo}</dt>
-                            <dd className="mt-0.5 tabular-nums">{String(valor || '—')}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                      {(registro.motivoManutencao || registro.observacao) && (
-                        <p className="mt-3 border-t border-[#eef2f0] pt-3 text-xs text-[#65716b]">
-                          {registro.motivoManutencao ? `Motivo: ${registro.motivoManutencao}. ` : ''}{registro.observacao}
-                        </p>
-                      )}
-                      {asArray(registro.eventos).length > 0 && (
-                        <ul className="mt-3 space-y-1 border-t border-[#eef2f0] pt-3 text-[11px] text-[#65716b]">
-                          {asArray(registro.eventos).map(evento => (
-                            <li key={evento.id} className="flex items-start gap-2">
-                              <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-emerald-700" />
-                              <span>{new Date(evento.ocorridoEm).toLocaleString('pt-BR')} · {evento.tipo}{evento.statusNovo ? ` → ${evento.statusNovo}` : ''}{evento.observacao ? ` · ${evento.observacao}` : ''}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              )}
-
-              {detalhe.modulo === 'presenca' && (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-left text-sm">
-                    <thead className="bg-[#f7f9f8] text-[10px] uppercase tracking-wider text-[#65716b]">
-                      <tr>{['Colaborador', 'Função', 'Equipe', 'Situação', 'Hora', 'Observação'].map(label => <th key={label} className="px-3 py-2 font-bold">{label}</th>)}</tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#eef2f0]">
-                      {(registrosDetalhe as PresencaApontamento[]).map(registro => (
-                        <tr key={registro.id}>
-                          <td className="px-3 py-2 font-bold">{registro.funcionarioNome}</td>
-                          <td className="px-3 py-2 text-[#65716b]">{registro.funcao || '—'}</td>
-                          <td className="px-3 py-2">{registro.grupoNome}</td>
-                          <td className="px-3 py-2 font-bold">{registro.status}</td>
-                          <td className="px-3 py-2 tabular-nums">{registro.horaEnvio || '—'}</td>
-                          <td className="px-3 py-2 text-[#65716b]">{registro.observacao || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {detalhe.modulo === 'combustivel' && (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-left text-sm">
-                    <thead className="bg-[#f7f9f8] text-[10px] uppercase tracking-wider text-[#65716b]">
-                      <tr>{['Frota', 'Hora', 'Litros', 'Bomba inicial', 'Bomba final', 'Responsável'].map(label => <th key={label} className="px-3 py-2 font-bold">{label}</th>)}</tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#eef2f0]">
-                      {(registrosDetalhe as Abastecimento[]).map(registro => {
-                        const frota = equipamentos.find(equipamento => equipamento.id === registro.equipamentoId);
-                        return (
-                          <tr key={registro.id}>
-                            <td className="px-3 py-2 font-bold">{frota?.prefixo || registro.prefixoInformado || '—'}</td>
-                            <td className="px-3 py-2 tabular-nums">{registro.hora || '—'}</td>
-                            <td className="px-3 py-2 font-bold tabular-nums">{decimal(Number(registro.quantidadeLitros) || 0, 1)}</td>
-                            <td className="px-3 py-2 tabular-nums">{decimal(Number(registro.bombaInicial) || 0, 1)}</td>
-                            <td className="px-3 py-2 tabular-nums">{decimal(Number(registro.bombaFinal) || 0, 1)}</td>
-                            <td className="px-3 py-2 text-[#65716b]">{registro.responsavel || '—'}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {detalhe.modulo === 'tickets' && (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead className="bg-[#f7f9f8] text-[10px] uppercase tracking-wider text-[#65716b]">
-                      <tr>{['Ticket', 'Prefixo', 'Placa', 'Material', 'Quantidade', 'Destino', 'Saída'].map(label => <th key={label} className="px-3 py-2 font-bold">{label}</th>)}</tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#eef2f0]">
-                      {(registrosDetalhe as TicketJazida[]).map(registro => (
-                        <tr key={registro.id}>
-                          <td className="px-3 py-2 font-black tabular-nums">{registro.ticketNumero}</td>
-                          <td className="px-3 py-2 font-bold">{registro.prefixo}</td>
-                          <td className="px-3 py-2">{registro.placa || '—'}</td>
-                          <td className="px-3 py-2">{registro.tipoMaterial}</td>
-                          <td className="px-3 py-2 tabular-nums">{decimal(Number(registro.quantidadeM3) || 0, 1)} {registro.unidadeQuantidade || 'm³'}</td>
-                          <td className="px-3 py-2">{registro.destinoOutro || registro.destinoObra}</td>
-                          <td className="px-3 py-2 tabular-nums">{registro.horaSaida || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-3 border-t border-[#eef2f0] px-5 py-4">
+            <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+            <span className="text-xs font-medium text-[#65716b]">página {safePage} de {totalPages}</span>
           </div>
-        </div>
-      )}
+        )}
+      </article>
     </section>
   );
 }

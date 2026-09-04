@@ -1,30 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Building2, ChevronLeft, ChevronRight, Eye, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
+import { Building2, Eye, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
-import { PageHeader } from '../shared/ui';
-
-const STATUS_TONE = (status: string) => {
-  const value = normalizeComparable(status);
-  if (['ativo', 'mobilizado', 'em operacao', 'presente', 'enviado', 'ok', 'concluida', 'concluido', 'disponivel'].some(token => value.includes(token))) return 'bg-emerald-100 text-emerald-800';
-  if (['manutencao', 'inativo', 'ausente', 'desmobilizado', 'parado', 'cancelada'].some(token => value.includes(token))) return 'bg-rose-100 text-rose-800';
-  if (['aguardando', 'pendente'].some(token => value.includes(token))) return 'bg-amber-100 text-amber-800';
-  return 'bg-slate-100 text-slate-600';
-};
-
-const Pagination = ({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) => {
-  const windowStart = Math.max(1, Math.min(page - 2, totalPages - 4));
-  const pages = Array.from({ length: Math.min(5, totalPages) }, (_, index) => windowStart + index).filter(value => value >= 1 && value <= totalPages);
-  return (
-    <div className="flex items-center gap-1">
-      <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)} className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 disabled:opacity-40" aria-label="Página anterior"><ChevronLeft className="h-4 w-4" /></button>
-      {pages.map(value => (
-        <button key={value} type="button" onClick={() => onChange(value)} className={`grid size-8 place-items-center rounded-lg text-xs font-bold ${value === page ? 'bg-[#087345] text-white' : 'border border-slate-200 text-slate-600 hover:border-emerald-300'}`}>{value}</button>
-      ))}
-      <button type="button" disabled={page >= totalPages} onClick={() => onChange(page + 1)} className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 disabled:opacity-40" aria-label="Próxima página"><ChevronRight className="h-4 w-4" /></button>
-    </div>
-  );
-};
+import { PageHeader, Pagination, statusTone } from '../shared/ui';
 
 type GeneralRow = {
   id: string;
@@ -207,7 +185,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
                     <td className="max-w-[220px] truncate px-4 py-3 font-bold text-slate-900" title={row.prefix || row.title}>{row.prefix || row.title}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-600">{row.module}</td>
                     <td className="max-w-[260px] truncate px-4 py-3 text-slate-600" title={row.detail}>{row.detail}</td>
-                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${STATUS_TONE(row.status)}`}>{row.status}</span></td>
+                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(row.status)}`}>{row.status}</span></td>
                     <td className="px-5 py-3 text-right">
                       <button type="button" onClick={() => onNavigate(row.tab)} className="inline-flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-emerald-700" aria-label={`Ver ${row.title}`}><Eye className="h-4 w-4" /></button>
                     </td>

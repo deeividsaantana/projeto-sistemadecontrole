@@ -4,5 +4,6 @@ export { EmptyState } from './EmptyState';
 export { IconButton } from './IconButton';
 export { TextInput } from './TextInput';
 export { PageHeader } from './PageHeader';
+export { Pagination } from './Pagination';
 export { StatCard } from './StatCard';
-export { cn } from './styles';
+export { cn, statusTone } from './styles';
