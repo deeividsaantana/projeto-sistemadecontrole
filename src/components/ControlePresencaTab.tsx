@@ -728,12 +728,14 @@ export default function ControlePresencaTab({
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Confirmados nos últimos 7 dias</p>
                 <div className="mt-5 flex h-28 items-end gap-2">
                   {tendencia.map(item => (
-                    <div key={item.iso} className="flex flex-1 flex-col items-center gap-2" title={`${item.presentes} presente(s) em ${item.rotulo}`}>
+                    <div key={item.iso} className="flex h-full flex-1 flex-col items-center gap-1" title={`${item.presentes} presente(s) em ${item.rotulo}`}>
                       <span className="text-[10px] font-bold tabular-nums text-[#65716b]">{item.presentes || ''}</span>
-                      <div
-                        className={`w-full rounded-t-md transition-[height] duration-500 ${item.iso === referenceDate ? 'bg-[#087653]' : 'bg-[#bfded0]'}`}
-                        style={{ height: `${Math.max(4, (item.presentes / picoTendencia) * 100)}%` }}
-                      />
+                      <div className="flex w-full flex-1 items-end">
+                        <div
+                          className={`w-full rounded-t-md transition-[height] duration-500 ${item.iso === referenceDate ? 'bg-[#087653]' : 'bg-[#bfded0]'}`}
+                          style={{ height: `${Math.max(3, (item.presentes / picoTendencia) * 100)}%` }}
+                        />
+                      </div>
                       <span className="text-[9px] font-bold tabular-nums text-[#79847e]">{item.rotulo}</span>
                     </div>
                   ))}
