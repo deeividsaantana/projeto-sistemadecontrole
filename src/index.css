@@ -285,7 +285,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 #main-tab-viewport { max-width: none; }
 
 @media (max-width: 1180px) {
-  .erp-sidebar { width: 14.5rem; min-width: 14.5rem; }
+  .erp-sidebar { width: 15.25rem; min-width: 15.25rem; }
   .erp-topbar { padding-inline: 1.1rem; }
   .erp-topbar__command { display: none; }
 }
@@ -300,8 +300,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
 .erp-shell { background: #fff; }
 .erp-sidebar {
-  width: 15.5rem;
-  min-width: 15.5rem;
+  width: 17rem;
+  min-width: 17rem;
   background: #0c3d2f;
   border-right: 1px solid #123f31;
 }

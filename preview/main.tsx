@@ -8,19 +8,50 @@ import LancamentosTab from '../src/components/LancamentosTab';
 import PeriodoTab from '../src/components/PeriodoTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
+import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
 import * as fx from './fixtures';
 
 const noop = () => {};
+const previewGroups = NAVIGATION_GROUPS.map(g => ({ label: g.label, items: [...g.items] }));
+const previewNotifications = [
+  { id: '1', type: 'success' as const, title: 'Sincronizacao concluida', message: 'Dados do periodo enviados para a nuvem.', timestamp: '08:12', read: false, source: 'Firebase Cloud' as const },
+  { id: '2', type: 'warning' as const, title: 'Estoque baixo', message: 'Produto de lubrificacao abaixo do minimo.', timestamp: '07:40', read: true, source: 'Sistema Local' as const },
+];
 const screens: Record<string, React.ReactNode> = {
   sidebar: (
     <div className="erp-shell" style={{ height: '100dvh' }}>
       <DesktopSidebar
         activeTab="presenca"
-        groups={NAVIGATION_GROUPS.map(g => ({ label: g.label, items: [...g.items] }))}
+        groups={previewGroups}
         onNavigate={noop}
       />
       <main style={{ flex: 1, background: '#fff' }} />
+    </div>
+  ),
+  topbar: (
+    <div className="erp-shell" style={{ height: '100dvh' }}>
+      <DesktopSidebar activeTab="dashboard" groups={previewGroups} onNavigate={noop} />
+      <main className="erp-workspace">
+        <DesktopTopBar
+          groups={previewGroups}
+          menuSearch=""
+          currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
+          isNotificationOpen={false}
+          notifications={previewNotifications}
+          unreadCount={1}
+          isFirebaseConnected
+          lastCloudSync="04/09/2026 21:40"
+          onMenuSearchChange={noop}
+          onNavigate={noop}
+          onToggleNotifications={noop}
+          onCloseNotifications={noop}
+          onMarkAllNotificationsAsRead={noop}
+          onClearNotifications={noop}
+          onMarkNotificationAsRead={noop}
+          onLogout={noop}
+        />
+      </main>
     </div>
   ),
   usuarios: <UsuariosTab />,
