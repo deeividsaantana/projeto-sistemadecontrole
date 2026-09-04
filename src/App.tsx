@@ -297,6 +297,11 @@ export default function App() {
   // enquanto a causa não muda (ex.: ficar sem internet por vários lançamentos).
   const lastSyncFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
   const presenceIngestFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
+  // Conta envios ao Firebase em andamento. Um download que caia bem no meio
+  // desse intervalo (por exemplo, ao voltar o foco na aba logo depois de
+  // salvar algo) leria a nuvem antes do envio terminar de publicá-la, e
+  // sobrescreveria o lançamento que acabou de ser feito com a versão antiga.
+  const uploadsInFlightRef = useRef(0);
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
@@ -694,6 +699,7 @@ export default function App() {
     customPeriodosArquivados = periodosArquivados,
     customControleEstacas = controleEstacas
   ): Promise<{ success: boolean; message: string }> => {
+    uploadsInFlightRef.current += 1;
     try {
       const data = {
         empresas: customEmpresas,
@@ -759,6 +765,8 @@ export default function App() {
         void enqueueOfflineCommand('firebase-backup', { requestedAt: new Date().toISOString() });
       }
       return { success: false, message: formatFirebaseSyncError(error) };
+    } finally {
+      uploadsInFlightRef.current = Math.max(0, uploadsInFlightRef.current - 1);
     }
   };
 
@@ -947,6 +955,10 @@ export default function App() {
         setIsFirebaseConnected(status.connected);
 
         if (!status.updatedAt) return;
+        // Um envio em andamento ainda não publicou a versão mais nova na
+        // nuvem — baixar agora traria de volta a versão de antes dele e
+        // apagaria, na tela, o que acabou de ser lançado neste aparelho.
+        if (uploadsInFlightRef.current > 0) return;
         const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
         // Sem versão local registrada, este aparelho nunca completou uma
         // sincronização — não é seguro presumir que já está em dia. Antes
@@ -979,6 +991,7 @@ export default function App() {
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.
     const unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
+      if (uploadsInFlightRef.current > 0) return;
       const updatedAt = String(snapshot.data()?.updatedAt || '');
       const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
       if (updatedAt && localCloudVersion && updatedAt !== localCloudVersion) void handleDownloadFromFirebase();
