@@ -1741,7 +1741,7 @@ export default function TicketsJazidaTab({
           </button>}
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             Novo lançamento
@@ -1765,7 +1765,7 @@ export default function TicketsJazidaTab({
         </div>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-cyan-200 bg-white">
         <div className="border-b border-slate-200 bg-cyan-50/60 p-5">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -1827,7 +1827,7 @@ export default function TicketsJazidaTab({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-emerald-200 bg-white">
         <div className="border-b border-slate-200 bg-emerald-50/60 p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
@@ -1917,7 +1917,7 @@ export default function TicketsJazidaTab({
         </div>
       </section>
 
-      {operationsOpen && <div className="space-y-5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.025] p-4">
+      {operationsOpen && <div className="space-y-5 rounded-lg border border-amber-500/20 bg-amber-500/[0.025] p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div><h2 className="text-sm font-black text-[#14231e]">Área de lançamentos, edição e notas</h2><p className="text-[10px] text-[#65716b]">Área avançada mantida oculta para deixar a conferência diária mais rápida.</p></div>
         <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase text-amber-200">Modo administrativo</span>
@@ -2067,7 +2067,7 @@ export default function TicketsJazidaTab({
               <FilterX className="w-3.5 h-3.5" />
               Limpar filtros
             </button>
-            <button type="button" onClick={handleExportExcel} disabled={isExporting} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-[#14231e] font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
+            <button type="button" onClick={handleExportExcel} disabled={isExporting} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-[#14231e] font-bold text-xs rounded-lg transition-colors cursor-pointer">
               <FileSpreadsheet className="w-3.5 h-3.5" />
               {isExporting ? 'Exportando...' : hasFiltrosAtivos ? 'Exportar Excel filtrado' : 'Exportar Excel'}
             </button>
@@ -2104,7 +2104,7 @@ export default function TicketsJazidaTab({
 
       {/* Form */}
       {isFormOpen && (
-        <div className="bg-white border border-emerald-500/30 p-6 rounded-2xl shadow-xl relative">
+        <div className="bg-white border border-emerald-500/30 p-6 rounded-lg relative">
           <button onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="absolute top-4 right-4 p-1.5 text-[#65716b] hover:text-[#14231e] hover:bg-[#f2f5f3] rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
@@ -2255,7 +2255,7 @@ export default function TicketsJazidaTab({
               <button type="submit" name="saveMode" value="draft" className="px-5 py-2.5 border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15 text-amber-200 font-bold text-xs rounded-xl transition-all cursor-pointer">
                 Salvar rascunho
               </button>
-              <button type="submit" name="saveMode" value="complete" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
+              <button type="submit" name="saveMode" value="complete" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-colors cursor-pointer">
                 {editingId ? 'Concluir e salvar' : 'Concluir lançamento'}
               </button>
               <button type="button" onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="px-5 py-2.5 bg-[#f7f9f8] hover:bg-[#f2f5f3] text-[#3d4a44] font-bold text-xs rounded-xl transition-all cursor-pointer">
@@ -2267,7 +2267,7 @@ export default function TicketsJazidaTab({
       )}
 
       {/* Table */}
-      <div className="bg-white border border-[#e2e8e4] rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e2e8e4] rounded-lg overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] bg-white px-5 py-3 text-xs">
           <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredTickets.length > 0 && filteredTickets.every(item => selectedTicketIds.includes(item.id))} onChange={event => setSelectedTicketIds(event.target.checked ? filteredTickets.map(item => item.id) : [])} /> Selecionar visíveis ({selectedTicketIds.length})</label>
           <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedTicketIds.length} ticket(s) selecionado(s)?`)) { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
@@ -2374,7 +2374,7 @@ export default function TicketsJazidaTab({
 
       {noteModalNumber && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setNoteModalNumber(null)}>
-          <div className="max-h-[90dvh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl border border-cyan-500/30 bg-white p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+          <div className="max-h-[90dvh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-lg border border-cyan-500/30 bg-white p-5" onClick={event => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div><h3 className="flex items-center gap-2 text-sm font-black text-[#14231e]"><FileText className="h-4 w-4 text-cyan-300" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-[10px] text-[#65716b]">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
               <button type="button" onClick={() => setNoteModalNumber(null)} className="grid h-8 w-8 place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]"><X className="h-4 w-4" /></button>
@@ -2389,7 +2389,7 @@ export default function TicketsJazidaTab({
         </div>
       )}
 
-      <section className="grid gap-3 rounded-2xl border border-[#e2e8e4] bg-white p-4 md:grid-cols-3">
+      <section className="grid gap-3 rounded-lg border border-[#e2e8e4] bg-white p-4 md:grid-cols-3">
         <button type="button" onClick={handleOpenCreate} className="group flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-left transition hover:border-emerald-400">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-black text-[#14231e]">1</span>
           <span><b className="block text-xs text-[#14231e]">Cadastrar ou continuar</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Informe somente o que já sabe. Salve como rascunho e edite depois.</small></span>
@@ -2406,7 +2406,7 @@ export default function TicketsJazidaTab({
 
       {isBatchModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
-          <div className="max-h-[90dvh] overflow-y-auto bg-white border border-[#e2e8e4] rounded-2xl p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="max-h-[90dvh] overflow-y-auto bg-white border border-[#e2e8e4] rounded-lg p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm font-black text-[#14231e] flex items-center gap-2">
@@ -2544,7 +2544,7 @@ export default function TicketsJazidaTab({
       {/* Delete confirm modal */}
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setDeleteConfirmId(null)}>
-          <div className="bg-white border border-rose-500/30 rounded-2xl p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-white border border-rose-500/30 rounded-lg p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
             <p className="text-xs text-[#3d4a44]">Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.</p>
             <div className="flex gap-2.5">
               <button onClick={() => { onDeleteTicket(deleteConfirmId); setDeleteConfirmId(null); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-[#14231e] font-bold text-xs rounded-xl cursor-pointer">Excluir</button>

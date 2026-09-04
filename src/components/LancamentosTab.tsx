@@ -1184,7 +1184,7 @@ export default function LancamentosTab({
                 type="button"
                 onClick={handleExportExcelAbastecimentos}
                 disabled={isExportingExcel}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 {isExportingExcel ? 'Exportando...' : 'Exportar Excel'}
@@ -1201,7 +1201,7 @@ export default function LancamentosTab({
           )}
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             {mode === 'abastecimentos' ? 'Novo Abastecimento' : 'Nova Lubrificação'}
@@ -1235,7 +1235,7 @@ export default function LancamentosTab({
       </div>
 
       {/* Quick Search */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3 bg-slate-900 border border-slate-850 p-3 rounded-2xl">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 bg-slate-900 border border-slate-850 p-3 rounded-lg">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
           <input 
@@ -1273,7 +1273,7 @@ export default function LancamentosTab({
 
       {/* Painel de Filtros Avançados + Cards de Resumo — Módulo Combustível (Prioridade 1) */}
       {mode === 'abastecimentos' && filtrosAbertos && (
-        <div className="bg-slate-900 border border-slate-850 rounded-2xl p-5 space-y-4" id="filtros-combustivel-painel">
+        <div className="bg-slate-900 border border-slate-850 rounded-lg p-5 space-y-4" id="filtros-combustivel-painel">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Inicial</label>
@@ -1343,7 +1343,7 @@ export default function LancamentosTab({
               type="button"
               onClick={handleExportExcelAbastecimentos}
               disabled={isExportingExcel}
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               {isExportingExcel ? 'Exportando...' : hasFiltrosAtivos ? 'Exportar Excel filtrado' : 'Exportar Excel'}
@@ -1383,7 +1383,7 @@ export default function LancamentosTab({
 
       {/* Log Form Editor Card */}
       {isFormOpen && (
-        <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-2xl shadow-xl relative" id="log-editor-card">
+        <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-lg relative" id="log-editor-card">
           <button 
             onClick={() => { setIsFormOpen(false); resetFormFields(); }}
             className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer"
@@ -1585,7 +1585,7 @@ export default function LancamentosTab({
             <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
               >
                 {editingId ? 'Salvar Lançamento' : 'Registrar na Obra'}
               </button>
@@ -1615,7 +1615,7 @@ export default function LancamentosTab({
       )}
 
       {/* Lists of saved transactions */}
-      <div className="bg-slate-900 border border-slate-850 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden" id="transactions-viewport">
+      <div className="bg-slate-900 border border-slate-850 rounded-lg overflow-hidden" id="transactions-viewport">
         
         {/* ABASTECIMENTOS TABLE */}
         {mode === 'abastecimentos' && (
@@ -1780,8 +1780,8 @@ export default function LancamentosTab({
       {/* Deletion safe prompt confirm */}
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-slate-900 border border-rose-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl w-fit">
+          <div className="w-full max-w-sm bg-slate-900 border border-rose-500/30 rounded-lg p-6 space-y-4">
+            <div className="p-3 bg-rose-500/10 text-rose-400 rounded-lg w-fit">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
