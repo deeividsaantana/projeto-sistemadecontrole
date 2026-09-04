@@ -306,6 +306,15 @@ const captureBaselineFromLocalStorage = (): CloudBaseline => {
   return captureCloudBaseline(snapshot);
 };
 
+/** Intervalo mínimo entre duas checagens de nuvem, para não pagar uma leitura por clique. */
+const SYNC_CHECK_MIN_INTERVAL_MS = 15_000;
+/**
+ * Rede de segurança para quando o ouvinte em tempo real cai sem avisar. Com
+ * as checagens ao trocar de tela, voltar à aba e reconectar, este pulso não
+ * precisa ser frequente — a cada minuto só gerava leitura cobrada à toa.
+ */
+const SYNC_FALLBACK_INTERVAL_MS = 5 * 60_000;
+
 const mergePresenceRecords = (current: PresencaApontamento[], incoming: PresencaApontamento[]) => {
   const indexed = new Map(current.map(item => [presenceBusinessKey(item), item]));
   incoming.forEach(item => indexed.set(presenceBusinessKey(item), item));
@@ -347,6 +356,7 @@ export default function App() {
   // sobrescreveria o lançamento que acabou de ser feito com a versão antiga.
   const uploadsInFlightRef = useRef(0);
   const isCheckingSyncRef = useRef(false);
+  const lastSyncCheckAtRef = useRef(0);
   // Ids por tabela da última sincronização concluída neste aparelho. Permite
   // que uma mesclagem saiba diferenciar "eu apaguei isto" de "o colega criou
   // isto depois". Fica só em memória de propósito: não ocupa armazenamento
@@ -982,7 +992,12 @@ export default function App() {
   const pullRemoteChanges = async () => {
     if (!isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
     if (isCheckingSyncRef.current) return;
+    // Cada checagem é uma leitura cobrada no Firebase. Passar por cinco telas
+    // seguidas não precisa de cinco leituras: o ouvinte em tempo real já
+    // avisa de qualquer publicação nova nesse intervalo.
+    if (Date.now() - lastSyncCheckAtRef.current < SYNC_CHECK_MIN_INTERVAL_MS) return;
     isCheckingSyncRef.current = true;
+    lastSyncCheckAtRef.current = Date.now();
     try {
       const status = await getFirebaseConnectionStatus(db);
       setIsFirebaseConnected(status.connected);
@@ -1039,7 +1054,7 @@ export default function App() {
     }, error => {
       console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
     });
-    const interval = window.setInterval(pullRemoteChanges, 60_000);
+    const interval = window.setInterval(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS);
     // O canal em tempo real do Firestore pode cair sem avisar quando o
     // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
     // é um comportamento conhecido do navegador, não um erro para capturar.
