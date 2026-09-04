@@ -101,69 +101,69 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
   const destination = blankPrint ? '' : ticket.destinoObra === 'Outros' ? ticket.destinoOutro || 'Outros' : ticket.destinoObra;
   const materials = ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Outros'];
   const field = (label: string, value: React.ReactNode, className = '') => (
-    <div className={`min-h-14 border-r border-b border-slate-500 p-2 ${className}`}>
-      <div className="text-[9px] font-bold uppercase text-slate-600">{label}</div>
+    <div className={`min-h-14 border-r border-b border-[#cfd7d1] p-2 ${className}`}>
+      <div className="text-[9px] font-bold uppercase text-[#53605a]">{label}</div>
       <div className="mt-2 text-sm font-semibold text-slate-950">{value || (blankPrint ? '' : '—')}</div>
     </div>
   );
 
   return (
-    <div className="aspect-[1.414/1] min-w-[760px] w-full overflow-hidden border border-slate-500 bg-white text-slate-950">
-      <div className="grid grid-cols-[1fr_1.6fr_.55fr] border-l border-t border-slate-500">
-        <div className="h-24 border-r border-b border-slate-500 p-3 flex items-center">
+    <div className="aspect-[1.414/1] min-w-[760px] w-full overflow-hidden border border-[#cfd7d1] bg-white text-slate-950">
+      <div className="grid grid-cols-[1fr_1.6fr_.55fr] border-l border-t border-[#cfd7d1]">
+        <div className="h-24 border-r border-b border-[#cfd7d1] p-3 flex items-center">
           <img src={reneaLogoFull} alt="RENEA" className="max-h-14 max-w-44 object-contain" />
         </div>
-        <div className="h-24 border-r border-b border-slate-500 grid place-items-center text-center px-3">
-          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-[10px] text-slate-600">Complexo Alto Tietê</p></div>
+        <div className="h-24 border-r border-b border-[#cfd7d1] grid place-items-center text-center px-3">
+          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-[10px] text-[#53605a]">Complexo Alto Tietê</p></div>
         </div>
-        <div className="h-24 border-r border-b border-slate-500 p-2">
-          <div className="text-[9px] font-bold uppercase text-slate-600">Ticket Nº</div>
-          <div className="mt-3 border-b border-slate-500 pb-1 text-center text-2xl font-bold">{ticket.ocultarNumeroImpressao ? '' : ticket.ticketNumero}</div>
+        <div className="h-24 border-r border-b border-[#cfd7d1] p-2">
+          <div className="text-[9px] font-bold uppercase text-[#53605a]">Ticket Nº</div>
+          <div className="mt-3 border-b border-[#cfd7d1] pb-1 text-center text-2xl font-bold">{ticket.ocultarNumeroImpressao ? '' : ticket.ticketNumero}</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 border-l border-slate-500">
+      <div className="grid grid-cols-4 border-l border-[#cfd7d1]">
         {field('Prefixo', blankPrint ? '' : ticket.prefixo)}
         {field('Placa', blankPrint ? '' : ticket.placa)}
         {field('Data', blankPrint ? '' : ticket.data.split('-').reverse().join('/'))}
         {field(isReceipt ? 'Hora de chegada' : 'Hora de saída', blankPrint ? '' : isReceipt ? ticket.horaChegada || ticket.horaSaida : ticket.horaSaida)}
       </div>
 
-      <div className="border-l border-r border-b border-slate-500 p-3 min-h-20">
-        <div className="text-[9px] font-bold uppercase text-slate-600">Tipo de material</div>
+      <div className="border-l border-r border-b border-[#cfd7d1] p-3 min-h-20">
+        <div className="text-[9px] font-bold uppercase text-[#53605a]">Tipo de material</div>
         <div className="mt-4 grid grid-cols-6 gap-3">
-          {materials.map(option => <div key={option} className="flex items-center gap-2 text-xs"><span className={`h-4 w-4 border border-slate-600 grid place-items-center font-bold ${!blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')) ? 'bg-slate-900 text-white' : ''}`}>{!blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')) ? 'X' : ''}</span>{option}</div>)}
+          {materials.map(option => <div key={option} className="flex items-center gap-2 text-xs"><span className={`h-4 w-4 border border-[#d7ded9] grid place-items-center font-bold ${!blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')) ? 'bg-white text-[#14231e]' : ''}`}>{!blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')) ? 'X' : ''}</span>{option}</div>)}
         </div>
         {!blankPrint && ticket.tipoMaterial === 'Outros' && <div className="mt-2 text-xs">Especificação: <strong>{material}</strong></div>}
       </div>
 
-      <div className="grid grid-cols-[1fr_1.4fr_.8fr] border-l border-slate-500">
+      <div className="grid grid-cols-[1fr_1.4fr_.8fr] border-l border-[#cfd7d1]">
         {field('Quantidade', blankPrint ? '' : `${ticket.quantidadeM3} ${ticket.unidadeQuantidade || 'm³'}`)}
         {field(isReceipt ? 'Ramo de descarga' : 'Destino / obra', destination)}
         {field('Estaca', blankPrint ? '' : ticket.estaca || '—')}
       </div>
 
-      <div className="border-l border-r border-b border-slate-500 p-3 min-h-16">
-        <div className="text-[9px] font-bold uppercase text-slate-600">Carga conforme?</div>
-        <div className="mt-3 flex gap-12 text-xs"><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-slate-600 grid place-items-center font-bold ${!blankPrint && ticket.cargaConforme === true ? 'bg-slate-900 text-white' : ''}`}>{!blankPrint && ticket.cargaConforme === true ? 'X' : ''}</i>Sim</span><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-slate-600 grid place-items-center font-bold ${!blankPrint && ticket.cargaConforme === false ? 'bg-slate-900 text-white' : ''}`}>{!blankPrint && ticket.cargaConforme === false ? 'X' : ''}</i>Não</span></div>
+      <div className="border-l border-r border-b border-[#cfd7d1] p-3 min-h-16">
+        <div className="text-[9px] font-bold uppercase text-[#53605a]">Carga conforme?</div>
+        <div className="mt-3 flex gap-12 text-xs"><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-[#d7ded9] grid place-items-center font-bold ${!blankPrint && ticket.cargaConforme === true ? 'bg-white text-[#14231e]' : ''}`}>{!blankPrint && ticket.cargaConforme === true ? 'X' : ''}</i>Sim</span><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-[#d7ded9] grid place-items-center font-bold ${!blankPrint && ticket.cargaConforme === false ? 'bg-white text-[#14231e]' : ''}`}>{!blankPrint && ticket.cargaConforme === false ? 'X' : ''}</i>Não</span></div>
       </div>
 
-      <div className="border-l border-r border-b border-slate-500 p-3 min-h-24">
-        <div className="text-[9px] font-bold uppercase text-slate-600">Divergências / observações</div>
+      <div className="border-l border-r border-b border-[#cfd7d1] p-3 min-h-24">
+        <div className="text-[9px] font-bold uppercase text-[#53605a]">Divergências / observações</div>
         <p className="mt-3 text-xs leading-relaxed">{blankPrint ? '' : ticket.observacao || 'Sem observações.'}</p>
       </div>
 
-      <div className="grid grid-cols-2 border-l border-slate-500">
-        <div className="min-h-28 border-r border-b border-slate-500 p-3">
-          <div className="text-[9px] font-bold uppercase text-slate-600">Assinatura - {isReceipt ? 'Recebedor' : 'Responsável pela liberação'}</div>
+      <div className="grid grid-cols-2 border-l border-[#cfd7d1]">
+        <div className="min-h-28 border-r border-b border-[#cfd7d1] p-3">
+          <div className="text-[9px] font-bold uppercase text-[#53605a]">Assinatura - {isReceipt ? 'Recebedor' : 'Responsável pela liberação'}</div>
           {!blankPrint && ticket.assinaturaDigital && <img src={ticket.assinaturaDigital} alt="Assinatura digital" className="mx-auto h-14 max-w-[80%] object-contain" />}
-          <div className="mt-1 border-t border-slate-500 pt-1 text-center text-[10px]">{blankPrint ? '' : ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível'}</div>
+          <div className="mt-1 border-t border-[#cfd7d1] pt-1 text-center text-[10px]">{blankPrint ? '' : ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível'}</div>
         </div>
-        <div className="min-h-28 border-r border-b border-slate-500 p-3 flex flex-col justify-end">
-          <div className="border-t border-slate-500 pt-1 text-center text-[10px]">Assinatura - Conferente da obra / Nome legível</div>
+        <div className="min-h-28 border-r border-b border-[#cfd7d1] p-3 flex flex-col justify-end">
+          <div className="border-t border-[#cfd7d1] pt-1 text-center text-[10px]">Assinatura - Conferente da obra / Nome legível</div>
         </div>
       </div>
-      <div className="border-x border-b border-slate-500 py-1 text-center text-[7px] uppercase text-slate-500">Via de {ticket.tipoTicket || 'Liberação'} | Documento digital RENEA</div>
+      <div className="border-x border-b border-[#cfd7d1] py-1 text-center text-[7px] uppercase text-[#65716b]">Via de {ticket.tipoTicket || 'Liberação'} | Documento digital RENEA</div>
     </div>
   );
 };
@@ -172,7 +172,7 @@ const TicketDocumentPreview = ({ releaseTicket, receiptTicket }: { releaseTicket
   <div className="aspect-[210/297] min-w-[760px] w-full overflow-hidden bg-white p-3 shadow-lg" id="ticket-print-preview">
     <div className="flex h-full flex-col justify-between">
       <TicketSingleDocument ticket={releaseTicket} />
-      <div className="relative border-t border-dashed border-slate-500"><span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-[7px] uppercase text-slate-500">Linha de corte</span></div>
+      <div className="relative border-t border-dashed border-[#cfd7d1]"><span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-[7px] uppercase text-[#65716b]">Linha de corte</span></div>
       <TicketSingleDocument ticket={receiptTicket} />
     </div>
   </div>
@@ -1694,13 +1694,13 @@ export default function TicketsJazidaTab({
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8e4] pb-4">
         <div>
-          <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
+          <h1 className="text-xl font-extrabold text-[#14231e] flex items-center gap-2">
             <Truck className="w-5 h-5 text-emerald-500" />
             Jazida • Controle diário
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Impressão, devolução das duas vias e fechamento do dia em um único fluxo.</p>
+          <p className="text-xs text-[#65716b] mt-1">Impressão, devolução das duas vias e fechamento do dia em um único fluxo.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -1718,7 +1718,7 @@ export default function TicketsJazidaTab({
             onClick={() => importInputRef.current?.click()}
             disabled={isImporting}
             title="Escolher uma planilha XLSX ou XLSM, revisar as linhas e só depois confirmar"
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[#e2e8e4] bg-white px-4 text-xs font-black text-[#26362f] transition-colors hover:border-emerald-500 hover:text-[#14231e] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Upload className="w-4 h-4 text-emerald-400" />
             {isImporting ? 'Lendo planilha...' : 'Importar planilha'}
@@ -1727,7 +1727,7 @@ export default function TicketsJazidaTab({
             type="button"
             onClick={openBatchModal}
             title="Criar e imprimir tickets em ordem crescente"
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[#e2e8e4] bg-white px-4 text-xs font-black text-[#26362f] transition-colors hover:border-emerald-500 hover:text-[#14231e]"
           >
             <Printer className="w-4 h-4 text-emerald-400" />
             Imprimir sequência
@@ -1735,13 +1735,13 @@ export default function TicketsJazidaTab({
           {operationsOpen && <button
             onClick={copyPublicLink}
             title="Copiar o link único para liberação e recebimento"
-            className="px-4 py-2.5 bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-white border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Link2 className="w-4 h-4" /> Copiar link público
           </button>}
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             Novo lançamento
@@ -1749,7 +1749,7 @@ export default function TicketsJazidaTab({
           <button
             type="button"
             onClick={() => { setOperationsOpen(value => !value); setIsFormOpen(false); }}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${operationsOpen ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-emerald-500'}`}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${operationsOpen ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-[#e2e8e4] bg-white text-[#26362f] hover:border-emerald-500'}`}
           >
             <FilePenLine className="h-4 w-4" />
             {operationsOpen ? 'Ocultar lista e notas' : 'Ver lista e notas'}
@@ -1773,17 +1773,17 @@ export default function TicketsJazidaTab({
                 <h2 className="flex items-center gap-2 font-sans text-base font-black text-slate-900"><Layers3 className="h-5 w-5 text-cyan-600" /> Conferência automática das viagens</h2>
                 <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-300">ERP v2.5</span>
               </div>
-              <p className="mt-1 text-[11px] text-slate-400">Pareamento integral pelo Ticket Nº, sem limites fixos de linha. Prefixo, placa, material e quantidade seguem a mesma conferência da planilha.</p>
+              <p className="mt-1 text-[11px] text-[#65716b]">Pareamento integral pelo Ticket Nº, sem limites fixos de linha. Prefixo, placa, material e quantidade seguem a mesma conferência da planilha.</p>
             </div>
-            <div className="text-[10px] text-slate-500">
-              IDs vinculados: <b className="text-slate-300">{travelControl.linkedEquipment}</b> equipamentos · <b className="text-slate-300">{travelControl.linkedMaterials}</b> materiais · <b className="text-slate-300">{travelControl.linkedDestinations}</b> locais · <b className="text-slate-300">{travelControl.linkedBranches}</b> ramos
+            <div className="text-[10px] text-[#65716b]">
+              IDs vinculados: <b className="text-[#3d4a44]">{travelControl.linkedEquipment}</b> equipamentos · <b className="text-[#3d4a44]">{travelControl.linkedMaterials}</b> materiais · <b className="text-[#3d4a44]">{travelControl.linkedDestinations}</b> locais · <b className="text-[#3d4a44]">{travelControl.linkedBranches}</b> ramos
             </div>
           </div>
         </div>
         <div className="space-y-4 p-5">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
             {[
-              { label: 'Tickets únicos', value: travelControl.totalTickets, detail: 'numeração consolidada', color: 'text-white' },
+              { label: 'Tickets únicos', value: travelControl.totalTickets, detail: 'numeração consolidada', color: 'text-[#14231e]' },
               { label: 'Viagens conferidas', value: travelControl.completeTrips, detail: 'pares sem divergência', color: 'text-emerald-300' },
               { label: 'Divergências', value: travelControl.divergentTrips, detail: 'dados diferentes', color: 'text-rose-300' },
               { label: 'Sem recebimento', value: travelControl.releasesWithoutReceipt, detail: 'liberação pendente', color: 'text-amber-300' },
@@ -1791,33 +1791,33 @@ export default function TicketsJazidaTab({
               { label: 'Duração média', value: formatTravelDuration(travelControl.averageDurationMinutes), detail: `${travelControl.duplicateTickets} ticket(s) duplicado(s)`, color: 'text-cyan-300' },
             ].map(card => (
               <div key={card.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{card.label}</p>
+                <p className="text-[9px] font-black uppercase tracking-wider text-[#65716b]">{card.label}</p>
                 <strong className={`mt-2 block text-xl font-black ${card.color}`}>{card.value}</strong>
-                <span className="mt-1 block text-[9px] text-slate-600">{card.detail}</span>
+                <span className="mt-1 block text-[9px] text-[#53605a]">{card.detail}</span>
               </div>
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-800">
+          <div className="overflow-hidden rounded-xl border border-[#e2e8e4]">
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-              <div><h3 className="text-[11px] font-black uppercase tracking-wider text-slate-200">Fila de revisão</h3><p className="mt-1 text-[9px] text-slate-500">Linhas incompletas, divergentes ou duplicadas permanecem visíveis para correção.</p></div>
-              <span className="rounded-md bg-slate-800 px-2 py-1 text-[9px] font-black text-slate-300">{travelControl.totalTickets - travelControl.completeTrips} pendência(s)</span>
+              <div><h3 className="text-[11px] font-black uppercase tracking-wider text-[#26362f]">Fila de revisão</h3><p className="mt-1 text-[9px] text-[#65716b]">Linhas incompletas, divergentes ou duplicadas permanecem visíveis para correção.</p></div>
+              <span className="rounded-md bg-[#f7f9f8] px-2 py-1 text-[9px] font-black text-[#3d4a44]">{travelControl.totalTickets - travelControl.completeTrips} pendência(s)</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] text-left text-[10px]">
-                <thead className="bg-slate-950/40 uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-2.5">Ticket</th><th className="px-4 py-2.5">Situação</th><th className="px-4 py-2.5">Liberação</th><th className="px-4 py-2.5">Recebimento</th><th className="px-4 py-2.5">Duração</th><th className="px-4 py-2.5">Revisar</th></tr></thead>
-                <tbody className="divide-y divide-slate-850">
+                <thead className="bg-[#f7f9f8] uppercase tracking-wider text-[#65716b]"><tr><th className="px-4 py-2.5">Ticket</th><th className="px-4 py-2.5">Situação</th><th className="px-4 py-2.5">Liberação</th><th className="px-4 py-2.5">Recebimento</th><th className="px-4 py-2.5">Duração</th><th className="px-4 py-2.5">Revisar</th></tr></thead>
+                <tbody className="divide-y divide-[#e2e8e4]">
                   {travelReviewRows.length === 0 ? <tr><td colSpan={6} className="px-4 py-6 text-center text-emerald-300">Todas as viagens estão pareadas e conferidas.</td></tr> : travelReviewRows.map(operation => {
                     const statusClass = operation.status === 'Divergência' || operation.status === 'Ticket duplicado'
                       ? 'border-rose-500/25 bg-rose-500/10 text-rose-300'
                       : 'border-amber-500/25 bg-amber-500/10 text-amber-200';
-                    return <tr key={operation.ticketNumber} className="text-slate-300">
+                    return <tr key={operation.ticketNumber} className="text-[#3d4a44]">
                       <td className="px-4 py-3 font-mono font-black text-emerald-300">{operation.ticketNumber}</td>
                       <td className="px-4 py-3"><span className={`rounded-md border px-2 py-1 font-bold ${statusClass}`}>{operation.status}</span></td>
-                      <td className="px-4 py-3"><b className="block">{operation.release?.prefixo || '—'}</b><span className="text-slate-600">{operation.releaseEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
-                      <td className="px-4 py-3"><b className="block">{operation.receipt?.prefixo || '—'}</b><span className="text-slate-600">{operation.receiptEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
+                      <td className="px-4 py-3"><b className="block">{operation.release?.prefixo || '—'}</b><span className="text-[#53605a]">{operation.releaseEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
+                      <td className="px-4 py-3"><b className="block">{operation.receipt?.prefixo || '—'}</b><span className="text-[#53605a]">{operation.receiptEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
                       <td className="px-4 py-3 font-bold text-cyan-300">{formatTravelDuration(operation.durationMinutes)}</td>
-                      <td className="px-4 py-3 text-slate-500">{operation.divergences.map(item => item.label).join(', ') || (operation.status === 'Ticket duplicado' ? `${operation.releases.length} lib. / ${operation.receipts.length} rec.` : 'Pareamento pendente')}</td>
+                      <td className="px-4 py-3 text-[#65716b]">{operation.divergences.map(item => item.label).join(', ') || (operation.status === 'Ticket duplicado' ? `${operation.releases.length} lib. / ${operation.receipts.length} rec.` : 'Pareamento pendente')}</td>
                     </tr>;
                   })}
                 </tbody>
@@ -1835,16 +1835,16 @@ export default function TicketsJazidaTab({
                 <h2 className="flex items-center gap-2 font-sans text-base font-black text-slate-900"><ListChecks className="h-5 w-5 text-emerald-600" /> Conferência das duas vias</h2>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-300"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Tempo real</span>
               </div>
-              <p className="mt-1 text-[11px] text-slate-400">Cada número impresso gera uma pendência de Liberação e outra de Recebimento. Marque somente quando a via física voltar.</p>
+              <p className="mt-1 text-[11px] text-[#65716b]">Cada número impresso gera uma pendência de Liberação e outra de Recebimento. Marque somente quando a via física voltar.</p>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <label className="space-y-1">
-                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-500">Dia da conferência</span>
-                <input type="date" value={controlDate} onChange={event => setControlDate(event.target.value)} className="h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-white outline-none focus:border-emerald-500" />
+                <span className="block text-[9px] font-black uppercase tracking-wider text-[#65716b]">Dia da conferência</span>
+                <input type="date" value={controlDate} onChange={event => setControlDate(event.target.value)} className="h-10 rounded-lg border border-[#e2e8e4] bg-white px-3 text-xs font-bold text-[#14231e] outline-none focus:border-emerald-500" />
               </label>
-              <button type="button" onClick={exportTicketControlPdf} className="h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-[10px] font-black text-slate-200 hover:border-emerald-500">PDF</button>
-              <button type="button" onClick={exportTicketControlCsv} className="h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-[10px] font-black text-slate-200 hover:border-emerald-500">CSV</button>
-              <button type="button" onClick={exportTicketControlExcel} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-[10px] font-black text-white hover:bg-emerald-500"><Download className="h-4 w-4" /> Excel detalhado</button>
+              <button type="button" onClick={exportTicketControlPdf} className="h-10 rounded-lg border border-[#e2e8e4] bg-white px-3 text-[10px] font-black text-[#26362f] hover:border-emerald-500">PDF</button>
+              <button type="button" onClick={exportTicketControlCsv} className="h-10 rounded-lg border border-[#e2e8e4] bg-white px-3 text-[10px] font-black text-[#26362f] hover:border-emerald-500">CSV</button>
+              <button type="button" onClick={exportTicketControlExcel} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-[10px] font-black text-[#14231e] hover:bg-emerald-500"><Download className="h-4 w-4" /> Excel detalhado</button>
             </div>
           </div>
         </div>
@@ -1852,62 +1852,62 @@ export default function TicketsJazidaTab({
         <div className="space-y-5 p-5">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
             {[
-              { label: 'Tickets criados', value: dailyControl.totalCriados, detail: 'números no dia', color: 'text-white' },
+              { label: 'Tickets criados', value: dailyControl.totalCriados, detail: 'números no dia', color: 'text-[#14231e]' },
               { label: 'Vias devolvidas', value: dailyControl.liberacoesRecebidas + dailyControl.recebimentosRecebidos, detail: `de ${dailyControl.totalCriados * 2} vias`, color: 'text-cyan-300' },
               { label: 'Liberações', value: dailyControl.liberacoesRecebidas, detail: `${dailyControl.pendentesLiberacao.length} faltando`, color: 'text-emerald-300' },
               { label: 'Recebimentos', value: dailyControl.recebimentosRecebidos, detail: `${dailyControl.pendentesRecebimento.length} faltando`, color: 'text-sky-300' },
               { label: 'Completos', value: dailyControl.paresCompletos, detail: 'duas vias devolvidas', color: 'text-emerald-300' },
               { label: 'Com pendência', value: dailyControl.pendentesQualquerVia, detail: `${dailyControl.percentualConferencia}% conferido`, color: dailyControl.pendentesQualquerVia ? 'text-amber-300' : 'text-emerald-300' },
             ].map(card => (
-              <div key={card.label} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-                <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{card.label}</p>
+              <div key={card.label} className="rounded-xl border border-[#e2e8e4] bg-[#f7f9f8] p-4">
+                <p className="text-[9px] font-black uppercase tracking-wider text-[#65716b]">{card.label}</p>
                 <strong className={`mt-2 block text-2xl font-black ${card.color}`}>{card.value}</strong>
-                <span className="text-[9px] text-slate-500">{card.detail}</span>
+                <span className="text-[9px] text-[#65716b]">{card.detail}</span>
               </div>
             ))}
           </div>
 
-          <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-            <div className="mb-2 flex items-center justify-between text-[10px]"><span className="font-black uppercase tracking-wider text-slate-400">Fechamento do dia</span><b className="text-emerald-300">{dailyControl.percentualConferencia}%</b></div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-cyan-400 transition-all duration-500" style={{ width: `${dailyControl.percentualConferencia}%` }} /></div>
+          <div className="rounded-xl border border-[#e2e8e4] bg-[#f7f9f8] p-4">
+            <div className="mb-2 flex items-center justify-between text-[10px]"><span className="font-black uppercase tracking-wider text-[#65716b]">Fechamento do dia</span><b className="text-emerald-300">{dailyControl.percentualConferencia}%</b></div>
+            <div className="h-2 overflow-hidden rounded-full bg-[#f7f9f8]"><div className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-cyan-400 transition-all duration-500" style={{ width: `${dailyControl.percentualConferencia}%` }} /></div>
           </div>
 
           {dailyDuplicateCount > 0 && <button type="button" onClick={() => { setOperationsOpen(true); setFStatus('Duplicado'); }} className="flex w-full items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left"><span><b className="block text-xs text-rose-200">{dailyDuplicateCount} via(s) com numeração duplicada neste dia</b><small className="text-[9px] text-rose-300/70">Os dados foram preservados. Abra a área administrativa para revisar sem perder registros.</small></span><CopyPlus className="h-4 w-4 shrink-0 text-rose-300" /></button>}
 
           <div className="grid gap-3 lg:grid-cols-2">
             <div className={`rounded-xl border p-4 ${dailyControl.pendentesLiberacao.length ? 'border-amber-500/25 bg-amber-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
-              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-white">Faltam vias de Liberação</h3><span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black text-amber-300">{dailyControl.pendentesLiberacao.length}</span></div>
-              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesLiberacao.length ? dailyControl.pendentesLiberacao.map(numero => <span key={numero} className="rounded-md border border-amber-500/25 bg-slate-950 px-2 py-1 font-mono text-[10px] font-bold text-amber-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-300">Todas as liberações retornaram.</span>}</div>
+              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Liberação</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-amber-300">{dailyControl.pendentesLiberacao.length}</span></div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesLiberacao.length ? dailyControl.pendentesLiberacao.map(numero => <span key={numero} className="rounded-md border border-amber-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-amber-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-300">Todas as liberações retornaram.</span>}</div>
             </div>
             <div className={`rounded-xl border p-4 ${dailyControl.pendentesRecebimento.length ? 'border-sky-500/25 bg-sky-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
-              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-white">Faltam vias de Recebimento</h3><span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black text-sky-300">{dailyControl.pendentesRecebimento.length}</span></div>
-              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-slate-950 px-2 py-1 font-mono text-[10px] font-bold text-sky-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-300">Todos os recebimentos retornaram.</span>}</div>
+              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Recebimento</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-sky-300">{dailyControl.pendentesRecebimento.length}</span></div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-sky-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-300">Todos os recebimentos retornaram.</span>}</div>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-800">
-            <div className="flex flex-col gap-3 border-b border-slate-800 bg-slate-950/60 p-4 lg:flex-row lg:items-center lg:justify-between">
-              <div><h3 className="text-xs font-black text-white">Checklist do dia</h3><p className="mt-1 text-[9px] text-slate-500">O horário de devolução é registrado automaticamente ao marcar cada via.</p></div>
+          <div className="overflow-hidden rounded-xl border border-[#e2e8e4]">
+            <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f7f9f8] p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div><h3 className="text-xs font-black text-[#14231e]">Checklist do dia</h3><p className="mt-1 text-[9px] text-[#65716b]">O horário de devolução é registrado automaticamente ao marcar cada via.</p></div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Liberação', true)} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[9px] font-black text-emerald-300 disabled:opacity-40">Marcar todas as liberações</button>
                 <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Recebimento', true)} className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[9px] font-black text-sky-300 disabled:opacity-40">Marcar todos os recebimentos</button>
-                <button type="button" disabled={!dailyControl.rows.length} onClick={handleClearAllReturns} className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-[9px] font-black text-slate-400 disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" /> Limpar checklist</button>
+                <button type="button" disabled={!dailyControl.rows.length} onClick={handleClearAllReturns} className="inline-flex items-center gap-1.5 rounded-md border border-[#e2e8e4] bg-white px-3 py-2 text-[9px] font-black text-[#65716b] disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" /> Limpar checklist</button>
               </div>
             </div>
             <div className="max-h-[520px] overflow-auto">
               <table className="w-full min-w-[920px] text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-950 text-[9px] font-black uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Ticket</th><th className="px-4 py-3">Criado / impresso</th><th className="px-4 py-3">Via de liberação</th><th className="px-4 py-3">Via de recebimento</th><th className="px-4 py-3">Identificação</th><th className="px-4 py-3">Notas</th></tr></thead>
-                <tbody className="divide-y divide-slate-800">
-                  {!dailyControl.rows.length ? <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500"><Layers3 className="mx-auto mb-3 h-7 w-7 text-slate-700" />Nenhum ticket criado neste dia. Use “Imprimir sequência” para cadastrar a faixa.</td></tr> : dailyControl.rows.map(row => {
+                <thead className="sticky top-0 z-10 bg-white text-[9px] font-black uppercase tracking-wider text-[#65716b]"><tr><th className="px-4 py-3">Ticket</th><th className="px-4 py-3">Criado / impresso</th><th className="px-4 py-3">Via de liberação</th><th className="px-4 py-3">Via de recebimento</th><th className="px-4 py-3">Identificação</th><th className="px-4 py-3">Notas</th></tr></thead>
+                <tbody className="divide-y divide-[#e2e8e4]">
+                  {!dailyControl.rows.length ? <tr><td colSpan={6} className="px-4 py-12 text-center text-[#65716b]"><Layers3 className="mx-auto mb-3 h-7 w-7 text-slate-700" />Nenhum ticket criado neste dia. Use “Imprimir sequência” para cadastrar a faixa.</td></tr> : dailyControl.rows.map(row => {
                     const ticket = row.liberacao || row.recebimento;
                     const note = row.recebimento?.notaFiscalNumero || row.liberacao?.notaFiscalNumero;
-                    return <tr key={row.numero} className="bg-slate-900/40 hover:bg-slate-800/40">
-                      <td className="px-4 py-3 font-mono text-sm font-black text-white">{row.numero}</td>
-                      <td className="px-4 py-3"><b className="block text-slate-200">{formatEventDateTime(row.criadoEm)}</b><span className="text-[9px] text-slate-600">{row.loteId.startsWith('avulso-') ? 'Cadastro avulso' : 'Lote impresso'}</span></td>
+                    return <tr key={row.numero} className="bg-[#f7f9f8] hover:bg-[#f2f5f3]">
+                      <td className="px-4 py-3 font-mono text-sm font-black text-[#14231e]">{row.numero}</td>
+                      <td className="px-4 py-3"><b className="block text-[#26362f]">{formatEventDateTime(row.criadoEm)}</b><span className="text-[9px] text-[#53605a]">{row.loteId.startsWith('avulso-') ? 'Cadastro avulso' : 'Lote impresso'}</span></td>
                       <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Liberação')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.liberacaoRecebida ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-200 hover:border-amber-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.liberacaoRecebida ? '✓' : ''}</span>{row.liberacaoRecebida ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.liberacaoRecebidaEm)}</small></button></td>
                       <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Recebimento')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.recebimentoRecebido ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-sky-500/30 bg-sky-500/10 text-sky-200 hover:border-sky-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.recebimentoRecebido ? '✓' : ''}</span>{row.recebimentoRecebido ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.recebimentoRecebidoEm)}</small></button></td>
-                      <td className="px-4 py-3"><b className="block text-slate-200">{ticket?.prefixo || '—'}</b><span className="text-[9px] text-slate-500">{ticket?.placa || 'Sem placa'}</span></td>
-                      <td className="px-4 py-3">{operationsOpen ? <button type="button" onClick={() => handleOpenNoteModal(row.numero)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}><FileText className="h-3 w-3" />{note || 'Lançar nota'}</button> : <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-300' : 'bg-slate-800 text-slate-500'}`}><FileText className="h-3 w-3" />{note || 'Área oculta'}</span>}</td>
+                      <td className="px-4 py-3"><b className="block text-[#26362f]">{ticket?.prefixo || '—'}</b><span className="text-[9px] text-[#65716b]">{ticket?.placa || 'Sem placa'}</span></td>
+                      <td className="px-4 py-3">{operationsOpen ? <button type="button" onClick={() => handleOpenNoteModal(row.numero)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20' : 'bg-[#f7f9f8] text-[#65716b] hover:text-[#14231e]'}`}><FileText className="h-3 w-3" />{note || 'Lançar nota'}</button> : <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-300' : 'bg-[#f7f9f8] text-[#65716b]'}`}><FileText className="h-3 w-3" />{note || 'Área oculta'}</span>}</td>
                     </tr>;
                   })}
                 </tbody>
@@ -1919,15 +1919,15 @@ export default function TicketsJazidaTab({
 
       {operationsOpen && <div className="space-y-5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.025] p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 className="text-sm font-black text-white">Área de lançamentos, edição e notas</h2><p className="text-[10px] text-slate-500">Área avançada mantida oculta para deixar a conferência diária mais rápida.</p></div>
+        <div><h2 className="text-sm font-black text-[#14231e]">Área de lançamentos, edição e notas</h2><p className="text-[10px] text-[#65716b]">Área avançada mantida oculta para deixar a conferência diária mais rápida.</p></div>
         <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase text-amber-200">Modo administrativo</span>
       </div>
-      <div className="inline-flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+      <div className="inline-flex bg-white p-1 rounded-xl border border-[#e2e8e4]">
         {(['Liberação', 'Recebimento'] as TipoTicketJazida[]).map(tipo => (
           <button
             key={tipo}
             onClick={() => { setTicketTab(tipo); setIsFormOpen(false); resetFormFields(); }}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${ticketTab === tipo ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${ticketTab === tipo ? 'bg-emerald-600 text-[#14231e]' : 'text-[#65716b] hover:text-[#14231e]'}`}
           >
             Tickets de {tipo}
           </button>
@@ -1935,10 +1935,10 @@ export default function TicketsJazidaTab({
       </div>
 
       {/* Busca, atalhos e filtros */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3">
+      <div className="bg-white border border-[#e2e8e4] p-4 rounded-lg space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
+          <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-[#53605a]" />
           <input
             id="ticket-search"
             name="ticketSearch"
@@ -1946,49 +1946,49 @@ export default function TicketsJazidaTab({
             placeholder="Buscar ticket, placa, prefixo, material, destino, responsável ou nota fiscal"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 bg-slate-950 border border-slate-700 rounded-md pl-10 pr-4 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full h-10 bg-white border border-[#e2e8e4] rounded-md pl-10 pr-4 text-xs text-[#26362f] placeholder:text-[#53605a] focus:outline-none focus:border-emerald-500 transition-colors"
           />
           </div>
-          <button type="button" onClick={() => setFiltrosAbertos(v => !v)} aria-expanded={filtrosAbertos} className={`h-10 flex items-center justify-center gap-2 px-4 rounded-md text-xs font-bold border transition-colors ${filtrosAbertos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-950 border-slate-700 text-slate-300 hover:border-emerald-500'}`}>
+          <button type="button" onClick={() => setFiltrosAbertos(v => !v)} aria-expanded={filtrosAbertos} className={`h-10 flex items-center justify-center gap-2 px-4 rounded-md text-xs font-bold border transition-colors ${filtrosAbertos ? 'bg-emerald-600 border-emerald-600 text-[#14231e]' : 'bg-white border-[#e2e8e4] text-[#3d4a44] hover:border-emerald-500'}`}>
             <SlidersHorizontal className="w-4 h-4" />
             Mais filtros
             {activeFilterCount > 0 && <span className="min-w-5 h-5 px-1 rounded bg-white/15 grid place-items-center text-[10px]">{activeFilterCount}</span>}
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
           </button>
-          <button type="button" onClick={handleExportExcel} disabled={isExporting} className="h-10 flex items-center justify-center gap-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs rounded-md">
+          <button type="button" onClick={handleExportExcel} disabled={isExporting} className="h-10 flex items-center justify-center gap-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-[#14231e] font-bold text-xs rounded-md">
             <FileSpreadsheet className="w-4 h-4" />
             {isExporting ? 'Exportando...' : hasFiltrosAtivos ? 'Exportar resultado' : 'Exportar Excel'}
           </button>
         </div>
 
-        <div className="flex flex-col xl:flex-row xl:items-center gap-3 border-t border-slate-800 pt-3">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase shrink-0"><CalendarDays className="w-4 h-4" /> Período</div>
+        <div className="flex flex-col xl:flex-row xl:items-center gap-3 border-t border-[#e2e8e4] pt-3">
+          <div className="flex items-center gap-2 text-[10px] font-bold text-[#65716b] uppercase shrink-0"><CalendarDays className="w-4 h-4" /> Período</div>
           <div className="flex flex-wrap gap-1.5">
             {[{ label: 'Hoje', days: 1 }, { label: '7 dias', days: 7 }, { label: '30 dias', days: 30 }].map(period => (
-              <button key={period.days} type="button" onClick={() => applyPeriod(period.days)} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${isPeriodActive(period.days) ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'}`}>{period.label}</button>
+              <button key={period.days} type="button" onClick={() => applyPeriod(period.days)} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${isPeriodActive(period.days) ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>{period.label}</button>
             ))}
-            <button type="button" onClick={() => applyPeriod()} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${!fDataInicial && !fDataFinal ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'}`}>Todo período</button>
+            <button type="button" onClick={() => applyPeriod()} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${!fDataInicial && !fDataFinal ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>Todo período</button>
           </div>
           <div className="xl:ml-auto flex items-center gap-2">
-            <label htmlFor="ticket-quick-status" className="text-[10px] font-bold text-slate-500 uppercase">Situação</label>
-            <select id="ticket-quick-status" value={fStatus} onChange={e => setFStatus(e.target.value)} className="h-8 min-w-40 bg-slate-950 border border-slate-700 rounded-md px-3 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500">
+            <label htmlFor="ticket-quick-status" className="text-[10px] font-bold text-[#65716b] uppercase">Situação</label>
+            <select id="ticket-quick-status" value={fStatus} onChange={e => setFStatus(e.target.value)} className="h-8 min-w-40 bg-white border border-[#e2e8e4] rounded-md px-3 text-[11px] text-[#26362f] focus:outline-none focus:border-emerald-500">
               <option value="">Todas</option><option value="Enviado">Enviados</option><option value="Rascunho">Rascunhos</option><option value="Pendente">Pendentes</option><option value="Duplicado">Duplicados</option><option value="OK">Conferidos</option>
             </select>
-            {hasFiltrosAtivos && <button type="button" onClick={limparFiltros} title="Limpar todos os filtros" className="h-8 w-8 grid place-items-center rounded-md border border-slate-700 text-slate-400 hover:border-rose-500 hover:text-rose-400"><FilterX className="w-4 h-4" /></button>}
+            {hasFiltrosAtivos && <button type="button" onClick={limparFiltros} title="Limpar todos os filtros" className="h-8 w-8 grid place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:border-rose-500 hover:text-rose-400"><FilterX className="w-4 h-4" /></button>}
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
-        <span>Exibindo <strong className="text-slate-200">{filteredTickets.length}</strong> de {tickets.filter(item => (item.tipoTicket || 'Liberação') === ticketTab).length} tickets de {ticketTab.toLowerCase()}.</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#65716b]">
+        <span>Exibindo <strong className="text-[#26362f]">{filteredTickets.length}</strong> de {tickets.filter(item => (item.tipoTicket || 'Liberação') === ticketTab).length} tickets de {ticketTab.toLowerCase()}.</span>
         {hasFiltrosAtivos && (
           <div className="flex flex-wrap items-center gap-1.5">
-            {fDataInicial && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">De {fDataInicial.split('-').reverse().join('/')}</span>}
-            {fDataFinal && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Até {fDataFinal.split('-').reverse().join('/')}</span>}
-            {fTipoMaterial && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Material: {fTipoMaterial}</span>}
-            {fDestinoObra && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Destino: {fDestinoObra}</span>}
-            {fEmpresa && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Empresa: {fEmpresa}</span>}
-            {fStatus && <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1">Situação: {fStatus}</span>}
+            {fDataInicial && <span className="rounded border border-[#e2e8e4] bg-white px-2 py-1">De {fDataInicial.split('-').reverse().join('/')}</span>}
+            {fDataFinal && <span className="rounded border border-[#e2e8e4] bg-white px-2 py-1">Até {fDataFinal.split('-').reverse().join('/')}</span>}
+            {fTipoMaterial && <span className="rounded border border-[#e2e8e4] bg-white px-2 py-1">Material: {fTipoMaterial}</span>}
+            {fDestinoObra && <span className="rounded border border-[#e2e8e4] bg-white px-2 py-1">Destino: {fDestinoObra}</span>}
+            {fEmpresa && <span className="rounded border border-[#e2e8e4] bg-white px-2 py-1">Empresa: {fEmpresa}</span>}
+            {fStatus && <span className="rounded border border-[#e2e8e4] bg-white px-2 py-1">Situação: {fStatus}</span>}
           </div>
         )}
       </div>
@@ -2006,52 +2006,52 @@ export default function TicketsJazidaTab({
 
       {/* Filter panel + summary cards */}
       {filtrosAbertos && (
-        <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
+        <div className="bg-white border border-[#e2e8e4] rounded-lg p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
-              <label htmlFor="filter-start-date" className="text-xxs font-bold uppercase text-slate-400">Data inicial</label>
-              <input id="filter-start-date" name="filterStartDate" type="date" value={fDataInicial} onChange={e => setFDataInicial(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-start-date" className="text-xxs font-bold uppercase text-[#65716b]">Data inicial</label>
+              <input id="filter-start-date" name="filterStartDate" type="date" value={fDataInicial} onChange={e => setFDataInicial(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-md px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label htmlFor="filter-end-date" className="text-xxs font-bold uppercase text-slate-400">Data final</label>
-              <input id="filter-end-date" name="filterEndDate" type="date" value={fDataFinal} onChange={e => setFDataFinal(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-end-date" className="text-xxs font-bold uppercase text-[#65716b]">Data final</label>
+              <input id="filter-end-date" name="filterEndDate" type="date" value={fDataFinal} onChange={e => setFDataFinal(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-md px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label htmlFor="filter-ticket-number" className="text-xxs font-bold uppercase text-slate-400">Ticket Nº</label>
-              <input id="filter-ticket-number" name="filterTicketNumber" type="text" value={fTicketNumero} onChange={e => setFTicketNumero(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-ticket-number" className="text-xxs font-bold uppercase text-[#65716b]">Ticket Nº</label>
+              <input id="filter-ticket-number" name="filterTicketNumber" type="text" value={fTicketNumero} onChange={e => setFTicketNumero(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-md px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label htmlFor="filter-prefix" className="text-xxs font-bold uppercase text-slate-400">Prefixo</label>
-              <input id="filter-prefix" name="filterPrefix" type="text" value={fPrefixo} onChange={e => setFPrefixo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-prefix" className="text-xxs font-bold uppercase text-[#65716b]">Prefixo</label>
+              <input id="filter-prefix" name="filterPrefix" type="text" value={fPrefixo} onChange={e => setFPrefixo(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-md px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label htmlFor="filter-plate" className="text-xxs font-bold uppercase text-slate-400">Placa</label>
-              <input id="filter-plate" name="filterPlate" type="text" value={fPlaca} onChange={e => setFPlaca(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <label htmlFor="filter-plate" className="text-xxs font-bold uppercase text-[#65716b]">Placa</label>
+              <input id="filter-plate" name="filterPlate" type="text" value={fPlaca} onChange={e => setFPlaca(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-md px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Material</label>
-              <select value={fTipoMaterial} onChange={e => setFTipoMaterial(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Tipo de Material</label>
+              <select value={fTipoMaterial} onChange={e => setFTipoMaterial(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
                 {materialOptions.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / Obra</label>
-              <select value={fDestinoObra} onChange={e => setFDestinoObra(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Destino / Obra</label>
+              <select value={fDestinoObra} onChange={e => setFDestinoObra(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
                 {destinationOptions.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
-              <select value={fEmpresa} onChange={e => setFEmpresa(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Empresa</label>
+              <select value={fEmpresa} onChange={e => setFEmpresa(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todas</option>
                 {EMPRESAS_TICKET.map(em => <option key={em} value={em}>{em}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status</label>
-              <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Status</label>
+              <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
                 <option value="Rascunho">Rascunho (ainda editando)</option>
                 <option value="Enviado">Concluído / devolvido</option>
@@ -2063,40 +2063,40 @@ export default function TicketsJazidaTab({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 pt-1">
-            <button type="button" onClick={limparFiltros} className="flex items-center gap-1.5 px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer">
+            <button type="button" onClick={limparFiltros} className="flex items-center gap-1.5 px-4 py-2 bg-[#f7f9f8] hover:bg-[#f2f5f3] text-[#3d4a44] font-bold text-xs rounded-xl transition-all cursor-pointer">
               <FilterX className="w-3.5 h-3.5" />
               Limpar filtros
             </button>
-            <button type="button" onClick={handleExportExcel} disabled={isExporting} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
+            <button type="button" onClick={handleExportExcel} disabled={isExporting} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-[#14231e] font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
               <FileSpreadsheet className="w-3.5 h-3.5" />
               {isExporting ? 'Exportando...' : hasFiltrosAtivos ? 'Exportar Excel filtrado' : 'Exportar Excel'}
             </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 pt-2">
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total Tickets</p>
-              <p className="text-lg font-black text-white font-mono mt-1">{resumo.totalTickets}</p>
+            <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Total Tickets</p>
+              <p className="text-lg font-black text-[#14231e] font-mono mt-1">{resumo.totalTickets}</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total m³</p>
+            <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Total m³</p>
               <p className="text-lg font-black text-emerald-400 font-mono mt-1">{resumo.totalM3.toLocaleString('pt-BR')}</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tickets OK</p>
+            <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Tickets OK</p>
               <p className="text-lg font-black text-emerald-400 font-mono mt-1">{resumo.okCount}</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Pendentes</p>
+            <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Pendentes</p>
               <p className="text-lg font-black text-amber-400 font-mono mt-1">{resumo.pendCount}</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Duplicados</p>
+            <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Duplicados</p>
               <p className="text-lg font-black text-rose-400 font-mono mt-1">{resumo.dupCount}</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total Caçambas</p>
-              <p className="text-lg font-black text-white font-mono mt-1">{resumo.totalCacambas.toLocaleString('pt-BR')}</p>
+            <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Total Caçambas</p>
+              <p className="text-lg font-black text-[#14231e] font-mono mt-1">{resumo.totalCacambas.toLocaleString('pt-BR')}</p>
             </div>
           </div>
         </div>
@@ -2104,8 +2104,8 @@ export default function TicketsJazidaTab({
 
       {/* Form */}
       {isFormOpen && (
-        <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-2xl shadow-xl relative">
-          <button onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer">
+        <div className="bg-white border border-emerald-500/30 p-6 rounded-2xl shadow-xl relative">
+          <button onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="absolute top-4 right-4 p-1.5 text-[#65716b] hover:text-[#14231e] hover:bg-[#f2f5f3] rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
           <h3 className="text-xs uppercase tracking-widest font-black text-emerald-400 font-mono mb-5 flex items-center gap-2">
@@ -2116,40 +2116,40 @@ export default function TicketsJazidaTab({
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
                 <b className="block text-[10px] font-black uppercase tracking-wider text-amber-200">Salvar rascunho</b>
-                <p className="mt-1 text-[9px] leading-relaxed text-slate-500">Exige apenas número e data. Mantém o ticket editável e não marca a via como devolvida.</p>
+                <p className="mt-1 text-[9px] leading-relaxed text-[#65716b]">Exige apenas número e data. Mantém o ticket editável e não marca a via como devolvida.</p>
               </div>
               <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
                 <b className="block text-[10px] font-black uppercase tracking-wider text-emerald-200">Concluir ticket</b>
-                <p className="mt-1 text-[9px] leading-relaxed text-slate-500">Valida os campos essenciais e registra a devolução da via na conferência diária.</p>
+                <p className="mt-1 text-[9px] leading-relaxed text-[#65716b]">Valida os campos essenciais e registra a devolução da via na conferência diária.</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo do Ticket</label>
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Tipo do Ticket</label>
                 <select value={tipoTicket} onChange={e => {
                   const nextTipo = e.target.value as TipoTicketJazida;
                   setTipoTicket(nextTipo);
                   if (nextTipo === 'Recebimento' && ticketNumero.trim()) {
                     applyLiberacaoCloneToForm(ticketNumero);
                   }
-                }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                }} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 cursor-pointer">
                   <option value="Liberação">Liberação</option>
                   <option value="Recebimento">Recebimento</option>
                 </select>
               </div>
               {tipoTicket === 'Recebimento' ? (
                 <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Hora de Chegada</label>
-                  <input type="time" value={horaChegada} onChange={e => setHoraChegada(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Hora de Chegada</label>
+                  <input type="time" value={horaChegada} onChange={e => setHoraChegada(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Hora de Saída</label>
-                  <input type="time" value={horaSaida} onChange={e => setHoraSaida(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Hora de Saída</label>
+                  <input type="time" value={horaSaida} onChange={e => setHoraSaida(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
                 </div>
               )}
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ticket Nº *</label>
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Ticket Nº *</label>
                 <input
                   type="text"
                   value={ticketNumero}
@@ -2159,88 +2159,88 @@ export default function TicketsJazidaTab({
                       applyLiberacaoCloneToForm(ticketNumero);
                     }
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500"
                   required
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data *</label>
-                <input type="date" value={data} onChange={e => setData(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Data *</label>
+                <input type="date" value={data} onChange={e => setData(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" required />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo *</label>
-                <input type="text" list="ticket-equipment-prefixes" value={prefixo} onChange={e => handlePrefixChange(e.target.value)} onBlur={() => fillEquipmentFields(findEquipmentByPrefix(prefixo))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="Digite ou escolha o prefixo" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Prefixo *</label>
+                <input type="text" list="ticket-equipment-prefixes" value={prefixo} onChange={e => handlePrefixChange(e.target.value)} onBlur={() => fillEquipmentFields(findEquipmentByPrefix(prefixo))} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" placeholder="Digite ou escolha o prefixo" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa *</label>
-                <input type="text" value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Placa *</label>
+                <input type="text" value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Família do Equipamento</label>
-                <input type="text" value={familiaEquipamento} onChange={e => setFamiliaEquipamento(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="Preenchida pelo cadastro; edição livre" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Família do Equipamento</label>
+                <input type="text" value={familiaEquipamento} onChange={e => setFamiliaEquipamento(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" placeholder="Preenchida pelo cadastro; edição livre" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Equipamento / Descrição</label>
-                <input type="text" value={equipamentoNome} onChange={e => setEquipamentoNome(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" placeholder="Preenchida pelo cadastro; edição livre" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Equipamento / Descrição</label>
+                <input type="text" value={equipamentoNome} onChange={e => setEquipamentoNome(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" placeholder="Preenchida pelo cadastro; edição livre" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Material *</label>
-                <select value={tipoMaterial} onChange={e => setTipoMaterial(e.target.value as TipoMaterialJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Tipo de Material *</label>
+                <select value={tipoMaterial} onChange={e => setTipoMaterial(e.target.value as TipoMaterialJazida)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 cursor-pointer">
                   {materialOptions.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³) *</label>
-                <input type="number" min="0" step="0.01" value={quantidadeM3} onChange={e => setQuantidadeM3(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Quantidade (m³) *</label>
+                <input type="number" min="0" step="0.01" value={quantidadeM3} onChange={e => setQuantidadeM3(Number(e.target.value))} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">{tipoTicket === 'Recebimento' ? 'Ramo de Descarga *' : 'Destino / Obra *'}</label>
-                <select value={destinoObra} onChange={e => setDestinoObra(e.target.value as DestinoObraJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">{tipoTicket === 'Recebimento' ? 'Ramo de Descarga *' : 'Destino / Obra *'}</label>
+                <select value={destinoObra} onChange={e => setDestinoObra(e.target.value as DestinoObraJazida)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 cursor-pointer">
                   {destinationOptions.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               {destinoObra === 'Outros' && (
                 <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">{tipoTicket === 'Recebimento' ? 'Qual ramo de descarga? *' : 'Qual destino? *'}</label>
-                  <input type="text" value={destinoOutro} onChange={e => setDestinoOutro(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">{tipoTicket === 'Recebimento' ? 'Qual ramo de descarga? *' : 'Qual destino? *'}</label>
+                  <input type="text" value={destinoOutro} onChange={e => setDestinoOutro(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
                 </div>
               )}
               {tipoTicket === 'Recebimento' && (
                 <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Estaca</label>
-                  <input type="text" value={estaca} onChange={e => setEstaca(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Estaca</label>
+                  <input type="text" value={estaca} onChange={e => setEstaca(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
                 </div>
               )}
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa *</label>
-                <select value={empresa} onChange={e => setEmpresa(e.target.value as EmpresaTicketJazida)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Empresa *</label>
+                <select value={empresa} onChange={e => setEmpresa(e.target.value as EmpresaTicketJazida)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 cursor-pointer">
                   {EMPRESAS_TICKET.map(em => <option key={em} value={em}>{em}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável pela Liberação</label>
-                <input type="text" value={responsavelLiberacao} onChange={e => setResponsavelLiberacao(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Responsável pela Liberação</label>
+                <input type="text" value={responsavelLiberacao} onChange={e => setResponsavelLiberacao(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Nome Legível</label>
-                <input type="text" value={nomeLegivel} onChange={e => setNomeLegivel(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Nome Legível</label>
+                <input type="text" value={nomeLegivel} onChange={e => setNomeLegivel(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
             </div>
-            <button type="button" onClick={() => setAdvancedFormOpen(value => !value)} className="flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-left">
-              <span><b className="block text-[10px] font-black uppercase tracking-wider text-slate-300">Observações e nota fiscal</b><small className="mt-1 block text-[9px] text-slate-600">Opcional. Abra somente quando precisar lançar detalhes administrativos.</small></span>
-              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${advancedFormOpen ? 'rotate-180' : ''}`} />
+            <button type="button" onClick={() => setAdvancedFormOpen(value => !value)} className="flex w-full items-center justify-between rounded-xl border border-[#e2e8e4] bg-white px-4 py-3 text-left">
+              <span><b className="block text-[10px] font-black uppercase tracking-wider text-[#3d4a44]">Observações e nota fiscal</b><small className="mt-1 block text-[9px] text-[#53605a]">Opcional. Abra somente quando precisar lançar detalhes administrativos.</small></span>
+              <ChevronDown className={`h-4 w-4 text-[#65716b] transition-transform ${advancedFormOpen ? 'rotate-180' : ''}`} />
             </button>
             {advancedFormOpen && <div className="space-y-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observação</label>
-                <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Observação</label>
+                <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
               <div>
                 <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan-300"><FileText className="h-4 w-4" /> Nota fiscal</div>
                 <div className="grid gap-3 md:grid-cols-[1fr_180px_2fr]">
-                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Número da nota</span><input type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" placeholder="Ex.: NF 15482" /></label>
-                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" /></label>
-                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-slate-500">Observações / referência</span><input type="text" value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500" placeholder="Fornecedor, divergência ou referência da carga" /></label>
+                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-[#65716b]">Número da nota</span><input type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" placeholder="Ex.: NF 15482" /></label>
+                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-[#65716b]">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
+                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-[#65716b]">Observações / referência</span><input type="text" value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" placeholder="Fornecedor, divergência ou referência da carga" /></label>
                 </div>
               </div>
             </div>}
@@ -2255,10 +2255,10 @@ export default function TicketsJazidaTab({
               <button type="submit" name="saveMode" value="draft" className="px-5 py-2.5 border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15 text-amber-200 font-bold text-xs rounded-xl transition-all cursor-pointer">
                 Salvar rascunho
               </button>
-              <button type="submit" name="saveMode" value="complete" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
+              <button type="submit" name="saveMode" value="complete" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
                 {editingId ? 'Concluir e salvar' : 'Concluir lançamento'}
               </button>
-              <button type="button" onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="px-5 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer">
+              <button type="button" onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="px-5 py-2.5 bg-[#f7f9f8] hover:bg-[#f2f5f3] text-[#3d4a44] font-bold text-xs rounded-xl transition-all cursor-pointer">
                 Cancelar
               </button>
             </div>
@@ -2267,15 +2267,15 @@ export default function TicketsJazidaTab({
       )}
 
       {/* Table */}
-      <div className="bg-slate-900 border border-slate-850 rounded-2xl overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-white px-5 py-3 text-xs">
+      <div className="bg-white border border-[#e2e8e4] rounded-2xl overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] bg-white px-5 py-3 text-xs">
           <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredTickets.length > 0 && filteredTickets.every(item => selectedTicketIds.includes(item.id))} onChange={event => setSelectedTicketIds(event.target.checked ? filteredTickets.map(item => item.id) : [])} /> Selecionar visíveis ({selectedTicketIds.length})</label>
-          <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedTicketIds.length} ticket(s) selecionado(s)?`)) { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+          <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedTicketIds.length} ticket(s) selecionado(s)?`)) { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-850 text-slate-400 uppercase text-[10px] font-bold bg-slate-950/20 font-mono">
+              <tr className="border-b border-[#e2e8e4] text-[#65716b] uppercase text-[10px] font-bold bg-[#f7f9f8] font-mono">
                 <th className="py-3.5 px-5">Sel.</th>
                 <th className="py-3.5 px-5">Data / Hora</th>
                 <th className="py-3.5 px-5">Ticket Nº</th>
@@ -2288,10 +2288,10 @@ export default function TicketsJazidaTab({
                 <th className="py-3.5 px-5 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-850">
+            <tbody className="divide-y divide-[#e2e8e4]">
               {filteredTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-10 text-center text-slate-500 italic">
+                  <td colSpan={10} className="py-10 text-center text-[#65716b] italic">
                     {hasFiltrosAtivos ? 'Nenhum ticket encontrado para os filtros selecionados.' : 'Nenhum ticket registrado.'}
                   </td>
                 </tr>
@@ -2304,47 +2304,47 @@ export default function TicketsJazidaTab({
                     item.ticketNumero.trim().toLowerCase() === t.ticketNumero.trim().toLowerCase()
                   );
                   return (
-                    <tr key={t.id} className="hover:bg-slate-950/20 transition-colors">
+                    <tr key={t.id} className="hover:bg-[#f7f9f8] transition-colors">
                       <td className="py-4 px-5"><input type="checkbox" checked={selectedTicketIds.includes(t.id)} onChange={event => setSelectedTicketIds(current => event.target.checked ? [...current, t.id] : current.filter(id => id !== t.id))} /></td>
                       <td className="py-4 px-5">
-                        <span className="font-bold text-slate-100 block">{t.data.split('-').reverse().join('/')}</span>
-                        <span className="text-[10px] text-slate-500 font-mono block">{t.tipoTicket || 'Liberação'}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">{(t.tipoTicket || 'Liberação') === 'Recebimento' ? (t.horaChegada || t.horaSaida) : t.horaSaida}</span>
+                        <span className="font-bold text-[#26362f] block">{t.data.split('-').reverse().join('/')}</span>
+                        <span className="text-[10px] text-[#65716b] font-mono block">{t.tipoTicket || 'Liberação'}</span>
+                        <span className="text-[10px] text-[#65716b] font-mono">{(t.tipoTicket || 'Liberação') === 'Recebimento' ? (t.horaChegada || t.horaSaida) : t.horaSaida}</span>
                       </td>
                       <td className="py-4 px-5 font-mono text-emerald-400 font-bold">{t.ticketNumero}</td>
                       <td className="py-4 px-5">
-                        <span className="font-mono text-slate-200 font-bold bg-slate-950 border border-slate-800 px-2 py-0.5 rounded text-xxs">{t.prefixo}</span>
-                        <span className="block text-[10px] text-slate-500 mt-0.5">{t.placa}</span>
+                        <span className="font-mono text-[#26362f] font-bold bg-white border border-[#e2e8e4] px-2 py-0.5 rounded text-xxs">{t.prefixo}</span>
+                        <span className="block text-[10px] text-[#65716b] mt-0.5">{t.placa}</span>
                         {(t.equipamentoNome || t.familiaEquipamento) && (
-                          <span className="block text-[10px] text-slate-500 mt-0.5">{t.equipamentoNome || t.familiaEquipamento}</span>
+                          <span className="block text-[10px] text-[#65716b] mt-0.5">{t.equipamentoNome || t.familiaEquipamento}</span>
                         )}
                       </td>
-                      <td className="py-4 px-5 text-slate-300">{t.tipoMaterial}</td>
-                      <td className="py-4 px-5 font-mono text-emerald-400 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')} <span className="text-[9px] text-slate-500">{t.unidadeQuantidade || 'm³'}</span></td>
-                      <td className="py-4 px-5 text-slate-400">
-                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-600" />{t.destinoObra === 'Outros' ? t.destinoOutro || 'Outros' : t.destinoObra}</span>
-                        {t.estaca && <span className="block text-[10px] text-slate-500 mt-0.5">{t.estaca}</span>}
+                      <td className="py-4 px-5 text-[#3d4a44]">{t.tipoMaterial}</td>
+                      <td className="py-4 px-5 font-mono text-emerald-400 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')} <span className="text-[9px] text-[#65716b]">{t.unidadeQuantidade || 'm³'}</span></td>
+                      <td className="py-4 px-5 text-[#65716b]">
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-[#53605a]" />{t.destinoObra === 'Outros' ? t.destinoOutro || 'Outros' : t.destinoObra}</span>
+                        {t.estaca && <span className="block text-[10px] text-[#65716b] mt-0.5">{t.estaca}</span>}
                       </td>
-                      <td className="py-4 px-5 text-slate-400"><span className="block">{t.empresa}</span>{t.notaFiscalNumero && <span className="mt-1 block text-[10px] font-bold text-cyan-300">NF {t.notaFiscalNumero}</span>}</td>
+                      <td className="py-4 px-5 text-[#65716b]"><span className="block">{t.empresa}</span>{t.notaFiscalNumero && <span className="mt-1 block text-[10px] font-bold text-cyan-300">NF {t.notaFiscalNumero}</span>}</td>
                       <td className="py-4 px-5">
                         <span className={`inline-block px-2 py-1 rounded-lg border text-[10px] font-bold ${statusStyles[status] || statusStyles['OK']}`}>{statusLabel}</span>
                       </td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => setViewingTicket(t)} title="Visualizar ticket" className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handlePrintTicket(t)} title="Imprimir este ticket" className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Printer className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setViewingTicket(t)} title="Visualizar ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-emerald-400 rounded-lg cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handlePrintTicket(t)} title="Imprimir este ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-emerald-400 rounded-lg cursor-pointer"><Printer className="w-3.5 h-3.5" /></button>
                           {(t.tipoTicket || 'Liberação') === 'Liberação' && (
                             <button
                               onClick={() => handleCloneRecebimentoFromLiberacao(t)}
                               title={hasRecebimentoClone ? 'Recebimento já gerado' : 'Gerar recebimento clonando CB e placa'}
-                              className={`p-1.5 bg-slate-800 rounded-lg cursor-pointer ${hasRecebimentoClone ? 'text-slate-600' : 'text-slate-300 hover:text-emerald-400'}`}
+                              className={`p-1.5 bg-[#f7f9f8] rounded-lg cursor-pointer ${hasRecebimentoClone ? 'text-[#53605a]' : 'text-[#3d4a44] hover:text-emerald-400'}`}
                             >
                               <CopyPlus className="w-3.5 h-3.5" />
                             </button>
                           )}
                           <button onClick={() => handleOpenEdit(t)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 font-bold text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"><Edit className="w-3.5 h-3.5" />{(t.statusFluxo || 'Enviado') === 'Rascunho' ? 'Continuar' : 'Editar'}</button>
                           {(t.statusFluxo || 'Enviado') === 'Enviado' && <button onClick={() => handleMoveTicketToDraft(t)} title="Retirar da conferência de devolvidos e continuar editando depois" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 font-bold text-amber-200 hover:bg-amber-500/20 cursor-pointer"><RotateCcw className="w-3.5 h-3.5" />Rascunho</button>}
-                          <button onClick={() => setDeleteConfirmId(t.id)} title="Excluir ticket" className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteConfirmId(t.id)} title="Excluir ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -2358,148 +2358,148 @@ export default function TicketsJazidaTab({
       </div>}
 
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+      <div className="bg-white border border-[#e2e8e4] rounded-xl p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h3 className="text-sm font-black text-white">Histórico de lotes impressos</h3><p className="text-[10px] text-slate-500">Faixas registradas no controle, inclusive após restauração do backup em nuvem.</p></div>
-          <span className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-[9px] font-black uppercase text-slate-400">{ticketControlRows.length} lote(s)</span>
+          <div><h3 className="text-sm font-black text-[#14231e]">Histórico de lotes impressos</h3><p className="text-[10px] text-[#65716b]">Faixas registradas no controle, inclusive após restauração do backup em nuvem.</p></div>
+          <span className="rounded-md border border-[#e2e8e4] bg-white px-3 py-2 text-[9px] font-black uppercase text-[#65716b]">{ticketControlRows.length} lote(s)</span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Números impressos</p><p className="text-xl font-black text-white">{ticketControlTotals.total}</p></div>
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Viagens completas</p><p className="text-xl font-black text-emerald-400">{ticketControlTotals.completas}</p></div>
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Liberações preenchidas</p><p className="text-xl font-black text-white">{ticketControlTotals.liberacoes}</p></div>
-          <div className="bg-slate-950 rounded-lg p-3"><p className="text-[9px] uppercase text-slate-500">Recebimentos preenchidos</p><p className="text-xl font-black text-white">{ticketControlTotals.recebimentos}</p></div>
+          <div className="bg-white rounded-lg p-3"><p className="text-[9px] uppercase text-[#65716b]">Números impressos</p><p className="text-xl font-black text-[#14231e]">{ticketControlTotals.total}</p></div>
+          <div className="bg-white rounded-lg p-3"><p className="text-[9px] uppercase text-[#65716b]">Viagens completas</p><p className="text-xl font-black text-emerald-400">{ticketControlTotals.completas}</p></div>
+          <div className="bg-white rounded-lg p-3"><p className="text-[9px] uppercase text-[#65716b]">Liberações preenchidas</p><p className="text-xl font-black text-[#14231e]">{ticketControlTotals.liberacoes}</p></div>
+          <div className="bg-white rounded-lg p-3"><p className="text-[9px] uppercase text-[#65716b]">Recebimentos preenchidos</p><p className="text-xl font-black text-[#14231e]">{ticketControlTotals.recebimentos}</p></div>
         </div>
-        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-2">Impressão</th><th>Faixa</th><th>Números</th><th>Lib. devolvidas</th><th>Rec. devolvidas</th><th>Completos</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-slate-800 text-slate-300"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.displayStart)} a {normalizeTicketNumber(r.displayEnd)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
+        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-[#65716b]"><th className="p-2">Impressão</th><th>Faixa</th><th>Números</th><th>Lib. devolvidas</th><th>Rec. devolvidas</th><th>Completos</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-[#e2e8e4] text-[#3d4a44]"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.displayStart)} a {normalizeTicketNumber(r.displayEnd)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
       </div>
 
       {noteModalNumber && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setNoteModalNumber(null)}>
-          <div className="max-h-[90dvh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl border border-cyan-500/30 bg-slate-900 p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setNoteModalNumber(null)}>
+          <div className="max-h-[90dvh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl border border-cyan-500/30 bg-white p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
-              <div><h3 className="flex items-center gap-2 text-sm font-black text-white"><FileText className="h-4 w-4 text-cyan-300" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-[10px] text-slate-500">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
-              <button type="button" onClick={() => setNoteModalNumber(null)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
+              <div><h3 className="flex items-center gap-2 text-sm font-black text-[#14231e]"><FileText className="h-4 w-4 text-cyan-300" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-[10px] text-[#65716b]">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
+              <button type="button" onClick={() => setNoteModalNumber(null)} className="grid h-8 w-8 place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-slate-500">Número da nota</span><input autoFocus type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" /></label>
-              <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-slate-500">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" /></label>
+              <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-[#65716b]">Número da nota</span><input autoFocus type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
+              <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-[#65716b]">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
             </div>
-            <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-slate-500">Observações / referência</span><textarea rows={3} value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" /></label>
-            <div className="flex justify-end gap-2"><button type="button" onClick={() => setNoteModalNumber(null)} className="rounded-lg bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300">Cancelar</button><button type="button" onClick={handleSaveNoteModal} className="rounded-lg bg-cyan-600 px-4 py-2.5 text-xs font-black text-white hover:bg-cyan-500">Salvar nas duas vias</button></div>
+            <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-[#65716b]">Observações / referência</span><textarea rows={3} value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full resize-y rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setNoteModalNumber(null)} className="rounded-lg bg-[#f7f9f8] px-4 py-2.5 text-xs font-bold text-[#3d4a44]">Cancelar</button><button type="button" onClick={handleSaveNoteModal} className="rounded-lg bg-cyan-600 px-4 py-2.5 text-xs font-black text-[#14231e] hover:bg-cyan-500">Salvar nas duas vias</button></div>
           </div>
         </div>
       )}
 
-      <section className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-3">
+      <section className="grid gap-3 rounded-2xl border border-[#e2e8e4] bg-white p-4 md:grid-cols-3">
         <button type="button" onClick={handleOpenCreate} className="group flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-left transition hover:border-emerald-400">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-black text-white">1</span>
-          <span><b className="block text-xs text-white">Cadastrar ou continuar</b><small className="mt-1 block text-[9px] leading-relaxed text-slate-500">Informe somente o que já sabe. Salve como rascunho e edite depois.</small></span>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-black text-[#14231e]">1</span>
+          <span><b className="block text-xs text-[#14231e]">Cadastrar ou continuar</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Informe somente o que já sabe. Salve como rascunho e edite depois.</small></span>
         </button>
         <button type="button" onClick={() => importInputRef.current?.click()} className="group flex items-start gap-3 rounded-xl border border-sky-500/25 bg-sky-500/5 p-4 text-left transition hover:border-sky-400">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-500 text-xs font-black text-white">2</span>
-          <span><b className="block text-xs text-white">Importar sua planilha</b><small className="mt-1 block text-[9px] leading-relaxed text-slate-500">Veja uma prévia, confira erros e confirme. Linhas incompletas entram como rascunho.</small></span>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-500 text-xs font-black text-[#14231e]">2</span>
+          <span><b className="block text-xs text-[#14231e]">Importar sua planilha</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Veja uma prévia, confira erros e confirme. Linhas incompletas entram como rascunho.</small></span>
         </button>
         <button type="button" onClick={() => setOperationsOpen(true)} className="group flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-left transition hover:border-amber-400">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-500 text-xs font-black text-white">3</span>
-          <span><b className="block text-xs text-white">Revisar e concluir</b><small className="mt-1 block text-[9px] leading-relaxed text-slate-500">Rascunho não conta como devolvido. Concluído entra na conferência da via.</small></span>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-500 text-xs font-black text-[#14231e]">3</span>
+          <span><b className="block text-xs text-[#14231e]">Revisar e concluir</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Rascunho não conta como devolvido. Concluído entra na conferência da via.</small></span>
         </button>
       </section>
 
       {isBatchModalOpen && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
-          <div className="max-h-[90dvh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
+          <div className="max-h-[90dvh] overflow-y-auto bg-white border border-[#e2e8e4] rounded-2xl p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <h3 className="text-sm font-black text-[#14231e] flex items-center gap-2">
                   <Printer className="w-4 h-4 text-emerald-400" />
                   Imprimir tickets em sequência
                 </h3>
-                <p className="text-[10px] text-slate-500 mt-1">Configure a numeração, escolha o que já deve sair preenchido e salve as duas vias para editar depois.</p>
+                <p className="text-[10px] text-[#65716b] mt-1">Configure a numeração, escolha o que já deve sair preenchido e salve as duas vias para editar depois.</p>
               </div>
-              <button type="button" disabled={isBatchPrinting} onClick={() => setIsBatchModalOpen(false)} className="h-8 w-8 grid place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white disabled:opacity-50">
+              <button type="button" disabled={isBatchPrinting} onClick={() => setIsBatchModalOpen(false)} className="h-8 w-8 grid place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:text-[#14231e] disabled:opacity-50">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-3">
-              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchFillMode === 'em-branco' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 bg-slate-950'}`}>
+              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchFillMode === 'em-branco' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-[#e2e8e4] bg-white'}`}>
                 <input type="radio" name="batch-fill-mode" checked={batchFillMode === 'em-branco'} onChange={() => setBatchFillMode('em-branco')} className="mt-0.5 accent-emerald-500" />
-                <span><strong className="block text-[11px] text-slate-100">Somente a numeração</strong><small className="block text-[9px] text-slate-500">Todos os demais campos ficam vazios para preencher à caneta.</small></span>
+                <span><strong className="block text-[11px] text-[#26362f]">Somente a numeração</strong><small className="block text-[9px] text-[#65716b]">Todos os demais campos ficam vazios para preencher à caneta.</small></span>
               </label>
-              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchFillMode === 'pre-preenchido' ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-slate-800 bg-slate-950'}`}>
+              <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchFillMode === 'pre-preenchido' ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-[#e2e8e4] bg-white'}`}>
                 <input type="radio" name="batch-fill-mode" checked={batchFillMode === 'pre-preenchido'} onChange={() => setBatchFillMode('pre-preenchido')} className="mt-0.5 accent-cyan-500" />
-                <span><strong className="block text-[11px] text-slate-100">Pré-preencher o lote</strong><small className="block text-[9px] text-slate-500">Você escolhe abaixo quais dados comuns já saem no PDF.</small></span>
+                <span><strong className="block text-[11px] text-[#26362f]">Pré-preencher o lote</strong><small className="block text-[9px] text-[#65716b]">Você escolhe abaixo quais dados comuns já saem no PDF.</small></span>
               </label>
               <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
                 <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-                <span><strong className="block text-[11px] text-slate-100">Controle automático obrigatório</strong><small className="block text-[9px] text-slate-500">As duas vias entram como pendentes no checklist e acompanham o backup em nuvem.</small></span>
+                <span><strong className="block text-[11px] text-[#26362f]">Controle automático obrigatório</strong><small className="block text-[9px] text-[#65716b]">As duas vias entram como pendentes no checklist e acompanham o backup em nuvem.</small></span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Numeração</label>
-                <select value={batchNumberMode} onChange={e => setBatchNumberMode(e.target.value as 'automatico' | 'manual')} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Numeração</label>
+                <select value={batchNumberMode} onChange={e => setBatchNumberMode(e.target.value as 'automatico' | 'manual')} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500">
                   <option value="manual">Informar primeiro número</option>
                   <option value="automatico">Próxima sequência automática</option>
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade</label>
-                <input type="number" min="1" max="200" value={batchQuantity} onChange={e => setBatchQuantity(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Quantidade</label>
+                <input type="number" min="1" max="200" value={batchQuantity} onChange={e => setBatchQuantity(Number(e.target.value))} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
               <div className={`space-y-1 ${batchNumberMode === 'automatico' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Primeiro ticket</label>
-                <input value={batchNumberMode === 'automatico' ? 'Automático' : batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} disabled={batchNumberMode === 'automatico'} placeholder="Ex.: 100310" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Primeiro ticket</label>
+                <input value={batchNumberMode === 'automatico' ? 'Automático' : batchStartNumber} onChange={e => setBatchStartNumber(e.target.value)} disabled={batchNumberMode === 'automatico'} placeholder="Ex.: 100310" className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
               <div className={`space-y-1 ${batchNumberMode === 'automatico' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ordem</label>
-                <select value={batchDirection} onChange={e => setBatchDirection(e.target.value as 'crescente' | 'decrescente')} disabled={batchNumberMode === 'automatico'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Ordem</label>
+                <select value={batchDirection} onChange={e => setBatchDirection(e.target.value as 'crescente' | 'decrescente')} disabled={batchNumberMode === 'automatico'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   <option value="crescente">Crescente</option>
                   <option value="decrescente">Decrescente</option>
                 </select>
               </div>
               <div className={`space-y-1 ${batchNumberMode === 'automatico' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Intervalo</label>
-                <input type="number" min="1" max="1000" value={batchStep} onChange={e => setBatchStep(Number(e.target.value))} disabled={batchNumberMode === 'automatico'} title="Ex.: 10 gera 100320, 100310, 100300" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Intervalo</label>
+                <input type="number" min="1" max="1000" value={batchStep} onChange={e => setBatchStep(Number(e.target.value))} disabled={batchNumberMode === 'automatico'} title="Ex.: 10 gera 100320, 100310, 100300" className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
               <div className="space-y-1">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data do controle</label>
-                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Data do controle</label>
+                <input type="date" value={batchDate} onChange={e => setBatchDate(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo</label>
-                <input list="ticket-equipment-prefixes" value={batchPrefixo} onChange={e => handleBatchPrefixChange(e.target.value)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" placeholder="Digite ou escolha o prefixo" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Prefixo</label>
+                <input list="ticket-equipment-prefixes" value={batchPrefixo} onChange={e => handleBatchPrefixChange(e.target.value)} disabled={batchFillMode === 'em-branco'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" placeholder="Digite ou escolha o prefixo" />
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa</label>
-                <input value={batchPlaca} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Placa</label>
+                <input value={batchPlaca} onChange={e => setBatchPlaca(e.target.value.toUpperCase())} disabled={batchFillMode === 'em-branco'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade (m³)</label>
-                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Quantidade (m³)</label>
+                <input type="number" min="0" step="0.01" value={batchQuantidadeM3} onChange={e => setBatchQuantidadeM3(Number(e.target.value))} disabled={batchFillMode === 'em-branco'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed" />
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Material</label>
-                <select value={batchTipoMaterial} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Material</label>
+                <select value={batchTipoMaterial} onChange={e => setBatchTipoMaterial(e.target.value as TipoMaterialJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   {materialOptions.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Destino / obra</label>
-                <select value={batchDestinoObra} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Destino / obra</label>
+                <select value={batchDestinoObra} onChange={e => setBatchDestinoObra(e.target.value as DestinoObraJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   {destinationOptions.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
               <div className={`space-y-1 ${batchFillMode === 'em-branco' ? 'opacity-45' : ''}`}>
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
-                <select value={batchEmpresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Empresa</label>
+                <select value={batchEmpresa} onChange={e => setBatchEmpresa(e.target.value as EmpresaTicketJazida)} disabled={batchFillMode === 'em-branco'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-3 py-2 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 disabled:cursor-not-allowed">
                   {EMPRESAS_TICKET.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-[10px] text-slate-400">
-              <strong className="text-slate-200">Prévia:</strong>{' '}
+            <div className="rounded-xl border border-[#e2e8e4] bg-white p-3 text-[10px] text-[#65716b]">
+              <strong className="text-[#26362f]">Prévia:</strong>{' '}
               {Math.max(1, Math.min(200, Number(batchQuantity) || 1))} ticket(s) em duas vias,{' '}
               {batchFillMode === 'em-branco' ? 'apenas com a numeração' : 'com os campos escolhidos pré-preenchidos'}.
               {batchNumberMode === 'automatico'
@@ -2514,8 +2514,8 @@ export default function TicketsJazidaTab({
             )}
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button type="button" onClick={() => setIsBatchModalOpen(false)} disabled={isBatchPrinting} className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-750 disabled:opacity-50">Cancelar</button>
-              <button type="button" onClick={handleGenerateBatchTickets} disabled={isBatchPrinting} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-60">
+              <button type="button" onClick={() => setIsBatchModalOpen(false)} disabled={isBatchPrinting} className="rounded-xl bg-[#f7f9f8] px-4 py-2.5 text-xs font-bold text-[#3d4a44] hover:bg-[#f2f5f3] disabled:opacity-50">Cancelar</button>
+              <button type="button" onClick={handleGenerateBatchTickets} disabled={isBatchPrinting} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-[#14231e] hover:bg-emerald-500 disabled:opacity-60">
                 {isBatchPrinting ? 'Gerando PDF...' : 'Gerar PDF e iniciar checklist'}
               </button>
             </div>
@@ -2525,16 +2525,16 @@ export default function TicketsJazidaTab({
 
       {/* View modal */}
       {viewingTicket && viewingPair && (
-        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-3 md:p-6" onClick={() => setViewingTicket(null)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 max-w-6xl w-full max-h-[96vh] flex flex-col gap-3" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 md:p-6" onClick={() => setViewingTicket(null)}>
+          <div className="bg-white border border-[#e2e8e4] rounded-lg p-4 max-w-6xl w-full max-h-[96vh] flex flex-col gap-3" onClick={e => e.stopPropagation()}>
             <div className="flex flex-wrap justify-between items-center gap-3">
-              <div><h3 className="text-sm font-black text-white">Visualização para impressão</h3><p className="text-[10px] text-slate-500">Ticket {viewingTicket.ticketNumero} no padrão operacional RENEA</p></div>
+              <div><h3 className="text-sm font-black text-[#14231e]">Visualização para impressão</h3><p className="text-[10px] text-[#65716b]">Ticket {viewingTicket.ticketNumero} no padrão operacional RENEA</p></div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => handlePrintTicket(viewingTicket)} className="h-9 px-4 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2"><Printer className="w-4 h-4" /> Imprimir / PDF</button>
-                <button type="button" onClick={() => setViewingTicket(null)} title="Fechar visualização" className="h-9 w-9 grid place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={() => handlePrintTicket(viewingTicket)} className="h-9 px-4 rounded-md bg-emerald-600 hover:bg-emerald-500 text-[#14231e] text-xs font-bold flex items-center gap-2"><Printer className="w-4 h-4" /> Imprimir / PDF</button>
+                <button type="button" onClick={() => setViewingTicket(null)} title="Fechar visualização" className="h-9 w-9 grid place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]"><X className="w-4 h-4" /></button>
               </div>
             </div>
-            <div className="overflow-auto bg-slate-800 p-3">
+            <div className="overflow-auto bg-[#f7f9f8] p-3">
               <TicketDocumentPreview releaseTicket={viewingPair.releaseTicket} receiptTicket={viewingPair.receiptTicket} />
             </div>
           </div>
@@ -2543,12 +2543,12 @@ export default function TicketsJazidaTab({
 
       {/* Delete confirm modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setDeleteConfirmId(null)}>
-          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
-            <p className="text-xs text-slate-300">Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setDeleteConfirmId(null)}>
+          <div className="bg-white border border-rose-500/30 rounded-2xl p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
+            <p className="text-xs text-[#3d4a44]">Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.</p>
             <div className="flex gap-2.5">
-              <button onClick={() => { onDeleteTicket(deleteConfirmId); setDeleteConfirmId(null); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl cursor-pointer">Excluir</button>
-              <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl cursor-pointer">Cancelar</button>
+              <button onClick={() => { onDeleteTicket(deleteConfirmId); setDeleteConfirmId(null); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-[#14231e] font-bold text-xs rounded-xl cursor-pointer">Excluir</button>
+              <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 bg-[#f7f9f8] hover:bg-[#f2f5f3] text-[#3d4a44] font-bold text-xs rounded-xl cursor-pointer">Cancelar</button>
             </div>
           </div>
         </div>
