@@ -77,6 +77,118 @@ export const mergeCloudTable = (remoteItems: unknown[], localItems: unknown[]): 
   return merged;
 };
 
+/** Ids por tabela que este aparelho tinha na última sincronização concluída. */
+export type CloudBaseline = Record<string, string[]>;
+
+/**
+ * Fotografa só os ids de cada tabela de um retrato. É o suficiente para,
+ * mais tarde, distinguir "eu apaguei isso" de "o colega criou isso depois",
+ * sem guardar uma segunda cópia inteira dos dados.
+ */
+export const captureCloudBaseline = (snapshot: CloudSnapshot | null | undefined): CloudBaseline => {
+  if (!snapshot || typeof snapshot !== 'object') return {};
+  const baseline: CloudBaseline = {};
+  for (const [table, value] of Object.entries(snapshot)) {
+    if (!Array.isArray(value)) continue;
+    baseline[table] = value.map(recordId).filter(Boolean);
+  }
+  return baseline;
+};
+
+/**
+ * Mescla de três vias. A de duas vias (`mergeCloudTable`) preserva tudo que
+ * existe de qualquer lado — o que salva o lançamento do colega, mas também
+ * ressuscita o que este aparelho apagou de propósito, porque "apagado aqui" e
+ * "criado lá" são indistinguíveis olhando só os dois lados.
+ *
+ * Com a base (o que este aparelho enxergava na última sincronização) dá para
+ * separar os quatro casos, em vez de adivinhar:
+ * - sumiu no local, ESTAVA na base → este aparelho apagou → respeita a exclusão.
+ * - sumiu no local, NÃO estava na base → o colega criou depois → preserva.
+ * - sumiu no remoto, ESTAVA na base → o colega apagou → respeita a exclusão.
+ * - sumiu no remoto, NÃO estava na base → este aparelho criou → preserva.
+ *
+ * Quando o mesmo registro é apagado de um lado e editado do outro, a exclusão
+ * prevalece: é a decisão mais explícita das duas, e o histórico guarda o que
+ * havia antes.
+ */
+export const mergeCloudTableWithBaseline = (
+  remoteItems: unknown[],
+  localItems: unknown[],
+  baselineIds: string[] | undefined,
+): unknown[] => {
+  const merged = mergeCloudTable(remoteItems, localItems);
+  if (!baselineIds || baselineIds.length === 0) return merged;
+
+  const baseline = new Set(baselineIds);
+  const localIds = new Set(localItems.map(recordId).filter(Boolean));
+  const remoteIds = new Set(remoteItems.map(recordId).filter(Boolean));
+  // Nunca mexe em registro que não estava na base: esse é, por definição,
+  // novidade de algum dos lados, e novidade nenhuma pode ser descartada.
+  return merged.filter(item => {
+    const id = recordId(item);
+    if (!id || !baseline.has(id)) return true;
+    return localIds.has(id) && remoteIds.has(id);
+  });
+};
+
+/**
+ * Decide o que realmente deve ser publicado, considerando que este aparelho
+ * pode estar atrasado em relação à nuvem.
+ *
+ * O controle de versão do envio (a "geração" do manifesto) só detecta quem
+ * publicou DURANTE o nosso envio. Ele não percebe o caso mais comum com
+ * vários usuários: um aparelho que ficou horas com a tela aberta sem baixar
+ * nada, e então salva algo. Esse aparelho passava direto pela checagem e
+ * publicava o próprio retrato por cima — apagando da nuvem tudo que os
+ * colegas lançaram nesse intervalo, sem conflito e sem erro nenhum.
+ *
+ * Aqui a regra é explícita: só publica direto quem comprovadamente já viu a
+ * versão que está na nuvem. Quem não viu mescla antes — usando a base
+ * (`baseline`) para que a mesclagem não desfaça exclusões feitas aqui.
+ */
+export const resolvePublishPayload = ({
+  localPayload,
+  remoteSnapshot,
+  remoteUpdatedAt,
+  knownCloudVersion,
+  baseline,
+}: {
+  localPayload: CloudSnapshot;
+  remoteSnapshot: CloudSnapshot | null | undefined;
+  remoteUpdatedAt: string;
+  knownCloudVersion: string;
+  baseline?: CloudBaseline;
+}): CloudSnapshot => {
+  // Nuvem ainda vazia: não há nada para preservar.
+  if (!remoteUpdatedAt) return localPayload;
+  // Este aparelho já está na versão publicada: pode subir o próprio retrato.
+  if (knownCloudVersion === remoteUpdatedAt) return localPayload;
+  return mergeCloudSnapshotsWithBaseline(remoteSnapshot, localPayload, baseline);
+};
+
+/**
+ * Mescla incondicional (o chamador já decidiu que precisa mesclar), honrando
+ * a base para não desfazer exclusões locais. É o que o caminho de conflito
+ * usa: lá já se sabe que outro usuário publicou, não há o que decidir.
+ */
+export const mergeCloudSnapshotsWithBaseline = (
+  remote: CloudSnapshot | null | undefined,
+  local: CloudSnapshot,
+  baseline?: CloudBaseline,
+): CloudSnapshot => {
+  if (!remote || typeof remote !== 'object') return local;
+  const merged: CloudSnapshot = { ...remote, ...local };
+  for (const key of Object.keys(merged)) {
+    const remoteValue = (remote as CloudSnapshot)[key];
+    const localValue = local[key];
+    if (Array.isArray(remoteValue) && Array.isArray(localValue)) {
+      merged[key] = mergeCloudTableWithBaseline(remoteValue, localValue, baseline?.[key]);
+    }
+  }
+  return merged;
+};
+
 export const mergeCloudSnapshots = (
   remote: CloudSnapshot | null | undefined,
   local: CloudSnapshot,

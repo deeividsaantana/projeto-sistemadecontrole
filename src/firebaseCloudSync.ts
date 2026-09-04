@@ -5,7 +5,12 @@ import {
   setDoc,
   type Firestore,
 } from 'firebase/firestore';
-import { mergeCloudSnapshots } from './cloudMerge';
+import {
+  captureCloudBaseline,
+  mergeCloudSnapshotsWithBaseline,
+  resolvePublishPayload,
+  type CloudBaseline,
+} from './cloudMerge';
 
 const CLOUD_COLLECTION = 'sistemarenea_cloud';
 const CLOUD_MANIFEST_ID = 'main_data_v2';
@@ -80,6 +85,12 @@ export interface FirebaseUploadResult {
   totalRecords: number;
   writtenDocuments: number;
   reusedDocuments: number;
+  /**
+   * Ids do que foi realmente publicado — que pode diferir do que o chamador
+   * entregou, se este aparelho estava atrasado e precisou mesclar antes de
+   * subir. É esta a base válida para o próximo envio.
+   */
+  publishedBaseline: CloudBaseline;
 }
 
 export interface FirebaseDownloadResult {
@@ -470,6 +481,7 @@ const performFirebaseBackupUpload = async (
     totalRecords: countRecords(data),
     writtenDocuments: documentsToWrite.length + 1,
     reusedDocuments,
+    publishedBaseline: captureCloudBaseline(data),
   };
 };
 
@@ -489,8 +501,27 @@ const isVersionConflict = (error: unknown) => (
 const uploadWithConflictMerge = async (
   database: Firestore,
   data: FirebaseCloudData,
+  knownCloudVersion: string,
+  baseline: CloudBaseline | undefined,
 ): Promise<FirebaseUploadResult> => {
+  // Antes de qualquer coisa: este aparelho está publicando em cima de uma
+  // versão que ele realmente viu? O controle de geração abaixo só pega quem
+  // publica DURANTE o envio; um aparelho que ficou horas sem baixar passava
+  // direto e apagava da nuvem o trabalho dos colegas. Aqui, quem está
+  // atrasado mescla o que está publicado antes de subir.
+  const currentManifest = await readV2Manifest(database);
+  const remoteUpdatedAt = currentManifest?.updatedAt || '';
   let payload = data;
+  if (remoteUpdatedAt && remoteUpdatedAt !== knownCloudVersion) {
+    const remote = await downloadFirebaseBackup(database);
+    payload = resolvePublishPayload({
+      localPayload: data,
+      remoteSnapshot: remote.data,
+      remoteUpdatedAt,
+      knownCloudVersion,
+      baseline,
+    }) as FirebaseCloudData;
+  }
   let lastError: unknown;
   for (let attempt = 1; attempt <= CLOUD_CONFLICT_MAX_ATTEMPTS; attempt += 1) {
     try {
@@ -500,7 +531,14 @@ const uploadWithConflictMerge = async (
       lastError = error;
       if (attempt === CLOUD_CONFLICT_MAX_ATTEMPTS) break;
       const remote = await downloadFirebaseBackup(database);
-      payload = mergeCloudSnapshots(remote.data, payload) as FirebaseCloudData;
+      // Mesma regra da pré-checagem: preserva o que o colega publicou, mas
+      // sem ressuscitar o que este aparelho apagou de propósito. Sem a base
+      // aqui, uma exclusão feita durante um conflito voltaria sozinha.
+      payload = mergeCloudSnapshotsWithBaseline(
+        remote.data,
+        payload,
+        baseline,
+      ) as FirebaseCloudData;
       // Espera crescente com sorteio para dois clientes em conflito não
       // voltarem a colidir exatamente no mesmo instante.
       await new Promise(resolve => {
@@ -513,13 +551,22 @@ const uploadWithConflictMerge = async (
     : lastError;
 };
 
+/**
+ * `knownCloudVersion` é o `updatedAt` do manifesto que este aparelho
+ * comprovadamente já baixou (guardado em `renea_last_cloud_sync_iso`).
+ * Sem ele não há como distinguir "estou publicando em cima do que eu vi"
+ * de "estou publicando em cima de algo que nunca vi" — e é justamente essa
+ * segunda situação que apaga o trabalho de outro usuário.
+ */
 export const uploadFirebaseBackup = (
   database: Firestore,
   data: FirebaseCloudData,
+  knownCloudVersion = '',
+  baseline?: CloudBaseline,
 ): Promise<FirebaseUploadResult> => {
   const queuedUpload = uploadQueue.then(
-    () => uploadWithConflictMerge(database, data),
-    () => uploadWithConflictMerge(database, data),
+    () => uploadWithConflictMerge(database, data, knownCloudVersion, baseline),
+    () => uploadWithConflictMerge(database, data, knownCloudVersion, baseline),
   );
   uploadQueue = queuedUpload.then(() => undefined, () => undefined);
   return queuedUpload;

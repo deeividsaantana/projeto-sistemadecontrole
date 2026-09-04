@@ -110,6 +110,7 @@ import {
   type PublicSubmission,
 } from './firebasePublicSubmissions';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
+import { captureCloudBaseline, type CloudBaseline } from './cloudMerge';
 import {
   addPublicPresenceMember,
   resetPresenceDay,
@@ -262,6 +263,49 @@ const presenceBusinessKey = (item: Pick<PresencaApontamento, 'grupoId' | 'data' 
   `${item.grupoId}|${item.data}|${item.funcionarioId}`
 );
 
+/**
+ * De qual chave local sai cada tabela do retrato da nuvem. Fica em um só
+ * lugar porque duas rotinas dependem dela: gravar o que foi baixado e montar
+ * a base de comparação usada para não desfazer exclusões na mesclagem.
+ */
+const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
+  ['empresas', 'renea_empresas'],
+  ['obras', 'renea_obras'],
+  ['equipamentos', 'renea_equipamentos'],
+  ['funcionarios', 'renea_funcionarios'],
+  ['motoristasOperacionais', STORAGE_KEYS.motoristasOperacionais],
+  ['comboios', 'renea_comboios'],
+  ['combustiveis', 'renea_combustiveis'],
+  ['lubrificantes', 'renea_lubrificantes'],
+  ['etapas', 'renea_etapas'],
+  ['abastecimentos', 'renea_abastecimentos'],
+  ['lubrificacoes', 'renea_lubrificacoes'],
+  ['ticketsJazida', 'renea_tickets_jazida'],
+  ['listasPresenca', 'renea_listas_presenca'],
+  ['ordensServico', 'renea_ordens_servico'],
+  ['gruposEquipe', 'renea_grupos_equipes'],
+  ['presencasLink', 'renea_presencas_link'],
+  ['historicoPresencas', 'renea_historico_presencas'],
+  ['controleEquipamentosDiario', 'renea_controle_equipamentos_diario'],
+  ['periodosArquivados', 'renea_periodos_arquivados'],
+  ['masterDataReviewQueue', 'renea_master_data_review_queue'],
+  ['notifications', 'renea_notifications'],
+  ['historyLogs', 'renea_history_logs'],
+];
+
+/**
+ * Monta a base a partir do que já está salvo neste aparelho. Só faz sentido
+ * chamar quando se sabe que o local está igual à nuvem — é aí que o retrato
+ * local vale como referência do que existia antes das próximas alterações.
+ */
+const captureBaselineFromLocalStorage = (): CloudBaseline => {
+  const snapshot: Record<string, unknown> = {};
+  for (const [cloudKey, storageKey] of CLOUD_STORAGE_KEYS) {
+    snapshot[cloudKey] = parseStoredJson(localStorage.getItem(storageKey), storageKey, [] as unknown[]);
+  }
+  return captureCloudBaseline(snapshot);
+};
+
 const mergePresenceRecords = (current: PresencaApontamento[], incoming: PresencaApontamento[]) => {
   const indexed = new Map(current.map(item => [presenceBusinessKey(item), item]));
   incoming.forEach(item => indexed.set(presenceBusinessKey(item), item));
@@ -303,6 +347,11 @@ export default function App() {
   // sobrescreveria o lançamento que acabou de ser feito com a versão antiga.
   const uploadsInFlightRef = useRef(0);
   const isCheckingSyncRef = useRef(false);
+  // Ids por tabela da última sincronização concluída neste aparelho. Permite
+  // que uma mesclagem saiba diferenciar "eu apaguei isto" de "o colega criou
+  // isto depois". Fica só em memória de propósito: não ocupa armazenamento
+  // local, e sem ele a mesclagem apenas preserva tudo (nunca apaga por engano).
+  const cloudBaselineRef = useRef<CloudBaseline | undefined>(undefined);
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
@@ -544,16 +593,11 @@ export default function App() {
             { key: 'renea_historico_presencas', value: JSON.stringify(INITIAL_HISTORICO_PRESENCAS) },
             { key: 'renea_colaboradores_planilha_v1', value: 'true' },
           ]);
-          // Diagnóstico temporário: esta migração deveria rodar uma única vez
-          // por aparelho. Se este aviso aparecer de novo em aberturas
-          // seguintes, a marca de "já migrado" não está persistindo e cada
-          // reload está reiniciando colaboradores e presença sem avisar.
-          addNotification(
-            'Colaboradores e presença foram reiniciados neste aparelho',
-            'Uma migração única de dados rodou agora e substituiu funcionários, equipes e presença pelo cadastro padrão. Se isso aparecer de novo depois de recarregar a página, avise o suporte — a marca que evita repetir não está sendo salva.',
-            'warning',
-            'Sistema Local',
-          );
+          // A gravação acima é atômica: ou a marca de "já migrado" entra junto
+          // com as tabelas, ou nada muda. Como não há mais o risco de repetir
+          // silenciosamente a cada abertura, isto não precisa mais alarmar
+          // quem está usando — fica só no registro técnico.
+          console.info('Migração única de colaboradores/presença aplicada neste aparelho.');
         } catch (error) {
           console.error('Migração de colaboradores/presença falhou; nada foi alterado neste aparelho.', error);
         }
@@ -740,7 +784,19 @@ export default function App() {
       if (auth.currentUser) {
         await auth.currentUser.getIdToken(true);
       }
-      const uploadResult = await uploadFirebaseBackup(db, data);
+      // A versão que este aparelho comprovadamente já baixou. É o que permite
+      // ao envio saber se está publicando em cima de algo conhecido ou se
+      // precisa mesclar antes para não apagar o trabalho de outro usuário.
+      const knownCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
+      const uploadResult = await uploadFirebaseBackup(
+        db,
+        data,
+        knownCloudVersion,
+        cloudBaselineRef.current,
+      );
+      // O envio pode ter mesclado dados de outro usuário antes de publicar:
+      // a base válida daqui para frente é o que foi realmente publicado.
+      cloudBaselineRef.current = uploadResult.publishedBaseline;
       
       const nowStr = new Date(uploadResult.updatedAt).toLocaleString('pt-BR');
       setLastCloudSync(nowStr);
@@ -798,33 +854,9 @@ export default function App() {
         
         // Grava primeiro como um único conjunto recuperável. Se o navegador
         // estiver sem espaço, nenhuma tabela é deixada pela metade.
-        const cloudStorageKeys: Array<[string, string]> = [
-          ['empresas', 'renea_empresas'],
-          ['obras', 'renea_obras'],
-          ['equipamentos', 'renea_equipamentos'],
-          ['funcionarios', 'renea_funcionarios'],
-          ['motoristasOperacionais', STORAGE_KEYS.motoristasOperacionais],
-          ['comboios', 'renea_comboios'],
-          ['combustiveis', 'renea_combustiveis'],
-          ['lubrificantes', 'renea_lubrificantes'],
-          ['etapas', 'renea_etapas'],
-          ['abastecimentos', 'renea_abastecimentos'],
-          ['lubrificacoes', 'renea_lubrificacoes'],
-          ['ticketsJazida', 'renea_tickets_jazida'],
-          ['listasPresenca', 'renea_listas_presenca'],
-          ['ordensServico', 'renea_ordens_servico'],
-          ['gruposEquipe', 'renea_grupos_equipes'],
-          ['presencasLink', 'renea_presencas_link'],
-          ['historicoPresencas', 'renea_historico_presencas'],
-          ['controleEquipamentosDiario', 'renea_controle_equipamentos_diario'],
-          ['periodosArquivados', 'renea_periodos_arquivados'],
-          ['masterDataReviewQueue', 'renea_master_data_review_queue'],
-          ['notifications', 'renea_notifications'],
-          ['historyLogs', 'renea_history_logs'],
-        ];
         try {
           commitStorageBatch(localStorage, [
-            ...cloudStorageKeys.flatMap(([dataKey, storageKey]) => (
+            ...CLOUD_STORAGE_KEYS.flatMap(([dataKey, storageKey]) => (
               Array.isArray(data[dataKey])
                 ? [{ key: storageKey, value: JSON.stringify(data[dataKey]) }]
                 : []
@@ -925,6 +957,9 @@ export default function App() {
         
         setLastCloudSync(nowStr);
         setIsFirebaseConnected(true);
+        // Acabou de igualar com a nuvem: este é o retrato que serve de base
+        // para diferenciar exclusões locais de novidades dos colegas depois.
+        cloudBaselineRef.current = captureCloudBaseline(data);
         return {
           success: true,
           message: `Dados atualizados com sucesso (${backup.totalRecords.toLocaleString('pt-BR')} registros).`,
@@ -972,6 +1007,11 @@ export default function App() {
             'Sistema Local',
           );
         }
+      } else if (!cloudBaselineRef.current) {
+        // Abriu já em dia com a nuvem: nada para baixar, mas é exatamente
+        // aqui que o retrato local vale como base. Sem isto, a primeira
+        // exclusão feita logo após abrir poderia voltar na mesclagem.
+        cloudBaselineRef.current = captureBaselineFromLocalStorage();
       }
     } catch (error) {
       setIsFirebaseConnected(false);
@@ -1127,13 +1167,13 @@ export default function App() {
     setHistoryLogs(updatedHistory);
     writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(updatedHistory));
 
-    // Notificação real (não simulada) refletindo a ação que de fato aconteceu
-    addNotification(
-      `${tableName} — ${action}`,
-      description,
-      action === 'Excluiu' ? 'warning' : 'success',
-      'Sistema Local'
-    );
+    // Só avisa o que a pessoa não acabou de ver acontecer. Criar e editar já
+    // têm retorno imediato na própria tela e ficam registrados no Histórico:
+    // repetir isso no sino só enchia a caixa de avisos redundantes. Exclusão
+    // continua avisando por ser destrutiva e difícil de perceber depois.
+    if (action === 'Excluiu') {
+      addNotification(`${tableName} — ${action}`, description, 'warning', 'Sistema Local');
+    }
 
     // A sincronização é obrigatória e silenciosa para manter todos os usuários alinhados.
     setTimeout(() => {

@@ -33,6 +33,7 @@ import './auditLog.test';
 import './idempotency.test';
 import './masterDataContract.test';
 import './cloudMerge.test';
+import './cloudConcurrency.test';
 import './masterDataGateway.test';
 import './storageRules.test';
 import './firestoreRules.test';
