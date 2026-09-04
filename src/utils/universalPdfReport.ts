@@ -1,4 +1,3 @@
-import type { jsPDF } from 'jspdf';
 import { loadJsPdf, loadAutoTable } from './pdfLoader';
 
 import reneaLogo from '../assets/images/renea_logo_new.png';

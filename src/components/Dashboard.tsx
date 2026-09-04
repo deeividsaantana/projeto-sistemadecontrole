@@ -10,7 +10,6 @@ import { PageHeader, StatCard } from '../shared/ui';
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; historyLogs: HistoryLog[]; listasPresenca?: ListaPresenca[]; ordensServico?: OrdemServico[]; ticketsJazida?: TicketJazida[]; estacas?: ControleEstacas; presencasLink?: PresencaApontamento[]; onNavigate: (tab: string) => void;
 }
-const attendees = (list: ListaPresenca) => Array.isArray(list.funcionarios) ? list.funcionarios : [];
 const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const ACAO_TONE: Record<HistoryLog['acao'], string> = {
   Criou: 'bg-emerald-50 text-emerald-700',
@@ -31,7 +30,7 @@ const SectionTitle = ({ icon: Icon, tone, children }: { icon: typeof Activity; t
   </div>
 );
 
-export default function Dashboard({ obras, equipamentos, abastecimentos, historyLogs, listasPresenca = [], ordensServico = [], onNavigate }: DashboardProps) {
+export default function Dashboard({ obras, equipamentos, abastecimentos, historyLogs, listasPresenca = [], onNavigate }: DashboardProps) {
   const dashboardRef = useRef<HTMLDivElement>(null);
   const barsRef = useRef<HTMLDivElement>(null);
   const donutGroupRef = useRef<SVGGElement>(null);

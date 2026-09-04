@@ -10,7 +10,6 @@ import {
 import {
   normalizeComparable,
   normalizeEmployeeCode,
-  normalizePlate,
   normalizePrefix,
   operationalRowKey,
 } from '../utils/canonicalIdentity';

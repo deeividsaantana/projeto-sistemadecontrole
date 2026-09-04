@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle, Building2, CheckCircle2, Database, Search, Truck, Users } from 'lucide-react';
 import type { Empresa, Equipamento, Funcionario, ObraLocal } from '../types';
 import { isSupplier, isVehicle, registrySummary } from '../masterData/centralRegistry';

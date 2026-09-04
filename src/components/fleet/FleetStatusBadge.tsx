@@ -1,4 +1,3 @@
-import React from 'react';
 import type { FleetOperationalStatus } from '../../fleet/domain';
 import { getFleetStatusDefinition } from '../../fleet/status';
 

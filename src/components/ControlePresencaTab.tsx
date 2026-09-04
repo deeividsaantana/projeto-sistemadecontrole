@@ -19,13 +19,10 @@ import {
   Radio,
   RotateCcw,
   Search,
-  Send,
   Trash2,
-  UserRoundCheck,
   Users,
   X,
 } from 'lucide-react';
-import type ExcelJS from 'exceljs';
 import {
   applyTeamSyncPlan,
   buildTeamSyncPlan,

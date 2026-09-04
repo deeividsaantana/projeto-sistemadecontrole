@@ -1,4 +1,3 @@
-import React from 'react';
 import { Download, Trash2, X } from 'lucide-react';
 import type { FleetOperationalStatus } from '../../fleet/domain';
 import { FLEET_STATUS_DEFINITIONS } from '../../fleet/status';

@@ -40,8 +40,7 @@ import {
   INITIAL_PRODUTOS_LUBRIFICACAO, 
   INITIAL_ETAPAS_SERVICO, 
   INITIAL_ABASTECIMENTOS, 
-  INITIAL_LUBRIFICACOES, 
-  INITIAL_HISTORY_LOGS,
+  INITIAL_LUBRIFICACOES,
   INITIAL_PRESENCAS,
   INITIAL_ORDENS_SERVICO,
   INITIAL_GRUPOS_EQUIPES,
@@ -190,8 +189,6 @@ import {
   X,
   LogOut,
   FolderPlus,
-  Bell,
-  BellRing,
 } from 'lucide-react';
 
 import { AppNotification } from './types';
@@ -1930,14 +1927,14 @@ export default function App() {
         { key: 'renea_funcionarios', value: JSON.stringify(promoted.funcionarios) },
         { key: 'renea_equipamentos', value: JSON.stringify(promoted.equipamentos) },
         { key: 'renea_master_data_review_queue', value: JSON.stringify(nextReviewRows) },
-        { key: 'renea_history_logs', value: JSON.stringify([]) },
+        { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
       ]);
 
       setEmpresas(promoted.empresas);
       setObras(promoted.obras);
       setFuncionarios(promoted.funcionarios);
       setEquipamentos(promoted.equipamentos);
-      setHistoryLogs([]);
+      setHistoryLogs(nextHistory);
       addNotification('Planilha Mestre atualizada', message, preserved > 0 ? 'warning' : 'success', 'Sistema Local');
 
       // Sem atraso, pelo mesmo motivo do saveAndLog: handleUploadToFirebase
@@ -2199,87 +2196,6 @@ export default function App() {
     }
   };
 
-  const handleSaveListaPresenca = (item: ListaPresenca, isNew: boolean) => {
-    let updated;
-    if (isNew) {
-      updated = [...listasPresenca, item];
-    } else {
-      updated = listasPresenca.map(x => x.id === item.id ? item : x);
-    }
-    const ob = obras.find(o => o.id === item.obraId);
-    saveAndLog(
-      'Presença', 
-      isNew ? 'Criou' : 'Editou', 
-      `${isNew ? 'Registrou' : 'Editou'} Lista de Presença para obra "${ob ? ob.nome : 'Geral'}" no dia ${item.data}.`,
-      historyLogs,
-      () => {
-        setListasPresenca(updated);
-        writeStorageValue(localStorage, 'renea_listas_presenca', JSON.stringify(updated));
-      }
-    );
-  };
-
-  const handleDeleteListaPresenca = (id: string) => {
-    const item = listasPresenca.find(x => x.id === id);
-    const updated = listasPresenca.filter(x => x.id !== id);
-    saveAndLog(
-      'Presença', 
-      'Excluiu', 
-      `Excluiu Lista de Presença do dia ${item ? item.data : ''}.`,
-      historyLogs,
-      () => {
-        setListasPresenca(updated);
-        writeStorageValue(localStorage, 'renea_listas_presenca', JSON.stringify(updated));
-      }
-    );
-  };
-
-  const handleSaveOrdemServico = (item: OrdemServico, isNew: boolean) => {
-    let updated;
-    if (isNew) {
-      updated = [...ordensServico, item];
-    } else {
-      updated = ordensServico.map(x => x.id === item.id ? item : x);
-    }
-    const eq = equipamentos.find(e => e.id === item.equipamentoId);
-    saveAndLog(
-      'Manutenção',
-      isNew ? 'Criou' : 'Editou',
-      `${isNew ? 'Abriu' : 'Atualizou'} a ${item.numero} (${item.tipo}) para o equipamento "${eq ? eq.prefixo : 'desconhecido'}" — status: ${item.status}.`,
-      historyLogs,
-      () => {
-        setOrdensServico(updated);
-        writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(updated));
-      }
-    );
-  };
-
-  const handleDeleteOrdemServico = (id: string) => {
-    const item = ordensServico.find(x => x.id === id);
-    const updated = ordensServico.filter(x => x.id !== id);
-    saveAndLog(
-      'Manutenção',
-      'Excluiu',
-      `Excluiu a ordem de serviço ${item ? item.numero : ''}.`,
-      historyLogs,
-      () => {
-        setOrdensServico(updated);
-        writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(updated));
-      }
-    );
-  };
-
-  // Atualiza apenas o status de um equipamento (usado pela tela de Manutenção
-  // para refletir automaticamente o status da OS no cadastro de frota).
-  const handleUpdateEquipamentoStatus = (equipamentoId: string, status: Equipamento['status']) => {
-    const item = equipamentos.find(x => x.id === equipamentoId);
-    if (!item || item.status === status) return;
-    const updatedItem = { ...item, status };
-    const updated = equipamentos.map(x => x.id === equipamentoId ? updatedItem : x);
-    setEquipamentos(updated);
-    writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(updated));
-  };
-
   // Notifications helpers
   const addNotification = (
     title: string, 
@@ -2484,11 +2400,11 @@ export default function App() {
         commitStorageBatch(localStorage, [
           { key: 'renea_combustiveis', value: JSON.stringify(nextFuelTypes) },
           { key: 'renea_abastecimentos', value: JSON.stringify(nextFuelRecords) },
-      { key: 'renea_history_logs', value: JSON.stringify([]) },
+      { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
         ]);
         setCombustiveis(nextFuelTypes);
         setAbastecimentos(nextFuelRecords);
-    setHistoryLogs([]);
+    setHistoryLogs(nextHistory);
 
         const syncResult = await uploadLocalSnapshotToFirebase();
         if (!syncResult.success) throw new Error(syncResult.message);
@@ -3082,7 +2998,7 @@ export default function App() {
       { key: 'renea_periodos_arquivados', value: JSON.stringify(nextPeriodosArquivados) },
       { key: 'renea_master_data_review_queue', value: JSON.stringify(nextMasterDataReviewQueue) },
       { key: 'renea_notifications', value: JSON.stringify(nextNotifications) },
-      { key: 'renea_history_logs', value: JSON.stringify([]) },
+      { key: 'renea_history_logs', value: JSON.stringify(logs) },
     ]);
 
     setEmpresas(nextEmpresas);
@@ -3106,109 +3022,7 @@ export default function App() {
     setControleEstacas(nextControleEstacas);
     setPeriodosArquivados(nextPeriodosArquivados);
     setNotifications(nextNotifications);
-    setHistoryLogs([]);
-  };
-
-  const handleResetData = () => {
-    commitStorageBatch(localStorage, [
-      { key: 'renea_empresas', value: JSON.stringify(INITIAL_EMPRESAS) },
-      { key: 'renea_obras', value: JSON.stringify(INITIAL_OBRAS) },
-      { key: 'renea_equipamentos', value: JSON.stringify(INITIAL_EQUIPAMENTOS) },
-      { key: 'renea_funcionarios', value: JSON.stringify(INITIAL_FUNCIONARIOS) },
-      { key: 'renea_comboios', value: JSON.stringify(INITIAL_COMBOIOS) },
-      { key: 'renea_combustiveis', value: JSON.stringify(INITIAL_TIPOS_COMBUSTIVEL) },
-      { key: 'renea_lubrificantes', value: JSON.stringify(INITIAL_PRODUTOS_LUBRIFICACAO) },
-      { key: 'renea_etapas', value: JSON.stringify(INITIAL_ETAPAS_SERVICO) },
-      { key: 'renea_abastecimentos', value: JSON.stringify(INITIAL_ABASTECIMENTOS) },
-      { key: 'renea_lubrificacoes', value: JSON.stringify(INITIAL_LUBRIFICACOES) },
-      { key: 'renea_tickets_jazida', value: JSON.stringify(INITIAL_TICKETS_JAZIDA) },
-      { key: 'renea_listas_presenca', value: JSON.stringify(INITIAL_PRESENCAS) },
-      { key: 'renea_ordens_servico', value: JSON.stringify(INITIAL_ORDENS_SERVICO) },
-      { key: 'renea_grupos_equipes', value: JSON.stringify(INITIAL_GRUPOS_EQUIPES) },
-      { key: 'renea_presencas_link', value: JSON.stringify(INITIAL_PRESENCAS_LINK) },
-      { key: 'renea_historico_presencas', value: JSON.stringify(INITIAL_HISTORICO_PRESENCAS) },
-      { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO) },
-      { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: [], cravacoes: [] }) },
-      { key: 'renea_periodos_arquivados', value: '[]' },
-      { key: 'renea_master_data_review_queue', value: '[]' },
-      { key: 'renea_notifications', value: '[]' },
-      { key: 'renea_history_logs', value: JSON.stringify([]) },
-      { key: 'renea_colaboradores_planilha_v1', value: 'true' },
-      { key: 'renea_planilhas_operacionais_v2', value: 'true' },
-    ]);
-
-    setEmpresas(INITIAL_EMPRESAS);
-    setObras(INITIAL_OBRAS);
-    setEquipamentos(INITIAL_EQUIPAMENTOS);
-    setFuncionarios(INITIAL_FUNCIONARIOS);
-    setComboios(INITIAL_COMBOIOS);
-    setCombustiveis(INITIAL_TIPOS_COMBUSTIVEL);
-    setLubrificantes(INITIAL_PRODUTOS_LUBRIFICACAO);
-    setEtapas(INITIAL_ETAPAS_SERVICO);
-    setAbastecimentos(INITIAL_ABASTECIMENTOS);
-    setLubrificacoes(INITIAL_LUBRIFICACOES);
-    setTicketsJazida(INITIAL_TICKETS_JAZIDA);
-    setListasPresenca(INITIAL_PRESENCAS);
-    setOrdensServico(INITIAL_ORDENS_SERVICO);
-    setGruposEquipe(INITIAL_GRUPOS_EQUIPES);
-    setPresencasLink(INITIAL_PRESENCAS_LINK);
-    setHistoricoPresencas(INITIAL_HISTORICO_PRESENCAS);
-    setControleEquipamentosDiario(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO);
-    setControleEstacas(INITIAL_CONTROLE_ESTACAS);
-    setPeriodosArquivados([]);
-    setNotifications([]);
-    setHistoryLogs([]);
-  };
-
-  const handleClearData = () => {
-    const clearLog: HistoryLog = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleString('pt-BR'),
-      usuario: activeUserName,
-      acao: 'Excluiu',
-      tela: 'Banco de Dados',
-      descricao: 'Limpou completamente todas as tabelas de dados do sistema.'
-    };
-    const clearedArrayKeys = [
-      'renea_empresas', 'renea_obras', 'renea_equipamentos', 'renea_funcionarios', 'renea_motoristas_operacionais',
-      'renea_comboios', 'renea_combustiveis', 'renea_lubrificantes', 'renea_etapas',
-      'renea_abastecimentos', 'renea_lubrificacoes', 'renea_tickets_jazida',
-      'renea_listas_presenca', 'renea_ordens_servico', 'renea_grupos_equipes',
-      'renea_presencas_link', 'renea_historico_presencas',
-      'renea_periodos_arquivados', 'renea_notifications',
-      'renea_controle_equipamentos_diario',
-      'renea_master_data_review_queue',
-    ];
-    commitStorageBatch(localStorage, [
-      ...clearedArrayKeys.map(key => ({ key, value: '[]' })),
-      { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: [], cravacoes: [] }) },
-      { key: 'renea_history_logs', value: JSON.stringify([]) },
-      { key: 'renea_colaboradores_planilha_v1', value: 'true' },
-      { key: 'renea_planilhas_operacionais_v2', value: 'true' },
-    ]);
-
-    setEmpresas([]);
-    setObras([]);
-    setEquipamentos([]);
-    setFuncionarios([]);
-    setMotoristasOperacionais([]);
-    setComboios([]);
-    setCombustiveis([]);
-    setLubrificantes([]);
-    setEtapas([]);
-    setAbastecimentos([]);
-    setLubrificacoes([]);
-    setTicketsJazida([]);
-    setListasPresenca([]);
-    setOrdensServico([]);
-    setGruposEquipe([]);
-    setPresencasLink([]);
-    setHistoricoPresencas([]);
-    setControleEquipamentosDiario([]);
-    setControleEstacas({ lotes: [], cravacoes: [] });
-    setPeriodosArquivados([]);
-    setNotifications([]);
-    setHistoryLogs([]);
+    setHistoryLogs(logs);
   };
 
   const handleApplySelectiveReset = (
@@ -3730,7 +3544,7 @@ export default function App() {
         { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(newControleEquipamentosDiario) },
         { key: 'renea_controle_estacas', value: JSON.stringify(newControleEstacas) },
         { key: 'renea_master_data_review_queue', value: JSON.stringify(newMasterDataReviewQueue) },
-      { key: 'renea_history_logs', value: JSON.stringify([]) },
+      { key: 'renea_history_logs', value: JSON.stringify(updatedHistory) },
       ]);
 
       setEmpresas(newEmpresas);
@@ -3751,7 +3565,7 @@ export default function App() {
       setHistoricoPresencas(newHistoricoPresencas);
       setControleEquipamentosDiario(newControleEquipamentosDiario);
       setControleEstacas(newControleEstacas);
-    setHistoryLogs([]);
+    setHistoryLogs(updatedHistory);
 
       addNotification('Importação por Período Concluída', logMsg, 'success', 'Sistema Local');
 

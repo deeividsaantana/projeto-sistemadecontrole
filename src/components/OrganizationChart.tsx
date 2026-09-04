@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, ChevronDown, ChevronRight, LocateFixed, Maximize2, Minimize2, Search, UserRound, Users, X } from 'lucide-react';
 import type { Empresa, Funcionario } from '../types';
 

@@ -14,7 +14,6 @@ import {
   Send,
   Trash2,
   UserPlus,
-  Users,
   X,
 } from 'lucide-react';
 import type {

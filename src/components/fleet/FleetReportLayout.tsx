@@ -1,4 +1,3 @@
-import React from 'react';
 import type { FleetCurrentState, FleetReportViewModel } from '../../fleet/domain';
 import reneaLogo from '../../assets/images/renea_logo_new.png';
 import spmarLogo from '../../assets/images/spmar_logo.png';

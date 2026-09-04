@@ -5,7 +5,6 @@ import {
   Hammer,
   LayoutDashboard,
   Settings,
-  ShieldCheck,
   Truck,
   Activity,
   Users,

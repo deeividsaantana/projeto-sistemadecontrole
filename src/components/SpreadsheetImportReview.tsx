@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, Columns3, FileSpreadsheet, Loader2, Search, X } from 'lucide-react';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import type { OperationalAnalysis } from '../utils/operationalAnalysis';

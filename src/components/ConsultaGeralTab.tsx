@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Building2, Eye, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
@@ -59,7 +59,6 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
   const [linkNote, setLinkNote] = useState('');
 
   const rows = useMemo<GeneralRow[]>(() => {
-    const today = new Date().toISOString().slice(0, 10);
     const equipmentStatus = (equipment: Equipamento) => {
       const openOrder = ordensServico.find(order => order.equipamentoId === equipment.id && !['Concluída', 'Cancelada'].includes(order.status));
       if (openOrder?.status === 'Aguardando Peça') return 'Aguardando manutenção';

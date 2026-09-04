@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ClipboardCheck,
   CloudUpload,
-  CopyPlus,
   CircleDollarSign,
   Database,
   Download,
@@ -29,10 +28,8 @@ import {
   Search,
   Trash2,
   Truck,
-  Upload,
   X,
 } from 'lucide-react';
-import type ExcelJS from 'exceljs';
 import type { Abastecimento, AlertaCombustivel, Comboio, Empresa, Equipamento, TipoCombustivel } from '../types';
 import {
   auditFuelDataset,

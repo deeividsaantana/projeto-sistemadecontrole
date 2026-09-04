@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { MoreVertical } from 'lucide-react';
 import type { FleetCurrentState } from '../../fleet/domain';
 import FleetStatusBadge from './FleetStatusBadge';

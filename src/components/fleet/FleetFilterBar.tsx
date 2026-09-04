@@ -1,4 +1,3 @@
-import React from 'react';
 import { RotateCcw, Search } from 'lucide-react';
 import type { Empresa } from '../../types';
 import {

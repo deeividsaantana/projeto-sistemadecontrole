@@ -12,7 +12,6 @@ import {
   type FleetDataContext,
   type FleetEvent,
   type FleetIdentity,
-  type FleetOperationalStatus,
   type FleetPersistedRecord,
   type ReconciliationResult,
 } from './domain';

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Clock3, Pencil, Wrench, X } from 'lucide-react';
 import type { FleetCurrentState } from '../../fleet/domain';
 import { isBasculanteWithoutPlate } from '../../fleet/domain';

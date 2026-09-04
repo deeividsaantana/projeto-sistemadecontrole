@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, CircleDashed, Search, X } from 'lucide-react';
 import type { CravacaoEstaca, ObraLocal } from '../types';
 
