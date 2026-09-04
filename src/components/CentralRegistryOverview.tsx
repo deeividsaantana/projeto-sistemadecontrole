@@ -3,6 +3,7 @@ import { AlertTriangle, Building2, CheckCircle2, Database, Search, Truck, Users 
 import type { Empresa, Equipamento, Funcionario, ObraLocal } from '../types';
 import { isSupplier, isVehicle, registrySummary } from '../masterData/centralRegistry';
 import { downloadCentralRegistryWorkbook } from '../masterData/centralWorkbookExport';
+import { CountUp } from '../shared/ui';
 
 type CentralModule = 'funcionarios' | 'equipamentos' | 'veiculos' | 'fornecedores' | 'empresas' | 'obras' | 'etapas';
 
@@ -71,9 +72,9 @@ export default function CentralRegistryOverview({ empresas, obras, equipamentos,
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        {cards.map(card => <button key={card.label} onClick={() => onSelectModule(card.module)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-emerald-400 hover:shadow-sm">
-          <card.icon className={`h-4 w-4 ${card.label === 'Inconsistências' && card.value > 0 ? 'text-amber-600' : 'text-emerald-700'}`} />
-          <strong className="mt-3 block text-2xl font-black text-slate-950">{card.value.toLocaleString('pt-BR')}</strong>
+        {cards.map(card => <button key={card.label} onClick={() => onSelectModule(card.module)} className="group rounded-2xl border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md">
+          <card.icon className={`h-4 w-4 transition-transform duration-200 group-hover:scale-110 ${card.label === 'Inconsistências' && card.value > 0 ? 'text-amber-600' : 'text-emerald-700'}`} />
+          <strong className="mt-3 block text-2xl font-black tabular-nums text-slate-950"><CountUp value={card.value} /></strong>
           <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{card.label}</span>
         </button>)}
       </div>
