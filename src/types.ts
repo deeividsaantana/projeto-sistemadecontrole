@@ -32,6 +32,8 @@ export interface Equipamento {
   modelo: string;
   seriePlaca: string;
   placa?: string;
+  /** Ano de fabricação, quando informado no cadastro. */
+  ano?: number;
   empresaId: string; // Empresa do equipamento
   status: 'Ativo' | 'Parado' | 'Manutenção' | 'Mobilizado' | 'Desmobilizado' | 'Esperando motorista';
   localAtualId: string; // Obra/local atual

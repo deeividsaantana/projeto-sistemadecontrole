@@ -34,10 +34,16 @@ export const NAVIGATION_GROUPS = [
     label: 'Operação',
     items: [
       { id: 'central-operacional', label: 'Central Operacional', icon: Radio },
-      { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
-      { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
+    ],
+  },
+  {
+    label: 'Equipamentos',
+    items: [
+      { id: 'frota', label: 'Frota', icon: Truck },
+      { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
+      { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
     ],
   },
   {
@@ -66,6 +72,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'dashboard',
     'consulta-geral',
     'central-operacional',
+    'frota',
     'controle-equipamentos',
     'lancamentos',
     'tickets-jazida',

@@ -159,6 +159,7 @@ export default function CadastrosTab({
   const [eqTipo, setEqTipo] = useState('');
   const [eqMarca, setEqMarca] = useState('');
   const [eqModelo, setEqModelo] = useState('');
+  const [eqAno, setEqAno] = useState('');
   const [eqSeriePlaca, setEqSeriePlaca] = useState('');
   const [eqPlaca, setEqPlaca] = useState('');
   const [eqEmpresaId, setEqEmpresaId] = useState('');
@@ -213,7 +214,7 @@ export default function CadastrosTab({
     setValidationError('');
     setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel('');
     setObrNome(''); setObrEndereco(''); setObrResponsavel(''); setObrStatus('Ativa');
-    setEqPrefixo(''); setEqNome(''); setEqTipo(''); setEqMarca(''); setEqModelo(''); setEqSeriePlaca(''); setEqPlaca(''); setEqEmpresaId(''); setEqStatus('Ativo'); setEqLocalId(''); setEqObservacao(''); setEqFoto(''); setEqHorasDisponiveis(0); setEqHorasIndisponiveis(0);
+    setEqPrefixo(''); setEqNome(''); setEqTipo(''); setEqMarca(''); setEqModelo(''); setEqAno(''); setEqSeriePlaca(''); setEqPlaca(''); setEqEmpresaId(''); setEqStatus('Ativo'); setEqLocalId(''); setEqObservacao(''); setEqFoto(''); setEqHorasDisponiveis(0); setEqHorasIndisponiveis(0);
     setEqCategoriaFrota('Equipamento'); setEqCodigoSge(''); setEqFamilia(''); setEqMobilizado(false); setEqMetaDisponibilidade(80); setEqDataMobilizacao(''); setEqDataDesmobilizacao(''); setEqOperadorResponsavelId(''); setEqCombustivelId(''); setEqCapacidadeTanque(0); setEqEquipamentoVinculadoId('');
     setFunNome(''); setFunMatricula(''); setFunCargo(''); setFunTelefone(''); setFunEmpresaId(''); setFunAtivo(true); setFunStatus('ATIVO');
     setFunDivisao(''); setFunSecao(''); setFunLiderId(''); setFunArea(''); setFunResponsavelArea(''); setFunDataMobilizacao(''); setFunDataDesmobilizacao(''); setFunSituacaoRh(''); setFunObservacao('');
@@ -248,7 +249,7 @@ export default function CadastrosTab({
       setObrNome(x.nome); setObrEndereco(x.endereco); setObrResponsavel(x.responsavel); setObrStatus(x.status);
     } else if (subTab === 'equipamentos' || subTab === 'veiculos') {
       const x = item as Equipamento;
-      setEqPrefixo(x.prefixo); setEqNome(x.nome); setEqTipo(x.tipo); setEqMarca(x.marca); setEqModelo(x.modelo); setEqSeriePlaca(x.seriePlaca); setEqEmpresaId(x.empresaId); setEqStatus(x.status); setEqLocalId(x.localAtualId); setEqObservacao(x.observacao);
+      setEqPrefixo(x.prefixo); setEqNome(x.nome); setEqTipo(x.tipo); setEqMarca(x.marca); setEqModelo(x.modelo); setEqAno(x.ano ? String(x.ano) : ''); setEqSeriePlaca(x.seriePlaca); setEqEmpresaId(x.empresaId); setEqStatus(x.status); setEqLocalId(x.localAtualId); setEqObservacao(x.observacao);
       setEqPlaca(x.placa || ''); setEqFoto(x.foto || ''); setEqHorasDisponiveis(x.horasDisponiveis || 0); setEqHorasIndisponiveis(x.horasIndisponiveis || 0);
       setEqCategoriaFrota(x.categoriaFrota || 'Equipamento'); setEqCodigoSge(x.codigoSge || ''); setEqFamilia(x.familia || ''); setEqMobilizado(Boolean(x.mobilizado)); setEqMetaDisponibilidade(x.metaDisponibilidade ?? 80); setEqDataMobilizacao(x.dataMobilizacao || ''); setEqDataDesmobilizacao(x.dataDesmobilizacao || ''); setEqOperadorResponsavelId(x.operadorResponsavelId || ''); setEqCombustivelId(x.combustivelId || ''); setEqCapacidadeTanque(x.capacidadeTanqueLitros || 0); setEqEquipamentoVinculadoId(x.equipamentoVinculadoId || '');
     } else if (subTab === 'funcionarios') {
@@ -324,6 +325,7 @@ export default function CadastrosTab({
         tipo: eqTipo.trim() || 'Outro',
         marca: eqMarca.trim(),
         modelo: eqModelo.trim(),
+        ano: eqAno.trim() ? Number(eqAno) : undefined,
         seriePlaca: eqSeriePlaca.trim().toUpperCase(),
         placa: eqPlaca.trim().toUpperCase() || undefined,
         empresaId: eqEmpresaId,
@@ -984,6 +986,10 @@ export default function CadastrosTab({
                 <div className="space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Modelo</label>
                   <input type="text" value={eqModelo} onChange={e => setEqModelo(e.target.value)} placeholder="Ex: 320D L" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ano</label>
+                  <input type="number" inputMode="numeric" min={1950} max={2100} value={eqAno} onChange={e => setEqAno(e.target.value)} placeholder="Ex: 2019" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Número de Série ou Placa</label>

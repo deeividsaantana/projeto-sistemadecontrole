@@ -14,6 +14,7 @@ import CadastrosTab from '../src/components/CadastrosTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
 import CentralOperacionalTab from '../src/components/CentralOperacionalTab';
+import FrotaTab from '../src/components/FrotaTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -184,6 +185,20 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  frota: (
+    <FrotaTab
+      equipamentos={fx.equipamentos}
+      empresas={fx.empresas}
+      obras={fx.obras}
+      funcionarios={fx.funcionarios}
+      gruposEquipe={[fx.grupo]}
+      controlesEquipamentos={fx.controlesEquipamentos}
+      ordensServico={fx.ordensServico}
+      abastecimentos={fx.abastecimentos}
+      ticketsJazida={fx.ticketsJazida}
+      onNavigate={noop}
     />
   ),
   'central-operacional': (
