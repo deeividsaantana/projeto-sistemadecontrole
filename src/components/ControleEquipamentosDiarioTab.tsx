@@ -51,6 +51,7 @@ import DailyRecordForm from './fleet/DailyRecordForm';
 import FleetReportLayout from './fleet/FleetReportLayout';
 import ConfirmDialog from './fleet/ConfirmDialog';
 import FleetDailyReference from './fleet/FleetDailyReference';
+import { PageHeader } from '../shared/ui';
 
 interface Props {
   registros: ControleEquipamentoDiario[];
@@ -406,22 +407,21 @@ export default function ControleEquipamentosDiarioTab({
   };
   return (
     <main ref={pageRef} className="fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
-      <header data-fleet-enter className="border-b border-slate-200 px-1 pb-6 pt-2 lg:flex lg:items-end lg:justify-between">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Rodoanel Mário Covas · Alça Trecho Leste · operação diária</p>
-          <h1 className="mt-2 max-w-4xl text-[clamp(2rem,3.2vw,3.05rem)] font-black leading-[1] tracking-[-0.055em] text-slate-950">Controle operacional de frotas</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">Situação diária, motoristas, saídas, pendências e relatórios em uma única visão operacional.</p>
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-2 lg:mt-0 lg:max-w-[520px]">
-          <button type="button" onClick={openNewRecord} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white transition-colors hover:bg-emerald-800"><Plus size={16}/>Novo lançamento</button>
-          {onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-xs font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-emerald-100"><Plus size={16}/>Novo equipamento / tipo</button>}
-          <button type="button" onClick={handleRefresh} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
-          <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"><Printer size={15}/>{exporting==='pdf'?'Gerando...':'Relatório PDF'}</button>
-          <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"><FileSpreadsheet size={15}/>{exporting==='excel'?'Gerando...':'Exportar Excel'}</button>
-          <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-          <button type="button" onClick={() => inputRef.current?.click()} className="col-span-2 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><Upload size={15}/>Importar planilha</button>
-        </div>
-      </header>
+      <div data-fleet-enter>
+        <PageHeader
+          title="Controle Operacional de Frota"
+          description="Rodoanel Mário Covas · Alça Trecho Leste · situação diária, motoristas, saídas, pendências e relatórios em uma única visão operacional."
+          actions={<>
+            <button type="button" onClick={openNewRecord} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white transition-colors hover:bg-emerald-800"><Plus size={16}/>Novo lançamento</button>
+            {onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-xs font-black text-emerald-800 transition hover:bg-emerald-100"><Plus size={16}/>Novo equipamento / tipo</button>}
+            <button type="button" onClick={handleRefresh} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
+            <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"><Printer size={15}/>{exporting==='pdf'?'Gerando...':'Relatório PDF'}</button>
+            <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"><FileSpreadsheet size={15}/>{exporting==='excel'?'Gerando...':'Exportar Excel'}</button>
+            <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
+            <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><Upload size={15}/>Importar planilha</button>
+          </>}
+        />
+      </div>
       <nav data-fleet-enter className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-transparent" aria-label="Visões do controle de frotas">
         {([
           ['today', 'Situação do dia', CalendarDays],
