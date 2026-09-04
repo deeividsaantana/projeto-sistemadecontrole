@@ -74,7 +74,7 @@ export default function FleetDailyReference({ records, date }: Props) {
     : reconciliation.items.filter(item => visibility === 'informed' ? item.informed : !item.informed);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]" aria-labelledby="fleet-reference-title">
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="fleet-reference-title">
       <header className="grid gap-4 border-b border-slate-200 p-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-700"><ClipboardCheck size={20}/></span>

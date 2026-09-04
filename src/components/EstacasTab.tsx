@@ -285,7 +285,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl border border-emerald-500/20 bg-slate-950 p-5">
+      <section className="rounded-lg border border-emerald-500/20 bg-slate-950 p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-400">ERP v2.6</p>
@@ -330,7 +330,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
 
       {mode === 'lotes' && (
         <>
-          <form onSubmit={saveLot} className="grid min-w-0 gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
+          <form onSubmit={saveLot} className="grid min-w-0 gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
             <input type="date" value={lot.data} onChange={e => setLot({ ...lot, data: e.target.value })} className="input-dark" />
             <input placeholder="Nota fiscal" value={lot.notaFiscal} onChange={e => setLot({ ...lot, notaFiscal: e.target.value })} className="input-dark" />
             <input placeholder="Código do material" value={lot.materialCodigo} onChange={e => setLot({ ...lot, materialCodigo: e.target.value })} className="input-dark" />
@@ -354,7 +354,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
             <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={controle.lotes.length > 0 && selectedLotIds.length === controle.lotes.length} onChange={e => setSelectedLotIds(e.target.checked ? controle.lotes.map(item => item.id) : [])} /> Selecionar todos ({selectedLotIds.length})</label>
             <button type="button" disabled={selectedLotIds.length === 0} onClick={removeSelectedLots} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
           </div>
-          <div className="overflow-x-auto rounded-2xl border border-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-slate-800">
             <table className="w-full min-w-[900px] text-left text-xs">
               <thead className="bg-slate-900 text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Sel.</th><th>Data/NF</th><th>Material</th><th>Perfil</th><th>Recebido</th><th>Cravado</th><th>Saldo</th><th>Status</th><th /></tr></thead>
               <tbody className="divide-y divide-slate-800 bg-slate-950">
@@ -377,7 +377,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
             onActiveIdChange={setActiveDrivingId}
             onVisibleIdsChange={setVisibleDrivingIds}
           />
-          <form id="stake-driving-form" onSubmit={saveDriving} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+          <form id="stake-driving-form" onSubmit={saveDriving} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
             <input type="date" value={driving.data} onChange={e => setDriving({ ...driving, data: e.target.value })} className="input-dark" />
             <input placeholder="Identificação / frente" value={driving.identificacao} onChange={e => setDriving({ ...driving, identificacao: e.target.value })} className="input-dark" />
             <input placeholder="Perfil" value={driving.perfil} onChange={e => setDriving({ ...driving, perfil: e.target.value })} className="input-dark" />

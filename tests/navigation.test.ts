@@ -15,15 +15,17 @@ test('perfil administrador mantém acesso a todos os módulos atuais', () => {
 
 test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ROLE_ACCESS.gestor.includes('configuracoes'), false);
-  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'consulta-geral', 'periodo', 'reports']);
+  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'consulta-geral', 'periodo']);
   assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), false);
   assert.equal(ROLE_ACCESS.gestor.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.admin.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.admin.includes('inteligencia'), false);
   assert.equal(ROLE_ACCESS.admin.includes('controle-presenca'), false);
   assert.equal(ROLE_ACCESS.admin.includes('partes-diarias'), false);
-  assert.equal(ROLE_ACCESS.gestor.includes('usuarios'), false);
-  assert.equal(ROLE_ACCESS.admin.includes('usuarios'), true);
+  // Usuários agora é uma seção interna de Apoio e Configuração, não um item
+  // de navegação próprio — só quem acessa "configuracoes" chega lá.
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'usuarios'), false);
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'reports'), false);
   assert.equal(ROLE_ACCESS.operador.includes('pendencias'), false);
   assert.equal(ROLE_ACCESS.operador.includes('lancamentos'), true);
   assert.equal(ROLE_ACCESS.operador.includes('configuracoes'), false);

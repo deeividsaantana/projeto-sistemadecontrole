@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Building2, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
+import { Building2, Eye, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { PageHeader, Pagination, statusTone } from '../shared/ui';
 
 type GeneralRow = {
   id: string;
@@ -52,7 +53,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const [linkEmployee, setLinkEmployee] = useState('');
   const [linkEquipment, setLinkEquipment] = useState('');
   const [linkNote, setLinkNote] = useState('');
@@ -79,7 +80,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
     ...obras.map(item => ({ id: `obra-${item.id}`, module: 'Obras', title: item.nome, detail: item.endereco || 'Endereço não informado', meta: item.responsavel || 'Responsável não informado', status: item.status, tab: 'cadastros' })),
     ...equipamentos.map(item => ({ id: `equipamento-${item.id}`, module: 'Frota', title: `${item.prefixo || 'Sem prefixo'} · ${item.nome}`, detail: [item.marca, item.modelo, item.placa || item.seriePlaca].filter(Boolean).join(' · ') || 'Identificação incompleta', meta: `${item.tipo || item.categoriaFrota || 'Equipamento'} · ${linkedDriver(item)} · ${empresas.find(company => company.id === item.empresaId)?.nome || 'Empresa não vinculada'}`, driver: linkedDriver(item), company: empresas.find(company => company.id === item.empresaId)?.nome, equipmentType: item.tipo || item.categoriaFrota || item.familia, prefix: item.prefixo, maintenance: equipmentStatus(item).toLocaleLowerCase('pt-BR').includes('manutenção'), status: equipmentStatus(item), tab: 'controle-equipamentos' })),
     ...funcionarios.map(item => { const linked = equipamentos.filter(equipment => equipment.operadorResponsavelId === item.id || normalize(equipment.operadorResponsavelNome) === normalize(item.nome)); return { id: `funcionario-${item.id}`, module: 'Colaboradores', title: item.nome, detail: [item.matricula, item.cargo].filter(Boolean).join(' · '), meta: linked.length ? `Frota vinculada: ${linked.map(eq => eq.prefixo).join(', ')}` : [item.area, item.liderNome].filter(Boolean).join(' · ') || 'Sem equipamento vinculado', status: item.status || (item.ativo ? 'ATIVO' : 'INATIVO'), tab: 'cadastros' }; }),
-    ...abastecimentos.map(item => ({ id: `abastecimento-${item.id}`, module: 'Combustível', title: `${item.prefixoInformado || equipamentos.find(eq => eq.id === item.equipamentoId)?.prefixo || 'Sem prefixo'} · ${item.quantidadeLitros} L`, detail: `${item.data} ${item.hora || ''}`.trim(), meta: item.responsavel || item.origem || 'Origem não informada', status: item.status || 'OK', tab: 'lancamentos' })),
+    ...abastecimentos.map(item => ({ id: `abastecimento-${item.id}`, module: 'Combustível', title: `${item.prefixoInformado || equipamentos.find(eq => eq.id === item.equipamentoId)?.prefixo || 'Sem prefixo'} · ${item.quantidadeLitros} L`, detail: item.hora ? `Abastecimento às ${item.hora}` : 'Abastecimento registrado', meta: item.responsavel || item.origem || 'Origem não informada', date: item.data, status: item.status || 'OK', tab: 'lancamentos' })),
     ...tickets.map(item => ({ id: `ticket-${item.id}`, module: 'Tickets', title: `Ticket ${item.ticketNumero || 'sem número'}`, detail: `${item.prefixo || 'Sem prefixo'} · ${item.placa || 'Sem placa'}`, meta: `${item.data} · ${item.tipoMaterial || 'Material não informado'}`, status: item.statusFluxo || item.status || 'Pendente', tab: 'tickets-jazida' })),
     ...ordensServico.map(item => { const equipment = equipamentos.find(eq=>eq.id===item.equipamentoId); return ({ id: `os-${item.id}`, module: 'Frota', title: `${item.numero} · ${equipment?.prefixo || 'Frota não localizada'}`, detail: item.descricao || item.motivo || 'Sem descrição', meta: `${item.dataAbertura} · ${item.responsavel}`, date: item.dataAbertura, company: empresas.find(company=>company.id===equipment?.empresaId)?.nome, equipmentType: equipment?.tipo || equipment?.familia, prefix: equipment?.prefixo, maintenance: true, status: item.status, tab: 'controle-equipamentos' }); }),
     ...controlesEquipamentos.map(item => { const equipment = equipamentos.find(eq=>eq.id===item.equipamentoId || normalize(eq.prefixo)===normalize(item.prefixo)); return ({ id: `controle-${item.id}`, module: 'Basculantes', title: `${item.prefixo} · ${item.nomeMotorista || 'Aguardando motorista'}`, detail: [item.motivoManutencao, item.observacao].filter(Boolean).join(' · ') || item.familia, meta: `${item.data} · Saída ${item.horaSaida || '—'} · Retorno ${item.horaLiberacao || '—'}`, date: item.data, driver: item.nomeMotorista, company: empresas.find(company=>company.id===equipment?.empresaId)?.nome, equipmentType: item.familia || equipment?.tipo, prefix: item.prefixo, maintenance: item.status.toLocaleLowerCase('pt-BR').includes('manutenção'), status: item.status, tab: 'controle-equipamentos' }); }),
@@ -118,11 +119,9 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
 
   return (
     <div className="space-y-5" id="consulta-geral-tab">
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Central de consulta operacional</span>
-        <h1 className="mt-2 text-2xl font-black text-slate-900">Consulta Geral</h1>
-        <p className="mt-1 text-sm text-slate-500">Localize cadastros e movimentos de todo o sistema sem abrir cada módulo.</p>
-        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_220px_220px]">
+      <PageHeader title="Consulta Geral" description="Localize cadastros e movimentos de todo o sistema sem abrir cada módulo." />
+      <section className="rounded-lg border border-slate-200 bg-white p-5 md:p-6">
+        <div className="grid gap-3 md:grid-cols-[1fr_220px_220px]">
           <label className="relative min-w-0">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar nome, prefixo, placa, matrícula, ticket, NF, material..." className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10" />
@@ -134,7 +133,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
             {statuses.map(status => <option key={status}>{status}</option>)}
           </select>
         </div>
-        <details className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4" open>
+        <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4" open>
           <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-slate-700">Filtros avançados</summary>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="text-[10px] font-black uppercase text-slate-500">De<input type="date" value={dateFrom} onChange={event=>{setDateFrom(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
@@ -154,10 +153,10 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
       </section>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        {cards.map(([label, value, Icon]) => <button key={label} type="button" onClick={() => setModuleFilter(label)} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md"><Icon className="h-5 w-5 text-emerald-600" /><strong className="mt-3 block text-2xl font-black text-slate-900">{value}</strong><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span></button>)}
+        {cards.map(([label, value, Icon]) => <button key={label} type="button" onClick={() => setModuleFilter(label)} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-emerald-300"><Icon className="h-5 w-5 text-emerald-600" /><strong className="mt-3 block text-2xl font-black text-slate-900">{value}</strong><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span></button>)}
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-sm font-black text-slate-900">Vínculo motorista ↔ equipamento</h2><p className="mt-1 text-xs text-slate-500">Fonte canônica em tempo real; um novo vínculo encerra automaticamente o vínculo anterior do colaborador ou da frota.</p></div><span className="text-xs font-black text-emerald-700">{vinculos.filter(link => link.status === 'ATIVO').length} vínculo(s) ativo(s)</span></div>
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
           <select value={linkEmployee} onChange={event => setLinkEmployee(event.target.value)} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700"><option value="">Selecione o colaborador</option>{funcionarios.filter(item => item.ativo && !['INATIVO', 'DESMOBILIZADO'].includes(item.status || '')).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(item => <option key={item.id} value={item.id}>{item.nome} · {item.matricula || item.cargo}</option>)}</select>
@@ -168,11 +167,40 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[850px] text-left text-xs"><thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Colaborador</th><th>Equipamento</th><th>Início</th><th>Fim</th><th>Responsável</th><th>Status</th><th className="pr-3 text-right">Ação</th></tr></thead><tbody className="divide-y divide-slate-100">{vinculos.slice(0,100).map(link => <tr key={link.id}><td className="p-3 font-bold text-slate-900">{link.funcionarioNome}</td><td className="font-mono font-black text-emerald-700">{link.equipamentoPrefixo}</td><td>{new Date(link.inicioEm).toLocaleString('pt-BR')}</td><td>{link.fimEm ? new Date(link.fimEm).toLocaleString('pt-BR') : '—'}</td><td>{link.responsavelAlteracao}</td><td><span className={`rounded-full px-2 py-1 text-[9px] font-black ${link.status === 'ATIVO' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{link.status}</span></td><td className="pr-3 text-right">{link.status === 'ATIVO' && <button type="button" onClick={() => onUnlink(link.id)} className="font-black text-rose-600 hover:underline">Encerrar</button>}</td></tr>)}</tbody></table></div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-sm font-black text-slate-900">Resultados</h2><span className="text-xs font-bold text-emerald-700">{filtered.length} encontrado(s) · página {safePage} de {totalPages}</span></div><div className="flex items-center gap-2"><select value={pageSize} onChange={event=>{setPageSize(Number(event.target.value));setPage(1)}} className="h-9 rounded-lg border border-slate-200 px-2 text-xs font-bold"><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select><button disabled={safePage<=1} onClick={()=>setPage(value=>Math.max(1,value-1))} className="h-9 rounded-lg border border-slate-200 px-3 text-xs font-bold disabled:opacity-40">Anterior</button><button disabled={safePage>=totalPages} onClick={()=>setPage(value=>Math.min(totalPages,value+1))} className="h-9 rounded-lg border border-slate-200 px-3 text-xs font-bold disabled:opacity-40">Próxima</button></div></div>
-        <div className="divide-y divide-slate-100">
-          {pagedRows.length ? pagedRows.map(row => <button key={row.id} type="button" onClick={() => onNavigate(row.tab)} className="grid w-full min-w-0 gap-2 px-5 py-4 text-left transition hover:bg-emerald-50/60 md:grid-cols-[140px_1fr_1fr_170px] md:items-center"><span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-600">{row.module}</span><span className="min-w-0"><b className="block truncate text-sm text-slate-900">{row.title}</b><small className="block truncate text-slate-500">{row.detail}</small></span><span className="min-w-0 truncate text-xs text-slate-500" title={row.meta}>{row.meta}</span><span className="text-xs font-black text-emerald-700 md:text-right">{row.status}</span></button>) : <div className="px-5 py-16 text-center text-sm text-slate-500">Nenhum registro encontrado com os filtros informados.</div>}
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><h2 className="text-sm font-black text-slate-900">Resultados</h2><span className="text-xs font-bold text-emerald-700">{filtered.length} encontrado(s)</span></div>
+          <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-600"><option value={10}>10 por página</option><option value={25}>25 por página</option><option value={50}>50 por página</option><option value={100}>100 por página</option></select>
         </div>
+        {pagedRows.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
+                <tr><th className="px-5 py-3 font-bold">Data</th><th className="px-4 py-3 font-bold">Equipamento</th><th className="px-4 py-3 font-bold">Tipo</th><th className="px-4 py-3 font-bold">Descrição</th><th className="px-4 py-3 font-bold">Status</th><th className="px-5 py-3 text-right font-bold">Ações</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pagedRows.map(row => (
+                  <tr key={row.id} className="transition hover:bg-emerald-50/40">
+                    <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-slate-600">{row.date ? row.date.split('-').reverse().join('/') : '—'}</td>
+                    <td className="max-w-[220px] truncate px-4 py-3 font-bold text-slate-900" title={row.prefix || row.title}>{row.prefix || row.title}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{row.module}</td>
+                    <td className="max-w-[260px] truncate px-4 py-3 text-slate-600" title={row.detail}>{row.detail}</td>
+                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(row.status)}`}>{row.status}</span></td>
+                    <td className="px-5 py-3 text-right">
+                      <button type="button" onClick={() => onNavigate(row.tab)} className="inline-flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-emerald-700" aria-label={`Ver ${row.title}`}><Eye className="h-4 w-4" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <div className="px-5 py-16 text-center text-sm text-slate-500">Nenhum registro encontrado com os filtros informados.</div>}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
+            <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+            <span className="text-xs font-medium text-slate-500">página {safePage} de {totalPages}</span>
+          </div>
+        )}
       </section>
     </div>
   );
