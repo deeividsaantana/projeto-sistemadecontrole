@@ -270,7 +270,8 @@ export default function ControlePresencaTab({
 
   /** Ultimos 7 dias com movimento, do mais antigo para o mais recente. */
   const tendencia = useMemo(() => {
-    const base = new Date(`${referenceDate}T12:00:00`);
+    const parsed = new Date(`${referenceDate}T12:00:00`);
+    const base = Number.isNaN(parsed.getTime()) ? new Date(`${today}T12:00:00`) : parsed;
     return Array.from({ length: 7 }, (_, index) => {
       const dia = new Date(base);
       dia.setDate(dia.getDate() - (6 - index));
@@ -283,7 +284,7 @@ export default function ControlePresencaTab({
         total: doDia.length,
       };
     });
-  }, [referenceDate, safeRecords]);
+  }, [referenceDate, safeRecords, today]);
 
   const picoTendencia = useMemo(
     () => Math.max(1, ...tendencia.map(item => item.presentes)),
