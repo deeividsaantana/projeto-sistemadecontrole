@@ -293,6 +293,7 @@ export default function App() {
   // Evita repetir o mesmo aviso de falha de sincronização a cada salvamento
   // enquanto a causa não muda (ex.: ficar sem internet por vários lançamentos).
   const lastSyncFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
+  const presenceIngestFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
@@ -2535,7 +2536,25 @@ export default function App() {
         if (!syncResult.success) throw new Error(syncResult.message);
         await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
       } catch (error) {
-        if (!cancelled) console.warn('Falha ao incorporar a fila pública; os itens permanecerão pendentes:', error);
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn('Falha ao incorporar a fila pública; os itens permanecerão pendentes:', error);
+          // O envio já está salvo no Firebase (fila pública); só a incorporação
+          // a este retrato falhou. Sem aviso aqui, essa presença ficava presa
+          // sem nenhum sinal na tela — só sumindo silenciosamente.
+          const now = Date.now();
+          const isRepeat = presenceIngestFailureRef.current.message === message
+            && now - presenceIngestFailureRef.current.at < 60_000;
+          presenceIngestFailureRef.current = { message, at: now };
+          if (!isRepeat) {
+            addNotification(
+              'Presenças recebidas não foram incorporadas',
+              `Envios do link público chegaram, mas não foi possível gravá-los neste painel. Motivo: ${message}`,
+              'error',
+              'Sistema Local',
+            );
+          }
+        }
       } finally {
         running = false;
         if (!cancelled && queuedSubmissions) {
