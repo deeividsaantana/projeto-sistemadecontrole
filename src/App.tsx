@@ -731,61 +731,55 @@ export default function App() {
     void checkConnection();
   }, [isLoggedIn, externalTicketLink, externalPresenceToken]);
 
+  /** Le uma tabela do armazenamento local, com o padrao usado hoje como reserva. */
+  const readTable = <T,>(storageKey: string, fallback: T): T =>
+    parseStoredJson<T>(localStorage.getItem(storageKey), storageKey, fallback);
+
+  /**
+   * Le do armazenamento local o retrato completo que vai para a nuvem. Existe
+   * em um lugar so porque antes esta lista de 20 tabelas estava duplicada em
+   * dois pontos, e o envio dependia da ORDEM de 20 parametros posicionais:
+   * trocar dois de lugar publicava uma tabela no campo de outra, em silencio.
+   */
+  const readLocalCloudTables = (): FirebaseCloudData => ({
+    empresas: readTable('renea_empresas', INITIAL_EMPRESAS),
+    obras: readTable('renea_obras', INITIAL_OBRAS),
+    equipamentos: readTable('renea_equipamentos', INITIAL_EQUIPAMENTOS),
+    funcionarios: readTable('renea_funcionarios', INITIAL_FUNCIONARIOS),
+    motoristasOperacionais: readTable(STORAGE_KEYS.motoristasOperacionais, motoristasOperacionais),
+    comboios: readTable('renea_comboios', INITIAL_COMBOIOS),
+    combustiveis: readTable('renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL),
+    lubrificantes: readTable('renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO),
+    etapas: readTable('renea_etapas', INITIAL_ETAPAS_SERVICO),
+    abastecimentos: readTable('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
+    lubrificacoes: readTable('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
+    ticketsJazida: readTable('renea_tickets_jazida', [] as TicketJazida[]),
+    listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
+    ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
+    gruposEquipe: readTable('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
+    presencasLink: readTable('renea_presencas_link', INITIAL_PRESENCAS_LINK),
+    historicoPresencas: readTable('renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS),
+    controleEquipamentosDiario: readTable('renea_controle_equipamentos_diario', INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO),
+    periodosArquivados: readTable('renea_periodos_arquivados', [] as PeriodoArquivado[]),
+    vinculosOperadorEquipamento: readTable('renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]),
+    masterDataReviewQueue: readTable('renea_master_data_review_queue', [] as MasterWorkbookReviewRow[]),
+    notifications: readTable('renea_notifications', getInitialNotifications()),
+    historyLogs: readTable('renea_history_logs', [] as HistoryLog[]),
+  });
+
   // Firebase Upload Cloud Sync
   const handleUploadToFirebase = async (
-    customEmpresas = empresas,
-    customObras = obras,
-    customEquipamentos = equipamentos,
-    customFuncionarios = funcionarios,
-    customComboios = comboios,
-    customCombustiveis = combustiveis,
-    customLubrificantes = lubrificantes,
-    customEtapas = etapas,
-    customAbastecimentos = abastecimentos,
-    customLubrificacoes = lubrificacoes,
-    customTicketsJazida = ticketsJazida,
-    customHistory = historyLogs,
-    customListasPresenca = listasPresenca,
-    customOrdensServico = ordensServico,
-    customGruposEquipe = gruposEquipe,
-    customPresencasLink = presencasLink,
-    customHistoricoPresencas = historicoPresencas,
-    customNotifications = notifications,
-    customPeriodosArquivados = periodosArquivados,
-    customControleEstacas = controleEstacas
+    overrides: Partial<FirebaseCloudData> = {},
   ): Promise<{ success: boolean; message: string }> => {
     uploadsInFlightRef.current += 1;
     try {
+      const stored = readLocalCloudTables();
+      const controleEstacasSalvo = readTable('renea_controle_estacas', controleEstacas);
       const data = {
-        empresas: customEmpresas,
-        obras: customObras,
-        equipamentos: customEquipamentos,
-        funcionarios: customFuncionarios,
-        motoristasOperacionais: parseStoredJson<Funcionario[]>(localStorage.getItem(STORAGE_KEYS.motoristasOperacionais), STORAGE_KEYS.motoristasOperacionais, motoristasOperacionais),
-        comboios: customComboios,
-        combustiveis: customCombustiveis,
-        lubrificantes: customLubrificantes,
-        etapas: customEtapas,
-        abastecimentos: customAbastecimentos,
-        lubrificacoes: customLubrificacoes,
-        ticketsJazida: customTicketsJazida,
-        listasPresenca: customListasPresenca,
-        ordensServico: customOrdensServico,
-        gruposEquipe: customGruposEquipe,
-        presencasLink: customPresencasLink,
-        historicoPresencas: customHistoricoPresencas,
-        controleEquipamentosDiario: parseStoredJson<ControleEquipamentoDiario[]>(localStorage.getItem('renea_controle_equipamentos_diario'), 'renea_controle_equipamentos_diario', INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO),
-        periodosArquivados: customPeriodosArquivados,
-        vinculosOperadorEquipamento: parseStoredJson<VinculoOperadorEquipamento[]>(localStorage.getItem('renea_vinculos_operador_equipamento'), 'renea_vinculos_operador_equipamento', []),
-        masterDataReviewQueue: parseStoredJson<MasterWorkbookReviewRow[]>(
-          localStorage.getItem('renea_master_data_review_queue'),
-          'renea_master_data_review_queue',
-          [],
-        ),
-        estacaLotes: customControleEstacas.lotes,
-        estacaCravacoes: customControleEstacas.cravacoes,
-        notifications: customNotifications,
-        historyLogs: customHistory,
+        ...stored,
+        estacaLotes: controleEstacasSalvo.lotes,
+        estacaCravacoes: controleEstacasSalvo.cravacoes,
+        ...overrides,
       };
 
       // Recarrega as claims antes de qualquer gravação. Usuários que receberam
@@ -1192,32 +1186,7 @@ export default function App() {
 
     // A sincronização é obrigatória e silenciosa para manter todos os usuários alinhados.
     setTimeout(() => {
-        const getLS = (key: string, def: any) => {
-          const val = localStorage.getItem(key);
-          return parseStoredJson(val, key, def);
-        };
-        handleUploadToFirebase(
-          getLS('renea_empresas', INITIAL_EMPRESAS),
-          getLS('renea_obras', INITIAL_OBRAS),
-          getLS('renea_equipamentos', INITIAL_EQUIPAMENTOS),
-          getLS('renea_funcionarios', INITIAL_FUNCIONARIOS),
-          getLS('renea_comboios', INITIAL_COMBOIOS),
-          getLS('renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL),
-          getLS('renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO),
-          getLS('renea_etapas', INITIAL_ETAPAS_SERVICO),
-          getLS('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
-          getLS('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
-          getLS('renea_tickets_jazida', []),
-          getLS('renea_history_logs', []),
-          getLS('renea_listas_presenca', INITIAL_PRESENCAS),
-          getLS('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
-          getLS('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
-          getLS('renea_presencas_link', INITIAL_PRESENCAS_LINK),
-          getLS('renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS),
-          getLS('renea_notifications', getInitialNotifications()),
-          getLS('renea_periodos_arquivados', []),
-          getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
-        ).then(res => {
+        handleUploadToFirebase().then(res => {
           if (res.success) return;
           console.warn('Sincronização automática pendente:', res.message);
           // A falha precisa ser visível: antes disso o salvamento parecia ter
@@ -2349,34 +2318,13 @@ export default function App() {
   const uploadLocalSnapshotToFirebase = (overrides: {
     funcionarios?: Funcionario[];
     gruposEquipe?: GrupoEquipe[];
-  } = {}) => {
-    const getLS = (key: string, def: any) => {
-      const val = localStorage.getItem(key);
-      return parseStoredJson(val, key, def);
-    };
-    return handleUploadToFirebase(
-      getLS('renea_empresas', INITIAL_EMPRESAS),
-      getLS('renea_obras', INITIAL_OBRAS),
-      getLS('renea_equipamentos', INITIAL_EQUIPAMENTOS),
-      overrides.funcionarios ?? getLS('renea_funcionarios', INITIAL_FUNCIONARIOS),
-      getLS('renea_comboios', INITIAL_COMBOIOS),
-      getLS('renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL),
-      getLS('renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO),
-      getLS('renea_etapas', INITIAL_ETAPAS_SERVICO),
-      getLS('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
-      getLS('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
-      getLS('renea_tickets_jazida', []),
-      [],
-      getLS('renea_listas_presenca', INITIAL_PRESENCAS),
-      getLS('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
-      overrides.gruposEquipe ?? getLS('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
-      getLS('renea_presencas_link', INITIAL_PRESENCAS_LINK),
-      getLS('renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS),
-      getLS('renea_notifications', getInitialNotifications()),
-      getLS('renea_periodos_arquivados', []),
-      getLS('renea_controle_estacas', INITIAL_CONTROLE_ESTACAS)
-    );
-  };
+  } = {}) => handleUploadToFirebase({
+    ...overrides,
+    // Este caminho publica o retrato sem o historico: ele e reconstruido a
+    // partir dos proprios lancamentos e nao precisa trafegar aqui.
+    historyLogs: [],
+  });
+
 
   // Reconstrói o histórico de presença a partir da fila pública original
   // (sistemarenea_public_submissions), que nunca é apagada nem sobrescrita
@@ -2939,11 +2887,9 @@ export default function App() {
     writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
     writeStorageValue(localStorage, 'renea_historico_presencas', JSON.stringify(updatedHistorico));
 
-    handleUploadToFirebase(
-      empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
-      abastecimentos, lubrificacoes, ticketsJazida, historyLogs, listasPresenca, ordensServico,
-      gruposEquipe, updatedPresencas, updatedHistorico, updatedNotifications
-    );
+    // presencasLink e historicoPresencas ja foram gravados acima; as
+    // notificacoes tambem. O envio le tudo do armazenamento local.
+    void handleUploadToFirebase();
   };
 
   const handleDeletePresencaLink = (ids: string[]) => {
