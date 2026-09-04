@@ -27,6 +27,8 @@ interface Props {
   companies: Empresa[];
   teams: GrupoEquipe[];
   maintenanceOrders: OrdemServico[];
+  /** Quem está informando o lançamento; vai para o histórico do registro. */
+  registeredBy: string;
   onSave: (record: ControleEquipamentoDiario, isNew: boolean) => void | Promise<void>;
   onClose: () => void;
   onOpenEmployeeRegistration: () => void;
@@ -124,6 +126,7 @@ export default function DailyRecordForm({
   companies,
   teams,
   maintenanceOrders,
+  registeredBy,
   onSave,
   onClose,
   onOpenDriverRegistry,
@@ -302,7 +305,9 @@ export default function DailyRecordForm({
     try {
       const now = new Date().toISOString();
       const key = `${form.date}|${form.equipmentId || normalizePrefix(form.prefix)}`;
-      const existing = record || records.find(item => item.chave === key);
+      // A lista chega tipada como o registro base, mas o módulo grava o formato
+      // estendido — por isso a leitura dos campos extras precisa do tipo certo.
+      const existing = record || (records.find(item => item.chave === key) as FleetPersistedRecord | undefined);
       const previousStatus = existing ? normalizeOperationalStatus(existing.status) : undefined;
       const nextLegacyStatus = toLegacyDailyStatus(form.operationalStatus);
       const timelineEvent: EventoControleEquipamentoDiario = {
@@ -314,6 +319,7 @@ export default function DailyRecordForm({
         motivo: form.maintenanceReason,
         observacao: form.note,
         ordemServicoId: form.maintenanceOrderId,
+        responsavel: registeredBy,
       };
       const selectedEquipment = equipment.find(item => item.id === form.equipmentId);
       const classification = selectedEquipment
@@ -343,13 +349,16 @@ export default function DailyRecordForm({
         observacao: form.note,
         origem: existing?.origem || 'SISTEMA',
         revisao: form.temporaryDriver ? ['Motorista temporário requer cadastro/vínculo.'] : [],
-        aprovacao: existing?.aprovacao || { status: 'PENDENTE', solicitadoEm: now, solicitadoPor: 'Operação' },
+        aprovacao: existing?.aprovacao || { status: 'PENDENTE', solicitadoEm: now, solicitadoPor: registeredBy },
         eventos: [...(existing?.eventos || []), timelineEvent],
         criadoEm: existing?.criadoEm || now,
         atualizadoEm: now,
         motoristaTemporario: form.temporaryDriver,
         empresaMotoristaId: selectedEmployee?.empresaId,
         equipeId: team?.id,
+        frenteServico: team?.frenteServico,
+        criadoPor: existing?.criadoPor || registeredBy,
+        atualizadoPor: registeredBy,
       };
       await onSave(saved, !existing);
       onClose();

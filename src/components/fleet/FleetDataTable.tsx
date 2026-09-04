@@ -144,7 +144,7 @@ export default function FleetDataTable({
         )}
       </div>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1390px] table-fixed border-collapse text-left text-xs">
+        <table className="w-full min-w-[1480px] table-fixed border-collapse text-left text-xs">
           <colgroup>
             <col className="w-[42px]" />
             <col className="w-[110px]" />
@@ -180,8 +180,8 @@ export default function FleetDataTable({
               <th className="border-b border-slate-200 p-2 text-center">{header('Saída', 'departure')}</th>
               <th className="border-b border-slate-200 p-2 text-center">{header('Parado', 'stopped')}</th>
               <th className="border-b border-slate-200 p-2">{header('Local', 'location')}</th>
-              <th className="border-b border-slate-200 p-2">Observação</th>
-              <th className="border-b border-slate-200 p-2 text-center">Aprovação</th>
+              <th className="truncate border-b border-slate-200 p-2">Observação</th>
+              <th className="truncate border-b border-slate-200 p-2 text-center">Aprovação</th>
               <th className="border-b border-slate-200 p-2 text-center">Ações</th>
             </tr>
           </thead>

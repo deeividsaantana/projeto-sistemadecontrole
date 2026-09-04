@@ -552,6 +552,8 @@ export interface EventoControleEquipamentoDiario {
   motivo?: string;
   observacao?: string;
   ordemServicoId?: string;
+  /** Quem informou a mudança. Sem isso o histórico não responde "quem alterou". */
+  responsavel?: string;
 }
 
 export interface AprovacaoOperacional {

@@ -14,6 +14,7 @@ import type {
   StatusControleEquipamentoDiario,
   TicketJazida,
 } from '../types';
+import type { FleetPersistedRecord } from '../fleet/domain';
 import { Badge, Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
 
 interface CentralOperacionalTabProps {
@@ -26,6 +27,8 @@ interface CentralOperacionalTabProps {
   obras: ObraLocal[];
   /** Somente perfis operacionais alteram status daqui. */
   podeAtualizar: boolean;
+  /** Quem está informando: fica gravado no histórico do registro. */
+  responsavel: string;
   onSaveControleEquipamento: (registro: ControleEquipamentoDiario, isNew: boolean) => void;
   onNavigate: (tab: string) => void;
 }
@@ -52,6 +55,7 @@ export default function CentralOperacionalTab({
   ticketsJazida,
   obras,
   podeAtualizar,
+  responsavel,
   onSaveControleEquipamento,
   onNavigate,
 }: CentralOperacionalTabProps) {
@@ -154,6 +158,7 @@ export default function CentralOperacionalTab({
           statusAnterior: registro.status,
           statusNovo: status,
           observacao: 'Alteração rápida pela Central Operacional.',
+          responsavel,
         },
       ],
     }, false);
@@ -219,6 +224,7 @@ export default function CentralOperacionalTab({
                     </div>
                     <p className="mt-0.5 truncate text-xs text-slate-500">
                       {registro.nomeMotorista || 'Sem motorista informado'}
+                      {(registro as FleetPersistedRecord).frenteServico ? ` · ${(registro as FleetPersistedRecord).frenteServico}` : ''}
                       {registro.motivoManutencao ? ` · ${registro.motivoManutencao}` : ''}
                     </p>
                   </div>

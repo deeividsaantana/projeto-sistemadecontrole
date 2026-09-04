@@ -136,6 +136,7 @@ const screens: Record<string, React.ReactNode> = {
       funcionarios={fx.funcionarios}
       gruposEquipe={[fx.grupo]}
       ordensServico={fx.ordensServico}
+      registeredBy="Deivid Santana"
       onSave={noop}
       onImport={noop}
       onDeleteMany={noop}
@@ -211,6 +212,7 @@ const screens: Record<string, React.ReactNode> = {
       ticketsJazida={fx.ticketsJazida}
       obras={fx.obras}
       podeAtualizar
+      responsavel="Deivid Santana"
       onSaveControleEquipamento={noop}
       onNavigate={noop}
     />

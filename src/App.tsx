@@ -3927,6 +3927,7 @@ export default function App() {
                 ticketsJazida={ticketsJazida}
                 obras={obras}
                 podeAtualizar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
               />
@@ -3964,6 +3965,7 @@ export default function App() {
                 onSaveOperationalDriver={handleSaveOperationalDriver}
                 onDeleteOperationalDriver={handleDeleteOperationalDriver}
                 canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
+                registeredBy={activeUserName}
                 onApproveFleetRecord={handleApproveControleEquipamentoDiario}
               />
             )}

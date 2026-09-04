@@ -15,6 +15,7 @@ import type {
   OrdemServico,
   TicketJazida,
 } from '../types';
+import type { FleetPersistedRecord } from '../fleet/domain';
 import { buildEquipmentOperationalSummaries } from '../utils/equipmentOperations';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { Badge, Card, EmptyState, PageHeader, statusTone } from '../shared/ui';
@@ -97,11 +98,14 @@ export default function FrotaTab({
     const local = obras.find(item => item.id === selecionado.localAtualId)?.nome;
     const motorista = registro?.nomeMotorista || selecionado.operadorResponsavelNome || '';
 
-    // A frente vem pela equipe do motorista — é o vínculo que hoje existe.
+    // A frente gravada no lançamento vale mais que a atual da equipe: a equipe
+    // muda de frente e o histórico do dia precisa continuar correto.
     const funcionarioMotorista = funcionarios.find(item => normalizeComparable(item.nome) === normalizeComparable(motorista));
     const equipe = funcionarioMotorista
       ? gruposEquipe.find(grupo => grupo.funcionarioIds.includes(funcionarioMotorista.id))
       : undefined;
+    const frente = (registro as FleetPersistedRecord | undefined)?.frenteServico || equipe?.frenteServico;
+    const informadoPor = (registro as FleetPersistedRecord | undefined)?.atualizadoPor;
 
     const ordens = ordensServico
       .filter(item => item.equipamentoId === selecionado.id)
@@ -198,12 +202,13 @@ export default function FrotaTab({
                 {[
                   ['Dia do lançamento', formatarData(registro.data)],
                   ['Motorista', registro.nomeMotorista || '—'],
-                  ['Frente de serviço', equipe?.frenteServico || '—'],
+                  ['Frente de serviço', frente || '—'],
                   ['Equipe', equipe?.nome || '—'],
                   ['Saída', registro.horaSaida || '—'],
                   ['Entrada manutenção', registro.horaEntradaManutencao || '—'],
                   ['Liberação', registro.horaLiberacao || '—'],
                   ['Atualizado em', formatarMomento(registro.atualizadoEm)],
+                  ['Informado por', informadoPor || '—'],
                 ].map(([rotulo, valor]) => (
                   <div key={rotulo} className="min-w-0">
                     <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{rotulo}</dt>
@@ -252,6 +257,9 @@ export default function FrotaTab({
                     </div>
                     {(evento.observacao || evento.motivo) && (
                       <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{evento.observacao || evento.motivo}</p>
+                    )}
+                    {evento.responsavel && (
+                      <p className="mt-0.5 text-[10px] font-medium text-slate-400">por {evento.responsavel}</p>
                     )}
                   </li>
                 ))}

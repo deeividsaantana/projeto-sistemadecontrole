@@ -321,6 +321,12 @@ export interface FleetSoftDelete {
 }
 
 export type FleetPersistedRecord = ControleEquipamentoDiario & {
+  /**
+   * Frente da equipe no momento do lançamento. Guardado junto do registro de
+   * propósito: a equipe muda de frente com o tempo e o histórico do dia
+   * precisa continuar mostrando onde o equipamento realmente esteve.
+   */
+  frenteServico?: string;
   local?: string;
   disponivelDesde?: string;
   motoristaTemporario?: boolean;
