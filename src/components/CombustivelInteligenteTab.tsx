@@ -2196,7 +2196,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
       {reviewOpen && (
         <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/90 p-4">
-          <div className="w-full max-w-4xl border border-slate-700 bg-slate-950 shadow-2xl">
+          <div className="max-h-[90dvh] w-full max-w-4xl overflow-y-auto border border-slate-700 bg-slate-950 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 p-4">
               <div>
                 <h2 className="font-bold text-white">Confirmar abastecimentos</h2>

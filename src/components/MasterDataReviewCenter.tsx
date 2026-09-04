@@ -514,7 +514,7 @@ export default function MasterDataReviewCenter({
           )}
           {pendingApplyConfirmation && (
             <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-master-apply-title">
-              <div className="w-full max-w-lg rounded-xl border border-emerald-500/30 bg-slate-900 p-5 shadow-2xl">
+              <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl border border-emerald-500/30 bg-slate-900 p-5 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-300">

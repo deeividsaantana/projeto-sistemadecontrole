@@ -2374,7 +2374,7 @@ export default function TicketsJazidaTab({
 
       {noteModalNumber && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setNoteModalNumber(null)}>
-          <div className="w-full max-w-2xl space-y-4 rounded-2xl border border-cyan-500/30 bg-slate-900 p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+          <div className="max-h-[90dvh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl border border-cyan-500/30 bg-slate-900 p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div><h3 className="flex items-center gap-2 text-sm font-black text-white"><FileText className="h-4 w-4 text-cyan-300" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-[10px] text-slate-500">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
               <button type="button" onClick={() => setNoteModalNumber(null)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-700 text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
@@ -2406,7 +2406,7 @@ export default function TicketsJazidaTab({
 
       {isBatchModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => !isBatchPrinting && setIsBatchModalOpen(false)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="max-h-[90dvh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-3xl w-full space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm font-black text-white flex items-center gap-2">
