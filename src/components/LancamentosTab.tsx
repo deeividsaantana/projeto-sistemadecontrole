@@ -1334,7 +1334,7 @@ export default function LancamentosTab({
             <button
               type="button"
               onClick={limparFiltros}
-              className="flex items-center gap-1.5 px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-slate-850 hover:bg-slate-100 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
             >
               <FilterX className="w-3.5 h-3.5" />
               Limpar filtros
@@ -1386,7 +1386,7 @@ export default function LancamentosTab({
         <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-2xl shadow-xl relative" id="log-editor-card">
           <button 
             onClick={() => { setIsFormOpen(false); resetFormFields(); }}
-            className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer"
+            className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1593,7 +1593,7 @@ export default function LancamentosTab({
                 <button
                   type="button"
                   onClick={handleSaveAndNew}
-                  className="px-5 py-2.5 bg-slate-850 hover:bg-slate-800 border border-emerald-600/40 text-emerald-400 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-slate-850 hover:bg-emerald-50 border border-emerald-600/40 text-emerald-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
                 >
                   Registrar e novo
                 </button>
@@ -1601,7 +1601,7 @@ export default function LancamentosTab({
               <button
                 type="button"
                 onClick={() => { setIsFormOpen(false); resetFormFields(); }}
-                className="px-5 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-slate-850 hover:bg-slate-100 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1615,7 +1615,7 @@ export default function LancamentosTab({
       )}
 
       {/* Lists of saved transactions */}
-      <div className="bg-slate-900 border border-slate-850 rounded-2xl overflow-hidden" id="transactions-viewport">
+      <div className="bg-slate-900 border border-slate-850 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden" id="transactions-viewport">
         
         {/* ABASTECIMENTOS TABLE */}
         {mode === 'abastecimentos' && (
@@ -1720,7 +1720,7 @@ export default function LancamentosTab({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-850 text-slate-400 uppercase text-[10px] font-bold bg-slate-950/20 font-mono">
+                <tr className="border-b border-slate-850 text-slate-500 uppercase text-[10px] font-bold bg-slate-50 font-mono">
                   <th className="py-3.5 px-5">Data / Hora</th>
                   <th className="py-3.5 px-5">Frota</th>
                   <th className="py-3.5 px-5">Produto Lubrificante</th>
@@ -1742,7 +1742,7 @@ export default function LancamentosTab({
                     const prod = lubrificantes.find(p => p.id === lub.produtoLubrificacaoId);
 
                     return (
-                      <tr key={lub.id} className="hover:bg-slate-950/20 transition-colors">
+                      <tr key={lub.id} className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-5">
                           <span className="font-bold text-slate-100 block">{lub.data.split('-').reverse().join('/')}</span>
                           <span className="text-[10px] text-slate-500 font-mono">{lub.hora}</span>
@@ -1779,7 +1779,7 @@ export default function LancamentosTab({
 
       {/* Deletion safe prompt confirm */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="w-full max-w-sm bg-slate-900 border border-rose-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl w-fit">
               <AlertTriangle className="w-6 h-6" />

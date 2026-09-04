@@ -41,13 +41,16 @@ export const registrosEnviados: PresencaApontamento[] = equipeFuncionarios.slice
 } as PresencaApontamento));
 
 // --- Painel de Controle ---
-import type { Abastecimento, Comboio, OrdemServico, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../src/types';
+import type { Abastecimento, Comboio, Lubrificacao, OrdemServico, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../src/types';
 
 export const comboios: Comboio[] = [
   { id: 'cmb-1', nome: 'Comboio 01', placa: 'ABC1D23', capacidadeLitros: 8000 } as Comboio,
 ];
 export const combustiveis: TipoCombustivel[] = [{ id: 'tc-1', nome: 'Diesel S10' } as TipoCombustivel];
 export const lubrificantes: ProdutoLubrificacao[] = [{ id: 'pl-1', nome: 'Óleo 15W40' } as ProdutoLubrificacao];
+export const lubrificacoes: Lubrificacao[] = [
+  { id: 'lub-1', data: '2026-09-03', hora: '08:15', equipamentoId: 'eq-1', horimetro: 1240, produtoLubrificacaoId: 'pl-1', compartimento: 'Pinos do Braço / Caçamba', quantidade: 2, responsavel: 'Marcos de Souza', observacao: '' },
+];
 
 const dia = (n: number) => `2026-09-${String(n).padStart(2, '0')}`;
 export const abastecimentos: Abastecimento[] = Array.from({ length: 14 }, (_, i) => ({
