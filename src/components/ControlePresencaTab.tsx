@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -218,6 +220,7 @@ export default function ControlePresencaTab({
   const [syncBusy, setSyncBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [restoringHistory, setRestoringHistory] = useState(false);
+  const liveViewRef = useRef<HTMLDivElement>(null);
 
   const createEmptyGroup = (): GrupoEquipe => ({
     id: '',
@@ -301,6 +304,47 @@ export default function ControlePresencaTab({
     () => dayRecords.filter(record => record.status === 'Ausente' || record.status === 'Falta justificada'),
     [dayRecords],
   );
+
+  useGSAP(() => {
+    if (view !== 'ao-vivo' || !liveViewRef.current) return;
+    const scope = liveViewRef.current;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    scope.querySelectorAll<HTMLElement>('[data-count]').forEach(node => {
+      const target = Number(node.dataset.count || 0);
+      if (reduceMotion) {
+        node.textContent = target.toLocaleString('pt-BR');
+        return;
+      }
+      const counter = { current: 0 };
+      gsap.to(counter, {
+        current: target,
+        duration: 0.7,
+        ease: 'power2.out',
+        onUpdate: () => { node.textContent = Math.round(counter.current).toLocaleString('pt-BR'); },
+      });
+    });
+
+    const trendBars = scope.querySelectorAll<HTMLElement>('[data-trend-bar]');
+    if (reduceMotion) {
+      trendBars.forEach(bar => { bar.style.height = `${bar.dataset.pct}%`; });
+    } else {
+      gsap.fromTo(trendBars, { height: '3%' }, {
+        height: (_index, target) => `${target.dataset.pct}%`,
+        duration: 0.6, ease: 'power3.out', stagger: 0.05, delay: 0.15,
+      });
+    }
+
+    const distBars = scope.querySelectorAll<HTMLElement>('[data-dist-bar]');
+    if (reduceMotion) {
+      distBars.forEach(bar => { bar.style.width = `${bar.dataset.pct}%`; });
+    } else {
+      gsap.fromTo(distBars, { width: '0%' }, {
+        width: (_index, target) => `${target.dataset.pct}%`,
+        duration: 0.7, ease: 'power3.out', stagger: 0.06, delay: 0.1,
+      });
+    }
+  }, { scope: liveViewRef, dependencies: [view, metrics.present, tendencia, distribuicao] });
 
   const teamRows = useMemo(() => activeGroups.map(group => {
     const records = dayRecords.filter(record => record.grupoId === group.id);
@@ -692,20 +736,20 @@ export default function ControlePresencaTab({
       )}
 
       {view === 'ao-vivo' && (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
+        <div ref={liveViewRef} className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
           <div className="space-y-5">
-            <article className={`${PANEL} relative overflow-hidden p-5 sm:p-7`}>
+            <article className={`${PANEL} relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-7`}>
               <div className="absolute right-6 top-6 text-emerald-800/20"><ArrowRight className="h-24 w-24" strokeWidth={1} /></div>
               <div className="relative">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#65716b]">Efetivo confirmado</p>
-                  <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
+                  <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
                 </div>
                 <div className="mt-7 flex items-end gap-3">
-                  <strong className="text-7xl font-black tracking-[-0.075em] text-[#101a22] sm:text-8xl">{metrics.present}</strong>
+                  <strong data-count={metrics.present} className="text-7xl font-black tabular-nums tracking-[-0.075em] text-[#101a22] sm:text-8xl">0</strong>
                   <div className="pb-2"><p className="text-2xl font-bold text-emerald-800">presentes</p><p className="text-sm text-[#65716b]">de {metrics.planned} previstos</p></div>
                 </div>
-                <div className="mt-7 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div className="h-full rounded-full bg-[#087653] transition-[width] duration-500" style={{ width: `${metrics.percent}%` }} /></div>
+                <div className="mt-7 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div className="h-full rounded-full bg-[#087653] transition-[width] duration-700 ease-out" style={{ width: `${metrics.percent}%` }} /></div>
                 <p className="mt-2 text-right text-xs font-bold tabular-nums text-[#65716b]">{metrics.percent}% confirmado</p>
               </div>
             </article>
@@ -717,8 +761,8 @@ export default function ControlePresencaTab({
                 ['Equipes pendentes', metrics.pending, 'text-[#101a22]'],
                 ['Equipes ativas', activeGroups.length, 'text-emerald-800'],
               ].map(([label, value, tone]) => (
-                <article key={String(label)} className={`${PANEL} p-4 sm:p-5`}>
-                  <strong className={`block text-3xl font-black tabular-nums ${tone}`}>{value}</strong>
+                <article key={String(label)} className={`${PANEL} p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-16px_rgba(16,24,32,0.3)] sm:p-5`}>
+                  <strong data-count={value} className={`block text-3xl font-black tabular-nums ${tone}`}>0</strong>
                   <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b] sm:text-xs">{label}</span>
                 </article>
               ))}
@@ -729,12 +773,13 @@ export default function ControlePresencaTab({
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Confirmados nos últimos 7 dias</p>
                 <div className="mt-5 flex h-28 items-end gap-2">
                   {tendencia.map(item => (
-                    <div key={item.iso} className="flex h-full flex-1 flex-col items-center gap-1" title={`${item.presentes} presente(s) em ${item.rotulo}`}>
+                    <div key={item.iso} className="group flex h-full flex-1 flex-col items-center gap-1" title={`${item.presentes} presente(s) em ${item.rotulo}`}>
                       <span className="text-[10px] font-bold tabular-nums text-[#65716b]">{item.presentes || ''}</span>
                       <div className="flex w-full flex-1 items-end">
                         <div
-                          className={`w-full rounded-t-md transition-[height] duration-500 ${item.iso === referenceDate ? 'bg-[#087653]' : 'bg-[#bfded0]'}`}
-                          style={{ height: `${Math.max(3, (item.presentes / picoTendencia) * 100)}%` }}
+                          data-trend-bar
+                          data-pct={Math.max(3, (item.presentes / picoTendencia) * 100)}
+                          className={`w-full cursor-pointer rounded-t-md transition-colors duration-200 ${item.iso === referenceDate ? 'bg-[#087653]' : 'bg-[#bfded0] group-hover:bg-[#8fc7ab]'}`}
                         />
                       </div>
                       <span className="text-[9px] font-bold tabular-nums text-[#79847e]">{item.rotulo}</span>
@@ -756,7 +801,7 @@ export default function ControlePresencaTab({
                           <span className="tabular-nums text-[#65716b]">{item.total}</span>
                         </div>
                         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eef2f0]">
-                          <div className="h-full rounded-full bg-[#087653]" style={{ width: `${(item.total / Math.max(1, dayRecords.length)) * 100}%` }} />
+                          <div data-dist-bar data-pct={(item.total / Math.max(1, dayRecords.length)) * 100} className="h-full rounded-full bg-[#087653]" />
                         </div>
                       </li>
                     ))}

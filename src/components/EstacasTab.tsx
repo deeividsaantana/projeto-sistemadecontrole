@@ -6,6 +6,7 @@ import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal } from '../
 import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
 import { uploadOperationalAttachment } from '../services/operationalAttachments';
 import StakeDrivingMap from './StakeDrivingMap';
+import { CountUp } from '../shared/ui';
 
 type Props = {
   controle: ControleEstacas;
@@ -306,16 +307,16 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
-          ['Lotes', summary.lotes],
-          ['Cravações', summary.cravacoes],
-          ['Recebido (m)', summary.recebidoM.toLocaleString('pt-BR')],
-          ['Cravado (m)', summary.cravadoM.toLocaleString('pt-BR')],
-          ['Saldo (m)', summary.sobraM.toLocaleString('pt-BR')],
-          ['NF pendente', summary.notasPendentes],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-            <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label}</p>
-            <p className="mt-1 text-xl font-black text-white">{value}</p>
+          { label: 'Lotes', value: summary.lotes },
+          { label: 'Cravações', value: summary.cravacoes },
+          { label: 'Recebido (m)', text: summary.recebidoM.toLocaleString('pt-BR') },
+          { label: 'Cravado (m)', text: summary.cravadoM.toLocaleString('pt-BR') },
+          { label: 'Saldo (m)', text: summary.sobraM.toLocaleString('pt-BR') },
+          { label: 'NF pendente', value: summary.notasPendentes },
+        ].map(item => (
+          <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-900 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+            <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{item.label}</p>
+            <p className="mt-1 text-xl font-black tabular-nums text-white">{item.value !== undefined ? <CountUp value={item.value} /> : item.text}</p>
           </div>
         ))}
       </div>

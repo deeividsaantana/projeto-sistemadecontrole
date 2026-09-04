@@ -8,6 +8,7 @@ import { HistoryLog, PeriodoArquivado } from '../types';
 import { isSnapshotIntact } from '../utils/snapshotIntegrity';
 import { loadUsageSummary, type UsageSummary } from '../usageTelemetry';
 import { loadMasterDataGatewayStatus, type MasterDataGatewayStatus } from '../services/masterDataApi';
+import { CountUp } from '../shared/ui';
 import { 
   Settings, 
   Clock, 
@@ -370,8 +371,8 @@ export default function ConfiguracoesTab({
             ) : usageSummary && usageSummary.tabs.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><span className="block text-[9px] uppercase font-bold text-slate-500">Aberturas de abas</span><strong className="text-xl text-white">{usageSummary.totalViews.toLocaleString('pt-BR')}</strong></div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><span className="block text-[9px] uppercase font-bold text-slate-500">Usuários ativos</span><strong className="text-xl text-white">{usageSummary.activeUsers.toLocaleString('pt-BR')}</strong></div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md"><span className="block text-[9px] uppercase font-bold text-slate-500">Aberturas de abas</span><strong className="text-xl text-white"><CountUp value={usageSummary.totalViews} /></strong></div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md"><span className="block text-[9px] uppercase font-bold text-slate-500">Usuários ativos</span><strong className="text-xl text-white"><CountUp value={usageSummary.activeUsers} /></strong></div>
                 </div>
                 <div className="space-y-2">
                   {usageSummary.tabs.map(item => {
@@ -379,7 +380,7 @@ export default function ConfiguracoesTab({
                     return (
                       <div key={item.id} className="grid grid-cols-[minmax(130px,1fr)_2fr_52px] items-center gap-3 text-xs">
                         <span className="truncate text-slate-300">{item.label}</span>
-                        <div className="h-2 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${percentage}%` }} /></div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-emerald-500 transition-[width] duration-700 ease-out" style={{ width: `${percentage}%` }} /></div>
                         <strong className="text-right font-mono text-white">{item.count}</strong>
                       </div>
                     );

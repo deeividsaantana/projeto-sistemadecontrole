@@ -30,6 +30,7 @@ import {
   Download,
   Layers3
 } from 'lucide-react';
+import { CountUp } from '../shared/ui';
 import type ExcelJS from 'exceljs';
 import { createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
@@ -1784,15 +1785,15 @@ export default function TicketsJazidaTab({
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
             {[
               { label: 'Tickets únicos', value: travelControl.totalTickets, detail: 'numeração consolidada', color: 'text-[#14231e]' },
-              { label: 'Viagens conferidas', value: travelControl.completeTrips, detail: 'pares sem divergência', color: 'text-emerald-300' },
-              { label: 'Divergências', value: travelControl.divergentTrips, detail: 'dados diferentes', color: 'text-rose-300' },
-              { label: 'Sem recebimento', value: travelControl.releasesWithoutReceipt, detail: 'liberação pendente', color: 'text-amber-300' },
-              { label: 'Sem liberação', value: travelControl.receiptsWithoutRelease, detail: 'recebimento avulso', color: 'text-sky-300' },
-              { label: 'Duração média', value: formatTravelDuration(travelControl.averageDurationMinutes), detail: `${travelControl.duplicateTickets} ticket(s) duplicado(s)`, color: 'text-cyan-300' },
+              { label: 'Viagens conferidas', value: travelControl.completeTrips, detail: 'pares sem divergência', color: 'text-emerald-700' },
+              { label: 'Divergências', value: travelControl.divergentTrips, detail: 'dados diferentes', color: 'text-rose-700' },
+              { label: 'Sem recebimento', value: travelControl.releasesWithoutReceipt, detail: 'liberação pendente', color: 'text-amber-700' },
+              { label: 'Sem liberação', value: travelControl.receiptsWithoutRelease, detail: 'recebimento avulso', color: 'text-sky-700' },
+              { label: 'Duração média', value: formatTravelDuration(travelControl.averageDurationMinutes), detail: `${travelControl.duplicateTickets} ticket(s) duplicado(s)`, color: 'text-cyan-700' },
             ].map(card => (
-              <div key={card.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div key={card.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                 <p className="text-[9px] font-black uppercase tracking-wider text-[#65716b]">{card.label}</p>
-                <strong className={`mt-2 block text-xl font-black ${card.color}`}>{card.value}</strong>
+                <strong className={`mt-2 block text-xl font-black tabular-nums ${card.color}`}>{typeof card.value === 'number' ? <CountUp value={card.value} /> : card.value}</strong>
                 <span className="mt-1 block text-[9px] text-[#53605a]">{card.detail}</span>
               </div>
             ))}
@@ -1853,22 +1854,22 @@ export default function TicketsJazidaTab({
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
             {[
               { label: 'Tickets criados', value: dailyControl.totalCriados, detail: 'números no dia', color: 'text-[#14231e]' },
-              { label: 'Vias devolvidas', value: dailyControl.liberacoesRecebidas + dailyControl.recebimentosRecebidos, detail: `de ${dailyControl.totalCriados * 2} vias`, color: 'text-cyan-300' },
-              { label: 'Liberações', value: dailyControl.liberacoesRecebidas, detail: `${dailyControl.pendentesLiberacao.length} faltando`, color: 'text-emerald-300' },
-              { label: 'Recebimentos', value: dailyControl.recebimentosRecebidos, detail: `${dailyControl.pendentesRecebimento.length} faltando`, color: 'text-sky-300' },
-              { label: 'Completos', value: dailyControl.paresCompletos, detail: 'duas vias devolvidas', color: 'text-emerald-300' },
-              { label: 'Com pendência', value: dailyControl.pendentesQualquerVia, detail: `${dailyControl.percentualConferencia}% conferido`, color: dailyControl.pendentesQualquerVia ? 'text-amber-300' : 'text-emerald-300' },
+              { label: 'Vias devolvidas', value: dailyControl.liberacoesRecebidas + dailyControl.recebimentosRecebidos, detail: `de ${dailyControl.totalCriados * 2} vias`, color: 'text-cyan-700' },
+              { label: 'Liberações', value: dailyControl.liberacoesRecebidas, detail: `${dailyControl.pendentesLiberacao.length} faltando`, color: 'text-emerald-700' },
+              { label: 'Recebimentos', value: dailyControl.recebimentosRecebidos, detail: `${dailyControl.pendentesRecebimento.length} faltando`, color: 'text-sky-700' },
+              { label: 'Completos', value: dailyControl.paresCompletos, detail: 'duas vias devolvidas', color: 'text-emerald-700' },
+              { label: 'Com pendência', value: dailyControl.pendentesQualquerVia, detail: `${dailyControl.percentualConferencia}% conferido`, color: dailyControl.pendentesQualquerVia ? 'text-amber-700' : 'text-emerald-700' },
             ].map(card => (
-              <div key={card.label} className="rounded-xl border border-[#e2e8e4] bg-[#f7f9f8] p-4">
+              <div key={card.label} className="rounded-xl border border-[#e2e8e4] bg-[#f7f9f8] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                 <p className="text-[9px] font-black uppercase tracking-wider text-[#65716b]">{card.label}</p>
-                <strong className={`mt-2 block text-2xl font-black ${card.color}`}>{card.value}</strong>
+                <strong className={`mt-2 block text-2xl font-black tabular-nums ${card.color}`}><CountUp value={card.value} /></strong>
                 <span className="text-[9px] text-[#65716b]">{card.detail}</span>
               </div>
             ))}
           </div>
 
           <div className="rounded-xl border border-[#e2e8e4] bg-[#f7f9f8] p-4">
-            <div className="mb-2 flex items-center justify-between text-[10px]"><span className="font-black uppercase tracking-wider text-[#65716b]">Fechamento do dia</span><b className="text-emerald-300">{dailyControl.percentualConferencia}%</b></div>
+            <div className="mb-2 flex items-center justify-between text-[10px]"><span className="font-black uppercase tracking-wider text-[#65716b]">Fechamento do dia</span><b className="text-emerald-700">{dailyControl.percentualConferencia}%</b></div>
             <div className="h-2 overflow-hidden rounded-full bg-[#f7f9f8]"><div className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-cyan-400 transition-all duration-500" style={{ width: `${dailyControl.percentualConferencia}%` }} /></div>
           </div>
 
@@ -2311,7 +2312,7 @@ export default function TicketsJazidaTab({
                         <span className="text-[10px] text-[#65716b] font-mono block">{t.tipoTicket || 'Liberação'}</span>
                         <span className="text-[10px] text-[#65716b] font-mono">{(t.tipoTicket || 'Liberação') === 'Recebimento' ? (t.horaChegada || t.horaSaida) : t.horaSaida}</span>
                       </td>
-                      <td className="py-4 px-5 font-mono text-emerald-400 font-bold">{t.ticketNumero}</td>
+                      <td className="py-4 px-5 font-mono text-emerald-700 font-bold">{t.ticketNumero}</td>
                       <td className="py-4 px-5">
                         <span className="font-mono text-[#26362f] font-bold bg-white border border-[#e2e8e4] px-2 py-0.5 rounded text-xxs">{t.prefixo}</span>
                         <span className="block text-[10px] text-[#65716b] mt-0.5">{t.placa}</span>
@@ -2364,12 +2365,12 @@ export default function TicketsJazidaTab({
           <span className="rounded-md border border-[#e2e8e4] bg-white px-3 py-2 text-[9px] font-black uppercase text-[#65716b]">{ticketControlRows.length} lote(s)</span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white rounded-lg p-3"><p className="text-[9px] uppercase text-[#65716b]">Números impressos</p><p className="text-xl font-black text-[#14231e]">{ticketControlTotals.total}</p></div>
-          <div className="bg-white rounded-lg p-3"><p className="text-[9px] uppercase text-[#65716b]">Viagens completas</p><p className="text-xl font-black text-emerald-400">{ticketControlTotals.completas}</p></div>
-          <div className="bg-white rounded-lg p-3"><p className="text-[9px] uppercase text-[#65716b]">Liberações preenchidas</p><p className="text-xl font-black text-[#14231e]">{ticketControlTotals.liberacoes}</p></div>
-          <div className="bg-white rounded-lg p-3"><p className="text-[9px] uppercase text-[#65716b]">Recebimentos preenchidos</p><p className="text-xl font-black text-[#14231e]">{ticketControlTotals.recebimentos}</p></div>
+          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-[9px] uppercase text-[#65716b]">Números impressos</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.total} /></p></div>
+          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-[9px] uppercase text-[#65716b]">Viagens completas</p><p className="text-xl font-black tabular-nums text-emerald-700"><CountUp value={ticketControlTotals.completas} /></p></div>
+          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-[9px] uppercase text-[#65716b]">Liberações preenchidas</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.liberacoes} /></p></div>
+          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-[9px] uppercase text-[#65716b]">Recebimentos preenchidos</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.recebimentos} /></p></div>
         </div>
-        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-[#65716b]"><th className="p-2">Impressão</th><th>Faixa</th><th>Números</th><th>Lib. devolvidas</th><th>Rec. devolvidas</th><th>Completos</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-[#e2e8e4] text-[#3d4a44]"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.displayStart)} a {normalizeTicketNumber(r.displayEnd)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-400 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
+        <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-[#65716b]"><th className="p-2">Impressão</th><th>Faixa</th><th>Números</th><th>Lib. devolvidas</th><th>Rec. devolvidas</th><th>Completos</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-[#e2e8e4] text-[#3d4a44]"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.displayStart)} a {normalizeTicketNumber(r.displayEnd)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-700 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
       </div>
 
       {noteModalNumber && (

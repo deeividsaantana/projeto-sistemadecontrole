@@ -1,5 +1,6 @@
 export { Badge } from './Badge';
 export { Button } from './Button';
+export { CountUp } from './CountUp';
 export { EmptyState } from './EmptyState';
 export { IconButton } from './IconButton';
 export { TextInput } from './TextInput';

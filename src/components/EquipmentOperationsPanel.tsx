@@ -12,6 +12,7 @@ import type {
   OrdemServico,
 } from '../types';
 import { buildEquipmentOperationalSummaries } from '../utils/equipmentOperations';
+import { CountUp } from '../shared/ui';
 
 interface EquipmentOperationsPanelProps {
   equipamentos: Equipamento[];
@@ -80,10 +81,10 @@ export default function EquipmentOperationsPanel({
             { label: 'Abaixo da meta', value: totals.belowTarget, icon: AlertTriangle, tone: 'text-rose-300' },
             { label: 'OS abertas', value: totals.openWorkOrders, icon: Settings, tone: 'text-amber-300' },
           ].map(card => (
-            <div key={card.label} className="min-w-32 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2">
+            <div key={card.label} className="group min-w-32 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <div className={`flex items-center gap-1.5 ${card.tone}`}>
-                <card.icon size={14} />
-                <strong className="text-lg">{card.value}</strong>
+                <card.icon size={14} className="transition-transform duration-200 group-hover:scale-110" />
+                <strong className="text-lg tabular-nums"><CountUp value={card.value} /></strong>
               </div>
               <span className="text-[9px] font-bold uppercase text-slate-500">{card.label}</span>
             </div>
@@ -128,7 +129,7 @@ export default function EquipmentOperationsPanel({
           </thead>
           <tbody className="divide-y divide-slate-800">
             {filtered.map(item => (
-              <tr key={item.equipment.id} className="hover:bg-slate-900/50">
+              <tr key={item.equipment.id} className="transition-colors duration-150 hover:bg-slate-900/50">
                 <td className="px-4 py-3">
                   <strong className="font-mono text-emerald-300">{item.equipment.prefixo}</strong>
                   <span className="mt-1 block max-w-52 truncate text-slate-300">{item.equipment.nome}</span>
