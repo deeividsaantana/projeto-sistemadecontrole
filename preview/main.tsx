@@ -200,6 +200,8 @@ const screens: Record<string, React.ReactNode> = {
       ordensServico={fx.ordensServico}
       ticketsJazida={fx.ticketsJazida}
       presencasLink={fx.registrosEnviados}
+      controlesEquipamentos={fx.controlesEquipamentos}
+      gruposEquipe={[fx.grupo]}
       onNavigate={noop}
     />
   ),

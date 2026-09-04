@@ -11,6 +11,7 @@ export { ErrorState } from './ErrorState';
 export { IconButton } from './IconButton';
 export { LoadingState, Skeleton, Spinner } from './LoadingState';
 export { Modal } from './Modal';
+export { PeriodFilter, buildPeriod, isoDay, type PeriodPreset, type PeriodValue } from './PeriodFilter';
 export { TextInput } from './TextInput';
 export { PageHeader } from './PageHeader';
 export { Pagination } from './Pagination';

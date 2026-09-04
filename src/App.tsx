@@ -3829,6 +3829,8 @@ export default function App() {
                 ticketsJazida={ticketsJazida}
                 estacas={controleEstacas}
                 presencasLink={presencasLink}
+                controlesEquipamentos={controleEquipamentosDiario}
+                gruposEquipe={gruposEquipe}
                 onNavigate={navigateTo}
               />
             )}
