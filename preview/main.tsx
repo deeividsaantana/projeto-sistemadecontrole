@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './preview.css';
 import UsuariosTab from '../src/components/UsuariosTab';
 import PresencaTempoRealPublica from '../src/components/PresencaTempoRealPublica';
@@ -8,6 +9,8 @@ import LancamentosTab from '../src/components/LancamentosTab';
 import PeriodoTab from '../src/components/PeriodoTab';
 import ConsultaGeralTab from '../src/components/ConsultaGeralTab';
 import ConfiguracoesTab from '../src/components/ConfiguracoesTab';
+import EstacasTab from '../src/components/EstacasTab';
+import CadastrosTab from '../src/components/CadastrosTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
@@ -59,6 +62,44 @@ const screens: Record<string, React.ReactNode> = {
     </div>
   ),
   usuarios: <UsuariosTab />,
+  cadastros: (
+    <CadastrosTab
+      empresas={fx.empresas}
+      obras={fx.obras}
+      equipamentos={fx.equipamentos}
+      funcionarios={fx.funcionarios}
+      comboios={fx.comboios}
+      combustiveis={fx.combustiveis}
+      lubrificantes={fx.lubrificantes}
+      etapas={[]}
+      ordensServico={fx.ordensServico}
+      onSaveEmpresa={noop}
+      onDeleteEmpresa={noop}
+      onSaveObra={noop}
+      onDeleteObra={noop}
+      onSaveEquipamento={noop}
+      onDeleteEquipamento={noop}
+      onSaveFuncionario={noop}
+      onDeleteFuncionario={noop}
+      onSaveComboio={noop}
+      onDeleteComboio={noop}
+      onSaveTipoCombustivel={noop}
+      onDeleteTipoCombustivel={noop}
+      onSaveProdutoLubrificacao={noop}
+      onDeleteProdutoLubrificacao={noop}
+      onSaveEtapaServico={noop}
+      onDeleteEtapaServico={noop}
+      onImportCadastros={() => ({ success: true, message: 'ok' })}
+      onApplyMasterWorkbook={async () => ({ success: true, message: 'ok' })}
+    />
+  ),
+  estacas: (
+    <EstacasTab
+      controle={{ lotes: [], cravacoes: [] }}
+      obras={fx.obras}
+      onChange={noop}
+    />
+  ),
   configuracoes: (
     <ConfiguracoesTab
       historyLogs={[]}
@@ -213,9 +254,12 @@ const screens: Record<string, React.ReactNode> = {
 };
 
 const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
+const previewQueryClient = new QueryClient();
 
 createRoot(document.getElementById('app-root')!).render(
-  <div id="main-tab-viewport" style={{ padding: 28, background: '#fff', minHeight: '100vh' }}>
-    {screens[key] ?? <p>Tela desconhecida: {key}</p>}
-  </div>,
+  <QueryClientProvider client={previewQueryClient}>
+    <div id="main-tab-viewport" style={{ padding: 28, background: '#fff', minHeight: '100vh' }}>
+      {screens[key] ?? <p>Tela desconhecida: {key}</p>}
+    </div>
+  </QueryClientProvider>,
 );
