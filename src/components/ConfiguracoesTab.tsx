@@ -299,7 +299,7 @@ export default function ConfiguracoesTab({
       </div>
 
       {pendingFullImportText && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
           <div>
             <strong className="block text-xs uppercase tracking-wider text-amber-300">Confirmar restauração de backup</strong>
             <p className="mt-1 text-xxs leading-relaxed text-slate-300">
@@ -319,7 +319,7 @@ export default function ConfiguracoesTab({
         <div className="lg:col-span-2 space-y-6">
           
           {/* Secure access status */}
-          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-3 relative overflow-hidden">
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-lg space-y-3 relative overflow-hidden">
             <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl w-fit">
               <ShieldCheck className="w-5 h-5" />
             </div>
@@ -335,7 +335,7 @@ export default function ConfiguracoesTab({
           </div>
 
           {/* Real usage telemetry */}
-          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-lg space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <div className="p-3 bg-cyan-500/10 text-cyan-300 rounded-xl"><BarChart3 className="w-5 h-5" /></div>
@@ -377,7 +377,7 @@ export default function ConfiguracoesTab({
           </div>
 
           {/* Persistência protegida gradual */}
-          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-lg space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <div className="p-3 bg-emerald-500/10 text-emerald-300 rounded-xl"><Database className="w-5 h-5" /></div>
@@ -409,7 +409,7 @@ export default function ConfiguracoesTab({
           </div>
 
           {/* User Operating Manual (Perfect answers for user requests) */}
-          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-lg space-y-4">
             <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-emerald-400" />
               Manual Operacional de Auxiliares
@@ -442,7 +442,7 @@ export default function ConfiguracoesTab({
           </div>
 
           {/* Backup Database Utilities */}
-          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-lg space-y-4">
             <h2 className="text-sm font-extrabold text-white uppercase tracking-wider font-mono">Backup de Segurança (Importar / Exportar)</h2>
             <p className="text-xxs text-slate-400 leading-relaxed">
               Salve todas as 12 tabelas locais em um arquivo seguro JSON para guardar relatórios históricos ou migrar para outro navegador.
@@ -451,7 +451,7 @@ export default function ConfiguracoesTab({
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleExport}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all  flex items-center gap-2 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 Exportar Backup JSON
@@ -665,7 +665,7 @@ export default function ConfiguracoesTab({
             </div>
           </div>
 
-          <div className="space-y-4 rounded-2xl border border-rose-500/25 bg-slate-900 p-5">
+          <div className="space-y-4 rounded-lg border border-rose-500/25 bg-slate-900 p-5">
             <div className="flex items-start gap-3">
               <div className="rounded-xl bg-rose-500/10 p-3 text-rose-300"><Trash2 className="h-5 w-5" /></div>
               <div>
@@ -751,7 +751,7 @@ export default function ConfiguracoesTab({
         <div className="space-y-6">
           
           {/* Operational data protection */}
-          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-lg space-y-4">
             <h2 className="text-xs uppercase tracking-widest font-black text-emerald-400 font-mono flex items-center gap-2">
               <ShieldCheck className="w-4.5 h-4.5" />
               Proteção de dados operacionais
@@ -765,7 +765,7 @@ export default function ConfiguracoesTab({
           </div>
 
           {/* Detailed Audit history logger view */}
-          <div className="bg-slate-900 border border-slate-850 p-5 rounded-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-lg space-y-4">
             <h2 className="text-xs uppercase tracking-widest font-black text-slate-400 font-mono flex items-center gap-2">
               <Clock className="w-4.5 h-4.5 text-emerald-400" />
               Histórico Operacional Completo

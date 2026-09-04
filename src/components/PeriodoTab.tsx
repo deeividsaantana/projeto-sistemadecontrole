@@ -288,7 +288,7 @@ export default function PeriodoTab({
       {detalhe && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5" onClick={() => setDetalhe(null)}>
           <div
-            className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+            className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl bg-white  sm:rounded-lg"
             onClick={event => event.stopPropagation()}
           >
             <header className="flex items-start justify-between gap-4 border-b border-[#e2e8e4] px-5 py-4">

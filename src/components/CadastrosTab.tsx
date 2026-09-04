@@ -723,7 +723,7 @@ export default function CadastrosTab({
           />
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all  flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             {subTab === 'funcionarios' ? 'NOVO COLABORADOR' : 'NOVO REGISTRO'}
@@ -762,7 +762,7 @@ export default function CadastrosTab({
       </div>
 
       {/* Main Filter Action Bar */}
-      <div className="bg-slate-900 border border-slate-850 p-3 rounded-2xl space-y-2.5">
+      <div className="bg-slate-900 border border-slate-850 p-3 rounded-lg space-y-2.5">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
@@ -895,7 +895,7 @@ export default function CadastrosTab({
       </div>
 
       {importFeedback && (
-        <div className={`border rounded-2xl p-3 text-xs font-bold flex items-start gap-2 ${importFeedback.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border-rose-500/20 text-rose-300'}`}>
+        <div className={`border rounded-lg p-3 text-xs font-bold flex items-start gap-2 ${importFeedback.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border-rose-500/20 text-rose-300'}`}>
           {importFeedback.type === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
           <span>{importFeedback.message}</span>
         </div>
@@ -903,7 +903,7 @@ export default function CadastrosTab({
 
       {/* Inline Form Panel (Expandable above list) */}
       {isFormOpen && (
-        <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-2xl shadow-xl relative" id="inline-form-card">
+        <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-lg  relative" id="inline-form-card">
           <button 
             onClick={() => { setIsFormOpen(false); resetFormState(); }}
             className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer"
@@ -1283,7 +1283,7 @@ export default function CadastrosTab({
             <div className="flex gap-2.5 pt-3">
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl  transition-all cursor-pointer"
               >
                 {editingId ? 'Salvar Alterações' : 'Cadastrar Registro'}
               </button>
@@ -1301,7 +1301,7 @@ export default function CadastrosTab({
       )}
 
       {/* Database Lists (Tables) */}
-      <div className="bg-slate-900 border border-slate-850 rounded-2xl overflow-hidden" id="database-lists-viewport">
+      <div className="bg-slate-900 border border-slate-850 rounded-lg overflow-hidden" id="database-lists-viewport">
         
         {/* Table View Conditional rendering */}
         {(subTab === 'empresas' || subTab === 'fornecedores') && (
@@ -1640,8 +1640,8 @@ export default function CadastrosTab({
       {/* Safe inline Prompt Deletion Confirmation Dialog overlay */}
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="cadastro-delete-title">
-          <div className="w-full max-w-md bg-slate-900 border border-rose-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl w-fit">
+          <div className="w-full max-w-md bg-slate-900 border border-rose-500/30 rounded-lg p-6  space-y-4">
+            <div className="p-3 bg-rose-500/10 text-rose-400 rounded-lg w-fit">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
