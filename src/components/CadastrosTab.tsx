@@ -79,7 +79,6 @@ interface CadastrosTabProps {
   onDeleteEtapaServico: (id: string) => void;
   onImportCadastros: (target: SubTab, rows: Record<string, string>[]) => { success: boolean; message: string };
   onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
-  onSyncCentralRegistry: () => Promise<{ success: boolean; message: string }>;
 }
 
 export default function CadastrosTab({
@@ -110,7 +109,6 @@ export default function CadastrosTab({
   onDeleteEtapaServico,
   onImportCadastros,
   onApplyMasterWorkbook,
-  onSyncCentralRegistry,
 }: CadastrosTabProps) {
 
   // Current subtab state
@@ -676,7 +674,6 @@ export default function CadastrosTab({
         equipamentos={equipamentos}
         funcionarios={funcionarios}
         onSelectModule={module => { setSubTab(module); setIsFormOpen(false); clearAdvancedFilters(); resetFormState(); }}
-        onSync={onSyncCentralRegistry}
       />
       <SpreadsheetImportReview
         open={Boolean(pendingImport)}

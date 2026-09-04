@@ -4058,7 +4058,6 @@ export default function App() {
                 onDeleteEtapaServico={handleDeleteEtapaServico}
                 onImportCadastros={handleImportCadastros}
                 onApplyMasterWorkbook={handleApplyMasterWorkbook}
-                onSyncCentralRegistry={uploadLocalSnapshotToFirebase}
               />
             )}
 

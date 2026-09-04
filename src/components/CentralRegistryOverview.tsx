@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, Building2, CheckCircle2, Database, RefreshCw, Search, Truck, Users } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, Database, Search, Truck, Users } from 'lucide-react';
 import type { Empresa, Equipamento, Funcionario, ObraLocal } from '../types';
 import { isSupplier, isVehicle, registrySummary } from '../masterData/centralRegistry';
 import { downloadCentralRegistryWorkbook } from '../masterData/centralWorkbookExport';
@@ -12,17 +12,14 @@ interface Props {
   equipamentos: Equipamento[];
   funcionarios: Funcionario[];
   onSelectModule: (module: CentralModule) => void;
-  onSync: () => Promise<{ success: boolean; message: string }>;
 }
 
 const normalize = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-export default function CentralRegistryOverview({ empresas, obras, equipamentos, funcionarios, onSelectModule, onSync }: Props) {
+export default function CentralRegistryOverview({ empresas, obras, equipamentos, funcionarios, onSelectModule }: Props) {
   const [query, setQuery] = useState('');
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [exportResult, setExportResult] = useState<{ success: boolean; message: string } | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [lastSync, setLastSync] = useState(() => localStorage.getItem('renea_last_cloud_sync') || 'Ainda não sincronizado');
   const summary = registrySummary({ empresas, obras, equipamentos, funcionarios });
 
   const results = useMemo(() => {
@@ -36,24 +33,14 @@ export default function CentralRegistryOverview({ empresas, obras, equipamentos,
     ].filter(item => normalize(`${item.title} ${item.detail}`).includes(q)).slice(0, 8);
   }, [query, empresas, equipamentos, funcionarios, obras]);
 
-  const synchronize = async () => {
-    if (syncing) return;
-    setSyncing(true);
-    setSyncResult(null);
-    const result = await onSync();
-    setSyncResult(result);
-    if (result.success) setLastSync(localStorage.getItem('renea_last_cloud_sync') || new Date().toLocaleString('pt-BR'));
-    setSyncing(false);
-  };
-
   const exportWorkbook = async () => {
     if (exporting) return;
     setExporting(true);
     try {
       await downloadCentralRegistryWorkbook({ empresas, obras, equipamentos, funcionarios });
-      setSyncResult({ success: true, message: 'BASE_CADASTROS compatível com Power Query exportada com sucesso.' });
+      setExportResult({ success: true, message: 'BASE_CADASTROS compatível com Power Query exportada com sucesso.' });
     } catch (error) {
-      setSyncResult({ success: false, message: error instanceof Error ? error.message : 'Falha ao exportar a base mestre.' });
+      setExportResult({ success: false, message: error instanceof Error ? error.message : 'Falha ao exportar a base mestre.' });
     } finally {
       setExporting(false);
     }
@@ -80,10 +67,6 @@ export default function CentralRegistryOverview({ empresas, obras, equipamentos,
           <button onClick={exportWorkbook} disabled={exporting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs font-black text-slate-800 transition hover:border-emerald-600 hover:text-emerald-700 disabled:opacity-60">
             <Database className="h-4 w-4" /> {exporting ? 'EXPORTANDO...' : 'EXPORTAR BASE_CADASTROS'}
           </button>
-          <button onClick={synchronize} disabled={syncing} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-black text-white shadow-sm transition hover:bg-emerald-600 disabled:opacity-60">
-            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'SINCRONIZANDO...' : 'SINCRONIZAR / ATUALIZAR BASES'}
-          </button>
         </div>
       </div>
 
@@ -106,9 +89,8 @@ export default function CentralRegistryOverview({ empresas, obras, equipamentos,
           </div>}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
-          <div className="flex items-center gap-2 font-black text-slate-800"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Status da integração</div>
-          <p className="mt-1 text-slate-500">Última sincronização: {lastSync}</p>
-          <p className={syncResult?.success === false ? 'mt-1 text-rose-600' : 'mt-1 text-emerald-700'}>{syncResult?.message || `${(empresas.length + obras.length + equipamentos.length + funcionarios.length).toLocaleString('pt-BR')} registros mestres disponíveis.`}</p>
+          <div className="flex items-center gap-2 font-black text-slate-800"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Base central</div>
+          <p className={exportResult?.success === false ? 'mt-1 text-rose-600' : 'mt-1 text-emerald-700'}>{exportResult?.message || `${(empresas.length + obras.length + equipamentos.length + funcionarios.length).toLocaleString('pt-BR')} registros mestres disponíveis.`}</p>
         </div>
       </div>
     </section>
