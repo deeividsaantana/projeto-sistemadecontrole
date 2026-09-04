@@ -56,6 +56,7 @@ import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWo
 import { auth } from '../firebase';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import { stageFuelDataset } from '../services/masterDataApi';
+import { PageHeader } from '../shared/ui';
 
 interface CombustivelInteligenteTabProps {
   empresas: Empresa[];
@@ -934,41 +935,34 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
 
   return (
     <div className="space-y-5 text-[#26362f]">
-      <header className="flex flex-col gap-4 border-b border-[#e2e8e4] pb-5 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-emerald-400">
-            <Fuel size={16} /> Controle inteligente
-          </div>
-          <h1 className="text-2xl font-bold text-[#14231e] md:text-3xl">Combustível</h1>
-          <p className="mt-1 text-sm text-[#65716b]">
-            {abastecimentos.length.toLocaleString('pt-BR')} registro(s) | lançamento livre manual, planilha ou documento
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <PageHeader
+        title="Combustível"
+        description={`${abastecimentos.length.toLocaleString('pt-BR')} registro(s) · lançamento livre manual, planilha ou documento`}
+        actions={<>
           <button
             onClick={onOpenSpreadsheetImport}
             disabled={isParsingSpreadsheet}
-            className="inline-flex h-10 items-center gap-2 border border-[#e2e8e4] bg-white px-3 text-sm font-semibold disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#e2e8e4] bg-white px-3 text-sm font-semibold disabled:opacity-50"
           >
             <FileSpreadsheet size={17} /> {isParsingSpreadsheet ? 'Lendo...' : 'Importar Excel'}
           </button>
           {onOpenCadastros && (
             <button
               onClick={onOpenCadastros}
-              className="inline-flex h-10 items-center gap-2 border border-[#e2e8e4] bg-white px-3 text-sm font-semibold"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#e2e8e4] bg-white px-3 text-sm font-semibold"
             >
               <Database size={17} /> Cadastros
             </button>
           )}
           <button
             onClick={exportExcel}
-            className="inline-flex h-10 items-center gap-2 border border-[#e2e8e4] bg-white px-3 text-sm font-semibold"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#e2e8e4] bg-white px-3 text-sm font-semibold"
           >
             <Download size={17} /> Exportar Excel
           </button>
           <button
             onClick={onOpenLubrificacao}
-            className="inline-flex h-10 items-center gap-2 border border-[#e2e8e4] bg-white px-3 text-sm font-semibold"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#e2e8e4] bg-white px-3 text-sm font-semibold"
           >
             <Droplets size={17} /> Lubrificação
           </button>
@@ -977,12 +971,12 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               resetQuickEntry();
               setView('digitacao');
             }}
-            className="inline-flex h-10 items-center gap-2 bg-emerald-500 px-4 text-sm font-bold text-slate-950"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white"
           >
             <Plus size={18} /> Lançar combustível
           </button>
-        </div>
-      </header>
+        </>}
+      />
 
       <div className="flex gap-1 overflow-x-auto border-b border-[#e2e8e4] pb-px">
         {navItems.map((item) => {
