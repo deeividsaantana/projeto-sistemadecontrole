@@ -76,6 +76,7 @@ const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEq
 const CentralOperacionalTab = lazy(() => import('./components/CentralOperacionalTab'));
 const FrotaTab = lazy(() => import('./components/FrotaTab'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
+const HorasParadasTab = lazy(() => import('./components/HorasParadasTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -3961,6 +3962,14 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'horas-paradas' && (
+              <HorasParadasTab
+                controlesEquipamentos={controleEquipamentosDiario}
+                ordensServico={ordensServico}
+                equipamentos={equipamentos}
               />
             )}
 

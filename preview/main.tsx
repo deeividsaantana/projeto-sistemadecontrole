@@ -16,6 +16,7 @@ import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamento
 import CentralOperacionalTab from '../src/components/CentralOperacionalTab';
 import FrotaTab from '../src/components/FrotaTab';
 import ManutencaoTab from '../src/components/ManutencaoTab';
+import HorasParadasTab from '../src/components/HorasParadasTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -187,6 +188,13 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  'horas-paradas': (
+    <HorasParadasTab
+      controlesEquipamentos={fx.controlesEquipamentos}
+      ordensServico={fx.ordensServico}
+      equipamentos={fx.equipamentos}
     />
   ),
   manutencao: (
