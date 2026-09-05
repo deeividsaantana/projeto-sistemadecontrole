@@ -4101,6 +4101,7 @@ export default function App() {
               <TicketsJazidaTab 
                 tickets={ticketsJazida}
                 equipamentos={equipamentos}
+                controlesEquipamentos={controleEquipamentosDiario}
                 obras={obras}
                 onSaveTicket={handleSaveTicketJazida}
                 onDeleteTicket={handleDeleteTicketJazida}

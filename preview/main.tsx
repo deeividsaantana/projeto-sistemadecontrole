@@ -123,6 +123,7 @@ const screens: Record<string, React.ReactNode> = {
     <TicketsJazidaTab
       tickets={fx.ticketsJazida}
       equipamentos={fx.equipamentos}
+      controlesEquipamentos={fx.controlesEquipamentos}
       obras={fx.obras}
       onSaveTicket={noop}
       onDeleteTicket={noop}

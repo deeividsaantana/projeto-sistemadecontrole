@@ -345,6 +345,8 @@ export interface TicketJazida {
   estaca?: string;
   responsavelLiberacao: string;
   nomeLegivel: string;
+  /** Motorista que fez a viagem; vem do controle diário do prefixo quando existe. */
+  motoristaNome?: string;
   empresa: EmpresaTicketJazida;
   observacao: string;
   status?: StatusRegistroCombustivel;

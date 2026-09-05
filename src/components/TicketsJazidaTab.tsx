@@ -49,6 +49,7 @@ import {
   Equipamento,
   ObraLocal,
   TicketJazida,
+  ControleEquipamentoDiario,
   TipoMaterialJazida,
   DestinoObraJazida,
   EmpresaTicketJazida,
@@ -61,6 +62,8 @@ interface TicketsJazidaTabProps {
   tickets: TicketJazida[];
   equipamentos: Equipamento[];
   obras: ObraLocal[];
+  /** Usado só para sugerir o motorista do prefixo no dia da viagem. */
+  controlesEquipamentos?: ControleEquipamentoDiario[];
   onSaveTicket: (item: TicketJazida, isNew: boolean) => void;
   onDeleteTicket: (id: string) => void;
   onDeleteTickets: (ids: string[]) => void;
@@ -286,6 +289,7 @@ export default function TicketsJazidaTab({
   tickets,
   equipamentos,
   obras,
+  controlesEquipamentos = [],
   onSaveTicket,
   onDeleteTicket,
   onDeleteTickets,
@@ -350,6 +354,16 @@ export default function TicketsJazidaTab({
   const [destinoOutro, setDestinoOutro] = useState('');
   const [responsavelLiberacao, setResponsavelLiberacao] = useState('');
   const [nomeLegivel, setNomeLegivel] = useState('');
+  const [motoristaNome, setMotoristaNome] = useState('');
+
+  // O controle diário já sabe quem estava no prefixo naquele dia: sugerir evita
+  // digitar de novo, e o campo continua editável para motorista substituto.
+  const motoristaSugerido = useMemo(() => {
+    const alvo = prefixo.trim().toLocaleUpperCase('pt-BR');
+    if (!alvo) return '';
+    return controlesEquipamentos.find(item => item.data === data
+      && item.prefixo.trim().toLocaleUpperCase('pt-BR') === alvo)?.nomeMotorista?.trim() || '';
+  }, [controlesEquipamentos, prefixo, data]);
   const [empresa, setEmpresa] = useState<EmpresaTicketJazida>('RENEA');
   const [estaca, setEstaca] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -453,7 +467,7 @@ export default function TicketsJazidaTab({
     setDestinoObra('Marginal');
     setDestinoOutro('');
     setResponsavelLiberacao('');
-    setNomeLegivel('');
+    setNomeLegivel(''); setMotoristaNome('');
     setEmpresa('RENEA');
     setEstaca('');
     setObservacao('');
@@ -487,7 +501,7 @@ export default function TicketsJazidaTab({
     setDestinoObra(t.destinoObra);
     setDestinoOutro(t.destinoOutro || '');
     setResponsavelLiberacao(t.responsavelLiberacao);
-    setNomeLegivel(t.nomeLegivel);
+    setNomeLegivel(t.nomeLegivel); setMotoristaNome(t.motoristaNome || '');
     setEmpresa(t.empresa);
     setEstaca(t.estaca || '');
     setObservacao(t.observacao);
@@ -642,6 +656,7 @@ export default function TicketsJazidaTab({
       estaca: estaca.trim(),
       responsavelLiberacao: responsavelLiberacao.trim(),
       nomeLegivel: nomeLegivel.trim(),
+      motoristaNome: motoristaNome.trim() || undefined,
       empresa,
       observacao: observacao.trim(),
       status: saveMode === 'draft' ? 'Pendente' : 'OK',
@@ -2225,6 +2240,15 @@ export default function TicketsJazidaTab({
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Nome Legível</label>
                 <input type="text" value={nomeLegivel} onChange={e => setNomeLegivel(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Motorista</label>
+                <input type="text" value={motoristaNome} onChange={e => setMotoristaNome(e.target.value)} placeholder={motoristaSugerido || 'Quem fez a viagem'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
+                {motoristaSugerido && !motoristaNome && (
+                  <button type="button" onClick={() => setMotoristaNome(motoristaSugerido)} className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800">
+                    Usar {motoristaSugerido} (controle do dia)
+                  </button>
+                )}
               </div>
             </div>
             <button type="button" onClick={() => setAdvancedFormOpen(value => !value)} className="flex w-full items-center justify-between rounded-xl border border-[#e2e8e4] bg-white px-4 py-3 text-left">
