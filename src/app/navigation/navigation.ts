@@ -1,5 +1,6 @@
 import {
   CalendarRange,
+  ClipboardCheck,
   ClipboardList,
   FolderPlus,
   Hammer,
@@ -47,6 +48,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
       { id: 'manutencao', label: 'Manutenção', icon: Wrench },
       { id: 'horas-paradas', label: 'Horas Paradas', icon: TimerOff },
+      { id: 'checklist', label: 'Checklist', icon: ClipboardCheck },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
     ],
   },
@@ -80,6 +82,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'controle-equipamentos',
     'manutencao',
     'horas-paradas',
+    'checklist',
     'lancamentos',
     'tickets-jazida',
     'estacas',

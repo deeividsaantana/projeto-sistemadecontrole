@@ -22,6 +22,7 @@ import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';
 import './horasParadas.test';
+import './checklist.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';

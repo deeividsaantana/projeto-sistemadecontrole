@@ -16,6 +16,8 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'gruposEquipe',
   'presencasLink',
   'historicoPresencas',
+  'checklists',
+  'modelosChecklist',
   'apontamentoRamos',
   'apontamentoRamoRegistros',
   'materiaisCadastro',

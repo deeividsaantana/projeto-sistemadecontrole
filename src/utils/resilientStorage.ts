@@ -21,6 +21,8 @@ const JSON_ARRAY_STORAGE_KEYS = new Set([
   'renea_grupos_equipes',
   'renea_presencas_link',
   'renea_historico_presencas',
+  'renea_checklists',
+  'renea_modelos_checklist',
   'renea_apontamento_ramos',
   'renea_apontamento_ramo_registros',
   'renea_materiais_cadastro',

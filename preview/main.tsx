@@ -17,6 +17,8 @@ import CentralOperacionalTab from '../src/components/CentralOperacionalTab';
 import FrotaTab from '../src/components/FrotaTab';
 import ManutencaoTab from '../src/components/ManutencaoTab';
 import HorasParadasTab from '../src/components/HorasParadasTab';
+import ChecklistTab from '../src/components/ChecklistTab';
+import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -188,6 +190,17 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  checklist: (
+    <ChecklistTab
+      checklists={[]}
+      modelo={MODELO_CHECKLIST_PADRAO}
+      equipamentos={fx.equipamentos}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSave={noop}
+      onSaveModelo={noop}
     />
   ),
   'horas-paradas': (

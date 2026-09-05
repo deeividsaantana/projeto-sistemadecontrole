@@ -20,6 +20,8 @@ import {
   HistoryLog,
   ListaPresenca,
   OrdemServico,
+  ChecklistEquipamento,
+  ModeloChecklist,
   GrupoEquipe,
   PresencaApontamento,
   PresencaStatus,
@@ -77,6 +79,7 @@ const CentralOperacionalTab = lazy(() => import('./components/CentralOperacional
 const FrotaTab = lazy(() => import('./components/FrotaTab'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const HorasParadasTab = lazy(() => import('./components/HorasParadasTab'));
+const ChecklistTab = lazy(() => import('./components/ChecklistTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -138,6 +141,7 @@ import {
 } from './utils/runtimeDataSafety';
 import { commitStorageBatch, isStorageQuotaExceededError } from './utils/resilientStorage';
 import { parseStoredJson, readStoredFlag, writeStorageValue, writeStoredFlag } from './data/localStore';
+import { ordemDoChecklist, MODELO_CHECKLIST_PADRAO } from './utils/checklist';
 import { STORAGE_KEYS } from './data/storageKeys';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
 import { promoteMasterWorkbook } from './masterData/materializeMasterData';
@@ -287,6 +291,8 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['presencasLink', 'renea_presencas_link'],
   ['historicoPresencas', 'renea_historico_presencas'],
   ['controleEquipamentosDiario', 'renea_controle_equipamentos_diario'],
+  ['checklists', STORAGE_KEYS.checklists],
+  ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
   ['notifications', 'renea_notifications'],
@@ -387,6 +393,8 @@ export default function App() {
   const [externalPublicTickets, setExternalPublicTickets] = useState<TicketJazida[]>([]);
   const [listasPresenca, setListasPresenca] = useState<ListaPresenca[]>([]);
   const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([]);
+  const [checklists, setChecklists] = useState<ChecklistEquipamento[]>([]);
+  const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
   const [historicoPresencas, setHistoricoPresencas] = useState<HistoricoPresenca[]>([]);
@@ -578,6 +586,9 @@ export default function App() {
       setTicketsJazida(loadedTicketsJazida);
       setListasPresenca(parsedListasPresenca);
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
+      setChecklists(parseStoredJson(localStorage.getItem(STORAGE_KEYS.checklists), STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]));
+      const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
+      if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
       setPresencasLink(parseStoredJson(savedPresencasLink, 'renea_presencas_link', INITIAL_PRESENCAS_LINK));
       setHistoricoPresencas(parseStoredJson(savedHistoricoPresencas, 'renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS));
@@ -754,6 +765,8 @@ export default function App() {
     abastecimentos: readTable('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
     lubrificacoes: readTable('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
     ticketsJazida: readTable('renea_tickets_jazida', [] as TicketJazida[]),
+    checklists: readTable(STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]),
+    modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
     gruposEquipe: readTable('renea_grupos_equipes', INITIAL_GRUPOS_EQUIPES),
@@ -924,6 +937,9 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'ordensServico')) {
           setOrdensServico(normalizeRuntimeCollection<OrdemServico>(data.ordensServico));
+          setChecklists(normalizeRuntimeCollection<ChecklistEquipamento>(data.checklists));
+          const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
+          if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
         if (Object.hasOwn(data, 'gruposEquipe')) {
           setGruposEquipe(normalizeTeamGroups(data.gruposEquipe));
@@ -2857,6 +2873,35 @@ export default function App() {
     );
   };
 
+  const handleSaveChecklist = (checklist: ChecklistEquipamento) => {
+    // Item crítico reprovado tira o equipamento de operação: a OS sai junto do
+    // checklist, sem depender de alguém abrir depois.
+    const numeroOrdem = `OS-${String(ordensServico.length + 1).padStart(4, '0')}`;
+    const ordem = ordemDoChecklist(checklist, numeroOrdem);
+    const registro = ordem ? { ...checklist, ordemServicoNumero: ordem.numero } : checklist;
+    const proximosChecklists = [registro, ...checklists];
+    const proximasOrdens = ordem ? [ordem, ...ordensServico] : ordensServico;
+    saveAndLog(
+      'Checklist',
+      'Criou',
+      `Checklist de ${checklist.prefixo}${ordem ? ` reprovou item crítico e abriu a ${ordem.numero}` : ' sem item crítico reprovado'}.`,
+      historyLogs,
+      () => {
+        setChecklists(proximosChecklists);
+        writeStorageValue(localStorage, STORAGE_KEYS.checklists, JSON.stringify(proximosChecklists));
+        if (ordem) {
+          setOrdensServico(proximasOrdens);
+          writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(proximasOrdens));
+        }
+      },
+    );
+  };
+
+  const handleSaveModeloChecklist = (modelo: ModeloChecklist) => {
+    setModeloChecklist(modelo);
+    writeStorageValue(localStorage, STORAGE_KEYS.modelosChecklist, JSON.stringify([modelo]));
+  };
+
   const handleSaveOrdemServico = (ordem: OrdemServico, isNew: boolean) => {
     const updated = isNew ? [ordem, ...ordensServico] : ordensServico.map(item => item.id === ordem.id ? ordem : item);
     const equipamento = equipamentos.find(item => item.id === ordem.equipamentoId);
@@ -3962,6 +4007,18 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'checklist' && (
+              <ChecklistTab
+                checklists={checklists}
+                modelo={modeloChecklist}
+                equipamentos={equipamentos}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                onSave={handleSaveChecklist}
+                onSaveModelo={handleSaveModeloChecklist}
               />
             )}
 

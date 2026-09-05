@@ -35,6 +35,8 @@ const INTERMEDIATE_TABLE_IDS = [
   'gruposEquipe',
   'presencasLink',
   'historicoPresencas',
+  'checklists',
+  'modelosChecklist',
   'apontamentoRamos',
   'apontamentoRamoRegistros',
   'materiaisCadastro',

@@ -413,6 +413,49 @@ export interface OrdemServico {
   saiuManutencaoEm?: string;
 }
 
+export type RespostaChecklist = 'OK' | 'Atenção' | 'Não conforme' | 'Não aplicável';
+
+export interface ItemModeloChecklist {
+  id: string;
+  descricao: string;
+  /** Item crítico reprovado abre ordem de serviço automaticamente. */
+  critico: boolean;
+}
+
+export interface ModeloChecklist {
+  id: string;
+  nome: string;
+  /** Vazio vale para toda a frota. */
+  categoria?: string;
+  itens: ItemModeloChecklist[];
+  atualizadoEm: string;
+}
+
+export interface ItemChecklist {
+  itemId: string;
+  descricao: string;
+  critico: boolean;
+  resposta: RespostaChecklist;
+  observacao?: string;
+  /** Foto em data URL, mesmo formato já usado na foto do equipamento. */
+  foto?: string;
+}
+
+export interface ChecklistEquipamento {
+  id: string;
+  modeloId: string;
+  data: string; // YYYY-MM-DD
+  hora: string; // HH:MM
+  equipamentoId: string;
+  prefixo: string;
+  responsavel: string;
+  itens: ItemChecklist[];
+  observacao?: string;
+  /** Número da OS aberta pelos itens críticos reprovados. */
+  ordemServicoNumero?: string;
+  criadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 
