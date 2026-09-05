@@ -206,6 +206,7 @@ export default function CentralOperacionalTab({
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         <Card
+          className="min-w-0"
           title={`Frota do dia · ${formatarData(dia)}`}
           description={podeAtualizar ? 'Troque o status direto na lista; o anterior fica no histórico.' : 'Somente leitura para o seu perfil.'}
           actions={<button type="button" onClick={() => onNavigate('controle-equipamentos')} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800">Tela completa <ChevronRight size={14} /></button>}
@@ -266,7 +267,7 @@ export default function CentralOperacionalTab({
           )}
         </Card>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card
             title="Equipes do dia"
             actions={<button type="button" onClick={() => onNavigate('presenca')} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800">Presença <ChevronRight size={14} /></button>}

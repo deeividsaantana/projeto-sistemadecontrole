@@ -37,3 +37,7 @@ firebase-debug.log*
 
 # Netlify
 .netlify/
+
+# Playwright
+test-results/
+playwright-report/
