@@ -590,6 +590,8 @@ export default function LancamentosTab({
   const [time, setTime] = useState('08:00');
   const [equipamentoId, setEquipamentoId] = useState('');
   const [responsavel, setResponsavel] = useState('');
+  const [operadorNome, setOperadorNome] = useState('');
+  const [localAbastecimento, setLocalAbastecimento] = useState('');
   const [observacao, setObservacao] = useState('');
 
   // Fueling logs specific
@@ -652,7 +654,7 @@ export default function LancamentosTab({
     setDate(new Date().toISOString().split('T')[0]);
     setTime(new Date().toTimeString().split(' ')[0].substring(0, 5));
     setEquipamentoId('');
-    setResponsavel('');
+    setResponsavel(''); setOperadorNome(''); setLocalAbastecimento('');
     setObservacao('');
 
     setHorimetroInicial(0);
@@ -689,7 +691,7 @@ export default function LancamentosTab({
       setBombaInicial(x.bombaInicial); setQuantidadeLitros(x.quantidadeLitros);
       setBombaFinal(x.bombaFinal);
       setTipoCombustivelId(x.tipoCombustivelId); setComboioId(x.comboioId);
-      setResponsavel(x.responsavel); setObservacao(x.observacao);
+      setResponsavel(x.responsavel); setOperadorNome(x.operadorNome || ''); setLocalAbastecimento(x.localAbastecimento || ''); setObservacao(x.observacao);
       pumpValuesManuallyEditedRef.current = true;
 
     } else if (mode === 'lubrificacoes') {
@@ -740,6 +742,8 @@ export default function LancamentosTab({
         tipoCombustivelId,
         comboioId,
         responsavel: responsavel.trim(),
+        operadorNome: operadorNome.trim() || undefined,
+        localAbastecimento: localAbastecimento.trim() || undefined,
         observacao: observacao.trim()
       }, isNew);
 
@@ -747,10 +751,12 @@ export default function LancamentosTab({
         const preservedComboio = comboioId;
         const preservedResponsavel = responsavel;
         const preservedTipoCombustivel = tipoCombustivelId;
+        const preservedLocal = localAbastecimento;
         resetFormFields();
         setComboioId(preservedComboio);
         setResponsavel(preservedResponsavel);
         setTipoCombustivelId(preservedTipoCombustivel);
+        setLocalAbastecimento(preservedLocal);
         requestAnimationFrame(() => equipamentoFieldRef.current?.focus());
         return;
       }
@@ -1493,7 +1499,18 @@ export default function LancamentosTab({
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável pelo Lançamento *</label>
                     <input type="text" value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Ex: José da Silva Costa" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
                   </div>
-                  <div className="md:col-span-2 space-y-1">
+                  <div className="space-y-1">
+                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Operador do equipamento</label>
+                    <input type="text" value={operadorNome} onChange={e => setOperadorNome(e.target.value)} placeholder="Quem estava operando" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Local / frente</label>
+                    <input type="text" value={localAbastecimento} onChange={e => setLocalAbastecimento(e.target.value)} placeholder="Ex: Ramo 200, pátio Aracaré" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observação</label>
                     <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex: Abastecido no canteiro de obras norte" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
                   </div>

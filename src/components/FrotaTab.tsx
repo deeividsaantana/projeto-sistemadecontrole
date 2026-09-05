@@ -18,6 +18,7 @@ import type {
 import type { FleetPersistedRecord } from '../fleet/domain';
 import { isOrdemEncerrada } from '../utils/manutencao';
 import { buildEquipmentOperationalSummaries } from '../utils/equipmentOperations';
+import { abastecimentoAnterior, calcularConsumo } from '../utils/fuelOperations';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { Badge, Card, EmptyState, PageHeader, statusTone } from '../shared/ui';
 
@@ -277,12 +278,27 @@ export default function FrotaTab({
               <EmptyState icon={Droplets} title="Nenhum abastecimento registrado" compact />
             ) : (
               <ul className="divide-y divide-slate-100">
-                {combustivel.slice(0, 6).map(item => (
-                  <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
-                    <span className="text-slate-600">{formatarData(item.data)}{item.hora ? ` · ${item.hora}` : ''}</span>
-                    <strong className="font-mono text-slate-900">{Number(item.quantidadeLitros || 0).toLocaleString('pt-BR')} L</strong>
-                  </li>
-                ))}
+                {combustivel.slice(0, 6).map(item => {
+                  const consumo = calcularConsumo(item, abastecimentoAnterior(item, combustivel));
+                  return (
+                    <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
+                      <span className="min-w-0">
+                        <span className="block text-slate-600">{formatarData(item.data)}{item.hora ? ` · ${item.hora}` : ''}</span>
+                        {(item.localAbastecimento || item.operadorNome) && (
+                          <span className="block truncate text-[10px] text-slate-400">{[item.localAbastecimento, item.operadorNome].filter(Boolean).join(' · ')}</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <strong className="block font-mono text-slate-900">{Number(item.quantidadeLitros || 0).toLocaleString('pt-BR')} L</strong>
+                        {consumo && (
+                          <span className="block text-[10px] font-bold text-emerald-700">
+                            {consumo.valor.toLocaleString('pt-BR')} {consumo.unidade}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>

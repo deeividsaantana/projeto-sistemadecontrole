@@ -141,6 +141,10 @@ export interface Abastecimento {
   tipoCombustivelId: string;
   comboioId: string;
   responsavel: string;
+  /** Quem estava operando o equipamento no abastecimento. */
+  operadorNome?: string;
+  /** Onde abasteceu: frente de serviço, pátio ou ponto de apoio. */
+  localAbastecimento?: string;
   observacao: string;
   status?: StatusRegistroCombustivel; // Opcional para não quebrar registros antigos. Padrão: 'OK'
   origem?: OrigemRegistroCombustivel;
