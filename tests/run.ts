@@ -20,6 +20,7 @@ import './runtimeDataSafety.test';
 import './publicLinkSecurity.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
+import './manutencao.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';

@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Radio,
   Settings,
+  Wrench,
   Truck,
   Activity,
   Users,
@@ -43,6 +44,7 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'frota', label: 'Frota', icon: Truck },
       { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
+      { id: 'manutencao', label: 'Manutenção', icon: Wrench },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
     ],
   },
@@ -74,6 +76,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'central-operacional',
     'frota',
     'controle-equipamentos',
+    'manutencao',
     'lancamentos',
     'tickets-jazida',
     'estacas',

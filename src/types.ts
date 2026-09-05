@@ -381,10 +381,16 @@ export interface OrdemServico {
   tipo: 'Preventiva' | 'Corretiva' | 'Preditiva' | 'Revisão';
   prioridade: 'Baixa' | 'Média' | 'Alta' | 'Urgente';
   descricao: string;
-  status: 'Aberta' | 'Em Andamento' | 'Aguardando Peça' | 'Concluída' | 'Cancelada';
+  status: 'Aberta' | 'Em Análise' | 'Em Andamento' | 'Aguardando Peça' | 'Concluída' | 'Cancelada';
   dataAbertura: string; // YYYY-MM-DD
+  horaAbertura?: string; // HH:MM
   dataConclusao?: string; // YYYY-MM-DD
+  horaConclusao?: string; // HH:MM
   responsavel: string;
+  /** Oficina interna ou terceiro que executou o serviço. */
+  oficina?: string;
+  /** O que foi feito para liberar o equipamento. */
+  solucao?: string;
   custoEstimado?: number;
   custoFinal?: number;
   observacao: string;

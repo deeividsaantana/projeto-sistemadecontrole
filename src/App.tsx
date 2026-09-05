@@ -75,6 +75,7 @@ const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
 const CentralOperacionalTab = lazy(() => import('./components/CentralOperacionalTab'));
 const FrotaTab = lazy(() => import('./components/FrotaTab'));
+const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -2855,6 +2856,36 @@ export default function App() {
     );
   };
 
+  const handleSaveOrdemServico = (ordem: OrdemServico, isNew: boolean) => {
+    const updated = isNew ? [ordem, ...ordensServico] : ordensServico.map(item => item.id === ordem.id ? ordem : item);
+    const equipamento = equipamentos.find(item => item.id === ordem.equipamentoId);
+    saveAndLog(
+      'Manutenção',
+      isNew ? 'Criou' : 'Editou',
+      `${isNew ? 'Abriu' : 'Atualizou'} a ${ordem.numero} de ${equipamento?.prefixo || 'frota não localizada'} — ${ordem.status}.`,
+      historyLogs,
+      () => {
+        setOrdensServico(updated);
+        writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(updated));
+      },
+    );
+  };
+
+  const handleDeleteOrdemServico = (id: string) => {
+    const ordem = ordensServico.find(item => item.id === id);
+    const updated = ordensServico.filter(item => item.id !== id);
+    saveAndLog(
+      'Manutenção',
+      'Excluiu',
+      `Excluiu a ordem de serviço ${ordem?.numero || id}.`,
+      historyLogs,
+      () => {
+        setOrdensServico(updated);
+        writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(updated));
+      },
+    );
+  };
+
   const handleSaveControleEquipamentoDiario = (registro: ControleEquipamentoDiario, isNew: boolean) => {
     const updated = isNew
       ? [registro, ...controleEquipamentosDiario]
@@ -3930,6 +3961,17 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'manutencao' && (
+              <ManutencaoTab
+                ordensServico={ordensServico}
+                equipamentos={equipamentos}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                onSave={handleSaveOrdemServico}
+                onDelete={handleDeleteOrdemServico}
               />
             )}
 

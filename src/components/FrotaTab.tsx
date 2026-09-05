@@ -16,6 +16,7 @@ import type {
   TicketJazida,
 } from '../types';
 import type { FleetPersistedRecord } from '../fleet/domain';
+import { isOrdemEncerrada } from '../utils/manutencao';
 import { buildEquipmentOperationalSummaries } from '../utils/equipmentOperations';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { Badge, Card, EmptyState, PageHeader, statusTone } from '../shared/ui';
@@ -34,7 +35,6 @@ interface FrotaTabProps {
 }
 
 const CATEGORIAS = ['Todas', 'Equipamento', 'Veículo', 'Implemento'] as const;
-const OS_ENCERRADAS = ['Concluída', 'Cancelada'];
 
 const formatarData = (valor?: string) => {
   if (!valor) return '—';
@@ -110,7 +110,7 @@ export default function FrotaTab({
     const ordens = ordensServico
       .filter(item => item.equipamentoId === selecionado.id)
       .sort((a, b) => (b.dataAbertura || '').localeCompare(a.dataAbertura || ''));
-    const ordensAbertas = ordens.filter(item => !OS_ENCERRADAS.includes(item.status));
+    const ordensAbertas = ordens.filter(item => !isOrdemEncerrada(item.status));
 
     const combustivel = abastecimentos
       .filter(item => item.equipamentoId === selecionado.id

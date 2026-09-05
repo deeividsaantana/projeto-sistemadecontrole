@@ -15,6 +15,7 @@ import type {
   TicketJazida,
 } from '../types';
 import type { FleetPersistedRecord } from '../fleet/domain';
+import { isOrdemEncerrada } from '../utils/manutencao';
 import { Badge, Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
 
 interface CentralOperacionalTabProps {
@@ -42,7 +43,6 @@ const STATUS_RAPIDOS: StatusControleEquipamentoDiario[] = [
   'A confirmar',
 ];
 
-const OS_ENCERRADAS = ['Concluída', 'Cancelada'];
 
 const formatarData = (dia: string) => dia.split('-').reverse().join('/');
 
@@ -124,7 +124,7 @@ export default function CentralOperacionalTab({
 
   const manutencao = useMemo(
     () => ordensServico
-      .filter(item => !OS_ENCERRADAS.includes(item.status))
+      .filter(item => !isOrdemEncerrada(item.status))
       .sort((a, b) => (b.dataAbertura || '').localeCompare(a.dataAbertura || ''))
       .slice(0, 8),
     [ordensServico],

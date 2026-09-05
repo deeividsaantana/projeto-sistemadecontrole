@@ -15,6 +15,7 @@ import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
 import CentralOperacionalTab from '../src/components/CentralOperacionalTab';
 import FrotaTab from '../src/components/FrotaTab';
+import ManutencaoTab from '../src/components/ManutencaoTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -186,6 +187,16 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  manutencao: (
+    <ManutencaoTab
+      ordensServico={fx.ordensServico}
+      equipamentos={fx.equipamentos}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSave={noop}
+      onDelete={noop}
     />
   ),
   frota: (
