@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { CountUp } from '../shared/ui';
 import type ExcelJS from 'exceljs';
+import { listarMateriais } from '../utils/materiaisJazida';
 import { createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } from '../utils/ticketNumberSequence';
@@ -355,6 +356,7 @@ export default function TicketsJazidaTab({
   const [responsavelLiberacao, setResponsavelLiberacao] = useState('');
   const [nomeLegivel, setNomeLegivel] = useState('');
   const [motoristaNome, setMotoristaNome] = useState('');
+  const [materialOutro, setMaterialOutro] = useState('');
 
   // O controle diário já sabe quem estava no prefixo naquele dia: sugerir evita
   // digitar de novo, e o campo continua editável para motorista substituto.
@@ -390,7 +392,7 @@ export default function TicketsJazidaTab({
   const locationByName = useMemo(() => new Map(
     obras.map(item => [normalizeMasterLabel(item.nome), item]),
   ), [obras]);
-  const materialOptions = useMemo(() => [...new Set(TIPOS_MATERIAL)], []);
+  const materialOptions = useMemo(() => listarMateriais(TIPOS_MATERIAL, tickets), [tickets]);
   const destinationOptions = useMemo(() => [...new Set([
     ...DESTINOS_OBRA,
     ...obras.map(item => item.nome),
@@ -467,7 +469,7 @@ export default function TicketsJazidaTab({
     setDestinoObra('Marginal');
     setDestinoOutro('');
     setResponsavelLiberacao('');
-    setNomeLegivel(''); setMotoristaNome('');
+    setNomeLegivel(''); setMotoristaNome(''); setMaterialOutro('');
     setEmpresa('RENEA');
     setEstaca('');
     setObservacao('');
@@ -501,7 +503,7 @@ export default function TicketsJazidaTab({
     setDestinoObra(t.destinoObra);
     setDestinoOutro(t.destinoOutro || '');
     setResponsavelLiberacao(t.responsavelLiberacao);
-    setNomeLegivel(t.nomeLegivel); setMotoristaNome(t.motoristaNome || '');
+    setNomeLegivel(t.nomeLegivel); setMotoristaNome(t.motoristaNome || ''); setMaterialOutro(t.materialOutro || '');
     setEmpresa(t.empresa);
     setEstaca(t.estaca || '');
     setObservacao(t.observacao);
@@ -650,6 +652,7 @@ export default function TicketsJazidaTab({
       horaChegada: tipoTicket === 'Recebimento' ? horaChegada : existing?.horaChegada,
       horaSaida: tipoTicket === 'Liberação' ? horaSaida : (horaChegada || horaSaida),
       tipoMaterial,
+      materialOutro: tipoMaterial === 'Outros' ? materialOutro.trim() : undefined,
       quantidadeM3: Number(quantidadeM3),
       destinoObra,
       destinoOutro: destinoOutro.trim(),
@@ -2204,6 +2207,15 @@ export default function TicketsJazidaTab({
                 <select value={tipoMaterial} onChange={e => setTipoMaterial(e.target.value as TipoMaterialJazida)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500 cursor-pointer">
                   {materialOptions.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
+                {tipoMaterial === 'Outros' && (
+                  <input
+                    type="text"
+                    value={materialOutro}
+                    onChange={e => setMaterialOutro(e.target.value)}
+                    placeholder="Qual material? Entra na lista no próximo lançamento"
+                    className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500"
+                  />
+                )}
               </div>
               <div className="space-y-1">
                 <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Quantidade (m³) *</label>
