@@ -119,6 +119,7 @@ const IndicadoresTab = lazy(() => import('./components/IndicadoresTab'));
 const CustosTab = lazy(() => import('./components/CustosTab'));
 const OrcamentoTab = lazy(() => import('./components/OrcamentoTab'));
 const CronogramaTab = lazy(() => import('./components/CronogramaTab'));
+const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4362,6 +4363,35 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'relatorios' && (
+              <RelatoriosTab
+                dados={{
+                  equipamentos,
+                  controlesEquipamentos: controleEquipamentosDiario,
+                  gruposEquipe,
+                  presencasLink,
+                  listasPresenca,
+                  obras,
+                  ordensServico,
+                  ticketsJazida,
+                  fichasFvs,
+                  inspecoes,
+                  naoConformidades,
+                  documentos,
+                  treinamentos,
+                  planejamento: planejamentoItens,
+                  producao: producaoRegistros,
+                  medicoes,
+                  materiais: materiaisCadastro,
+                  movimentosMaterial: materiaisMovimentos,
+                  ocorrencias,
+                  servicos: servicosObra,
+                  lancamentosCusto,
+                  abastecimentos,
+                }}
               />
             )}
 
