@@ -794,6 +794,48 @@ export interface Medicao {
   atualizadoEm: string;
 }
 
+export type TipoDocumento =
+  | 'CNH'
+  | 'ASO'
+  | 'CRLV'
+  | 'Licença'
+  | 'Contrato'
+  | 'ART/RRT'
+  | 'Certificado'
+  | 'Projeto'
+  | 'Outro';
+
+export type VinculoDocumento =
+  | 'Colaborador'
+  | 'Equipamento'
+  | 'Obra'
+  | 'FVS'
+  | 'Ordem de Serviço'
+  | 'Não Conformidade'
+  | 'Geral';
+
+/**
+ * Documento com validade. Guarda só o vínculo por id — nome e dados do
+ * colaborador ou equipamento continuam no cadastro de origem.
+ */
+export interface DocumentoArquivo {
+  id: string;
+  titulo: string;
+  tipo: TipoDocumento;
+  vinculo: VinculoDocumento;
+  vinculoId?: string;
+  numero?: string;
+  emissao?: string; // YYYY-MM-DD
+  validade?: string; // YYYY-MM-DD
+  obraId?: string;
+  observacao?: string;
+  anexo?: AnexoOperacional;
+  responsavel: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

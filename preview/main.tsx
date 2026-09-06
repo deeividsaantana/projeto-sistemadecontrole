@@ -31,6 +31,7 @@ import FvsTab from '../src/components/FvsTab';
 import InspecoesTab from '../src/components/InspecoesTab';
 import NaoConformidadesTab from '../src/components/NaoConformidadesTab';
 import MedicoesTab from '../src/components/MedicoesTab';
+import DocumentosTab from '../src/components/DocumentosTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -204,6 +205,18 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  documentos: (
+    <DocumentosTab
+      documentos={[]}
+      funcionarios={fx.funcionarios}
+      equipamentos={fx.equipamentos}
+      obras={fx.obras}
+      fichasFvs={[]}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSave={noop}
     />
   ),
   medicoes: (

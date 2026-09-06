@@ -35,6 +35,7 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'inspecoes',
   'naoConformidades',
   'medicoes',
+  'documentos',
   'materiaisRegistros',
   'controleEquipamentosDiario',
   'periodosArquivados',
