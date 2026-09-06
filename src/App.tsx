@@ -124,6 +124,7 @@ const TimelineTab = lazy(() => import('./components/TimelineTab'));
 const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
 const PermissoesTab = lazy(() => import('./components/PermissoesTab'));
 const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
+const NotificacoesTab = lazy(() => import('./components/NotificacoesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -205,6 +206,12 @@ import { NotificationCenter } from './app/shell/NotificationCenter';
 import { PesquisaGlobal } from './app/shell/PesquisaGlobal';
 import { alertasDoSistema } from './utils/alertas';
 import { pode } from './utils/permissoes';
+import {
+  alertasVisiveis,
+  carregarPreferencias,
+  salvarPreferencias,
+  type PreferenciasNotificacao,
+} from './utils/notificacoes';
 import { DesktopSidebar } from './app/shell/DesktopSidebar';
 import { APP_VERSION_LABEL } from './app/version';
 import {
@@ -415,6 +422,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [menuSearch, setMenuSearch] = useState<string>('');
+  // Preferência de notificação é do dispositivo: fica no navegador e não sobe
+  // para a nuvem, senão silenciar no celular apagaria o alerta do gestor.
+  const [preferenciasNotificacao, setPreferenciasNotificacao] = useState<PreferenciasNotificacao>(
+    () => typeof localStorage === 'undefined' ? { categoriasSilenciadas: [], mostrarSistema: true } : carregarPreferencias(localStorage),
+  );
 
   // Firebase Sync States
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
@@ -3121,6 +3133,16 @@ export default function App() {
     });
   };
 
+  const alertasDoSino = useMemo(
+    () => alertasVisiveis(alertasSistema, preferenciasNotificacao),
+    [alertasSistema, preferenciasNotificacao],
+  );
+
+  const handleAlterarPreferenciasNotificacao = (preferencias: PreferenciasNotificacao) => {
+    setPreferenciasNotificacao(preferencias);
+    salvarPreferencias(localStorage, preferencias);
+  };
+
   const handleSaveOcorrencia = (ocorrencia: Ocorrencia, isNew: boolean) => {
     const updated = isNew ? [ocorrencia, ...ocorrencias] : ocorrencias.map(item => item.id === ocorrencia.id ? ocorrencia : item);
     saveAndLog('Ocorrências', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Atualizou'} a ocorrência ${ocorrencia.numero} (${ocorrencia.tipo}) em ${ocorrencia.data}.`, historyLogs, () => {
@@ -4183,7 +4205,7 @@ export default function App() {
             onMarkAllAsRead={handleMarkAllAsRead}
             onClear={handleClearNotifications}
             onMarkOneAsRead={handleMarkNotificationAsRead}
-            alertas={alertasSistema}
+            alertas={alertasDoSino}
             onAlertaClick={tab => { setIsNotifDropdownOpen(false); navigateTo(tab); }}
           />
 
@@ -4238,7 +4260,7 @@ export default function App() {
           isNotificationOpen={isNotifDropdownOpen}
           notifications={notifications}
           unreadCount={unreadCount}
-          alertas={alertasSistema}
+          alertas={alertasDoSino}
           isFirebaseConnected={isFirebaseConnected}
           lastCloudSync={lastCloudSync}
           onNavigate={tab => navigateTo(tab)}
@@ -4368,6 +4390,17 @@ export default function App() {
                 podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'notificacoes' && (
+              <NotificacoesTab
+                notificacoes={notifications}
+                alertas={alertasSistema}
+                preferencias={preferenciasNotificacao}
+                onPreferenciasChange={handleAlterarPreferenciasNotificacao}
+                onMarcarTodasLidas={handleMarkAllAsRead}
                 onNavigate={navigateTo}
               />
             )}
