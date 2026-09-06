@@ -27,6 +27,7 @@ import './consumoCombustivel.test';
 import './materiaisJazida.test';
 import './apontamentos.test';
 import './treinamentos.test';
+import './estoque.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';

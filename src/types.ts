@@ -508,6 +508,43 @@ export interface Treinamento {
   criadoEm: string;
 }
 
+export interface Material {
+  id: string;
+  codigo: string;
+  descricao: string;
+  categoria: string;
+  unidade: string;
+  fornecedorPadraoId?: string;
+  estoqueMinimo?: number;
+  observacao?: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export type TipoMovimentoMaterial = 'Entrada' | 'Saída' | 'Transferência' | 'Ajuste';
+
+export interface MovimentoMaterial {
+  id: string;
+  data: string; // YYYY-MM-DD
+  tipo: TipoMovimentoMaterial;
+  materialId: string;
+  materialDescricao: string;
+  /** Sempre positiva, menos no ajuste, onde o sinal corrige o saldo. */
+  quantidade: number;
+  unidade: string;
+  fornecedorId?: string;
+  fornecedorNome?: string;
+  notaFiscal?: string;
+  /** Para onde foi: frente, obra ou ponto de apoio. */
+  destino?: string;
+  origem?: string;
+  servico?: string;
+  responsavel: string;
+  observacao?: string;
+  criadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

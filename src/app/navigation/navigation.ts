@@ -7,6 +7,7 @@ import {
   Hammer,
   HardHat,
   LayoutDashboard,
+  Package,
   Radio,
   Settings,
   TimerOff,
@@ -66,6 +67,12 @@ export const NAVIGATION_GROUPS = [
     ],
   },
   {
+    label: 'Materiais',
+    items: [
+      { id: 'materiais', label: 'Materiais e Estoque', icon: Package },
+    ],
+  },
+  {
     label: 'Administração',
     items: [
       { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
@@ -98,6 +105,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'equipes',
     'apontamentos',
     'dds-treinamentos',
+    'materiais',
   ],
   leitura: ['dashboard', 'consulta-geral', 'periodo'],
 };

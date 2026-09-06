@@ -24,6 +24,7 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'apontamentoRamos',
   'apontamentoRamoRegistros',
   'materiaisCadastro',
+  'materiaisMovimentos',
   'materiaisRegistros',
   'controleEquipamentosDiario',
   'periodosArquivados',

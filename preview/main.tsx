@@ -22,6 +22,7 @@ import ColaboradoresTab from '../src/components/ColaboradoresTab';
 import EquipesTab from '../src/components/EquipesTab';
 import ApontamentosTab from '../src/components/ApontamentosTab';
 import DdsTreinamentosTab from '../src/components/DdsTreinamentosTab';
+import MateriaisTab from '../src/components/MateriaisTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -195,6 +196,17 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  materiais: (
+    <MateriaisTab
+      materiais={[]}
+      movimentos={[]}
+      empresas={fx.empresas}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSaveMaterial={noop}
+      onSaveMovimento={noop}
     />
   ),
   'dds-treinamentos': (
