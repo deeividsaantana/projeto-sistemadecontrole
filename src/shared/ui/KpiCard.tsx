@@ -42,7 +42,7 @@ export function KpiCard({
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={cn(
         'group flex w-full flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition-colors hover:border-slate-300',
-        onClick && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30',
+        onClick && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 active:scale-[0.995]',
         className,
       )}
     >
@@ -108,7 +108,7 @@ export function CompactMetric({
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={cn(
         'flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition-colors hover:border-slate-300',
-        onClick && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30',
+        onClick && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 active:scale-[0.995]',
         className,
       )}
     >

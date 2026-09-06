@@ -148,7 +148,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
               type="button"
               onClick={() => { setModuleFilter(aba.modulos[0]); setPage(1); }}
               aria-pressed={ativa}
-              className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors ${ativa
+              className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-[0.98] ${ativa
                 ? 'bg-[#087353] text-white'
                 : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
             >
@@ -160,7 +160,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
           type="button"
           onClick={() => { setModuleFilter('Todos'); setPage(1); }}
           aria-pressed={moduleFilter === 'Todos'}
-          className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors ${moduleFilter === 'Todos'
+          className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-[0.98] ${moduleFilter === 'Todos'
             ? 'bg-[#087353] text-white'
             : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
         >

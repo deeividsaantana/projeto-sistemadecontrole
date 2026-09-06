@@ -58,7 +58,7 @@ export function DataTable<T>({
 
   return (
     <div className={cn('w-full overflow-x-auto', className)}>
-      <table className="w-full text-left" style={{ minWidth: `${larguraMinima}px` }}>
+      <table className="w-full text-left tabular-nums" style={{ minWidth: `${larguraMinima}px` }}>
         <thead className="bg-slate-50/80">
           <tr>
             {colunas.map(coluna => (
@@ -110,7 +110,7 @@ export function DataTable<T>({
                       aria-label={`Ações da linha`}
                       aria-expanded={menuAberto === chave}
                       onClick={event => { event.stopPropagation(); setMenuAberto(atual => atual === chave ? null : chave); }}
-                      className="inline-grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-emerald-500 hover:text-emerald-700"
+                      className="inline-grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-emerald-500 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-95"
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </button>
@@ -124,7 +124,7 @@ export function DataTable<T>({
                               type="button"
                               onClick={event => { event.stopPropagation(); setMenuAberto(null); acao.onSelect(item); }}
                               className={cn(
-                                'block w-full px-3 py-2 text-left text-[12px] font-medium transition-colors hover:bg-slate-50',
+                                'block w-full px-3 py-2 text-left text-[12px] font-medium transition-colors hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none',
                                 acao.perigosa ? 'text-rose-700' : 'text-slate-700',
                               )}
                             >

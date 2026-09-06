@@ -26,7 +26,7 @@ export function FilterPills<T extends string>({ opcoes, valor, onChange, classNa
             aria-checked={ativo}
             onClick={() => onChange(opcao.valor)}
             className={cn(
-              'h-8 rounded-md px-3 text-[12px] font-semibold transition-colors',
+              'h-8 rounded-md px-3 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-[0.98]',
               ativo ? 'bg-[#087353] text-white' : 'text-slate-600 hover:bg-slate-100',
             )}
           >

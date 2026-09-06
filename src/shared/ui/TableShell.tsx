@@ -15,7 +15,7 @@ interface TableShellProps {
 export function TableShell({ minWidth = 720, children, className }: TableShellProps) {
   return (
     <div className={cn('w-full overflow-x-auto', className)}>
-      <table className="w-full text-left text-sm" style={{ minWidth: `${minWidth}px` }}>
+      <table className="w-full text-left text-sm tabular-nums" style={{ minWidth: `${minWidth}px` }}>
         {children}
       </table>
     </div>

@@ -93,3 +93,23 @@ test('CTRL+ENTER salva sem procurar o botão', async ({ page }) => {
   await page.keyboard.press('Control+Enter');
   await expect(page.getByText('Descreva a ocorrência.')).toBeVisible();
 });
+
+// Foco visível: quem navega por teclado precisa ver onde está. A skill trata
+// isto como requisito, não enfeite.
+test('as abas e ações mostram foco pelo teclado', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?screen=pendencias');
+  await page.waitForTimeout(400);
+  const aba = page.getByRole('button', { name: /^Todas/ });
+  await aba.focus();
+  const anel = await aba.evaluate(el => getComputedStyle(el).boxShadow + getComputedStyle(el).outline);
+  expect(anel.length).toBeGreaterThan(0);
+});
+
+test('números das tabelas usam figuras tabulares', async ({ page }) => {
+  await page.goto('/?screen=periodo');
+  await page.waitForTimeout(400);
+  const tabela = page.locator('table').first();
+  const variante = await tabela.evaluate(el => getComputedStyle(el).fontVariantNumeric);
+  expect(variante).toContain('tabular-nums');
+});

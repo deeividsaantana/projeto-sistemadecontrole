@@ -96,7 +96,7 @@ export default function NotificacoesTab({
             type="button"
             onClick={() => setAbaAtiva(aba.id)}
             aria-pressed={abaAtiva === aba.id}
-            className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors ${abaAtiva === aba.id
+            className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-[0.98] ${abaAtiva === aba.id
               ? 'bg-[#087353] text-white'
               : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
           >
