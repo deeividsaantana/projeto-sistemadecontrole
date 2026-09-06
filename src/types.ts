@@ -878,6 +878,38 @@ export interface Ocorrencia {
   atualizadoEm: string;
 }
 
+export type CategoriaCusto =
+  | 'Combustível'
+  | 'Manutenção'
+  | 'Material'
+  | 'Locação'
+  | 'Serviço de terceiro'
+  | 'Mão de obra'
+  | 'Outro';
+
+/**
+ * Custo que não nasce de outro módulo (locação, terceiro, mão de obra). O que
+ * já é registrado em outro lugar — combustível e manutenção — não se digita
+ * aqui: o consolidado lê direto do registro de origem.
+ */
+export interface LancamentoCusto {
+  id: string;
+  data: string; // YYYY-MM-DD
+  categoria: CategoriaCusto;
+  descricao: string;
+  valor: number;
+  obraId?: string;
+  frente?: string;
+  equipamentoId?: string;
+  fornecedorId?: string;
+  documento?: string;
+  responsavel: string;
+  observacao?: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

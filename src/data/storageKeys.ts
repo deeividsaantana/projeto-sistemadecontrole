@@ -37,6 +37,7 @@ export const STORAGE_KEYS = {
   medicoes: 'renea_medicoes',
   documentos: 'renea_documentos',
   ocorrencias: 'renea_ocorrencias',
+  lancamentosCusto: 'renea_lancamentos_custo',
   modelosChecklist: 'renea_modelos_checklist',
   periodosArquivados: 'renea_periodos_arquivados',
   vinculosOperadorEquipamento: 'renea_vinculos_operador_equipamento',
@@ -96,5 +97,6 @@ export const CORE_DATA_STORAGE_KEYS = [
   STORAGE_KEYS.medicoes,
   STORAGE_KEYS.documentos,
   STORAGE_KEYS.ocorrencias,
+  STORAGE_KEYS.lancamentosCusto,
   STORAGE_KEYS.modelosChecklist,
 ] as const;

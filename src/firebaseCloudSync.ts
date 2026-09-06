@@ -56,6 +56,7 @@ const INTERMEDIATE_TABLE_IDS = [
   'medicoes',
   'documentos',
   'ocorrencias',
+  'lancamentosCusto',
   'materiaisRegistros',
   'controleEquipamentosDiario',
   'periodosArquivados',

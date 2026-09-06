@@ -36,6 +36,7 @@ import {
   Medicao,
   DocumentoArquivo,
   Ocorrencia,
+  LancamentoCusto,
   MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
@@ -114,6 +115,7 @@ const DocumentosTab = lazy(() => import('./components/DocumentosTab'));
 const OcorrenciasTab = lazy(() => import('./components/OcorrenciasTab'));
 const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
 const IndicadoresTab = lazy(() => import('./components/IndicadoresTab'));
+const CustosTab = lazy(() => import('./components/CustosTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -344,6 +346,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['medicoes', STORAGE_KEYS.medicoes],
   ['documentos', STORAGE_KEYS.documentos],
   ['ocorrencias', STORAGE_KEYS.ocorrencias],
+  ['lancamentosCusto', STORAGE_KEYS.lancamentosCusto],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -463,6 +466,7 @@ export default function App() {
   const [medicoes, setMedicoes] = useState<Medicao[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoArquivo[]>([]);
   const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>([]);
+  const [lancamentosCusto, setLancamentosCusto] = useState<LancamentoCusto[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -673,6 +677,7 @@ export default function App() {
       setMedicoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.medicoes), STORAGE_KEYS.medicoes, [] as Medicao[]));
       setDocumentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.documentos), STORAGE_KEYS.documentos, [] as DocumentoArquivo[]));
       setOcorrencias(parseStoredJson(localStorage.getItem(STORAGE_KEYS.ocorrencias), STORAGE_KEYS.ocorrencias, [] as Ocorrencia[]));
+      setLancamentosCusto(parseStoredJson(localStorage.getItem(STORAGE_KEYS.lancamentosCusto), STORAGE_KEYS.lancamentosCusto, [] as LancamentoCusto[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -869,6 +874,7 @@ export default function App() {
     medicoes: readTable(STORAGE_KEYS.medicoes, [] as Medicao[]),
     documentos: readTable(STORAGE_KEYS.documentos, [] as DocumentoArquivo[]),
     ocorrencias: readTable(STORAGE_KEYS.ocorrencias, [] as Ocorrencia[]),
+    lancamentosCusto: readTable(STORAGE_KEYS.lancamentosCusto, [] as LancamentoCusto[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -1058,6 +1064,7 @@ export default function App() {
           setMedicoes(normalizeRuntimeCollection<Medicao>(data.medicoes));
           setDocumentos(normalizeRuntimeCollection<DocumentoArquivo>(data.documentos));
           setOcorrencias(normalizeRuntimeCollection<Ocorrencia>(data.ocorrencias));
+          setLancamentosCusto(normalizeRuntimeCollection<LancamentoCusto>(data.lancamentosCusto));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -3083,6 +3090,14 @@ export default function App() {
     ocorrencias,
   }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentos, ocorrencias]);
 
+  const handleSaveLancamentoCusto = (lancamento: LancamentoCusto, isNew: boolean) => {
+    const updated = isNew ? [lancamento, ...lancamentosCusto] : lancamentosCusto.map(item => item.id === lancamento.id ? lancamento : item);
+    saveAndLog('Custos', isNew ? 'Criou' : 'Editou', `${isNew ? 'Lançou' : 'Editou'} ${lancamento.categoria}: ${lancamento.descricao} (R$ ${lancamento.valor}).`, historyLogs, () => {
+      setLancamentosCusto(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.lancamentosCusto, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveOcorrencia = (ocorrencia: Ocorrencia, isNew: boolean) => {
     const updated = isNew ? [ocorrencia, ...ocorrencias] : ocorrencias.map(item => item.id === ocorrencia.id ? ocorrencia : item);
     saveAndLog('Ocorrências', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Atualizou'} a ocorrência ${ocorrencia.numero} (${ocorrencia.tipo}) em ${ocorrencia.data}.`, historyLogs, () => {
@@ -4331,6 +4346,21 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'custos' && (
+              <CustosTab
+                lancamentos={lancamentosCusto}
+                abastecimentos={abastecimentos}
+                ordensServico={ordensServico}
+                obras={obras}
+                frentes={frentesServico}
+                equipamentos={equipamentos}
+                empresas={empresas}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                onSave={handleSaveLancamentoCusto}
               />
             )}
 

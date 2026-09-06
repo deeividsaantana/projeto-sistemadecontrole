@@ -9,7 +9,7 @@ const INTERMEDIATE_TABLE_IDS = [
   'lubrificantes', 'etapas', 'abastecimentos', 'lubrificacoes', 'ticketsJazida',
   'listasPresenca', 'ordensServico', 'gruposEquipe', 'presencasLink', 'historicoPresencas',
   'checklists', 'modelosChecklist', 'apontamentosOperacionais', 'registrosDds', 'treinamentos',
-  'apontamentoRamos', 'apontamentoRamoRegistros', 'materiaisCadastro', 'materiaisRegistros', 'materiaisMovimentos', 'frentesServico', 'diariosObra', 'servicosObra', 'producaoRegistros', 'planejamentoItens', 'modelosFvs', 'fichasFvs', 'inspecoes', 'naoConformidades', 'medicoes', 'documentos', 'ocorrencias',
+  'apontamentoRamos', 'apontamentoRamoRegistros', 'materiaisCadastro', 'materiaisRegistros', 'materiaisMovimentos', 'frentesServico', 'diariosObra', 'servicosObra', 'producaoRegistros', 'planejamentoItens', 'modelosFvs', 'fichasFvs', 'inspecoes', 'naoConformidades', 'medicoes', 'documentos', 'ocorrencias', 'lancamentosCusto',
   'controleEquipamentosDiario', 'periodosArquivados', 'notifications', 'historyLogs',
 ];
 
