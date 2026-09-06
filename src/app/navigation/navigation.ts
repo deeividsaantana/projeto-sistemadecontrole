@@ -8,6 +8,7 @@ import {
   Radio,
   Settings,
   TimerOff,
+  UserRound,
   Wrench,
   Truck,
   Activity,
@@ -53,8 +54,9 @@ export const NAVIGATION_GROUPS = [
     ],
   },
   {
-    label: 'Equipes e campo',
+    label: 'Pessoas',
     items: [
+      { id: 'colaboradores', label: 'Colaboradores', icon: UserRound },
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
     ],
   },
@@ -87,6 +89,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'tickets-jazida',
     'estacas',
     'presenca',
+    'colaboradores',
   ],
   leitura: ['dashboard', 'consulta-geral', 'periodo'],
 };

@@ -34,6 +34,8 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'frota'), true);
   assert.equal(ROLE_ACCESS.operador.includes('frota'), true);
   assert.equal(ROLE_ACCESS.leitura.includes('frota'), false);
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'colaboradores'), true);
+  assert.equal(ROLE_ACCESS.operador.includes('colaboradores'), true);
   assert.equal(ROLE_ACCESS.operador.includes('pendencias'), false);
   assert.equal(ROLE_ACCESS.operador.includes('lancamentos'), true);
   assert.equal(ROLE_ACCESS.operador.includes('configuracoes'), false);
