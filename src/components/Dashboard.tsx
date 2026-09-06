@@ -6,7 +6,7 @@ import { Activity, AlertTriangle, ChevronRight, Clock3, Droplets, Gauge, ListChe
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa, Equipamento, Funcionario, GrupoEquipe, HistoryLog, ListaPresenca, Lubrificacao, ObraLocal, OrdemServico, PresencaApontamento, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../types';
 import { splitOperationalFuelRecords } from '../utils/fuelAnalyticsSafety';
 import { listarPendencias } from '../utils/pendencias';
-import { PageHeader, PeriodFilter, StatCard, buildPeriod, type PeriodValue } from '../shared/ui';
+import { CompactMetric, DataTable, KpiCard, PageHeader, PeriodFilter, StatusBadge, buildPeriod, type PeriodValue } from '../shared/ui';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; historyLogs: HistoryLog[]; listasPresenca?: ListaPresenca[]; ordensServico?: OrdemServico[]; ticketsJazida?: TicketJazida[]; estacas?: ControleEstacas; presencasLink?: PresencaApontamento[]; controlesEquipamentos?: ControleEquipamentoDiario[]; gruposEquipe?: GrupoEquipe[]; onNavigate: (tab: string) => void;
@@ -193,6 +193,36 @@ export default function Dashboard({
     }
   }, { scope: dashboardRef, dependencies: [fleet.disponibilidade, donutSegments.length] });
 
+  // Situação completa da frota para a barra segmentada: o cadastro entra só
+  // para saber quantos existem e quantos estão inativos.
+  const situacaoFrota = useMemo(() => {
+    const inativos = equipamentos.filter(item => ['Desmobilizado', 'Parado'].includes(item.status)).length;
+    const total = equipamentos.length;
+    return [
+      { label: 'Em operação', valor: fleet.operando, cor: '#087353' },
+      { label: 'Em manutenção', valor: fleet.manutencao, cor: '#d97706' },
+      { label: 'A confirmar', valor: fleet.aConfirmar, cor: '#0284c7' },
+      { label: 'À disposição', valor: fleet.disponivel, cor: '#94a3b8' },
+      { label: 'Inativo', valor: inativos, cor: '#cbd5e1' },
+    ].map(item => ({ ...item, pct: total > 0 ? (item.valor / total) * 100 : 0, total }));
+  }, [equipamentos, fleet.aConfirmar, fleet.disponivel, fleet.manutencao, fleet.operando]);
+
+  const totalFrota = equipamentos.length;
+
+  // Equipamentos que exigem atenção: derivado do controle diário, sem campo novo.
+  const atencao = useMemo(() => fleet.registros
+    .filter(item => MAINTENANCE_STATUS.includes(item.status) || WAITING_STATUS.includes(item.status))
+    .map(item => ({
+      id: item.id,
+      prefixo: item.prefixo,
+      situacao: item.status,
+      problema: item.motivoManutencao || item.observacao || 'Sem atualização hoje',
+      tempo: item.horaEntradaManutencao && item.horaLiberacao === ''
+        ? `desde ${item.horaEntradaManutencao}`
+        : item.horaSaida ? `saída ${item.horaSaida}` : '—',
+    }))
+    .slice(0, 6), [fleet.registros]);
+
   const latestLogs = historyLogs.slice(0, 6);
   const periodoLabel = period.from === period.to
     ? period.from.split('-').reverse().join('/')
@@ -202,113 +232,154 @@ export default function Dashboard({
     <div data-erp-enter>
       <PageHeader
         title="Painel de Controle"
+        description="Visão operacional consolidada da frota, equipes e atividades."
         actions={<div className="text-right">
-          <p className="text-sm font-semibold text-slate-700">Hoje, {formattedToday}</p>
-          <p className="text-xs capitalize text-slate-400">{formattedWeekday}</p>
+          <p className="text-[13px] font-semibold text-slate-700">
+            <span className="capitalize">{formattedWeekday}</span>, {formattedToday}
+          </p>
+          <p className="text-[11px] text-slate-400">Período analisado: {periodoLabel}</p>
         </div>}
       />
     </div>
 
-    <div data-erp-enter className="mt-4 flex flex-wrap items-center justify-between gap-3">
+    <div data-erp-enter className="mt-4">
       <PeriodFilter value={period} onChange={setPeriod} />
-      <span className="text-xs font-medium text-slate-500">Período: {periodoLabel}</span>
     </div>
 
-    <section data-erp-enter className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label="Em operação" value={fleet.operando} icon={Truck} tone="success" onClick={() => onNavigate('controle-equipamentos')} />
-      <StatCard label="Em manutenção" value={fleet.manutencao} icon={Wrench} tone="warning" onClick={() => onNavigate('controle-equipamentos')} />
-      <StatCard label="A confirmar" value={fleet.aConfirmar} icon={Clock3} tone="info" onClick={() => onNavigate('controle-equipamentos')} />
-      <StatCard label="Disponibilidade" value={`${fleet.disponibilidade}%`} trend={`${fleet.informados} de ${equipamentos.length} informados`} icon={Gauge} tone="neutral" onClick={() => onNavigate('controle-equipamentos')} />
+    <section data-erp-enter className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <KpiCard
+        label="Em operação"
+        valor={fleet.operando}
+        contexto={`de ${totalFrota} equipamentos`}
+        destaque={totalFrota ? `${((fleet.operando / totalFrota) * 100).toFixed(1).replace('.', ',')}%` : undefined}
+        percentual={totalFrota ? (fleet.operando / totalFrota) * 100 : 0}
+        icone={Truck}
+        estado="operacao"
+        onClick={() => onNavigate('controle-equipamentos')}
+      />
+      <KpiCard
+        label="Em manutenção"
+        valor={fleet.manutencao}
+        contexto={`de ${totalFrota} equipamentos`}
+        destaque={totalFrota ? `${((fleet.manutencao / totalFrota) * 100).toFixed(1).replace('.', ',')}%` : undefined}
+        percentual={totalFrota ? (fleet.manutencao / totalFrota) * 100 : 0}
+        icone={Wrench}
+        estado="manutencao"
+        onClick={() => onNavigate('manutencao')}
+      />
+      <KpiCard
+        label="A confirmar"
+        valor={fleet.aConfirmar}
+        contexto={`de ${totalFrota} equipamentos`}
+        destaque={totalFrota ? `${((fleet.aConfirmar / totalFrota) * 100).toFixed(1).replace('.', ',')}%` : undefined}
+        percentual={totalFrota ? (fleet.aConfirmar / totalFrota) * 100 : 0}
+        icone={Clock3}
+        estado="confirmar"
+        onClick={() => onNavigate('controle-equipamentos')}
+      />
+      <KpiCard
+        label="Disponibilidade"
+        valor={`${fleet.disponibilidade}%`}
+        contexto={`${fleet.operando} de ${totalFrota} equipamentos`}
+        percentual={fleet.disponibilidade}
+        icone={Gauge}
+        estado="operacao"
+        onClick={() => onNavigate('controle-equipamentos')}
+      />
     </section>
 
-    <section data-erp-enter className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label="Presentes" value={pessoas.presentes} trend={pessoas.justificados ? `${pessoas.justificados} justificados` : undefined} icon={UserCheck} tone="success" onClick={() => onNavigate('presenca')} />
-      <StatCard label="Ausências" value={pessoas.ausentes} icon={UserX} tone="danger" onClick={() => onNavigate('presenca')} />
-      <StatCard label="Viagens" value={movimento.viagens} trend={movimento.viagensRascunho ? `${movimento.viagensRascunho} em rascunho` : undefined} icon={Truck} tone="info" onClick={() => onNavigate('tickets-jazida')} />
-      <StatCard label="Abastecimentos" value={movimento.abastecimentos} trend={movimento.litros ? `${movimento.litros.toLocaleString('pt-BR')} L` : undefined} icon={Droplets} tone="neutral" onClick={() => onNavigate('lancamentos')} />
+    <section data-erp-enter className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <CompactMetric
+        label="Presentes"
+        valor={pessoas.presentes}
+        contexto={`de ${pessoas.total || 0} colaboradores`}
+        variacao={pessoas.total ? `${Math.round((pessoas.presentes / pessoas.total) * 100)}%` : undefined}
+        icone={UserCheck}
+        estado="operacao"
+        onClick={() => onNavigate('presenca')}
+      />
+      <CompactMetric
+        label="Ausências"
+        valor={pessoas.ausentes}
+        contexto="colaboradores"
+        variacao={pessoas.total ? `${Math.round((pessoas.ausentes / pessoas.total) * 100)}%` : undefined}
+        icone={UserX}
+        estado="erro"
+        onClick={() => onNavigate('presenca')}
+      />
+      <CompactMetric
+        label="Viagens"
+        valor={movimento.viagens}
+        contexto="registros"
+        variacao={movimento.viagensRascunho ? `${movimento.viagensRascunho} rascunho` : undefined}
+        icone={Truck}
+        estado="confirmar"
+        onClick={() => onNavigate('tickets-jazida')}
+      />
+      <CompactMetric
+        label="Abastecimentos"
+        valor={movimento.abastecimentos}
+        contexto="registros"
+        variacao={movimento.litros ? `${movimento.litros.toLocaleString('pt-BR')} L` : undefined}
+        icone={Droplets}
+        estado="neutro"
+        onClick={() => onNavigate('lancamentos')}
+      />
     </section>
 
-    <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-      <article data-erp-enter className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(15,23,42,0.25)]">
+    <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <article data-erp-enter className="rounded-xl border border-slate-200 bg-white p-5">
         <SectionTitle icon={PieChart} tone="bg-gradient-to-br from-emerald-500 to-emerald-700">Situação da Frota</SectionTitle>
-        {fleetTotal === 0 ? (
-          <p className="mt-6 text-center text-xs text-slate-500">Nenhum equipamento informado no período selecionado.</p>
+        {totalFrota === 0 ? (
+          <p className="mt-6 text-center text-[13px] text-slate-500">Nenhum equipamento cadastrado.</p>
         ) : (
-          <div className="mt-5 flex items-center gap-6">
-            <div className="relative size-36 shrink-0">
-              <svg viewBox="0 0 100 100" className="size-36 -rotate-90 drop-shadow-sm">
-                <circle cx="50" cy="50" r={DONUT_RADIUS} fill="none" stroke="#eef2f0" strokeWidth="13" />
-                <g ref={donutGroupRef}>
-                  {donutSegments.map((segment, index) => segment.length > 0 && (
-                    <circle
-                      key={segment.label}
-                      cx="50" cy="50" r={DONUT_RADIUS} fill="none"
-                      stroke={segment.color}
-                      strokeWidth={hoveredSegment === index ? 16 : 13}
-                      strokeLinecap="round"
-                      strokeDasharray={`${Math.max(0, segment.length - donutGap)} ${DONUT_CIRCUMFERENCE - segment.length + donutGap}`}
-                      strokeDashoffset={-segment.offset}
-                      opacity={hoveredSegment !== null && hoveredSegment !== index ? 0.35 : 1}
-                      onMouseEnter={() => setHoveredSegment(index)}
-                      onMouseLeave={() => setHoveredSegment(null)}
-                      className="cursor-pointer transition-[stroke-width,opacity] duration-200 ease-out"
-                    />
-                  ))}
-                </g>
-              </svg>
-              <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-full bg-white text-center shadow-inner">
-                {centerLabel ? (
-                  <>
-                    <strong className="text-2xl font-black leading-none text-slate-900">{centerLabel.value}</strong>
-                    <span className="mt-1.5 max-w-[80px] text-[10px] font-semibold leading-tight text-slate-500">{centerLabel.label}</span>
-                    <span className="mt-0.5 text-[10px] font-bold" style={{ color: centerLabel.color }}>{centerLabel.pct}%</span>
-                  </>
-                ) : (
-                  <>
-                    <strong ref={percentRef} className="text-3xl font-black leading-none text-slate-900">0%</strong>
-                    <span className="mt-1.5 text-[10px] font-semibold text-slate-500">Operacional</span>
-                  </>
-                )}
-              </div>
+          <>
+            <div className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100" role="img" aria-label="Distribuição da frota por situação">
+              {situacaoFrota.filter(item => item.valor > 0).map(item => (
+                <span key={item.label} style={{ width: `${item.pct}%`, backgroundColor: item.cor }} title={`${item.label}: ${item.valor}`} />
+              ))}
             </div>
-            <ul className="flex-1 space-y-1.5">
-              {fleetSituation.map((item, index) => (
-                <li
-                  key={item.label}
-                  onMouseEnter={() => setHoveredSegment(index)}
-                  onMouseLeave={() => setHoveredSegment(null)}
-                  className={`flex cursor-default items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm transition-all duration-150 ${hoveredSegment === index ? 'bg-slate-50 shadow-sm' : ''}`}
-                >
-                  <span className="flex items-center gap-2.5 font-medium text-slate-600"><span className="size-2.5 shrink-0 rounded-full ring-4 ring-offset-0" style={{ backgroundColor: item.color, boxShadow: `0 0 0 4px ${item.color}1a` }} />{item.label}</span>
-                  <strong className="tabular-nums text-slate-900">{item.value}</strong>
+            <ul className="mt-4 divide-y divide-slate-100">
+              {situacaoFrota.map(item => (
+                <li key={item.label} className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="flex min-w-0 items-center gap-2.5 text-[13px] text-slate-600">
+                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.cor }} />
+                    <span className="truncate">{item.label}</span>
+                  </span>
+                  <strong className="shrink-0 text-[14px] font-bold tabular-nums text-slate-900">{item.valor}</strong>
                 </li>
               ))}
+              <li className="flex items-center justify-between gap-3 py-2.5">
+                <span className="text-[13px] font-semibold text-slate-700">Total</span>
+                <strong className="text-[14px] font-bold tabular-nums text-slate-900">{totalFrota}</strong>
+              </li>
             </ul>
-          </div>
+          </>
         )}
       </article>
-      <article data-erp-enter className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(15,23,42,0.25)]">
-        <div className="flex items-center justify-between">
-          <SectionTitle icon={Activity} tone="bg-gradient-to-br from-sky-500 to-sky-700">Movimentação de Atividades</SectionTitle>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Esta semana</span>
-        </div>
-        <div ref={barsRef} className="relative mt-7 flex h-36 items-end gap-3 border-b border-slate-100">
-          {weeklyActivity.map((day, index) => (
-            <div key={day.label} className="flex flex-1 flex-col items-center gap-2">
-              <div className="relative flex h-28 w-full items-end justify-center">
-                <span className={`absolute -top-6 text-[11px] font-black tabular-nums transition-colors duration-150 ${hoveredDay === index ? 'text-[#087345]' : 'text-slate-400'}`}>{day.count}</span>
-                <div
-                  data-bar
-                  data-pct={Math.max(4, day.pct)}
-                  onMouseEnter={() => setHoveredDay(index)}
-                  onMouseLeave={() => setHoveredDay(null)}
-                  className={`w-full cursor-pointer rounded-t-md bg-gradient-to-t transition-[filter] duration-150 ${hoveredDay === index ? 'from-[#065f3c] to-[#0fae6a] brightness-110' : 'from-[#065f3c] to-[#10b981]'}`}
-                />
-              </div>
-              <span className={`text-[10px] font-bold transition-colors duration-150 ${hoveredDay === index ? 'text-slate-800' : 'text-slate-500'}`}>{day.label}</span>
-            </div>
-          ))}
-        </div>
+
+      <article data-erp-enter className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <SectionTitle icon={AlertTriangle} tone="bg-gradient-to-br from-amber-500 to-amber-600">Equipamentos que exigem atenção</SectionTitle>
+          <button type="button" onClick={() => onNavigate('controle-equipamentos')} className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#087353] hover:text-[#065f3c]">
+            Ver todos <ChevronRight size={14} />
+          </button>
+        </header>
+        {atencao.length === 0 ? (
+          <p className="px-5 py-10 text-center text-[13px] text-slate-500">Nenhum equipamento pedindo atenção no período.</p>
+        ) : (
+          <DataTable
+            larguraMinima={520}
+            itens={atencao}
+            chaveDe={item => item.id}
+            colunas={[
+              { chave: 'prefixo', titulo: 'Prefixo', render: item => <span className="font-semibold text-slate-800">{item.prefixo}</span> },
+              { chave: 'situacao', titulo: 'Situação', render: item => <StatusBadge>{item.situacao}</StatusBadge> },
+              { chave: 'problema', titulo: 'Problema', render: item => <span className="line-clamp-1">{item.problema}</span> },
+              { chave: 'tempo', titulo: 'Tempo', alinhamento: 'direita', ocultarNoCelular: true },
+            ]}
+          />
+        )}
       </article>
     </section>
 

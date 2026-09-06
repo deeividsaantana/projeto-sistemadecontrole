@@ -4,20 +4,14 @@
  * leva para onde a pendência se resolve, em vez de virar uma segunda lista.
  */
 import { useMemo, useState } from 'react';
-import { Activity, AlertOctagon, CheckCircle2, ChevronRight, ListChecks } from 'lucide-react';
+import { CheckCircle2, Download } from 'lucide-react';
 import { listarPendencias, resumoPendencias, type ContextoPendencias, type GravidadePendencia } from '../utils/pendencias';
-import { Badge, EmptyState, PageHeader, PeriodFilter, StatCard, buildPeriod, type PeriodValue } from '../shared/ui';
+import { Button, DataTable, EmptyState, PageHeader, PeriodFilter, StatusBadge, buildPeriod, type PeriodValue } from '../shared/ui';
 
 interface PendenciasTabProps {
   dados: Omit<ContextoPendencias, 'hoje' | 'inicio' | 'fim'>;
   onNavigate: (tab: string) => void;
 }
-
-const TOM: Record<GravidadePendencia, 'danger' | 'warning' | 'neutral'> = {
-  alta: 'danger',
-  media: 'warning',
-  baixa: 'neutral',
-};
 
 const ROTULO: Record<GravidadePendencia, string> = {
   alta: 'Alta',
@@ -27,6 +21,7 @@ const ROTULO: Record<GravidadePendencia, string> = {
 
 export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps) {
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
+  const [abaAtiva, setAbaAtiva] = useState('todas');
   const hoje = new Date().toISOString().slice(0, 10);
 
   const pendencias = useMemo(
@@ -41,61 +36,82 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
     return [...mapa.entries()];
   }, [pendencias]);
 
+  const abas = useMemo(() => [
+    { id: 'todas', rotulo: `Todas (${resumo.registros})` },
+    ...porCategoria.map(([categoria, itens]) => ({
+      id: categoria,
+      rotulo: `${categoria} (${itens.reduce((total, item) => total + item.quantidade, 0)})`,
+    })),
+  ], [porCategoria, resumo.registros]);
+
+  const listadas = abaAtiva === 'todas' ? pendencias : pendencias.filter(item => item.categoria === abaAtiva);
+
   return (
     <div id="pendencias-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Pendências"
-        description="Tudo que está em aberto no sistema, derivado dos registros — cada linha leva para onde se resolve."
-        actions={<PeriodFilter value={period} onChange={setPeriod} />}
+        description="Itens que necessitam de atenção e resolução."
+        actions={(
+          <div className="flex flex-wrap items-center gap-2">
+            <PeriodFilter value={period} onChange={setPeriod} />
+            <Button variant="primary" icon={Download} onClick={() => window.print()}>Exportar</Button>
+          </div>
+        )}
       />
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {[
-          { label: 'Tipos de pendência', valor: resumo.itens, tone: 'warning' as const, icone: AlertOctagon },
-          { label: 'Registros pendentes', valor: resumo.registros, tone: 'info' as const, icone: ListChecks },
-          { label: 'Gravidade alta', valor: resumo.altas, tone: 'info' as const, icone: ListChecks },
-          { label: 'Áreas afetadas', valor: resumo.categorias, tone: 'neutral' as const, icone: ListChecks },
-        ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+      <div className="mt-4 flex flex-wrap gap-1.5">
+        {abas.map(aba => (
+          <button
+            key={aba.id}
+            type="button"
+            onClick={() => setAbaAtiva(aba.id)}
+            aria-pressed={abaAtiva === aba.id}
+            className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors ${abaAtiva === aba.id
+              ? 'bg-[#087353] text-white'
+              : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
+          >
+            {aba.rotulo}
+          </button>
         ))}
-      </section>
+      </div>
 
-      {pendencias.length === 0 ? (
-        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <EmptyState icon={CheckCircle2} title="Nenhuma pendência no período" description="Todos os registros do período estão em dia." />
-        </div>
-      ) : (
-        <div className="mt-4 space-y-4">
-          {porCategoria.map(([categoria, itens]) => (
-            <section key={categoria} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <h2 className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-                <ListChecks className="h-4 w-4 text-emerald-600" /> {categoria}
-              </h2>
-              <ul className="divide-y divide-slate-100">
-                {itens.map(item => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate(item.tab)}
-                      className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50"
-                    >
-                      <strong className="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-sm font-black tabular-nums text-slate-800">
-                        {item.quantidade}
-                      </strong>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-bold text-slate-800">{item.titulo}</span>
-                        {item.detalhe && <span className="block truncate text-[11px] text-slate-500">{item.detalhe}</span>}
-                      </span>
-                      <Badge tone={TOM[item.gravidade]}>{ROTULO[item.gravidade]}</Badge>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      )}
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <DataTable
+          larguraMinima={860}
+          itens={listadas}
+          chaveDe={item => item.id}
+          vazio={<EmptyState icon={CheckCircle2} title="Nenhuma pendência no período" description="Todos os registros do período estão em dia." />}
+          colunas={[
+            {
+              chave: 'prioridade',
+              titulo: 'Prioridade',
+              render: item => <StatusBadge>{ROTULO[item.gravidade]}</StatusBadge>,
+            },
+            {
+              chave: 'quantidade',
+              titulo: 'Quantidade',
+              render: item => <strong className="text-[15px] font-bold tabular-nums text-slate-900">{item.quantidade}</strong>,
+            },
+            { chave: 'descricao', titulo: 'Descrição', render: item => item.titulo, larguraMinima: 280 },
+            { chave: 'categoria', titulo: 'Categoria', render: item => item.categoria, ocultarNoCelular: true },
+            {
+              chave: 'acao',
+              titulo: 'Ações',
+              alinhamento: 'direita',
+              render: item => (
+                <button
+                  type="button"
+                  onClick={() => onNavigate(item.tab)}
+                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
+                >
+                  Ver detalhes
+                </button>
+              ),
+            },
+          ]}
+        />
+      </div>
     </div>
   );
+
 }

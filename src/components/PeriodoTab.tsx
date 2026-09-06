@@ -14,7 +14,18 @@ import type {
   PresencaApontamento,
   TicketJazida,
 } from '../types';
-import { PageHeader, Pagination, StatCard, statusTone } from '../shared/ui';
+import {
+  Button,
+  CompactMetric,
+  DataTable,
+  Field,
+  FilterBar,
+  PageHeader,
+  Pagination,
+  SearchInput,
+  SelectField,
+  StatusBadge,
+} from '../shared/ui';
 
 interface PeriodoTabProps {
   presencas: PresencaApontamento[];
@@ -165,60 +176,49 @@ export default function PeriodoTab({
   ];
 
   const cards = [
-    { label: 'Presenças confirmadas', valor: decimal(totais.presentes), apoio: `${decimal(totais.presencaTotal)} registro(s) de presença`, icone: Users },
-    { label: 'Lançamentos de frota', valor: decimal(totais.frotaTotal), apoio: `${decimal(totais.frotaManutencao)} em manutenção no período`, icone: Truck },
-    { label: 'Combustível', valor: `${decimal(totais.litros, 1)} L`, apoio: `${decimal(periodo.combustivel.length)} abastecimento(s)`, icone: Droplets },
-    { label: 'Tickets de jazida', valor: decimal(totais.ticketsTotal), apoio: `${decimal(totais.metrosCubicos, 1)} m³ transportado(s)`, icone: Wrench },
+    { label: 'Equipamentos', valor: decimal(totais.frotaTotal), apoio: `${decimal(totais.frotaManutencao)} em manutenção`, icone: Truck, estado: 'operacao' as const },
+    { label: 'Colaboradores', valor: decimal(totais.presentes), apoio: `de ${decimal(totais.presencaTotal)} apontamentos`, icone: Users, estado: 'confirmar' as const },
+    { label: 'Viagens', valor: decimal(totais.ticketsTotal), apoio: `${decimal(totais.metrosCubicos, 1)} m³`, icone: Wrench, estado: 'neutro' as const },
+    { label: 'Abastecimentos', valor: decimal(periodo.combustivel.length), apoio: `${decimal(totais.litros, 1)} L`, icone: Droplets, estado: 'manutencao' as const },
   ];
 
   return (
     <section className="space-y-5 text-[#14231e]">
       <PageHeader
-        title={`Registros de ${formatDay(periodo.inicio)} a ${formatDay(periodo.fim)}`}
-        description="Presença, frota, combustível e jazida no mesmo intervalo."
-        actions={<button type="button" onClick={exportarResumo} className={CHIP}><Download className="mr-2 h-4 w-4" /> Exportar</button>}
+        title="Registros por Período"
+        description="Visualize e filtre registros por um período específico."
+        actions={<Button variant="primary" icon={Download} onClick={exportarResumo}>Exportar</Button>}
       />
 
-      <div className={`${PANEL} p-5 sm:p-6`}>
-        <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,180px))_1fr]">
-          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
-            Do dia
-            <input type="date" value={from} max={to} onChange={event => { setFrom(event.target.value); setPage(1); }} className={`${FIELD} mt-1`} />
-          </label>
-          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
-            Até o dia
-            <input type="date" value={to} min={from} onChange={event => { setTo(event.target.value); setPage(1); }} className={`${FIELD} mt-1`} />
-          </label>
-          <div className="flex flex-wrap items-end gap-2">
-            {presets.map(([label, aplicar]) => (
-              <button key={label} type="button" onClick={aplicar} className={CHIP}>{label}</button>
-            ))}
-          </div>
+      <FilterBar
+        acao={<Button variant="primary" onClick={() => setPage(1)} className="h-9">Filtrar</Button>}
+      >
+        <div className="flex flex-wrap items-center gap-1 self-end rounded-lg border border-slate-200 bg-white p-1">
+          {presets.map(([label, aplicar]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => { aplicar(); setPage(1); }}
+              className="h-8 rounded-md px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-100"
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
-            Tipo de registro
-            <select value={tipoFilter} onChange={event => { setTipoFilter(event.target.value as 'Todos' | TipoRegistro); setPage(1); }} className={`${FIELD} mt-1 font-bold`}>
-              <option>Todos</option><option>Presença</option><option>Frota</option><option>Combustível</option><option>Tickets</option>
-            </select>
-          </label>
-          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
-            Equipamento
-            <select value={equipamentoFilter} onChange={event => { setEquipamentoFilter(event.target.value); setPage(1); }} className={`${FIELD} mt-1 font-bold`}>
-              {equipamentosDoPeriodo.map(value => <option key={value}>{value}</option>)}
-            </select>
-          </label>
-          <label className="relative text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
-            Buscar
-            <Search className="pointer-events-none absolute left-3 top-[calc(50%+7px)] h-4 w-4 -translate-y-1/2 text-[#79847e]" />
-            <input value={busca} onChange={event => { setBusca(event.target.value); setPage(1); }} placeholder="Equipamento, descrição..." className={`${FIELD} mt-1 pl-9`} />
-          </label>
-        </div>
-      </div>
+        <Field label="Data inicial" type="date" value={from} max={to} onChange={event => { setFrom(event.target.value); setPage(1); }} className="min-w-36" />
+        <Field label="Data final" type="date" value={to} min={from} onChange={event => { setTo(event.target.value); setPage(1); }} className="min-w-36" />
+        <SelectField label="Tipo" value={tipoFilter} onChange={event => { setTipoFilter(event.target.value as 'Todos' | TipoRegistro); setPage(1); }} className="min-w-36">
+          <option>Todos</option><option>Presença</option><option>Frota</option><option>Combustível</option><option>Tickets</option>
+        </SelectField>
+        <SelectField label="Equipamento" value={equipamentoFilter} onChange={event => { setEquipamentoFilter(event.target.value); setPage(1); }} className="min-w-40">
+          {equipamentosDoPeriodo.map(value => <option key={value}>{value}</option>)}
+        </SelectField>
+        <SearchInput className="min-w-52 flex-1" label="Buscar registros" value={busca} onChange={valor => { setBusca(valor); setPage(1); }} placeholder="Equipamento, descrição..." />
+      </FilterBar>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(card => (
-          <StatCard key={card.label} label={card.label} value={card.valor} icon={card.icone} trend={card.apoio} />
+          <CompactMetric key={card.label} label={card.label} valor={card.valor} contexto={card.apoio} icone={card.icone} estado={card.estado} />
         ))}
       </div>
 
@@ -230,29 +230,21 @@ export default function PeriodoTab({
           </div>
           <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-[#e2e8e4] px-2 text-xs font-bold text-[#65716b]"><option value={10}>10 por página</option><option value={25}>25 por página</option><option value={50}>50 por página</option></select>
         </header>
-        {pagedRegistros.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="bg-[#f7f9f8] text-[10px] uppercase tracking-wider text-[#65716b]">
-                <tr>{['Data', 'Horário', 'Equipamento', 'Tipo', 'Descrição', 'Status'].map(label => <th key={label} className="border-b border-[#e2e8e4] px-4 py-3 font-bold">{label}</th>)}</tr>
-              </thead>
-              <tbody className="divide-y divide-[#eef2f0]">
-                {pagedRegistros.map(item => (
-                  <tr key={item.id} className="hover:bg-[#f8fbf9]">
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums">{formatDay(item.data)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 tabular-nums text-[#65716b]">{item.horario || '—'}</td>
-                    <td className="px-4 py-3 font-black">{item.equipamento}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-[#65716b]">{item.tipo}</td>
-                    <td className="max-w-[280px] truncate px-4 py-3 text-[#65716b]" title={item.descricao}>{item.descricao}</td>
-                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(item.status)}`}>{item.status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="px-5 py-14 text-center text-sm text-[#65716b]">Nenhum registro entre {formatDay(periodo.inicio)} e {formatDay(periodo.fim)}.</p>
-        )}
+        <DataTable
+          larguraMinima={940}
+          itens={pagedRegistros}
+          chaveDe={item => item.id}
+          vazio={<p className="px-5 py-14 text-center text-[13px] text-slate-500">Nenhum registro entre {formatDay(periodo.inicio)} e {formatDay(periodo.fim)}.</p>}
+          acoes={[{ rotulo: 'Ver no módulo', onSelect: () => undefined }]}
+          colunas={[
+            { chave: 'data', titulo: 'Data', render: item => <span className="font-mono tabular-nums">{formatDay(item.data)}</span> },
+            { chave: 'horario', titulo: 'Horário', render: item => <span className="tabular-nums text-slate-500">{item.horario || '—'}</span> },
+            { chave: 'tipo', titulo: 'Tipo', render: item => item.tipo },
+            { chave: 'codigo', titulo: 'Código', render: item => <span className="font-semibold text-slate-800">{item.equipamento}</span> },
+            { chave: 'descricao', titulo: 'Descrição', render: item => <span className="line-clamp-1" title={item.descricao}>{item.descricao}</span>, larguraMinima: 220 },
+            { chave: 'situacao', titulo: 'Situação', render: item => <StatusBadge>{item.status}</StatusBadge> },
+          ]}
+        />
         {totalPages > 1 && (
           <div className="flex items-center justify-between gap-3 border-t border-[#eef2f0] px-5 py-4">
             <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />

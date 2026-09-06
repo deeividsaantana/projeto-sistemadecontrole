@@ -1,8 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Building2, Eye, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
-import { CountUp, PageHeader, Pagination, statusTone } from '../shared/ui';
+import {
+  Button,
+  DataTable,
+  Field,
+  FilterBar,
+  PageHeader,
+  Pagination,
+  SearchInput,
+  SelectField,
+  StatusBadge,
+} from '../shared/ui';
 
 type GeneralRow = {
   id: string;
@@ -111,52 +121,78 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
   const safePage = Math.min(page, totalPages);
   const pagedRows = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const cards = [
-    ['Empresas', empresas.length, Building2], ['Obras', obras.length, HardHat], ['Frota', equipamentos.length, Truck],
-    ['Colaboradores', funcionarios.length, Users], ['Combustível', abastecimentos.length, Fuel], ['Tickets', tickets.length, TicketCheck],
-  ] as const;
+  // Abas da referência mapeadas para os módulos que a consulta já monta: nenhuma
+  // fonte de dado nova, só um atalho para o filtro que já existia no seletor.
+  const ABAS: Array<{ id: string; rotulo: string; modulos: string[] }> = [
+    { id: 'equipamentos', rotulo: 'Equipamentos', modulos: ['Frota', 'Basculantes'] },
+    { id: 'colaboradores', rotulo: 'Colaboradores', modulos: ['Colaboradores', 'Equipes', 'Presenças'] },
+    { id: 'manutencoes', rotulo: 'Manutenções', modulos: ['Basculantes'] },
+    { id: 'viagens', rotulo: 'Viagens', modulos: ['Tickets'] },
+    { id: 'abastecimentos', rotulo: 'Abastecimentos', modulos: ['Combustível'] },
+  ];
 
   return (
     <div className="space-y-5" id="consulta-geral-tab">
-      <PageHeader title="Consulta Geral" description="Localize cadastros e movimentos de todo o sistema sem abrir cada módulo." />
-      <section className="rounded-lg border border-slate-200 bg-white p-5 md:p-6">
-        <div className="grid gap-3 md:grid-cols-[1fr_220px_220px]">
-          <label className="relative min-w-0">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-            <input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar nome, prefixo, placa, matrícula, ticket, NF, material..." className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10" />
-          </label>
-          <select value={moduleFilter} onChange={event => setModuleFilter(event.target.value)} className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500">
-            {modules.map(module => <option key={module}>{module}</option>)}
-          </select>
-          <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500">
-            {statuses.map(status => <option key={status}>{status}</option>)}
-          </select>
-        </div>
-        <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4" open>
-          <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-slate-700">Filtros avançados</summary>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="text-[10px] font-black uppercase text-slate-500">De<input type="date" value={dateFrom} onChange={event=>{setDateFrom(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
-            <label className="text-[10px] font-black uppercase text-slate-500">Até<input type="date" value={dateTo} onChange={event=>{setDateTo(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
-            <label className="text-[10px] font-black uppercase text-slate-500">Empresa<select value={companyFilter} onChange={event=>{setCompanyFilter(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700">{companies.map(value=><option key={value}>{value}</option>)}</select></label>
-            <label className="text-[10px] font-black uppercase text-slate-500">Tipo de equipamento<select value={equipmentTypeFilter} onChange={event=>{setEquipmentTypeFilter(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700">{equipmentTypes.map(value=><option key={value}>{value}</option>)}</select></label>
-            <label className="text-[10px] font-black uppercase text-slate-500">Prefixo<input value={prefixFilter} onChange={event=>{setPrefixFilter(event.target.value);setPage(1)}} placeholder="Ex.: CB-729" className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
-            <label className="text-[10px] font-black uppercase text-slate-500">Motorista<select value={driverFilter} onChange={event=>{setDriverFilter(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700">{drivers.map(value=><option key={value}>{value}</option>)}</select></label>
-            <label className="text-[10px] font-black uppercase text-slate-500">Manutenção<select value={maintenanceFilter} onChange={event=>{setMaintenanceFilter(event.target.value);setPage(1)}} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700"><option>Todas</option><option>Com manutenção</option><option>Sem manutenção</option></select></label>
-            <label className="text-[10px] font-black uppercase text-slate-500">Local<input value={locationFilter} onChange={event=>{setLocationFilter(event.target.value);setPage(1)}} placeholder="Obra, ramo ou frente" className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700"/></label>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-bold text-emerald-700">{[dateFrom,dateTo,companyFilter!=='Todas',equipmentTypeFilter!=='Todos',driverFilter!=='Todos',maintenanceFilter!=='Todas',prefixFilter,locationFilter,moduleFilter!=='Todos',statusFilter!=='Todos'].filter(Boolean).length} filtro(s) ativo(s)</span>
-            <button type="button" onClick={()=>{setQuery('');setModuleFilter('Todos');setStatusFilter('Todos');setCompanyFilter('Todas');setEquipmentTypeFilter('Todos');setDriverFilter('Todos');setMaintenanceFilter('Todas');setPrefixFilter('');setLocationFilter('');setDateFrom('');setDateTo('');setPage(1)}} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-black text-slate-700">Limpar filtros</button>
-          </div>
-        </details>
-      </section>
+      <PageHeader
+        title="Consulta Geral"
+        description="Pesquise equipamentos, colaboradores, equipes e registros."
+        actions={<Button variant="primary" icon={Download} onClick={() => window.print()}>Exportar</Button>}
+      />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        {cards.map(([label, value, Icon]) => <button key={label} type="button" onClick={() => setModuleFilter(label)} className="group min-w-0 rounded-lg border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"><Icon className="h-5 w-5 text-emerald-600 transition-transform duration-200 group-hover:scale-110" /><strong className="mt-3 block text-2xl font-black tabular-nums text-slate-900"><CountUp value={value} /></strong><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span></button>)}
+      <div className="flex flex-wrap gap-1.5">
+        {ABAS.map(aba => {
+          const ativa = aba.modulos.includes(moduleFilter);
+          return (
+            <button
+              key={aba.id}
+              type="button"
+              onClick={() => { setModuleFilter(aba.modulos[0]); setPage(1); }}
+              aria-pressed={ativa}
+              className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors ${ativa
+                ? 'bg-[#087353] text-white'
+                : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
+            >
+              {aba.rotulo}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => { setModuleFilter('Todos'); setPage(1); }}
+          aria-pressed={moduleFilter === 'Todos'}
+          className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors ${moduleFilter === 'Todos'
+            ? 'bg-[#087353] text-white'
+            : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
+        >
+          Todos
+        </button>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
-        <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-sm font-black text-slate-900">Vínculo motorista ↔ equipamento</h2><p className="mt-1 text-xs text-slate-500">Fonte canônica em tempo real; um novo vínculo encerra automaticamente o vínculo anterior do colaborador ou da frota.</p></div><span className="text-xs font-black text-emerald-700">{vinculos.filter(link => link.status === 'ATIVO').length} vínculo(s) ativo(s)</span></div>
+      <FilterBar
+        acao={<Button variant="primary" icon={Search} onClick={() => setPage(1)} className="h-9">Consultar</Button>}
+      >
+        <SelectField label="Tipo" value={equipmentTypeFilter} onChange={event => { setEquipmentTypeFilter(event.target.value); setPage(1); }} className="min-w-40">
+          {equipmentTypes.map(value => <option key={value}>{value}</option>)}
+        </SelectField>
+        <SelectField label="Situação" value={statusFilter} onChange={event => { setStatusFilter(event.target.value); setPage(1); }} className="min-w-40">
+          {statuses.map(value => <option key={value}>{value}</option>)}
+        </SelectField>
+        <SelectField label="Empresa" value={companyFilter} onChange={event => { setCompanyFilter(event.target.value); setPage(1); }} className="min-w-40">
+          {companies.map(value => <option key={value}>{value}</option>)}
+        </SelectField>
+        <Field label="Data" type="date" value={dateFrom} onChange={event => { setDateFrom(event.target.value); setPage(1); }} className="min-w-36" />
+        <SearchInput
+          className="min-w-56 flex-1"
+          label="Buscar registros"
+          value={query}
+          onChange={valor => { setQuery(valor); setPage(1); }}
+          placeholder="Buscar..."
+        />
+      </FilterBar>
+
+      <details className="rounded-xl border border-slate-200 bg-white p-5">
+        <summary className="cursor-pointer text-[13px] font-semibold text-slate-700">Vínculo motorista ↔ equipamento</summary>
+        <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 pt-3 md:flex-row md:items-center md:justify-between"><div><h2 className="sr-only">Vínculo motorista e equipamento</h2><p className="mt-1 text-xs text-slate-500">Fonte canônica em tempo real; um novo vínculo encerra automaticamente o vínculo anterior do colaborador ou da frota.</p></div><span className="text-xs font-black text-emerald-700">{vinculos.filter(link => link.status === 'ATIVO').length} vínculo(s) ativo(s)</span></div>
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
           <select value={linkEmployee} onChange={event => setLinkEmployee(event.target.value)} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700"><option value="">Selecione o colaborador</option>{funcionarios.filter(item => item.ativo && !['INATIVO', 'DESMOBILIZADO'].includes(item.status || '')).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(item => <option key={item.id} value={item.id}>{item.nome} · {item.matricula || item.cargo}</option>)}</select>
           <select value={linkEquipment} onChange={event => setLinkEquipment(event.target.value)} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700"><option value="">Selecione o equipamento</option>{equipamentos.filter(item => item.status !== 'Desmobilizado').sort((a,b)=>a.prefixo.localeCompare(b.prefixo,'pt-BR',{numeric:true})).map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome} · {item.status}</option>)}</select>
@@ -164,36 +200,28 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
           <button type="button" disabled={!linkEmployee || !linkEquipment} onClick={() => { onLink(linkEmployee, linkEquipment, linkNote); setLinkNote(''); }} className="h-11 rounded-xl bg-emerald-600 px-5 text-xs font-black text-white disabled:opacity-40">Confirmar vínculo</button>
         </div>
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[850px] text-left text-xs"><thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Colaborador</th><th>Equipamento</th><th>Início</th><th>Fim</th><th>Responsável</th><th>Status</th><th className="pr-3 text-right">Ação</th></tr></thead><tbody className="divide-y divide-slate-100">{vinculos.slice(0,100).map(link => <tr key={link.id}><td className="p-3 font-bold text-slate-900">{link.funcionarioNome}</td><td className="font-mono font-black text-emerald-700">{link.equipamentoPrefixo}</td><td>{new Date(link.inicioEm).toLocaleString('pt-BR')}</td><td>{link.fimEm ? new Date(link.fimEm).toLocaleString('pt-BR') : '—'}</td><td>{link.responsavelAlteracao}</td><td><span className={`rounded-full px-2 py-1 text-[9px] font-black ${link.status === 'ATIVO' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{link.status}</span></td><td className="pr-3 text-right">{link.status === 'ATIVO' && <button type="button" onClick={() => onUnlink(link.id)} className="font-black text-rose-600 hover:underline">Encerrar</button>}</td></tr>)}</tbody></table></div>
-      </section>
+      </details>
 
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div><h2 className="text-sm font-black text-slate-900">Resultados</h2><span className="text-xs font-bold text-emerald-700">{filtered.length} encontrado(s)</span></div>
           <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-600"><option value={10}>10 por página</option><option value={25}>25 por página</option><option value={50}>50 por página</option><option value={100}>100 por página</option></select>
         </div>
-        {pagedRows.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
-                <tr><th className="px-5 py-3 font-bold">Data</th><th className="px-4 py-3 font-bold">Equipamento</th><th className="px-4 py-3 font-bold">Tipo</th><th className="px-4 py-3 font-bold">Descrição</th><th className="px-4 py-3 font-bold">Status</th><th className="px-5 py-3 text-right font-bold">Ações</th></tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {pagedRows.map(row => (
-                  <tr key={row.id} className="transition hover:bg-emerald-50/40">
-                    <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-slate-600">{row.date ? row.date.split('-').reverse().join('/') : '—'}</td>
-                    <td className="max-w-[220px] truncate px-4 py-3 font-bold text-slate-900" title={row.prefix || row.title}>{row.prefix || row.title}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{row.module}</td>
-                    <td className="max-w-[260px] truncate px-4 py-3 text-slate-600" title={row.detail}>{row.detail}</td>
-                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(row.status)}`}>{row.status}</span></td>
-                    <td className="px-5 py-3 text-right">
-                      <button type="button" onClick={() => onNavigate(row.tab)} className="inline-flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-emerald-700" aria-label={`Ver ${row.title}`}><Eye className="h-4 w-4" /></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : <div className="px-5 py-16 text-center text-sm text-slate-500">Nenhum registro encontrado com os filtros informados.</div>}
+        <DataTable
+          larguraMinima={980}
+          itens={pagedRows}
+          chaveDe={row => row.id}
+          vazio={<div className="px-5 py-16 text-center text-[13px] text-slate-500">Nenhum registro encontrado com os filtros informados.</div>}
+          acoes={[{ rotulo: 'Abrir no módulo', onSelect: row => onNavigate(row.tab) }]}
+          colunas={[
+            { chave: 'prefixo', titulo: 'Prefixo', render: row => <span className="font-semibold text-slate-900">{row.prefix || row.title}</span> },
+            { chave: 'tipo', titulo: 'Tipo', render: row => row.equipmentType || row.module },
+            { chave: 'descricao', titulo: 'Descrição', render: row => <span className="line-clamp-1" title={row.detail}>{row.detail || '—'}</span>, larguraMinima: 220 },
+            { chave: 'situacao', titulo: 'Situação', render: row => <StatusBadge>{row.status}</StatusBadge> },
+            { chave: 'equipe', titulo: 'Equipe', render: row => row.driver || row.company || '—', ocultarNoCelular: true },
+            { chave: 'atualizacao', titulo: 'Última atualização', render: row => row.date ? row.date.split('-').reverse().join('/') : '—', ocultarNoCelular: true },
+          ]}
+        />
         {totalPages > 1 && (
           <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
             <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
