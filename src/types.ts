@@ -701,6 +701,37 @@ export interface FichaVerificacaoServico {
   atualizadoEm: string;
 }
 
+export type TipoInspecao = 'Segurança' | 'Meio ambiente' | 'Qualidade' | 'Equipamento' | 'Área de vivência';
+export type GravidadeInspecao = 'Baixa' | 'Média' | 'Alta';
+export type SituacaoInspecao = 'Aberta' | 'Em correção' | 'Corrigida' | 'Cancelada';
+
+/**
+ * Inspeção de campo: o que foi observado, o prazo de correção e quem responde.
+ * O atraso não é um campo salvo — sai da comparação entre prazo e data de hoje.
+ */
+export interface Inspecao {
+  id: string;
+  numero: string;
+  data: string; // YYYY-MM-DD
+  tipo: TipoInspecao;
+  gravidade: GravidadeInspecao;
+  situacao: SituacaoInspecao;
+  local: string;
+  obraId?: string;
+  frente?: string;
+  equipamentoId?: string;
+  descricao: string;
+  acaoCorretiva?: string;
+  prazo?: string; // YYYY-MM-DD
+  responsavelAcao?: string;
+  inspetor: string;
+  dataCorrecao?: string;
+  fotos?: string[];
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

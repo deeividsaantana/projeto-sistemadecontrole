@@ -51,6 +51,7 @@ const INTERMEDIATE_TABLE_IDS = [
   'planejamentoItens',
   'modelosFvs',
   'fichasFvs',
+  'inspecoes',
   'materiaisRegistros',
   'controleEquipamentosDiario',
   'periodosArquivados',

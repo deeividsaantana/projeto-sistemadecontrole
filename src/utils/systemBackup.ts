@@ -32,6 +32,7 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'planejamentoItens',
   'modelosFvs',
   'fichasFvs',
+  'inspecoes',
   'materiaisRegistros',
   'controleEquipamentosDiario',
   'periodosArquivados',

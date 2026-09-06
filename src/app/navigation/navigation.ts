@@ -19,6 +19,7 @@ import {
   Users,
   Search,
   NotebookPen,
+  ShieldAlert,
   BarChart3,
   type LucideIcon,
 } from 'lucide-react';
@@ -49,6 +50,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'planejamento', label: 'Planejamento', icon: CalendarRange },
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
       { id: 'fvs', label: 'FVS', icon: ClipboardCheck },
+      { id: 'inspecoes', label: 'Inspeções', icon: ShieldAlert },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
@@ -105,6 +107,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'planejamento',
     'diario-obra',
     'fvs',
+    'inspecoes',
     'frota',
     'controle-equipamentos',
     'manutencao',

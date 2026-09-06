@@ -22,6 +22,7 @@ const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
   { screen: 'producao', titulo: 'Produção' },
   { screen: 'planejamento', titulo: 'Planejamento' },
   { screen: 'fvs', titulo: 'FVS' },
+  { screen: 'inspecoes', titulo: 'Inspeções' },
   { screen: 'consulta', titulo: 'Consulta Geral' },
   { screen: 'periodo', titulo: /^Registros de / },
 ];

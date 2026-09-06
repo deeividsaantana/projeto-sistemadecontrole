@@ -31,6 +31,7 @@ import {
   PlanejamentoItem,
   ModeloFvs,
   FichaVerificacaoServico,
+  Inspecao,
   MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
@@ -102,6 +103,7 @@ const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
 const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
 const FvsTab = lazy(() => import('./components/FvsTab'));
+const InspecoesTab = lazy(() => import('./components/InspecoesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -326,6 +328,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['planejamentoItens', STORAGE_KEYS.planejamentoItens],
   ['modelosFvs', STORAGE_KEYS.modelosFvs],
   ['fichasFvs', STORAGE_KEYS.fichasFvs],
+  ['inspecoes', STORAGE_KEYS.inspecoes],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -440,6 +443,7 @@ export default function App() {
   const [planejamentoItens, setPlanejamentoItens] = useState<PlanejamentoItem[]>([]);
   const [modelosFvs, setModelosFvs] = useState<ModeloFvs[]>([]);
   const [fichasFvs, setFichasFvs] = useState<FichaVerificacaoServico[]>([]);
+  const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -645,6 +649,7 @@ export default function App() {
       setPlanejamentoItens(parseStoredJson(localStorage.getItem(STORAGE_KEYS.planejamentoItens), STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]));
       setModelosFvs(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosFvs), STORAGE_KEYS.modelosFvs, [] as ModeloFvs[]));
       setFichasFvs(parseStoredJson(localStorage.getItem(STORAGE_KEYS.fichasFvs), STORAGE_KEYS.fichasFvs, [] as FichaVerificacaoServico[]));
+      setInspecoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.inspecoes), STORAGE_KEYS.inspecoes, [] as Inspecao[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -836,6 +841,7 @@ export default function App() {
     planejamentoItens: readTable(STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]),
     modelosFvs: readTable(STORAGE_KEYS.modelosFvs, [] as ModeloFvs[]),
     fichasFvs: readTable(STORAGE_KEYS.fichasFvs, [] as FichaVerificacaoServico[]),
+    inspecoes: readTable(STORAGE_KEYS.inspecoes, [] as Inspecao[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -1020,6 +1026,7 @@ export default function App() {
           setPlanejamentoItens(normalizeRuntimeCollection<PlanejamentoItem>(data.planejamentoItens));
           setModelosFvs(normalizeRuntimeCollection<ModeloFvs>(data.modelosFvs));
           setFichasFvs(normalizeRuntimeCollection<FichaVerificacaoServico>(data.fichasFvs));
+          setInspecoes(normalizeRuntimeCollection<Inspecao>(data.inspecoes));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -3018,6 +3025,14 @@ export default function App() {
     });
   };
 
+  const handleSaveInspecao = (inspecao: Inspecao, isNew: boolean) => {
+    const updated = isNew ? [inspecao, ...inspecoes] : inspecoes.map(item => item.id === inspecao.id ? inspecao : item);
+    saveAndLog('Inspeções', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a inspeção ${inspecao.numero} em ${inspecao.local} — ${inspecao.situacao}.`, historyLogs, () => {
+      setInspecoes(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.inspecoes, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveModeloFvs = (modelo: ModeloFvs, isNew: boolean) => {
     const updated = isNew ? [modelo, ...modelosFvs] : modelosFvs.map(item => item.id === modelo.id ? modelo : item);
     saveAndLog('FVS', isNew ? 'Criou' : 'Editou', `${isNew ? 'Criou' : 'Editou'} o modelo de FVS ${modelo.nome}.`, historyLogs, () => {
@@ -4208,6 +4223,18 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'inspecoes' && (
+              <InspecoesTab
+                inspecoes={inspecoes}
+                obras={obras}
+                frentes={frentesServico}
+                equipamentos={equipamentos}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                onSave={handleSaveInspecao}
               />
             )}
 
