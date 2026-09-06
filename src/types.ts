@@ -464,6 +464,24 @@ export interface ChecklistEquipamento {
   criadoEm: string;
 }
 
+export interface ApontamentoOperacional {
+  id: string;
+  data: string; // YYYY-MM-DD
+  funcionarioId: string;
+  funcionarioNome: string;
+  equipeId?: string;
+  equipeNome?: string;
+  frenteServico?: string;
+  etapaServicoId?: string;
+  /** Nome do serviço no momento do apontamento, para o histórico não mudar. */
+  servico?: string;
+  atividade: string;
+  horas: number;
+  observacao?: string;
+  responsavel: string;
+  criadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

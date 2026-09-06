@@ -25,6 +25,7 @@ import './horasParadas.test';
 import './checklist.test';
 import './consumoCombustivel.test';
 import './materiaisJazida.test';
+import './apontamentos.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';

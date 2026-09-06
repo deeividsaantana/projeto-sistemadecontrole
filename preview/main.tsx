@@ -20,6 +20,7 @@ import HorasParadasTab from '../src/components/HorasParadasTab';
 import ChecklistTab from '../src/components/ChecklistTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
 import EquipesTab from '../src/components/EquipesTab';
+import ApontamentosTab from '../src/components/ApontamentosTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -193,6 +194,18 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  apontamentos: (
+    <ApontamentosTab
+      apontamentos={[]}
+      funcionarios={fx.equipeFuncionarios}
+      gruposEquipe={[fx.grupo]}
+      etapas={[]}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSave={noop}
+      onDelete={noop}
     />
   ),
   equipes: (

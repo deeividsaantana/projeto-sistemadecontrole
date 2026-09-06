@@ -60,6 +60,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'colaboradores', label: 'Colaboradores', icon: UserRound },
       { id: 'equipes', label: 'Equipes', icon: HardHat },
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
+      { id: 'apontamentos', label: 'Apontamentos', icon: ClipboardList },
     ],
   },
   {
@@ -93,6 +94,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'presenca',
     'colaboradores',
     'equipes',
+    'apontamentos',
   ],
   leitura: ['dashboard', 'consulta-geral', 'periodo'],
 };

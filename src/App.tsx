@@ -21,6 +21,7 @@ import {
   ListaPresenca,
   OrdemServico,
   ChecklistEquipamento,
+  ApontamentoOperacional,
   ModeloChecklist,
   GrupoEquipe,
   PresencaApontamento,
@@ -82,6 +83,7 @@ const HorasParadasTab = lazy(() => import('./components/HorasParadasTab'));
 const ChecklistTab = lazy(() => import('./components/ChecklistTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const EquipesTab = lazy(() => import('./components/EquipesTab'));
+const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -294,6 +296,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['historicoPresencas', 'renea_historico_presencas'],
   ['controleEquipamentosDiario', 'renea_controle_equipamentos_diario'],
   ['checklists', STORAGE_KEYS.checklists],
+  ['apontamentosOperacionais', STORAGE_KEYS.apontamentosOperacionais],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -396,6 +399,7 @@ export default function App() {
   const [listasPresenca, setListasPresenca] = useState<ListaPresenca[]>([]);
   const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([]);
   const [checklists, setChecklists] = useState<ChecklistEquipamento[]>([]);
+  const [apontamentosOperacionais, setApontamentosOperacionais] = useState<ApontamentoOperacional[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -589,6 +593,7 @@ export default function App() {
       setListasPresenca(parsedListasPresenca);
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
       setChecklists(parseStoredJson(localStorage.getItem(STORAGE_KEYS.checklists), STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]));
+      setApontamentosOperacionais(parseStoredJson(localStorage.getItem(STORAGE_KEYS.apontamentosOperacionais), STORAGE_KEYS.apontamentosOperacionais, [] as ApontamentoOperacional[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -768,6 +773,7 @@ export default function App() {
     lubrificacoes: readTable('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
     ticketsJazida: readTable('renea_tickets_jazida', [] as TicketJazida[]),
     checklists: readTable(STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]),
+    apontamentosOperacionais: readTable(STORAGE_KEYS.apontamentosOperacionais, [] as ApontamentoOperacional[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -940,6 +946,7 @@ export default function App() {
         if (Object.hasOwn(data, 'ordensServico')) {
           setOrdensServico(normalizeRuntimeCollection<OrdemServico>(data.ordensServico));
           setChecklists(normalizeRuntimeCollection<ChecklistEquipamento>(data.checklists));
+          setApontamentosOperacionais(normalizeRuntimeCollection<ApontamentoOperacional>(data.apontamentosOperacionais));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -2899,6 +2906,37 @@ export default function App() {
     );
   };
 
+  const handleSaveApontamento = (apontamento: ApontamentoOperacional, isNew: boolean) => {
+    const updated = isNew
+      ? [apontamento, ...apontamentosOperacionais]
+      : apontamentosOperacionais.map(item => item.id === apontamento.id ? apontamento : item);
+    saveAndLog(
+      'Apontamentos',
+      isNew ? 'Criou' : 'Editou',
+      `${isNew ? 'Lançou' : 'Editou'} ${apontamento.horas} h de ${apontamento.funcionarioNome} em ${apontamento.data}.`,
+      historyLogs,
+      () => {
+        setApontamentosOperacionais(updated);
+        writeStorageValue(localStorage, STORAGE_KEYS.apontamentosOperacionais, JSON.stringify(updated));
+      },
+    );
+  };
+
+  const handleDeleteApontamento = (id: string) => {
+    const alvo = apontamentosOperacionais.find(item => item.id === id);
+    const updated = apontamentosOperacionais.filter(item => item.id !== id);
+    saveAndLog(
+      'Apontamentos',
+      'Excluiu',
+      `Excluiu o apontamento de ${alvo?.funcionarioNome || id}${alvo ? ` em ${alvo.data}` : ''}.`,
+      historyLogs,
+      () => {
+        setApontamentosOperacionais(updated);
+        writeStorageValue(localStorage, STORAGE_KEYS.apontamentosOperacionais, JSON.stringify(updated));
+      },
+    );
+  };
+
   const handleSaveModeloChecklist = (modelo: ModeloChecklist) => {
     setModeloChecklist(modelo);
     writeStorageValue(localStorage, STORAGE_KEYS.modelosChecklist, JSON.stringify([modelo]));
@@ -4009,6 +4047,19 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'apontamentos' && (
+              <ApontamentosTab
+                apontamentos={apontamentosOperacionais}
+                funcionarios={funcionarios}
+                gruposEquipe={gruposEquipe}
+                etapas={etapas}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                onSave={handleSaveApontamento}
+                onDelete={handleDeleteApontamento}
               />
             )}
 
