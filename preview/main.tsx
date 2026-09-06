@@ -25,6 +25,7 @@ import DdsTreinamentosTab from '../src/components/DdsTreinamentosTab';
 import MateriaisTab from '../src/components/MateriaisTab';
 import FrentesTab from '../src/components/FrentesTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
+import ProducaoTab from '../src/components/ProducaoTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -198,6 +199,19 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  producao: (
+    <ProducaoTab
+      servicos={[]}
+      registros={[]}
+      obras={fx.obras}
+      frentes={[]}
+      gruposEquipe={[fx.grupo]}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSaveServico={noop}
+      onSaveRegistro={noop}
     />
   ),
   'diario-obra': (

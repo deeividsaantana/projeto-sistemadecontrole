@@ -583,6 +583,43 @@ export interface DiarioObra {
   atualizadoEm: string;
 }
 
+export type SituacaoServico = 'Ativo' | 'Suspenso' | 'Concluído';
+
+/** Serviço contratado da obra: o que se mede e em que unidade. */
+export interface ServicoObra {
+  id: string;
+  codigo?: string;
+  descricao: string;
+  unidade: string;
+  obraId?: string;
+  /** Quantidade prevista em contrato, informada no cadastro. */
+  quantidadePrevista?: number;
+  situacao: SituacaoServico;
+  observacao?: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/** Produção executada no dia. O acumulado sai daqui, nunca de um contador. */
+export interface RegistroProducao {
+  id: string;
+  data: string; // YYYY-MM-DD
+  servicoId: string;
+  servicoDescricao: string;
+  unidade: string;
+  quantidade: number;
+  obraId?: string;
+  frente?: string;
+  grupoId?: string;
+  equipeNome?: string;
+  responsavel: string;
+  observacao?: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

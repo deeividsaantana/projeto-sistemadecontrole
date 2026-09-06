@@ -27,6 +27,8 @@ export const STORAGE_KEYS = {
   materiaisMovimentos: 'renea_materiais_movimentos',
   frentesServico: 'renea_frentes_servico',
   diariosObra: 'renea_diarios_obra',
+  servicosObra: 'renea_servicos_obra',
+  producaoRegistros: 'renea_producao_registros',
   modelosChecklist: 'renea_modelos_checklist',
   periodosArquivados: 'renea_periodos_arquivados',
   vinculosOperadorEquipamento: 'renea_vinculos_operador_equipamento',
@@ -76,5 +78,7 @@ export const CORE_DATA_STORAGE_KEYS = [
   STORAGE_KEYS.materiaisMovimentos,
   STORAGE_KEYS.frentesServico,
   STORAGE_KEYS.diariosObra,
+  STORAGE_KEYS.servicosObra,
+  STORAGE_KEYS.producaoRegistros,
   STORAGE_KEYS.modelosChecklist,
 ] as const;

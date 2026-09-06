@@ -26,6 +26,8 @@ import {
   Material,
   FrenteServico,
   DiarioObra,
+  ServicoObra,
+  RegistroProducao,
   MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
@@ -94,6 +96,7 @@ const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'))
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const FrentesTab = lazy(() => import('./components/FrentesTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
+const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -313,6 +316,8 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['materiaisMovimentos', STORAGE_KEYS.materiaisMovimentos],
   ['frentesServico', STORAGE_KEYS.frentesServico],
   ['diariosObra', STORAGE_KEYS.diariosObra],
+  ['servicosObra', STORAGE_KEYS.servicosObra],
+  ['producaoRegistros', STORAGE_KEYS.producaoRegistros],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -422,6 +427,8 @@ export default function App() {
   const [materiaisMovimentos, setMateriaisMovimentos] = useState<MovimentoMaterial[]>([]);
   const [frentesServico, setFrentesServico] = useState<FrenteServico[]>([]);
   const [diariosObra, setDiariosObra] = useState<DiarioObra[]>([]);
+  const [servicosObra, setServicosObra] = useState<ServicoObra[]>([]);
+  const [producaoRegistros, setProducaoRegistros] = useState<RegistroProducao[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -622,6 +629,8 @@ export default function App() {
       setMateriaisMovimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]));
       setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, [] as FrenteServico[]));
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
+      setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
+      setProducaoRegistros(parseStoredJson(localStorage.getItem(STORAGE_KEYS.producaoRegistros), STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -808,6 +817,8 @@ export default function App() {
     materiaisMovimentos: readTable(STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]),
     frentesServico: readTable(STORAGE_KEYS.frentesServico, [] as FrenteServico[]),
     diariosObra: readTable(STORAGE_KEYS.diariosObra, [] as DiarioObra[]),
+    servicosObra: readTable(STORAGE_KEYS.servicosObra, [] as ServicoObra[]),
+    producaoRegistros: readTable(STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -987,6 +998,8 @@ export default function App() {
           setMateriaisMovimentos(normalizeRuntimeCollection<MovimentoMaterial>(data.materiaisMovimentos));
           setFrentesServico(normalizeRuntimeCollection<FrenteServico>(data.frentesServico));
           setDiariosObra(normalizeRuntimeCollection<DiarioObra>(data.diariosObra));
+          setServicosObra(normalizeRuntimeCollection<ServicoObra>(data.servicosObra));
+          setProducaoRegistros(normalizeRuntimeCollection<RegistroProducao>(data.producaoRegistros));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -2985,6 +2998,22 @@ export default function App() {
     });
   };
 
+  const handleSaveServicoObra = (servico: ServicoObra, isNew: boolean) => {
+    const updated = isNew ? [servico, ...servicosObra] : servicosObra.map(item => item.id === servico.id ? servico : item);
+    saveAndLog('Produção', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o serviço ${servico.descricao}.`, historyLogs, () => {
+      setServicosObra(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.servicosObra, JSON.stringify(updated));
+    });
+  };
+
+  const handleSaveProducao = (registro: RegistroProducao, isNew: boolean) => {
+    const updated = isNew ? [registro, ...producaoRegistros] : producaoRegistros.map(item => item.id === registro.id ? registro : item);
+    saveAndLog('Produção', isNew ? 'Criou' : 'Editou', `${isNew ? 'Lançou' : 'Editou'} ${registro.quantidade} ${registro.unidade} de ${registro.servicoDescricao} em ${registro.data}.`, historyLogs, () => {
+      setProducaoRegistros(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.producaoRegistros, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveDiarioObra = (diario: DiarioObra, isNew: boolean) => {
     const updated = isNew ? [diario, ...diariosObra] : diariosObra.map(item => item.id === diario.id ? diario : item);
     saveAndLog('Diário de Obra', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Editou'} o diário de ${diario.data}.`, historyLogs, () => {
@@ -4135,6 +4164,20 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'producao' && (
+              <ProducaoTab
+                servicos={servicosObra}
+                registros={producaoRegistros}
+                obras={obras}
+                frentes={frentesServico}
+                gruposEquipe={gruposEquipe}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                onSaveServico={handleSaveServicoObra}
+                onSaveRegistro={handleSaveProducao}
               />
             )}
 
