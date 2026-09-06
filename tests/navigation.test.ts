@@ -25,6 +25,9 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ROLE_ACCESS.operador.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.leitura.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.admin.includes('auditoria'), true);
+  // Permissões também é leitura de regra: só o admin precisa dela.
+  assert.equal(ROLE_ACCESS.admin.includes('permissoes'), true);
+  assert.equal(ROLE_ACCESS.gestor.includes('permissoes'), false);
   assert.equal(ROLE_ACCESS.admin.includes('inteligencia'), false);
   assert.equal(ROLE_ACCESS.admin.includes('controle-presenca'), false);
   assert.equal(ROLE_ACCESS.admin.includes('partes-diarias'), false);

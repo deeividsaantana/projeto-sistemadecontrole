@@ -25,6 +25,7 @@ import {
   FileBarChart,
   History,
   ShieldCheck,
+  KeyRound,
   Scale,
   CalendarClock,
   ShieldAlert,
@@ -115,6 +116,7 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
       { id: 'auditoria', label: 'Auditoria', icon: ShieldCheck },
+      { id: 'permissoes', label: 'Permissões', icon: KeyRound },
       { id: 'configuracoes', label: 'Apoio e Configuração', icon: Settings },
     ],
   },
@@ -128,7 +130,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
   // Auditoria e configuração ficam só com o admin: uma expõe o rastro de todo
   // mundo, a outra muda o comportamento do sistema.
-  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => !['configuracoes', 'auditoria'].includes(id)),
+  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => !['configuracoes', 'auditoria', 'permissoes'].includes(id)),
   operador: [
     'dashboard',
     'consulta-geral',

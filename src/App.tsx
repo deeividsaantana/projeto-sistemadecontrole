@@ -122,6 +122,7 @@ const CronogramaTab = lazy(() => import('./components/CronogramaTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const TimelineTab = lazy(() => import('./components/TimelineTab'));
 const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
+const PermissoesTab = lazy(() => import('./components/PermissoesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -202,6 +203,7 @@ import { DesktopTopBar } from './app/shell/DesktopTopBar';
 import { NotificationCenter } from './app/shell/NotificationCenter';
 import { PesquisaGlobal } from './app/shell/PesquisaGlobal';
 import { alertasDoSistema } from './utils/alertas';
+import { pode } from './utils/permissoes';
 import { DesktopSidebar } from './app/shell/DesktopSidebar';
 import { APP_VERSION_LABEL } from './app/version';
 import {
@@ -4362,11 +4364,15 @@ export default function App() {
                 ordensServico={ordensServico}
                 ticketsJazida={ticketsJazida}
                 obras={obras}
-                podeAtualizar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
               />
+            )}
+
+            {activeTab === 'permissoes' && (
+              <PermissoesTab />
             )}
 
             {activeTab === 'auditoria' && (
@@ -4438,7 +4444,7 @@ export default function App() {
                 ordensServico={ordensServico}
                 obras={obras}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'orcamento', 'editar')}
                 onSave={handleSaveOrcamento}
               />
             )}
@@ -4453,7 +4459,7 @@ export default function App() {
                 equipamentos={equipamentos}
                 empresas={empresas}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'custos', 'editar')}
                 onSave={handleSaveLancamentoCusto}
               />
             )}
@@ -4519,7 +4525,7 @@ export default function App() {
                 equipamentos={equipamentos}
                 funcionarios={funcionarios}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'ocorrencias', 'editar')}
                 onSave={handleSaveOcorrencia}
               />
             )}
@@ -4532,7 +4538,7 @@ export default function App() {
                 obras={obras}
                 fichasFvs={fichasFvs}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'documentos', 'editar')}
                 onSave={handleSaveDocumento}
                 onUpload={handleUploadDocumento}
               />
@@ -4545,8 +4551,8 @@ export default function App() {
                 producao={producaoRegistros}
                 obras={obras}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
-                podeAprovar={currentUserRole === 'admin'}
+                podeEditar={pode(currentUserRole, 'medicoes', 'editar')}
+                podeAprovar={pode(currentUserRole, 'medicoes', 'aprovar')}
                 onSave={handleSaveMedicao}
               />
             )}
@@ -4559,7 +4565,7 @@ export default function App() {
                 obras={obras}
                 frentes={frentesServico}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'nao-conformidades', 'editar')}
                 onSave={handleSaveNaoConformidade}
               />
             )}
@@ -4571,7 +4577,7 @@ export default function App() {
                 frentes={frentesServico}
                 equipamentos={equipamentos}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'inspecoes', 'editar')}
                 onSave={handleSaveInspecao}
               />
             )}
@@ -4584,8 +4590,8 @@ export default function App() {
                 obras={obras}
                 frentes={frentesServico}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
-                podeAprovar={['admin', 'gestor'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'fvs', 'editar')}
+                podeAprovar={pode(currentUserRole, 'fvs', 'aprovar')}
                 onSaveFicha={handleSaveFichaFvs}
                 onSaveModelo={handleSaveModeloFvs}
               />
@@ -4600,7 +4606,7 @@ export default function App() {
                 frentes={frentesServico}
                 gruposEquipe={gruposEquipe}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'planejamento', 'editar')}
                 onSave={handleSavePlanejamento}
               />
             )}
@@ -4613,7 +4619,7 @@ export default function App() {
                 frentes={frentesServico}
                 gruposEquipe={gruposEquipe}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'producao', 'editar')}
                 onSaveServico={handleSaveServicoObra}
                 onSaveRegistro={handleSaveProducao}
               />
@@ -4630,7 +4636,7 @@ export default function App() {
                 movimentosMaterial={materiaisMovimentos}
                 ticketsJazida={ticketsJazida}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
                 onSave={handleSaveDiarioObra}
               />
             )}
@@ -4645,7 +4651,7 @@ export default function App() {
                 apontamentos={apontamentosOperacionais}
                 movimentosMaterial={materiaisMovimentos}
                 ticketsJazida={ticketsJazida}
-                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'frentes', 'editar')}
                 onSave={handleSaveFrente}
               />
             )}
@@ -4656,7 +4662,7 @@ export default function App() {
                 movimentos={materiaisMovimentos}
                 empresas={empresas}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'materiais', 'editar')}
                 onSaveMaterial={handleSaveMaterial}
                 onSaveMovimento={handleSaveMovimentoMaterial}
               />
@@ -4668,7 +4674,7 @@ export default function App() {
                 treinamentos={treinamentos}
                 funcionarios={funcionarios}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'dds-treinamentos', 'editar')}
                 onSaveDds={handleSaveDds}
                 onSaveTreinamento={handleSaveTreinamento}
               />
@@ -4681,7 +4687,7 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 etapas={etapas}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'apontamentos', 'editar')}
                 onSave={handleSaveApontamento}
                 onDelete={handleDeleteApontamento}
               />
@@ -4719,7 +4725,7 @@ export default function App() {
                 modelo={modeloChecklist}
                 equipamentos={equipamentos}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'checklist', 'editar')}
                 onSave={handleSaveChecklist}
                 onSaveModelo={handleSaveModeloChecklist}
               />
@@ -4738,7 +4744,7 @@ export default function App() {
                 ordensServico={ordensServico}
                 equipamentos={equipamentos}
                 responsavel={activeUserName}
-                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeEditar={pode(currentUserRole, 'manutencao', 'editar')}
                 onSave={handleSaveOrdemServico}
                 onDelete={handleDeleteOrdemServico}
               />
