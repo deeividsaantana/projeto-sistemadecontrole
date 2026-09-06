@@ -125,6 +125,7 @@ const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
 const PermissoesTab = lazy(() => import('./components/PermissoesTab'));
 const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
 const NotificacoesTab = lazy(() => import('./components/NotificacoesTab'));
+const AssistenteTab = lazy(() => import('./components/AssistenteTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4390,6 +4391,38 @@ export default function App() {
                 podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'assistente' && (
+              <AssistenteTab
+                dados={{
+                  equipamentos,
+                  funcionarios,
+                  obras,
+                  frentes: frentesServico,
+                  servicos: servicosObra,
+                  materiais: materiaisCadastro,
+                  controlesEquipamentos: controleEquipamentosDiario,
+                  gruposEquipe,
+                  presencasLink,
+                  listasPresenca,
+                  ordensServico,
+                  ticketsJazida,
+                  fichasFvs,
+                  inspecoes,
+                  naoConformidades,
+                  documentos,
+                  treinamentos,
+                  planejamento: planejamentoItens,
+                  producao: producaoRegistros,
+                  medicoes,
+                  movimentosMaterial: materiaisMovimentos,
+                  ocorrencias,
+                  abastecimentos,
+                  historyLogs,
+                }}
                 onNavigate={navigateTo}
               />
             )}

@@ -21,6 +21,7 @@ import {
   NotebookPen,
   ListChecks,
   Bell,
+  Bot,
   Gauge,
   Coins,
   FileBarChart,
@@ -56,6 +57,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'periodo', label: 'Registros por Período', icon: CalendarRange },
       { id: 'pendencias', label: 'Pendências', icon: ListChecks },
       { id: 'notificacoes', label: 'Notificações', icon: Bell },
+      { id: 'assistente', label: 'Assistente', icon: Bot },
     ],
   },
   {
@@ -140,6 +142,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'consulta-geral',
     'pendencias',
     'notificacoes',
+    'assistente',
     'indicadores',
     'central-operacional',
     'frentes',
