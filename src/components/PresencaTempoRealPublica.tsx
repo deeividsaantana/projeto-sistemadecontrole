@@ -29,7 +29,7 @@ import reneaLogo from '../assets/images/logo-renea-branco.png';
 import './presencaTempoRealPublica.css';
 
 const PRIMARY_STATUSES: PresencaStatus[] = ['Presente', 'Ausente', 'Falta justificada', 'Atestado'];
-const SECONDARY_STATUSES: PresencaStatus[] = ['Férias', 'Afastado', 'Outro'];
+const SECONDARY_STATUSES: PresencaStatus[] = ['Atraso', 'Saída antecipada', 'Férias', 'Afastado', 'Outro'];
 
 interface SubmissionResult {
   success: boolean;

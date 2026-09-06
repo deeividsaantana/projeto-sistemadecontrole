@@ -86,7 +86,8 @@ export default function Dashboard({
 
   const pessoas = useMemo(() => {
     const noPeriodo = presencasLink.filter(item => inRange(item.data, period.from, period.to));
-    const presentes = noPeriodo.filter(item => item.status === 'Presente').length;
+    // Atraso e saída antecipada são presença: a pessoa trabalhou no dia.
+    const presentes = noPeriodo.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status)).length;
     const ausentes = noPeriodo.filter(item => item.status === 'Ausente').length;
     const justificados = noPeriodo.filter(item => ['Falta justificada', 'Atestado', 'Férias', 'Afastado'].includes(item.status)).length;
     return { presentes, ausentes, justificados, total: noPeriodo.length };

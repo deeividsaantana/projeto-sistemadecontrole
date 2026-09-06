@@ -45,6 +45,8 @@ import type {
 
 const STATUS_OPTIONS: PresencaStatus[] = [
   'Presente',
+  'Atraso',
+  'Saída antecipada',
   'Ausente',
   'Falta justificada',
   'Atestado',
@@ -55,6 +57,8 @@ const STATUS_OPTIONS: PresencaStatus[] = [
 
 const STATUS_STYLES: Record<PresencaStatus, string> = {
   Presente: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  Atraso: 'border-amber-200 bg-amber-50 text-amber-800',
+  'Saída antecipada': 'border-amber-200 bg-amber-50 text-amber-800',
   Ausente: 'border-rose-200 bg-rose-50 text-rose-800',
   'Falta justificada': 'border-amber-200 bg-amber-50 text-amber-800',
   Atestado: 'border-sky-200 bg-sky-50 text-sky-800',

@@ -216,6 +216,8 @@ export interface ListaPresenca {
 
 export type PresencaStatus =
   | 'Presente'
+  | 'Atraso'
+  | 'Saída antecipada'
   | 'Ausente'
   | 'Falta justificada'
   | 'Atestado'
