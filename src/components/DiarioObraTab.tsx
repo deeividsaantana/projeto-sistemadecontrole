@@ -16,6 +16,7 @@ import type {
   PresencaApontamento,
   TicketJazida,
 } from '../types';
+import { comprimirImagem, validarFoto } from '../utils/imagem';
 import { Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
 
 interface DiarioObraTabProps {
@@ -52,6 +53,7 @@ export default function DiarioObraTab({
   const [dia, setDia] = useState(hoje);
   const [obraId, setObraId] = useState('');
   const inputFoto = useRef<HTMLInputElement>(null);
+  const [erro, setErro] = useState('');
 
   const diario = useMemo(
     () => diarios.find(item => item.data === dia && (item.obraId || '') === obraId),
@@ -81,15 +83,27 @@ export default function DiarioObraTab({
     };
   }, [dia, presencasLink, controlesEquipamentos, apontamentos, movimentosMaterial, ticketsJazida, gruposEquipe]);
 
-  const receberFoto = (arquivo?: File) => {
+  // A foto é reduzida no navegador antes de entrar no diário: o backup viaja em
+  // blocos, e uma foto de celular inteira dentro do JSON quebra a sincronização
+  // de todo mundo, não só de quem tirou a foto.
+  const receberFoto = async (arquivo?: File) => {
     if (!arquivo) return;
-    const leitor = new FileReader();
-    leitor.onload = () => setRascunho(atual => ({
-      ...atual,
-      fotos: [...(atual.fotos || diario?.fotos || []), String(leitor.result || '')],
-    }));
-    leitor.readAsDataURL(arquivo);
     if (inputFoto.current) inputFoto.current.value = '';
+    try {
+      const foto = await comprimirImagem(arquivo);
+      const problema = validarFoto(foto);
+      if (problema) {
+        setErro(problema);
+        return;
+      }
+      setErro('');
+      setRascunho(atual => ({
+        ...atual,
+        fotos: [...(atual.fotos || diario?.fotos || []), foto],
+      }));
+    } catch {
+      setErro('Não foi possível ler a imagem.');
+    }
   };
 
   const salvar = () => {
@@ -141,7 +155,7 @@ export default function DiarioObraTab({
         ))}
       </section>
 
-      <input ref={inputFoto} type="file" accept="image/*" capture="environment" hidden onChange={event => receberFoto(event.target.files?.[0])} />
+      <input ref={inputFoto} type="file" accept="image/*" capture="environment" hidden onChange={event => void receberFoto(event.target.files?.[0])} />
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card
@@ -183,6 +197,7 @@ export default function DiarioObraTab({
               >
                 <Camera className="h-4 w-4" /> {(valor.fotos?.length || 0)} foto(s)
               </button>
+              {erro && <span className="mt-1 block text-[11px] font-bold text-rose-700">{erro}</span>}
             </label>
             <label className="text-xs font-bold text-slate-600 sm:col-span-2">
               Visitas

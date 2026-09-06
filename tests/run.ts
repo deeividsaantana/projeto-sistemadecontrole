@@ -51,6 +51,7 @@ import './diagnostico.test';
 import './notificacoes.test';
 import './assistente.test';
 import './paginacao.test';
+import './imagem.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';

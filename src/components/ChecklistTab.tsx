@@ -6,6 +6,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Camera, ClipboardCheck, Plus, Trash2, X } from 'lucide-react';
 import type { ChecklistEquipamento, Equipamento, ItemChecklist, ModeloChecklist, RespostaChecklist } from '../types';
 import { MODELO_CHECKLIST_PADRAO, itensCriticosReprovados, resumoChecklist } from '../utils/checklist';
+import { comprimirImagem, validarFoto } from '../utils/imagem';
 import { Badge, Card, EmptyState, Modal, PageHeader } from '../shared/ui';
 
 interface ChecklistTabProps {
@@ -76,16 +77,23 @@ export default function ChecklistTab({
     inputFoto.current?.click();
   };
 
-  const receberFoto = (arquivo?: File) => {
+  // Evidência reduzida no navegador: uma foto de celular inteira dentro do JSON
+  // estoura o bloco de sincronização e derruba o backup de todo mundo.
+  const receberFoto = async (arquivo?: File) => {
     const alvo = fotoAlvo.current;
     if (!arquivo || !alvo) return;
-    const leitor = new FileReader();
-    leitor.onload = () => {
-      const foto = String(leitor.result || '');
-      setItens(atual => atual.map(item => item.itemId === alvo ? { ...item, foto } : item));
-    };
-    leitor.readAsDataURL(arquivo);
     if (inputFoto.current) inputFoto.current.value = '';
+    try {
+      const foto = await comprimirImagem(arquivo);
+      const problema = validarFoto(foto);
+      if (problema) {
+        setErro(problema);
+        return;
+      }
+      setItens(atual => atual.map(item => item.itemId === alvo ? { ...item, foto } : item));
+    } catch {
+      setErro('Não foi possível ler a imagem.');
+    }
   };
 
   const salvar = () => {
@@ -166,7 +174,7 @@ export default function ChecklistTab({
         )}
       </div>
 
-      <input ref={inputFoto} type="file" accept="image/*" capture="environment" hidden onChange={event => receberFoto(event.target.files?.[0])} />
+      <input ref={inputFoto} type="file" accept="image/*" capture="environment" hidden onChange={event => void receberFoto(event.target.files?.[0])} />
 
       <Modal
         open={preenchendo}
