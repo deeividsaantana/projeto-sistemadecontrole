@@ -1,11 +1,15 @@
-import { Bell, BellRing, CheckCheck } from 'lucide-react';
+import { AlertTriangle, Bell, BellRing, CheckCheck, ChevronRight } from 'lucide-react';
 import type { AppNotification } from '../../types';
+import type { Alerta } from '../../utils/alertas';
 import { Button, EmptyState, IconButton, cn } from '../../shared/ui';
 
 interface NotificationCenterProps {
   isOpen: boolean;
   notifications: AppNotification[];
   unreadCount: number;
+  /** Alertas derivados dos registros: não são salvos e somem quando resolvidos. */
+  alertas?: Alerta[];
+  onAlertaClick?: (tab: string) => void;
   onToggle: () => void;
   onClose: () => void;
   onMarkAllAsRead: () => void;
@@ -29,16 +33,19 @@ export function NotificationCenter({
   onMarkAllAsRead,
   onClear,
   onMarkOneAsRead,
+  alertas = [],
+  onAlertaClick,
 }: NotificationCenterProps) {
+  const totalBadge = unreadCount + alertas.length;
   return (
     <div className="relative">
       <IconButton
         onClick={onToggle}
-        icon={unreadCount > 0 ? BellRing : Bell}
+        icon={totalBadge > 0 ? BellRing : Bell}
         label="Abrir notificacoes"
         active={isOpen}
-        badge={unreadCount}
-        className={unreadCount > 0 ? '[&>svg]:animate-bounce [&>svg]:text-emerald-600' : undefined}
+        badge={totalBadge}
+        className={totalBadge > 0 ? '[&>svg]:animate-bounce [&>svg]:text-emerald-600' : undefined}
       />
 
       {isOpen && (
@@ -78,8 +85,29 @@ export function NotificationCenter({
               </div>
             </div>
 
+            {alertas.length > 0 && (
+              <ul className="space-y-1.5">
+                {alertas.map(alerta => (
+                  <li key={alerta.id}>
+                    <button
+                      type="button"
+                      onClick={() => onAlertaClick?.(alerta.tab)}
+                      className="flex w-full items-center gap-2 rounded-md border border-rose-200 bg-rose-50 p-2.5 text-left transition-colors hover:bg-rose-100"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-rose-600" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[9px] font-black uppercase tracking-wider text-rose-700">{alerta.titulo}</span>
+                        <span className="block truncate text-[10px] text-rose-900">{alerta.mensagem}</span>
+                      </span>
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-rose-400" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {notifications.length === 0 ? (
+              {notifications.length === 0 && alertas.length === 0 ? (
                 <EmptyState
                   icon={Bell}
                   title="Sem alertas recentes"

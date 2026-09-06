@@ -3,6 +3,7 @@ import { LogOut, Search, X } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
+import type { Alerta } from '../../utils/alertas';
 import type { NavigationGroupView } from './NavigationMenu';
 import { NAVIGATION_GROUPS } from '../navigation/navigation';
 import { Breadcrumb } from '../../shared/ui';
@@ -17,6 +18,7 @@ interface DesktopTopBarProps {
   isNotificationOpen: boolean;
   notifications: AppNotification[];
   unreadCount: number;
+  alertas?: Alerta[];
   isFirebaseConnected: boolean;
   lastCloudSync: string;
   onMenuSearchChange: (value: string) => void;
@@ -37,6 +39,7 @@ export function DesktopTopBar({
   isNotificationOpen,
   notifications,
   unreadCount,
+  alertas,
   isFirebaseConnected,
   lastCloudSync,
   onMenuSearchChange,
@@ -136,6 +139,8 @@ export function DesktopTopBar({
           onMarkAllAsRead={onMarkAllNotificationsAsRead}
           onClear={onClearNotifications}
           onMarkOneAsRead={onMarkNotificationAsRead}
+          alertas={alertas}
+          onAlertaClick={onNavigate}
         />
         <div className="erp-topbar__user">
           <span className="erp-topbar__avatar">{userInitials}</span>

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Empresa, 
   ObraLocal, 
@@ -191,6 +191,7 @@ import {
 import { NavigationMenu } from './app/shell/NavigationMenu';
 import { DesktopTopBar } from './app/shell/DesktopTopBar';
 import { NotificationCenter } from './app/shell/NotificationCenter';
+import { alertasDoSistema } from './utils/alertas';
 import { DesktopSidebar } from './app/shell/DesktopSidebar';
 import { APP_VERSION_LABEL } from './app/version';
 import {
@@ -3054,6 +3055,33 @@ export default function App() {
     });
   };
 
+  // Alertas do sino: derivados dos mesmos registros das pendências, filtrando só
+  // gravidade alta. Não são salvos, então nunca sobra alerta de algo resolvido.
+  const alertasSistema = useMemo(() => alertasDoSistema({
+    hoje: new Date().toISOString().slice(0, 10),
+    inicio: new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10),
+    fim: new Date().toISOString().slice(0, 10),
+    equipamentos,
+    controlesEquipamentos: controleEquipamentosDiario,
+    gruposEquipe,
+    presencasLink,
+    listasPresenca,
+    obras,
+    ordensServico,
+    ticketsJazida,
+    fichasFvs,
+    inspecoes,
+    naoConformidades,
+    documentos,
+    treinamentos,
+    planejamento: planejamentoItens,
+    producao: producaoRegistros,
+    medicoes,
+    materiais: materiaisCadastro,
+    movimentosMaterial: materiaisMovimentos,
+    ocorrencias,
+  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentos, ocorrencias]);
+
   const handleSaveOcorrencia = (ocorrencia: Ocorrencia, isNew: boolean) => {
     const updated = isNew ? [ocorrencia, ...ocorrencias] : ocorrencias.map(item => item.id === ocorrencia.id ? ocorrencia : item);
     saveAndLog('Ocorrências', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Atualizou'} a ocorrência ${ocorrencia.numero} (${ocorrencia.tipo}) em ${ocorrencia.data}.`, historyLogs, () => {
@@ -4116,6 +4144,8 @@ export default function App() {
             onMarkAllAsRead={handleMarkAllAsRead}
             onClear={handleClearNotifications}
             onMarkOneAsRead={handleMarkNotificationAsRead}
+            alertas={alertasSistema}
+            onAlertaClick={tab => { setIsNotifDropdownOpen(false); navigateTo(tab); }}
           />
 
           <button 
@@ -4169,6 +4199,7 @@ export default function App() {
           isNotificationOpen={isNotifDropdownOpen}
           notifications={notifications}
           unreadCount={unreadCount}
+          alertas={alertasSistema}
           isFirebaseConnected={isFirebaseConnected}
           lastCloudSync={lastCloudSync}
           onNavigate={tab => navigateTo(tab)}

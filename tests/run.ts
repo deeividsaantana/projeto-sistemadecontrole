@@ -37,6 +37,7 @@ import './medicoes.test';
 import './documentos.test';
 import './ocorrencias.test';
 import './pendencias.test';
+import './alertas.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';
