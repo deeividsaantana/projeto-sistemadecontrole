@@ -28,6 +28,7 @@ import {
   DiarioObra,
   ServicoObra,
   RegistroProducao,
+  PlanejamentoItem,
   MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
@@ -97,6 +98,7 @@ const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const FrentesTab = lazy(() => import('./components/FrentesTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
+const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -318,6 +320,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['diariosObra', STORAGE_KEYS.diariosObra],
   ['servicosObra', STORAGE_KEYS.servicosObra],
   ['producaoRegistros', STORAGE_KEYS.producaoRegistros],
+  ['planejamentoItens', STORAGE_KEYS.planejamentoItens],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -429,6 +432,7 @@ export default function App() {
   const [diariosObra, setDiariosObra] = useState<DiarioObra[]>([]);
   const [servicosObra, setServicosObra] = useState<ServicoObra[]>([]);
   const [producaoRegistros, setProducaoRegistros] = useState<RegistroProducao[]>([]);
+  const [planejamentoItens, setPlanejamentoItens] = useState<PlanejamentoItem[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -631,6 +635,7 @@ export default function App() {
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
       setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
       setProducaoRegistros(parseStoredJson(localStorage.getItem(STORAGE_KEYS.producaoRegistros), STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]));
+      setPlanejamentoItens(parseStoredJson(localStorage.getItem(STORAGE_KEYS.planejamentoItens), STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -819,6 +824,7 @@ export default function App() {
     diariosObra: readTable(STORAGE_KEYS.diariosObra, [] as DiarioObra[]),
     servicosObra: readTable(STORAGE_KEYS.servicosObra, [] as ServicoObra[]),
     producaoRegistros: readTable(STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]),
+    planejamentoItens: readTable(STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -1000,6 +1006,7 @@ export default function App() {
           setDiariosObra(normalizeRuntimeCollection<DiarioObra>(data.diariosObra));
           setServicosObra(normalizeRuntimeCollection<ServicoObra>(data.servicosObra));
           setProducaoRegistros(normalizeRuntimeCollection<RegistroProducao>(data.producaoRegistros));
+          setPlanejamentoItens(normalizeRuntimeCollection<PlanejamentoItem>(data.planejamentoItens));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -2998,6 +3005,14 @@ export default function App() {
     });
   };
 
+  const handleSavePlanejamento = (plano: PlanejamentoItem, isNew: boolean) => {
+    const updated = isNew ? [plano, ...planejamentoItens] : planejamentoItens.map(item => item.id === plano.id ? plano : item);
+    saveAndLog('Planejamento', isNew ? 'Criou' : 'Editou', `${isNew ? 'Planejou' : 'Editou'} ${plano.quantidadePlanejada} ${plano.unidade} de ${plano.servicoDescricao} entre ${plano.dataInicio} e ${plano.dataFim}.`, historyLogs, () => {
+      setPlanejamentoItens(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.planejamentoItens, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveServicoObra = (servico: ServicoObra, isNew: boolean) => {
     const updated = isNew ? [servico, ...servicosObra] : servicosObra.map(item => item.id === servico.id ? servico : item);
     saveAndLog('Produção', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o serviço ${servico.descricao}.`, historyLogs, () => {
@@ -4164,6 +4179,20 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'planejamento' && (
+              <PlanejamentoTab
+                planos={planejamentoItens}
+                servicos={servicosObra}
+                producao={producaoRegistros}
+                obras={obras}
+                frentes={frentesServico}
+                gruposEquipe={gruposEquipe}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                onSave={handleSavePlanejamento}
               />
             )}
 

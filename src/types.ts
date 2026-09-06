@@ -620,6 +620,32 @@ export interface RegistroProducao {
   atualizadoEm: string;
 }
 
+export type SituacaoPlano = 'Planejado' | 'Em execução' | 'Concluído' | 'Cancelado';
+
+/**
+ * Meta de produção para um período. O realizado nunca é digitado aqui: vem dos
+ * lançamentos de produção do mesmo serviço dentro do período planejado.
+ */
+export interface PlanejamentoItem {
+  id: string;
+  dataInicio: string; // YYYY-MM-DD
+  dataFim: string; // YYYY-MM-DD
+  servicoId: string;
+  servicoDescricao: string;
+  unidade: string;
+  quantidadePlanejada: number;
+  obraId?: string;
+  frente?: string;
+  grupoId?: string;
+  equipeNome?: string;
+  responsavel: string;
+  situacao: SituacaoPlano;
+  observacao?: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

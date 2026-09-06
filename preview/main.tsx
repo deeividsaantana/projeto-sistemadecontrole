@@ -26,6 +26,7 @@ import MateriaisTab from '../src/components/MateriaisTab';
 import FrentesTab from '../src/components/FrentesTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
 import ProducaoTab from '../src/components/ProducaoTab';
+import PlanejamentoTab from '../src/components/PlanejamentoTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -199,6 +200,19 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  planejamento: (
+    <PlanejamentoTab
+      planos={[]}
+      servicos={[]}
+      producao={[]}
+      obras={fx.obras}
+      frentes={[]}
+      gruposEquipe={[fx.grupo]}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSave={noop}
     />
   ),
   producao: (
