@@ -20,8 +20,11 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   // operação enxergam a mesma lista; leitura continua sem ela.
   assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), true);
   assert.equal(ROLE_ACCESS.leitura.includes('pendencias'), false);
+  // Auditoria virou tela própria, exclusiva do admin.
   assert.equal(ROLE_ACCESS.gestor.includes('auditoria'), false);
-  assert.equal(ROLE_ACCESS.admin.includes('auditoria'), false);
+  assert.equal(ROLE_ACCESS.operador.includes('auditoria'), false);
+  assert.equal(ROLE_ACCESS.leitura.includes('auditoria'), false);
+  assert.equal(ROLE_ACCESS.admin.includes('auditoria'), true);
   assert.equal(ROLE_ACCESS.admin.includes('inteligencia'), false);
   assert.equal(ROLE_ACCESS.admin.includes('controle-presenca'), false);
   assert.equal(ROLE_ACCESS.admin.includes('partes-diarias'), false);

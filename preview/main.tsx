@@ -40,6 +40,7 @@ import OrcamentoTab from '../src/components/OrcamentoTab';
 import CronogramaTab from '../src/components/CronogramaTab';
 import RelatoriosTab from '../src/components/RelatoriosTab';
 import TimelineTab from '../src/components/TimelineTab';
+import AuditoriaTab from '../src/components/AuditoriaTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -214,6 +215,9 @@ const screens: Record<string, React.ReactNode> = {
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
     />
+  ),
+  auditoria: (
+    <AuditoriaTab logs={[]} />
   ),
   timeline: (
     <TimelineTab

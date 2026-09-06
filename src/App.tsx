@@ -121,6 +121,7 @@ const OrcamentoTab = lazy(() => import('./components/OrcamentoTab'));
 const CronogramaTab = lazy(() => import('./components/CronogramaTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const TimelineTab = lazy(() => import('./components/TimelineTab'));
+const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4366,6 +4367,10 @@ export default function App() {
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
               />
+            )}
+
+            {activeTab === 'auditoria' && (
+              <AuditoriaTab logs={historyLogs} />
             )}
 
             {activeTab === 'timeline' && (
