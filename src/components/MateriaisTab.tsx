@@ -316,6 +316,7 @@ export default function MateriaisTab({
       <Modal
         open={materialAberto}
         title={formMaterial ? `Editar ${formMaterial.descricao}` : 'Novo material'}
+        onSubmit={salvarMaterial}
         size="md"
         onClose={() => setMaterialAberto(false)}
         footer={(

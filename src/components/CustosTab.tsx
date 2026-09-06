@@ -307,6 +307,7 @@ export default function CustosTab({
       <Modal
         open={aberto}
         title={editado ? `Editar ${editado.descricao}` : 'Novo lançamento de custo'}
+        onSubmit={salvar}
         size="md"
         onClose={() => setAberto(false)}
         footer={(

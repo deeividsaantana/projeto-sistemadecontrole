@@ -350,6 +350,7 @@ export default function ProducaoTab({
       <Modal
         open={servicoAberto}
         title={servicoEditado ? `Editar ${servicoEditado.descricao}` : 'Novo serviço'}
+        onSubmit={salvarServico}
         size="md"
         onClose={() => setServicoAberto(false)}
         footer={(
@@ -402,6 +403,7 @@ export default function ProducaoTab({
       <Modal
         open={lancamentoAberto}
         title={registroEditado ? 'Editar produção' : 'Lançar produção'}
+        onSubmit={salvarLancamento}
         size="md"
         onClose={() => setLancamentoAberto(false)}
         footer={(

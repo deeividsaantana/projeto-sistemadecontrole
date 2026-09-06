@@ -229,6 +229,7 @@ export default function MedicoesTab({
       <Modal
         open={aberto}
         title={editada ? `Medição ${editada.numero}` : 'Nova medição'}
+        onSubmit={salvar}
         size="lg"
         onClose={() => setAberto(false)}
         footer={(

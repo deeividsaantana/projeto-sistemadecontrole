@@ -76,3 +76,13 @@ test('manutenção abre o formulário e fecha com ESC', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
 });
+
+test('CTRL+ENTER salva sem procurar o botão', async ({ page }) => {
+  await page.goto('/?screen=ocorrencias');
+  await page.getByRole('button', { name: 'Nova ocorrência' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  // Sem descrição, salvar precisa reclamar: é a prova de que o atalho disparou
+  // a mesma validação do botão, em vez de fechar o diálogo em silêncio.
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByText('Descreva a ocorrência.')).toBeVisible();
+});

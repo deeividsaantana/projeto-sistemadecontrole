@@ -310,6 +310,7 @@ export default function OcorrenciasTab({
       <Modal
         open={aberto}
         title={editada ? `Ocorrência ${editada.numero}` : 'Nova ocorrência'}
+        onSubmit={salvar}
         size="md"
         onClose={() => setAberto(false)}
         footer={(

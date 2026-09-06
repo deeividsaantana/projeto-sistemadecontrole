@@ -12,6 +12,12 @@ interface ModalProps {
   /** Bloqueia fechar por ESC/clique fora enquanto uma ação está em andamento. */
   busy?: boolean;
   role?: 'dialog' | 'alertdialog';
+  /**
+   * Ação de salvar do diálogo. Liga CTRL+ENTER em qualquer campo e ENTER nos
+   * campos de uma linha — quem preenche formulário no teclado não precisa
+   * procurar o botão com o mouse.
+   */
+  onSubmit?: () => void;
   footer?: ReactNode;
   onClose: () => void;
   children?: ReactNode;
@@ -39,6 +45,7 @@ export function Modal({
   size = 'md',
   busy = false,
   role = 'dialog',
+  onSubmit,
   footer,
   onClose,
   children,
@@ -55,6 +62,18 @@ export function Modal({
       if (event.key === 'Escape' && !busy) {
         onClose();
         return;
+      }
+      if (event.key === 'Enter' && onSubmit && !busy) {
+        const alvo = event.target as HTMLElement | null;
+        const emTextoLongo = alvo?.tagName === 'TEXTAREA';
+        const emBotao = alvo?.tagName === 'BUTTON';
+        // CTRL+ENTER salva de qualquer lugar; ENTER sozinho só fora de textarea
+        // e fora de botão, senão atrapalharia quem está escrevendo ou navegando.
+        if ((event.ctrlKey || event.metaKey) || (!emTextoLongo && !emBotao)) {
+          event.preventDefault();
+          onSubmit();
+          return;
+        }
       }
       if (event.key !== 'Tab' || !panel) return;
       const controls = panel.querySelectorAll<HTMLElement>(FOCUSABLE);
@@ -77,7 +96,7 @@ export function Modal({
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [busy, onClose, open]);
+  }, [busy, onClose, onSubmit, open]);
 
   if (!open) return null;
 

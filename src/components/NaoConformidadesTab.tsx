@@ -310,6 +310,7 @@ export default function NaoConformidadesTab({
       <Modal
         open={aberto}
         title={editada ? `NC ${editada.numero}` : 'Nova não conformidade'}
+        onSubmit={salvar}
         size="md"
         onClose={() => setAberto(false)}
         footer={(

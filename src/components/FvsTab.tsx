@@ -341,6 +341,7 @@ export default function FvsTab({
       <Modal
         open={fichaAberta}
         title={editada ? `Ficha ${editada.numero}` : 'Nova ficha de verificação'}
+        onSubmit={salvarFicha}
         size="lg"
         onClose={() => setFichaAberta(false)}
         footer={(
@@ -442,6 +443,7 @@ export default function FvsTab({
       <Modal
         open={modeloAberto}
         title={modeloEditado ? `Editar ${modeloEditado.nome}` : 'Novo modelo de FVS'}
+        onSubmit={salvarModelo}
         size="md"
         onClose={() => setModeloAberto(false)}
         footer={(

@@ -266,6 +266,7 @@ export default function PlanejamentoTab({
       <Modal
         open={aberto}
         title={editado ? `Editar plano de ${editado.servicoDescricao}` : 'Novo plano'}
+        onSubmit={salvar}
         size="md"
         onClose={() => setAberto(false)}
         footer={(

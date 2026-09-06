@@ -222,6 +222,7 @@ export default function OrcamentoTab({
       <Modal
         open={aberto}
         title={editado ? `Editar orçamento de ${editado.categoria}` : 'Novo orçamento'}
+        onSubmit={salvar}
         size="md"
         onClose={() => setAberto(false)}
         footer={(

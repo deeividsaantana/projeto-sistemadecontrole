@@ -299,6 +299,7 @@ export default function DocumentosTab({
       <Modal
         open={aberto}
         title={editado ? `Editar ${editado.titulo}` : 'Novo documento'}
+        onSubmit={salvar}
         size="md"
         onClose={() => setAberto(false)}
         footer={(

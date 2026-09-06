@@ -290,6 +290,7 @@ export default function InspecoesTab({
       <Modal
         open={aberto}
         title={editada ? `Inspeção ${editada.numero}` : 'Nova inspeção'}
+        onSubmit={salvar}
         size="md"
         onClose={() => setAberto(false)}
         footer={(
