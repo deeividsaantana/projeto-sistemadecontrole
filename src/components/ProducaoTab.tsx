@@ -4,12 +4,13 @@
  * quantidade prevista no contrato o sistema não exibe percentual inventado.
  */
 import { useMemo, useState } from 'react';
-import { BarChart3, ClipboardList, Plus, Search, TrendingUp } from 'lucide-react';
+import { Activity, BarChart3, ClipboardList, Plus, Search, TrendingUp } from 'lucide-react';
 import type { FrenteServico, GrupoEquipe, ObraLocal, RegistroProducao, ServicoObra, SituacaoServico } from '../types';
 import { avancoDosServicos, producaoPorDia, validarProducao } from '../utils/producao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -180,15 +181,12 @@ export default function ProducaoTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Serviços ativos', valor: String(servicosAtivos.length) },
-          { label: 'Lançamentos', valor: String(registrosAtivos.length) },
-          { label: 'Lançados hoje', valor: String(totalExecutadoHoje) },
-          { label: 'Serviços em 100%', valor: String(concluidos) },
+          { label: 'Serviços ativos', valor: servicosAtivos.length, tone: 'info' as const, icone: BarChart3 },
+          { label: 'Lançamentos', valor: registrosAtivos.length, tone: 'neutral' as const, icone: BarChart3 },
+          { label: 'Lançados hoje', valor: totalExecutadoHoje, tone: 'neutral' as const, icone: BarChart3 },
+          { label: 'Serviços em 100%', valor: concluidos, tone: 'success' as const, icone: BarChart3 },
         ].map(item => (
-          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

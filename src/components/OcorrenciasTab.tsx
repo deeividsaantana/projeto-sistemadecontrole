@@ -4,7 +4,7 @@
  * acidente ou ocorrência resolvida exige providência escrita.
  */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Megaphone, Plus, Search } from 'lucide-react';
+import { Activity, AlertOctagon, AlertTriangle, Clock3, Megaphone, Plus, Search } from 'lucide-react';
 import type {
   Equipamento,
   FrenteServico,
@@ -25,6 +25,7 @@ import { normalizeComparable } from '../utils/canonicalIdentity';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
 import { formatarData } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -210,15 +211,12 @@ export default function OcorrenciasTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Ocorrências', valor: String(painel.total) },
-          { label: 'Em aberto', valor: String(painel.emAberto) },
-          { label: 'Horas paradas', valor: painel.horasParadas.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) },
-          { label: 'Acidentes', valor: String(painel.acidentes) },
+          { label: 'Ocorrências', valor: painel.total, tone: 'info' as const, icone: Megaphone },
+          { label: 'Em aberto', valor: painel.emAberto, tone: 'warning' as const, icone: AlertOctagon },
+          { label: 'Horas paradas', valor: painel.horasParadas, tone: 'info' as const, icone: Clock3 },
+          { label: 'Acidentes', valor: painel.acidentes, tone: 'danger' as const, icone: AlertTriangle },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

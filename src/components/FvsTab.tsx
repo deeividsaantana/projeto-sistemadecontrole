@@ -4,7 +4,7 @@
  * escrita, para a decisão ficar registrada em vez de virar aprovação silenciosa.
  */
 import { useMemo, useState } from 'react';
-import { ClipboardCheck, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertOctagon, CheckCircle2, ClipboardCheck, FileText, Plus, Search, Trash2 } from 'lucide-react';
 import type {
   FichaVerificacaoServico,
   FrenteServico,
@@ -25,6 +25,7 @@ import {
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -228,15 +229,12 @@ export default function FvsTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Fichas', valor: String(fichasAtivas.length) },
-          { label: 'Aprovadas', valor: String(aprovadas) },
-          { label: 'Com pendência', valor: String(comPendencia) },
-          { label: 'Reprovadas', valor: String(reprovadas) },
+          { label: 'Fichas', valor: fichasAtivas.length, tone: 'neutral' as const, icone: FileText },
+          { label: 'Aprovadas', valor: aprovadas, tone: 'success' as const, icone: CheckCircle2 },
+          { label: 'Com pendência', valor: comPendencia, tone: 'warning' as const, icone: AlertOctagon },
+          { label: 'Reprovadas', valor: reprovadas, tone: 'danger' as const, icone: AlertOctagon },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

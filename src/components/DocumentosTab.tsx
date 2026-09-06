@@ -4,7 +4,7 @@
  * origem. O anexo usa o mesmo upload já validado dos anexos operacionais.
  */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, FileText, Paperclip, Plus, Search } from 'lucide-react';
+import { Activity, AlertTriangle, FileText, Paperclip, Plus, Search } from 'lucide-react';
 import type {
   DocumentoArquivo,
   Equipamento,
@@ -20,6 +20,7 @@ import { validateOperationalAttachment } from '../utils/operationalAttachmentRul
 import { usePaginacao } from '../shared/hooks/usePaginacao';
 import { formatarData } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -206,15 +207,12 @@ export default function DocumentosTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Documentos', valor: String(painel.total) },
-          { label: 'Vencidos', valor: String(painel.vencidos) },
-          { label: 'Vencendo', valor: String(painel.vencendo) },
-          { label: 'Sem arquivo', valor: String(painel.semAnexo) },
+          { label: 'Documentos', valor: painel.total, tone: 'info' as const, icone: FileText },
+          { label: 'Vencidos', valor: painel.vencidos, tone: 'danger' as const, icone: AlertTriangle },
+          { label: 'Vencendo', valor: painel.vencendo, tone: 'warning' as const, icone: FileText },
+          { label: 'Sem arquivo', valor: painel.semAnexo, tone: 'warning' as const, icone: FileText },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

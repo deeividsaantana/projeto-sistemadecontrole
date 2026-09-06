@@ -4,7 +4,7 @@
  * dos próprios módulos, para o diário nunca divergir da operação.
  */
 import { useMemo, useRef, useState } from 'react';
-import { Camera, CloudRain, NotebookPen, Users } from 'lucide-react';
+import { Camera, Clock3, CloudRain, NotebookPen, Truck, Users } from 'lucide-react';
 import type {
   ApontamentoOperacional,
   CondicaoClimatica,
@@ -17,7 +17,7 @@ import type {
   TicketJazida,
 } from '../types';
 import { comprimirImagem, validarFoto } from '../utils/imagem';
-import { Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
+import { Card, EmptyState, PageHeader, StatCard, isoDay, statusTone } from '../shared/ui';
 import { formatarData } from '../utils/formato';
 
 interface DiarioObraTabProps {
@@ -147,15 +147,12 @@ export default function DiarioObraTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Presentes', valor: String(resumo.presentes) },
-          { label: 'Equipes com apontamento', valor: String(resumo.equipes) },
-          { label: 'Frota informada', valor: String(resumo.frota.length) },
-          { label: 'Horas apontadas', valor: `${resumo.horasApontadas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` },
+          { label: 'Presentes', valor: resumo.presentes, tone: 'success' as const, icone: Users },
+          { label: 'Equipes com apontamento', valor: resumo.equipes, tone: 'neutral' as const, icone: Users },
+          { label: 'Frota informada', valor: resumo.frota.length, tone: 'neutral' as const, icone: Truck },
+          { label: 'Horas apontadas', valor: `${resumo.horasApontadas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`, tone: 'info' as const, icone: Clock3 },
         ].map(item => (
-          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

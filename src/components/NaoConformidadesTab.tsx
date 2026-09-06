@@ -4,7 +4,7 @@
  * a pendência some sozinha quando a NC é criada, sem fila para sincronizar.
  */
 import { useMemo, useState } from 'react';
-import { AlertOctagon, Plus, Search } from 'lucide-react';
+import { Activity, AlertOctagon, AlertTriangle, CheckCircle2, Plus, Search } from 'lucide-react';
 import type {
   FichaVerificacaoServico,
   FrenteServico,
@@ -25,6 +25,7 @@ import { normalizeComparable } from '../utils/canonicalIdentity';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
 import { formatarData } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -219,15 +220,12 @@ export default function NaoConformidadesTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Em aberto', valor: String(painel.abertas) },
-          { label: 'Atrasadas', valor: String(painel.atrasadas) },
-          { label: 'Encerradas', valor: String(painel.encerradas) },
-          { label: 'Ação ineficaz', valor: String(painel.ineficazes) },
+          { label: 'Em aberto', valor: painel.abertas, tone: 'warning' as const, icone: AlertOctagon },
+          { label: 'Atrasadas', valor: painel.atrasadas, tone: 'danger' as const, icone: AlertTriangle },
+          { label: 'Encerradas', valor: painel.encerradas, tone: 'success' as const, icone: CheckCircle2 },
+          { label: 'Ação ineficaz', valor: painel.ineficazes, tone: 'danger' as const, icone: AlertOctagon },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

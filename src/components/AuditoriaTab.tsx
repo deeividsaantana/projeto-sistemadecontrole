@@ -5,7 +5,7 @@
  * existe contador salvo que possa divergir do histórico.
  */
 import { useMemo, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { Activity, Clock3, ShieldCheck, Users } from 'lucide-react';
 import type { HistoryLog } from '../types';
 import {
   contarPor,
@@ -16,6 +16,7 @@ import {
   usuariosDosLogs,
 } from '../utils/auditoria';
 import {
+  StatCard,
   Badge,
   EmptyState,
   PageHeader,
@@ -80,15 +81,12 @@ export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Ações no período', valor: String(resumo.total) },
-          { label: 'Ações sensíveis', valor: String(resumo.sensiveis) },
-          { label: 'Exclusões', valor: String(resumo.exclusoes) },
-          { label: 'Usuários ativos', valor: String(resumo.usuarios) },
+          { label: 'Ações no período', valor: resumo.total, tone: 'info' as const, icone: Clock3 },
+          { label: 'Ações sensíveis', valor: resumo.sensiveis, tone: 'neutral' as const, icone: ShieldCheck },
+          { label: 'Exclusões', valor: resumo.exclusoes, tone: 'danger' as const, icone: ShieldCheck },
+          { label: 'Usuários ativos', valor: resumo.usuarios, tone: 'neutral' as const, icone: Users },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

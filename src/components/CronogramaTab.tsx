@@ -5,7 +5,7 @@
  * O avanço da barra é o mesmo avanço físico calculado no planejamento.
  */
 import { useMemo, useState } from 'react';
-import { CalendarClock } from 'lucide-react';
+import { Activity, AlertTriangle, CalendarClock } from 'lucide-react';
 import type { FrenteServico, PlanejamentoItem, RegistroProducao } from '../types';
 import {
   barrasDoCronograma,
@@ -13,7 +13,7 @@ import {
   posicaoDaBarra,
   posicaoDeHoje,
 } from '../utils/cronograma';
-import { Badge, EmptyState, PageHeader, isoDay } from '../shared/ui';
+import { Badge, EmptyState, PageHeader, StatCard, isoDay } from '../shared/ui';
 import { formatarData } from '../utils/formato';
 
 interface CronogramaTabProps {
@@ -45,15 +45,12 @@ export default function CronogramaTab({ planos, producao, frentes }: CronogramaT
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Barras', valor: String(barras.length) },
-          { label: 'Atrasadas', valor: String(atrasadas) },
-          { label: 'Início', valor: formatarData(janela.inicio) },
-          { label: 'Fim', valor: formatarData(janela.fim) },
+          { label: 'Barras', valor: barras.length, tone: 'info' as const, icone: CalendarClock },
+          { label: 'Atrasadas', valor: atrasadas, tone: 'danger' as const, icone: AlertTriangle },
+          { label: 'Início', valor: formatarData(janela.inicio), tone: 'neutral' as const, icone: CalendarClock },
+          { label: 'Fim', valor: formatarData(janela.fim), tone: 'neutral' as const, icone: CalendarClock },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

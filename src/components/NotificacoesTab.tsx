@@ -7,7 +7,7 @@
  * do encarregado não pode apagar o alerta da tela do gestor.
  */
 import { useMemo, useState } from 'react';
-import { Bell, BellOff, CheckCheck } from 'lucide-react';
+import { Activity, AlertTriangle, Bell, BellOff, CheckCheck } from 'lucide-react';
 import type { AppNotification } from '../types';
 import type { Alerta } from '../utils/alertas';
 import {
@@ -17,7 +17,7 @@ import {
   notificacoesVisiveis,
   type PreferenciasNotificacao,
 } from '../utils/notificacoes';
-import { Badge, EmptyState, PageHeader } from '../shared/ui';
+import { Badge, EmptyState, PageHeader, StatCard } from '../shared/ui';
 
 interface NotificacoesTabProps {
   notificacoes: AppNotification[];
@@ -97,15 +97,12 @@ export default function NotificacoesTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Notificações', valor: String(notificacoes.length) },
-          { label: 'Não lidas', valor: String(contarNaoLidas(notificacoes)) },
-          { label: 'Alertas ativos', valor: String(ativos.length) },
-          { label: 'Categorias silenciadas', valor: String(preferencias.categoriasSilenciadas.length) },
+          { label: 'Notificações', valor: notificacoes.length, tone: 'info' as const, icone: Bell },
+          { label: 'Não lidas', valor: contarNaoLidas(notificacoes), tone: 'warning' as const, icone: Bell },
+          { label: 'Alertas ativos', valor: ativos.length, tone: 'warning' as const, icone: AlertTriangle },
+          { label: 'Categorias silenciadas', valor: preferencias.categoriasSilenciadas.length, tone: 'warning' as const, icone: Bell },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

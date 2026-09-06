@@ -4,9 +4,9 @@
  * leva para onde a pendência se resolve, em vez de virar uma segunda lista.
  */
 import { useMemo, useState } from 'react';
-import { CheckCircle2, ChevronRight, ListChecks } from 'lucide-react';
+import { Activity, AlertOctagon, CheckCircle2, ChevronRight, ListChecks } from 'lucide-react';
 import { listarPendencias, resumoPendencias, type ContextoPendencias, type GravidadePendencia } from '../utils/pendencias';
-import { Badge, EmptyState, PageHeader, PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
+import { Badge, EmptyState, PageHeader, PeriodFilter, StatCard, buildPeriod, type PeriodValue } from '../shared/ui';
 
 interface PendenciasTabProps {
   dados: Omit<ContextoPendencias, 'hoje' | 'inicio' | 'fim'>;
@@ -51,15 +51,12 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Tipos de pendência', valor: String(resumo.itens) },
-          { label: 'Registros pendentes', valor: String(resumo.registros) },
-          { label: 'Gravidade alta', valor: String(resumo.altas) },
-          { label: 'Áreas afetadas', valor: String(resumo.categorias) },
+          { label: 'Tipos de pendência', valor: resumo.itens, tone: 'warning' as const, icone: AlertOctagon },
+          { label: 'Registros pendentes', valor: resumo.registros, tone: 'info' as const, icone: ListChecks },
+          { label: 'Gravidade alta', valor: resumo.altas, tone: 'info' as const, icone: ListChecks },
+          { label: 'Áreas afetadas', valor: resumo.categorias, tone: 'neutral' as const, icone: ListChecks },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

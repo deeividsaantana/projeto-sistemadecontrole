@@ -1,9 +1,9 @@
 /** Horas paradas: onde a frota perdeu tempo no período, e por quê. */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, TimerOff } from 'lucide-react';
+import { Activity, AlertTriangle, Clock3, Coins, TimerOff } from 'lucide-react';
 import type { ControleEquipamentoDiario, Equipamento, OrdemServico } from '../types';
 import { listarParadas, paradasSemHorario, somarPor, type Parada } from '../utils/horasParadas';
-import { Card, EmptyState, PageHeader, PeriodFilter, TableBody, TableHead, TableShell, buildPeriod, type PeriodValue } from '../shared/ui';
+import { Card, EmptyState, PageHeader, PeriodFilter, StatCard, TableBody, TableHead, TableShell, buildPeriod, type PeriodValue } from '../shared/ui';
 import { formatarData } from '../utils/formato';
 
 interface HorasParadasTabProps {
@@ -66,15 +66,12 @@ export default function HorasParadasTab({ controlesEquipamentos, ordensServico, 
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Total parado', valor: horas(total) },
-          { label: 'Paradas registradas', valor: String(paradas.length) },
-          { label: 'Média por dia com parada', valor: horas(total / dias) },
-          { label: 'Em curso', valor: String(paradas.filter(parada => parada.emCurso).length) },
+          { label: 'Total parado', valor: horas(total), tone: 'info' as const, icone: Coins },
+          { label: 'Paradas registradas', valor: paradas.length, tone: 'info' as const, icone: TimerOff },
+          { label: 'Média por dia com parada', valor: horas(total / dias), tone: 'neutral' as const, icone: Clock3 },
+          { label: 'Em curso', valor: paradas.filter(parada => parada.emCurso).length, tone: 'neutral' as const, icone: TimerOff },
         ].map(item => (
-          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

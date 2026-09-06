@@ -4,7 +4,7 @@
  * backup ou da sincronização aparece aqui em vez de sumir silenciosamente.
  */
 import { useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, Database } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, Database } from 'lucide-react';
 import { INTERMEDIATE_TABLE_IDS } from '../firebaseCloudSync';
 import {
   divergenciasDeRegistro,
@@ -13,7 +13,7 @@ import {
   volumePorColecao,
 } from '../utils/diagnostico';
 import { APP_VERSION_LABEL } from '../app/version';
-import { PageHeader, TableBody, TableHead, TableShell } from '../shared/ui';
+import { PageHeader, StatCard, TableBody, TableHead, TableShell } from '../shared/ui';
 
 interface AdministracaoTabProps {
   ultimaSincronizacao: string;
@@ -65,15 +65,12 @@ export default function AdministracaoTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Coleções', valor: String(resumo.colecoes) },
-          { label: 'Registros', valor: resumo.registros.toLocaleString('pt-BR') },
-          { label: 'Uso local', valor: formatarBytes(resumo.bytes) },
-          { label: 'Coleções vazias', valor: String(resumo.vazias) },
+          { label: 'Coleções', valor: resumo.colecoes, tone: 'info' as const, icone: Database },
+          { label: 'Registros', valor: resumo.registros.toLocaleString('pt-BR'), tone: 'info' as const, icone: Database },
+          { label: 'Uso local', valor: formatarBytes(resumo.bytes), tone: 'neutral' as const, icone: Database },
+          { label: 'Coleções vazias', valor: resumo.vazias, tone: 'neutral' as const, icone: Database },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

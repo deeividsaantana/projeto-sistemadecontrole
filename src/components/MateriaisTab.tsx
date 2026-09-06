@@ -3,12 +3,13 @@
  * movimentos — não existe contador guardado para divergir do histórico.
  */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Package, Plus, Search } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Coins, Package, Plus, Search } from 'lucide-react';
 import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
 import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/estoque';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -181,15 +182,12 @@ export default function MateriaisTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Materiais ativos', valor: String(ativos.length) },
-          { label: 'Movimentos', valor: String(movimentos.length) },
-          { label: 'Abaixo do mínimo', valor: String(abaixoDoMinimo.length) },
-          { label: 'Sem saldo', valor: String(posicoes.filter(item => item.saldo <= 0).length) },
+          { label: 'Materiais ativos', valor: ativos.length, tone: 'info' as const, icone: Package },
+          { label: 'Movimentos', valor: movimentos.length, tone: 'neutral' as const, icone: Package },
+          { label: 'Abaixo do mínimo', valor: abaixoDoMinimo.length, tone: 'warning' as const, icone: Package },
+          { label: 'Sem saldo', valor: posicoes.filter(item => item.saldo <= 0).length, tone: 'info' as const, icone: Coins },
         ].map(item => (
-          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

@@ -4,7 +4,7 @@
  * equipes e lançamentos já usam.
  */
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Boxes, ClipboardList, MapPin, Plus, Truck, Users } from 'lucide-react';
+import { ArrowLeft, Boxes, ClipboardList, Clock3, MapPin, Plus, Truck, Users } from 'lucide-react';
 import type {
   ApontamentoOperacional,
   ControleEquipamentoDiario,
@@ -19,7 +19,7 @@ import type {
 import type { FleetPersistedRecord } from '../fleet/domain';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { horasPor } from '../utils/apontamentos';
-import { Badge, Card, EmptyState, Modal, PageHeader, isoDay, statusTone } from '../shared/ui';
+import { Badge, Card, EmptyState, Modal, PageHeader, StatCard, isoDay, statusTone } from '../shared/ui';
 
 interface FrentesTabProps {
   frentes: FrenteServico[];
@@ -143,18 +143,15 @@ export default function FrentesTab({
         />
 
         <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-          {[
-            { label: 'Equipes', valor: String(equipes.length) },
-            { label: 'Presentes hoje', valor: String(presencasDoDia.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status)).length) },
-            { label: 'Frota hoje', valor: String(frotaDoDia.length) },
-            { label: 'Horas apontadas', valor: `${totalHoras.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` },
-          ].map(item => (
-            <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
-              <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-              <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-            </div>
-          ))}
-        </section>
+        {[
+          { label: 'Equipes', valor: equipes.length, tone: 'neutral' as const, icone: Users },
+          { label: 'Presentes hoje', valor: presencasDoDia.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status)).length, tone: 'success' as const, icone: Users },
+          { label: 'Frota hoje', valor: frotaDoDia.length, tone: 'neutral' as const, icone: Truck },
+          { label: 'Horas apontadas', valor: `${totalHoras.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`, tone: 'info' as const, icone: Clock3 },
+        ].map(item => (
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+        ))}
+      </section>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
           <Card className="min-w-0" title="Planejamento">

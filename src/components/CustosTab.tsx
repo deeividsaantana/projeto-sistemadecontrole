@@ -6,7 +6,7 @@
  * previsto — nunca somado ao realizado.
  */
 import { useMemo, useState } from 'react';
-import { Coins, Plus, Search } from 'lucide-react';
+import { BarChart3, Coins, Plus, Search, Truck } from 'lucide-react';
 import type {
   Abastecimento,
   CategoriaCusto,
@@ -29,6 +29,7 @@ import { normalizeComparable } from '../utils/canonicalIdentity';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
 import { formatarData, moeda } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -182,15 +183,11 @@ export default function CustosTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Custo do período', valor: moeda(totalCustos(custos)) },
-          { label: 'Lançamentos', valor: String(custos.length) },
-          { label: 'Manutenção prevista', valor: moeda(previsto) },
-          { label: 'Maior categoria', valor: porCategoria[0] ? `${porCategoria[0].grupo}` : '—' },
+          { label: 'Custo do período', valor: moeda(totalCustos(custos)), tone: 'info' as const, icone: Coins },
+          { label: 'Lançamentos', valor: custos.length, tone: 'neutral' as const, icone: BarChart3 },
+          { label: 'Manutenção prevista', valor: moeda(previsto), tone: 'warning' as const, icone: Truck },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

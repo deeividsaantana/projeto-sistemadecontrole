@@ -5,7 +5,7 @@
  * evidência para decidir regra contratual no lugar de quem responde por ela.
  */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, FileSpreadsheet, Plus, RefreshCw, Search } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Plus, RefreshCw, Search } from 'lucide-react';
 import type { ItemMedicao, Medicao, ObraLocal, RegistroProducao, ServicoObra, SituacaoMedicao } from '../types';
 import {
   excedentesDoContrato,
@@ -17,6 +17,7 @@ import {
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero, moeda } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -164,15 +165,12 @@ export default function MedicoesTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Medições', valor: String(ativas.length) },
-          { label: 'Em aberto', valor: String(emAberto) },
-          { label: 'Aprovadas', valor: String(aprovadas.length) },
-          { label: 'Total aprovado', valor: moeda(aprovadas.reduce((soma, item) => soma + totalMedicao(item.itens), 0)) },
+          { label: 'Medições', valor: ativas.length, tone: 'info' as const, icone: FileText },
+          { label: 'Em aberto', valor: emAberto, tone: 'warning' as const, icone: AlertOctagon },
+          { label: 'Aprovadas', valor: aprovadas.length, tone: 'success' as const, icone: CheckCircle2 },
+          { label: 'Total aprovado', valor: moeda(aprovadas.reduce((soma, item) => soma + totalMedicao(item.itens), 0)), tone: 'success' as const, icone: CheckCircle2 },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

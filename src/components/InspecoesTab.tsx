@@ -4,7 +4,7 @@
  * então nunca fica desatualizado.
  */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Plus, Search, ShieldAlert } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, Plus, Search, ShieldAlert } from 'lucide-react';
 import type {
   Equipamento,
   FrenteServico,
@@ -19,6 +19,7 @@ import { normalizeComparable } from '../utils/canonicalIdentity';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
 import { formatarData } from '../utils/formato';
 import {
+  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -192,15 +193,12 @@ export default function InspecoesTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Abertas', valor: String(painel.abertas) },
-          { label: 'Atrasadas', valor: String(painel.atrasadas) },
-          { label: 'Gravidade alta', valor: String(painel.porGravidade.Alta) },
-          { label: 'Corrigidas', valor: String(painel.corrigidas) },
+          { label: 'Abertas', valor: painel.abertas, tone: 'info' as const, icone: ShieldAlert },
+          { label: 'Atrasadas', valor: painel.atrasadas, tone: 'danger' as const, icone: AlertTriangle },
+          { label: 'Gravidade alta', valor: painel.porGravidade.Alta, tone: 'neutral' as const, icone: ShieldAlert },
+          { label: 'Corrigidas', valor: painel.corrigidas, tone: 'success' as const, icone: CheckCircle2 },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

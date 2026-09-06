@@ -3,7 +3,7 @@
  * dos indicadores de produtividade.
  */
 import { useMemo, useState } from 'react';
-import { ClipboardList, Plus, Search } from 'lucide-react';
+import { Activity, BarChart3, ClipboardList, Clock3, Plus, Search, Users } from 'lucide-react';
 import type { ApontamentoOperacional, EtapaServico, Funcionario, GrupoEquipe } from '../types';
 import { horasNoDia, horasPor, validarApontamento } from '../utils/apontamentos';
 import { normalizeComparable } from '../utils/canonicalIdentity';
@@ -15,6 +15,7 @@ import {
   Modal,
   PageHeader,
   PeriodFilter,
+  StatCard,
   TableBody,
   TableHead,
   TableShell,
@@ -159,15 +160,12 @@ export default function ApontamentosTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Horas apontadas', valor: horasTexto(totalHoras) },
-          { label: 'Lançamentos', valor: String(noPeriodo.length) },
-          { label: 'Colaboradores', valor: String(new Set(noPeriodo.map(item => item.funcionarioId)).size) },
-          { label: 'Serviços', valor: String(porServico.length) },
+          { label: 'Horas apontadas', valor: horasTexto(totalHoras), tone: 'info' as const, icone: Clock3 },
+          { label: 'Lançamentos', valor: noPeriodo.length, tone: 'info' as const, icone: BarChart3 },
+          { label: 'Colaboradores', valor: new Set(noPeriodo.map(item => item.funcionarioId)).size, tone: 'neutral' as const, icone: Users },
+          { label: 'Serviços', valor: porServico.length, tone: 'neutral' as const, icone: ClipboardList },
         ].map(item => (
-          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
         ))}
       </section>
 

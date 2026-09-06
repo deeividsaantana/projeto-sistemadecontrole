@@ -18,3 +18,6 @@ export { Pagination } from './Pagination';
 export { StatCard } from './StatCard';
 export { TableBody, TableHead, TableShell } from './TableShell';
 export { cn, statusTone } from './styles';
+export { Field, SelectField, TextAreaField } from './Field';
+export { SearchInput } from './SearchInput';
+export { ProgressBar, Sparkline, BarrasMini } from './Charts';
