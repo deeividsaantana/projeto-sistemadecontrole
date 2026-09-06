@@ -118,6 +118,7 @@ const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
 const IndicadoresTab = lazy(() => import('./components/IndicadoresTab'));
 const CustosTab = lazy(() => import('./components/CustosTab'));
 const OrcamentoTab = lazy(() => import('./components/OrcamentoTab'));
+const CronogramaTab = lazy(() => import('./components/CronogramaTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4361,6 +4362,14 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'cronograma' && (
+              <CronogramaTab
+                planos={planejamentoItens}
+                producao={producaoRegistros}
+                frentes={frentesServico}
               />
             )}
 
