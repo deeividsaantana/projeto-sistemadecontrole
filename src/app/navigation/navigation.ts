@@ -22,6 +22,7 @@ import {
   ListChecks,
   Bell,
   Bot,
+  Smartphone,
   Gauge,
   Coins,
   FileBarChart,
@@ -63,6 +64,7 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
+      { id: 'modo-campo', label: 'Modo Campo', icon: Smartphone },
       { id: 'central-operacional', label: 'Central Operacional', icon: Radio },
       { id: 'frentes', label: 'Frentes de Serviço', icon: MapPin },
       { id: 'producao', label: 'Produção', icon: BarChart3 },
@@ -144,6 +146,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'notificacoes',
     'assistente',
     'indicadores',
+    'modo-campo',
     'central-operacional',
     'frentes',
     'producao',

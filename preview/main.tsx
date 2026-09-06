@@ -45,6 +45,7 @@ import PermissoesTab from '../src/components/PermissoesTab';
 import AdministracaoTab from '../src/components/AdministracaoTab';
 import NotificacoesTab from '../src/components/NotificacoesTab';
 import AssistenteTab from '../src/components/AssistenteTab';
+import ModoCampoTab from '../src/components/ModoCampoTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -218,6 +219,16 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  'modo-campo': (
+    <ModoCampoTab
+      presencasLink={fx.presencasHistorico}
+      controlesEquipamentos={fx.controlesEquipamentos}
+      producao={[]}
+      ocorrencias={[]}
+      nuvemConectada
+      onNavigate={noop}
     />
   ),
   assistente: (

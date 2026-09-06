@@ -39,6 +39,7 @@ const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
   { screen: 'administracao', titulo: 'Administração' },
   { screen: 'notificacoes', titulo: 'Notificações' },
   { screen: 'assistente', titulo: 'Assistente' },
+  { screen: 'modo-campo', titulo: 'Modo Campo' },
   { screen: 'consulta', titulo: 'Consulta Geral' },
   { screen: 'periodo', titulo: /^Registros de / },
 ];
