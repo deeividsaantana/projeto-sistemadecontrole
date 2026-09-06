@@ -81,6 +81,7 @@ const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const HorasParadasTab = lazy(() => import('./components/HorasParadasTab'));
 const ChecklistTab = lazy(() => import('./components/ChecklistTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
+const EquipesTab = lazy(() => import('./components/EquipesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4007,6 +4008,19 @@ export default function App() {
                 podeAtualizar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'equipes' && (
+              <EquipesTab
+                gruposEquipe={gruposEquipe}
+                funcionarios={funcionarios}
+                obras={obras}
+                presencasLink={presencasLink}
+                controlesEquipamentos={controleEquipamentosDiario}
+                podeRealocar={['admin', 'gestor'].includes(currentUserRole)}
+                onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onNavigate={navigateTo}
               />
             )}

@@ -4,6 +4,7 @@ import {
   ClipboardList,
   FolderPlus,
   Hammer,
+  HardHat,
   LayoutDashboard,
   Radio,
   Settings,
@@ -57,6 +58,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Pessoas',
     items: [
       { id: 'colaboradores', label: 'Colaboradores', icon: UserRound },
+      { id: 'equipes', label: 'Equipes', icon: HardHat },
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
     ],
   },
@@ -90,6 +92,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'estacas',
     'presenca',
     'colaboradores',
+    'equipes',
   ],
   leitura: ['dashboard', 'consulta-geral', 'periodo'],
 };

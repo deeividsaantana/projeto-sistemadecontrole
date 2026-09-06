@@ -19,6 +19,7 @@ import ManutencaoTab from '../src/components/ManutencaoTab';
 import HorasParadasTab from '../src/components/HorasParadasTab';
 import ChecklistTab from '../src/components/ChecklistTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
+import EquipesTab from '../src/components/EquipesTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -192,6 +193,18 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  equipes: (
+    <EquipesTab
+      gruposEquipe={[fx.grupo]}
+      funcionarios={fx.equipeFuncionarios}
+      obras={fx.obras}
+      presencasLink={fx.presencasHistorico}
+      controlesEquipamentos={fx.controlesEquipamentos}
+      podeRealocar
+      onSaveGrupoEquipe={noop}
+      onNavigate={noop}
     />
   ),
   colaboradores: (
