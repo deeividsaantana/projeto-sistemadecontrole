@@ -7,6 +7,7 @@ import {
   Hammer,
   HardHat,
   LayoutDashboard,
+  MapPin,
   Package,
   Radio,
   Settings,
@@ -41,6 +42,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Operação',
     items: [
       { id: 'central-operacional', label: 'Central Operacional', icon: Radio },
+      { id: 'frentes', label: 'Frentes de Serviço', icon: MapPin },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
@@ -92,6 +94,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'dashboard',
     'consulta-geral',
     'central-operacional',
+    'frentes',
     'frota',
     'controle-equipamentos',
     'manutencao',

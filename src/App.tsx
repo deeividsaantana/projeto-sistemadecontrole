@@ -24,6 +24,7 @@ import {
   ApontamentoOperacional,
   RegistroDDS,
   Material,
+  FrenteServico,
   MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
@@ -90,6 +91,7 @@ const EquipesTab = lazy(() => import('./components/EquipesTab'));
 const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
 const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
+const FrentesTab = lazy(() => import('./components/FrentesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -307,6 +309,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['treinamentos', STORAGE_KEYS.treinamentos],
   ['materiaisCadastro', STORAGE_KEYS.materiaisCadastro],
   ['materiaisMovimentos', STORAGE_KEYS.materiaisMovimentos],
+  ['frentesServico', STORAGE_KEYS.frentesServico],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -414,6 +417,7 @@ export default function App() {
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [materiaisCadastro, setMateriaisCadastro] = useState<Material[]>([]);
   const [materiaisMovimentos, setMateriaisMovimentos] = useState<MovimentoMaterial[]>([]);
+  const [frentesServico, setFrentesServico] = useState<FrenteServico[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -612,6 +616,7 @@ export default function App() {
       setTreinamentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.treinamentos), STORAGE_KEYS.treinamentos, [] as Treinamento[]));
       setMateriaisCadastro(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisCadastro), STORAGE_KEYS.materiaisCadastro, [] as Material[]));
       setMateriaisMovimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]));
+      setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, [] as FrenteServico[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -796,6 +801,7 @@ export default function App() {
     treinamentos: readTable(STORAGE_KEYS.treinamentos, [] as Treinamento[]),
     materiaisCadastro: readTable(STORAGE_KEYS.materiaisCadastro, [] as Material[]),
     materiaisMovimentos: readTable(STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]),
+    frentesServico: readTable(STORAGE_KEYS.frentesServico, [] as FrenteServico[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -973,6 +979,7 @@ export default function App() {
           setTreinamentos(normalizeRuntimeCollection<Treinamento>(data.treinamentos));
           setMateriaisCadastro(normalizeRuntimeCollection<Material>(data.materiaisCadastro));
           setMateriaisMovimentos(normalizeRuntimeCollection<MovimentoMaterial>(data.materiaisMovimentos));
+          setFrentesServico(normalizeRuntimeCollection<FrenteServico>(data.frentesServico));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -2963,6 +2970,14 @@ export default function App() {
     );
   };
 
+  const handleSaveFrente = (frente: FrenteServico, isNew: boolean) => {
+    const updated = isNew ? [frente, ...frentesServico] : frentesServico.map(item => item.id === frente.id ? frente : item);
+    saveAndLog('Frentes de Serviço', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} a frente ${frente.nome} (${frente.situacao}).`, historyLogs, () => {
+      setFrentesServico(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.frentesServico, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveMaterial = (material: Material, isNew: boolean) => {
     const updated = isNew ? [material, ...materiaisCadastro] : materiaisCadastro.map(item => item.id === material.id ? material : item);
     saveAndLog('Materiais', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o material ${material.descricao}.`, historyLogs, () => {
@@ -4105,6 +4120,21 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'frentes' && (
+              <FrentesTab
+                frentes={frentesServico}
+                obras={obras}
+                gruposEquipe={gruposEquipe}
+                presencasLink={presencasLink}
+                controlesEquipamentos={controleEquipamentosDiario}
+                apontamentos={apontamentosOperacionais}
+                movimentosMaterial={materiaisMovimentos}
+                ticketsJazida={ticketsJazida}
+                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                onSave={handleSaveFrente}
               />
             )}
 

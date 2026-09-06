@@ -23,6 +23,7 @@ import EquipesTab from '../src/components/EquipesTab';
 import ApontamentosTab from '../src/components/ApontamentosTab';
 import DdsTreinamentosTab from '../src/components/DdsTreinamentosTab';
 import MateriaisTab from '../src/components/MateriaisTab';
+import FrentesTab from '../src/components/FrentesTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -196,6 +197,20 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  frentes: (
+    <FrentesTab
+      frentes={[]}
+      obras={fx.obras}
+      gruposEquipe={[fx.grupo]}
+      presencasLink={fx.presencasHistorico}
+      controlesEquipamentos={fx.controlesEquipamentos}
+      apontamentos={[]}
+      movimentosMaterial={[]}
+      ticketsJazida={fx.ticketsJazida}
+      podeEditar
+      onSave={noop}
     />
   ),
   materiais: (

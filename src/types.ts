@@ -545,6 +545,25 @@ export interface MovimentoMaterial {
   criadoEm: string;
 }
 
+export type SituacaoFrente = 'Planejada' | 'Em execução' | 'Paralisada' | 'Concluída';
+
+export interface FrenteServico {
+  id: string;
+  /** Casa com o campo de texto que equipes e lançamentos já usam. */
+  nome: string;
+  obraId?: string;
+  ramoLocal?: string;
+  servico?: string;
+  responsavel?: string;
+  equipamentoIds?: string[];
+  dataInicio?: string;
+  dataTerminoPrevisto?: string;
+  situacao: SituacaoFrente;
+  observacao?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 
