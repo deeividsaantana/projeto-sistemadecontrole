@@ -564,6 +564,25 @@ export interface FrenteServico {
   atualizadoEm: string;
 }
 
+export type CondicaoClimatica = 'Bom' | 'Nublado' | 'Chuva fraca' | 'Chuva forte' | 'Impraticável';
+
+export interface DiarioObra {
+  id: string;
+  data: string; // YYYY-MM-DD
+  obraId?: string;
+  climaManha: CondicaoClimatica;
+  climaTarde: CondicaoClimatica;
+  /** Horas paradas por chuva no dia, quando houver. */
+  horasParadasClima?: number;
+  visitas?: string;
+  observacao?: string;
+  /** Fotos do dia em data URL. */
+  fotos?: string[];
+  responsavel: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

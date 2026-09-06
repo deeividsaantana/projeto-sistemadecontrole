@@ -26,6 +26,7 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'materiaisCadastro',
   'materiaisMovimentos',
   'frentesServico',
+  'diariosObra',
   'materiaisRegistros',
   'controleEquipamentosDiario',
   'periodosArquivados',

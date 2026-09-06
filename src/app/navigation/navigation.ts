@@ -18,6 +18,7 @@ import {
   Activity,
   Users,
   Search,
+  NotebookPen,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -43,6 +44,7 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'central-operacional', label: 'Central Operacional', icon: Radio },
       { id: 'frentes', label: 'Frentes de Serviço', icon: MapPin },
+      { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
@@ -95,6 +97,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'consulta-geral',
     'central-operacional',
     'frentes',
+    'diario-obra',
     'frota',
     'controle-equipamentos',
     'manutencao',
