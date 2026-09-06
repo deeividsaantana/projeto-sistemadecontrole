@@ -17,7 +17,7 @@ const CLOUD_MANIFEST_ID = 'main_data_v2';
 const LEGACY_DOCUMENT_ID = 'main_data';
 const CLOUD_SCHEMA_VERSION = 2;
 const INTERMEDIATE_META_ID = 'meta';
-const INTERMEDIATE_TABLE_IDS = [
+export const INTERMEDIATE_TABLE_IDS = [
   'empresas',
   'obras',
   'equipamentos',

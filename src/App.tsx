@@ -123,6 +123,7 @@ const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const TimelineTab = lazy(() => import('./components/TimelineTab'));
 const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
 const PermissoesTab = lazy(() => import('./components/PermissoesTab'));
+const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4367,6 +4368,14 @@ export default function App() {
                 podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'administracao' && (
+              <AdministracaoTab
+                ultimaSincronizacao={lastCloudSync}
+                nuvemConectada={isFirebaseConnected}
                 onNavigate={navigateTo}
               />
             )}

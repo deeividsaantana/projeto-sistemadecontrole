@@ -47,6 +47,7 @@ import './buscaGlobal.test';
 import './timeline.test';
 import './auditoria.test';
 import './permissoes.test';
+import './diagnostico.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';
