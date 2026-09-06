@@ -836,6 +836,48 @@ export interface DocumentoArquivo {
   atualizadoEm: string;
 }
 
+export type TipoOcorrencia =
+  | 'Acidente'
+  | 'Incidente'
+  | 'Quebra de equipamento'
+  | 'Parada de produção'
+  | 'Clima'
+  | 'Falta de material'
+  | 'Visita'
+  | 'Reclamação'
+  | 'Outro';
+
+export type ImpactoOcorrencia = 'Sem impacto' | 'Baixo' | 'Médio' | 'Alto';
+export type SituacaoOcorrencia = 'Registrada' | 'Em análise' | 'Resolvida' | 'Sem tratativa';
+
+/**
+ * Ocorrência do dia: o que saiu do previsto, quanto parou e o que foi feito.
+ * As horas paradas informadas aqui são as da ocorrência, não substituem o
+ * controle de horas paradas do equipamento.
+ */
+export interface Ocorrencia {
+  id: string;
+  numero: string;
+  data: string; // YYYY-MM-DD
+  hora?: string; // HH:MM
+  tipo: TipoOcorrencia;
+  impacto: ImpactoOcorrencia;
+  situacao: SituacaoOcorrencia;
+  descricao: string;
+  local?: string;
+  obraId?: string;
+  frente?: string;
+  equipamentoId?: string;
+  funcionarioId?: string;
+  horasParadas?: number;
+  providencia?: string;
+  registradoPor: string;
+  fotos?: string[];
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

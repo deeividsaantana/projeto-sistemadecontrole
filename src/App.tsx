@@ -35,6 +35,7 @@ import {
   NaoConformidade,
   Medicao,
   DocumentoArquivo,
+  Ocorrencia,
   MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
@@ -110,6 +111,7 @@ const InspecoesTab = lazy(() => import('./components/InspecoesTab'));
 const NaoConformidadesTab = lazy(() => import('./components/NaoConformidadesTab'));
 const MedicoesTab = lazy(() => import('./components/MedicoesTab'));
 const DocumentosTab = lazy(() => import('./components/DocumentosTab'));
+const OcorrenciasTab = lazy(() => import('./components/OcorrenciasTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -338,6 +340,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['naoConformidades', STORAGE_KEYS.naoConformidades],
   ['medicoes', STORAGE_KEYS.medicoes],
   ['documentos', STORAGE_KEYS.documentos],
+  ['ocorrencias', STORAGE_KEYS.ocorrencias],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -456,6 +459,7 @@ export default function App() {
   const [naoConformidades, setNaoConformidades] = useState<NaoConformidade[]>([]);
   const [medicoes, setMedicoes] = useState<Medicao[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoArquivo[]>([]);
+  const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -665,6 +669,7 @@ export default function App() {
       setNaoConformidades(parseStoredJson(localStorage.getItem(STORAGE_KEYS.naoConformidades), STORAGE_KEYS.naoConformidades, [] as NaoConformidade[]));
       setMedicoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.medicoes), STORAGE_KEYS.medicoes, [] as Medicao[]));
       setDocumentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.documentos), STORAGE_KEYS.documentos, [] as DocumentoArquivo[]));
+      setOcorrencias(parseStoredJson(localStorage.getItem(STORAGE_KEYS.ocorrencias), STORAGE_KEYS.ocorrencias, [] as Ocorrencia[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -860,6 +865,7 @@ export default function App() {
     naoConformidades: readTable(STORAGE_KEYS.naoConformidades, [] as NaoConformidade[]),
     medicoes: readTable(STORAGE_KEYS.medicoes, [] as Medicao[]),
     documentos: readTable(STORAGE_KEYS.documentos, [] as DocumentoArquivo[]),
+    ocorrencias: readTable(STORAGE_KEYS.ocorrencias, [] as Ocorrencia[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -1048,6 +1054,7 @@ export default function App() {
           setNaoConformidades(normalizeRuntimeCollection<NaoConformidade>(data.naoConformidades));
           setMedicoes(normalizeRuntimeCollection<Medicao>(data.medicoes));
           setDocumentos(normalizeRuntimeCollection<DocumentoArquivo>(data.documentos));
+          setOcorrencias(normalizeRuntimeCollection<Ocorrencia>(data.ocorrencias));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -3046,6 +3053,14 @@ export default function App() {
     });
   };
 
+  const handleSaveOcorrencia = (ocorrencia: Ocorrencia, isNew: boolean) => {
+    const updated = isNew ? [ocorrencia, ...ocorrencias] : ocorrencias.map(item => item.id === ocorrencia.id ? ocorrencia : item);
+    saveAndLog('Ocorrências', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Atualizou'} a ocorrência ${ocorrencia.numero} (${ocorrencia.tipo}) em ${ocorrencia.data}.`, historyLogs, () => {
+      setOcorrencias(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.ocorrencias, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveDocumento = (documento: DocumentoArquivo, isNew: boolean) => {
     const updated = isNew ? [documento, ...documentos] : documentos.map(item => item.id === documento.id ? documento : item);
     saveAndLog('Documentos', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o documento ${documento.titulo} (${documento.tipo}).`, historyLogs, () => {
@@ -4283,6 +4298,19 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'ocorrencias' && (
+              <OcorrenciasTab
+                ocorrencias={ocorrencias}
+                obras={obras}
+                frentes={frentesServico}
+                equipamentos={equipamentos}
+                funcionarios={funcionarios}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                onSave={handleSaveOcorrencia}
               />
             )}
 

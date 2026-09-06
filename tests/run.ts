@@ -35,6 +35,7 @@ import './inspecoes.test';
 import './naoConformidades.test';
 import './medicoes.test';
 import './documentos.test';
+import './ocorrencias.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';
