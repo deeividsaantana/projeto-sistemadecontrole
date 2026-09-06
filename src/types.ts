@@ -732,6 +732,37 @@ export interface Inspecao {
   atualizadoEm: string;
 }
 
+export type OrigemNaoConformidade = 'FVS' | 'Inspeção' | 'Checklist' | 'Cliente' | 'Interna';
+export type SituacaoNaoConformidade = 'Aberta' | 'Em tratamento' | 'Verificação' | 'Encerrada' | 'Cancelada';
+
+/**
+ * Não conformidade tratada com causa e ação. Quando nasce de uma FVS ou de uma
+ * inspeção guarda só o id de origem — a descrição continua morando lá.
+ */
+export interface NaoConformidade {
+  id: string;
+  numero: string;
+  data: string; // YYYY-MM-DD
+  origem: OrigemNaoConformidade;
+  origemId?: string;
+  origemNumero?: string;
+  descricao: string;
+  local?: string;
+  obraId?: string;
+  frente?: string;
+  causaRaiz?: string;
+  acaoCorretiva?: string;
+  responsavelAcao?: string;
+  prazo?: string; // YYYY-MM-DD
+  situacao: SituacaoNaoConformidade;
+  eficaz?: boolean;
+  dataEncerramento?: string;
+  registradoPor: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

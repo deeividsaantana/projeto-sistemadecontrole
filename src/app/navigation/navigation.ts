@@ -20,6 +20,7 @@ import {
   Search,
   NotebookPen,
   ShieldAlert,
+  AlertOctagon,
   BarChart3,
   type LucideIcon,
 } from 'lucide-react';
@@ -51,6 +52,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
       { id: 'fvs', label: 'FVS', icon: ClipboardCheck },
       { id: 'inspecoes', label: 'Inspeções', icon: ShieldAlert },
+      { id: 'nao-conformidades', label: 'Não Conformidades', icon: AlertOctagon },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],

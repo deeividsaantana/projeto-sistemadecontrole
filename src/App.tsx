@@ -32,6 +32,7 @@ import {
   ModeloFvs,
   FichaVerificacaoServico,
   Inspecao,
+  NaoConformidade,
   MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
@@ -104,6 +105,7 @@ const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
 const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
 const FvsTab = lazy(() => import('./components/FvsTab'));
 const InspecoesTab = lazy(() => import('./components/InspecoesTab'));
+const NaoConformidadesTab = lazy(() => import('./components/NaoConformidadesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -329,6 +331,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['modelosFvs', STORAGE_KEYS.modelosFvs],
   ['fichasFvs', STORAGE_KEYS.fichasFvs],
   ['inspecoes', STORAGE_KEYS.inspecoes],
+  ['naoConformidades', STORAGE_KEYS.naoConformidades],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -444,6 +447,7 @@ export default function App() {
   const [modelosFvs, setModelosFvs] = useState<ModeloFvs[]>([]);
   const [fichasFvs, setFichasFvs] = useState<FichaVerificacaoServico[]>([]);
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
+  const [naoConformidades, setNaoConformidades] = useState<NaoConformidade[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -650,6 +654,7 @@ export default function App() {
       setModelosFvs(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosFvs), STORAGE_KEYS.modelosFvs, [] as ModeloFvs[]));
       setFichasFvs(parseStoredJson(localStorage.getItem(STORAGE_KEYS.fichasFvs), STORAGE_KEYS.fichasFvs, [] as FichaVerificacaoServico[]));
       setInspecoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.inspecoes), STORAGE_KEYS.inspecoes, [] as Inspecao[]));
+      setNaoConformidades(parseStoredJson(localStorage.getItem(STORAGE_KEYS.naoConformidades), STORAGE_KEYS.naoConformidades, [] as NaoConformidade[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -842,6 +847,7 @@ export default function App() {
     modelosFvs: readTable(STORAGE_KEYS.modelosFvs, [] as ModeloFvs[]),
     fichasFvs: readTable(STORAGE_KEYS.fichasFvs, [] as FichaVerificacaoServico[]),
     inspecoes: readTable(STORAGE_KEYS.inspecoes, [] as Inspecao[]),
+    naoConformidades: readTable(STORAGE_KEYS.naoConformidades, [] as NaoConformidade[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -1027,6 +1033,7 @@ export default function App() {
           setModelosFvs(normalizeRuntimeCollection<ModeloFvs>(data.modelosFvs));
           setFichasFvs(normalizeRuntimeCollection<FichaVerificacaoServico>(data.fichasFvs));
           setInspecoes(normalizeRuntimeCollection<Inspecao>(data.inspecoes));
+          setNaoConformidades(normalizeRuntimeCollection<NaoConformidade>(data.naoConformidades));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -3025,6 +3032,14 @@ export default function App() {
     });
   };
 
+  const handleSaveNaoConformidade = (registro: NaoConformidade, isNew: boolean) => {
+    const updated = isNew ? [registro, ...naoConformidades] : naoConformidades.map(item => item.id === registro.id ? registro : item);
+    saveAndLog('Não Conformidades', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a NC ${registro.numero} (${registro.origem}) — ${registro.situacao}.`, historyLogs, () => {
+      setNaoConformidades(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.naoConformidades, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveInspecao = (inspecao: Inspecao, isNew: boolean) => {
     const updated = isNew ? [inspecao, ...inspecoes] : inspecoes.map(item => item.id === inspecao.id ? inspecao : item);
     saveAndLog('Inspeções', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a inspeção ${inspecao.numero} em ${inspecao.local} — ${inspecao.situacao}.`, historyLogs, () => {
@@ -4223,6 +4238,19 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'nao-conformidades' && (
+              <NaoConformidadesTab
+                registros={naoConformidades}
+                fichasFvs={fichasFvs}
+                inspecoes={inspecoes}
+                obras={obras}
+                frentes={frentesServico}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor'].includes(currentUserRole)}
+                onSave={handleSaveNaoConformidade}
               />
             )}
 
