@@ -3,7 +3,7 @@
  * operação já preenche e permite corrigir o status da frota sem sair daqui.
  */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ChevronRight, ClipboardList, MapPin, Truck, Users, Wrench } from 'lucide-react';
+import { Activity, AlertTriangle, ChevronRight, ClipboardList, MapPin, Truck, Users, Wrench } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
   Equipamento,
@@ -16,7 +16,16 @@ import type {
 } from '../types';
 import type { FleetPersistedRecord } from '../fleet/domain';
 import { isOrdemEncerrada } from '../utils/manutencao';
-import { Badge, Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
+import {
+  Badge,
+  Card,
+  CompactMetric,
+  DataTable,
+  EmptyState,
+  PageHeader,
+  isoDay,
+  statusTone,
+} from '../shared/ui';
 
 interface CentralOperacionalTabProps {
   equipamentos: Equipamento[];
@@ -132,13 +141,35 @@ export default function CentralOperacionalTab({
 
   const viagensDoDia = useMemo(() => ticketsJazida.filter(item => item.data === dia), [ticketsJazida, dia]);
 
-  const resumo = [
-    { label: 'Em operação', valor: frota.informados.filter(item => item.status === 'Em operação').length, tone: 'success' as const, icon: Truck },
-    { label: 'Em manutenção', valor: frota.informados.filter(item => ['Em manutenção', 'Aguardando manutenção'].includes(item.status)).length, tone: 'warning' as const, icon: Wrench },
-    { label: 'Sem informação', valor: frota.semInformacao.length, tone: 'danger' as const, icon: AlertTriangle },
-    { label: 'Presentes', valor: presencasDoDia.filter(item => item.status === 'Presente').length, tone: 'success' as const, icon: Users },
-    { label: 'Viagens', valor: viagensDoDia.length, tone: 'info' as const, icon: ClipboardList },
-  ];
+  const operando = frota.informados.filter(item => item.status === 'Em operação');
+  const emManutencao = frota.informados.filter(item => ['Em manutenção', 'Aguardando manutenção'].includes(item.status));
+  const aConfirmar = frota.informados.filter(item => ['A confirmar', 'Aguardando motorista', 'Aguardando equipamento'].includes(item.status));
+  const aDisposicao = frota.informados.filter(item => ['Disponível', 'Reserva'].includes(item.status));
+  const disponibilidade = frota.informados.length
+    ? Math.round((operando.length / frota.informados.length) * 100)
+    : 0;
+
+  /**
+   * Painel de posição por frente. O sistema não guarda coordenada de GPS, então
+   * a posição mostrada é a frente de serviço informada no lançamento — que é o
+   * que a operação de fato registra. Inventar latitude e longitude seria criar
+   * um dado que ninguém preencheu.
+   */
+  const posicaoPorFrente = useMemo(() => {
+    const mapa = new Map<string, { operando: number; manutencao: number; confirmar: number; disposicao: number }>();
+    frota.informados.forEach(item => {
+      const frente = (item as FleetPersistedRecord).frenteServico?.trim() || 'Sem frente informada';
+      const atual = mapa.get(frente) || { operando: 0, manutencao: 0, confirmar: 0, disposicao: 0 };
+      if (item.status === 'Em operação') atual.operando += 1;
+      else if (['Em manutenção', 'Aguardando manutenção'].includes(item.status)) atual.manutencao += 1;
+      else if (['Disponível', 'Reserva'].includes(item.status)) atual.disposicao += 1;
+      else atual.confirmar += 1;
+      mapa.set(frente, atual);
+    });
+    return [...mapa.entries()]
+      .map(([nome, dados]) => ({ nome, ...dados, total: dados.operando + dados.manutencao + dados.confirmar + dados.disposicao }))
+      .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [frota.informados]);
 
   const alterarStatus = (registro: ControleEquipamentoDiario, status: StatusControleEquipamentoDiario) => {
     if (!podeAtualizar || status === registro.status) return;
@@ -190,19 +221,68 @@ export default function CentralOperacionalTab({
         )}
       />
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
-        {resumo.map(item => (
-          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="flex items-center gap-2 text-slate-500">
-              <item.icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 text-[10px] font-bold uppercase leading-tight tracking-wide">{item.label}</span>
-            </div>
-            <strong className={`mt-1.5 block text-2xl font-black tabular-nums ${item.tone === 'danger' && item.valor > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
-              {item.valor}
-            </strong>
-          </div>
-        ))}
+      <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <CompactMetric label="Equipamentos" valor={frota.informados.length} contexto={`de ${equipamentos.length} cadastrados`} icone={Truck} estado="operacao" />
+        <CompactMetric label="Frentes" valor={posicaoPorFrente.length} contexto="com equipamento no dia" icone={MapPin} estado="confirmar" />
+        <CompactMetric label="Equipes" valor={equipes.filter(item => item.total > 0).length} contexto={`de ${equipes.length} ativas`} icone={Users} estado="neutro" />
+        <CompactMetric label="Disponibilidade" valor={`${disponibilidade}%`} contexto={`${operando.length} em operação`} icone={Activity} estado="operacao" />
       </section>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+            <h2 className="text-[13px] font-semibold text-slate-800">Posição da frota por frente</h2>
+            <span className="text-[11px] text-slate-400">Posição informada no lançamento, não GPS</span>
+          </header>
+          {posicaoPorFrente.length === 0 ? (
+            <EmptyState icon={MapPin} title="Nenhum equipamento posicionado" description="A frente aparece assim que o controle diário for lançado." />
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {posicaoPorFrente.map(frente => (
+                <li key={frente.nome} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-[13px] font-semibold text-slate-800">{frente.nome}</span>
+                    <span className="shrink-0 text-[12px] tabular-nums text-slate-500">{frente.total} equipamento(s)</span>
+                  </div>
+                  <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    {frente.operando > 0 && <span style={{ width: `${(frente.operando / frente.total) * 100}%`, backgroundColor: '#087353' }} title={`Em operação: ${frente.operando}`} />}
+                    {frente.manutencao > 0 && <span style={{ width: `${(frente.manutencao / frente.total) * 100}%`, backgroundColor: '#d97706' }} title={`Manutenção: ${frente.manutencao}`} />}
+                    {frente.confirmar > 0 && <span style={{ width: `${(frente.confirmar / frente.total) * 100}%`, backgroundColor: '#0284c7' }} title={`A confirmar: ${frente.confirmar}`} />}
+                    {frente.disposicao > 0 && <span style={{ width: `${(frente.disposicao / frente.total) * 100}%`, backgroundColor: '#94a3b8' }} title={`À disposição: ${frente.disposicao}`} />}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <footer className="flex flex-wrap gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-slate-500">
+            {[['#087353', 'Em operação'], ['#d97706', 'Manutenção'], ['#0284c7', 'A confirmar'], ['#94a3b8', 'À disposição']].map(([cor, rotulo]) => (
+              <span key={rotulo} className="inline-flex items-center gap-1.5">
+                <span className="size-2 rounded-full" style={{ backgroundColor: cor }} /> {rotulo}
+              </span>
+            ))}
+          </footer>
+        </article>
+
+        <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+            <h2 className="text-[13px] font-semibold text-slate-800">Equipamentos em operação</h2>
+            <button type="button" onClick={() => onNavigate('controle-equipamentos')} className="text-[12px] font-semibold text-[#087353] hover:text-[#065f3c]">Ver todos</button>
+          </header>
+          <DataTable
+            larguraMinima={560}
+            itens={operando}
+            chaveDe={item => item.id}
+            vazio={<EmptyState icon={Truck} title="Nenhum equipamento em operação" description="Os lançamentos aparecem aqui assim que a operação registrar." />}
+            colunas={[
+              { chave: 'prefixo', titulo: 'Prefixo', render: item => <span className="font-semibold text-slate-800">{item.prefixo}</span> },
+              { chave: 'local', titulo: 'Local', render: item => (item as FleetPersistedRecord).frenteServico || '—' },
+              { chave: 'equipe', titulo: 'Equipe', render: item => item.nomeMotorista || '—', ocultarNoCelular: true },
+              { chave: 'atualizacao', titulo: 'Última atualização', render: item => <span className="tabular-nums text-slate-500">{item.horaSaida || (item.atualizadoEm || '').slice(11, 16) || '—'}</span>, ocultarNoCelular: true },
+            ]}
+            acoes={[{ rotulo: 'Abrir controle diário', onSelect: () => onNavigate('controle-equipamentos') }]}
+          />
+        </article>
+      </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         <Card

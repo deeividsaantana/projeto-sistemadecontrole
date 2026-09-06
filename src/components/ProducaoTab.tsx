@@ -4,18 +4,23 @@
  * quantidade prevista no contrato o sistema não exibe percentual inventado.
  */
 import { useMemo, useState } from 'react';
-import { Activity, BarChart3, ClipboardList, Plus, Search, TrendingUp } from 'lucide-react';
+import { Activity, BarChart3, ClipboardList, Download, Plus, Search, TrendingUp } from 'lucide-react';
 import type { FrenteServico, GrupoEquipe, ObraLocal, RegistroProducao, ServicoObra, SituacaoServico } from '../types';
 import { avancoDosServicos, producaoPorDia, validarProducao } from '../utils/producao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
 import {
   Badge,
+  BarrasMini,
+  Button,
+  CompactMetric,
   EmptyState,
   Modal,
   PageHeader,
+  ProgressBar,
   SearchInput,
   StatCard,
+  StatusBadge,
   TableBody,
   TableHead,
   TableShell,
@@ -169,26 +174,27 @@ export default function ProducaoTab({
     <div id="producao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Produção"
-        description="Serviços contratados e produção executada. O avanço vem da soma dos lançamentos."
-        actions={podeEditar ? (
+        description="Acompanhamento da produção e produtividade."
+        actions={(
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => abrirServico()} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Novo serviço</button>
-            <button type="button" onClick={() => abrirLancamento()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
-              <Plus className="h-4 w-4" /> Lançar produção
-            </button>
+            <Button variant="secondary" icon={Download} onClick={() => window.print()}>Exportar</Button>
+            {podeEditar && <Button variant="secondary" onClick={() => abrirServico()}>Novo serviço</Button>}
+            {podeEditar && <Button variant="primary" icon={Plus} onClick={() => abrirLancamento()}>Lançar produção</Button>}
           </div>
-        ) : undefined}
+        )}
       />
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {[
-          { label: 'Serviços ativos', valor: servicosAtivos.length, tone: 'info' as const, icone: BarChart3 },
-          { label: 'Lançamentos', valor: registrosAtivos.length, tone: 'neutral' as const, icone: BarChart3 },
-          { label: 'Lançados hoje', valor: totalExecutadoHoje, tone: 'neutral' as const, icone: BarChart3 },
-          { label: 'Serviços em 100%', valor: concluidos, tone: 'success' as const, icone: BarChart3 },
-        ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
-        ))}
+      <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <CompactMetric label="Total de lançamentos" valor={registrosAtivos.length} contexto="registros" icone={ClipboardList} estado="operacao" />
+        <CompactMetric label="Serviços ativos" valor={servicosAtivos.length} contexto={`${concluidos} em 100%`} icone={BarChart3} estado="confirmar" />
+        <CompactMetric label="Lançados hoje" valor={totalExecutadoHoje} contexto="registros" icone={TrendingUp} estado="neutro" />
+        <CompactMetric
+          label="Média por serviço"
+          valor={servicosAtivos.length ? (registrosAtivos.length / servicosAtivos.length).toFixed(1).replace('.', ',') : '0'}
+          contexto="lançamentos"
+          icone={Activity}
+          estado="manutencao"
+        />
       </section>
 
       {ultimosDias.length > 0 && (
@@ -196,18 +202,11 @@ export default function ProducaoTab({
           <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
             <TrendingUp className="h-4 w-4 text-emerald-600" /> Produção dos últimos dias
           </h2>
-          <div className="mt-3 flex items-end gap-1.5 overflow-x-auto">
-            {ultimosDias.map(item => (
-              <div key={item.data} className="flex min-w-0 flex-1 shrink-0 basis-8 flex-col items-center gap-1">
-                <span className="text-[10px] font-bold tabular-nums text-slate-500">{numero(item.quantidade)}</span>
-                <div
-                  className="w-full rounded-t bg-emerald-600/80"
-                  style={{ height: `${picoDia > 0 ? Math.max(6, (item.quantidade / picoDia) * 72) : 6}px` }}
-                />
-                <span className="text-[9px] text-slate-400">{item.data.slice(8)}/{item.data.slice(5, 7)}</span>
-              </div>
-            ))}
-          </div>
+          <BarrasMini
+            className="mt-3"
+            dados={ultimosDias.map(item => ({ rotulo: `${item.data.slice(8)}/${item.data.slice(5, 7)}`, valor: item.quantidade }))}
+            formatar={valor => numero(valor)}
+          />
         </section>
       )}
 
@@ -280,10 +279,11 @@ export default function ProducaoTab({
                 <th className="p-3">Unidade</th>
                 {aba === 'avanco' ? (
                   <>
-                    <th className="p-3">Previsto</th>
-                    <th className="p-3">Executado</th>
+                    <th className="p-3">Meta</th>
+                    <th className="p-3">Quantidade</th>
                     <th className="p-3">Saldo</th>
-                    <th className="p-3">Avanço</th>
+                    <th className="p-3">%</th>
+                    <th className="p-3">Status</th>
                   </>
                 ) : (
                   <>
@@ -308,15 +308,13 @@ export default function ProducaoTab({
                       <td className="p-3 font-mono text-slate-600">{item.saldo === undefined ? '—' : numero(item.saldo)}</td>
                       <td className="p-3">
                         {item.percentual === undefined ? (
-                          <span className="text-[11px] text-slate-400">sem previsto</span>
+                          <span className="text-[11px] text-slate-400">sem meta</span>
                         ) : (
-                          <div className="flex min-w-28 items-center gap-2">
-                            <div className="h-1.5 flex-1 rounded-full bg-slate-100">
-                              <div className="h-1.5 rounded-full bg-emerald-600" style={{ width: `${Math.min(100, item.percentual)}%` }} />
-                            </div>
-                            <span className="font-mono text-[11px] font-bold text-slate-700">{item.percentual}%</span>
-                          </div>
+                          <ProgressBar valor={item.percentual} rotulo={`${item.percentual}%`} tone={item.percentual >= 100 ? 'success' : item.percentual >= 60 ? 'info' : 'warning'} />
                         )}
+                      </td>
+                      <td className="p-3">
+                        <StatusBadge>{item.percentual !== undefined && item.percentual >= 100 ? 'Concluído' : item.servico.situacao === 'Ativo' ? 'Em andamento' : item.servico.situacao}</StatusBadge>
                       </td>
                     </>
                   ) : (
