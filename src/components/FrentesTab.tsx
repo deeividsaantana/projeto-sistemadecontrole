@@ -63,7 +63,7 @@ export default function FrentesTab({
   });
 
   const ordenadas = useMemo(
-    () => [...frentes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true })),
+    () => frentes.filter(item => item.ativo !== false).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true })),
     [frentes],
   );
 
@@ -98,6 +98,7 @@ export default function FrentesTab({
       dataTerminoPrevisto: form.dataTerminoPrevisto || undefined,
       situacao: form.situacao,
       observacao: form.observacao.trim() || undefined,
+      ativo: editando?.ativo ?? true,
       criadoEm: editando?.criadoEm || agora,
       atualizadoEm: agora,
     }, !editando);

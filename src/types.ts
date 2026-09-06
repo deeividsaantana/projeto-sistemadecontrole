@@ -560,6 +560,8 @@ export interface FrenteServico {
   dataTerminoPrevisto?: string;
   situacao: SituacaoFrente;
   observacao?: string;
+  /** Soft delete: frente encerrada some da operação sem apagar o histórico. */
+  ativo: boolean;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -579,6 +581,8 @@ export interface DiarioObra {
   /** Fotos do dia em data URL. */
   fotos?: string[];
   responsavel: string;
+  /** Soft delete: o diário é registro legal da obra, nunca some do histórico. */
+  ativo: boolean;
   criadoEm: string;
   atualizadoEm: string;
 }

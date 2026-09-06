@@ -290,7 +290,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-400">ERP v2.6</p>
-            <h2 className="mt-1 text-2xl font-black text-white">Controle de Estacas</h2>
+            <h1 className="mt-1 text-2xl font-black text-white">Controle de Estacas</h1>
             <p className="mt-1 text-xs text-slate-400">Recebimento, NF, lote físico, cravação, sobra, perda e saldo confirmado.</p>
           </div>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-500">

@@ -55,9 +55,12 @@ export default function DiarioObraTab({
   const inputFoto = useRef<HTMLInputElement>(null);
   const [erro, setErro] = useState('');
 
+  // Soft delete: diário inativado sai da tela sem sumir do histórico.
+  const ativos = useMemo(() => diarios.filter(item => item.ativo !== false), [diarios]);
+
   const diario = useMemo(
-    () => diarios.find(item => item.data === dia && (item.obraId || '') === obraId),
-    [diarios, dia, obraId],
+    () => ativos.find(item => item.data === dia && (item.obraId || '') === obraId),
+    [ativos, dia, obraId],
   );
 
   const [rascunho, setRascunho] = useState<Partial<DiarioObra>>({});
@@ -119,6 +122,7 @@ export default function DiarioObraTab({
       observacao: valor.observacao?.trim() || undefined,
       fotos: valor.fotos,
       responsavel: diario?.responsavel || responsavel,
+      ativo: diario?.ativo ?? true,
       criadoEm: diario?.criadoEm || agora,
       atualizadoEm: agora,
     }, !diario);
@@ -259,11 +263,11 @@ export default function DiarioObraTab({
       </div>
 
       <Card className="mt-4" title="Diários registrados" flush>
-        {diarios.length === 0 ? (
+        {ativos.length === 0 ? (
           <EmptyState icon={NotebookPen} title="Nenhum diário registrado" description="Registre o clima e as observações do dia." />
         ) : (
           <ul className="divide-y divide-slate-100">
-            {[...diarios].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 15).map(item => (
+            {[...ativos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 15).map(item => (
               <li key={item.id}>
                 <button
                   type="button"

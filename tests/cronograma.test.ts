@@ -15,7 +15,7 @@ const producao: RegistroProducao = {
 };
 
 const frente: FrenteServico = {
-  id: 'f1', nome: 'Frente 1', situacao: 'Em execução', dataInicio: '2026-01-01',
+  id: 'f1', nome: 'Frente 1', situacao: 'Em execução', ativo: true, dataInicio: '2026-01-01',
   dataTerminoPrevisto: '2026-01-20', criadoEm: '', atualizadoEm: '',
 };
 

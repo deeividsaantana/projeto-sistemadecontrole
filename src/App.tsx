@@ -3279,8 +3279,11 @@ export default function App() {
   };
 
   const handleSaveModeloChecklist = (modelo: ModeloChecklist) => {
-    setModeloChecklist(modelo);
-    writeStorageValue(localStorage, STORAGE_KEYS.modelosChecklist, JSON.stringify([modelo]));
+    // Mudar o modelo muda o que a operação verifica todo dia: precisa de rastro.
+    saveAndLog('Checklist', 'Editou', `Alterou o modelo ${modelo.nome} (${modelo.itens.length} itens).`, historyLogs, () => {
+      setModeloChecklist(modelo);
+      writeStorageValue(localStorage, STORAGE_KEYS.modelosChecklist, JSON.stringify([modelo]));
+    });
   };
 
   const handleSaveOrdemServico = (ordem: OrdemServico, isNew: boolean) => {
