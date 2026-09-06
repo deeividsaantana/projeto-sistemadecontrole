@@ -9,11 +9,12 @@ import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/esto
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
 import {
-  StatCard,
   Badge,
   EmptyState,
   Modal,
   PageHeader,
+  SearchInput,
+  StatCard,
   TableBody,
   TableHead,
   TableShell,
@@ -205,16 +206,13 @@ export default function MateriaisTab({
         ))}
       </div>
 
-      <label className="relative mt-3 block">
-        <span className="sr-only">Buscar material</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input
-          value={busca}
-          onChange={event => setBusca(event.target.value)}
-          placeholder="Código, descrição, categoria, fornecedor ou nota"
-          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
-        />
-      </label>
+      <SearchInput
+        className="mt-3"
+        label="Buscar material"
+        value={busca}
+        onChange={setBusca}
+        placeholder="Código, descrição, categoria, fornecedor ou nota"
+      />
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {aba === 'movimentos' ? (

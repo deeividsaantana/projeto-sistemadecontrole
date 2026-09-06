@@ -15,6 +15,7 @@ import {
   Modal,
   PageHeader,
   PeriodFilter,
+  SearchInput,
   StatCard,
   TableBody,
   TableHead,
@@ -191,16 +192,13 @@ export default function ApontamentosTab({
         ))}
       </div>
 
-      <label className="relative mt-4 block">
-        <span className="sr-only">Buscar apontamento</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input
-          value={busca}
-          onChange={event => setBusca(event.target.value)}
-          placeholder="Colaborador, atividade, serviço, frente ou equipe"
-          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
-        />
-      </label>
+      <SearchInput
+        className="mt-3"
+        label="Buscar apontamento"
+        value={busca}
+        onChange={setBusca}
+        placeholder="Colaborador, atividade, serviço, frente ou equipe"
+      />
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {lista.length === 0 ? (
