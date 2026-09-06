@@ -112,6 +112,7 @@ const NaoConformidadesTab = lazy(() => import('./components/NaoConformidadesTab'
 const MedicoesTab = lazy(() => import('./components/MedicoesTab'));
 const DocumentosTab = lazy(() => import('./components/DocumentosTab'));
 const OcorrenciasTab = lazy(() => import('./components/OcorrenciasTab'));
+const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4297,6 +4298,33 @@ export default function App() {
                 podeAtualizar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'pendencias' && (
+              <PendenciasTab
+                dados={{
+                  equipamentos,
+                  controlesEquipamentos: controleEquipamentosDiario,
+                  gruposEquipe,
+                  presencasLink,
+                  listasPresenca,
+                  obras,
+                  ordensServico,
+                  ticketsJazida,
+                  fichasFvs,
+                  inspecoes,
+                  naoConformidades,
+                  documentos,
+                  treinamentos,
+                  planejamento: planejamentoItens,
+                  producao: producaoRegistros,
+                  medicoes,
+                  materiais: materiaisCadastro,
+                  movimentosMaterial: materiaisMovimentos,
+                  ocorrencias,
+                }}
                 onNavigate={navigateTo}
               />
             )}

@@ -16,7 +16,10 @@ test('perfil administrador mantém acesso a todos os módulos atuais', () => {
 test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ROLE_ACCESS.gestor.includes('configuracoes'), false);
   assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'consulta-geral', 'periodo']);
-  assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), false);
+  // Pendências virou tela própria: é derivada dos registros, então gestão e
+  // operação enxergam a mesma lista; leitura continua sem ela.
+  assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), true);
+  assert.equal(ROLE_ACCESS.leitura.includes('pendencias'), false);
   assert.equal(ROLE_ACCESS.gestor.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.admin.includes('auditoria'), false);
   assert.equal(ROLE_ACCESS.admin.includes('inteligencia'), false);
@@ -36,7 +39,7 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ROLE_ACCESS.leitura.includes('frota'), false);
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'colaboradores'), true);
   assert.equal(ROLE_ACCESS.operador.includes('colaboradores'), true);
-  assert.equal(ROLE_ACCESS.operador.includes('pendencias'), false);
+  assert.equal(ROLE_ACCESS.operador.includes('pendencias'), true);
   assert.equal(ROLE_ACCESS.operador.includes('lancamentos'), true);
   assert.equal(ROLE_ACCESS.operador.includes('configuracoes'), false);
   assert.equal(ROLE_ACCESS.operador.includes('partes-diarias'), false);

@@ -5,6 +5,7 @@ import { useGSAP } from '@gsap/react';
 import { Activity, AlertTriangle, ChevronRight, Clock3, Droplets, Gauge, ListChecks, PieChart, Truck, UserCheck, UserX, Wrench } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa, Equipamento, Funcionario, GrupoEquipe, HistoryLog, ListaPresenca, Lubrificacao, ObraLocal, OrdemServico, PresencaApontamento, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../types';
 import { splitOperationalFuelRecords } from '../utils/fuelAnalyticsSafety';
+import { listarPendencias } from '../utils/pendencias';
 import { PageHeader, PeriodFilter, StatCard, buildPeriod, type PeriodValue } from '../shared/ui';
 
 interface DashboardProps {
@@ -100,25 +101,21 @@ export default function Dashboard({
     return { viagens: viagens.length, viagensRascunho: viagens.filter(item => item.statusFluxo === 'Rascunho').length, abastecimentos: operational.length, litros };
   }, [ticketsJazida, abastecimentos, period.from, period.to]);
 
-  // Pendências reais, derivadas dos próprios registros: cada uma aponta para a
-  // tela de origem, sem duplicar dado nenhum.
-  const pendencias = useMemo(() => {
-    const equipamentosAtivos = equipamentos.filter(item => item.status !== 'Desmobilizado');
-    const informados = new Set(fleet.registros.map(item => item.equipamentoId || item.prefixo));
-    const semInformacao = equipamentosAtivos.filter(item => !informados.has(item.id) && !informados.has(item.prefixo)).length;
-    const equipesSemApontamento = gruposEquipe.filter(grupo => grupo.status !== 'inativo'
-      && !presencasLink.some(item => item.grupoId === grupo.id && inRange(item.data, period.from, period.to))).length;
-    const osAbertas = ordensServico.filter(item => !['Concluída', 'Cancelada'].includes(item.status)).length;
-    const obrasSemLista = obras.filter(obra => obra.status === 'Ativa'
-      && !listasPresenca.some(lista => lista.obraId === obra.id && inRange(lista.data, period.from, period.to))).length;
-    return [
-      { label: 'Equipamentos sem informação no período', value: semInformacao, tab: 'controle-equipamentos' },
-      { label: 'Equipes sem apontamento de presença', value: equipesSemApontamento, tab: 'presenca' },
-      { label: 'Viagens ainda em rascunho', value: movimento.viagensRascunho, tab: 'tickets-jazida' },
-      { label: 'Ordens de serviço em aberto', value: osAbertas, tab: 'controle-equipamentos' },
-      { label: 'Obras ativas sem lista de presença', value: obrasSemLista, tab: 'presenca' },
-    ].filter(item => item.value > 0);
-  }, [equipamentos, fleet.registros, gruposEquipe, presencasLink, ordensServico, obras, listasPresenca, movimento.viagensRascunho, period.from, period.to]);
+  // Pendências vêm da mesma função da tela de Pendências: existe uma regra só
+  // para o que está em aberto, e o painel não pode divergir dela.
+  const pendencias = useMemo(() => listarPendencias({
+    hoje: new Date().toISOString().slice(0, 10),
+    inicio: period.from,
+    fim: period.to,
+    equipamentos,
+    controlesEquipamentos,
+    gruposEquipe,
+    presencasLink,
+    listasPresenca,
+    obras,
+    ordensServico,
+    ticketsJazida,
+  }).slice(0, 6), [equipamentos, controlesEquipamentos, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, period.from, period.to]);
 
   const fleetSituation = [
     { label: 'Em operação', value: fleet.operando, color: '#087345' },
@@ -325,15 +322,15 @@ export default function Dashboard({
         ) : (
           <ul className="divide-y divide-slate-100">
             {pendencias.map(item => (
-              <li key={item.label}>
+              <li key={item.id}>
                 <button
                   type="button"
                   onClick={() => onNavigate(item.tab)}
                   className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left transition-colors hover:bg-amber-50/50"
                 >
-                  <span className="min-w-0 text-sm text-slate-700">{item.label}</span>
+                  <span className="min-w-0 text-sm text-slate-700">{item.titulo}</span>
                   <span className="flex shrink-0 items-center gap-2">
-                    <strong className="tabular-nums text-base font-black text-amber-700">{item.value}</strong>
+                    <strong className="tabular-nums text-base font-black text-amber-700">{item.quantidade}</strong>
                     <ChevronRight size={16} className="text-slate-300" />
                   </span>
                 </button>

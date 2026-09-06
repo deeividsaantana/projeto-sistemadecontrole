@@ -19,6 +19,7 @@ import {
   Users,
   Search,
   NotebookPen,
+  ListChecks,
   ShieldAlert,
   Megaphone,
   AlertOctagon,
@@ -43,6 +44,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
       { id: 'consulta-geral', label: 'Consulta Geral', icon: Search },
       { id: 'periodo', label: 'Registros por Período', icon: CalendarRange },
+      { id: 'pendencias', label: 'Pendências', icon: ListChecks },
     ],
   },
   {
@@ -109,6 +111,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   operador: [
     'dashboard',
     'consulta-geral',
+    'pendencias',
     'central-operacional',
     'frentes',
     'producao',
