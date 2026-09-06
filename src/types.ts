@@ -763,6 +763,37 @@ export interface NaoConformidade {
   atualizadoEm: string;
 }
 
+export type SituacaoMedicao = 'Em elaboração' | 'Enviada' | 'Aprovada' | 'Rejeitada';
+
+export interface ItemMedicao {
+  servicoId: string;
+  servicoDescricao: string;
+  unidade: string;
+  /** Quantidade medida no período. Sugerida pela produção, confirmada por quem mede. */
+  quantidade: number;
+  /** Preço informado pelo usuário; o sistema não arbitra valor de contrato. */
+  valorUnitario?: number;
+  observacao?: string;
+}
+
+/** Boletim de medição de um período. Quantidade medida é decisão registrada. */
+export interface Medicao {
+  id: string;
+  numero: string;
+  obraId?: string;
+  periodoInicio: string; // YYYY-MM-DD
+  periodoFim: string; // YYYY-MM-DD
+  itens: ItemMedicao[];
+  situacao: SituacaoMedicao;
+  responsavel: string;
+  aprovadoPor?: string;
+  aprovadoEm?: string;
+  observacao?: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

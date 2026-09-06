@@ -30,6 +30,7 @@ import PlanejamentoTab from '../src/components/PlanejamentoTab';
 import FvsTab from '../src/components/FvsTab';
 import InspecoesTab from '../src/components/InspecoesTab';
 import NaoConformidadesTab from '../src/components/NaoConformidadesTab';
+import MedicoesTab from '../src/components/MedicoesTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -203,6 +204,18 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  medicoes: (
+    <MedicoesTab
+      medicoes={[]}
+      servicos={[]}
+      producao={[]}
+      obras={fx.obras}
+      responsavel="Deivid Santana"
+      podeEditar
+      podeAprovar
+      onSave={noop}
     />
   ),
   'nao-conformidades': (
