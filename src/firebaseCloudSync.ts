@@ -37,6 +37,8 @@ const INTERMEDIATE_TABLE_IDS = [
   'historicoPresencas',
   'checklists',
   'apontamentosOperacionais',
+  'registrosDds',
+  'treinamentos',
   'modelosChecklist',
   'apontamentoRamos',
   'apontamentoRamoRegistros',

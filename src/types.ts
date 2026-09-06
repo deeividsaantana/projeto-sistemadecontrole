@@ -482,6 +482,32 @@ export interface ApontamentoOperacional {
   criadoEm: string;
 }
 
+export interface RegistroDDS {
+  id: string;
+  data: string; // YYYY-MM-DD
+  tema: string;
+  responsavel: string;
+  /** Quem participou; a confirmação é o próprio registro do participante. */
+  participantesIds: string[];
+  observacao?: string;
+  /** Foto ou documento da lista assinada, em data URL. */
+  documento?: string;
+  criadoEm: string;
+}
+
+export interface Treinamento {
+  id: string;
+  funcionarioId: string;
+  funcionarioNome: string;
+  nome: string;
+  dataRealizacao: string; // YYYY-MM-DD
+  /** Vencimento informado; sem ele o treinamento não vence. */
+  dataVencimento?: string;
+  certificado?: string;
+  observacao?: string;
+  criadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

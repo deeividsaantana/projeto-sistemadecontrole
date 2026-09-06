@@ -18,6 +18,8 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'historicoPresencas',
   'checklists',
   'apontamentosOperacionais',
+  'registrosDds',
+  'treinamentos',
   'modelosChecklist',
   'apontamentoRamos',
   'apontamentoRamoRegistros',

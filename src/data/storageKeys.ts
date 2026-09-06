@@ -21,6 +21,8 @@ export const STORAGE_KEYS = {
   controleEstacas: 'renea_controle_estacas',
   checklists: 'renea_checklists',
   apontamentosOperacionais: 'renea_apontamentos_operacionais',
+  registrosDds: 'renea_registros_dds',
+  treinamentos: 'renea_treinamentos',
   modelosChecklist: 'renea_modelos_checklist',
   periodosArquivados: 'renea_periodos_arquivados',
   vinculosOperadorEquipamento: 'renea_vinculos_operador_equipamento',
@@ -64,5 +66,7 @@ export const CORE_DATA_STORAGE_KEYS = [
   STORAGE_KEYS.masterDataReviewQueue,
   STORAGE_KEYS.checklists,
   STORAGE_KEYS.apontamentosOperacionais,
+  STORAGE_KEYS.registrosDds,
+  STORAGE_KEYS.treinamentos,
   STORAGE_KEYS.modelosChecklist,
 ] as const;

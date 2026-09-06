@@ -22,6 +22,8 @@ import {
   OrdemServico,
   ChecklistEquipamento,
   ApontamentoOperacional,
+  RegistroDDS,
+  Treinamento,
   ModeloChecklist,
   GrupoEquipe,
   PresencaApontamento,
@@ -84,6 +86,7 @@ const ChecklistTab = lazy(() => import('./components/ChecklistTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const EquipesTab = lazy(() => import('./components/EquipesTab'));
 const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
+const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -297,6 +300,8 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['controleEquipamentosDiario', 'renea_controle_equipamentos_diario'],
   ['checklists', STORAGE_KEYS.checklists],
   ['apontamentosOperacionais', STORAGE_KEYS.apontamentosOperacionais],
+  ['registrosDds', STORAGE_KEYS.registrosDds],
+  ['treinamentos', STORAGE_KEYS.treinamentos],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -400,6 +405,8 @@ export default function App() {
   const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([]);
   const [checklists, setChecklists] = useState<ChecklistEquipamento[]>([]);
   const [apontamentosOperacionais, setApontamentosOperacionais] = useState<ApontamentoOperacional[]>([]);
+  const [registrosDds, setRegistrosDds] = useState<RegistroDDS[]>([]);
+  const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -594,6 +601,8 @@ export default function App() {
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
       setChecklists(parseStoredJson(localStorage.getItem(STORAGE_KEYS.checklists), STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]));
       setApontamentosOperacionais(parseStoredJson(localStorage.getItem(STORAGE_KEYS.apontamentosOperacionais), STORAGE_KEYS.apontamentosOperacionais, [] as ApontamentoOperacional[]));
+      setRegistrosDds(parseStoredJson(localStorage.getItem(STORAGE_KEYS.registrosDds), STORAGE_KEYS.registrosDds, [] as RegistroDDS[]));
+      setTreinamentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.treinamentos), STORAGE_KEYS.treinamentos, [] as Treinamento[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -774,6 +783,8 @@ export default function App() {
     ticketsJazida: readTable('renea_tickets_jazida', [] as TicketJazida[]),
     checklists: readTable(STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]),
     apontamentosOperacionais: readTable(STORAGE_KEYS.apontamentosOperacionais, [] as ApontamentoOperacional[]),
+    registrosDds: readTable(STORAGE_KEYS.registrosDds, [] as RegistroDDS[]),
+    treinamentos: readTable(STORAGE_KEYS.treinamentos, [] as Treinamento[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -947,6 +958,8 @@ export default function App() {
           setOrdensServico(normalizeRuntimeCollection<OrdemServico>(data.ordensServico));
           setChecklists(normalizeRuntimeCollection<ChecklistEquipamento>(data.checklists));
           setApontamentosOperacionais(normalizeRuntimeCollection<ApontamentoOperacional>(data.apontamentosOperacionais));
+          setRegistrosDds(normalizeRuntimeCollection<RegistroDDS>(data.registrosDds));
+          setTreinamentos(normalizeRuntimeCollection<Treinamento>(data.treinamentos));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -2937,6 +2950,22 @@ export default function App() {
     );
   };
 
+  const handleSaveDds = (registro: RegistroDDS) => {
+    const updated = [registro, ...registrosDds];
+    saveAndLog('DDS', 'Criou', `Registrou o DDS "${registro.tema}" com ${registro.participantesIds.length} participante(s).`, historyLogs, () => {
+      setRegistrosDds(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.registrosDds, JSON.stringify(updated));
+    });
+  };
+
+  const handleSaveTreinamento = (treinamento: Treinamento) => {
+    const updated = [treinamento, ...treinamentos];
+    saveAndLog('Treinamentos', 'Criou', `Registrou ${treinamento.nome} para ${treinamento.funcionarioNome}.`, historyLogs, () => {
+      setTreinamentos(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.treinamentos, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveModeloChecklist = (modelo: ModeloChecklist) => {
     setModeloChecklist(modelo);
     writeStorageValue(localStorage, STORAGE_KEYS.modelosChecklist, JSON.stringify([modelo]));
@@ -4047,6 +4076,18 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'dds-treinamentos' && (
+              <DdsTreinamentosTab
+                registrosDds={registrosDds}
+                treinamentos={treinamentos}
+                funcionarios={funcionarios}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                onSaveDds={handleSaveDds}
+                onSaveTreinamento={handleSaveTreinamento}
               />
             )}
 

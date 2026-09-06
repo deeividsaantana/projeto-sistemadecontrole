@@ -3,6 +3,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FolderPlus,
+  GraduationCap,
   Hammer,
   HardHat,
   LayoutDashboard,
@@ -61,6 +62,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'equipes', label: 'Equipes', icon: HardHat },
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
       { id: 'apontamentos', label: 'Apontamentos', icon: ClipboardList },
+      { id: 'dds-treinamentos', label: 'DDS e Treinamentos', icon: GraduationCap },
     ],
   },
   {
@@ -95,6 +97,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'colaboradores',
     'equipes',
     'apontamentos',
+    'dds-treinamentos',
   ],
   leitura: ['dashboard', 'consulta-geral', 'periodo'],
 };
