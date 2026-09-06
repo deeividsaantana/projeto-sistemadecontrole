@@ -198,6 +198,7 @@ import {
 import { NavigationMenu } from './app/shell/NavigationMenu';
 import { DesktopTopBar } from './app/shell/DesktopTopBar';
 import { NotificationCenter } from './app/shell/NotificationCenter';
+import { PesquisaGlobal } from './app/shell/PesquisaGlobal';
 import { alertasDoSistema } from './utils/alertas';
 import { DesktopSidebar } from './app/shell/DesktopSidebar';
 import { APP_VERSION_LABEL } from './app/version';
@@ -4816,6 +4817,25 @@ export default function App() {
       </div>
 
       <OfflineStatusV29 />
+      <PesquisaGlobal
+        fontes={{
+          equipamentos,
+          funcionarios,
+          obras,
+          frentes: frentesServico,
+          servicos: servicosObra,
+          materiais: materiaisCadastro,
+          ordensServico,
+          ticketsJazida,
+          fichasFvs,
+          inspecoes,
+          naoConformidades,
+          medicoes,
+          documentos,
+          ocorrencias,
+        }}
+        onNavigate={navigateTo}
+      />
       <ToastViewport toasts={activeToasts} />
 
     </div>
