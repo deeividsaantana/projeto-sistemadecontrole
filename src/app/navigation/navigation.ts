@@ -20,6 +20,7 @@ import {
   Search,
   NotebookPen,
   ListChecks,
+  Gauge,
   ShieldAlert,
   Megaphone,
   AlertOctagon,
@@ -45,6 +46,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'consulta-geral', label: 'Consulta Geral', icon: Search },
       { id: 'periodo', label: 'Registros por Período', icon: CalendarRange },
       { id: 'pendencias', label: 'Pendências', icon: ListChecks },
+      { id: 'indicadores', label: 'Indicadores', icon: Gauge },
     ],
   },
   {
@@ -112,6 +114,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'dashboard',
     'consulta-geral',
     'pendencias',
+    'indicadores',
     'central-operacional',
     'frentes',
     'producao',

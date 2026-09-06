@@ -34,6 +34,7 @@ import MedicoesTab from '../src/components/MedicoesTab';
 import DocumentosTab from '../src/components/DocumentosTab';
 import OcorrenciasTab from '../src/components/OcorrenciasTab';
 import PendenciasTab from '../src/components/PendenciasTab';
+import IndicadoresTab from '../src/components/IndicadoresTab';
 import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -207,6 +208,11 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noop}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
+    />
+  ),
+  indicadores: (
+    <IndicadoresTab
+      dados={{ equipamentos: fx.equipamentos, obras: fx.obras, controlesEquipamentos: fx.controlesEquipamentos }}
     />
   ),
   pendencias: (
