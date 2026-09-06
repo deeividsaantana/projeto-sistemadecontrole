@@ -120,6 +120,7 @@ const CustosTab = lazy(() => import('./components/CustosTab'));
 const OrcamentoTab = lazy(() => import('./components/OrcamentoTab'));
 const CronogramaTab = lazy(() => import('./components/CronogramaTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
+const TimelineTab = lazy(() => import('./components/TimelineTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4363,6 +4364,26 @@ export default function App() {
                 podeAtualizar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'timeline' && (
+              <TimelineTab
+                fontes={{
+                  abastecimentos,
+                  controlesEquipamentos: controleEquipamentosDiario,
+                  ordensServico,
+                  ticketsJazida,
+                  producao: producaoRegistros,
+                  fichasFvs,
+                  inspecoes,
+                  naoConformidades,
+                  ocorrencias,
+                  medicoes,
+                  historyLogs,
+                }}
+                equipamentos={equipamentos}
                 onNavigate={navigateTo}
               />
             )}

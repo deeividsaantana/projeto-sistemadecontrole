@@ -44,6 +44,7 @@ import './orcamento.test';
 import './cronograma.test';
 import './relatorios.test';
 import './buscaGlobal.test';
+import './timeline.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';
