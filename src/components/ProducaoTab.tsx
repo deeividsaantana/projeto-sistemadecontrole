@@ -8,6 +8,7 @@ import { BarChart3, ClipboardList, Plus, Search, TrendingUp } from 'lucide-react
 import type { FrenteServico, GrupoEquipe, ObraLocal, RegistroProducao, ServicoObra, SituacaoServico } from '../types';
 import { avancoDosServicos, producaoPorDia, validarProducao } from '../utils/producao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { formatarData, numero } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -34,8 +35,6 @@ interface ProducaoTabProps {
 const UNIDADES = ['m³', 'm²', 'm', 'km', 't', 'kg', 'un', 'h', 'vb'];
 const SITUACOES: SituacaoServico[] = ['Ativo', 'Suspenso', 'Concluído'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
-const numero = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 
 export default function ProducaoTab({
   servicos,

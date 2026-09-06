@@ -13,6 +13,7 @@ import {
   type FontesTimeline,
 } from '../utils/timeline';
 import { EmptyState, PageHeader, PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
+import { formatarData } from '../utils/formato';
 
 interface TimelineTabProps {
   fontes: FontesTimeline;
@@ -20,7 +21,6 @@ interface TimelineTabProps {
   onNavigate: (tab: string) => void;
 }
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 export default function TimelineTab({ fontes, equipamentos, onNavigate }: TimelineTabProps) {
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('semana'));

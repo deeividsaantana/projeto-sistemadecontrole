@@ -8,6 +8,7 @@ import type { ChecklistEquipamento, Equipamento, ItemChecklist, ModeloChecklist,
 import { MODELO_CHECKLIST_PADRAO, itensCriticosReprovados, resumoChecklist } from '../utils/checklist';
 import { comprimirImagem, validarFoto } from '../utils/imagem';
 import { Badge, Card, EmptyState, Modal, PageHeader } from '../shared/ui';
+import { formatarData } from '../utils/formato';
 
 interface ChecklistTabProps {
   checklists: ChecklistEquipamento[];
@@ -28,7 +29,6 @@ const respostaClass: Record<RespostaChecklist, string> = {
   'Não aplicável': 'bg-slate-500 text-white border-slate-500',
 };
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 export default function ChecklistTab({
   checklists,

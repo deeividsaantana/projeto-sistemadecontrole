@@ -23,6 +23,7 @@ import {
 } from '../utils/naoConformidades';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
+import { formatarData } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -49,7 +50,6 @@ interface NaoConformidadesTabProps {
 const ORIGENS: OrigemNaoConformidade[] = ['FVS', 'Inspeção', 'Checklist', 'Cliente', 'Interna'];
 const SITUACOES: SituacaoNaoConformidade[] = ['Aberta', 'Em tratamento', 'Verificação', 'Encerrada', 'Cancelada'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 const tomDaSituacao = (situacao: SituacaoNaoConformidade) => {
   if (situacao === 'Encerrada') return 'success' as const;

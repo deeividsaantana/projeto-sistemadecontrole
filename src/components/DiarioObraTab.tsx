@@ -18,6 +18,7 @@ import type {
 } from '../types';
 import { comprimirImagem, validarFoto } from '../utils/imagem';
 import { Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
+import { formatarData } from '../utils/formato';
 
 interface DiarioObraTabProps {
   diarios: DiarioObra[];
@@ -34,7 +35,6 @@ interface DiarioObraTabProps {
 }
 
 const CLIMAS: CondicaoClimatica[] = ['Bom', 'Nublado', 'Chuva fraca', 'Chuva forte', 'Impraticável'];
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 export default function DiarioObraTab({
   diarios,

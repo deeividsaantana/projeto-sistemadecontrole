@@ -17,6 +17,7 @@ import type {
 import { diasParaPrazo, estaAtrasada, painelInspecoes, proximoNumeroInspecao, validarInspecao } from '../utils/inspecoes';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
+import { formatarData } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -43,7 +44,6 @@ const TIPOS: TipoInspecao[] = ['Segurança', 'Meio ambiente', 'Qualidade', 'Equi
 const GRAVIDADES: GravidadeInspecao[] = ['Baixa', 'Média', 'Alta'];
 const SITUACOES: SituacaoInspecao[] = ['Aberta', 'Em correção', 'Corrigida', 'Cancelada'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 const tomDaSituacao = (situacao: SituacaoInspecao) => {
   if (situacao === 'Corrigida') return 'success' as const;

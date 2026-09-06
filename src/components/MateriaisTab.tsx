@@ -7,6 +7,7 @@ import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Package, Plus, 
 import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
 import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/estoque';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { formatarData, numero } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -31,8 +32,6 @@ interface MateriaisTabProps {
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
 const UNIDADES = ['m³', 't', 'kg', 'un', 'm', 'm²', 'L', 'sc'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
-const numero = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 
 export default function MateriaisTab({
   materiais,

@@ -15,6 +15,7 @@ import {
   validarMedicao,
 } from '../utils/medicoes';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { formatarData, numero, moeda } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -39,9 +40,6 @@ interface MedicoesTabProps {
 
 const SITUACOES: SituacaoMedicao[] = ['Em elaboração', 'Enviada', 'Aprovada', 'Rejeitada'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
-const numero = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
-const moeda = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const tomDaSituacao = (situacao: SituacaoMedicao) => {
   if (situacao === 'Aprovada') return 'success' as const;

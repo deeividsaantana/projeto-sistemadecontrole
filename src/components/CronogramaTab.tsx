@@ -14,6 +14,7 @@ import {
   posicaoDeHoje,
 } from '../utils/cronograma';
 import { Badge, EmptyState, PageHeader, isoDay } from '../shared/ui';
+import { formatarData } from '../utils/formato';
 
 interface CronogramaTabProps {
   planos: PlanejamentoItem[];
@@ -21,7 +22,6 @@ interface CronogramaTabProps {
   frentes: FrenteServico[];
 }
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 export default function CronogramaTab({ planos, producao, frentes }: CronogramaTabProps) {
   const hoje = isoDay(new Date());

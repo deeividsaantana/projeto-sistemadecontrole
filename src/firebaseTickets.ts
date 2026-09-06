@@ -3,7 +3,6 @@ import {
   deleteDoc,
   doc,
   Firestore,
-  getDocs,
   onSnapshot,
   query,
   runTransaction,
@@ -111,9 +110,6 @@ const ticketsDoSnapshot = (snapshot: TicketSnapshot): TicketJazida[] => snapshot
   .filter(item => item.id.startsWith(TICKET_DOCUMENT_PREFIX))
   .map(item => item.data().value as TicketJazida)
   .filter(item => item && typeof item.id === 'string' && typeof item.ticketNumero === 'string');
-
-export const loadPublicTickets = async (database: Firestore): Promise<TicketJazida[]> =>
-  ticketsDoSnapshot(await getDocs(publicTicketsQuery(database)));
 
 /**
  * Escuta os tickets públicos em tempo real. Antes a tela relia a coleção

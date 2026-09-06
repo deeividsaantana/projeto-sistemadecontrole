@@ -7,6 +7,7 @@ import { AlertTriangle, CalendarRange, Plus, Search } from 'lucide-react';
 import type { FrenteServico, GrupoEquipe, ObraLocal, PlanejamentoItem, RegistroProducao, ServicoObra, SituacaoPlano } from '../types';
 import { aderenciaDosPlanos, planosNoPeriodo, validarPlano } from '../utils/planejamento';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { formatarData, numero } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -32,8 +33,6 @@ interface PlanejamentoTabProps {
 
 const SITUACOES: SituacaoPlano[] = ['Planejado', 'Em execução', 'Concluído', 'Cancelado'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
-const numero = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 const somarDias = (base: string, dias: number) => {
   const data = new Date(`${base}T00:00:00`);
   data.setDate(data.getDate() + dias);

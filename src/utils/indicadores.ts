@@ -1,7 +1,6 @@
 import type { ContextoPendencias } from './pendencias';
 import { painelOcorrencias } from './ocorrencias';
 import { aderenciaDosPlanos } from './planejamento';
-import { acumuladoDoServico } from './producao';
 import { resumoFvs } from './fvs';
 
 export type TendenciaIndicador = 'alta' | 'baixa' | 'estavel';
@@ -196,6 +195,3 @@ export const calcularIndicadores = (contexto: ContextoIndicadores): Indicador[] 
     },
   ];
 };
-
-/** Acumulado de um serviço, para a leitura de contrato dentro dos indicadores. */
-export const acumuladoPorServico = acumuladoDoServico;

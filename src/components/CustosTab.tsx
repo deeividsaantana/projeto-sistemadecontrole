@@ -27,6 +27,7 @@ import {
 } from '../utils/custos';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
+import { formatarData, moeda } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -57,8 +58,6 @@ interface CustosTabProps {
 
 const CATEGORIAS_MANUAIS: CategoriaCusto[] = ['Locação', 'Serviço de terceiro', 'Mão de obra', 'Material', 'Outro'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
-const moeda = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function CustosTab({
   lancamentos,

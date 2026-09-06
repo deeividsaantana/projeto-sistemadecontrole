@@ -4,6 +4,7 @@ import { AlertTriangle, TimerOff } from 'lucide-react';
 import type { ControleEquipamentoDiario, Equipamento, OrdemServico } from '../types';
 import { listarParadas, paradasSemHorario, somarPor, type Parada } from '../utils/horasParadas';
 import { Card, EmptyState, PageHeader, PeriodFilter, TableBody, TableHead, TableShell, buildPeriod, type PeriodValue } from '../shared/ui';
+import { formatarData } from '../utils/formato';
 
 interface HorasParadasTabProps {
   controlesEquipamentos: ControleEquipamentoDiario[];
@@ -12,7 +13,6 @@ interface HorasParadasTabProps {
 }
 
 const horas = (valor: number) => `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 const Ranking = ({ titulo, dados }: { titulo: string; dados: ReturnType<typeof somarPor> }) => {
   const maior = dados[0]?.horas || 1;

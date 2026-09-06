@@ -7,6 +7,7 @@ import { ClipboardList, Plus, Search } from 'lucide-react';
 import type { ApontamentoOperacional, EtapaServico, Funcionario, GrupoEquipe } from '../types';
 import { horasNoDia, horasPor, validarApontamento } from '../utils/apontamentos';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { formatarData } from '../utils/formato';
 import {
   Card,
   ConfirmDialog,
@@ -33,7 +34,6 @@ interface ApontamentosTabProps {
   onDelete: (id: string) => void;
 }
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 const horasTexto = (valor: number) => `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
 
 export default function ApontamentosTab({

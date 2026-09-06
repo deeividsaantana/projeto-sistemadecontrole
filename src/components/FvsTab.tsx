@@ -23,6 +23,7 @@ import {
   validarFvs,
 } from '../utils/fvs';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { formatarData } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -50,7 +51,6 @@ interface FvsTabProps {
 const RESPOSTAS: RespostaFvs[] = ['Conforme', 'Não conforme', 'Não aplicável'];
 const SITUACOES: SituacaoFvs[] = ['Em preenchimento', 'Aprovada', 'Liberada com pendência', 'Reprovada'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 const tomDaSituacao = (situacao: SituacaoFvs) => {
   if (situacao === 'Aprovada') return 'success' as const;

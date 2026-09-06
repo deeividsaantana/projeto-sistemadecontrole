@@ -23,6 +23,7 @@ import {
 } from '../utils/ocorrencias';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
+import { formatarData } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -50,7 +51,6 @@ const TIPOS: TipoOcorrencia[] = ['Acidente', 'Incidente', 'Quebra de equipamento
 const IMPACTOS: ImpactoOcorrencia[] = ['Sem impacto', 'Baixo', 'Médio', 'Alto'];
 const SITUACOES: SituacaoOcorrencia[] = ['Registrada', 'Em análise', 'Resolvida', 'Sem tratativa'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 const somarDias = (base: string, dias: number) => {
   const data = new Date(`${base}T00:00:00`);
   data.setDate(data.getDate() + dias);

@@ -18,6 +18,7 @@ import { documentosParaAlertar, painelDocumentos, situacaoDocumento, validarDocu
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { validateOperationalAttachment } from '../utils/operationalAttachmentRules';
 import { usePaginacao } from '../shared/hooks/usePaginacao';
+import { formatarData } from '../utils/formato';
 import {
   Badge,
   EmptyState,
@@ -46,7 +47,6 @@ interface DocumentosTabProps {
 const TIPOS: TipoDocumento[] = ['CNH', 'ASO', 'CRLV', 'Licença', 'Contrato', 'ART/RRT', 'Certificado', 'Projeto', 'Outro'];
 const VINCULOS: VinculoDocumento[] = ['Colaborador', 'Equipamento', 'Obra', 'FVS', 'Ordem de Serviço', 'Não Conformidade', 'Geral'];
 
-const formatarData = (valor: string) => valor.split('-').reverse().join('/');
 
 const tomDaSituacao = (situacao: ReturnType<typeof situacaoDocumento>) => {
   if (situacao === 'Vencido') return 'danger' as const;
