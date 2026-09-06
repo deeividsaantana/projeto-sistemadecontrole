@@ -910,6 +910,23 @@ export interface LancamentoCusto {
   atualizadoEm: string;
 }
 
+/**
+ * Orçamento por categoria e competência. É o valor que a obra planejou gastar —
+ * o realizado nunca é digitado aqui, vem do consolidado de custos.
+ */
+export interface OrcamentoItem {
+  id: string;
+  competencia: string; // YYYY-MM
+  categoria: CategoriaCusto;
+  valorOrcado: number;
+  obraId?: string;
+  observacao?: string;
+  responsavel: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

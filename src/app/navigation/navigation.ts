@@ -22,6 +22,7 @@ import {
   ListChecks,
   Gauge,
   Coins,
+  Scale,
   ShieldAlert,
   Megaphone,
   AlertOctagon,
@@ -49,6 +50,7 @@ export const NAVIGATION_GROUPS = [
       { id: 'pendencias', label: 'Pendências', icon: ListChecks },
       { id: 'indicadores', label: 'Indicadores', icon: Gauge },
       { id: 'custos', label: 'Custos', icon: Coins },
+      { id: 'orcamento', label: 'Orçado x Realizado', icon: Scale },
     ],
   },
   {
