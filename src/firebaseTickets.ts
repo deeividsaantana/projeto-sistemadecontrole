@@ -4,6 +4,7 @@ import {
   doc,
   Firestore,
   getDocs,
+  onSnapshot,
   query,
   runTransaction,
   setDoc,
@@ -99,13 +100,33 @@ export const deletePublicTicket = async (database: Firestore, ticketId: string) 
   ));
 };
 
-export const loadPublicTickets = async (database: Firestore): Promise<TicketJazida[]> => {
-  const snapshot = await getDocs(query(
-    collection(database, CLOUD_COLLECTION),
-    where('kind', '==', 'ticket_public'),
-  ));
-  return snapshot.docs
-    .filter(item => item.id.startsWith(TICKET_DOCUMENT_PREFIX))
-    .map(item => item.data().value as TicketJazida)
-    .filter(item => item && typeof item.id === 'string' && typeof item.ticketNumero === 'string');
-};
+const publicTicketsQuery = (database: Firestore) => query(
+  collection(database, CLOUD_COLLECTION),
+  where('kind', '==', 'ticket_public'),
+);
+
+type TicketSnapshot = { docs: Array<{ id: string; data: () => Record<string, unknown> }> };
+
+const ticketsDoSnapshot = (snapshot: TicketSnapshot): TicketJazida[] => snapshot.docs
+  .filter(item => item.id.startsWith(TICKET_DOCUMENT_PREFIX))
+  .map(item => item.data().value as TicketJazida)
+  .filter(item => item && typeof item.id === 'string' && typeof item.ticketNumero === 'string');
+
+export const loadPublicTickets = async (database: Firestore): Promise<TicketJazida[]> =>
+  ticketsDoSnapshot(await getDocs(publicTicketsQuery(database)));
+
+/**
+ * Escuta os tickets públicos em tempo real. Antes a tela relia a coleção
+ * inteira a cada 30 segundos: com 500 tickets e cinco pessoas logadas isso são
+ * centenas de milhares de leituras por dia sem nada ter mudado. O listener cobra
+ * a leitura inicial e depois só o documento que muda de fato.
+ */
+export const subscribePublicTickets = (
+  database: Firestore,
+  onChange: (tickets: TicketJazida[]) => void,
+  onError?: (error: unknown) => void,
+) => onSnapshot(
+  publicTicketsQuery(database),
+  snapshot => onChange(ticketsDoSnapshot(snapshot)),
+  error => onError?.(error),
+);

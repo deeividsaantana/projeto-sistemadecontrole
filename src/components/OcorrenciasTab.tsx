@@ -22,11 +22,13 @@ import {
   validarOcorrencia,
 } from '../utils/ocorrencias';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { usePaginacao } from '../shared/hooks/usePaginacao';
 import {
   Badge,
   EmptyState,
   Modal,
   PageHeader,
+  Pagination,
   TableBody,
   TableHead,
   TableShell,
@@ -103,6 +105,8 @@ export default function OcorrenciasTab({
     .filter(item => item.data >= inicio && item.data <= fim)
     .filter(item => !termo || normalizeComparable(`${item.numero} ${item.descricao} ${item.tipo} ${item.local || ''} ${item.frente || ''}`).includes(termo))
     .sort((a, b) => b.data.localeCompare(a.data) || (b.hora || '').localeCompare(a.hora || '')), [ativas, inicio, fim, termo]);
+
+  const paginacao = usePaginacao(listadas);
 
   const abrir = (ocorrencia?: Ocorrencia) => {
     setEditada(ocorrencia || null);
@@ -271,7 +275,7 @@ export default function OcorrenciasTab({
               </tr>
             </TableHead>
             <TableBody>
-              {listadas.map(item => (
+              {paginacao.visiveis.map(item => (
                 <tr key={item.id} className="transition-colors hover:bg-slate-50">
                   <td className="p-3 font-mono text-slate-600">{item.numero}</td>
                   <td className="p-3 text-slate-600">{formatarData(item.data)}{item.hora ? ` ${item.hora}` : ''}</td>
@@ -293,6 +297,15 @@ export default function OcorrenciasTab({
           </TableShell>
         )}
       </div>
+
+      {paginacao.totalPaginas > 1 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] text-slate-500">
+            {paginacao.visiveis.length} de {paginacao.total} registro(s)
+          </span>
+          <Pagination page={paginacao.pagina} totalPages={paginacao.totalPaginas} onChange={paginacao.setPagina} />
+        </div>
+      )}
 
       <Modal
         open={aberto}

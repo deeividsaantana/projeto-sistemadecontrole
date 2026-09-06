@@ -22,11 +22,13 @@ import {
   validarNaoConformidade,
 } from '../utils/naoConformidades';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { usePaginacao } from '../shared/hooks/usePaginacao';
 import {
   Badge,
   EmptyState,
   Modal,
   PageHeader,
+  Pagination,
   TableBody,
   TableHead,
   TableShell,
@@ -98,6 +100,8 @@ export default function NaoConformidadesTab({
     .filter(item => filtro === 'todas' || ['Aberta', 'Em tratamento', 'Verificação'].includes(item.situacao))
     .filter(item => !termo || normalizeComparable(`${item.numero} ${item.descricao} ${item.origem} ${item.local || ''} ${item.responsavelAcao || ''}`).includes(termo))
     .sort((a, b) => b.data.localeCompare(a.data) || b.numero.localeCompare(a.numero)), [ativas, filtro, termo]);
+
+  const paginacao = usePaginacao(listadas);
 
   const abrir = (registro?: NaoConformidade, origem?: ReturnType<typeof origensSemTratativa>[number]) => {
     setEditada(registro || null);
@@ -270,7 +274,7 @@ export default function NaoConformidadesTab({
               </tr>
             </TableHead>
             <TableBody>
-              {listadas.map(item => {
+              {paginacao.visiveis.map(item => {
                 const atrasada = estaAtrasada(item, hoje);
                 return (
                   <tr key={item.id} className={`transition-colors hover:bg-slate-50 ${atrasada ? 'bg-rose-50/50' : ''}`}>
@@ -293,6 +297,15 @@ export default function NaoConformidadesTab({
           </TableShell>
         )}
       </div>
+
+      {paginacao.totalPaginas > 1 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] text-slate-500">
+            {paginacao.visiveis.length} de {paginacao.total} registro(s)
+          </span>
+          <Pagination page={paginacao.pagina} totalPages={paginacao.totalPaginas} onChange={paginacao.setPagina} />
+        </div>
+      )}
 
       <Modal
         open={aberto}

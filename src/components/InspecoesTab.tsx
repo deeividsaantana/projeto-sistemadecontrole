@@ -16,11 +16,13 @@ import type {
 } from '../types';
 import { diasParaPrazo, estaAtrasada, painelInspecoes, proximoNumeroInspecao, validarInspecao } from '../utils/inspecoes';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { usePaginacao } from '../shared/hooks/usePaginacao';
 import {
   Badge,
   EmptyState,
   Modal,
   PageHeader,
+  Pagination,
   TableBody,
   TableHead,
   TableShell,
@@ -89,6 +91,8 @@ export default function InspecoesTab({
       || (filtro === 'atrasadas' ? estaAtrasada(item, hoje) : ['Aberta', 'Em correção'].includes(item.situacao)))
     .filter(item => !termo || normalizeComparable(`${item.numero} ${item.local} ${item.descricao} ${item.tipo} ${item.frente || ''} ${item.responsavelAcao || ''}`).includes(termo))
     .sort((a, b) => b.data.localeCompare(a.data) || b.numero.localeCompare(a.numero)), [ativas, filtro, termo, hoje]);
+
+  const paginacao = usePaginacao(listadas);
 
   const abrir = (inspecao?: Inspecao) => {
     setEditada(inspecao || null);
@@ -244,7 +248,7 @@ export default function InspecoesTab({
               </tr>
             </TableHead>
             <TableBody>
-              {listadas.map(item => {
+              {paginacao.visiveis.map(item => {
                 const atrasada = estaAtrasada(item, hoje);
                 const dias = diasParaPrazo(item, hoje);
                 return (
@@ -273,6 +277,15 @@ export default function InspecoesTab({
           </TableShell>
         )}
       </div>
+
+      {paginacao.totalPaginas > 1 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] text-slate-500">
+            {paginacao.visiveis.length} de {paginacao.total} registro(s)
+          </span>
+          <Pagination page={paginacao.pagina} totalPages={paginacao.totalPaginas} onChange={paginacao.setPagina} />
+        </div>
+      )}
 
       <Modal
         open={aberto}

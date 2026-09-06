@@ -17,11 +17,13 @@ import type {
 import { documentosParaAlertar, painelDocumentos, situacaoDocumento, validarDocumento } from '../utils/documentos';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { validateOperationalAttachment } from '../utils/operationalAttachmentRules';
+import { usePaginacao } from '../shared/hooks/usePaginacao';
 import {
   Badge,
   EmptyState,
   Modal,
   PageHeader,
+  Pagination,
   TableBody,
   TableHead,
   TableShell,
@@ -107,6 +109,8 @@ export default function DocumentosTab({
       .filter(item => !termo || normalizeComparable(`${item.titulo} ${item.tipo} ${item.numero || ''} ${item.vinculo}`).includes(termo))
       .sort((a, b) => (a.validade || '9999').localeCompare(b.validade || '9999') || a.titulo.localeCompare(b.titulo, 'pt-BR'));
   }, [ativos, alertas, filtro, termo]);
+
+  const paginacao = usePaginacao(listados);
 
   const abrir = (documento?: DocumentoArquivo) => {
     setEditado(documento || null);
@@ -257,7 +261,7 @@ export default function DocumentosTab({
               </tr>
             </TableHead>
             <TableBody>
-              {listados.map(item => {
+              {paginacao.visiveis.map(item => {
                 const situacao = situacaoDocumento(item, hoje);
                 return (
                   <tr key={item.id} className={`transition-colors hover:bg-slate-50 ${situacao === 'Vencido' ? 'bg-rose-50/50' : ''}`}>
@@ -282,6 +286,15 @@ export default function DocumentosTab({
           </TableShell>
         )}
       </div>
+
+      {paginacao.totalPaginas > 1 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] text-slate-500">
+            {paginacao.visiveis.length} de {paginacao.total} registro(s)
+          </span>
+          <Pagination page={paginacao.pagina} totalPages={paginacao.totalPaginas} onChange={paginacao.setPagina} />
+        </div>
+      )}
 
       <Modal
         open={aberto}

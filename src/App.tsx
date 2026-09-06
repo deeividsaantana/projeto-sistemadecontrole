@@ -150,7 +150,7 @@ import {
 } from './firebaseCloudSync';
 import {
   deletePublicTicket,
-  loadPublicTickets,
+  subscribePublicTickets,
   reservePublicTicketNumber,
   reservePublicTicketNumbers,
   savePublicTicket,
@@ -1290,16 +1290,6 @@ export default function App() {
     void reloadExternalPresence();
   }, [externalPresenceToken]);
 
-  const refreshPublicTickets = async () => {
-    const publicTickets = await loadPublicTickets(db);
-    if (publicTickets.length === 0) return;
-    setTicketsJazida(current => {
-      const merged = mergeTicketCollections(current, publicTickets);
-      writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(merged));
-      return merged;
-    });
-  };
-
   useEffect(() => {
     if (!externalTicketLink) return;
     setExternalPublicTickets([]);
@@ -1316,13 +1306,21 @@ export default function App() {
       .finally(() => setIsExternalTicketLoading(false));
   }, [externalTicketAccessToken, externalTicketLink]);
 
+  // Tickets públicos chegam por listener, não por varredura periódica: reler a
+  // coleção inteira a cada 30 segundos custava centenas de milhares de leituras
+  // por dia sem nada ter mudado. O listener cobra a leitura inicial e depois só
+  // o documento que muda de fato.
   useEffect(() => {
     if (!isLoggedIn || externalTicketLink) return;
-    refreshPublicTickets().catch(error => console.warn('Falha ao atualizar tickets públicos:', error));
-    const interval = window.setInterval(() => {
-      refreshPublicTickets().catch(error => console.warn('Falha ao atualizar tickets públicos:', error));
-    }, 30_000);
-    return () => window.clearInterval(interval);
+    const unsubscribe = subscribePublicTickets(db, publicTickets => {
+      if (publicTickets.length === 0) return;
+      setTicketsJazida(current => {
+        const merged = mergeTicketCollections(current, publicTickets);
+        writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(merged));
+        return merged;
+      });
+    }, error => console.warn('Listener de tickets públicos indisponível:', error));
+    return () => unsubscribe();
   }, [isLoggedIn, externalTicketLink]);
 
   // Não altera nem migra tickets automaticamente ao abrir o sistema.

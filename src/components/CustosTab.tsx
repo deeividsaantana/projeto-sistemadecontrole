@@ -26,11 +26,13 @@ import {
   validarLancamentoCusto,
 } from '../utils/custos';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { usePaginacao } from '../shared/hooks/usePaginacao';
 import {
   Badge,
   EmptyState,
   Modal,
   PageHeader,
+  Pagination,
   PeriodFilter,
   TableBody,
   TableHead,
@@ -106,6 +108,8 @@ export default function CustosTab({
   const termo = normalizeComparable(busca).trim();
   const listados = custos.filter(item => !termo
     || normalizeComparable(`${item.descricao} ${item.categoria} ${item.origem}`).includes(termo));
+
+  const paginacao = usePaginacao(listados);
 
   const abrir = (lancamento?: LancamentoCusto) => {
     setEditado(lancamento || null);
@@ -258,7 +262,7 @@ export default function CustosTab({
               </tr>
             </TableHead>
             <TableBody>
-              {listados.map(item => {
+              {paginacao.visiveis.map(item => {
                 const manual = item.origem === 'Lançamento';
                 return (
                   <tr key={item.id} className="transition-colors hover:bg-slate-50">
@@ -290,6 +294,15 @@ export default function CustosTab({
           </TableShell>
         )}
       </div>
+
+      {paginacao.totalPaginas > 1 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] text-slate-500">
+            {paginacao.visiveis.length} de {paginacao.total} registro(s)
+          </span>
+          <Pagination page={paginacao.pagina} totalPages={paginacao.totalPaginas} onChange={paginacao.setPagina} />
+        </div>
+      )}
 
       <Modal
         open={aberto}
