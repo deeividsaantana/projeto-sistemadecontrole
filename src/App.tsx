@@ -29,6 +29,8 @@ import {
   ServicoObra,
   RegistroProducao,
   PlanejamentoItem,
+  ModeloFvs,
+  FichaVerificacaoServico,
   MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
@@ -99,6 +101,7 @@ const FrentesTab = lazy(() => import('./components/FrentesTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
 const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
+const FvsTab = lazy(() => import('./components/FvsTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -321,6 +324,8 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['servicosObra', STORAGE_KEYS.servicosObra],
   ['producaoRegistros', STORAGE_KEYS.producaoRegistros],
   ['planejamentoItens', STORAGE_KEYS.planejamentoItens],
+  ['modelosFvs', STORAGE_KEYS.modelosFvs],
+  ['fichasFvs', STORAGE_KEYS.fichasFvs],
   ['modelosChecklist', STORAGE_KEYS.modelosChecklist],
   ['periodosArquivados', 'renea_periodos_arquivados'],
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
@@ -433,6 +438,8 @@ export default function App() {
   const [servicosObra, setServicosObra] = useState<ServicoObra[]>([]);
   const [producaoRegistros, setProducaoRegistros] = useState<RegistroProducao[]>([]);
   const [planejamentoItens, setPlanejamentoItens] = useState<PlanejamentoItem[]>([]);
+  const [modelosFvs, setModelosFvs] = useState<ModeloFvs[]>([]);
+  const [fichasFvs, setFichasFvs] = useState<FichaVerificacaoServico[]>([]);
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
@@ -636,6 +643,8 @@ export default function App() {
       setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
       setProducaoRegistros(parseStoredJson(localStorage.getItem(STORAGE_KEYS.producaoRegistros), STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]));
       setPlanejamentoItens(parseStoredJson(localStorage.getItem(STORAGE_KEYS.planejamentoItens), STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]));
+      setModelosFvs(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosFvs), STORAGE_KEYS.modelosFvs, [] as ModeloFvs[]));
+      setFichasFvs(parseStoredJson(localStorage.getItem(STORAGE_KEYS.fichasFvs), STORAGE_KEYS.fichasFvs, [] as FichaVerificacaoServico[]));
       const modelosSalvos = parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosChecklist), STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]);
       if (modelosSalvos[0]) setModeloChecklist(modelosSalvos[0]);
       setGruposEquipe(securedPublicLinks.gruposEquipe);
@@ -825,6 +834,8 @@ export default function App() {
     servicosObra: readTable(STORAGE_KEYS.servicosObra, [] as ServicoObra[]),
     producaoRegistros: readTable(STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]),
     planejamentoItens: readTable(STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]),
+    modelosFvs: readTable(STORAGE_KEYS.modelosFvs, [] as ModeloFvs[]),
+    fichasFvs: readTable(STORAGE_KEYS.fichasFvs, [] as FichaVerificacaoServico[]),
     modelosChecklist: readTable(STORAGE_KEYS.modelosChecklist, [] as ModeloChecklist[]),
     listasPresenca: readTable('renea_listas_presenca', INITIAL_PRESENCAS),
     ordensServico: readTable('renea_ordens_servico', INITIAL_ORDENS_SERVICO),
@@ -1007,6 +1018,8 @@ export default function App() {
           setServicosObra(normalizeRuntimeCollection<ServicoObra>(data.servicosObra));
           setProducaoRegistros(normalizeRuntimeCollection<RegistroProducao>(data.producaoRegistros));
           setPlanejamentoItens(normalizeRuntimeCollection<PlanejamentoItem>(data.planejamentoItens));
+          setModelosFvs(normalizeRuntimeCollection<ModeloFvs>(data.modelosFvs));
+          setFichasFvs(normalizeRuntimeCollection<FichaVerificacaoServico>(data.fichasFvs));
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -3005,6 +3018,22 @@ export default function App() {
     });
   };
 
+  const handleSaveModeloFvs = (modelo: ModeloFvs, isNew: boolean) => {
+    const updated = isNew ? [modelo, ...modelosFvs] : modelosFvs.map(item => item.id === modelo.id ? modelo : item);
+    saveAndLog('FVS', isNew ? 'Criou' : 'Editou', `${isNew ? 'Criou' : 'Editou'} o modelo de FVS ${modelo.nome}.`, historyLogs, () => {
+      setModelosFvs(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.modelosFvs, JSON.stringify(updated));
+    });
+  };
+
+  const handleSaveFichaFvs = (ficha: FichaVerificacaoServico, isNew: boolean) => {
+    const updated = isNew ? [ficha, ...fichasFvs] : fichasFvs.map(item => item.id === ficha.id ? ficha : item);
+    saveAndLog('FVS', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a ficha ${ficha.numero} (${ficha.local}) — ${ficha.situacao}.`, historyLogs, () => {
+      setFichasFvs(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.fichasFvs, JSON.stringify(updated));
+    });
+  };
+
   const handleSavePlanejamento = (plano: PlanejamentoItem, isNew: boolean) => {
     const updated = isNew ? [plano, ...planejamentoItens] : planejamentoItens.map(item => item.id === plano.id ? plano : item);
     saveAndLog('Planejamento', isNew ? 'Criou' : 'Editou', `${isNew ? 'Planejou' : 'Editou'} ${plano.quantidadePlanejada} ${plano.unidade} de ${plano.servicoDescricao} entre ${plano.dataInicio} e ${plano.dataFim}.`, historyLogs, () => {
@@ -4179,6 +4208,21 @@ export default function App() {
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'fvs' && (
+              <FvsTab
+                fichas={fichasFvs}
+                modelos={modelosFvs}
+                servicos={servicosObra}
+                obras={obras}
+                frentes={frentesServico}
+                responsavel={activeUserName}
+                podeEditar={['admin', 'gestor', 'operador'].includes(currentUserRole)}
+                podeAprovar={['admin', 'gestor'].includes(currentUserRole)}
+                onSaveFicha={handleSaveFichaFvs}
+                onSaveModelo={handleSaveModeloFvs}
               />
             )}
 

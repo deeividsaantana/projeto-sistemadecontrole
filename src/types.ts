@@ -646,6 +646,61 @@ export interface PlanejamentoItem {
   atualizadoEm: string;
 }
 
+export type RespostaFvs = 'Conforme' | 'Não conforme' | 'Não aplicável';
+export type SituacaoFvs = 'Em preenchimento' | 'Aprovada' | 'Reprovada' | 'Liberada com pendência';
+
+export interface ItemModeloFvs {
+  id: string;
+  descricao: string;
+  /** Item obrigatório reprovado impede a aprovação da ficha. */
+  obrigatorio: boolean;
+}
+
+/** Modelo de ficha por serviço. A qualidade edita os itens sem deploy. */
+export interface ModeloFvs {
+  id: string;
+  nome: string;
+  servicoId?: string;
+  itens: ItemModeloFvs[];
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface ItemFvs {
+  itemId: string;
+  descricao: string;
+  obrigatorio: boolean;
+  resposta: RespostaFvs;
+  observacao?: string;
+  /** Foto em data URL, mesmo formato do checklist de equipamento. */
+  foto?: string;
+}
+
+/** Ficha de Verificação de Serviço aplicada a um local da obra. */
+export interface FichaVerificacaoServico {
+  id: string;
+  numero: string;
+  data: string; // YYYY-MM-DD
+  modeloId: string;
+  modeloNome: string;
+  servicoId?: string;
+  servicoDescricao?: string;
+  obraId?: string;
+  frente?: string;
+  local: string;
+  itens: ItemFvs[];
+  situacao: SituacaoFvs;
+  responsavel: string;
+  /** Quem liberou a ficha e quando; só é preenchido na aprovação. */
+  aprovadoPor?: string;
+  aprovadoEm?: string;
+  observacao?: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type MovimentoEstaca = 'Entrada' | 'Saída' | 'Transferência' | 'Comodato';
 export type StatusEstaca = 'Pendente' | 'Programado' | 'Em carregamento' | 'Carregado' | 'Entregue' | 'Cancelado';
 

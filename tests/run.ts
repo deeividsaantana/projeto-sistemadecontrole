@@ -30,6 +30,7 @@ import './treinamentos.test';
 import './estoque.test';
 import './producao.test';
 import './planejamento.test';
+import './fvs.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';
