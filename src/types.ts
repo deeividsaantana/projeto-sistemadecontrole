@@ -1023,7 +1023,7 @@ export interface AppNotification {
   message: string;
   timestamp: string; // HH:MM
   read: boolean;
-  source: 'Netlify App' | 'Sistema Local' | 'Firebase Cloud';
+  source: 'RENEA API' | 'Sistema Local' | 'Firebase Cloud';
 }
 
 export interface PeriodoArquivado {

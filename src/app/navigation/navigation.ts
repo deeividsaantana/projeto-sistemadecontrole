@@ -10,7 +10,6 @@ import {
   MapPin,
   Package,
   Radio,
-  Settings,
   TimerOff,
   UserRound,
   Wrench,
@@ -125,7 +124,6 @@ export const NAVIGATION_GROUPS = [
       { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
       { id: 'auditoria', label: 'Auditoria', icon: ShieldCheck },
       { id: 'permissoes', label: 'Permissões', icon: KeyRound },
-      { id: 'configuracoes', label: 'Apoio e Configuração', icon: Settings },
     ],
   },
 ] as const;
@@ -136,9 +134,7 @@ export const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
 
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
-  // Auditoria e configuração ficam só com o admin: uma expõe o rastro de todo
-  // mundo, a outra muda o comportamento do sistema.
-  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => !['configuracoes', 'auditoria', 'permissoes', 'administracao'].includes(id)),
+  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => !['auditoria', 'permissoes', 'administracao'].includes(id)),
   operador: [
     'dashboard',
     'consulta-geral',

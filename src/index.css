@@ -37,7 +37,7 @@ body {
 
 ::selection { background: rgb(6 60 49 / .22); color: var(--renea-green-deep); }
 * { scrollbar-width: thin; scrollbar-color: #a8b1ac #f4f7f5; }
-h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.025em; text-wrap: balance; }
+h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0; text-wrap: balance; }
 
 #app-root { min-height: 100dvh; background: var(--renea-stone); color: var(--renea-ink); }
 #main-workspace { background: var(--renea-stone); }
@@ -282,12 +282,32 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -.
 .erp-topbar__user small { max-width: 10rem; overflow: hidden; color: #8190a5; font-size: .6rem; text-overflow: ellipsis; white-space: nowrap; }
 .erp-topbar__command { min-height: 2.3rem; padding: 0 .95rem; border: 1px solid #bdd0f7; border-radius: .42rem; background: #f4f8ff; color: #285fcb; font: inherit; font-size: .7rem; font-weight: 720; cursor: pointer; }
 .erp-topbar__command:hover { border-color: #4d88ff; background: #eaf1ff; }
+.erp-topbar__project {
+  display: flex;
+  width: min(25rem, 32vw);
+  min-height: 2.8rem;
+  align-items: center;
+  gap: .7rem;
+  padding: .45rem .75rem;
+  border: 1px solid #d7e2dc;
+  border-radius: .45rem;
+  background: #fafcfb;
+  color: #173c2e;
+  text-align: left;
+}
+.erp-topbar__project:hover { border-color: #99bbaa; background: #f5faf7; }
+.erp-topbar__project > svg:first-child { width: 1rem; height: 1rem; flex: 0 0 auto; color: #087553; }
+.erp-topbar__project > span { display: grid; min-width: 0; flex: 1; gap: .08rem; }
+.erp-topbar__project small { color: #718078; font-size: .56rem; font-weight: 650; }
+.erp-topbar__project strong { overflow: hidden; color: #173c2e; font-size: .68rem; font-weight: 720; text-overflow: ellipsis; white-space: nowrap; }
 #main-tab-viewport { max-width: none; }
 
 @media (max-width: 1180px) {
   .erp-sidebar { width: 15.25rem; min-width: 15.25rem; }
   .erp-topbar { padding-inline: 1.1rem; }
   .erp-topbar__command { display: none; }
+  .erp-topbar__status { display: none; }
+  .erp-topbar__project { width: min(22rem, 35vw); }
 }
 @media (max-width: 1023px) {
   .erp-shell { min-height: auto; }

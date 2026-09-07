@@ -88,7 +88,6 @@ const ConsultaGeralTab = lazy(() => import('./components/ConsultaGeralTab'));
 const PeriodoTab = lazy(() => import('./components/PeriodoTab'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
-const ConfiguracoesTab = lazy(() => import('./components/ConfiguracoesTab'));
 const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
 const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
@@ -176,8 +175,6 @@ import {
   updatePublicPresenceRecord,
   validatePublicTicketAccess,
 } from './publicApi';
-import { loadOneDriveFuelPayload, type OneDriveFuelSyncStatus } from './oneDriveFuelSync';
-import { materializeOneDriveFuelRows } from './utils/oneDriveFuelImport';
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { rotateWeakPublicLinkTokens } from './utils/publicLinkSecurity';
 import {
@@ -455,7 +452,6 @@ export default function App() {
   // de entrar neste retrato local. Serve só de diagnóstico visível: se ficar
   // preso em um número maior que zero, o processamento em tempo real travou.
   const [pendingPublicSubmissionsCount, setPendingPublicSubmissionsCount] = useState(0);
-  const [oneDriveFuelSyncStatus, setOneDriveFuelSyncStatus] = useState<OneDriveFuelSyncStatus | null>(null);
 
   // Database States
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -2375,7 +2371,7 @@ export default function App() {
     title: string, 
     message: string, 
     type: NotificationType = 'info',
-    source: NotificationSource = 'Netlify App'
+    source: NotificationSource = 'RENEA API'
   ) => {
     const newNotif = createNotification(title, message, type, source);
 
@@ -2414,7 +2410,7 @@ export default function App() {
     title: string,
     message: string,
     type: NotificationType = 'info'
-  ): AppNotification => createNotification(title, message, type, 'Netlify App', 'notif-pres');
+  ): AppNotification => createNotification(title, message, type, 'RENEA API', 'notif-pres');
 
   const uploadLocalSnapshotToFirebase = (overrides: {
     funcionarios?: Funcionario[];
@@ -2516,98 +2512,6 @@ export default function App() {
     flush();
     return () => window.removeEventListener('online', flush);
   }, [isLoggedIn, externalTicketLink, externalPresenceToken]);
-
-  useEffect(() => {
-    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
-    let cancelled = false;
-    let running = false;
-
-    const ingestOneDriveFuel = async () => {
-      if (cancelled || running) return;
-      running = true;
-      try {
-        const payload = await loadOneDriveFuelPayload();
-        if (cancelled) return;
-        setOneDriveFuelSyncStatus(payload.status);
-        const batchId = payload.status.batchId || '';
-        if (!batchId || payload.rows.length === 0 || localStorage.getItem('renea_onedrive_fuel_batch') === batchId) return;
-
-        // Quando a sincronização automática está ativa, parte sempre da versão mais
-        // recente do banco para não sobrescrever alterações feitas em outro navegador.
-        if (isAutoSyncEnabled) {
-          const remoteResult = await handleDownloadFromFirebase();
-          if (!remoteResult.success && !remoteResult.message.includes('Nenhum backup')) {
-            throw new Error(remoteResult.message);
-          }
-        }
-
-        const storedEquipment = parseStoredJson<Equipamento[]>(localStorage.getItem('renea_equipamentos'), 'renea_equipamentos', INITIAL_EQUIPAMENTOS);
-        const storedConvoys = parseStoredJson<Comboio[]>(localStorage.getItem('renea_comboios'), 'renea_comboios', INITIAL_COMBOIOS);
-        const storedFuelTypes = parseStoredJson<TipoCombustivel[]>(localStorage.getItem('renea_combustiveis'), 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL);
-        const storedFuelRecords = parseStoredJson<Abastecimento[]>(localStorage.getItem('renea_abastecimentos'), 'renea_abastecimentos', INITIAL_ABASTECIMENTOS);
-        const materialized = materializeOneDriveFuelRows(
-          payload.rows,
-          storedEquipment,
-          storedConvoys,
-          storedFuelTypes,
-          storedFuelRecords,
-          payload.status.fileName || '',
-        );
-        const nextFuelTypes = mergeRecordsById(storedFuelTypes, materialized.fuelTypes);
-        // O agente envia um retrato completo da pasta. Substituir somente os
-        // registros de origem OneDrive evita manter linhas removidas da planilha,
-        // sem tocar nos lançamentos manuais e nas demais importações.
-        const nextFuelRecords = mergeRecordsById(
-          storedFuelRecords.filter(record => record.origem !== 'OneDrive'),
-          materialized.records,
-        );
-        const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
-        const nextHistory = mergeRecordsById(storedHistory, [{
-          id: `log-onedrive-${batchId}`,
-          timestamp: new Date(payload.status.syncedAt || Date.now()).toLocaleString('pt-BR'),
-          usuario: 'Agente OneDrive',
-          acao: 'Criou' as const,
-          tela: 'Abastecimentos',
-          descricao: `Sincronizou ${materialized.records.length} linha(s) de ${payload.status.fileName || 'planilha do OneDrive'}; ${payload.status.warningCount || 0} linha(s) para conferência.`,
-        }]);
-
-        commitStorageBatch(localStorage, [
-          { key: 'renea_combustiveis', value: JSON.stringify(nextFuelTypes) },
-          { key: 'renea_abastecimentos', value: JSON.stringify(nextFuelRecords) },
-      { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
-        ]);
-        setCombustiveis(nextFuelTypes);
-        setAbastecimentos(nextFuelRecords);
-    setHistoryLogs(nextHistory);
-
-        const syncResult = await uploadLocalSnapshotToFirebase();
-        if (!syncResult.success) throw new Error(syncResult.message);
-        writeStorageValue(localStorage, 'renea_onedrive_fuel_batch', batchId);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn('Falha ao incorporar a planilha do OneDrive:', error);
-          setOneDriveFuelSyncStatus(current => ({
-            state: 'error',
-            intervalMinutes: 10,
-            ...current,
-            message: error instanceof Error ? error.message : 'Falha ao consultar o OneDrive.',
-          }));
-        }
-      } finally {
-        running = false;
-      }
-    };
-
-    const initial = window.setTimeout(ingestOneDriveFuel, 3_000);
-    // A origem é atualizada pelo agente a cada 10 minutos; consultar o mesmo
-    // payload a cada minuto apenas gerava tráfego e processamento repetido.
-    const interval = window.setInterval(ingestOneDriveFuel, 10 * 60_000);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(initial);
-      window.clearInterval(interval);
-    };
-  }, [isLoggedIn, currentUser, isAutoSyncEnabled, externalTicketLink, externalPresenceToken]);
 
   useEffect(() => {
     if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
@@ -4297,6 +4201,17 @@ export default function App() {
                 presencasLink={presencasLink}
                 controlesEquipamentos={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
+                planejamento={planejamentoItens}
+                producao={producaoRegistros}
+                medicoes={medicoes}
+                materiais={materiaisCadastro}
+                movimentosMaterial={materiaisMovimentos}
+                fichasFvs={fichasFvs}
+                inspecoes={inspecoes}
+                naoConformidades={naoConformidades}
+                lancamentosCusto={lancamentosCusto}
+                orcamento={orcamentoItens}
+                frentes={frentesServico}
                 onNavigate={navigateTo}
               />
             )}
@@ -4917,19 +4832,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'configuracoes' && allowedTabs.includes('configuracoes') && (
-              <ConfiguracoesTab 
-                historyLogs={historyLogs}
-                onImportFullData={handleImportFullData}
-                onImportFilteredByDate={handleImportFilteredByDate}
-                onExportFullData={handleExportFullData}
-                periodosArquivados={periodosArquivados}
-                onArchivePeriod={handleArchivePeriod}
-                onRestoreArchivedPeriod={handleRestoreArchivedPeriod}
-                onDeleteTabData={handleDeleteTabData}
-                onRestoreLastDeletion={handleRestoreLastDeletion}
-              />
-            )}
             </div>
           </Suspense>
         </div>

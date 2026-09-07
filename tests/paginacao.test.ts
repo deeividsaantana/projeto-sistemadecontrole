@@ -12,7 +12,7 @@ test('a paginação fatia a lista em vez de desenhar tudo', () => {
 });
 
 test('mudou o total, volta para a primeira página', () => {
-  assert.match(fonte, /setPagina\(1\);\n\s*\}, \[itens\.length\]\)/);
+  assert.match(fonte, /setPagina\(1\);\r?\n\s*\}, \[itens\.length\]\)/);
 });
 
 test('a página nunca passa do total de páginas', () => {

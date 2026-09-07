@@ -1,362 +1,269 @@
-/** Painel executivo do ERP RENEA: ambiente operacional, com dados reais. */
-import { useMemo, useRef, useState, type ReactNode } from 'react';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { Activity, AlertTriangle, ChevronRight, Clock3, Droplets, Gauge, ListChecks, PieChart, Truck, UserCheck, UserX, Wrench } from 'lucide-react';
-import type { Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa, Equipamento, Funcionario, GrupoEquipe, HistoryLog, ListaPresenca, Lubrificacao, ObraLocal, OrdemServico, PresencaApontamento, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../types';
-import { splitOperationalFuelRecords } from '../utils/fuelAnalyticsSafety';
-import { listarPendencias } from '../utils/pendencias';
-import { PageHeader, PeriodFilter, StatCard, buildPeriod, type PeriodValue } from '../shared/ui';
+import { useMemo, type ReactNode } from 'react';
+import {
+  AlertTriangle, ArrowRight, BarChart3, CalendarClock, CheckCircle2,
+  ClipboardCheck, Clock3, FileSpreadsheet, HardHat, Package, TrendingUp,
+  Users, WalletCards, type LucideIcon,
+} from 'lucide-react';
+import type {
+  Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa,
+  Equipamento, FichaVerificacaoServico, FrenteServico, Funcionario, GrupoEquipe,
+  HistoryLog, Inspecao, LancamentoCusto, ListaPresenca, Lubrificacao, Material,
+  Medicao, MovimentoMaterial, NaoConformidade, ObraLocal, OrcamentoItem,
+  OrdemServico, PlanejamentoItem, PresencaApontamento, ProdutoLubrificacao,
+  RegistroProducao, TicketJazida, TipoCombustivel,
+} from '../types';
 
 interface DashboardProps {
-  empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[]; funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[]; lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[]; lubrificacoes: Lubrificacao[]; historyLogs: HistoryLog[]; listasPresenca?: ListaPresenca[]; ordensServico?: OrdemServico[]; ticketsJazida?: TicketJazida[]; estacas?: ControleEstacas; presencasLink?: PresencaApontamento[]; controlesEquipamentos?: ControleEquipamentoDiario[]; gruposEquipe?: GrupoEquipe[]; onNavigate: (tab: string) => void;
+  empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
+  funcionarios: Funcionario[]; comboios: Comboio[]; combustiveis: TipoCombustivel[];
+  lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[];
+  lubrificacoes: Lubrificacao[]; historyLogs: HistoryLog[];
+  listasPresenca?: ListaPresenca[]; ordensServico?: OrdemServico[];
+  ticketsJazida?: TicketJazida[]; estacas?: ControleEstacas;
+  presencasLink?: PresencaApontamento[]; controlesEquipamentos?: ControleEquipamentoDiario[];
+  gruposEquipe?: GrupoEquipe[]; planejamento?: PlanejamentoItem[];
+  producao?: RegistroProducao[]; medicoes?: Medicao[]; materiais?: Material[];
+  movimentosMaterial?: MovimentoMaterial[]; fichasFvs?: FichaVerificacaoServico[];
+  inspecoes?: Inspecao[]; naoConformidades?: NaoConformidade[];
+  lancamentosCusto?: LancamentoCusto[]; orcamento?: OrcamentoItem[];
+  frentes?: FrenteServico[]; onNavigate: (tab: string) => void;
 }
 
-const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const ACAO_TONE: Record<HistoryLog['acao'], string> = {
-  Criou: 'bg-emerald-50 text-emerald-700',
-  Editou: 'bg-sky-50 text-sky-700',
-  Sincronizou: 'bg-sky-50 text-sky-700',
-  Excluiu: 'bg-rose-50 text-rose-700',
-  Inativou: 'bg-amber-50 text-amber-700',
-  Desmobilizou: 'bg-amber-50 text-amber-700',
+const PROJECT_NAME = 'Rodoanel Complexo do Alto Tietê · Alça';
+const PROJECT_TABS = [
+  { label: 'Geral', target: 'dashboard' },
+  { label: 'Cronograma', target: 'cronograma' },
+  { label: 'Diário de obra', target: 'diario-obra' },
+  { label: 'Medições', target: 'medicoes' },
+  { label: 'Financeiro', target: 'custos' },
+  { label: 'Materiais', target: 'materiais' },
+  { label: 'Qualidade', target: 'fvs' },
+] as const;
+
+const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
+  style: 'currency', currency: 'BRL', notation: value >= 1_000_000 ? 'compact' : 'standard',
+  maximumFractionDigits: value >= 1_000_000 ? 2 : 0,
+}).format(value);
+const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
+const statusTone: Record<string, string> = {
+  Aprovada: 'bg-emerald-50 text-emerald-700',
+  Concluído: 'bg-emerald-50 text-emerald-700',
+  'Em execução': 'bg-sky-50 text-sky-700',
+  'Em elaboração': 'bg-amber-50 text-amber-700',
+  Enviada: 'bg-sky-50 text-sky-700',
+  Rejeitada: 'bg-rose-50 text-rose-700',
 };
 
-const OPERATING_STATUS = ['Em operação'];
-const MAINTENANCE_STATUS = ['Em manutenção', 'Aguardando manutenção'];
-const WAITING_STATUS = ['A confirmar', 'Aguardando motorista', 'Aguardando equipamento'];
+function Metric({ icon: Icon, label, value, detail, tone = 'green' }: {
+  icon: LucideIcon; label: string; value: string; detail: string;
+  tone?: 'green' | 'blue' | 'amber' | 'red';
+}) {
+  const tones = {
+    green: 'bg-emerald-50 text-emerald-700', blue: 'bg-sky-50 text-sky-700',
+    amber: 'bg-amber-50 text-amber-700', red: 'bg-rose-50 text-rose-700',
+  };
+  return <article className="min-w-0 border border-slate-200 bg-white p-3.5 sm:p-4">
+    <div className="flex items-start gap-3">
+      <span className={`hidden size-9 shrink-0 place-items-center rounded-md sm:grid ${tones[tone]}`}>
+        <Icon className="size-4" strokeWidth={1.8} aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-slate-500">{label}</p>
+        <strong className="mt-1 block text-lg font-bold leading-tight tabular-nums text-slate-900 sm:text-xl">{value}</strong>
+        <p className="mt-1 text-[10px] leading-snug text-slate-500">{detail}</p>
+      </div>
+    </div>
+  </article>;
+}
 
-const DONUT_RADIUS = 40;
-const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
-
-const SectionTitle = ({ icon: Icon, tone, children }: { icon: typeof Activity; tone: string; children: ReactNode }) => (
-  <div className="flex items-center gap-2.5">
-    <span className={`grid size-7 shrink-0 place-items-center rounded-lg text-white shadow-md ${tone}`}><Icon size={14} strokeWidth={2.5} /></span>
-    <p className="text-sm font-bold text-slate-800">{children}</p>
-  </div>
-);
-
-const inRange = (date: string | undefined, from: string, to: string) => Boolean(date) && date! >= from && date! <= to;
+function Surface({ title, action, children, className = '' }: {
+  title: string; action?: ReactNode; children: ReactNode; className?: string;
+}) {
+  return <section className={`border border-slate-200 bg-white ${className}`}>
+    <header className="flex min-h-12 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5">
+      <h2 className="text-sm font-bold text-slate-900">{title}</h2>{action}
+    </header>
+    {children}
+  </section>;
+}
 
 export default function Dashboard({
-  obras,
-  equipamentos,
-  abastecimentos,
-  historyLogs,
-  listasPresenca = [],
-  ordensServico = [],
-  ticketsJazida = [],
-  presencasLink = [],
-  controlesEquipamentos = [],
-  gruposEquipe = [],
-  onNavigate,
+  equipamentos, controlesEquipamentos = [], presencasLink = [], planejamento = [],
+  producao = [], medicoes = [], materiais = [], movimentosMaterial = [],
+  fichasFvs = [], inspecoes = [], naoConformidades = [], lancamentosCusto = [],
+  orcamento = [], frentes = [], onNavigate,
 }: DashboardProps) {
-  const dashboardRef = useRef<HTMLDivElement>(null);
-  const barsRef = useRef<HTMLDivElement>(null);
-  const donutGroupRef = useRef<SVGGElement>(null);
-  const percentRef = useRef<HTMLElement>(null);
-  const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
-  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
-  const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('hoje'));
-  const now = new Date();
-  const formattedToday = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(now);
-  const formattedWeekday = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(now);
-
-  // Situação da frota vem do controle diário — a fonte que a operação preenche
-  // todo dia. O cadastro só entra para saber quantos equipamentos existem.
-  const fleet = useMemo(() => {
-    const noPeriodo = controlesEquipamentos.filter(item => inRange(item.data, period.from, period.to));
-    // Um equipamento pode ter vários lançamentos no período: vale o mais recente.
-    const ultimoPorEquipamento = new Map<string, ControleEquipamentoDiario>();
-    noPeriodo.forEach(item => {
-      const chave = item.equipamentoId || item.prefixo;
-      const atual = ultimoPorEquipamento.get(chave);
-      if (!atual || `${item.data}${item.atualizadoEm}` >= `${atual.data}${atual.atualizadoEm}`) {
-        ultimoPorEquipamento.set(chave, item);
-      }
+  const today = new Date().toISOString().slice(0, 10);
+  const summary = useMemo(() => {
+    const activePlans = planejamento.filter(item => item.ativo && item.situacao !== 'Cancelado');
+    const planRatios = activePlans.map(plan => {
+      const delivered = producao
+        .filter(item => item.ativo && item.servicoId === plan.servicoId && item.data >= plan.dataInicio && item.data <= plan.dataFim)
+        .reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
+      return plan.quantidadePlanejada > 0 ? clamp((delivered / plan.quantidadePlanejada) * 100) : 0;
     });
-    const registros = Array.from(ultimoPorEquipamento.values());
-    const operando = registros.filter(item => OPERATING_STATUS.includes(item.status)).length;
-    const manutencao = registros.filter(item => MAINTENANCE_STATUS.includes(item.status)).length;
-    const aConfirmar = registros.filter(item => WAITING_STATUS.includes(item.status)).length;
-    const disponivel = registros.filter(item => item.status === 'Disponível' || item.status === 'Reserva').length;
-    const informados = registros.length;
-    const disponibilidade = informados ? Math.round((operando / informados) * 100) : 0;
-    return { operando, manutencao, aConfirmar, disponivel, informados, disponibilidade, registros };
-  }, [controlesEquipamentos, period.from, period.to]);
-
-  const pessoas = useMemo(() => {
-    const noPeriodo = presencasLink.filter(item => inRange(item.data, period.from, period.to));
-    // Atraso e saída antecipada são presença: a pessoa trabalhou no dia.
-    const presentes = noPeriodo.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status)).length;
-    const ausentes = noPeriodo.filter(item => item.status === 'Ausente').length;
-    const justificados = noPeriodo.filter(item => ['Falta justificada', 'Atestado', 'Férias', 'Afastado'].includes(item.status)).length;
-    return { presentes, ausentes, justificados, total: noPeriodo.length };
-  }, [presencasLink, period.from, period.to]);
-
-  const movimento = useMemo(() => {
-    const viagens = ticketsJazida.filter(item => inRange(item.data, period.from, period.to));
-    const { operational } = splitOperationalFuelRecords(abastecimentos.filter(item => inRange(item.data, period.from, period.to)));
-    const litros = operational.reduce((total, item) => total + (Number(item.quantidadeLitros) || 0), 0);
-    return { viagens: viagens.length, viagensRascunho: viagens.filter(item => item.statusFluxo === 'Rascunho').length, abastecimentos: operational.length, litros };
-  }, [ticketsJazida, abastecimentos, period.from, period.to]);
-
-  // Pendências vêm da mesma função da tela de Pendências: existe uma regra só
-  // para o que está em aberto, e o painel não pode divergir dela.
-  const pendencias = useMemo(() => listarPendencias({
-    hoje: new Date().toISOString().slice(0, 10),
-    inicio: period.from,
-    fim: period.to,
-    equipamentos,
-    controlesEquipamentos,
-    gruposEquipe,
-    presencasLink,
-    listasPresenca,
-    obras,
-    ordensServico,
-    ticketsJazida,
-  }).slice(0, 6), [equipamentos, controlesEquipamentos, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, period.from, period.to]);
-
-  const fleetSituation = [
-    { label: 'Em operação', value: fleet.operando, color: '#087345' },
-    { label: 'Em manutenção', value: fleet.manutencao, color: '#d97706' },
-    { label: 'A confirmar', value: fleet.aConfirmar, color: '#0284c7' },
-    { label: 'À disposição', value: fleet.disponivel, color: '#94a3b8' },
-  ];
-  const fleetTotal = fleetSituation.reduce((sum, item) => sum + item.value, 0);
-  const donutSegments = useMemo(() => {
-    let offset = 0;
-    return fleetSituation.map(item => {
-      const length = fleetTotal ? (item.value / fleetTotal) * DONUT_CIRCUMFERENCE : 0;
-      const pct = fleetTotal ? Math.round((item.value / fleetTotal) * 100) : 0;
-      const segment = { ...item, length, offset, pct };
-      offset += length;
-      return segment;
+    const physical = planRatios.length
+      ? Math.round(planRatios.reduce((sum, value) => sum + value, 0) / planRatios.length) : 0;
+    const delayed = activePlans.filter(item => item.dataFim < today && item.situacao !== 'Concluído').length;
+    const measured = medicoes.filter(item => item.ativo).reduce((sum, measurement) => sum + measurement.itens.reduce(
+      (itemSum, item) => itemSum + Number(item.quantidade || 0) * Number(item.valorUnitario || 0), 0,
+    ), 0);
+    const budget = orcamento.filter(item => item.ativo).reduce((sum, item) => sum + Number(item.valorOrcado || 0), 0);
+    const cost = lancamentosCusto.filter(item => item.ativo).reduce((sum, item) => sum + Number(item.valor || 0), 0);
+    const financial = budget > 0 ? clamp((cost / budget) * 100) : 0;
+    const openQuality = naoConformidades.filter(item => item.ativo && !['Encerrada', 'Cancelada'].includes(item.situacao)).length;
+    const stock = new Map<string, number>();
+    movimentosMaterial.forEach(item => {
+      const current = stock.get(item.materialId) || 0;
+      const quantity = Math.abs(Number(item.quantidade || 0));
+      const signal = item.tipo === 'Entrada' ? 1 : item.tipo === 'Saída' ? -1 : item.tipo === 'Ajuste' ? Math.sign(Number(item.quantidade || 0)) : 0;
+      stock.set(item.materialId, current + quantity * signal);
     });
-  }, [fleetSituation, fleetTotal]);
-  const visibleSegmentCount = donutSegments.filter(segment => segment.length > 0).length;
-  const donutGap = visibleSegmentCount > 1 ? 1.5 : 0;
-  const centerLabel = hoveredSegment !== null ? donutSegments[hoveredSegment] : null;
+    const criticalMaterials = materiais.filter(item => item.ativo && Number(item.estoqueMinimo || 0) > (stock.get(item.id) || 0));
+    const operationalDate = controlesEquipamentos.reduce((latest, item) => item.data > latest ? item.data : latest, '');
+    const latestFleet = controlesEquipamentos.filter(item => item.data === operationalDate);
+    const operating = new Set(latestFleet.filter(item => item.status === 'Em operação').map(item => item.equipamentoId || item.prefixo)).size;
+    const fleetBase = new Set(latestFleet.map(item => item.equipamentoId || item.prefixo)).size || equipamentos.length;
+    const fleetAvailability = fleetBase ? Math.round((operating / fleetBase) * 100) : 0;
+    const presenceDate = presencasLink.reduce((latest, item) => item.data > latest ? item.data : latest, '');
+    const latestPresence = presencasLink.filter(item => item.data === presenceDate);
+    const people = latestPresence.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status)).length;
+    return { physical, delayed, measured, budget, cost, financial, openQuality, criticalMaterials, stock, fleetAvailability, people, planCount: activePlans.length };
+  }, [planejamento, producao, medicoes, orcamento, lancamentosCusto, naoConformidades, movimentosMaterial, materiais, controlesEquipamentos, equipamentos, presencasLink, today]);
 
-  // Atividade real (histórico de ações) da semana — nada fictício, é contagem de eventos já registrados.
-  const weeklyActivity = useMemo(() => {
-    const days = Array.from({ length: 7 }, (_, index) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - index));
-      return date;
+  const criticalFronts = useMemo(() => planejamento
+    .filter(item => item.ativo && item.dataFim < today && item.situacao !== 'Concluído')
+    .sort((a, b) => a.dataFim.localeCompare(b.dataFim)).slice(0, 4), [planejamento, today]);
+  const approvals = useMemo(() => [
+    ...medicoes.filter(item => item.ativo).map(item => ({
+      id: `med-${item.id}`, title: `Medição ${item.numero}`,
+      meta: `${item.periodoInicio.split('-').reverse().join('/')} a ${item.periodoFim.split('-').reverse().join('/')}`,
+      status: item.situacao, target: 'medicoes',
+    })),
+    ...fichasFvs.filter(item => item.ativo).map(item => ({
+      id: `fvs-${item.id}`, title: `FVS ${item.numero}`,
+      meta: item.servicoDescricao || item.modeloNome, status: item.situacao, target: 'fvs',
+    })),
+  ].slice(0, 5), [medicoes, fichasFvs]);
+  const materialRisks = summary.criticalMaterials.slice(0, 4).map(material => ({ ...material, balance: summary.stock.get(material.id) || 0 }));
+  const progressSeries = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (6 - index) + 1, 0);
+    const cutoff = date.toISOString().slice(0, 10);
+    const eligible = planejamento.filter(item => item.ativo && item.situacao !== 'Cancelado' && item.dataInicio <= cutoff);
+    const ratios = eligible.map(plan => {
+      const duration = Math.max(1, new Date(`${plan.dataFim}T12:00:00`).getTime() - new Date(`${plan.dataInicio}T12:00:00`).getTime());
+      const elapsed = new Date(`${cutoff}T12:00:00`).getTime() - new Date(`${plan.dataInicio}T12:00:00`).getTime();
+      const planned = clamp((elapsed / duration) * 100);
+      const delivered = producao.filter(item => item.ativo && item.servicoId === plan.servicoId && item.data >= plan.dataInicio && item.data <= cutoff)
+        .reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
+      const actual = plan.quantidadePlanejada > 0 ? clamp((delivered / plan.quantidadePlanejada) * 100) : 0;
+      return { planned, actual };
     });
-    const counts = days.map(date => {
-      const key = date.toLocaleDateString('pt-BR');
-      return historyLogs.filter(log => log.timestamp.startsWith(key)).length;
-    });
-    const max = Math.max(1, ...counts);
-    return days.map((date, index) => ({ label: WEEKDAY_LABELS[date.getDay()], count: counts[index], pct: Math.round((counts[index] / max) * 100) }));
-  }, [historyLogs]);
+    const average = (key: 'planned' | 'actual') => ratios.length
+      ? ratios.reduce((sum, item) => sum + item[key], 0) / ratios.length : 0;
+    return { label: new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(date).replace('.', ''), planned: average('planned'), actual: average('actual') };
+  }), [planejamento, producao]);
+  const plannedProgress = Math.round(progressSeries.at(-1)?.planned || 0);
+  const chartActual = progressSeries.map(item => item.actual);
+  const chartPlanned = progressSeries.map(item => item.planned);
+  const points = (values: number[]) => values.map((value, index) => `${index * 16.66},${100 - clamp(value)}`).join(' ');
 
-  const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  useGSAP(() => {
-    if (reduceMotion || !dashboardRef.current) return;
-    gsap.fromTo(dashboardRef.current.querySelectorAll('[data-erp-enter]'), { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.38, stagger: 0.045, ease: 'power2.out', clearProps: 'transform,opacity,visibility' });
-  }, { scope: dashboardRef, dependencies: [fleet.operando, historyLogs.length] });
-  useGSAP(() => {
-    if (!barsRef.current) return;
-    const bars = barsRef.current.querySelectorAll<HTMLElement>('[data-bar]');
-    if (reduceMotion) {
-      bars.forEach(bar => { bar.style.height = `${bar.dataset.pct}%`; });
-      return;
-    }
-    gsap.fromTo(bars, { height: '4%' }, {
-      height: (index, target) => `${target.dataset.pct}%`,
-      duration: 0.65,
-      ease: 'power3.out',
-      stagger: 0.06,
-      delay: 0.25,
-    });
-  }, { scope: barsRef, dependencies: [weeklyActivity] });
-  useGSAP(() => {
-    if (!donutGroupRef.current) return;
-    if (reduceMotion) {
-      gsap.set(donutGroupRef.current, { scale: 1, opacity: 1 });
-    } else {
-      gsap.fromTo(donutGroupRef.current, { scale: 0.4, opacity: 0, transformOrigin: '50% 50%' }, { scale: 1, opacity: 1, duration: 0.7, ease: 'back.out(1.6)', delay: 0.15 });
-    }
-    if (percentRef.current) {
-      if (reduceMotion) {
-        percentRef.current.textContent = `${fleet.disponibilidade}%`;
-      } else {
-        const counter = { current: 0 };
-        gsap.to(counter, {
-          current: fleet.disponibilidade, duration: 0.9, ease: 'power2.out', delay: 0.2,
-          onUpdate: () => { if (percentRef.current) percentRef.current.textContent = `${Math.round(counter.current)}%`; },
-        });
-      }
-    }
-  }, { scope: dashboardRef, dependencies: [fleet.disponibilidade, donutSegments.length] });
-
-  const latestLogs = historyLogs.slice(0, 6);
-  const periodoLabel = period.from === period.to
-    ? period.from.split('-').reverse().join('/')
-    : `${period.from.split('-').reverse().join('/')} a ${period.to.split('-').reverse().join('/')}`;
-
-  return <div ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full w-full bg-[#f7f8f6] px-5 pb-12 pt-7 sm:px-7 lg:px-9 2xl:px-10">
-    <div data-erp-enter>
-      <PageHeader
-        title="Painel de Controle"
-        actions={<div className="text-right">
-          <p className="text-sm font-semibold text-slate-700">Hoje, {formattedToday}</p>
-          <p className="text-xs capitalize text-slate-400">{formattedWeekday}</p>
-        </div>}
-      />
+  return <div id="dashboard-tab" className="min-h-full bg-[#f7f9f8] pb-14">
+    <div className="border-b border-slate-200 bg-white px-4 pt-5 sm:px-6 lg:px-8">
+      <div className="flex flex-col justify-between gap-3 pb-4 sm:flex-row sm:items-end">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase text-emerald-700">Visão consolidada</p>
+          <h1 className="mt-1 text-2xl font-bold text-slate-950">Painel de Controle</h1>
+          <p className="mt-1 truncate text-xs text-slate-500">{PROJECT_NAME}</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500"><span className="size-2 rounded-full bg-emerald-500" />Dados operacionais atualizados</div>
+      </div>
+      <nav className="-mx-4 flex overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" aria-label="Módulos da obra">
+        {PROJECT_TABS.map(tab => <button key={tab.target} type="button" onClick={() => onNavigate(tab.target)} aria-current={tab.target === 'dashboard' ? 'page' : undefined}
+          className={`h-11 shrink-0 border-b-2 px-3 text-xs font-semibold sm:px-4 ${tab.target === 'dashboard' ? 'border-emerald-700 text-emerald-800' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'}`}>
+          {tab.label}
+        </button>)}
+      </nav>
     </div>
 
-    <div data-erp-enter className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <PeriodFilter value={period} onChange={setPeriod} />
-      <span className="text-xs font-medium text-slate-500">Período: {periodoLabel}</span>
-    </div>
+    <div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+      <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <Metric icon={TrendingUp} label="Avanço físico" value={`${summary.physical}%`} detail={summary.planCount ? `${plannedProgress}% previsto no período` : 'Sem planejamento lançado'} />
+        <Metric icon={WalletCards} label="Custo realizado" value={formatCurrency(summary.cost)} detail={`${Math.round(summary.financial)}% do orçamento lançado`} tone="blue" />
+        <Metric icon={CalendarClock} label="Prazo" value={summary.delayed ? `${summary.delayed} atrasos` : 'Em dia'} detail={`${planejamento.filter(item => item.ativo).length} atividades acompanhadas`} tone={summary.delayed ? 'amber' : 'green'} />
+        <Metric icon={ClipboardCheck} label="Qualidade" value={`${summary.openQuality} abertas`} detail={`${inspecoes.filter(item => item.ativo).length} inspeções registradas`} tone={summary.openQuality ? 'red' : 'green'} />
+      </section>
 
-    <section data-erp-enter className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label="Em operação" value={fleet.operando} icon={Truck} tone="success" onClick={() => onNavigate('controle-equipamentos')} />
-      <StatCard label="Em manutenção" value={fleet.manutencao} icon={Wrench} tone="warning" onClick={() => onNavigate('controle-equipamentos')} />
-      <StatCard label="A confirmar" value={fleet.aConfirmar} icon={Clock3} tone="info" onClick={() => onNavigate('controle-equipamentos')} />
-      <StatCard label="Disponibilidade" value={`${fleet.disponibilidade}%`} trend={`${fleet.informados} de ${equipamentos.length} informados`} icon={Gauge} tone="neutral" onClick={() => onNavigate('controle-equipamentos')} />
-    </section>
-
-    <section data-erp-enter className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label="Presentes" value={pessoas.presentes} trend={pessoas.justificados ? `${pessoas.justificados} justificados` : undefined} icon={UserCheck} tone="success" onClick={() => onNavigate('presenca')} />
-      <StatCard label="Ausências" value={pessoas.ausentes} icon={UserX} tone="danger" onClick={() => onNavigate('presenca')} />
-      <StatCard label="Viagens" value={movimento.viagens} trend={movimento.viagensRascunho ? `${movimento.viagensRascunho} em rascunho` : undefined} icon={Truck} tone="info" onClick={() => onNavigate('tickets-jazida')} />
-      <StatCard label="Abastecimentos" value={movimento.abastecimentos} trend={movimento.litros ? `${movimento.litros.toLocaleString('pt-BR')} L` : undefined} icon={Droplets} tone="neutral" onClick={() => onNavigate('lancamentos')} />
-    </section>
-
-    <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-      <article data-erp-enter className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(15,23,42,0.25)]">
-        <SectionTitle icon={PieChart} tone="bg-gradient-to-br from-emerald-500 to-emerald-700">Situação da Frota</SectionTitle>
-        {fleetTotal === 0 ? (
-          <p className="mt-6 text-center text-xs text-slate-500">Nenhum equipamento informado no período selecionado.</p>
-        ) : (
-          <div className="mt-5 flex items-center gap-6">
-            <div className="relative size-36 shrink-0">
-              <svg viewBox="0 0 100 100" className="size-36 -rotate-90 drop-shadow-sm">
-                <circle cx="50" cy="50" r={DONUT_RADIUS} fill="none" stroke="#eef2f0" strokeWidth="13" />
-                <g ref={donutGroupRef}>
-                  {donutSegments.map((segment, index) => segment.length > 0 && (
-                    <circle
-                      key={segment.label}
-                      cx="50" cy="50" r={DONUT_RADIUS} fill="none"
-                      stroke={segment.color}
-                      strokeWidth={hoveredSegment === index ? 16 : 13}
-                      strokeLinecap="round"
-                      strokeDasharray={`${Math.max(0, segment.length - donutGap)} ${DONUT_CIRCUMFERENCE - segment.length + donutGap}`}
-                      strokeDashoffset={-segment.offset}
-                      opacity={hoveredSegment !== null && hoveredSegment !== index ? 0.35 : 1}
-                      onMouseEnter={() => setHoveredSegment(index)}
-                      onMouseLeave={() => setHoveredSegment(null)}
-                      className="cursor-pointer transition-[stroke-width,opacity] duration-200 ease-out"
-                    />
-                  ))}
-                </g>
+      <section className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(19rem,.7fr)]">
+        <Surface title="Curva de avanço da obra" action={<button type="button" onClick={() => onNavigate('cronograma')} className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">Abrir cronograma <ArrowRight className="size-3.5" /></button>}>
+          <div className="p-4 sm:p-5">
+            <div className="flex flex-wrap gap-4 text-[10px] font-semibold text-slate-500">
+              <span className="flex items-center gap-1.5"><i className="h-0.5 w-5 bg-emerald-700" />Realizado</span>
+              <span className="flex items-center gap-1.5"><i className="h-0.5 w-5 border-t-2 border-dashed border-sky-500" />Planejado</span>
+            </div>
+            <div className="mt-4 h-48 w-full sm:h-56">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full overflow-visible" role="img" aria-label={`Avanço realizado ${summary.physical}% e planejado ${plannedProgress}%`}>
+                {[20, 40, 60, 80].map(value => <line key={value} x1="0" x2="100" y1={100 - value} y2={100 - value} stroke="#e8eeeb" strokeWidth="0.5" />)}
+                <polyline points={points(chartPlanned)} fill="none" stroke="#38a6db" strokeWidth="1.4" strokeDasharray="3 2" vectorEffect="non-scaling-stroke" />
+                <polyline points={points(chartActual)} fill="none" stroke="#087553" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                {chartActual.map((value, index) => <circle key={index} cx={index * 16.66} cy={100 - clamp(value)} r="1.2" fill="#087553" />)}
               </svg>
-              <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-full bg-white text-center shadow-inner">
-                {centerLabel ? (
-                  <>
-                    <strong className="text-2xl font-black leading-none text-slate-900">{centerLabel.value}</strong>
-                    <span className="mt-1.5 max-w-[80px] text-[10px] font-semibold leading-tight text-slate-500">{centerLabel.label}</span>
-                    <span className="mt-0.5 text-[10px] font-bold" style={{ color: centerLabel.color }}>{centerLabel.pct}%</span>
-                  </>
-                ) : (
-                  <>
-                    <strong ref={percentRef} className="text-3xl font-black leading-none text-slate-900">0%</strong>
-                    <span className="mt-1.5 text-[10px] font-semibold text-slate-500">Operacional</span>
-                  </>
-                )}
-              </div>
             </div>
-            <ul className="flex-1 space-y-1.5">
-              {fleetSituation.map((item, index) => (
-                <li
-                  key={item.label}
-                  onMouseEnter={() => setHoveredSegment(index)}
-                  onMouseLeave={() => setHoveredSegment(null)}
-                  className={`flex cursor-default items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm transition-all duration-150 ${hoveredSegment === index ? 'bg-slate-50 shadow-sm' : ''}`}
-                >
-                  <span className="flex items-center gap-2.5 font-medium text-slate-600"><span className="size-2.5 shrink-0 rounded-full ring-4 ring-offset-0" style={{ backgroundColor: item.color, boxShadow: `0 0 0 4px ${item.color}1a` }} />{item.label}</span>
-                  <strong className="tabular-nums text-slate-900">{item.value}</strong>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-2 grid grid-cols-7 text-center text-[9px] text-slate-400">{progressSeries.map(item => <span key={item.label}>{item.label}</span>)}</div>
           </div>
-        )}
-      </article>
-      <article data-erp-enter className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(15,23,42,0.25)]">
-        <div className="flex items-center justify-between">
-          <SectionTitle icon={Activity} tone="bg-gradient-to-br from-sky-500 to-sky-700">Movimentação de Atividades</SectionTitle>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Esta semana</span>
-        </div>
-        <div ref={barsRef} className="relative mt-7 flex h-36 items-end gap-3 border-b border-slate-100">
-          {weeklyActivity.map((day, index) => (
-            <div key={day.label} className="flex flex-1 flex-col items-center gap-2">
-              <div className="relative flex h-28 w-full items-end justify-center">
-                <span className={`absolute -top-6 text-[11px] font-black tabular-nums transition-colors duration-150 ${hoveredDay === index ? 'text-[#087345]' : 'text-slate-400'}`}>{day.count}</span>
-                <div
-                  data-bar
-                  data-pct={Math.max(4, day.pct)}
-                  onMouseEnter={() => setHoveredDay(index)}
-                  onMouseLeave={() => setHoveredDay(null)}
-                  className={`w-full cursor-pointer rounded-t-md bg-gradient-to-t transition-[filter] duration-150 ${hoveredDay === index ? 'from-[#065f3c] to-[#0fae6a] brightness-110' : 'from-[#065f3c] to-[#10b981]'}`}
-                />
-              </div>
-              <span className={`text-[10px] font-bold transition-colors duration-150 ${hoveredDay === index ? 'text-slate-800' : 'text-slate-500'}`}>{day.label}</span>
-            </div>
-          ))}
-        </div>
-      </article>
-    </section>
+        </Surface>
 
-    <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-      <article data-erp-enter className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <header className="border-b border-slate-200 px-5 py-4">
-          <SectionTitle icon={AlertTriangle} tone="bg-gradient-to-br from-amber-500 to-amber-600">Pendências do período</SectionTitle>
-        </header>
-        {pendencias.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-slate-500">Nenhuma pendência no período selecionado.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {pendencias.map(item => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => onNavigate(item.tab)}
-                  className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left transition-colors hover:bg-amber-50/50"
-                >
-                  <span className="min-w-0 text-sm text-slate-700">{item.titulo}</span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <strong className="tabular-nums text-base font-black text-amber-700">{item.quantidade}</strong>
-                    <ChevronRight size={16} className="text-slate-300" />
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </article>
+        <Surface title="Operação hoje">
+          <div className="divide-y divide-slate-100">
+            {[
+              { icon: Users, label: 'Efetivo presente', value: String(summary.people), target: 'presenca' },
+              { icon: HardHat, label: 'Frentes em execução', value: String(frentes.filter(item => item.ativo && item.situacao === 'Em execução').length), target: 'frentes' },
+              { icon: BarChart3, label: 'Disponibilidade da frota', value: `${summary.fleetAvailability}%`, target: 'controle-equipamentos' },
+              { icon: FileSpreadsheet, label: 'Medido acumulado', value: formatCurrency(summary.measured), target: 'medicoes' },
+            ].map(item => { const Icon = item.icon; return <button key={item.label} type="button" onClick={() => onNavigate(item.target)} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-slate-50 sm:px-5">
+              <Icon className="size-4 text-emerald-700" strokeWidth={1.8} /><span className="flex-1 text-xs font-medium text-slate-600">{item.label}</span>
+              <strong className="text-sm tabular-nums text-slate-900">{item.value}</strong><ArrowRight className="size-3.5 text-slate-300" />
+            </button>; })}
+          </div>
+        </Surface>
+      </section>
 
-      <article data-erp-enter className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <SectionTitle icon={ListChecks} tone="bg-gradient-to-br from-slate-600 to-slate-800">Últimos Registros</SectionTitle>
-          <button type="button" onClick={() => onNavigate('consulta-geral')} className="inline-flex items-center gap-1 text-sm font-semibold text-[#087345] transition-colors hover:text-[#065f3c]">Ver todos <ChevronRight size={16} /></button>
-        </header>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-xs">
-            <thead><tr className="bg-slate-50/80"><th className="px-5 py-3 font-semibold text-slate-500">Horário</th><th className="px-4 py-3 font-semibold text-slate-500">Módulo</th><th className="px-4 py-3 font-semibold text-slate-500">Descrição</th><th className="px-5 py-3 font-semibold text-slate-500">Ação</th></tr></thead>
-            <tbody>{latestLogs.length ? latestLogs.map(log => <tr key={log.id} className="border-t border-slate-100 transition-colors duration-150 hover:bg-emerald-50/40">
-              <td className="px-5 py-3 font-mono text-slate-600">{log.timestamp.split(' ')[1] || log.timestamp}</td>
-              <td className="px-4 py-3 font-medium text-slate-700">{log.tela}</td>
-              <td className="px-4 py-3 text-slate-600">{log.descricao}</td>
-              <td className="px-5 py-3"><span className={`inline-flex rounded-md px-2 py-1 text-[10px] font-bold ${ACAO_TONE[log.acao]}`}>{log.acao}</span></td>
-            </tr>) : <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-slate-500">Nenhum registro encontrado.</td></tr>}</tbody>
-          </table>
-        </div>
-      </article>
-    </section>
+      <section className="mt-3 grid gap-3 xl:grid-cols-3">
+        <Surface title="Frentes críticas" action={<button type="button" onClick={() => onNavigate('planejamento')} className="text-[11px] font-bold text-emerald-700">Ver planejamento</button>}>
+          <div className="divide-y divide-slate-100">
+            {criticalFronts.length ? criticalFronts.map(item => <button key={item.id} type="button" onClick={() => onNavigate('planejamento')} className="flex min-h-16 w-full items-center gap-3 px-4 text-left hover:bg-slate-50 sm:px-5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-amber-50 text-amber-700"><AlertTriangle className="size-4" /></span>
+              <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-800">{item.frente || item.servicoDescricao}</strong><small className="mt-1 block truncate text-[10px] text-slate-500">Prazo {item.dataFim.split('-').reverse().join('/')} · {item.responsavel}</small></span>
+              <Clock3 className="size-4 text-amber-600" />
+            </button>) : <EmptyLine text="Nenhuma frente atrasada" icon={CheckCircle2} />}
+          </div>
+        </Surface>
+
+        <Surface title="Aprovações pendentes" action={<button type="button" onClick={() => onNavigate('medicoes')} className="text-[11px] font-bold text-emerald-700">Ver todas</button>}>
+          <div className="divide-y divide-slate-100">
+            {approvals.length ? approvals.map(item => <button key={item.id} type="button" onClick={() => onNavigate(item.target)} className="flex min-h-16 w-full items-center gap-3 px-4 text-left hover:bg-slate-50 sm:px-5">
+              <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-800">{item.title}</strong><small className="mt-1 block truncate text-[10px] text-slate-500">{item.meta}</small></span>
+              <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold ${statusTone[item.status] || 'bg-slate-100 text-slate-600'}`}>{item.status}</span>
+            </button>) : <EmptyLine text="Nenhuma aprovação pendente" icon={CheckCircle2} />}
+          </div>
+        </Surface>
+
+        <Surface title="Risco de materiais" action={<button type="button" onClick={() => onNavigate('materiais')} className="text-[11px] font-bold text-emerald-700">Abrir estoque</button>}>
+          <div className="divide-y divide-slate-100">
+            {materialRisks.length ? materialRisks.map(item => <button key={item.id} type="button" onClick={() => onNavigate('materiais')} className="flex min-h-16 w-full items-center gap-3 px-4 text-left hover:bg-slate-50 sm:px-5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-rose-50 text-rose-700"><Package className="size-4" /></span>
+              <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-800">{item.descricao}</strong><small className="mt-1 block text-[10px] text-slate-500">Saldo {item.balance.toLocaleString('pt-BR')} {item.unidade} · mínimo {Number(item.estoqueMinimo || 0).toLocaleString('pt-BR')}</small></span>
+            </button>) : <EmptyLine text="Estoque sem itens críticos" icon={CheckCircle2} />}
+          </div>
+        </Surface>
+      </section>
+    </div>
+  </div>;
+}
+
+function EmptyLine({ text, icon: Icon }: { text: string; icon: LucideIcon }) {
+  return <div className="flex min-h-32 flex-col items-center justify-center gap-2 px-4 text-center text-slate-400">
+    <Icon className="size-5 text-emerald-600" strokeWidth={1.7} /><p className="text-xs">{text}</p>
   </div>;
 }

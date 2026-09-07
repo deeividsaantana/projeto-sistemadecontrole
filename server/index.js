@@ -11,7 +11,6 @@ import { handler as publicPresenca } from '../netlify/functions/public-presenca.
 import { handler as publicTickets } from '../netlify/functions/public-tickets.js';
 import { handler as masterData } from '../netlify/functions/master-data.js';
 import { handler as usageTelemetry } from '../netlify/functions/usage-telemetry.js';
-import { handler as syncCombustivelOnedrive } from '../netlify/functions/sync-combustivel-onedrive.js';
 import { handler as cleanupCloudData } from '../netlify/functions/cleanup-cloud-data.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,7 +40,6 @@ app.post('/.netlify/functions/public-tickets', toExpressHandler(publicTickets));
 
 app.all('/.netlify/functions/master-data', toExpressHandler(masterData));
 app.all('/.netlify/functions/usage-telemetry', toExpressHandler(usageTelemetry));
-app.all('/.netlify/functions/sync-combustivel-onedrive', toExpressHandler(syncCombustivelOnedrive));
 
 // A limpeza roda no Netlify por schedule (netlify.toml). Aqui não existe
 // cron nativo no plano gratuito: um pinger externo gratuito (cron-job.org,

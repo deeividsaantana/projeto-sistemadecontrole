@@ -18,7 +18,7 @@ export const createNotification = (
   title: string,
   message: string,
   type: NotificationType = 'info',
-  source: NotificationSource = 'Netlify App',
+  source: NotificationSource = 'RENEA API',
   idPrefix = 'notif',
 ): AppNotification => ({
   id: createNotificationId(idPrefix),

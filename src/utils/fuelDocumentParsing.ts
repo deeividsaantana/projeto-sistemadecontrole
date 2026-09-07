@@ -445,7 +445,7 @@ export const buildFuelOperationalAnalysis = (
         ganhoEsperado: 'Redução de erros de cadastro e retrabalho posterior.',
       },
       {
-        acao: 'Configurar a Function do Netlify com chave da IA para leitura de fotos/PDF escaneado.',
+        acao: 'Configurar o serviço RENEA com a chave da IA para leitura de fotos/PDF escaneado.',
         impacto: 'Alto',
         dificuldade: 'Média',
         tempoEstimado: '1 a 2 horas',

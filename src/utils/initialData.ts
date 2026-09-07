@@ -106,7 +106,7 @@ export let INITIAL_EMPRESAS: Empresa[] = BASE_INITIAL_EMPRESAS;
 
 export const INITIAL_OBRAS: ObraLocal[] = [
   { id: 'obr-1', nome: 'Mão de Obra Geral - RENEA', endereco: 'Frente de Trabalho Renea', responsavel: 'Eng. Ricardo Renea', status: 'Ativa' },
-  { id: 'obr-2', nome: 'Duplicação BR-101 KM 230', endereco: 'Palhoça - SC', responsavel: 'Eng. Gabriel Neves', status: 'Ativa' },
+  { id: 'obr-2', nome: 'Rodoanel Complexo do Alto Tietê · Alça', endereco: 'Alto Tietê - SP', responsavel: 'Engenharia RENEA', status: 'Ativa' },
   { id: 'obr-3', nome: 'Anel Viário Metropolitano', endereco: 'Campinas - SP', responsavel: 'Eng. Aline Lima', status: 'Ativa' },
   { id: 'obr-4', nome: 'Pavimentação Parque Industrial', endereco: 'Joinville - SC', responsavel: 'Mestre Carlos Abreu', status: 'Planejada' }
 ];
