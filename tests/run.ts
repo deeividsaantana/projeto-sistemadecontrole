@@ -95,3 +95,4 @@ import './operationalDrivers.test';
 import './weeklyFleetReport.test';
 import './operationalFleetReference.test';
 import './formatoHistorico.test';
+import './auditoriaNuvem.test';
