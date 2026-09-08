@@ -36,6 +36,7 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   // Usuários agora é uma seção interna de Apoio e Configuração, não um item
   // de navegação próprio — só quem acessa "configuracoes" chega lá.
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'usuarios'), false);
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'configuracoes'), false);
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'reports'), false);
   // Central Operacional é tela de campo: operação usa, leitura não altera nada.
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'central-operacional'), true);

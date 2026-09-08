@@ -1,9 +1,11 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import {
   CalendarDays,
   Database,
+  CheckCircle2,
+  ChevronDown,
   FileDown,
   FileSpreadsheet,
   History,
@@ -12,6 +14,7 @@ import {
   RefreshCw,
   Search,
   Upload,
+  Zap,
 } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
@@ -219,6 +222,22 @@ export default function ControleEquipamentosDiarioTab({
     setEditingRecord(undefined);
     setFormOpen(true);
   };
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.matches('input, textarea, select, [contenteditable="true"]');
+      if (event.altKey && event.key.toLocaleLowerCase('pt-BR') === 'n') {
+        event.preventDefault();
+        openNewRecord();
+      }
+      if (!isTyping && event.key === 'n' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        openNewRecord();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
   const openEdit = (state: FleetCurrentState) => {
     const raw = registros.find(record => record.id === state.recordId) as FleetPersistedRecord | undefined;
     if (!raw) {
@@ -236,7 +255,8 @@ export default function ControleEquipamentosDiarioTab({
   ) => {
     await onSave(record, isNew);
     setMessageTone('success');
-    setMessage(isNew ? 'Lançamento criado com histórico.' : 'Lançamento atualizado com histórico.');
+    const time = record.horaSaida || record.horaEntradaManutencao || (record as FleetPersistedRecord).disponivelDesde || 'horário não informado';
+    setMessage(`${record.prefixo} · ${record.nomeMotorista || 'Sem motorista'} · ${record.status} · ${time} ${isNew ? 'registrado' : 'atualizado'} com histórico.`);
   };
   const handleRefresh = () => {
     clearFilters();
@@ -413,18 +433,19 @@ export default function ControleEquipamentosDiarioTab({
       <div data-fleet-enter>
         <PageHeader
           title="Controle Operacional de Frota"
-          description="Rodoanel Mário Covas · Alça Trecho Leste · situação diária, motoristas, saídas, pendências e relatórios em uma única visão operacional."
+          description="Rodoanel Mário Covas · Alça Trecho Leste · lançamentos diários, disponibilidade e pendências em uma visão operacional."
           actions={<>
-            <button type="button" onClick={openNewRecord} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white transition-colors hover:bg-emerald-800"><Plus size={16}/>Novo lançamento</button>
-            {onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-xs font-black text-emerald-800 transition hover:bg-emerald-100"><Plus size={16}/>Novo equipamento / tipo</button>}
+            <button type="button" onClick={openNewRecord} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-xs font-black text-white shadow-[0_8px_24px_rgba(4,120,87,0.2)] transition hover:-translate-y-0.5 hover:bg-emerald-800 active:translate-y-0"><Plus size={16}/>Novo lançamento <span className="hidden rounded bg-white/15 px-1.5 py-0.5 font-mono text-[9px] lg:inline">N</span></button>
             <button type="button" onClick={handleRefresh} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
-            <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"><Printer size={15}/>{exporting==='pdf'?'Gerando...':'Relatório PDF'}</button>
-            <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"><FileSpreadsheet size={15}/>{exporting==='excel'?'Gerando...':'Exportar Excel'}</button>
             <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-            <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><Upload size={15}/>Importar planilha</button>
+            <details className="group relative"><summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:bg-slate-50">Relatórios e dados <ChevronDown size={14} className="transition group-open:rotate-180"/></summary><div className="absolute right-0 z-30 mt-2 w-56 space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"><button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Printer size={15}/>Relatório PDF</button><button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><FileSpreadsheet size={15}/>Exportar Excel</button><button type="button" onClick={() => inputRef.current?.click()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"><Upload size={15}/>Importar planilha</button>{onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"><Plus size={15}/>Cadastrar equipamento</button>}</div></details>
           </>}
         />
       </div>
+      <section data-fleet-enter className="grid gap-4 overflow-hidden rounded-2xl bg-slate-950 px-5 py-5 text-white shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:grid-cols-[1fr_auto] sm:items-center sm:px-6">
+        <div className="flex items-start gap-3"><span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300"><Zap size={19}/></span><div><p className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-400">Lançamento rápido</p><h2 className="mt-1 text-lg font-black tracking-tight">Registre motorista, prefixo e situação sem sair do teclado.</h2><p className="mt-1 text-xs leading-5 text-slate-400">Pressione <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-slate-200">N</kbd> para começar. No formulário, use <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-slate-200">Alt + 1…4</kbd> para escolher a situação e <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-slate-200">Ctrl + Enter</kbd> para salvar.</p></div></div>
+        <button type="button" onClick={openNewRecord} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 text-sm font-black text-slate-950 transition hover:bg-emerald-300 active:scale-[0.99]"><Plus size={17}/>Fazer lançamento</button>
+      </section>
       <nav data-fleet-enter className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-transparent" aria-label="Visões do controle de frotas">
         {([
           ['today', 'Situação do dia', CalendarDays],
@@ -436,7 +457,7 @@ export default function ControleEquipamentosDiarioTab({
           </button>
         ))}
       </nav>
-      {message && <div role={messageTone==='error'?'alert':'status'} className={`rounded-md border px-3 py-2 text-xs font-bold ${messageTone==='success'?'border-emerald-200 bg-emerald-50 text-emerald-800':messageTone==='error'?'border-rose-200 bg-rose-50 text-rose-800':'border-sky-200 bg-sky-50 text-sky-800'}`}>{message}</div>}
+      {message && <div role={messageTone==='error'?'alert':'status'} className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-bold shadow-sm ${messageTone==='success'?'border-emerald-200 bg-emerald-50 text-emerald-900':messageTone==='error'?'border-rose-200 bg-rose-50 text-rose-800':'border-sky-200 bg-sky-50 text-sky-800'}`}>{messageTone==='success'&&<CheckCircle2 size={19} className="shrink-0 text-emerald-600"/>}{message}</div>}
       {activeView === 'today' && <>
       <div data-fleet-enter><FleetKpiStrip metrics={viewModel.metrics}/></div>
       <div data-fleet-enter><FleetDailyReference records={registros} date={filters.date}/></div>

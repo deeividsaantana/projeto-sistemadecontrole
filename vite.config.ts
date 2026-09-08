@@ -56,7 +56,7 @@ export default defineConfig(() => {
       // Isso permite testar o link pelo celular sem fazer um novo deploy.
       proxy: {
         '/.netlify/functions': {
-          target: process.env.VITE_PUBLIC_FUNCTIONS_PROXY_TARGET || 'https://reneaerp.netlify.app',
+          target: process.env.VITE_PUBLIC_FUNCTIONS_PROXY_TARGET || 'https://renea-erp.onrender.com',
           changeOrigin: true,
           secure: true,
         },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { LogOut, Search, X } from 'lucide-react';
+import { Building2, LogOut, Search, X } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
@@ -120,6 +120,18 @@ export function DesktopTopBar({
           )
           : <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-400">⌘K</kbd>}
       </label>
+
+      <div
+        className="erp-topbar__project"
+        title="Obra ativa"
+        aria-label="Obra ativa: Rodoanel Complexo do Alto Tietê, Alça"
+      >
+        <Building2 aria-hidden="true" />
+        <span>
+          <small>Projeto atual</small>
+          <strong>Rodoanel Complexo do Alto Tietê · Alça</strong>
+        </span>
+      </div>
 
       <div className="erp-topbar__actions">
         <div

@@ -13,7 +13,6 @@ import { handler as publicPresenca } from '../../netlify/functions/public-presen
 import { handler as publicTickets } from '../../netlify/functions/public-tickets.js';
 import { handler as masterData } from '../../netlify/functions/master-data.js';
 import { handler as usageTelemetry } from '../../netlify/functions/usage-telemetry.js';
-import { handler as syncCombustivelOnedrive } from '../../netlify/functions/sync-combustivel-onedrive.js';
 import { handler as cleanupCloudData } from '../../netlify/functions/cleanup-cloud-data.js';
 
 const app = express();
@@ -30,7 +29,6 @@ app.post('/.netlify/functions/public-tickets', toExpressHandler(publicTickets));
 
 app.all('/.netlify/functions/master-data', toExpressHandler(masterData));
 app.all('/.netlify/functions/usage-telemetry', toExpressHandler(usageTelemetry));
-app.all('/.netlify/functions/sync-combustivel-onedrive', toExpressHandler(syncCombustivelOnedrive));
 
 export const api = onRequest({ region: 'southamerica-east1', cors: false }, app);
 
