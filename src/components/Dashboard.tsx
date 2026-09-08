@@ -11,6 +11,7 @@ import type {
   OrdemServico, PlanejamentoItem, PresencaApontamento, ProdutoLubrificacao,
   RegistroProducao, StatusControleEquipamentoDiario, TicketJazida, TipoCombustivel,
 } from '../types';
+import { instanteDoHistorico } from '../utils/formato';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -388,10 +389,12 @@ export default function Dashboard({
     ].filter(item => item.total > 0);
   }, [analise.janela, analise.foto, ordensServico, hoje]);
 
+  // O histórico grava a data no formato brasileiro, não em ISO: ordenar pelo
+  // texto colocaria o dia 30 na frente do dia 08 do mês seguinte.
   const atividade = useMemo(() => historyLogs
     .filter(log => TELAS_DE_FROTA.some(tela => (log.tela || '').includes(tela)))
-    .slice()
-    .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))
+    .map(log => ({ log, instante: instanteDoHistorico(log.timestamp) }))
+    .sort((a, b) => (Number.isFinite(b.instante) ? b.instante : -Infinity) - (Number.isFinite(a.instante) ? a.instante : -Infinity))
     .slice(0, 6), [historyLogs]);
 
   const funcionarioPorId = useMemo(() => new Map(funcionarios.map(item => [item.id, item])), [funcionarios]);
@@ -615,7 +618,7 @@ export default function Dashboard({
                     acao={<LinkPainel onClick={() => onNavigate('timeline')}>Timeline</LinkPainel>}
                   >
                     <ul className="divide-y divide-slate-100">
-                      {atividade.length ? atividade.map(log => (
+                      {atividade.length ? atividade.map(({ log, instante }) => (
                         <li key={log.id} className="flex min-h-14 items-center gap-3 px-4 py-2.5 sm:px-5">
                           <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
                             <History className="size-3.5" aria-hidden="true" />
@@ -623,7 +626,8 @@ export default function Dashboard({
                           <span className="min-w-0 flex-1">
                             <strong className="block truncate text-[12px] font-medium text-slate-800">{log.descricao}</strong>
                             <small className="mt-0.5 block truncate text-[10px] text-slate-500">
-                              {log.acao} · {log.tela} · {new Date(log.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              {log.acao} · {log.tela}
+                              {Number.isFinite(instante) && ` · ${new Date(instante).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
                             </small>
                           </span>
                         </li>
