@@ -1,8 +1,7 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
-  AlertTriangle, ArrowRight, BarChart3, CalendarClock, CheckCircle2,
-  ClipboardCheck, Clock3, FileSpreadsheet, HardHat, Package, TrendingUp,
-  Users, WalletCards, type LucideIcon,
+  Activity, ArrowRight, CalendarDays, CheckCircle2,
+  Clock3, Fuel, Plus, Truck, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type {
   Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa,
@@ -29,7 +28,9 @@ interface DashboardProps {
   frentes?: FrenteServico[]; onNavigate: (tab: string) => void;
 }
 
-const PROJECT_NAME = 'Rodoanel Complexo do Alto Tietê · Alça';
+type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar';
+
+const PROJECT_NAME = 'Rodoanel Mário Covas · Alça Trecho Leste';
 const PROJECT_TABS = [
   { label: 'Geral', target: 'dashboard' },
   { label: 'Cronograma', target: 'cronograma' },
@@ -39,231 +40,377 @@ const PROJECT_TABS = [
   { label: 'Materiais', target: 'materiais' },
   { label: 'Qualidade', target: 'fvs' },
 ] as const;
+const MAINTENANCE_STATUSES = new Set(['Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado']);
+const CONFIRM_STATUSES = new Set(['A confirmar', 'Aguardando motorista', 'Não classificado']);
+const CIRCUMFERENCE = 251.2;
 
-const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
-  style: 'currency', currency: 'BRL', notation: value >= 1_000_000 ? 'compact' : 'standard',
-  maximumFractionDigits: value >= 1_000_000 ? 2 : 0,
-}).format(value);
-const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
-const statusTone: Record<string, string> = {
-  Aprovada: 'bg-emerald-50 text-emerald-700',
-  Concluído: 'bg-emerald-50 text-emerald-700',
-  'Em execução': 'bg-sky-50 text-sky-700',
-  'Em elaboração': 'bg-amber-50 text-amber-700',
-  Enviada: 'bg-sky-50 text-sky-700',
-  Rejeitada: 'bg-rose-50 text-rose-700',
+const formatDate = (value: string) => {
+  if (!value) return 'Sem data';
+  const [year, month, day] = value.split('-');
+  return [day, month, year].filter(Boolean).join('/');
+};
+const shortDate = (value: string) => {
+  const [, month, day] = value.split('-');
+  return [day, month].filter(Boolean).join('/');
+};
+const recordKey = (item: ControleEquipamentoDiario) => item.equipamentoId || item.prefixo || item.id;
+const normalizeFleetStatus = (status: string): Exclude<FleetFilter, 'Todos'> | 'À disposição' => {
+  if (status === 'Em operação') return 'Em operação';
+  if (MAINTENANCE_STATUSES.has(status)) return 'Em manutenção';
+  if (CONFIRM_STATUSES.has(status)) return 'A confirmar';
+  return 'À disposição';
+};
+const uniqueLatestRecords = (records: ControleEquipamentoDiario[]) => {
+  const byEquipment = new Map<string, ControleEquipamentoDiario>();
+  records.forEach(item => {
+    const key = recordKey(item);
+    const current = byEquipment.get(key);
+    if (!current || String(item.atualizadoEm || item.criadoEm) >= String(current.atualizadoEm || current.criadoEm)) {
+      byEquipment.set(key, item);
+    }
+  });
+  return Array.from(byEquipment.values());
 };
 
-function Metric({ icon: Icon, label, value, detail, tone = 'green' }: {
-  icon: LucideIcon; label: string; value: string; detail: string;
-  tone?: 'green' | 'blue' | 'amber' | 'red';
-}) {
-  const tones = {
-    green: 'bg-emerald-50 text-emerald-700', blue: 'bg-sky-50 text-sky-700',
-    amber: 'bg-amber-50 text-amber-700', red: 'bg-rose-50 text-rose-700',
-  };
-  return <article className="min-w-0 border border-slate-200 bg-white p-3.5 sm:p-4">
-    <div className="flex items-start gap-3">
-      <span className={`hidden size-9 shrink-0 place-items-center rounded-md sm:grid ${tones[tone]}`}>
-        <Icon className="size-4" strokeWidth={1.8} aria-hidden="true" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold text-slate-500">{label}</p>
-        <strong className="mt-1 block text-lg font-bold leading-tight tabular-nums text-slate-900 sm:text-xl">{value}</strong>
-        <p className="mt-1 text-[10px] leading-snug text-slate-500">{detail}</p>
-      </div>
-    </div>
-  </article>;
+function ActionLink({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#176b4d] transition hover:text-[#0b4935] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/40">
+      {children}<ArrowRight className="size-3.5" aria-hidden="true" />
+    </button>
+  );
 }
 
-function Surface({ title, action, children, className = '' }: {
+function Metric({ icon: Icon, label, value, detail, tone, active, onClick }: {
+  icon: LucideIcon; label: string; value: string; detail: string;
+  tone: 'graphite' | 'green' | 'orange' | 'amber'; active?: boolean; onClick: () => void;
+}) {
+  const tones = {
+    graphite: 'border-[#213038] text-[#213038]',
+    green: 'border-[#24965f] text-[#176b4d]',
+    orange: 'border-[#f26a2e] text-[#c94f1c]',
+    amber: 'border-[#e4a227] text-[#a76b08]',
+  };
+  return (
+    <button type="button" onClick={onClick}
+      className={'group min-w-0 border-l-[3px] bg-white px-4 py-4 text-left transition duration-200 hover:-translate-y-0.5 hover:bg-[#fbfcfb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/40 ' + tones[tone] + (active ? ' ring-1 ring-current/20' : '')}>
+      <span className="flex items-center gap-2 text-xs font-semibold text-[#47555c]">
+        <Icon className="size-4 text-current" strokeWidth={1.8} aria-hidden="true" />{label}
+      </span>
+      <strong className="mt-2 block text-3xl font-semibold leading-none tracking-[-0.04em] tabular-nums text-[#172329]">{value}</strong>
+      <span className="mt-2 block text-[11px] leading-snug text-[#718087]">{detail}</span>
+    </button>
+  );
+}
+
+function Panel({ title, action, children, className = '' }: {
   title: string; action?: ReactNode; children: ReactNode; className?: string;
 }) {
-  return <section className={`border border-slate-200 bg-white ${className}`}>
-    <header className="flex min-h-12 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5">
-      <h2 className="text-sm font-bold text-slate-900">{title}</h2>{action}
-    </header>
-    {children}
-  </section>;
+  return (
+    <section className={'min-w-0 border-t border-[#dce3df] bg-white ' + className}>
+      <header className="flex min-h-14 items-center justify-between gap-3 px-4 sm:px-5">
+        <h2 className="text-sm font-semibold tracking-[-0.01em] text-[#172329]">{title}</h2>
+        {action}
+      </header>
+      {children}
+    </section>
+  );
 }
 
 export default function Dashboard({
-  equipamentos, controlesEquipamentos = [], presencasLink = [], planejamento = [],
-  producao = [], medicoes = [], materiais = [], movimentosMaterial = [],
-  fichasFvs = [], inspecoes = [], naoConformidades = [], lancamentosCusto = [],
-  orcamento = [], frentes = [], onNavigate,
+  abastecimentos, historyLogs, ordensServico = [],
+  controlesEquipamentos = [], planejamento = [], naoConformidades = [],
+  materiais = [], movimentosMaterial = [], onNavigate,
 }: DashboardProps) {
-  const today = new Date().toISOString().slice(0, 10);
-  const summary = useMemo(() => {
-    const activePlans = planejamento.filter(item => item.ativo && item.situacao !== 'Cancelado');
-    const planRatios = activePlans.map(plan => {
-      const delivered = producao
-        .filter(item => item.ativo && item.servicoId === plan.servicoId && item.data >= plan.dataInicio && item.data <= plan.dataFim)
-        .reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
-      return plan.quantidadePlanejada > 0 ? clamp((delivered / plan.quantidadePlanejada) * 100) : 0;
+  const [periodDays, setPeriodDays] = useState<7 | 14 | 30>(7);
+  const [fleetFilter, setFleetFilter] = useState<FleetFilter>('Todos');
+  const [selectedDate, setSelectedDate] = useState('');
+
+  const fleetSeries = useMemo(() => {
+    const dates = Array.from(new Set(controlesEquipamentos.map(item => item.data).filter(Boolean)))
+      .sort().slice(-periodDays);
+    return dates.map(date => {
+      const records = uniqueLatestRecords(controlesEquipamentos.filter(item => item.data === date));
+      const operating = records.filter(item => normalizeFleetStatus(item.status) === 'Em operação').length;
+      const maintenance = records.filter(item => normalizeFleetStatus(item.status) === 'Em manutenção').length;
+      const confirm = records.filter(item => normalizeFleetStatus(item.status) === 'A confirmar').length;
+      const available = records.length - operating - maintenance - confirm;
+      const availability = records.length ? ((operating + available) / records.length) * 100 : 0;
+      return { date, records, operating, maintenance, confirm, available, availability };
     });
-    const physical = planRatios.length
-      ? Math.round(planRatios.reduce((sum, value) => sum + value, 0) / planRatios.length) : 0;
-    const delayed = activePlans.filter(item => item.dataFim < today && item.situacao !== 'Concluído').length;
-    const measured = medicoes.filter(item => item.ativo).reduce((sum, measurement) => sum + measurement.itens.reduce(
-      (itemSum, item) => itemSum + Number(item.quantidade || 0) * Number(item.valorUnitario || 0), 0,
-    ), 0);
-    const budget = orcamento.filter(item => item.ativo).reduce((sum, item) => sum + Number(item.valorOrcado || 0), 0);
-    const cost = lancamentosCusto.filter(item => item.ativo).reduce((sum, item) => sum + Number(item.valor || 0), 0);
-    const financial = budget > 0 ? clamp((cost / budget) * 100) : 0;
-    const openQuality = naoConformidades.filter(item => item.ativo && !['Encerrada', 'Cancelada'].includes(item.situacao)).length;
-    const stock = new Map<string, number>();
+  }, [controlesEquipamentos, periodDays]);
+
+  const latest = fleetSeries.at(-1) || {
+    date: '', records: [] as ControleEquipamentoDiario[], operating: 0,
+    maintenance: 0, confirm: 0, available: 0, availability: 0,
+  };
+  const activePoint = fleetSeries.find(item => item.date === selectedDate) || latest;
+  const activePointIndex = Math.max(0, fleetSeries.findIndex(item => item.date === activePoint.date));
+  const chartWidth = 620;
+  const chartHeight = 210;
+  const chartPadding = 18;
+  const xAt = (index: number) => fleetSeries.length <= 1
+    ? chartWidth / 2
+    : chartPadding + index * ((chartWidth - chartPadding * 2) / (fleetSeries.length - 1));
+  const yAt = (value: number) => chartHeight - chartPadding - (Math.max(0, Math.min(100, value)) / 100) * (chartHeight - chartPadding * 2);
+  const linePoints = fleetSeries.map((item, index) => String(xAt(index)) + ',' + String(yAt(item.availability))).join(' ');
+
+  const filteredLatest = useMemo(() => latest.records
+    .filter(item => fleetFilter === 'Todos' || normalizeFleetStatus(item.status) === fleetFilter)
+    .sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR'))
+    .slice(0, 7), [latest.records, fleetFilter]);
+
+  const openOrders = ordensServico.filter(item => !['Concluída', 'Cancelada'].includes(item.status));
+  const overduePlans = planejamento.filter(item => item.ativo && item.dataFim < new Date().toISOString().slice(0, 10) && item.situacao !== 'Concluído');
+  const openQuality = naoConformidades.filter(item => item.ativo && !['Encerrada', 'Cancelada'].includes(item.situacao));
+  const fuelToday = abastecimentos.filter(item => item.data === latest.date && item.status !== 'Cancelado')
+    .reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0);
+  const stock = useMemo(() => {
+    const balances = new Map<string, number>();
     movimentosMaterial.forEach(item => {
-      const current = stock.get(item.materialId) || 0;
+      const current = balances.get(item.materialId) || 0;
       const quantity = Math.abs(Number(item.quantidade || 0));
-      const signal = item.tipo === 'Entrada' ? 1 : item.tipo === 'Saída' ? -1 : item.tipo === 'Ajuste' ? Math.sign(Number(item.quantidade || 0)) : 0;
-      stock.set(item.materialId, current + quantity * signal);
+      balances.set(item.materialId, current + (item.tipo === 'Entrada' ? quantity : item.tipo === 'Saída' ? -quantity : Number(item.quantidade || 0)));
     });
-    const criticalMaterials = materiais.filter(item => item.ativo && Number(item.estoqueMinimo || 0) > (stock.get(item.id) || 0));
-    const operationalDate = controlesEquipamentos.reduce((latest, item) => item.data > latest ? item.data : latest, '');
-    const latestFleet = controlesEquipamentos.filter(item => item.data === operationalDate);
-    const operating = new Set(latestFleet.filter(item => item.status === 'Em operação').map(item => item.equipamentoId || item.prefixo)).size;
-    const fleetBase = new Set(latestFleet.map(item => item.equipamentoId || item.prefixo)).size || equipamentos.length;
-    const fleetAvailability = fleetBase ? Math.round((operating / fleetBase) * 100) : 0;
-    const presenceDate = presencasLink.reduce((latest, item) => item.data > latest ? item.data : latest, '');
-    const latestPresence = presencasLink.filter(item => item.data === presenceDate);
-    const people = latestPresence.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status)).length;
-    return { physical, delayed, measured, budget, cost, financial, openQuality, criticalMaterials, stock, fleetAvailability, people, planCount: activePlans.length };
-  }, [planejamento, producao, medicoes, orcamento, lancamentosCusto, naoConformidades, movimentosMaterial, materiais, controlesEquipamentos, equipamentos, presencasLink, today]);
+    return balances;
+  }, [movimentosMaterial]);
+  const criticalMaterials = materiais.filter(item => item.ativo && Number(item.estoqueMinimo || 0) > (stock.get(item.id) || 0));
 
-  const criticalFronts = useMemo(() => planejamento
-    .filter(item => item.ativo && item.dataFim < today && item.situacao !== 'Concluído')
-    .sort((a, b) => a.dataFim.localeCompare(b.dataFim)).slice(0, 4), [planejamento, today]);
-  const approvals = useMemo(() => [
-    ...medicoes.filter(item => item.ativo).map(item => ({
-      id: `med-${item.id}`, title: `Medição ${item.numero}`,
-      meta: `${item.periodoInicio.split('-').reverse().join('/')} a ${item.periodoFim.split('-').reverse().join('/')}`,
-      status: item.situacao, target: 'medicoes',
-    })),
-    ...fichasFvs.filter(item => item.ativo).map(item => ({
-      id: `fvs-${item.id}`, title: `FVS ${item.numero}`,
-      meta: item.servicoDescricao || item.modeloNome, status: item.situacao, target: 'fvs',
-    })),
-  ].slice(0, 5), [medicoes, fichasFvs]);
-  const materialRisks = summary.criticalMaterials.slice(0, 4).map(material => ({ ...material, balance: summary.stock.get(material.id) || 0 }));
-  const progressSeries = useMemo(() => Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (6 - index) + 1, 0);
-    const cutoff = date.toISOString().slice(0, 10);
-    const eligible = planejamento.filter(item => item.ativo && item.situacao !== 'Cancelado' && item.dataInicio <= cutoff);
-    const ratios = eligible.map(plan => {
-      const duration = Math.max(1, new Date(`${plan.dataFim}T12:00:00`).getTime() - new Date(`${plan.dataInicio}T12:00:00`).getTime());
-      const elapsed = new Date(`${cutoff}T12:00:00`).getTime() - new Date(`${plan.dataInicio}T12:00:00`).getTime();
-      const planned = clamp((elapsed / duration) * 100);
-      const delivered = producao.filter(item => item.ativo && item.servicoId === plan.servicoId && item.data >= plan.dataInicio && item.data <= cutoff)
-        .reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
-      const actual = plan.quantidadePlanejada > 0 ? clamp((delivered / plan.quantidadePlanejada) * 100) : 0;
-      return { planned, actual };
-    });
-    const average = (key: 'planned' | 'actual') => ratios.length
-      ? ratios.reduce((sum, item) => sum + item[key], 0) / ratios.length : 0;
-    return { label: new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(date).replace('.', ''), planned: average('planned'), actual: average('actual') };
-  }), [planejamento, producao]);
-  const plannedProgress = Math.round(progressSeries.at(-1)?.planned || 0);
-  const chartActual = progressSeries.map(item => item.actual);
-  const chartPlanned = progressSeries.map(item => item.planned);
-  const points = (values: number[]) => values.map((value, index) => `${index * 16.66},${100 - clamp(value)}`).join(' ');
+  const activity = historyLogs.slice(0, 6);
+  const latestActivityTime = activity[0]?.timestamp || (latest.date ? formatDate(latest.date) : 'Sem sincronização');
+  const operatingArc = latest.records.length ? (latest.operating / latest.records.length) * CIRCUMFERENCE : 0;
+  const maintenanceArc = latest.records.length ? (latest.maintenance / latest.records.length) * CIRCUMFERENCE : 0;
+  const confirmArc = latest.records.length ? (latest.confirm / latest.records.length) * CIRCUMFERENCE : 0;
 
-  return <div id="dashboard-tab" className="min-h-full bg-[#f7f9f8] pb-14">
-    <div className="border-b border-slate-200 bg-white px-4 pt-5 sm:px-6 lg:px-8">
-      <div className="flex flex-col justify-between gap-3 pb-4 sm:flex-row sm:items-end">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase text-emerald-700">Visão consolidada</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-950">Painel de Controle</h1>
-          <p className="mt-1 truncate text-xs text-slate-500">{PROJECT_NAME}</p>
+  const chooseFilter = (filter: FleetFilter) => {
+    setFleetFilter(filter);
+  };
+
+  return (
+    <main id="dashboard-tab" className="min-h-full bg-[#f4f5f2] pb-14 text-[#172329]">
+      <header className="border-b border-[#dce3df] bg-[#fafbf9] px-4 pt-5 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-[1600px] flex-col justify-between gap-4 pb-5 xl:flex-row xl:items-end">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#728179]">Painel de Controle · obra em execução</p>
+            <p className="mt-1 text-sm font-semibold text-[#26343a]">{PROJECT_NAME}</p>
+            <h1 className="mt-5 text-3xl font-semibold tracking-[-0.045em] text-[#111d22] sm:text-4xl">Visão operacional</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#67757b]">
+              Frota, pendências e movimentações recentes reunidas em uma leitura diária.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex border border-[#d7dfda] bg-white p-1" aria-label="Período do painel">
+              {([7, 14, 30] as const).map(days => (
+                <button key={days} type="button" onClick={() => setPeriodDays(days)}
+                  className={'min-h-9 px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/40 ' + (periodDays === days ? 'bg-[#183f32] text-white' : 'text-[#617078] hover:bg-[#f0f3f0]')}>
+                  {days} dias
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => onNavigate('controle-equipamentos')}
+              className="inline-flex min-h-11 items-center gap-2 bg-[#ed5d24] px-4 text-sm font-semibold text-white transition hover:bg-[#d94f18] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/50 focus-visible:ring-offset-2">
+              <Plus className="size-4" aria-hidden="true" />Novo lançamento
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500"><span className="size-2 rounded-full bg-emerald-500" />Dados operacionais atualizados</div>
+        <nav className="mx-auto flex max-w-[1600px] overflow-x-auto" aria-label="Módulos da obra">
+          {PROJECT_TABS.map(tab => (
+            <button key={tab.target} type="button" onClick={() => onNavigate(tab.target)}
+              aria-current={tab.target === 'dashboard' ? 'page' : undefined}
+              className={'h-11 shrink-0 border-b-2 px-3 text-xs font-semibold transition sm:px-4 ' + (tab.target === 'dashboard' ? 'border-[#ed5d24] text-[#172329]' : 'border-transparent text-[#758188] hover:border-[#b7c2bc] hover:text-[#26343a]')}>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
+        <section className="grid grid-cols-2 gap-px bg-[#dce3df] xl:grid-cols-4" aria-label="Indicadores da frota">
+          <Metric icon={Truck} label="Frotas informadas" value={String(latest.records.length)} detail={latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento no período'} tone="graphite" active={fleetFilter === 'Todos'} onClick={() => chooseFilter('Todos')} />
+          <Metric icon={Activity} label="Em operação" value={String(latest.operating)} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} />
+          <Metric icon={Wrench} label="Em manutenção" value={String(latest.maintenance)} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} />
+          <Metric icon={Clock3} label="A confirmar" value={String(latest.confirm)} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} />
+        </section>
+
+        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,.72fr)_minmax(19rem,.78fr)]">
+          <Panel title="Disponibilidade da frota" action={<span className="text-xs text-[#6b797f]">{formatDate(activePoint.date)}</span>}>
+            <div className="px-4 pb-5 sm:px-5">
+              <div className="flex items-end gap-3">
+                <strong className="text-4xl font-semibold tracking-[-0.05em] tabular-nums">{activePoint.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</strong>
+                <span className="pb-1 text-xs text-[#758188]">{activePoint.operating} operando de {activePoint.records.length}</span>
+              </div>
+              {fleetSeries.length ? (
+                <div className="relative mt-5 overflow-hidden border-y border-[#e4e9e6] py-4">
+                  <svg viewBox={'0 0 ' + chartWidth + ' ' + chartHeight} className="h-56 w-full" role="img" aria-label="Evolução da disponibilidade da frota">
+                    {[25, 50, 75, 100].map(value => (
+                      <g key={value}>
+                        <line x1="0" x2={chartWidth} y1={yAt(value)} y2={yAt(value)} stroke="#e4e9e6" strokeWidth="1" />
+                        <text x="2" y={yAt(value) - 5} fill="#8a969b" fontSize="9">{value}%</text>
+                      </g>
+                    ))}
+                    <polyline points={linePoints} fill="none" stroke="#238657" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+                    {fleetSeries.map((item, index) => (
+                      <g key={item.date}>
+                        <circle cx={xAt(index)} cy={yAt(item.availability)} r={index === activePointIndex ? 6 : 4} fill="#fff" stroke={index === activePointIndex ? '#ed5d24' : '#238657'} strokeWidth="3" />
+                        <text x={xAt(index)} y={chartHeight - 2} textAnchor="middle" fill="#78858b" fontSize="9">{shortDate(item.date)}</text>
+                        <circle cx={xAt(index)} cy={yAt(item.availability)} r="15" fill="transparent" className="cursor-pointer"
+                          onClick={() => setSelectedDate(item.date)}>
+                          <title>{formatDate(item.date) + ': ' + item.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'}</title>
+                        </circle>
+                      </g>
+                    ))}
+                  </svg>
+                  <div className="absolute right-3 top-3 border border-[#d7dfda] bg-white px-3 py-2 text-xs shadow-[0_8px_24px_-18px_rgba(19,52,41,.55)]">
+                    <strong className="block tabular-nums text-[#172329]">{activePoint.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</strong>
+                    <span className="text-[#758188]">{formatDate(activePoint.date)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-5 flex h-56 items-center justify-center border-y border-[#e4e9e6] text-sm text-[#7a878c]">Sem histórico de frota no período</div>
+              )}
+            </div>
+          </Panel>
+
+          <Panel title="Situação dos equipamentos" action={<ActionLink onClick={() => onNavigate('controle-equipamentos')}>Abrir frota</ActionLink>}>
+            <div className="px-4 pb-5 sm:px-5">
+              <div className="relative mx-auto mt-3 size-44">
+                <svg viewBox="0 0 100 100" className="-rotate-90" role="img" aria-label="Distribuição dos status da frota">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="#e4e9e6" strokeWidth="13" />
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="#238657" strokeWidth="13" strokeDasharray={String(operatingArc) + ' ' + String(CIRCUMFERENCE - operatingArc)} />
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="#ed5d24" strokeWidth="13" strokeDasharray={String(maintenanceArc) + ' ' + String(CIRCUMFERENCE - maintenanceArc)} strokeDashoffset={-operatingArc} />
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="#e4a227" strokeWidth="13" strokeDasharray={String(confirmArc) + ' ' + String(CIRCUMFERENCE - confirmArc)} strokeDashoffset={-(operatingArc + maintenanceArc)} />
+                </svg>
+                <div className="absolute inset-0 grid place-content-center text-center">
+                  <strong className="text-2xl font-semibold tabular-nums">{latest.records.length}</strong>
+                  <span className="text-[10px] text-[#748187]">informados</span>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2.5 text-xs">
+                {[
+                  ['bg-[#238657]', 'Em operação', latest.operating],
+                  ['bg-[#ed5d24]', 'Em manutenção', latest.maintenance],
+                  ['bg-[#e4a227]', 'A confirmar', latest.confirm],
+                  ['bg-[#aeb9b4]', 'À disposição', latest.available],
+                ].map(([tone, label, value]) => (
+                  <button key={String(label)} type="button" onClick={() => setFleetFilter(label === 'À disposição' ? 'Todos' : label as FleetFilter)}
+                    className="flex w-full items-center gap-2 text-left hover:text-[#176b4d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/30">
+                    <span className={'size-2.5 ' + tone} /><span className="flex-1 text-[#637178]">{label}</span><strong className="tabular-nums">{value}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Atividade em tempo real" action={<span className="text-[10px] text-[#718087]">{latestActivityTime}</span>}>
+            <div className="divide-y divide-[#edf0ee]">
+              {activity.length ? activity.map(log => (
+                <button key={log.id} type="button" onClick={() => onNavigate('auditoria')}
+                  className="flex w-full gap-3 px-4 py-3 text-left transition hover:bg-[#f7f9f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#f26a2e]/30 sm:px-5">
+                  <span className={'mt-1.5 size-2 shrink-0 ' + (log.acao === 'Excluiu' ? 'bg-[#d94f3d]' : log.acao === 'Editou' ? 'bg-[#e4a227]' : 'bg-[#238657]')} />
+                  <span className="min-w-0 flex-1">
+                    <strong className="block truncate text-xs font-semibold text-[#27353b]">{log.tela}</strong>
+                    <span className="mt-1 block line-clamp-2 text-[11px] leading-snug text-[#718087]">{log.descricao}</span>
+                  </span>
+                  <time className="shrink-0 text-[10px] tabular-nums text-[#8a969b]">{log.timestamp.split(' ')[1]?.slice(0, 5) || '—'}</time>
+                </button>
+              )) : (
+                <div className="grid min-h-64 place-content-center px-5 text-center text-sm text-[#7a878c]">Nenhuma atividade registrada</div>
+              )}
+            </div>
+          </Panel>
+        </section>
+
+        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.42fr)_minmax(20rem,.58fr)]">
+          <Panel title="Evolução — registros em operação" action={<ActionLink onClick={() => onNavigate('controle-equipamentos')}>Ver histórico</ActionLink>}>
+            <div className="grid min-h-52 grid-cols-7 items-end gap-2 px-4 pb-5 pt-3 sm:px-5">
+              {fleetSeries.slice(-7).map(item => {
+                const max = Math.max(...fleetSeries.slice(-7).map(point => point.records.length), 1);
+                return (
+                  <button key={item.date} type="button" onClick={() => setSelectedDate(item.date)}
+                    className="group flex h-full min-w-0 flex-col justify-end gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/30">
+                    <span className="text-center text-[10px] font-semibold tabular-nums text-[#59676d]">{item.operating}</span>
+                    <span className={'mx-auto w-full max-w-12 transition group-hover:bg-[#ed5d24] ' + (activePoint.date === item.date ? 'bg-[#176b4d]' : 'bg-[#b9dbc9]')}
+                      style={{ height: String(Math.max(8, (item.operating / max) * 130)) + 'px' }} />
+                    <span className="truncate text-center text-[9px] text-[#839096]">{shortDate(item.date)}</span>
+                  </button>
+                );
+              })}
+              {!fleetSeries.length && <div className="col-span-7 self-center text-center text-sm text-[#7a878c]">Sem dados suficientes para evolução</div>}
+            </div>
+          </Panel>
+
+          <Panel title="Pendências críticas" action={<ActionLink onClick={() => onNavigate('timeline')}>Ver todas</ActionLink>}>
+            <div className="divide-y divide-[#edf0ee]">
+              {[
+                { value: latest.maintenance, text: 'equipamento(s) em manutenção', detail: openOrders.length + ' OS abertas', target: 'manutencao', tone: 'bg-[#d94f3d]' },
+                { value: latest.confirm, text: 'situação(ões) a confirmar', detail: 'fechamento operacional pendente', target: 'controle-equipamentos', tone: 'bg-[#e4a227]' },
+                { value: overduePlans.length, text: 'atividade(s) fora do prazo', detail: 'planejamento requer revisão', target: 'planejamento', tone: 'bg-[#ed5d24]' },
+                { value: openQuality.length + criticalMaterials.length, text: 'alerta(s) de qualidade ou estoque', detail: 'verificação recomendada', target: openQuality.length ? 'nao-conformidades' : 'materiais', tone: 'bg-[#839096]' },
+              ].map(item => (
+                <button key={item.text} type="button" onClick={() => onNavigate(item.target)}
+                  className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-[#f7f9f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#f26a2e]/30 sm:px-5">
+                  <span className={'mt-1.5 size-2 shrink-0 ' + item.tone} />
+                  <span className="min-w-0 flex-1">
+                    <strong className="block text-xs font-semibold text-[#27353b]">{item.value} {item.text}</strong>
+                    <span className="mt-1 block text-[11px] text-[#718087]">{item.detail}</span>
+                  </span>
+                  <ArrowRight className="mt-1 size-3.5 shrink-0 text-[#9aa5a0]" />
+                </button>
+              ))}
+            </div>
+          </Panel>
+        </section>
+
+        <Panel title={'Equipamentos em destaque · ' + fleetFilter} className="mt-4" action={<ActionLink onClick={() => onNavigate('controle-equipamentos')}>Ver frota completa</ActionLink>}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-xs">
+              <thead className="bg-[#f2f4f1] text-[10px] font-semibold uppercase tracking-[0.08em] text-[#738087]">
+                <tr>
+                  <th className="px-4 py-3 sm:px-5">Prefixo</th><th className="px-4 py-3">Equipamento</th>
+                  <th className="px-4 py-3">Situação</th><th className="px-4 py-3">Motorista</th>
+                  <th className="px-4 py-3">Saída</th><th className="px-4 py-3">Atualização</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e6ebe8]">
+                {filteredLatest.map(item => (
+                  <tr key={item.id} onClick={() => onNavigate('controle-equipamentos')} className="cursor-pointer bg-white transition hover:bg-[#f7f9f7]">
+                    <td className="whitespace-nowrap px-4 py-3 font-semibold text-[#172329] sm:px-5">{item.prefixo || '—'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-[#5e6c72]">{item.tipoEquipamento || item.familia || 'Equipamento'}</td>
+                    <td className="whitespace-nowrap px-4 py-3"><span className="inline-flex items-center gap-2"><i className={'size-2 ' + (normalizeFleetStatus(item.status) === 'Em operação' ? 'bg-[#238657]' : normalizeFleetStatus(item.status) === 'Em manutenção' ? 'bg-[#ed5d24]' : 'bg-[#e4a227]')} />{item.status}</span></td>
+                    <td className="whitespace-nowrap px-4 py-3 text-[#5e6c72]">{item.nomeMotorista || 'Não informado'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums text-[#5e6c72]">{item.horaSaida || '—'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-[#7b878c]">{formatDate(item.data)}</td>
+                  </tr>
+                ))}
+                {!filteredLatest.length && (
+                  <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-[#7a878c]">Nenhum equipamento encontrado neste filtro.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e4e9e6] px-4 py-3 text-[11px] text-[#718087] sm:px-5">
+            <span>{filteredLatest.length} registro(s) exibido(s)</span>
+            <span className="inline-flex items-center gap-2"><Fuel className="size-3.5 text-[#176b4d]" />{fuelToday.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L abastecidos na data</span>
+          </footer>
+        </Panel>
+
+        {!controlesEquipamentos.length && (
+          <section className="mt-4 flex flex-col items-center justify-center border border-dashed border-[#cbd5cf] bg-white px-6 py-12 text-center">
+            <CalendarDays className="size-7 text-[#176b4d]" strokeWidth={1.6} />
+            <h2 className="mt-3 text-base font-semibold">A visão operacional começa com o primeiro lançamento</h2>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-[#718087]">Registre a situação da frota para liberar indicadores, evolução e pendências deste painel.</p>
+            <button type="button" onClick={() => onNavigate('controle-equipamentos')} className="mt-5 inline-flex min-h-10 items-center gap-2 bg-[#183f32] px-4 text-sm font-semibold text-white hover:bg-[#0f3025]">
+              <Plus className="size-4" />Criar lançamento
+            </button>
+          </section>
+        )}
+
+        {(latest.maintenance === 0 && latest.confirm === 0 && overduePlans.length === 0 && openQuality.length === 0) && controlesEquipamentos.length > 0 && (
+          <div className="mt-4 flex items-center gap-3 border-l-2 border-[#238657] bg-white px-4 py-3 text-xs text-[#54636a]">
+            <CheckCircle2 className="size-4 text-[#238657]" />Nenhuma pendência crítica identificada no retrato mais recente.
+          </div>
+        )}
       </div>
-      <nav className="-mx-4 flex overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" aria-label="Módulos da obra">
-        {PROJECT_TABS.map(tab => <button key={tab.target} type="button" onClick={() => onNavigate(tab.target)} aria-current={tab.target === 'dashboard' ? 'page' : undefined}
-          className={`h-11 shrink-0 border-b-2 px-3 text-xs font-semibold sm:px-4 ${tab.target === 'dashboard' ? 'border-emerald-700 text-emerald-800' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'}`}>
-          {tab.label}
-        </button>)}
-      </nav>
-    </div>
-
-    <div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
-      <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
-        <Metric icon={TrendingUp} label="Avanço físico" value={`${summary.physical}%`} detail={summary.planCount ? `${plannedProgress}% previsto no período` : 'Sem planejamento lançado'} />
-        <Metric icon={WalletCards} label="Custo realizado" value={formatCurrency(summary.cost)} detail={`${Math.round(summary.financial)}% do orçamento lançado`} tone="blue" />
-        <Metric icon={CalendarClock} label="Prazo" value={summary.delayed ? `${summary.delayed} atrasos` : 'Em dia'} detail={`${planejamento.filter(item => item.ativo).length} atividades acompanhadas`} tone={summary.delayed ? 'amber' : 'green'} />
-        <Metric icon={ClipboardCheck} label="Qualidade" value={`${summary.openQuality} abertas`} detail={`${inspecoes.filter(item => item.ativo).length} inspeções registradas`} tone={summary.openQuality ? 'red' : 'green'} />
-      </section>
-
-      <section className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(19rem,.7fr)]">
-        <Surface title="Curva de avanço da obra" action={<button type="button" onClick={() => onNavigate('cronograma')} className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">Abrir cronograma <ArrowRight className="size-3.5" /></button>}>
-          <div className="p-4 sm:p-5">
-            <div className="flex flex-wrap gap-4 text-[10px] font-semibold text-slate-500">
-              <span className="flex items-center gap-1.5"><i className="h-0.5 w-5 bg-emerald-700" />Realizado</span>
-              <span className="flex items-center gap-1.5"><i className="h-0.5 w-5 border-t-2 border-dashed border-sky-500" />Planejado</span>
-            </div>
-            <div className="mt-4 h-48 w-full sm:h-56">
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full overflow-visible" role="img" aria-label={`Avanço realizado ${summary.physical}% e planejado ${plannedProgress}%`}>
-                {[20, 40, 60, 80].map(value => <line key={value} x1="0" x2="100" y1={100 - value} y2={100 - value} stroke="#e8eeeb" strokeWidth="0.5" />)}
-                <polyline points={points(chartPlanned)} fill="none" stroke="#38a6db" strokeWidth="1.4" strokeDasharray="3 2" vectorEffect="non-scaling-stroke" />
-                <polyline points={points(chartActual)} fill="none" stroke="#087553" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                {chartActual.map((value, index) => <circle key={index} cx={index * 16.66} cy={100 - clamp(value)} r="1.2" fill="#087553" />)}
-              </svg>
-            </div>
-            <div className="mt-2 grid grid-cols-7 text-center text-[9px] text-slate-400">{progressSeries.map(item => <span key={item.label}>{item.label}</span>)}</div>
-          </div>
-        </Surface>
-
-        <Surface title="Operação hoje">
-          <div className="divide-y divide-slate-100">
-            {[
-              { icon: Users, label: 'Efetivo presente', value: String(summary.people), target: 'presenca' },
-              { icon: HardHat, label: 'Frentes em execução', value: String(frentes.filter(item => item.ativo && item.situacao === 'Em execução').length), target: 'frentes' },
-              { icon: BarChart3, label: 'Disponibilidade da frota', value: `${summary.fleetAvailability}%`, target: 'controle-equipamentos' },
-              { icon: FileSpreadsheet, label: 'Medido acumulado', value: formatCurrency(summary.measured), target: 'medicoes' },
-            ].map(item => { const Icon = item.icon; return <button key={item.label} type="button" onClick={() => onNavigate(item.target)} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-slate-50 sm:px-5">
-              <Icon className="size-4 text-emerald-700" strokeWidth={1.8} /><span className="flex-1 text-xs font-medium text-slate-600">{item.label}</span>
-              <strong className="text-sm tabular-nums text-slate-900">{item.value}</strong><ArrowRight className="size-3.5 text-slate-300" />
-            </button>; })}
-          </div>
-        </Surface>
-      </section>
-
-      <section className="mt-3 grid gap-3 xl:grid-cols-3">
-        <Surface title="Frentes críticas" action={<button type="button" onClick={() => onNavigate('planejamento')} className="text-[11px] font-bold text-emerald-700">Ver planejamento</button>}>
-          <div className="divide-y divide-slate-100">
-            {criticalFronts.length ? criticalFronts.map(item => <button key={item.id} type="button" onClick={() => onNavigate('planejamento')} className="flex min-h-16 w-full items-center gap-3 px-4 text-left hover:bg-slate-50 sm:px-5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-amber-50 text-amber-700"><AlertTriangle className="size-4" /></span>
-              <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-800">{item.frente || item.servicoDescricao}</strong><small className="mt-1 block truncate text-[10px] text-slate-500">Prazo {item.dataFim.split('-').reverse().join('/')} · {item.responsavel}</small></span>
-              <Clock3 className="size-4 text-amber-600" />
-            </button>) : <EmptyLine text="Nenhuma frente atrasada" icon={CheckCircle2} />}
-          </div>
-        </Surface>
-
-        <Surface title="Aprovações pendentes" action={<button type="button" onClick={() => onNavigate('medicoes')} className="text-[11px] font-bold text-emerald-700">Ver todas</button>}>
-          <div className="divide-y divide-slate-100">
-            {approvals.length ? approvals.map(item => <button key={item.id} type="button" onClick={() => onNavigate(item.target)} className="flex min-h-16 w-full items-center gap-3 px-4 text-left hover:bg-slate-50 sm:px-5">
-              <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-800">{item.title}</strong><small className="mt-1 block truncate text-[10px] text-slate-500">{item.meta}</small></span>
-              <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold ${statusTone[item.status] || 'bg-slate-100 text-slate-600'}`}>{item.status}</span>
-            </button>) : <EmptyLine text="Nenhuma aprovação pendente" icon={CheckCircle2} />}
-          </div>
-        </Surface>
-
-        <Surface title="Risco de materiais" action={<button type="button" onClick={() => onNavigate('materiais')} className="text-[11px] font-bold text-emerald-700">Abrir estoque</button>}>
-          <div className="divide-y divide-slate-100">
-            {materialRisks.length ? materialRisks.map(item => <button key={item.id} type="button" onClick={() => onNavigate('materiais')} className="flex min-h-16 w-full items-center gap-3 px-4 text-left hover:bg-slate-50 sm:px-5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-rose-50 text-rose-700"><Package className="size-4" /></span>
-              <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-800">{item.descricao}</strong><small className="mt-1 block text-[10px] text-slate-500">Saldo {item.balance.toLocaleString('pt-BR')} {item.unidade} · mínimo {Number(item.estoqueMinimo || 0).toLocaleString('pt-BR')}</small></span>
-            </button>) : <EmptyLine text="Estoque sem itens críticos" icon={CheckCircle2} />}
-          </div>
-        </Surface>
-      </section>
-    </div>
-  </div>;
-}
-
-function EmptyLine({ text, icon: Icon }: { text: string; icon: LucideIcon }) {
-  return <div className="flex min-h-32 flex-col items-center justify-center gap-2 px-4 text-center text-slate-400">
-    <Icon className="size-5 text-emerald-600" strokeWidth={1.7} /><p className="text-xs">{text}</p>
-  </div>;
+    </main>
+  );
 }
