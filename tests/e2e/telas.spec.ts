@@ -112,3 +112,65 @@ test('números das tabelas usam figuras tabulares', async ({ page }) => {
   const variante = await tabela.evaluate(el => getComputedStyle(el).fontVariantNumeric);
   expect(variante).toContain('tabular-nums');
 });
+
+test('lançamento rápido: atalhos, busca por prefixo e ESC', async ({ page }) => {
+  const erros: string[] = [];
+  page.on('pageerror', e => erros.push(e.message));
+  await page.setViewportSize({ width: 1440, height: 950 });
+  await page.goto('/?screen=frotas');
+  await page.waitForTimeout(600);
+
+  // Alt+N abre o lançamento rápido
+  await page.keyboard.press('Alt+n');
+  const painel = page.getByRole('dialog').first();
+  await expect(painel, 'Alt+N abre o formulário').toBeVisible({ timeout: 4000 });
+
+  // o painel é montado em portal, fora da árvore da tela
+  const noBody = await page.evaluate(() => {
+    const dialog = document.querySelector('[role="dialog"]');
+    return dialog ? dialog.closest('#frota-tab, #controle-equipamentos-tab') === null : false;
+  });
+  expect(noBody, 'painel montado em portal sobre o body').toBe(true);
+
+  // Alt+P foca o prefixo; digitar + Enter busca o equipamento
+  await page.keyboard.press('Alt+p');
+  await page.keyboard.type('CB770');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  const equipamento = await page.locator('select').filter({ hasText: 'Selecione ou use o prefixo' }).first().inputValue().catch(() => '');
+  expect(equipamento, 'prefixo preencheu o equipamento').not.toBe('');
+
+  // ESC fecha
+  await page.keyboard.press('Escape');
+  await expect(painel).toBeHidden({ timeout: 3000 });
+  expect(erros, 'sem erro de página').toEqual([]);
+});
+
+test('painel: período, filtro de situação e tooltip do gráfico', async ({ page }) => {
+  await page.goto('/?screen=painel');
+  const painel = page.locator('#dashboard-tab');
+  await expect(painel).toBeVisible();
+
+  // O período reescreve o subtítulo e a série do gráfico.
+  const subtitulo = painel.locator('h1 + p');
+  await expect(subtitulo, 'painel abre em 7 dias').toContainText('7 dias');
+  await page.getByRole('button', { name: '30 dias' }).click();
+  await expect(subtitulo, 'o filtro de período muda a janela').toContainText('30 dias');
+  await page.getByRole('button', { name: '7 dias' }).click();
+
+  // O gráfico responde ao teclado e abre o tooltip com a composição do dia.
+  const grafico = painel.getByRole('img').first();
+  await grafico.focus();
+  await page.keyboard.press('ArrowLeft');
+  const tooltip = painel.getByRole('status');
+  await expect(tooltip, 'seta seleciona um ponto e abre o tooltip').toBeVisible();
+  await expect(tooltip).toContainText('Em operação');
+  await page.keyboard.press('Escape');
+  await expect(tooltip, 'ESC solta o ponto selecionado').toBeHidden();
+
+  // A situação escolhida atravessa até a prévia de equipamentos.
+  await page.selectOption('#painel-situacao', 'manutencao');
+  await expect(painel.getByText('Filtrado por Em manutenção')).toBeVisible();
+
+  await expect(painel.getByText(/undefined|NaN|\[object/), 'sem valor derivado quebrado').toHaveCount(0);
+});

@@ -7,6 +7,9 @@ export const obras: ObraLocal[] = [
 export const equipamentos: Equipamento[] = [
   { id: 'eq-1', prefixo: 'CB770', nome: 'Escavadeira', tipo: 'Escavadeira hidráulica', marca: 'CAT', modelo: '320', seriePlaca: 'X1', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
   { id: 'eq-2', prefixo: 'CB1005', nome: 'Caminhão basculante', tipo: 'Basculante', marca: 'Volvo', modelo: 'FH', seriePlaca: 'FEJ6753', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
+  { id: 'eq-3', prefixo: 'CB772', nome: 'Caminhão basculante', tipo: 'Basculante', marca: 'Volvo', modelo: 'FMX', seriePlaca: 'FEJ6754', empresaId: 'emp-1', status: 'Ativo', familia: 'Caminhão basculante', observacao: '' } as Equipamento,
+  { id: 'eq-4', prefixo: 'CB774', nome: 'Motoniveladora', tipo: 'Motoniveladora', marca: 'CAT', modelo: '120K', seriePlaca: 'X4', empresaId: 'emp-1', status: 'Ativo', familia: 'Terraplenagem', observacao: '' } as Equipamento,
+  { id: 'eq-5', prefixo: 'CB776', nome: 'Rolo compactador', tipo: 'Rolo compactador', marca: 'Dynapac', modelo: 'CA250', seriePlaca: 'X5', empresaId: 'emp-1', status: 'Manutenção', familia: 'Terraplenagem', observacao: '' } as Equipamento,
 ];
 export const funcionarios: Funcionario[] = [
   { id: 'f-1', matricula: '103177', nome: 'José da Silva Costa', cargo: 'OPERADOR', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
@@ -14,7 +17,7 @@ export const funcionarios: Funcionario[] = [
 ];
 
 // --- Link público de presença ---
-import type { Empresa, GrupoEquipe, PresencaApontamento } from '../src/types';
+import type { Empresa, GrupoEquipe, HistoryLog, PresencaApontamento } from '../src/types';
 
 export const empresas: Empresa[] = [
   { id: 'emp-1', nome: 'RENEA INFRAESTRUTURA S.A.', cnpj: '', telefone: '', responsavel: '' },
@@ -88,14 +91,14 @@ export const ticketsJazida: TicketJazida[] = Array.from({ length: 6 }, (_, i) =>
 export const controlesEquipamentos: ControleEquipamentoDiario[] = Array.from({ length: 9 }, (_, i) => ({
   id: `cd-${i + 1}`,
   chave: `cd-${i + 1}`,
-  data: `2026-09-0${(i % 3) + 1}`,
+  data: `2026-09-0${(i % 5) + 2}`,
   funcionarioId: `f-${(i % 3) + 1}`,
   codigoFuncionario: `100${i + 1}`,
   nomeMotorista: ['RENILSON DOS SANTOS', 'ROBERSON DA SILVA', 'SERGIO CONCEICAO'][i % 3],
-  equipamentoId: 'eq-1',
+  equipamentoId: `eq-${(i % 4) + 1}`,
   prefixo: `CB${770 + i}`,
   familia: 'Caminhão basculante',
-  status: (['Em operação', 'Em manutenção', 'Disponível'] as const)[i % 3],
+  status: (['Em operação', 'Em operação', 'Em manutenção', 'A confirmar', 'Em operação', 'Disponível'] as const)[i % 6],
   horaSaida: '07:10',
   horaEntradaManutencao: i % 3 === 1 ? '09:20' : '',
   horaLiberacao: '',
@@ -126,3 +129,11 @@ export const presencasHistorico: PresencaApontamento[] = ['2026-09-01','2026-09-
     createdAt: `${data}T10:00:00.000Z`,
   } as PresencaApontamento)),
 );
+
+/** Histórico curto de frota, para a lista de atividade recente do painel. */
+export const historyLogs: HistoryLog[] = [
+  { id: 'hl-1', timestamp: '2026-09-03T11:42:00.000Z', usuario: 'deivid', acao: 'Editou', tela: 'Controle Operacional de Frotas', descricao: 'CB772 passou para Em manutenção', tipoOperacao: 'UPDATE' },
+  { id: 'hl-2', timestamp: '2026-09-03T09:15:00.000Z', usuario: 'deivid', acao: 'Criou', tela: 'Controle Operacional de Frotas', descricao: 'Lançamento diário de CB774', tipoOperacao: 'CREATE' },
+  { id: 'hl-3', timestamp: '2026-09-02T16:03:00.000Z', usuario: 'renilson', acao: 'Criou', tela: 'Manutenção', descricao: 'OS-0042 aberta para CB771', tipoOperacao: 'CREATE' },
+  { id: 'hl-4', timestamp: '2026-09-02T07:58:00.000Z', usuario: 'deivid', acao: 'Editou', tela: 'Frota', descricao: 'CB770 mobilizado na obra', tipoOperacao: 'UPDATE' },
+];
