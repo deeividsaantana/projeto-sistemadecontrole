@@ -103,8 +103,8 @@ export default function FleetFilterBar({
           placeholder="Buscar prefixo, matrícula, motorista, grupo, tipo, local ou observação..."
           className="h-10 w-full rounded-md border border-slate-300 bg-slate-50 pl-9 pr-24 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/10"
         />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase text-emerald-700">
-          {activeFilterCount} ativo(s)
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase text-emerald-700">
+          {activeFilterCount ? `${activeFilterCount} filtro${activeFilterCount > 1 ? 's' : ''}` : 'Sem filtros'}
         </span>
       </label>
     </section>
