@@ -568,9 +568,9 @@ const screens: Record<string, React.ReactNode> = {
   'presenca-admin': (
     <ControlePresencaTab
       empresas={fx.empresas}
-      funcionarios={fx.equipeFuncionarios}
+      funcionarios={fx.efetivoPresenca}
       obras={fx.obras}
-      gruposEquipe={[fx.grupo]}
+      gruposEquipe={fx.equipesPresenca}
       presencasLink={fx.presencasHistorico}
       historicoPresencas={[]}
       onSaveGrupoEquipe={noop}

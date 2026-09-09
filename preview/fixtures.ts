@@ -18,6 +18,7 @@ import type { Empresa, GrupoEquipe, PresencaApontamento } from '../src/types';
 
 export const empresas: Empresa[] = [
   { id: 'emp-1', nome: 'RENEA INFRAESTRUTURA S.A.', cnpj: '', telefone: '', responsavel: '' },
+  { id: 'emp-2', nome: 'TERRAPLENAGEM PARCEIRA LTDA', cnpj: '', telefone: '', responsavel: '' },
 ];
 
 export const equipeFuncionarios: Funcionario[] = [
@@ -107,22 +108,57 @@ export const controlesEquipamentos: ControleEquipamentoDiario[] = Array.from({ l
   atualizadoEm: '2026-09-01T10:00:00.000Z',
 } as ControleEquipamentoDiario));
 
-/** Presenca de varios dias, para o painel e a tendencia de 7 dias. */
-export const presencasHistorico: PresencaApontamento[] = ['2026-09-01','2026-09-02','2026-09-03'].flatMap((data, d) =>
-  equipeFuncionarios.map((f, i) => ({
-    id: `ph-${d}-${i}`,
-    data,
-    horaEnvio: '07:0' + (i % 9),
-    grupoId: grupo.id,
-    grupoNome: grupo.nome,
-    responsavel: grupo.responsavel,
-    frenteServico: grupo.frenteServico,
-    funcionarioId: f.id,
-    funcionarioNome: f.nome,
-    funcao: f.cargo,
-    status: (i % 5 === 0 ? 'Ausente' : i % 7 === 0 ? 'Atestado' : 'Presente') as PresencaApontamento['status'],
-    observacao: i % 5 === 0 ? 'Sem transporte' : '',
-    tokenUsado: 'validado-preview',
-    createdAt: `${data}T10:00:00.000Z`,
-  } as PresencaApontamento)),
+/**
+ * Presença de várias equipes, ramos e canteiros nos últimos 14 dias contados a
+ * partir de hoje — sem isso o painel abre sempre vazio no preview e não dá
+ * para conferir gráfico, filtro nem hierarquia. É dado de demonstração e vive
+ * só aqui; o sistema continua lendo os apontamentos reais.
+ */
+export const equipesPresenca: GrupoEquipe[] = [
+  { id: 'g-1', nome: 'Equipe do Renilson', responsavel: 'Renilson', frenteServico: 'Ramo 200', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-exemplo', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+  { id: 'g-2', nome: 'Equipe da Marginal', responsavel: 'Cleber', frenteServico: 'Marginal', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-marginal', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+  { id: 'g-3', nome: 'Equipe do Vanderlei', responsavel: 'Vanderlei', frenteServico: 'Ramo 700', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-r700', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+  { id: 'g-4', nome: 'Equipe da Fábrica', responsavel: 'Adriana', frenteServico: 'Fábrica', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-fabrica', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+  { id: 'g-5', nome: 'Equipe do SP-066', responsavel: 'Josimar', frenteServico: 'SP-066', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-sp066', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+].map(item => item as GrupoEquipe);
+
+const FUNCOES_PRESENCA = ['AJUDANTE', 'OPERADOR', 'PEDREIRO', 'SERVENTE', 'ARMADOR', 'CARPINTEIRO', 'MOTORISTA', 'ENCARREGADO'];
+
+export const efetivoPresenca: Funcionario[] = Array.from({ length: 46 }, (_, i) => ({
+  id: `pf-${i}`,
+  matricula: String(104000 + i),
+  nome: ['João Batista dos Santos','Maria Aparecida Souza','Antônio Carlos Ferreira','Sebastião Rodrigues Lima','Francisco das Chagas Oliveira','Rita de Cássia Alves','Josué Pereira Nunes','Vanderlei Martins','Cleber Antunes','Adriana Moreira','Josimar da Silva','Renilson Barbosa'][i % 12] + ` ${i + 1}`,
+  cargo: FUNCOES_PRESENCA[i % FUNCOES_PRESENCA.length],
+  telefone: '', empresaId: i % 5 === 0 ? 'emp-2' : 'emp-1', ativo: true, status: 'ATIVO',
+} as Funcionario));
+
+const diasDePresenca = Array.from({ length: 14 }, (_, i) => {
+  const dia = new Date();
+  dia.setHours(12, 0, 0, 0);
+  dia.setDate(dia.getDate() - (13 - i));
+  return dia.toISOString().slice(0, 10);
+});
+
+export const presencasHistorico: PresencaApontamento[] = diasDePresenca.flatMap((data, d) =>
+  efetivoPresenca.map((f, i) => {
+    const equipe = equipesPresenca[i % equipesPresenca.length];
+    const semente = (d * 7 + i * 3) % 17;
+    const status = semente === 0 ? 'Ausente' : semente === 4 ? 'Atestado' : semente === 9 ? 'Atraso' : semente === 13 ? 'Falta justificada' : 'Presente';
+    return {
+      id: `ph-${d}-${i}`,
+      data,
+      horaEnvio: `0${6 + (i % 3)}:${String((i * 7) % 60).padStart(2, '0')}`,
+      grupoId: equipe.id,
+      grupoNome: equipe.nome,
+      responsavel: equipe.responsavel,
+      frenteServico: equipe.frenteServico,
+      funcionarioId: f.id,
+      funcionarioNome: f.nome,
+      funcao: f.cargo,
+      status: status as PresencaApontamento['status'],
+      observacao: status === 'Ausente' ? 'Sem transporte' : '',
+      tokenUsado: 'validado-preview',
+      createdAt: `${data}T10:00:00.000Z`,
+    } as PresencaApontamento;
+  }).filter((_, i) => (d + i) % 9 !== 0),
 );
