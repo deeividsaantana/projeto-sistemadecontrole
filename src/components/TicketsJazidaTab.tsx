@@ -1196,14 +1196,14 @@ export default function TicketsJazidaTab({
   };
 
   const statusStyles: Record<string, string> = {
-    'OK': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    'Pendente': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    'Duplicado': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    'Verificar quantidade': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    'Verificar bomba': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    'Erro de importação': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    'Rascunho': 'bg-amber-500/10 text-amber-300 border-amber-500/20',
-    'Enviado': 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
+    'OK': 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
+    'Pendente': 'bg-amber-500/10 text-amber-700 border-amber-500/20',
+    'Duplicado': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
+    'Verificar quantidade': 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+    'Verificar bomba': 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+    'Erro de importação': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
+    'Rascunho': 'bg-amber-500/10 text-amber-700 border-amber-500/20',
+    'Enviado': 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
   };
 
   const normalizeImportHeader = (value: string) =>
@@ -1727,7 +1727,7 @@ export default function TicketsJazidaTab({
             onClick={handlePrintBlankForm}
             disabled={isBatchPrinting}
             title="Gerar uma folha apenas com o próximo número sequencial preenchido"
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-xs font-black text-emerald-300 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-xs font-black text-emerald-700 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50"
           >
             <Printer className="w-4 h-4" />
             Imprimir em branco
@@ -1739,7 +1739,7 @@ export default function TicketsJazidaTab({
             title="Escolher uma planilha XLSX ou XLSM, revisar as linhas e só depois confirmar"
             className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[#e2e8e4] bg-white px-4 text-xs font-black text-[#26362f] transition-colors hover:border-emerald-500 hover:text-[#14231e] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Upload className="w-4 h-4 text-emerald-400" />
+            <Upload className="w-4 h-4 text-emerald-700" />
             {isImporting ? 'Lendo planilha...' : 'Importar planilha'}
           </button>
           <button
@@ -1748,13 +1748,13 @@ export default function TicketsJazidaTab({
             title="Criar e imprimir tickets em ordem crescente"
             className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[#e2e8e4] bg-white px-4 text-xs font-black text-[#26362f] transition-colors hover:border-emerald-500 hover:text-[#14231e]"
           >
-            <Printer className="w-4 h-4 text-emerald-400" />
+            <Printer className="w-4 h-4 text-emerald-700" />
             Imprimir sequência
           </button>
           {operationsOpen && <button
             onClick={copyPublicLink}
             title="Copiar o link único para liberação e recebimento"
-            className="px-4 py-2.5 bg-white border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-white border border-emerald-500/40 hover:border-emerald-400 text-emerald-700 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Link2 className="w-4 h-4" /> Copiar link público
           </button>}
@@ -1768,7 +1768,7 @@ export default function TicketsJazidaTab({
           <button
             type="button"
             onClick={() => { setOperationsOpen(value => !value); setIsFormOpen(false); }}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${operationsOpen ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-[#e2e8e4] bg-white text-[#26362f] hover:border-emerald-500'}`}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${operationsOpen ? 'border-amber-500/50 bg-amber-500/10 text-amber-700' : 'border-[#e2e8e4] bg-white text-[#26362f] hover:border-emerald-500'}`}
           >
             <FilePenLine className="h-4 w-4" />
             {operationsOpen ? 'Ocultar lista e notas' : 'Ver lista e notas'}
@@ -1778,7 +1778,7 @@ export default function TicketsJazidaTab({
       </div>
 
       {linkMessage && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-300">
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-700">
           <ClipboardCheck className="h-4 w-4 shrink-0" />
           <span className="break-all">{linkMessage}</span>
         </div>
@@ -1790,7 +1790,7 @@ export default function TicketsJazidaTab({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="flex items-center gap-2 font-sans text-base font-black text-slate-900"><Layers3 className="h-5 w-5 text-cyan-600" /> Conferência automática das viagens</h2>
-                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-300">ERP v2.5</span>
+                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-700">ERP v2.5</span>
               </div>
               <p className="mt-1 text-[11px] text-[#65716b]">Pareamento integral pelo Ticket Nº, sem limites fixos de linha. Prefixo, placa, material e quantidade seguem a mesma conferência da planilha.</p>
             </div>
@@ -1826,16 +1826,16 @@ export default function TicketsJazidaTab({
               <table className="w-full min-w-[820px] text-left text-[10px]">
                 <thead className="bg-[#f7f9f8] uppercase tracking-wider text-[#65716b]"><tr><th className="px-4 py-2.5">Ticket</th><th className="px-4 py-2.5">Situação</th><th className="px-4 py-2.5">Liberação</th><th className="px-4 py-2.5">Recebimento</th><th className="px-4 py-2.5">Duração</th><th className="px-4 py-2.5">Revisar</th></tr></thead>
                 <tbody className="divide-y divide-[#e2e8e4]">
-                  {travelReviewRows.length === 0 ? <tr><td colSpan={6} className="px-4 py-6 text-center text-emerald-300">Todas as viagens estão pareadas e conferidas.</td></tr> : travelReviewRows.map(operation => {
+                  {travelReviewRows.length === 0 ? <tr><td colSpan={6} className="px-4 py-6 text-center text-emerald-700">Todas as viagens estão pareadas e conferidas.</td></tr> : travelReviewRows.map(operation => {
                     const statusClass = operation.status === 'Divergência' || operation.status === 'Ticket duplicado'
-                      ? 'border-rose-500/25 bg-rose-500/10 text-rose-300'
-                      : 'border-amber-500/25 bg-amber-500/10 text-amber-200';
+                      ? 'border-rose-500/25 bg-rose-500/10 text-rose-700'
+                      : 'border-amber-500/25 bg-amber-500/10 text-amber-700';
                     return <tr key={operation.ticketNumber} className="text-[#3d4a44]">
-                      <td className="px-4 py-3 font-mono font-black text-emerald-300">{operation.ticketNumber}</td>
+                      <td className="px-4 py-3 font-mono font-black text-emerald-700">{operation.ticketNumber}</td>
                       <td className="px-4 py-3"><span className={`rounded-md border px-2 py-1 font-bold ${statusClass}`}>{operation.status}</span></td>
                       <td className="px-4 py-3"><b className="block">{operation.release?.prefixo || '—'}</b><span className="text-[#53605a]">{operation.releaseEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
                       <td className="px-4 py-3"><b className="block">{operation.receipt?.prefixo || '—'}</b><span className="text-[#53605a]">{operation.receiptEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
-                      <td className="px-4 py-3 font-bold text-cyan-300">{formatTravelDuration(operation.durationMinutes)}</td>
+                      <td className="px-4 py-3 font-bold text-cyan-700">{formatTravelDuration(operation.durationMinutes)}</td>
                       <td className="px-4 py-3 text-[#65716b]">{operation.divergences.map(item => item.label).join(', ') || (operation.status === 'Ticket duplicado' ? `${operation.releases.length} lib. / ${operation.receipts.length} rec.` : 'Pareamento pendente')}</td>
                     </tr>;
                   })}
@@ -1852,7 +1852,7 @@ export default function TicketsJazidaTab({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="flex items-center gap-2 font-sans text-base font-black text-slate-900"><ListChecks className="h-5 w-5 text-emerald-600" /> Conferência das duas vias</h2>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-300"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Tempo real</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-700"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Tempo real</span>
               </div>
               <p className="mt-1 text-[11px] text-[#65716b]">Cada número impresso gera uma pendência de Liberação e outra de Recebimento. Marque somente quando a via física voltar.</p>
             </div>
@@ -1891,16 +1891,16 @@ export default function TicketsJazidaTab({
             <div className="h-2 overflow-hidden rounded-full bg-[#f7f9f8]"><div className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-cyan-400 transition-all duration-500" style={{ width: `${dailyControl.percentualConferencia}%` }} /></div>
           </div>
 
-          {dailyDuplicateCount > 0 && <button type="button" onClick={() => { setOperationsOpen(true); setFStatus('Duplicado'); }} className="flex w-full items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left"><span><b className="block text-xs text-rose-200">{dailyDuplicateCount} via(s) com numeração duplicada neste dia</b><small className="text-[9px] text-rose-300/70">Os dados foram preservados. Abra a área administrativa para revisar sem perder registros.</small></span><CopyPlus className="h-4 w-4 shrink-0 text-rose-300" /></button>}
+          {dailyDuplicateCount > 0 && <button type="button" onClick={() => { setOperationsOpen(true); setFStatus('Duplicado'); }} className="flex w-full items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left"><span><b className="block text-xs text-rose-700">{dailyDuplicateCount} via(s) com numeração duplicada neste dia</b><small className="text-[9px] text-rose-700/70">Os dados foram preservados. Abra a área administrativa para revisar sem perder registros.</small></span><CopyPlus className="h-4 w-4 shrink-0 text-rose-700" /></button>}
 
           <div className="grid gap-3 lg:grid-cols-2">
             <div className={`rounded-xl border p-4 ${dailyControl.pendentesLiberacao.length ? 'border-amber-500/25 bg-amber-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
-              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Liberação</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-amber-300">{dailyControl.pendentesLiberacao.length}</span></div>
-              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesLiberacao.length ? dailyControl.pendentesLiberacao.map(numero => <span key={numero} className="rounded-md border border-amber-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-amber-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-300">Todas as liberações retornaram.</span>}</div>
+              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Liberação</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-amber-700">{dailyControl.pendentesLiberacao.length}</span></div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesLiberacao.length ? dailyControl.pendentesLiberacao.map(numero => <span key={numero} className="rounded-md border border-amber-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-amber-700">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-700">Todas as liberações retornaram.</span>}</div>
             </div>
             <div className={`rounded-xl border p-4 ${dailyControl.pendentesRecebimento.length ? 'border-sky-500/25 bg-sky-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
-              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Recebimento</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-sky-300">{dailyControl.pendentesRecebimento.length}</span></div>
-              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-sky-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-300">Todos os recebimentos retornaram.</span>}</div>
+              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Recebimento</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-sky-700">{dailyControl.pendentesRecebimento.length}</span></div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-sky-700">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-700">Todos os recebimentos retornaram.</span>}</div>
             </div>
           </div>
 
@@ -1908,8 +1908,8 @@ export default function TicketsJazidaTab({
             <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f7f9f8] p-4 lg:flex-row lg:items-center lg:justify-between">
               <div><h3 className="text-xs font-black text-[#14231e]">Checklist do dia</h3><p className="mt-1 text-[9px] text-[#65716b]">O horário de devolução é registrado automaticamente ao marcar cada via.</p></div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Liberação', true)} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[9px] font-black text-emerald-300 disabled:opacity-40">Marcar todas as liberações</button>
-                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Recebimento', true)} className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[9px] font-black text-sky-300 disabled:opacity-40">Marcar todos os recebimentos</button>
+                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Liberação', true)} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[9px] font-black text-emerald-700 disabled:opacity-40">Marcar todas as liberações</button>
+                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Recebimento', true)} className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[9px] font-black text-sky-700 disabled:opacity-40">Marcar todos os recebimentos</button>
                 <button type="button" disabled={!dailyControl.rows.length} onClick={handleClearAllReturns} className="inline-flex items-center gap-1.5 rounded-md border border-[#e2e8e4] bg-white px-3 py-2 text-[9px] font-black text-[#65716b] disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" /> Limpar checklist</button>
               </div>
             </div>
@@ -1923,10 +1923,10 @@ export default function TicketsJazidaTab({
                     return <tr key={row.numero} className="bg-[#f7f9f8] hover:bg-[#f2f5f3]">
                       <td className="px-4 py-3 font-mono text-sm font-black text-[#14231e]">{row.numero}</td>
                       <td className="px-4 py-3"><b className="block text-[#26362f]">{formatEventDateTime(row.criadoEm)}</b><span className="text-[9px] text-[#53605a]">{row.loteId.startsWith('avulso-') ? 'Cadastro avulso' : 'Lote impresso'}</span></td>
-                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Liberação')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.liberacaoRecebida ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-200 hover:border-amber-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.liberacaoRecebida ? '✓' : ''}</span>{row.liberacaoRecebida ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.liberacaoRecebidaEm)}</small></button></td>
-                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Recebimento')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.recebimentoRecebido ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-sky-500/30 bg-sky-500/10 text-sky-200 hover:border-sky-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.recebimentoRecebido ? '✓' : ''}</span>{row.recebimentoRecebido ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.recebimentoRecebidoEm)}</small></button></td>
+                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Liberação')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.liberacaoRecebida ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-amber-500/30 bg-amber-500/10 text-amber-700 hover:border-amber-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.liberacaoRecebida ? '✓' : ''}</span>{row.liberacaoRecebida ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.liberacaoRecebidaEm)}</small></button></td>
+                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Recebimento')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.recebimentoRecebido ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-sky-500/30 bg-sky-500/10 text-sky-700 hover:border-sky-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.recebimentoRecebido ? '✓' : ''}</span>{row.recebimentoRecebido ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.recebimentoRecebidoEm)}</small></button></td>
                       <td className="px-4 py-3"><b className="block text-[#26362f]">{ticket?.prefixo || '—'}</b><span className="text-[9px] text-[#65716b]">{ticket?.placa || 'Sem placa'}</span></td>
-                      <td className="px-4 py-3">{operationsOpen ? <button type="button" onClick={() => handleOpenNoteModal(row.numero)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20' : 'bg-[#f7f9f8] text-[#65716b] hover:text-[#14231e]'}`}><FileText className="h-3 w-3" />{note || 'Lançar nota'}</button> : <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-300' : 'bg-[#f7f9f8] text-[#65716b]'}`}><FileText className="h-3 w-3" />{note || 'Área oculta'}</span>}</td>
+                      <td className="px-4 py-3">{operationsOpen ? <button type="button" onClick={() => handleOpenNoteModal(row.numero)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-700 hover:bg-cyan-500/20' : 'bg-[#f7f9f8] text-[#65716b] hover:text-[#14231e]'}`}><FileText className="h-3 w-3" />{note || 'Lançar nota'}</button> : <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-700' : 'bg-[#f7f9f8] text-[#65716b]'}`}><FileText className="h-3 w-3" />{note || 'Área oculta'}</span>}</td>
                     </tr>;
                   })}
                 </tbody>
@@ -1939,7 +1939,7 @@ export default function TicketsJazidaTab({
       {operationsOpen && <div className="space-y-5 rounded-lg border border-amber-500/20 bg-amber-500/[0.025] p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div><h2 className="text-sm font-black text-[#14231e]">Área de lançamentos, edição e notas</h2><p className="text-[10px] text-[#65716b]">Área avançada mantida oculta para deixar a conferência diária mais rápida.</p></div>
-        <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase text-amber-200">Modo administrativo</span>
+        <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase text-amber-700">Modo administrativo</span>
       </div>
       <div className="inline-flex bg-white p-1 rounded-xl border border-[#e2e8e4]">
         {(['Liberação', 'Recebimento'] as TipoTicketJazida[]).map(tipo => (
@@ -1984,16 +1984,16 @@ export default function TicketsJazidaTab({
           <div className="flex items-center gap-2 text-[10px] font-bold text-[#65716b] uppercase shrink-0"><CalendarDays className="w-4 h-4" /> Período</div>
           <div className="flex flex-wrap gap-1.5">
             {[{ label: 'Hoje', days: 1 }, { label: '7 dias', days: 7 }, { label: '30 dias', days: 30 }].map(period => (
-              <button key={period.days} type="button" onClick={() => applyPeriod(period.days)} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${isPeriodActive(period.days) ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>{period.label}</button>
+              <button key={period.days} type="button" onClick={() => applyPeriod(period.days)} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${isPeriodActive(period.days) ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>{period.label}</button>
             ))}
-            <button type="button" onClick={() => applyPeriod()} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${!fDataInicial && !fDataFinal ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>Todo período</button>
+            <button type="button" onClick={() => applyPeriod()} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${!fDataInicial && !fDataFinal ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>Todo período</button>
           </div>
           <div className="xl:ml-auto flex items-center gap-2">
             <label htmlFor="ticket-quick-status" className="text-[10px] font-bold text-[#65716b] uppercase">Situação</label>
             <select id="ticket-quick-status" value={fStatus} onChange={e => setFStatus(e.target.value)} className="h-8 min-w-40 bg-white border border-[#e2e8e4] rounded-md px-3 text-[11px] text-[#26362f] focus:outline-none focus:border-emerald-500">
               <option value="">Todas</option><option value="Enviado">Enviados</option><option value="Rascunho">Rascunhos</option><option value="Pendente">Pendentes</option><option value="Duplicado">Duplicados</option><option value="OK">Conferidos</option>
             </select>
-            {hasFiltrosAtivos && <button type="button" onClick={limparFiltros} title="Limpar todos os filtros" className="h-8 w-8 grid place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:border-rose-500 hover:text-rose-400"><FilterX className="w-4 h-4" /></button>}
+            {hasFiltrosAtivos && <button type="button" onClick={limparFiltros} title="Limpar todos os filtros" className="h-8 w-8 grid place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:border-rose-500 hover:text-rose-700"><FilterX className="w-4 h-4" /></button>}
           </div>
         </div>
       </div>
@@ -2013,12 +2013,12 @@ export default function TicketsJazidaTab({
       </div>
 
       {importMessage && (
-        <div className="text-xs font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl">
+        <div className="text-xs font-bold text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl">
           {importMessage}
         </div>
       )}
       {validationError && !isFormOpen && (
-        <div className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl">
+        <div className="text-xs font-bold text-rose-700 bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl">
           {validationError}
         </div>
       )}
@@ -2099,19 +2099,19 @@ export default function TicketsJazidaTab({
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
               <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Total m³</p>
-              <p className="text-lg font-black text-emerald-400 font-mono mt-1">{resumo.totalM3.toLocaleString('pt-BR')}</p>
+              <p className="text-lg font-black text-emerald-700 font-mono mt-1">{resumo.totalM3.toLocaleString('pt-BR')}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
               <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Tickets OK</p>
-              <p className="text-lg font-black text-emerald-400 font-mono mt-1">{resumo.okCount}</p>
+              <p className="text-lg font-black text-emerald-700 font-mono mt-1">{resumo.okCount}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
               <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Pendentes</p>
-              <p className="text-lg font-black text-amber-400 font-mono mt-1">{resumo.pendCount}</p>
+              <p className="text-lg font-black text-amber-700 font-mono mt-1">{resumo.pendCount}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
               <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Duplicados</p>
-              <p className="text-lg font-black text-rose-400 font-mono mt-1">{resumo.dupCount}</p>
+              <p className="text-lg font-black text-rose-700 font-mono mt-1">{resumo.dupCount}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
               <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Total Caçambas</p>
@@ -2127,18 +2127,18 @@ export default function TicketsJazidaTab({
           <button onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="absolute top-4 right-4 p-1.5 text-[#65716b] hover:text-[#14231e] hover:bg-[#f2f5f3] rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
-          <h3 className="text-xs uppercase tracking-widest font-black text-emerald-400 font-mono mb-5 flex items-center gap-2">
+          <h3 className="text-xs uppercase tracking-widest font-black text-emerald-700 font-mono mb-5 flex items-center gap-2">
             {editingId ? 'Editando Ticket' : 'Novo Ticket'} • {tipoTicket} - Jazida
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
-                <b className="block text-[10px] font-black uppercase tracking-wider text-amber-200">Salvar rascunho</b>
+                <b className="block text-[10px] font-black uppercase tracking-wider text-amber-700">Salvar rascunho</b>
                 <p className="mt-1 text-[9px] leading-relaxed text-[#65716b]">Exige apenas número e data. Mantém o ticket editável e não marca a via como devolvida.</p>
               </div>
               <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
-                <b className="block text-[10px] font-black uppercase tracking-wider text-emerald-200">Concluir ticket</b>
+                <b className="block text-[10px] font-black uppercase tracking-wider text-emerald-700">Concluir ticket</b>
                 <p className="mt-1 text-[9px] leading-relaxed text-[#65716b]">Valida os campos essenciais e registra a devolução da via na conferência diária.</p>
               </div>
             </div>
@@ -2273,7 +2273,7 @@ export default function TicketsJazidaTab({
                 <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
               <div>
-                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan-300"><FileText className="h-4 w-4" /> Nota fiscal</div>
+                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan-700"><FileText className="h-4 w-4" /> Nota fiscal</div>
                 <div className="grid gap-3 md:grid-cols-[1fr_180px_2fr]">
                   <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-[#65716b]">Número da nota</span><input type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" placeholder="Ex.: NF 15482" /></label>
                   <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-[#65716b]">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
@@ -2283,13 +2283,13 @@ export default function TicketsJazidaTab({
             </div>}
 
             {validationError && (
-              <div className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
+              <div className="text-xs font-bold text-rose-700 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
                 ⚠️ {validationError}
               </div>
             )}
 
             <div className="flex flex-col gap-2.5 sm:flex-row">
-              <button type="submit" name="saveMode" value="draft" className="px-5 py-2.5 border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15 text-amber-200 font-bold text-xs rounded-xl transition-all cursor-pointer">
+              <button type="submit" name="saveMode" value="draft" className="px-5 py-2.5 border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15 text-amber-700 font-bold text-xs rounded-xl transition-all cursor-pointer">
                 Salvar rascunho
               </button>
               <button type="submit" name="saveMode" value="complete" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-colors cursor-pointer">
@@ -2357,31 +2357,31 @@ export default function TicketsJazidaTab({
                         )}
                       </td>
                       <td className="py-4 px-5 text-[#3d4a44]">{t.tipoMaterial}</td>
-                      <td className="py-4 px-5 font-mono text-emerald-400 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')} <span className="text-[9px] text-[#65716b]">{t.unidadeQuantidade || 'm³'}</span></td>
+                      <td className="py-4 px-5 font-mono text-emerald-700 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')} <span className="text-[9px] text-[#65716b]">{t.unidadeQuantidade || 'm³'}</span></td>
                       <td className="py-4 px-5 text-[#65716b]">
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-[#53605a]" />{t.destinoObra === 'Outros' ? t.destinoOutro || 'Outros' : t.destinoObra}</span>
                         {t.estaca && <span className="block text-[10px] text-[#65716b] mt-0.5">{t.estaca}</span>}
                       </td>
-                      <td className="py-4 px-5 text-[#65716b]"><span className="block">{t.empresa}</span>{t.notaFiscalNumero && <span className="mt-1 block text-[10px] font-bold text-cyan-300">NF {t.notaFiscalNumero}</span>}</td>
+                      <td className="py-4 px-5 text-[#65716b]"><span className="block">{t.empresa}</span>{t.notaFiscalNumero && <span className="mt-1 block text-[10px] font-bold text-cyan-700">NF {t.notaFiscalNumero}</span>}</td>
                       <td className="py-4 px-5">
                         <span className={`inline-block px-2 py-1 rounded-lg border text-[10px] font-bold ${statusStyles[status] || statusStyles['OK']}`}>{statusLabel}</span>
                       </td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => setViewingTicket(t)} title="Visualizar ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-emerald-400 rounded-lg cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handlePrintTicket(t)} title="Imprimir este ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-emerald-400 rounded-lg cursor-pointer"><Printer className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setViewingTicket(t)} title="Visualizar ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-emerald-700 rounded-lg cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handlePrintTicket(t)} title="Imprimir este ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-emerald-700 rounded-lg cursor-pointer"><Printer className="w-3.5 h-3.5" /></button>
                           {(t.tipoTicket || 'Liberação') === 'Liberação' && (
                             <button
                               onClick={() => handleCloneRecebimentoFromLiberacao(t)}
                               title={hasRecebimentoClone ? 'Recebimento já gerado' : 'Gerar recebimento clonando CB e placa'}
-                              className={`p-1.5 bg-[#f7f9f8] rounded-lg cursor-pointer ${hasRecebimentoClone ? 'text-[#53605a]' : 'text-[#3d4a44] hover:text-emerald-400'}`}
+                              className={`p-1.5 bg-[#f7f9f8] rounded-lg cursor-pointer ${hasRecebimentoClone ? 'text-[#53605a]' : 'text-[#3d4a44] hover:text-emerald-700'}`}
                             >
                               <CopyPlus className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <button onClick={() => handleOpenEdit(t)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 font-bold text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"><Edit className="w-3.5 h-3.5" />{(t.statusFluxo || 'Enviado') === 'Rascunho' ? 'Continuar' : 'Editar'}</button>
-                          {(t.statusFluxo || 'Enviado') === 'Enviado' && <button onClick={() => handleMoveTicketToDraft(t)} title="Retirar da conferência de devolvidos e continuar editando depois" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 font-bold text-amber-200 hover:bg-amber-500/20 cursor-pointer"><RotateCcw className="w-3.5 h-3.5" />Rascunho</button>}
-                          <button onClick={() => setDeleteConfirmId(t.id)} title="Excluir ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleOpenEdit(t)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 font-bold text-emerald-700 hover:bg-emerald-500/20 cursor-pointer"><Edit className="w-3.5 h-3.5" />{(t.statusFluxo || 'Enviado') === 'Rascunho' ? 'Continuar' : 'Editar'}</button>
+                          {(t.statusFluxo || 'Enviado') === 'Enviado' && <button onClick={() => handleMoveTicketToDraft(t)} title="Retirar da conferência de devolvidos e continuar editando depois" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 font-bold text-amber-700 hover:bg-amber-500/20 cursor-pointer"><RotateCcw className="w-3.5 h-3.5" />Rascunho</button>}
+                          <button onClick={() => setDeleteConfirmId(t.id)} title="Excluir ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -2413,7 +2413,7 @@ export default function TicketsJazidaTab({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setNoteModalNumber(null)}>
           <div className="max-h-[90dvh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-lg border border-cyan-500/30 bg-white p-5" onClick={event => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
-              <div><h3 className="flex items-center gap-2 text-sm font-black text-[#14231e]"><FileText className="h-4 w-4 text-cyan-300" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-[10px] text-[#65716b]">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
+              <div><h3 className="flex items-center gap-2 text-sm font-black text-[#14231e]"><FileText className="h-4 w-4 text-cyan-700" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-[10px] text-[#65716b]">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
               <button type="button" onClick={() => setNoteModalNumber(null)} className="grid h-8 w-8 place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -2447,7 +2447,7 @@ export default function TicketsJazidaTab({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm font-black text-[#14231e] flex items-center gap-2">
-                  <Printer className="w-4 h-4 text-emerald-400" />
+                  <Printer className="w-4 h-4 text-emerald-700" />
                   Imprimir tickets em sequência
                 </h3>
                 <p className="text-[10px] text-[#65716b] mt-1">Configure a numeração, escolha o que já deve sair preenchido e salve as duas vias para editar depois.</p>
@@ -2467,7 +2467,7 @@ export default function TicketsJazidaTab({
                 <span><strong className="block text-[11px] text-[#26362f]">Pré-preencher o lote</strong><small className="block text-[9px] text-[#65716b]">Você escolhe abaixo quais dados comuns já saem no PDF.</small></span>
               </label>
               <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
-                <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                 <span><strong className="block text-[11px] text-[#26362f]">Controle automático obrigatório</strong><small className="block text-[9px] text-[#65716b]">As duas vias entram como pendentes no checklist e acompanham o backup em nuvem.</small></span>
               </div>
             </div>
@@ -2545,7 +2545,7 @@ export default function TicketsJazidaTab({
             </div>
 
             {validationError && (
-              <div className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300">
+              <div className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-700">
                 {validationError}
               </div>
             )}

@@ -102,7 +102,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/45 backdrop-blur-[1px] sm:items-center sm:p-4"
+      className="fixed inset-0 z-[120] flex items-end justify-center bg-white backdrop-blur-[1px] sm:items-center sm:p-4"
       role="presentation"
       onMouseDown={event => {
         if (event.target === event.currentTarget && !busy) onClose();

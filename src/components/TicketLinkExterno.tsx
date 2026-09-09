@@ -428,9 +428,9 @@ export default function TicketLinkExterno({
 
   if (isLoadingCloud) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white grid place-items-center p-6">
+      <div className="min-h-screen bg-white text-slate-800 grid place-items-center p-6">
         <div className="text-center space-y-4">
-          <Loader2 className="mx-auto h-9 w-9 animate-spin text-emerald-400" />
+          <Loader2 className="mx-auto h-9 w-9 animate-spin text-emerald-700" />
           <p className="text-sm font-bold">Carregando tickets...</p>
         </div>
       </div>
@@ -439,11 +439,11 @@ export default function TicketLinkExterno({
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white grid place-items-center p-6">
-        <div className="w-full max-w-lg rounded-xl border border-amber-500/30 bg-slate-900 p-6 text-center shadow-2xl">
+      <div className="min-h-screen bg-white text-slate-800 grid place-items-center p-6">
+        <div className="w-full max-w-lg rounded-xl border border-amber-500/30 bg-white p-6 text-center shadow-2xl">
           <img src={reneaLogo} alt="RENEA" className="mx-auto h-9 w-auto" />
           <h1 className="mt-6 text-xl font-black">Link de tickets indisponível</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-300">{loadError}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-700">{loadError}</p>
           <p className="mt-3 text-xs text-slate-500">Solicite ao responsável da obra o novo link protegido.</p>
         </div>
       </div>
@@ -452,11 +452,11 @@ export default function TicketLinkExterno({
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="bg-slate-950 px-4 py-4 text-white shadow-lg">
+      <header className="bg-white px-4 py-4 text-slate-800 shadow-lg">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
           <img src={reneaLogo} alt="RENEA" className="h-8 w-auto" />
           <div className="text-right">
-            <p className="text-xs font-black uppercase text-emerald-400">Tickets digitais</p>
+            <p className="text-xs font-black uppercase text-emerald-700">Tickets digitais</p>
             <p className="text-[11px] text-slate-400">Liberação e recebimento</p>
           </div>
         </div>
@@ -567,7 +567,7 @@ export default function TicketLinkExterno({
           <div className="space-y-5">
             <div className="flex items-center justify-between gap-4">
               <button type="button" onClick={() => setScreen('home')} className="inline-flex h-10 items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" /> Voltar</button>
-              <span className="rounded-md bg-slate-950 px-3 py-2 text-sm font-black text-white">Ticket {form.ticketNumero}</span>
+              <span className="rounded-md bg-white px-3 py-2 text-sm font-black text-slate-800">Ticket {form.ticketNumero}</span>
             </div>
 
             <div className="grid grid-cols-4 gap-2" aria-label={`Etapa ${step} de 4`}>
@@ -654,7 +654,7 @@ export default function TicketLinkExterno({
               <button type="button" onClick={() => persist(false)} disabled={isSaving} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 text-sm font-black text-slate-700"><Save className="h-4 w-4" /> Salvar rascunho</button>
               <div className="flex gap-2">
                 {step > 1 && <button type="button" onClick={() => setStep(current => current - 1)} className="h-12 flex-1 rounded-md border border-slate-300 bg-white px-5 text-sm font-black sm:flex-none">Voltar</button>}
-                {step < 4 ? <button type="button" onClick={nextStep} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-slate-950 px-6 text-sm font-black text-white sm:flex-none">{step === 3 ? 'Revisar dados' : 'Continuar'} <ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={() => persist(true)} disabled={isSaving || !reviewConfirmed} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Confirmar e enviar</button>}
+                {step < 4 ? <button type="button" onClick={nextStep} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-white px-6 text-sm font-black text-slate-800 sm:flex-none">{step === 3 ? 'Revisar dados' : 'Continuar'} <ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={() => persist(true)} disabled={isSaving || !reviewConfirmed} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Confirmar e enviar</button>}
               </div>
             </div>
             <p className="flex items-center justify-center gap-2 text-center text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> O preenchimento fica salvo neste aparelho enquanto você avança.</p>
@@ -673,7 +673,7 @@ export default function TicketLinkExterno({
             <div className="grid gap-3">
               {form.tipoTicket === 'Liberação' && <button type="button" onClick={() => beginReceipt(form)} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-emerald-600 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Registrar recebimento agora</button>}
               <button type="button" onClick={() => setViewingOwnTicket(form)} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 font-black text-slate-700"><Eye className="h-5 w-5" /> Visualizar comprovante</button>
-              <button type="button" onClick={beginRelease} disabled={isStarting} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-slate-950 px-5 font-black text-white"><Truck className="h-5 w-5" /> Próximo caminhão</button>
+              <button type="button" onClick={beginRelease} disabled={isStarting} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-white px-5 font-black text-slate-800"><Truck className="h-5 w-5" /> Próximo caminhão</button>
               <button type="button" onClick={() => { setMessage(''); setForm(null); setScreen('home'); }} className="h-12 font-bold text-slate-600">Voltar ao início</button>
             </div>
           </div>
@@ -681,7 +681,7 @@ export default function TicketLinkExterno({
       </main>
 
       {viewingOwnTicket && viewingOwnPair && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" onClick={() => setViewingOwnTicket(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white p-4" onClick={() => setViewingOwnTicket(null)}>
           <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-lg bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
               <div><p className="text-xs font-black uppercase text-emerald-700">Liberação + recebimento</p><h2 className="text-xl font-black">Ticket {viewingOwnTicket.ticketNumero}</h2></div>

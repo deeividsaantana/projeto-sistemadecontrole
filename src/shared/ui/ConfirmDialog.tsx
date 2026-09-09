@@ -19,7 +19,7 @@ export interface ConfirmDialogProps {
 const confirmToneClass: Record<ConfirmTone, string> = {
   danger: 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500',
   warning: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500',
-  neutral: 'bg-slate-800 hover:bg-slate-900 focus:ring-slate-500',
+  neutral: 'bg-white hover:bg-slate-50 focus:ring-slate-500',
 };
 
 const iconToneClass: Record<ConfirmTone, string> = {

@@ -286,11 +286,11 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-lg border border-emerald-500/20 bg-slate-950 p-5">
+      <section className="rounded-lg border border-emerald-500/20 bg-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-400">ERP v2.6</p>
-            <h1 className="mt-1 text-2xl font-black text-white">Controle de Estacas</h1>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700">ERP v2.6</p>
+            <h1 className="mt-1 text-2xl font-black text-slate-800">Controle de Estacas</h1>
             <p className="mt-1 text-xs text-slate-400">Recebimento, NF, lote físico, cravação, sobra, perda e saldo confirmado.</p>
           </div>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-500">
@@ -314,18 +314,18 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
           { label: 'Saldo (m)', text: summary.sobraM.toLocaleString('pt-BR') },
           { label: 'NF pendente', value: summary.notasPendentes },
         ].map(item => (
-          <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-900 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+          <div key={item.label} className="rounded-xl border border-slate-200 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
             <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{item.label}</p>
-            <p className="mt-1 text-xl font-black tabular-nums text-white">{item.value !== undefined ? <CountUp value={item.value} /> : item.text}</p>
+            <p className="mt-1 text-xl font-black tabular-nums text-slate-800">{item.value !== undefined ? <CountUp value={item.value} /> : item.text}</p>
           </div>
         ))}
       </div>
 
-      {message && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-200">{message}</div>}
+      {message && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-700">{message}</div>}
 
       <div className="flex gap-2 overflow-auto">
         {([['lotes', 'Recebimentos'], ['cravacoes', 'Cravações'], ['notas', 'Conferência de NF']] as const).map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setMode(id)} className={`rounded-lg px-4 py-2 text-xs font-black ${mode === id ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400'}`}>{label}</button>
+          <button key={id} type="button" onClick={() => setMode(id)} className={`rounded-lg px-4 py-2 text-xs font-black ${mode === id ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400'}`}>{label}</button>
         ))}
       </div>
 
@@ -347,7 +347,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
             <input placeholder="Destino textual" value={lot.destino} onChange={e => setLot({ ...lot, destino: e.target.value })} className="input-dark md:col-span-2" />
             <input placeholder="Responsável" value={lot.responsavel} onChange={e => setLot({ ...lot, responsavel: e.target.value })} className="input-dark" />
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 sm:col-span-2">Anexos estão temporariamente indisponíveis. O registro do lote segue normalmente, sem perda dos demais dados.</div>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 text-xs text-slate-300"><input type="checkbox" checked={lot.nfConferida} onChange={e => setLot({ ...lot, nfConferida: e.target.checked })} /> NF conferida</label>
+            <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs text-slate-700"><input type="checkbox" checked={lot.nfConferida} onChange={e => setLot({ ...lot, nfConferida: e.target.checked })} /> NF conferida</label>
             <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><PackagePlus className="h-4 w-4" /> {editingLotId ? 'Salvar alterações' : 'Registrar lote'}</button>
             {editingLotId && <button type="button" onClick={cancelLotEdit} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700"><X className="h-4 w-4" /> Cancelar edição</button>}
           </form>
@@ -355,13 +355,13 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
             <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={controle.lotes.length > 0 && selectedLotIds.length === controle.lotes.length} onChange={e => setSelectedLotIds(e.target.checked ? controle.lotes.map(item => item.id) : [])} /> Selecionar todos ({selectedLotIds.length})</label>
             <button type="button" disabled={selectedLotIds.length === 0} onClick={removeSelectedLots} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
           </div>
-          <div className="overflow-x-auto rounded-lg border border-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full min-w-[900px] text-left text-xs">
-              <thead className="bg-slate-900 text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Sel.</th><th>Data/NF</th><th>Material</th><th>Perfil</th><th>Recebido</th><th>Cravado</th><th>Saldo</th><th>Status</th><th /></tr></thead>
-              <tbody className="divide-y divide-slate-800 bg-slate-950">
+              <thead className="bg-white text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Sel.</th><th>Data/NF</th><th>Material</th><th>Perfil</th><th>Recebido</th><th>Cravado</th><th>Saldo</th><th>Status</th><th /></tr></thead>
+              <tbody className="divide-y divide-slate-800 bg-white">
                 {controle.lotes.map(item => {
                   const balance = balances.find(entry => entry.loteId === item.id);
-                  return <tr key={item.id}><td className="p-3"><input type="checkbox" checked={selectedLotIds.includes(item.id)} onChange={e => setSelectedLotIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /></td><td className="text-slate-300">{item.data}<br /><b className="text-white">NF {item.notaFiscal}</b></td><td className="text-slate-300">{item.descricao}<br /><span className="text-slate-600">{item.materialCodigo}</span></td><td className="text-slate-300">{item.perfilModelo || item.comprimentoM}</td><td className="text-slate-300">{balance?.recebidoM} m</td><td className="text-slate-300">{balance?.cravadoM} m</td><td className={balance?.status === 'Divergente' ? 'font-black text-rose-400' : 'font-black text-emerald-400'}>{balance?.saldoConfirmadoM} m</td><td className="text-slate-400">{item.nfConferida ? 'NF conferida' : item.status}</td><td><button type="button" title="Editar lote" onClick={() => editLot(item)} className="p-2 text-sky-400"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir lote" onClick={() => removeLot(item.id)} className="p-2 text-rose-400"><Trash2 className="h-4 w-4" /></button></td></tr>;
+                  return <tr key={item.id}><td className="p-3"><input type="checkbox" checked={selectedLotIds.includes(item.id)} onChange={e => setSelectedLotIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /></td><td className="text-slate-700">{item.data}<br /><b className="text-slate-800">NF {item.notaFiscal}</b></td><td className="text-slate-700">{item.descricao}<br /><span className="text-slate-600">{item.materialCodigo}</span></td><td className="text-slate-700">{item.perfilModelo || item.comprimentoM}</td><td className="text-slate-700">{balance?.recebidoM} m</td><td className="text-slate-700">{balance?.cravadoM} m</td><td className={balance?.status === 'Divergente' ? 'font-black text-rose-700' : 'font-black text-emerald-700'}>{balance?.saldoConfirmadoM} m</td><td className="text-slate-400">{item.nfConferida ? 'NF conferida' : item.status}</td><td><button type="button" title="Editar lote" onClick={() => editLot(item)} className="p-2 text-sky-700"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir lote" onClick={() => removeLot(item.id)} className="p-2 text-rose-700"><Trash2 className="h-4 w-4" /></button></td></tr>;
                 })}
               </tbody>
             </table>
@@ -404,7 +404,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
 
       {mode === 'notas' && (
         <div className="grid gap-3 md:grid-cols-2">
-          {invoices.map(invoice => <div key={invoice.notaFiscal} className="rounded-xl border border-slate-800 bg-slate-900 p-4"><div className="flex items-center justify-between"><h3 className="font-black text-white">NF {invoice.notaFiscal}</h3>{invoice.status === 'Conforme' ? <CheckCircle2 className="h-5 w-5 text-emerald-400" /> : <AlertTriangle className="h-5 w-5 text-amber-400" />}</div><div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-400"><span>{invoice.itens} item(ns)</span><span>{invoice.pesoKg.toLocaleString('pt-BR')} kg</span><span>R$ {invoice.valorTotal.toLocaleString('pt-BR')}</span><span>{invoice.conferidos}/{invoice.itens} conferidos</span></div></div>)}
+          {invoices.map(invoice => <div key={invoice.notaFiscal} className="rounded-xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><h3 className="font-black text-slate-800">NF {invoice.notaFiscal}</h3>{invoice.status === 'Conforme' ? <CheckCircle2 className="h-5 w-5 text-emerald-700" /> : <AlertTriangle className="h-5 w-5 text-amber-700" />}</div><div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-400"><span>{invoice.itens} item(ns)</span><span>{invoice.pesoKg.toLocaleString('pt-BR')} kg</span><span>R$ {invoice.valorTotal.toLocaleString('pt-BR')}</span><span>{invoice.conferidos}/{invoice.itens} conferidos</span></div></div>)}
         </div>
       )}
     </div>

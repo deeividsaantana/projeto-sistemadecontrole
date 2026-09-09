@@ -38,7 +38,7 @@ export function Drawer({ open, title, description, footer, onClose, children, cl
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex justify-end bg-slate-950/45 backdrop-blur-[1px]"
+      className="fixed inset-0 z-[120] flex justify-end bg-white backdrop-blur-[1px]"
       role="presentation"
       onMouseDown={event => {
         if (event.target === event.currentTarget) onClose();

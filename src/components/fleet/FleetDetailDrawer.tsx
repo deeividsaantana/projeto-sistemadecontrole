@@ -41,15 +41,15 @@ export default function FleetDetailDrawer({ state, onClose, onEdit }: Props) {
   }, [onClose, state]);
   if (!state) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[90] bg-slate-950/45 backdrop-blur-[2px]" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-[90] bg-white backdrop-blur-[2px]" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
       <aside role="dialog" aria-modal="true" aria-labelledby="fleet-detail-title" className="fixed inset-y-0 right-0 flex w-full max-w-xl flex-col overflow-hidden bg-[#f4f7f5] shadow-2xl">
-        <header className="flex shrink-0 items-start justify-between bg-slate-950 px-5 py-5 text-white sm:px-6">
+        <header className="flex shrink-0 items-start justify-between bg-white px-5 py-5 text-slate-800 sm:px-6">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-400">Registro operacional</p>
-            <h2 id="fleet-detail-title" className="mt-1 font-mono text-3xl font-black tracking-[-0.04em] text-white">{state.equipment.prefix}</h2>
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">Registro operacional</p>
+            <h2 id="fleet-detail-title" className="mt-1 font-mono text-3xl font-black tracking-[-0.04em] text-slate-800">{state.equipment.prefix}</h2>
             <p className="mt-1 text-sm text-slate-400">{state.equipment.equipmentName}</p>
           </div>
-          <button type="button" onClick={onClose} className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white" aria-label="Fechar detalhes"><X size={18}/></button>
+          <button type="button" onClick={onClose} className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-700 transition hover:bg-white/10 hover:text-slate-800" aria-label="Fechar detalhes"><X size={18}/></button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">

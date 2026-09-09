@@ -106,7 +106,7 @@ export default function IndicadoresTab({ dados }: IndicadoresTabProps) {
                   : indicador.maiorMelhor ? indicador.variacao > 0 : indicador.variacao < 0;
                 return (
                   <button key={indicador.id} type="button" onClick={() => setIndicadorAtivo(indicador.id)} aria-pressed={selecionado?.id === indicador.id} className={`group relative min-w-0 bg-white p-5 text-left transition-colors hover:bg-emerald-50/50 ${selecionado?.id === indicador.id ? 'z-10 shadow-[inset_3px_0_0_#0f8a62]' : ''}`}>
-                    <div className="flex items-start justify-between gap-3"><p className="text-[10px] font-bold uppercase leading-tight tracking-[.12em] text-slate-500">{indicador.titulo}</p><ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-emerald-700" /></div>
+                    <div className="flex items-start justify-between gap-3"><p className="text-[10px] font-bold uppercase leading-tight tracking-[.12em] text-slate-500">{indicador.titulo}</p><ArrowUpRight className="h-4 w-4 text-slate-700 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-emerald-700" /></div>
                     <div className="mt-3 flex flex-wrap items-baseline gap-2">
                       <strong className={`text-3xl font-black tabular-nums tracking-[-.04em] ${corDoValor(indicador)}`}>{formatar(indicador)}</strong>
                       {indicador.variacao !== undefined && (

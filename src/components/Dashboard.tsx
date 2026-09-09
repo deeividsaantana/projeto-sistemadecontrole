@@ -11,7 +11,7 @@ import type {
   OrdemServico, PlanejamentoItem, PresencaApontamento, ProdutoLubrificacao,
   RegistroProducao, TicketJazida, TipoCombustivel,
 } from '../types';
-import siteAerial from '../assets/renea-editorial/rodovia-duplicada.jpg';
+import siteAerial from '../assets/renea-editorial/rodovia-duplicada-1600.webp';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];

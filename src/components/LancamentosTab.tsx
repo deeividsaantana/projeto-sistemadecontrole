@@ -1085,7 +1085,7 @@ export default function LancamentosTab({
     return (
       <>
         {validationError && (
-          <div className="mb-4 flex items-start gap-3 border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
+          <div className="mb-4 flex items-start gap-3 border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-700">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             {validationError}
           </div>
@@ -1161,9 +1161,9 @@ export default function LancamentosTab({
     <div className="space-y-6" id="lancamentos-tab">
       
       {/* Tab Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
+          <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-emerald-500" />
             Lançamentos de Campo Diários
           </h1>
@@ -1177,7 +1177,7 @@ export default function LancamentosTab({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isParsingImport}
-                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
                 {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
@@ -1194,7 +1194,7 @@ export default function LancamentosTab({
               <button
                 type="button"
                 onClick={handleDownloadModeloCombustivel}
-                className="px-4 py-2.5 bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2.5 bg-white border border-slate-200 hover:border-slate-500 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 Baixar modelo
@@ -1219,17 +1219,17 @@ export default function LancamentosTab({
       />
 
       {/* Subtab Selectors */}
-      <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-850 max-w-md" id="lancamentos-selector">
+      <div className="flex bg-white p-1 rounded-xl border border-slate-200 max-w-md" id="lancamentos-selector">
         <button
           onClick={() => { setMode('abastecimentos'); setIsFormOpen(false); setSearchQuery(''); resetFormFields(); }}
-          className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${mode === 'abastecimentos' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-100'}`}
+          className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${mode === 'abastecimentos' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-700'}`}
         >
           <Fuel className="w-4 h-4" />
           Abastecimentos
         </button>
         <button
           onClick={() => { setMode('lubrificacoes'); setIsFormOpen(false); setSearchQuery(''); resetFormFields(); }}
-          className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${mode === 'lubrificacoes' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-100'}`}
+          className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${mode === 'lubrificacoes' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-700'}`}
         >
           <Droplets className="w-4 h-4" />
           Lubrificação
@@ -1237,7 +1237,7 @@ export default function LancamentosTab({
       </div>
 
       {/* Quick Search */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3 bg-slate-900 border border-slate-850 p-3 rounded-lg">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white border border-slate-200 p-3 rounded-lg">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
           <input 
@@ -1245,14 +1245,14 @@ export default function LancamentosTab({
             placeholder={mode === 'abastecimentos' ? 'Filtrar por data, responsável ou prefixo de frota...' : mode === 'lubrificacoes' ? 'Filtrar por data, compartimento ou prefixo...' : 'Filtrar por data, obra ou serviço executado...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
           />
         </div>
         {mode === 'abastecimentos' && (
           <select
             value={abastecimentoSort}
             onChange={(e) => setAbastecimentoSort(e.target.value as 'data_desc' | 'litros_desc' | 'litros_asc')}
-            className="w-full md:w-64 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full md:w-64 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 transition-colors"
             title="Ordenar abastecimentos"
           >
             <option value="data_desc">Mais recentes primeiro</option>
@@ -1264,7 +1264,7 @@ export default function LancamentosTab({
           <button
             type="button"
             onClick={() => setFiltrosAbertos(v => !v)}
-            className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${filtrosAbertos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-emerald-500'}`}
+            className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${filtrosAbertos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-500'}`}
             id="btn-toggle-filtros-combustivel"
           >
             <Search className="w-3.5 h-3.5" />
@@ -1275,47 +1275,47 @@ export default function LancamentosTab({
 
       {/* Painel de Filtros Avançados + Cards de Resumo — Módulo Combustível (Prioridade 1) */}
       {mode === 'abastecimentos' && filtrosAbertos && (
-        <div className="bg-slate-900 border border-slate-850 rounded-lg p-5 space-y-4" id="filtros-combustivel-painel">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4" id="filtros-combustivel-painel">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Inicial</label>
-              <input type="date" value={fDataInicial} onChange={e => setFDataInicial(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <input type="date" value={fDataInicial} onChange={e => setFDataInicial(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Final</label>
-              <input type="date" value={fDataFinal} onChange={e => setFDataFinal(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+              <input type="date" value={fDataFinal} onChange={e => setFDataFinal(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento</label>
-              <select value={fFrotaId} onChange={e => setFFrotaId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <select value={fFrotaId} onChange={e => setFFrotaId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todas</option>
                 {equipamentos.map(eq => <option key={eq.id} value={eq.id}>{eq.prefixo} — {eq.nome}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Combustível</label>
-              <select value={fTipoCombustivelId} onChange={e => setFTipoCombustivelId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <select value={fTipoCombustivelId} onChange={e => setFTipoCombustivelId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
                 {combustiveis.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Comboio / Tanque</label>
-              <select value={fComboioId} onChange={e => setFComboioId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <select value={fComboioId} onChange={e => setFComboioId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
                 {comboios.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
-              <select value={fEmpresaId} onChange={e => setFEmpresaId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <select value={fEmpresaId} onChange={e => setFEmpresaId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todas</option>
                 {empresas.map(em => <option key={em.id} value={em.id}>{em.nome}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status</label>
-              <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
                 <option value="">Todos</option>
                 <option value="OK">OK</option>
                 <option value="Pendente">Pendente</option>
@@ -1328,7 +1328,7 @@ export default function LancamentosTab({
             </div>
             <div className="space-y-1">
               <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável</label>
-              <input type="text" value={fResponsavel} onChange={e => setFResponsavel(e.target.value)} placeholder="Nome do responsável..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500" />
+              <input type="text" value={fResponsavel} onChange={e => setFResponsavel(e.target.value)} placeholder="Nome do responsável..." className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500" />
             </div>
           </div>
 
@@ -1336,7 +1336,7 @@ export default function LancamentosTab({
             <button
               type="button"
               onClick={limparFiltros}
-              className="flex items-center gap-1.5 px-4 py-2 bg-slate-850 hover:bg-slate-100 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
             >
               <FilterX className="w-3.5 h-3.5" />
               Limpar filtros
@@ -1354,7 +1354,7 @@ export default function LancamentosTab({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isParsingImport}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 text-xs font-black text-slate-200 transition-colors hover:border-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Upload className="w-3.5 h-3.5" />
               {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
@@ -1363,21 +1363,21 @@ export default function LancamentosTab({
 
           {/* Cards de resumo respeitando os filtros aplicados */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
+            <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total de Litros</p>
-              <p className="text-lg font-black text-emerald-400 font-mono mt-1">{resumoAbastecimentos.totalLitros.toLocaleString('pt-BR')} L</p>
+              <p className="text-lg font-black text-emerald-700 font-mono mt-1">{resumoAbastecimentos.totalLitros.toLocaleString('pt-BR')} L</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
+            <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Registros</p>
-              <p className="text-lg font-black text-white font-mono mt-1"><CountUp value={resumoAbastecimentos.totalRegistros} /></p>
+              <p className="text-lg font-black text-slate-800 font-mono mt-1"><CountUp value={resumoAbastecimentos.totalRegistros} /></p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
+            <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Média por Abastecimento</p>
-              <p className="text-lg font-black text-white font-mono mt-1">{resumoAbastecimentos.mediaLitros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L</p>
+              <p className="text-lg font-black text-slate-800 font-mono mt-1">{resumoAbastecimentos.mediaLitros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L</p>
             </div>
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
+            <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Frotas Distintas</p>
-              <p className="text-lg font-black text-white font-mono mt-1"><CountUp value={resumoAbastecimentos.frotasUnicas} /></p>
+              <p className="text-lg font-black text-slate-800 font-mono mt-1"><CountUp value={resumoAbastecimentos.frotasUnicas} /></p>
             </div>
           </div>
         </div>
@@ -1385,7 +1385,7 @@ export default function LancamentosTab({
 
       {/* Log Form Editor Card */}
       {isFormOpen && (
-        <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-lg relative" id="log-editor-card">
+        <div className="bg-white border border-emerald-500/30 p-6 rounded-lg relative" id="log-editor-card">
           <button 
             onClick={() => { setIsFormOpen(false); resetFormFields(); }}
             className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer"
@@ -1393,7 +1393,7 @@ export default function LancamentosTab({
             <X className="w-5 h-5" />
           </button>
 
-          <h3 className="text-xs uppercase tracking-widest font-black text-emerald-400 font-mono mb-5 flex items-center gap-2">
+          <h3 className="text-xs uppercase tracking-widest font-black text-emerald-700 font-mono mb-5 flex items-center gap-2">
             {editingId ? '✏️ Editando Lançamento' : '➕ Novo Lançamento'} • {mode === 'abastecimentos' ? 'Abastecimento de Combustível' : 'Manutenção / Lubrificação de Máquina'}
           </h3>
 
@@ -1405,52 +1405,52 @@ export default function LancamentosTab({
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de Registro *</label>
-                    <input type="date" value={date} onChange={e => { const nextDate = e.target.value; setDate(nextDate); applyPumpSuggestion(comboioId, nextDate, time); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="date" value={date} onChange={e => { const nextDate = e.target.value; setDate(nextDate); applyPumpSuggestion(comboioId, nextDate, time); }} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Hora *</label>
-                    <input type="time" value={time} onChange={e => { const nextTime = e.target.value; setTime(nextTime); applyPumpSuggestion(comboioId, date, nextTime); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="time" value={time} onChange={e => { const nextTime = e.target.value; setTime(nextTime); applyPumpSuggestion(comboioId, date, nextTime); }} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento *</label>
-                    <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
+                    <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
                       <option value="">Selecione...</option>
                       {equipamentos.map(eq => (
-                        <option key={eq.id} value={eq.id} className="bg-slate-900 text-white">{eq.prefixo} — {eq.nome}</option>
+                        <option key={eq.id} value={eq.id} className="bg-white text-slate-800">{eq.prefixo} — {eq.nome}</option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Combustível Utilizado *</label>
-                    <select value={tipoCombustivelId} onChange={e => setTipoCombustivelId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
+                    <select value={tipoCombustivelId} onChange={e => setTipoCombustivelId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
                       <option value="">Selecione...</option>
                       {combustiveis.map(tc => (
-                        <option key={tc.id} value={tc.id} className="bg-slate-900 text-white">{tc.nome}</option>
+                        <option key={tc.id} value={tc.id} className="bg-white text-slate-800">{tc.nome}</option>
                       ))}
                     </select>
                   </div>
                 </div>
 
                 {/* Derived / Readonly Fields row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/40 p-4.5 rounded-xl border border-slate-850/60">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4.5 rounded-xl border border-slate-200/60">
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">Descrição Automática da Frota</span>
-                    <span className="text-xs font-bold text-slate-300 block">{derivedEquipmentDesc || 'Aguardando seleção de frota...'}</span>
+                    <span className="text-xs font-bold text-slate-700 block">{derivedEquipmentDesc || 'Aguardando seleção de frota...'}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">Empresa Proprietária Automática</span>
-                    <span className="text-xs font-bold text-slate-300 block">{derivedCompany || 'Aguardando seleção de frota...'}</span>
+                    <span className="text-xs font-bold text-slate-700 block">{derivedCompany || 'Aguardando seleção de frota...'}</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Horímetro Inicial</label>
-                    <input type="number" value={horimetroInicial} onChange={e => setHorimetroInicial(Number(e.target.value))} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <input type="number" value={horimetroInicial} onChange={e => setHorimetroInicial(Number(e.target.value))} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">KM Inicial</label>
-                    <input type="number" value={kmInicial} onChange={e => setKmInicial(Number(e.target.value))} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <input type="number" value={kmInicial} onChange={e => setKmInicial(Number(e.target.value))} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Bomba Inicial (Litros) <span className="text-emerald-500 normal-case font-semibold">— {previousPumpForForm ? 'sugerida pelo histórico' : 'informe a primeira leitura'}</span></label>
@@ -1459,7 +1459,7 @@ export default function LancamentosTab({
                       pumpValuesManuallyEditedRef.current = true;
                       setBombaInicial(inicial);
                       setBombaFinal(inicial + Number(quantidadeLitros));
-                    }} placeholder="Leitura real da bomba" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    }} placeholder="Leitura real da bomba" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                     <span className="text-[9px] text-slate-500 font-mono block">{previousPumpForForm ? `Último registro deste comboio: ${previousPumpForForm.data.split('-').reverse().join('/')} ${previousPumpForForm.hora} • ${previousPumpForForm.bombaFinal.toLocaleString('pt-BR')} L` : 'Nenhuma leitura anterior encontrada para este comboio e horário.'}</span>
                   </div>
                   <div className="space-y-1">
@@ -1468,27 +1468,27 @@ export default function LancamentosTab({
                       const litros = Number(e.target.value);
                       setQuantidadeLitros(litros);
                       setBombaFinal(Number(bombaInicial) + litros);
-                    }} placeholder="100" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    }} placeholder="100" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
 
                   {/* Bomba final agora é editável: digitar aqui recalcula os litros automaticamente */}
-                  <div className="space-y-1 bg-slate-950/20 px-3.5 py-1.5 border border-emerald-700/40 rounded-xl">
+                  <div className="space-y-1 bg-white px-3.5 py-1.5 border border-emerald-700/40 rounded-xl">
                     <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block font-mono">Bomba Final (Litros)</label>
                     <input type="number" value={bombaFinal} onChange={e => {
                       const final = Number(e.target.value);
                       pumpValuesManuallyEditedRef.current = true;
                       setBombaFinal(final);
                       setQuantidadeLitros(Math.max(0, final - Number(bombaInicial)));
-                    }} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500" />
+                    }} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-mono focus:outline-none focus:border-emerald-500" />
                     <span className="text-[9px] text-slate-500 font-mono block">Vira a Bomba Inicial do próximo abastecimento deste comboio</span>
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Comboio Abastecedor</label>
-                    <select value={comboioId} onChange={e => handleComboioChange(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+                    <select value={comboioId} onChange={e => handleComboioChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
                       <option value="">Selecione...</option>
                       {comboios.map(com => (
-                        <option key={com.id} value={com.id} className="bg-slate-900 text-white">{com.nome}</option>
+                        <option key={com.id} value={com.id} className="bg-white text-slate-800">{com.nome}</option>
                       ))}
                     </select>
                   </div>
@@ -1497,22 +1497,22 @@ export default function LancamentosTab({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável pelo Lançamento *</label>
-                    <input type="text" value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Ex: José da Silva Costa" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="text" value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Ex: José da Silva Costa" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Operador do equipamento</label>
-                    <input type="text" value={operadorNome} onChange={e => setOperadorNome(e.target.value)} placeholder="Quem estava operando" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <input type="text" value={operadorNome} onChange={e => setOperadorNome(e.target.value)} placeholder="Quem estava operando" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Local / frente</label>
-                    <input type="text" value={localAbastecimento} onChange={e => setLocalAbastecimento(e.target.value)} placeholder="Ex: Ramo 200, pátio Aracaré" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <input type="text" value={localAbastecimento} onChange={e => setLocalAbastecimento(e.target.value)} placeholder="Ex: Ramo 200, pátio Aracaré" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observação</label>
-                    <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex: Abastecido no canteiro de obras norte" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex: Abastecido no canteiro de obras norte" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                   </div>
                 </div>
               </div>
@@ -1524,72 +1524,72 @@ export default function LancamentosTab({
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data *</label>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Hora *</label>
-                    <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento *</label>
-                    <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
+                    <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
                       <option value="">Selecione...</option>
                       {equipamentos.map(eq => (
-                        <option key={eq.id} value={eq.id} className="bg-slate-900 text-white">{eq.prefixo} — {eq.nome}</option>
+                        <option key={eq.id} value={eq.id} className="bg-white text-slate-800">{eq.prefixo} — {eq.nome}</option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Produto Lubrificante *</label>
-                    <select value={produtoLubrificacaoId} onChange={e => setProdutoLubrificacaoId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer" required>
+                    <select value={produtoLubrificacaoId} onChange={e => setProdutoLubrificacaoId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
                       <option value="">Selecione...</option>
                       {lubrificantes.map(pl => (
-                        <option key={pl.id} value={pl.id} className="bg-slate-900 text-white">{pl.nome}</option>
+                        <option key={pl.id} value={pl.id} className="bg-white text-slate-800">{pl.nome}</option>
                       ))}
                     </select>
                   </div>
                 </div>
 
                 {/* Derived Equipment / Company Info Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/40 p-4.5 rounded-xl border border-slate-850/60">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4.5 rounded-xl border border-slate-200/60">
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">Descrição Automática</span>
-                    <span className="text-xs font-bold text-slate-300 block">{derivedEquipmentDesc || 'Aguardando seleção de frota...'}</span>
+                    <span className="text-xs font-bold text-slate-700 block">{derivedEquipmentDesc || 'Aguardando seleção de frota...'}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">Empresa Proprietária</span>
-                    <span className="text-xs font-bold text-slate-300 block">{derivedCompany || 'Aguardando seleção de frota...'}</span>
+                    <span className="text-xs font-bold text-slate-700 block">{derivedCompany || 'Aguardando seleção de frota...'}</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Horímetro Atual</label>
-                    <input type="number" value={lubHorimetro} onChange={e => setLubHorimetro(Number(e.target.value))} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <input type="number" value={lubHorimetro} onChange={e => setLubHorimetro(Number(e.target.value))} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Compartimento Aplicado *</label>
-                    <input type="text" value={compartimento} onChange={e => setCompartimento(e.target.value)} placeholder="Ex: Cárter Motor, Pinos" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="text" value={compartimento} onChange={e => setCompartimento(e.target.value)} placeholder="Ex: Cárter Motor, Pinos" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade Aplicada *</label>
-                    <input type="number" step="any" value={lubQuantidade} onChange={e => setLubQuantidade(Number(e.target.value))} placeholder="1" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="number" step="any" value={lubQuantidade} onChange={e => setLubQuantidade(Number(e.target.value))} placeholder="1" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável Técnico *</label>
-                    <input type="text" value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Ex: Marcos de Souza" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" required />
+                    <input type="text" value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Ex: Marcos de Souza" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observações adicionais</label>
-                  <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex: Substituído filtro de óleo na mesma intervenção" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                  <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex: Substituído filtro de óleo na mesma intervenção" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                 </div>
               </div>
             )}
 
             {validationError && (
-              <div className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
+              <div className="text-xs font-bold text-rose-700 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
                 ⚠️ {validationError}
               </div>
             )}
@@ -1606,7 +1606,7 @@ export default function LancamentosTab({
                 <button
                   type="button"
                   onClick={handleSaveAndNew}
-                  className="px-5 py-2.5 bg-slate-850 hover:bg-emerald-50 border border-emerald-600/40 text-emerald-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-white hover:bg-emerald-50 border border-emerald-600/40 text-emerald-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
                 >
                   Registrar e novo
                 </button>
@@ -1614,7 +1614,7 @@ export default function LancamentosTab({
               <button
                 type="button"
                 onClick={() => { setIsFormOpen(false); resetFormFields(); }}
-                className="px-5 py-2.5 bg-slate-850 hover:bg-slate-100 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1628,19 +1628,19 @@ export default function LancamentosTab({
       )}
 
       {/* Lists of saved transactions */}
-      <div className="bg-slate-900 border border-slate-850 rounded-lg overflow-hidden" id="transactions-viewport">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden" id="transactions-viewport">
         
         {/* ABASTECIMENTOS TABLE */}
         {mode === 'abastecimentos' && (
           <div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-white px-5 py-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3 text-xs">
               <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredAbastecimentos.length > 0 && filteredAbastecimentos.every(item => selectedAbastecimentoIds.includes(item.id))} onChange={event => setSelectedAbastecimentoIds(event.target.checked ? filteredAbastecimentos.map(item => item.id) : [])} /> Selecionar visíveis ({selectedAbastecimentoIds.length})</label>
               <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedAbastecimentoIds.length} abastecimento(s) selecionado(s)?`)) { onDeleteAbastecimentos(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
             </div>
             <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-850 text-slate-400 uppercase text-[10px] font-bold bg-slate-950/20 font-mono">
+                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
                   <th className="py-3.5 px-5">Sel.</th>
                   <th className="py-3.5 px-5">Data / Hora</th>
                   <th className="py-3.5 px-5">Frota</th>
@@ -1668,38 +1668,38 @@ export default function LancamentosTab({
                     const combVeic = comboios.find(c => c.id === ab.comboioId);
                     const status = ab.status || 'OK';
                     const statusStyles: Record<string, string> = {
-                      'OK': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-                      'Pendente': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                      'Duplicado': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-                      'Verificar quantidade': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-                      'Verificar bomba': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-                      'Erro de importação': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                      'OK': 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
+                      'Pendente': 'bg-amber-500/10 text-amber-700 border-amber-500/20',
+                      'Duplicado': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
+                      'Verificar quantidade': 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+                      'Verificar bomba': 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+                      'Erro de importação': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
                     };
 
                     return (
-                      <tr key={ab.id} className="hover:bg-slate-950/20 transition-colors">
+                      <tr key={ab.id} className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-5"><input type="checkbox" checked={selectedAbastecimentoIds.includes(ab.id)} onChange={event => setSelectedAbastecimentoIds(current => event.target.checked ? [...current, ab.id] : current.filter(id => id !== ab.id))} /></td>
                         <td className="py-4 px-5">
-                          <span className="font-bold text-slate-100 block">{ab.data.split('-').reverse().join('/')}</span>
+                          <span className="font-bold text-slate-700 block">{ab.data.split('-').reverse().join('/')}</span>
                           <span className="text-[10px] text-slate-500 font-mono">{ab.hora}</span>
                         </td>
                         <td className="py-4 px-5">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-emerald-400 font-bold bg-slate-950 border border-slate-800 px-2 py-0.5 rounded text-xxs">
+                            <span className="font-mono text-emerald-700 font-bold bg-white border border-slate-200 px-2 py-0.5 rounded text-xxs">
                               {eq ? eq.prefixo : 'FROTA'}
                             </span>
-                            <span className="font-semibold text-slate-300 max-w-[130px] truncate block">{eq ? eq.nome : 'Equipamento'}</span>
+                            <span className="font-semibold text-slate-700 max-w-[130px] truncate block">{eq ? eq.nome : 'Equipamento'}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-5 font-semibold text-slate-300">{combName}</td>
-                        <td className="py-4 px-5 font-mono text-emerald-400 font-black text-sm">
+                        <td className="py-4 px-5 font-semibold text-slate-700">{combName}</td>
+                        <td className="py-4 px-5 font-mono text-emerald-700 font-black text-sm">
                           {ab.quantidadeLitros.toLocaleString('pt-BR')} L
                         </td>
                         <td className="py-4 px-5 font-mono text-slate-400 text-xxs">
                           {ab.bombaInicial > 0 ? <>Início: {ab.bombaInicial.toLocaleString('pt-BR')} L<br /></> : <>Início: —<br /></>}
                           {ab.bombaFinal > 0 ? <>Final: {ab.bombaFinal.toLocaleString('pt-BR')} L</> : <>Final: —</>}
                         </td>
-                        <td className="py-4 px-5 font-mono text-slate-300 text-xxs">
+                        <td className="py-4 px-5 font-mono text-slate-700 text-xxs">
                           {ab.horimetroInicial > 0 && <span>Horím: {ab.horimetroInicial} h<br /></span>}
                           {ab.kmInicial > 0 && <span>Quilom: {ab.kmInicial} km</span>}
                           {ab.horimetroInicial === 0 && ab.kmInicial === 0 && '—'}
@@ -1714,8 +1714,8 @@ export default function LancamentosTab({
                         </td>
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(ab)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(ab.id)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(ab)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteTrigger(ab.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1733,7 +1733,7 @@ export default function LancamentosTab({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-850 text-slate-500 uppercase text-[10px] font-bold bg-slate-50 font-mono">
+                <tr className="border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold bg-slate-50 font-mono">
                   <th className="py-3.5 px-5">Data / Hora</th>
                   <th className="py-3.5 px-5">Frota</th>
                   <th className="py-3.5 px-5">Produto Lubrificante</th>
@@ -1757,26 +1757,26 @@ export default function LancamentosTab({
                     return (
                       <tr key={lub.id} className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-5">
-                          <span className="font-bold text-slate-100 block">{lub.data.split('-').reverse().join('/')}</span>
+                          <span className="font-bold text-slate-700 block">{lub.data.split('-').reverse().join('/')}</span>
                           <span className="text-[10px] text-slate-500 font-mono">{lub.hora}</span>
                         </td>
                         <td className="py-4 px-5">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-emerald-400 font-bold bg-slate-950 border border-slate-800 px-2 py-0.5 rounded text-xxs">
+                            <span className="font-mono text-emerald-700 font-bold bg-white border border-slate-200 px-2 py-0.5 rounded text-xxs">
                               {eq ? eq.prefixo : 'FROTA'}
                             </span>
-                            <span className="font-semibold text-slate-300 max-w-[130px] truncate block">{eq ? eq.nome : 'Equipamento'}</span>
+                            <span className="font-semibold text-slate-700 max-w-[130px] truncate block">{eq ? eq.nome : 'Equipamento'}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-5 font-semibold text-slate-300">{prod ? prod.nome : 'Graxa / Óleo'}</td>
-                        <td className="py-4 px-5 text-slate-300">{lub.compartimento}</td>
-                        <td className="py-4 px-5 font-mono text-emerald-400 font-black text-sm">{lub.quantidade} L/kg</td>
-                        <td className="py-4 px-5 font-mono text-slate-300">{lub.horimetro > 0 ? `${lub.horimetro} h` : '—'}</td>
+                        <td className="py-4 px-5 font-semibold text-slate-700">{prod ? prod.nome : 'Graxa / Óleo'}</td>
+                        <td className="py-4 px-5 text-slate-700">{lub.compartimento}</td>
+                        <td className="py-4 px-5 font-mono text-emerald-700 font-black text-sm">{lub.quantidade} L/kg</td>
+                        <td className="py-4 px-5 font-mono text-slate-700">{lub.horimetro > 0 ? `${lub.horimetro} h` : '—'}</td>
                         <td className="py-4 px-5 text-slate-400">{lub.responsavel}</td>
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(lub)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(lub.id)} className="p-1.5 bg-slate-800 text-slate-300 hover:text-rose-400 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(lub)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteTrigger(lub.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1793,12 +1793,12 @@ export default function LancamentosTab({
       {/* Deletion safe prompt confirm */}
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-slate-900 border border-rose-500/30 rounded-lg p-6 space-y-4">
-            <div className="p-3 bg-rose-500/10 text-rose-400 rounded-lg w-fit">
+          <div className="w-full max-w-sm bg-white border border-rose-500/30 rounded-lg p-6 space-y-4">
+            <div className="p-3 bg-rose-500/10 text-rose-700 rounded-lg w-fit">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-sm uppercase tracking-wider font-black text-white font-mono">{mode === 'abastecimentos' ? 'Confirmar cancelamento?' : 'Confirmar exclusão?'}</h3>
+              <h3 className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">{mode === 'abastecimentos' ? 'Confirmar cancelamento?' : 'Confirmar exclusão?'}</h3>
               <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
                 {mode === 'abastecimentos'
                   ? 'O lançamento ficará marcado como Cancelado, continuará disponível para auditoria e deixará de compor os indicadores operacionais.'
@@ -1814,7 +1814,7 @@ export default function LancamentosTab({
               </button>
               <button 
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                className="flex-1 py-2 bg-white hover:bg-slate-700 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
               >
                 Não, Cancelar
               </button>

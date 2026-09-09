@@ -21,7 +21,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
         const last = index === items.length - 1;
         return (
           <span key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1">
-            {index > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-300" aria-hidden="true" />}
+            {index > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-700" aria-hidden="true" />}
             {item.onClick && !last ? (
               <button
                 type="button"

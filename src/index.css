@@ -64,10 +64,31 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #app-root :is(.text-red-200, .text-red-300, .text-red-400) { color: #b91c1c; }
 #app-root :is(.text-blue-200, .text-blue-300, .text-blue-400, .text-cyan-300) { color: #0369a1; }
 #app-root :is(.text-violet-200, .text-violet-300, .text-violet-400) { color: #6d28d9; }
-#app-root .text-white { color: var(--renea-ink); }
+/* .text-white só escurece onde o fundo escuro legado foi clareado logo acima.
+   A versão anterior escurecia todo .text-white e devolvia o branco por uma
+   lista de exceções que não tinha emerald-700/800/950, rose-700, amber-500/600
+   nem slate-500 — dezenas de botões verdes ficavam com texto verde-escuro
+   sobre verde-escuro. Invertida, o padrão passa a ser o seguro: sem fundo
+   legado, o branco continua branco. */
+#app-root :is(.bg-slate-950, .bg-slate-900, .bg-slate-850, .bg-slate-800, .bg-slate-700).text-white,
+#app-root :is(.bg-slate-950, .bg-slate-900, .bg-slate-850, .bg-slate-800, .bg-slate-700) .text-white,
+#app-root [class^="bg-slate-950/"].text-white, #app-root [class*=" bg-slate-950/"].text-white,
+#app-root [class^="bg-slate-900/"].text-white, #app-root [class*=" bg-slate-900/"].text-white { color: var(--renea-ink); }
 
-#app-root :is(.bg-emerald-600, .bg-emerald-500, .bg-rose-600, .bg-red-600, .bg-blue-600, .bg-cyan-600, .bg-indigo-600, .bg-slate-700).text-white,
-#app-root :is(.bg-emerald-600, .bg-emerald-500, .bg-rose-600, .bg-red-600, .bg-blue-600, .bg-cyan-600, .bg-indigo-600, .bg-slate-700) .text-white { color: #fff; }
+#app-root :is(
+  .bg-emerald-500, .bg-emerald-600, .bg-emerald-700, .bg-emerald-800, .bg-emerald-900, .bg-emerald-950,
+  .bg-rose-500, .bg-rose-600, .bg-rose-700, .bg-red-500, .bg-red-600, .bg-red-700,
+  .bg-amber-500, .bg-amber-600, .bg-amber-700, .bg-orange-500, .bg-orange-600,
+  .bg-blue-600, .bg-blue-700, .bg-cyan-600, .bg-indigo-600, .bg-violet-600,
+  .bg-sky-600, .bg-teal-600, .bg-slate-500, .bg-slate-600
+).text-white,
+#app-root :is(
+  .bg-emerald-500, .bg-emerald-600, .bg-emerald-700, .bg-emerald-800, .bg-emerald-900, .bg-emerald-950,
+  .bg-rose-500, .bg-rose-600, .bg-rose-700, .bg-red-500, .bg-red-600, .bg-red-700,
+  .bg-amber-500, .bg-amber-600, .bg-amber-700, .bg-orange-500, .bg-orange-600,
+  .bg-blue-600, .bg-blue-700, .bg-cyan-600, .bg-indigo-600, .bg-violet-600,
+  .bg-sky-600, .bg-teal-600, .bg-slate-500, .bg-slate-600
+) .text-white { color: #fff; }
 
 #app-root option, #app-root select { background-color: #fff; color: #33413b; }
 #app-root :is(button, a, input, select, textarea) { transition-duration: 240ms; transition-timing-function: cubic-bezier(.32,.72,0,1); }
@@ -126,7 +147,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   padding: clamp(2rem,5vw,4.5rem);
   overflow: hidden;
   color: #10211c;
-  background: linear-gradient(90deg, rgb(255 255 255 / .98) 0%, rgb(255 255 255 / .88) 46%, rgb(255 255 255 / .08) 100%), url("./assets/renea-editorial/rodovia-serra.jpg") center / cover;
+  background: linear-gradient(90deg, rgb(255 255 255 / .98) 0%, rgb(255 255 255 / .88) 46%, rgb(255 255 255 / .08) 100%), url("./assets/renea-editorial/rodovia-serra-1600.webp") center / cover;
 }
 .login-story::after { position: absolute; inset: 0; content: ""; background: linear-gradient(120deg, rgb(15 143 100 / .06), transparent 55%); }
 .login-story > * { position: relative; z-index: 1; }
@@ -346,7 +367,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   background-color: #0c3d2f;
   background-image:
     linear-gradient(180deg, rgb(6 40 30 / .82) 0%, rgb(4 26 20 / .93) 55%, rgb(3 20 15 / .97) 100%),
-    url("./assets/renea-editorial/rodovia-duplicada.jpg");
+    url("./assets/renea-editorial/rodovia-duplicada-1600.webp");
   background-position: center, 30% 14%;
   background-size: cover, cover;
   background-repeat: no-repeat, no-repeat;
@@ -408,16 +429,16 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .fleet-control > header button:first-child { box-shadow: none; }
 
 /* Single white workspace: legacy utility colors stay neutral outside the sidebar. */
-#main-tab-viewport [class*="bg-[#fffefa]"],
-#main-tab-viewport [class*="bg-[#f7f5ef]"],
-#main-tab-viewport [class*="bg-[#f0eee6]"],
-#main-tab-viewport [class*="bg-[#e8e5db]"] { background-color: #fff !important; }
-#main-tab-viewport [class*="border-[#ddd9cd]"],
-#main-tab-viewport [class*="border-[#d8d4c8]"],
-#main-tab-viewport [class*="border-[#e4e0d6]"] { border-color: #e2e8e4 !important; }
+#main-tab-viewport [class~="bg-[#fffefa]"],
+#main-tab-viewport [class~="bg-[#f7f5ef]"],
+#main-tab-viewport [class~="bg-[#f0eee6]"],
+#main-tab-viewport [class~="bg-[#e8e5db]"] { background-color: #fff !important; }
+#main-tab-viewport [class~="border-[#ddd9cd]"],
+#main-tab-viewport [class~="border-[#d8d4c8]"],
+#main-tab-viewport [class~="border-[#e4e0d6]"] { border-color: #e2e8e4 !important; }
 #main-tab-viewport [class*="shadow-"] { box-shadow: none !important; }
-#main-tab-viewport [class*="bg-[#14231e]"] { background-color: #087653 !important; color: #fff !important; }
-#main-tab-viewport [class*="bg-[#14231e]"] [class*="text-white"] { color: #fff !important; }
+#main-tab-viewport [class~="bg-[#14231e]"] { background-color: #087653 !important; color: #fff !important; }
+#main-tab-viewport [class~="bg-[#14231e]"] [class~="text-white"] { color: #fff !important; }
 @media (max-width: 1023px) {
   .erp-dashboard { background: #fff; }
 }
@@ -684,10 +705,10 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   z-index: 0;
   inset: 0 0 0 51%;
   overflow: hidden;
-  background: #eef3f0 url('./assets/renea-editorial/rodovia-duplicada.jpg') center / cover no-repeat;
+  background: #eef3f0 url('./assets/renea-editorial/rodovia-duplicada-1600.webp') center / cover no-repeat;
 }
-.renea-page-header[data-visual="bridge"] .renea-page-header__photo { background-image: url('./assets/renea-editorial/ponte-construcao.jpg'); }
-.renea-page-header[data-visual="crane"] .renea-page-header__photo { background-image: url('./assets/renea-editorial/rodovia-serra.jpg'); }
+.renea-page-header[data-visual="bridge"] .renea-page-header__photo { background-image: url('./assets/renea-editorial/ponte-construcao-1600.webp'); }
+.renea-page-header[data-visual="crane"] .renea-page-header__photo { background-image: url('./assets/renea-editorial/rodovia-serra-1600.webp'); }
 .renea-page-header__photo::after {
   position: absolute;
   inset: 0;
@@ -753,7 +774,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .renea-page-header .renea-page-actions { padding-right: 1.5rem; padding-bottom: .15rem; }
 
 /* White surfaces across legacy and redesigned screens. */
-#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat)[class*="bg-[#0"],
+#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat):is([class~="bg-[#0f3025]"], [class~="bg-[#083c2f]"], [class~="bg-[#101a22]"]),
 #main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat).bg-slate-900,
 #main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat).bg-emerald-950 {
   background-color: #fff !important;
@@ -771,31 +792,39 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 /* Clear the remaining legacy dark panels without touching the original
    navigation or colored primary actions. */
-#main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody)[class*="bg-slate-9"],
-#main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody)[class*="bg-[#0"],
-#main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody)[class*="bg-[#1"] {
+#main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody):is(
+  [class~="bg-slate-900"], [class~="bg-slate-950"], [class~="bg-[#101a22]"], [class~="bg-[#14231e]"]
+) {
   background-color: #fff !important;
   color: #10211c !important;
 }
-#main-tab-viewport [class*="bg-slate-50"],
-#main-tab-viewport [class*="bg-gray-50"],
-#main-tab-viewport [class*="bg-[#f7"],
-#main-tab-viewport [class*="bg-[#f8"],
-#main-tab-viewport [class*="bg-[#fa"],
-#main-tab-viewport [class*="bg-[#fb"] { background-color: #fff !important; }
-#main-tab-viewport [class*="border-slate-8"],
-#main-tab-viewport [class*="border-slate-7"] { border-color: #d7e0db !important; }
+/* Só o cinza-claro de fundo vira branco. Por substring, "bg-slate-50"
+   apanhava também bg-slate-500 e apagava os selos escuros. */
+#main-tab-viewport [class~="bg-slate-50"],
+#main-tab-viewport [class~="bg-gray-50"] { background-color: #fff !important; }
+#main-tab-viewport :is([class~="border-slate-700"], [class~="border-slate-800"], [class~="border-slate-850"]) { border-color: #d7e0db !important; }
 #main-tab-viewport :is(input, select, textarea) {
   border-color: #cbd7d1 !important;
   background-color: #fff !important;
   color: #10211c !important;
 }
 #main-tab-viewport :is(input, textarea)::placeholder { color: #839089 !important; }
-#main-tab-viewport :is(h1, h2, h3, h4, h5, p, label, dt, dd, td, th)[class*="text-white"],
-#main-tab-viewport :is(h1, h2, h3, h4, h5, p, label, dt, dd, td, th)[class*="text-slate-1"],
-#main-tab-viewport :is(h1, h2, h3, h4, h5, p, label, dt, dd, td, th)[class*="text-slate-2"] { color: #10211c !important; }
-#main-tab-viewport button[class*="bg-emerald"] :is(span, strong, svg),
-#main-tab-viewport button[class*="bg-[#087653]"] :is(span, strong, svg) { color: #fff !important; }
+#main-tab-viewport :is(h1, h2, h3, h4, h5, p, label, dt, dd, td, th):is(
+  [class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]
+) { color: #10211c !important; }
+/* Texto branco dentro de botão de fundo escuro. O seletor precisa casar a
+   classe inteira: [class*="bg-emerald"] também casava `hover:bg-emerald-50/40`
+   e pintava de branco o rótulo de qualquer botão claro com hover verde — era
+   o que sumia com a linha de indicadores do Combustível, com os atalhos do
+   Modo Campo e com as abas ativas de Cadastros e Presença. `~=` casa só o
+   token exato. */
+#main-tab-viewport button:is(
+  [class~="bg-emerald-600"], [class~="bg-emerald-700"], [class~="bg-emerald-800"],
+  [class~="bg-emerald-900"], [class~="bg-emerald-950"],
+  [class~="bg-[#087653]"], [class~="bg-[#087345]"], [class~="bg-[#066344]"],
+  [class~="bg-[#07513c]"], [class~="bg-[#083c2f]"], [class~="bg-[#0f3025]"],
+  [class~="bg-[#123d31]"], [class~="bg-[#183f32]"], [class~="bg-[#14231e]"]
+) :is(span, strong, svg) { color: #fff !important; }
 #pendencias-tab button[aria-pressed="true"] :is(span, strong, svg) { color: #17352c !important; }
 
 /* Motion is deliberately visible but keeps operational controls steady. */
@@ -880,7 +909,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   inset: 0 0 auto 58%;
   height: 13rem;
   content: "";
-  background: linear-gradient(90deg, #fff, rgb(255 255 255 / .25)), url('./assets/renea-editorial/ponte-construcao.jpg') center / cover no-repeat;
+  background: linear-gradient(90deg, #fff, rgb(255 255 255 / .25)), url('./assets/renea-editorial/ponte-construcao-1600.webp') center / cover no-repeat;
   opacity: .28;
 }
 .fuel-workspace-nav { position: sticky; z-index: 18; top: 0; border-radius: 2px; }
@@ -892,7 +921,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .fuel-command-center__photo {
   position: absolute;
   inset: 0 0 0 58%;
-  background: linear-gradient(90deg, #fff 0%, rgb(255 255 255 / .55) 24%, rgb(255 255 255 / .08) 100%), url('./assets/renea-editorial/rodovia-serra.jpg') center / cover no-repeat;
+  background: linear-gradient(90deg, #fff 0%, rgb(255 255 255 / .55) 24%, rgb(255 255 255 / .08) 100%), url('./assets/renea-editorial/rodovia-serra-1600.webp') center / cover no-repeat;
   opacity: .34;
   transform: scale(1.035);
   animation: renea-v3-image-settle 1.2s cubic-bezier(.2,.8,.2,1) both;
@@ -934,4 +963,20 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .fuel-workspace-nav { top: 0; }
   .fuel-command-center__lead { min-height: 24rem; }
   .fuel-command-center__photo { inset: 47% 0 0 35%; opacity: .18; }
+}
+
+/* Peso das fotos: os JPEG originais têm ~2 MB cada e apareciam inteiros no
+   celular. As versões WebP custam ~120 kB no desktop e ~32 kB no celular, com
+   o mesmo enquadramento. */
+@media (max-width: 767px) {
+  .renea-page-header__photo { background-image: url('./assets/renea-editorial/rodovia-duplicada-800.webp'); }
+  .renea-page-header[data-visual="bridge"] .renea-page-header__photo { background-image: url('./assets/renea-editorial/ponte-construcao-800.webp'); }
+  .renea-page-header[data-visual="crane"] .renea-page-header__photo { background-image: url('./assets/renea-editorial/rodovia-serra-800.webp'); }
+}
+
+/* A tarja "pessoas e engenharia em movimento" fica sobre o céu da foto, que é
+   claro: sem um véu atrás, o texto branco some. */
+.renea-page-header__photo > span {
+  padding: .35rem .55rem .35rem .9rem;
+  background: linear-gradient(90deg, rgb(6 32 24 / 0), rgb(6 32 24 / .34) 45%, rgb(6 32 24 / .46));
 }
