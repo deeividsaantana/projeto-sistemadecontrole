@@ -114,3 +114,20 @@ test('painel: 7d, 14d e 30d mudam de verdade a régua do gráfico', async ({ pag
   await expect.poll(async () => (await eixo())[0]).toBe(sete[0]);
   expect(await eixo(), 'voltar para 7 dias devolve a régua original').toEqual(sete);
 });
+
+test('frota: a relação do dia abre e fecha o restante do grupo sem perder itens', async ({ page }) => {
+  await page.goto('/?screen=frotas');
+  const chips = page.locator('#fleet-reference-title').locator('xpath=ancestor::section[1]').locator('ul li');
+
+  const parcial = await chips.count();
+  expect(parcial, 'a relação começa recortada').toBeGreaterThan(0);
+
+  const abrir = page.getByRole('button', { name: /Ver os outros \d+ de Basculantes/ });
+  await expect(abrir).toBeVisible();
+  await abrir.click();
+
+  await expect.poll(async () => chips.count(), { message: 'abrir mostra mais equipamentos' }).toBeGreaterThan(parcial);
+
+  await page.getByRole('button', { name: 'Mostrar menos' }).first().click();
+  await expect.poll(async () => chips.count()).toBe(parcial);
+});
