@@ -82,8 +82,10 @@ export default function NotificacoesTab({
   }, [visiveis, abaAtiva]);
 
   return (
-    <div id="notificacoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="notificacoes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Comunicações em tempo real"
+        photo="rodovia-duplicada"
         title="Notificações"
         description="Acompanhe os alertas e atualizações do sistema."
         actions={<Button variant="primary" icon={CheckCheck} onClick={onMarcarTodasLidas}>Marcar todas como lidas</Button>}

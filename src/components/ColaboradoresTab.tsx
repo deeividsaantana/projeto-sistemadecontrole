@@ -94,7 +94,7 @@ export default function ColaboradoresTab({
     ];
 
     return (
-      <div id="colaborador-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div id="colaborador-ficha" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadoId(null)}
@@ -104,6 +104,8 @@ export default function ColaboradoresTab({
         </button>
 
         <PageHeader
+          eyebrow="Pessoas da obra"
+          photo="ponte-construcao"
           title={selecionado.nome}
           description={[selecionado.matricula && `Matrícula ${selecionado.matricula}`, selecionado.cargo, empresa].filter(Boolean).join(' · ')}
           actions={<span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(situacaoAtual)}`}>{situacaoAtual}</span>}
@@ -230,8 +232,10 @@ export default function ColaboradoresTab({
   }
 
   return (
-    <div id="colaboradores-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="colaboradores-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Pessoas da obra"
+        photo="ponte-construcao"
         title="Colaboradores"
         description="Efetivo da obra. Abra um colaborador para ver a ficha completa."
         actions={<button type="button" onClick={() => onNavigate('cadastros')} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Cadastrar colaborador</button>}

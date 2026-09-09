@@ -166,8 +166,10 @@ export default function CustosTab({
   };
 
   return (
-    <div id="custos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="custos-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Custo da operação"
+        photo="ponte-construcao"
         title="Custos"
         description="Consolidado do período: combustível e manutenção vêm dos registros; locação e terceiros são lançados aqui."
         actions={(

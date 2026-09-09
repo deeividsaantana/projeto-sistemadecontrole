@@ -214,8 +214,10 @@ export default function FvsTab({
   const sugerida = situacaoSugerida(itens);
 
   return (
-    <div id="fvs-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="fvs-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Verificação de serviço"
+        photo="ponte-construcao"
         title="FVS"
         description="Ficha de Verificação de Serviço. Item obrigatório não conforme não é aprovado."
         actions={podeEditar ? (

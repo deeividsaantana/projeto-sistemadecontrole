@@ -56,8 +56,8 @@ export default function HorasParadasTab({ controlesEquipamentos, ordensServico, 
   const dias = porDia.length || 1;
 
   return (
-    <div id="horas-paradas-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader title="Horas Paradas" description="Indisponibilidade medida no controle diário, da entrada em manutenção até a liberação." />
+    <div id="horas-paradas-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <PageHeader eyebrow="Disponibilidade da frota" photo="rodovia-duplicada" title="Horas Paradas" description="Indisponibilidade medida no controle diário, da entrada em manutenção até a liberação." />
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <PeriodFilter value={periodo} onChange={setPeriodo} />

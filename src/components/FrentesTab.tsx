@@ -134,7 +134,7 @@ export default function FrentesTab({
     const totalHoras = horasFrente.reduce((soma, item) => soma + (Number(item.horas) || 0), 0);
 
     return (
-      <div id="frente-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div id="frente-ficha" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadaId(null)}
@@ -144,6 +144,8 @@ export default function FrentesTab({
         </button>
 
         <PageHeader
+          eyebrow="Frente de serviço"
+          photo="rodovia-serra"
           title={selecionada.nome}
           description={[selecionada.ramoLocal, selecionada.servico, obras.find(item => item.id === selecionada.obraId)?.nome].filter(Boolean).join(' · ')}
           actions={(
@@ -274,8 +276,10 @@ export default function FrentesTab({
   }
 
   return (
-    <div id="frentes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="frentes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Operação em tempo real"
+        photo="rodovia-serra"
         title="Frentes de Serviço"
         description="Gestão e acompanhamento das frentes."
         actions={podeEditar ? <Button variant="primary" icon={Plus} onClick={() => abrirForm()}>Nova frente</Button> : undefined}

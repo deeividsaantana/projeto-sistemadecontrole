@@ -621,7 +621,13 @@ const previewQueryClient = new QueryClient();
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
-    <div id="main-tab-viewport" style={{ padding: 28, background: '#fff', minHeight: '100vh' }}>
+    <div
+      id="main-tab-viewport"
+      // Mesmo recuo do App.tsx: o cabeçalho editorial sangra até a borda deste
+      // container, então o preview só é confiável se ele tiver a medida real.
+      className="mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10"
+      style={{ background: '#fff', minHeight: '100vh' }}
+    >
       {screens[key] ?? <p>Tela desconhecida: {key}</p>}
     </div>
   </QueryClientProvider>,

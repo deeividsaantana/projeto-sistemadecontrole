@@ -143,8 +143,10 @@ export default function ApontamentosTab({
     : 0;
 
   return (
-    <div id="apontamentos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="apontamentos-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Apontamento de campo"
+        photo="rodovia-duplicada"
         title="Apontamentos"
         description="Horas por colaborador, serviço e frente — a base da produtividade."
         actions={podeEditar ? (

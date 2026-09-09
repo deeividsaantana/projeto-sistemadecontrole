@@ -130,8 +130,10 @@ export default function DiarioObraTab({
   };
 
   return (
-    <div id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="diario-obra-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Registro diário da obra"
+        photo="rodovia-serra"
         title="Diário de Obra"
         description="O dia consolidado. Clima, visitas e fotos são registrados aqui; o resto vem dos módulos."
         actions={(

@@ -189,8 +189,10 @@ export default function ManutencaoTab({
   };
 
   return (
-    <div id="manutencao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="manutencao-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Manutenção da frota"
+        photo="rodovia-duplicada"
         title="Manutenção"
         description="Ordens de serviço da frota, do chamado até a liberação."
         actions={podeEditar ? (

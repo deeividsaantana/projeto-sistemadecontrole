@@ -172,8 +172,10 @@ export default function InspecoesTab({
   };
 
   return (
-    <div id="inspecoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="inspecoes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Inspeção de campo"
+        photo="ponte-construcao"
         title="Inspeções"
         description="Segurança, meio ambiente e qualidade de campo, com prazo e responsável pela correção."
         actions={podeEditar ? (

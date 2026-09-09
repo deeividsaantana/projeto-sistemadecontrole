@@ -132,8 +132,10 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
   ];
 
   return (
-    <div className="space-y-5" id="consulta-geral-tab">
+    <div className="renea-page-viewport space-y-5" id="consulta-geral-tab">
       <PageHeader
+        eyebrow="Consulta geral"
+        photo="ponte-construcao"
         title="Consulta Geral"
         description="Pesquise equipamentos, colaboradores, equipes e registros."
         actions={<Button variant="primary" icon={Download} onClick={() => window.print()}>Exportar</Button>}

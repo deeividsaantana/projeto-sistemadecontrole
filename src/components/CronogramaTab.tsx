@@ -37,8 +37,10 @@ export default function CronogramaTab({ planos, producao, frentes }: CronogramaT
   const atrasadas = barras.filter(item => item.atrasado).length;
 
   return (
-    <div id="cronograma-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="cronograma-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Prazos e marcos"
+        photo="rodovia-serra"
         title="Cronograma"
         description="Planos de produção e frentes com data prevista, na mesma linha do tempo."
       />

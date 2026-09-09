@@ -197,8 +197,10 @@ export default function CentralOperacionalTab({
   };
 
   return (
-    <div id="central-operacional-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="central-operacional-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Operação em tempo real"
+        photo="rodovia-duplicada"
         title="Central Operacional"
         description="O dia da obra em uma tela: frota, equipes, frentes e manutenção."
         actions={(

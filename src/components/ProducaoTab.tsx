@@ -171,8 +171,10 @@ export default function ProducaoTab({
   const avancoDoForm = avancos.find(item => item.servico.id === lancamento.servicoId);
 
   return (
-    <div id="producao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="producao-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Execução que entrega resultados"
+        photo="rodovia-serra"
         title="Produção"
         description="Acompanhamento da produção e produtividade."
         actions={(

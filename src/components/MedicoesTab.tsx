@@ -153,8 +153,10 @@ export default function MedicoesTab({
   const total = totalMedicao(itens);
 
   return (
-    <div id="medicoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="medicoes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Medição contratual"
+        photo="rodovia-serra"
         title="Medições"
         description="Boletim por período com quantidades sugeridas pela produção e confirmadas por quem mede."
         actions={podeEditar ? (

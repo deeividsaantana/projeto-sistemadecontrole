@@ -183,8 +183,10 @@ export default function DocumentosTab({
   };
 
   return (
-    <div id="documentos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="documentos-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Acervo técnico"
+        photo="ponte-construcao"
         title="Documentos"
         description="CNH, ASO, CRLV, licenças e contratos com controle de validade e vínculo ao registro de origem."
         actions={podeEditar ? (

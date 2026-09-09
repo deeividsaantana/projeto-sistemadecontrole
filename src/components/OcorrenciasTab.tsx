@@ -189,8 +189,10 @@ export default function OcorrenciasTab({
   const sugestao = impactoSugerido(form.tipo, Number(form.horasParadas) || 0);
 
   return (
-    <div id="ocorrencias-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="ocorrencias-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="O que aconteceu em campo"
+        photo="rodovia-duplicada"
         title="Ocorrências"
         description="O que saiu do previsto no dia, quanto parou e a providência tomada."
         actions={podeEditar ? (

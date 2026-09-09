@@ -131,8 +131,10 @@ export default function ChecklistTab({
   const criticosPendentes = itensCriticosReprovados(itens).length;
 
   return (
-    <div id="checklist-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="checklist-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Verificação diária"
+        photo="rodovia-duplicada"
         title="Checklist"
         description="Inspeção do equipamento antes da operação. Item crítico reprovado abre ordem de serviço na hora."
         actions={podeEditar ? (

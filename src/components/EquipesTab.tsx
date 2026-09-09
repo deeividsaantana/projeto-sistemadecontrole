@@ -101,7 +101,7 @@ export default function EquipesTab({
     ].filter((item): item is string => Boolean(item));
 
     return (
-      <div id="equipe-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div id="equipe-ficha" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadoId(null)}
@@ -111,6 +111,8 @@ export default function EquipesTab({
         </button>
 
         <PageHeader
+          eyebrow="Composição das equipes"
+          photo="rodovia-duplicada"
           title={selecionada.nome}
           description={[selecionada.responsavel && `Encarregado ${selecionada.responsavel}`, selecionada.frenteServico, resumo.obra].filter(Boolean).join(' · ')}
           actions={(
@@ -226,8 +228,10 @@ export default function EquipesTab({
   }
 
   return (
-    <div id="equipes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="equipes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Composição das equipes"
+        photo="rodovia-duplicada"
         title="Equipes"
         description="Como cada equipe está no dia: efetivo, presença, frota e pendências."
         actions={(

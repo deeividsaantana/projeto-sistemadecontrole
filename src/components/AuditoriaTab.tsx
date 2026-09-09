@@ -72,8 +72,10 @@ export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
   const visiveis = filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA);
 
   return (
-    <div id="auditoria-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="auditoria-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Rastro de alterações"
+        photo="ponte-construcao"
         title="Auditoria"
         description="Quem alterou o quê e quando, com destaque para ações sensíveis."
         actions={<PeriodFilter value={period} onChange={setPeriod} />}

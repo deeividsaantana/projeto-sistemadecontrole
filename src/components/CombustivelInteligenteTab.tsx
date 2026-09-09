@@ -931,8 +931,10 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const selectedAiEvaluation = aiEvaluated.find((item) => item.row.id === selectedAiRow);
 
   return (
-    <div className="space-y-5 text-[#26362f]">
+    <div className="renea-page-viewport space-y-5 text-[#26362f]">
       <PageHeader
+        eyebrow="Consumo e abastecimento"
+        photo="rodovia-duplicada"
         title="Combustível"
         description={`${abastecimentos.length.toLocaleString('pt-BR')} registro(s) · lançamento livre manual, planilha ou documento`}
         actions={<>

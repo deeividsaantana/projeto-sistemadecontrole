@@ -174,3 +174,28 @@ test('painel: período, filtro de situação e tooltip do gráfico', async ({ pa
 
   await expect(painel.getByText(/undefined|NaN|\[object/), 'sem valor derivado quebrado').toHaveCount(0);
 });
+
+test('cabeçalho editorial: sangra até a borda, mostra o chapéu e não baixa foto no celular', async ({ page }, info) => {
+  const fotos: string[] = [];
+  page.on('request', req => { if (/renea-editorial/.test(req.url())) fotos.push(req.url()); });
+  await page.goto('/?screen=producao');
+  const faixa = page.locator('.renea-page-header__band');
+  await expect(faixa).toBeVisible();
+  await expect(page.locator('.renea-page-header__eyebrow')).toHaveText('Execução que entrega resultados');
+
+  const caixa = await faixa.boundingBox();
+  const largura = page.viewportSize()!.width;
+  // A faixa vai de ponta a ponta do espaço de trabalho: sem moldura branca.
+  expect(caixa!.x).toBeLessThanOrEqual(1);
+  expect(caixa!.width).toBeGreaterThanOrEqual(Math.min(largura, 1440) - 1);
+
+  // Só há uma <h1> por tela, e é a do cabeçalho.
+  await expect(page.locator('h1')).toHaveCount(1);
+
+  await page.waitForTimeout(300);
+  if (info.project.name === 'celular') {
+    expect(fotos, 'o celular não deve baixar a foto decorativa').toEqual([]);
+  } else {
+    expect(fotos.length, 'o desktop baixa a foto da faixa').toBeGreaterThan(0);
+  }
+});

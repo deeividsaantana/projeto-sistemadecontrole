@@ -429,9 +429,11 @@ export default function ControleEquipamentosDiarioTab({
     }
   };
   return (
-    <main ref={pageRef} className="fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
+    <main ref={pageRef} className="renea-page-viewport fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
       <div data-fleet-enter>
         <PageHeader
+          eyebrow="Operação em tempo real"
+          photo="rodovia-duplicada"
           title="Controle Operacional de Frota"
           description="Rodoanel Mário Covas · Alça Trecho Leste · lançamentos diários, disponibilidade e pendências em uma visão operacional."
           actions={<>

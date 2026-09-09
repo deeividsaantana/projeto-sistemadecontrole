@@ -36,8 +36,10 @@ export default function AdministracaoTab({
   const divergencias = useMemo(() => divergenciasDeRegistro(INTERMEDIATE_TABLE_IDS), []);
 
   return (
-    <div id="administracao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="administracao-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Configuração do sistema"
+        photo="ponte-construcao"
         title="Administração"
         description="Saúde do armazenamento, registro das coleções e estado da sincronização."
       />

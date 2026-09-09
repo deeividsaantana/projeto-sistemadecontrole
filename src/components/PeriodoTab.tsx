@@ -183,8 +183,10 @@ export default function PeriodoTab({
   ];
 
   return (
-    <section className="space-y-5 text-[#14231e]">
+    <section className="renea-page-viewport space-y-5 text-[#14231e]">
       <PageHeader
+        eyebrow="Operação em tempo real"
+        photo="rodovia-serra"
         title="Registros por Período"
         description="Visualize e filtre registros por um período específico."
         actions={<Button variant="primary" icon={Download} onClick={exportarResumo}>Exportar</Button>}

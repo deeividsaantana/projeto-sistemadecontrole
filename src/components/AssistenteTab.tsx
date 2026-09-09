@@ -51,8 +51,10 @@ export default function AssistenteTab({ dados, onNavigate }: AssistenteTabProps)
   ];
 
   return (
-    <div id="assistente-tab" className="min-h-full w-full bg-[#f6f7f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="assistente-tab" className="renea-page min-h-full w-full bg-[#f6f7f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Conhecimento que constrói"
+        photo="ponte-construcao"
         title="Assistente Operacional"
         description="Como posso te ajudar hoje?"
         actions={(

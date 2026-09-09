@@ -120,8 +120,10 @@ export default function DdsTreinamentosTab({
   };
 
   return (
-    <div id="dds-treinamentos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="dds-treinamentos-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Segurança e capacitação"
+        photo="ponte-construcao"
         title="DDS e Treinamentos"
         description="Diálogos de segurança em campo e validade das formações do efetivo."
         actions={podeEditar ? (

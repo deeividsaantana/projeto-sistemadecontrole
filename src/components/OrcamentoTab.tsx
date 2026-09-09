@@ -111,8 +111,10 @@ export default function OrcamentoTab({
   };
 
   return (
-    <div id="orcamento-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="orcamento-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Orçamento e realização"
+        photo="ponte-construcao"
         title="Orçado x Realizado"
         description="Comparativo mensal por categoria. O realizado vem do consolidado de custos, não é digitado."
         actions={(

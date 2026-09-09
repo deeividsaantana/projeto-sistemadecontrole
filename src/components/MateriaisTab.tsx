@@ -155,8 +155,10 @@ export default function MateriaisTab({
   const saldoAtualDoForm = movimento.materialId ? saldoDoMaterial(movimentos, movimento.materialId) : 0;
 
   return (
-    <div id="materiais-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="materiais-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Estoque e movimentação"
+        photo="rodovia-serra"
         title="Materiais"
         description="Cadastro, movimentação e estoque. O saldo vem da soma dos movimentos."
         actions={podeEditar ? (

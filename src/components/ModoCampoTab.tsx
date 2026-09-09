@@ -127,8 +127,10 @@ export default function ModoCampoTab({
   ];
 
   return (
-    <div id="modo-campo-tab" className="min-h-full w-full bg-[#f6f7f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="modo-campo-tab" className="renea-page min-h-full w-full bg-[#f6f7f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Operação em tempo real"
+        photo="rodovia-duplicada"
         title="Modo Campo"
         description="Interface simplificada para uso em campo."
         actions={(

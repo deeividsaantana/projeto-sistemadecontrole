@@ -36,8 +36,10 @@ export default function TimelineTab({ fontes, equipamentos, onNavigate }: Timeli
   const dias = useMemo(() => agruparPorDia(eventos), [eventos]);
 
   return (
-    <div id="timeline-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="timeline-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Linha do tempo da obra"
+        photo="rodovia-serra"
         title="Timeline"
         description="Tudo que aconteceu no período, na ordem em que aconteceu, lido dos módulos de origem."
         actions={<PeriodFilter value={period} onChange={setPeriod} />}

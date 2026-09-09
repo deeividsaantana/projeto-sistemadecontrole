@@ -415,3 +415,156 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 /* Largura do menu recolhido precisa morar aqui: a regra base .erp-sidebar
    fixa width/min-width e venceria a classe utilitaria por ordem no arquivo. */
 #app-root .erp-sidebar.erp-sidebar--recolhido { width: 5.25rem; min-width: 5.25rem; }
+
+/* ==========================================================================
+   Cabeçalho editorial das telas (PageHeader)
+   --------------------------------------------------------------------------
+   Faixa com foto de obra à direita e um plano cor-osso recortado na diagonal
+   à esquerda, onde mora o texto. A foto é decorativa: entra por background e
+   só em telas ≥ 768px, para o celular não baixar imagem nenhuma. A sangria
+   até a borda do conteúdo é opcional e vem das variáveis --renea-page-inset-*
+   definidas por quem usa o cabeçalho; sem elas a faixa fica contida, sem
+   quebrar as telas que ainda não declararam recuo.
+   ========================================================================== */
+.renea-page-header {
+  --renea-bone: #f1f0ea;
+  margin-block-end: 1.15rem;
+  margin-inline: calc(-1 * var(--renea-page-inset-x, 0px));
+  margin-block-start: calc(-1 * var(--renea-page-inset-top, 0px));
+}
+
+.renea-page-header__band {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-block-end: 1px solid var(--renea-line);
+  background: var(--renea-bone);
+}
+
+.renea-page-header__photo,
+.renea-page-header__plane { position: absolute; inset: 0; }
+.renea-page-header__photo { z-index: 0; background-color: #cfd4cd; background-position: 50% 45%; background-size: cover; }
+
+/* A faixa é larga e baixa, então de cada foto aparece só uma tira horizontal.
+   O enquadramento de cada uma foi escolhido olhando o recorte: pista e
+   guarda-corpo na duplicada, o vale na serra, o tabuleiro na ponte. */
+.renea-page-header[data-photo="rodovia-duplicada"] .renea-page-header__photo { background-position: 46% 38%; }
+.renea-page-header[data-photo="rodovia-serra"] .renea-page-header__photo { background-position: 42% 60%; }
+.renea-page-header[data-photo="ponte-construcao"] .renea-page-header__photo { background-position: 62% 58%; }
+.renea-page-header__plane { z-index: 1; background: var(--renea-bone); }
+
+.renea-page-header__copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: .3rem;
+  padding: clamp(1.15rem, .7rem + 1.5vw, 2.35rem) var(--renea-page-inset-x, 1rem);
+  animation: renea-header-in 420ms cubic-bezier(.32, .72, 0, 1) both;
+}
+
+.renea-page-header__eyebrow {
+  margin: 0;
+  color: #5d6b62;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.renea-page-header__title {
+  margin: 0;
+  color: #0d1a14;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 1.05rem + 2.9vw, 3.15rem);
+  font-weight: 800;
+  letter-spacing: -.022em;
+  line-height: 1.03;
+}
+
+.renea-page-header__lede {
+  margin: 0;
+  max-width: 46ch;
+  color: #0b5c3d;
+  font-size: clamp(.9rem, .82rem + .45vw, 1.2rem);
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.renea-page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+  padding: .85rem var(--renea-page-inset-x, 0px) 0;
+}
+
+@keyframes renea-header-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Celular: sem foto, sem diagonal, e alvos de toque com no mínimo 44px. */
+@media (max-width: 767px) {
+  .renea-page-header__actions :is(button, a[role="button"], select, input, label > select) { min-block-size: 2.75rem; }
+}
+
+@media (min-width: 768px) {
+  .renea-page-header__copy { max-width: 52%; padding-block: clamp(1.6rem, .9rem + 2vw, 2.9rem); }
+  .renea-page-header__plane { clip-path: polygon(0 0, 53% 0, 66% 100%, 0 100%); }
+}
+
+/* Duas larguras de foto: o tablet baixa ~32 kB, o desktop ~120 kB. O original
+   de 2 MB não vai para nenhuma das duas. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .renea-page-header[data-photo="rodovia-duplicada"] .renea-page-header__photo { background-image: url("./assets/renea-editorial/rodovia-duplicada-800.webp"); }
+  .renea-page-header[data-photo="rodovia-serra"] .renea-page-header__photo { background-image: url("./assets/renea-editorial/rodovia-serra-800.webp"); }
+  .renea-page-header[data-photo="ponte-construcao"] .renea-page-header__photo { background-image: url("./assets/renea-editorial/ponte-construcao-800.webp"); }
+}
+
+@media (min-width: 1280px) {
+  .renea-page-header[data-photo="rodovia-duplicada"] .renea-page-header__photo { background-image: url("./assets/renea-editorial/rodovia-duplicada-1600.webp"); }
+  .renea-page-header[data-photo="rodovia-serra"] .renea-page-header__photo { background-image: url("./assets/renea-editorial/rodovia-serra-1600.webp"); }
+  .renea-page-header[data-photo="ponte-construcao"] .renea-page-header__photo { background-image: url("./assets/renea-editorial/ponte-construcao-1600.webp"); }
+}
+
+/* Sem foto declarada a faixa continua válida: o plano cobre tudo e o cabeçalho
+   vira uma faixa cor-osso, em vez de mostrar o cinza de carregamento. */
+.renea-page-header:not([data-photo]) .renea-page-header__plane { clip-path: none; }
+
+@media print {
+  .renea-page-header__photo { display: none; }
+}
+
+/* Recuo declarado pelas telas: o cabeçalho editorial usa estas medidas para
+   sangrar até a borda do conteúdo e, dentro dele, alinhar o texto na mesma
+   coluna do resto da página. Cada medida soma o recuo da própria tela
+   (px-4 / sm:px-7 / lg:px-9) ao do #main-tab-viewport que a envolve
+   (p-3.5 / sm:p-4 / md:p-7 / 2xl:p-10) — é essa soma que leva a faixa até a
+   borda do espaço de trabalho e, ao mesmo tempo, alinha o título com o
+   conteúdo da página. */
+.renea-page { --renea-page-inset-x: 1.875rem; --renea-page-inset-top: 2.375rem; }
+@media (min-width: 640px) { .renea-page { --renea-page-inset-x: 2.75rem; --renea-page-inset-top: 2.5rem; } }
+@media (min-width: 768px) { .renea-page { --renea-page-inset-x: 3.5rem; --renea-page-inset-top: 3.25rem; } }
+@media (min-width: 1024px) { .renea-page { --renea-page-inset-x: 4rem; } }
+@media (min-width: 1536px) { .renea-page { --renea-page-inset-x: 4.75rem; --renea-page-inset-top: 4rem; } }
+
+/* Telas que não têm recuo próprio herdam o do #main-tab-viewport
+   (p-3.5 / sm:p-4 / md:p-7 / 2xl:p-10). */
+.renea-page-viewport { --renea-page-inset-x: .875rem; --renea-page-inset-top: .875rem; }
+@media (min-width: 640px) { .renea-page-viewport { --renea-page-inset-x: 1rem; --renea-page-inset-top: 1rem; } }
+@media (min-width: 768px) { .renea-page-viewport { --renea-page-inset-x: 1.75rem; --renea-page-inset-top: 1.75rem; } }
+@media (min-width: 1536px) { .renea-page-viewport { --renea-page-inset-x: 2.5rem; --renea-page-inset-top: 2.5rem; } }
+
+/* Celular: campo com fonte menor que 16px faz o Safari/iOS dar zoom sozinho ao
+   focar, e o usuário perde o enquadramento da tela. Alvo de toque abaixo de
+   44px erra o dedo. As duas regras valem só dentro do conteúdo: o menu lateral
+   tem dimensões próprias, aprovadas, e não entra aqui. */
+@media (max-width: 767px) {
+  #main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) { font-size: 16px; }
+  #main-tab-viewport :is(button, [role="button"], select, input[type="date"], input[type="time"]) { min-block-size: 2.75rem; }
+}
+
+/* A faixa do cabeçalho sangra até a borda do espaço de trabalho, mas o fundo
+   claro da tela para no recuo do container e deixava uma moldura branca em
+   volta. Aqui o fundo passa para o container, e a página fica contínua. */
+#main-tab-viewport:has(.renea-page) { background: #f7f8f6; }

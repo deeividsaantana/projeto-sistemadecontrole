@@ -157,8 +157,10 @@ export default function PlanejamentoTab({
   };
 
   return (
-    <div id="planejamento-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="planejamento-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Planejamento"
+        photo="rodovia-serra"
         title="Planejamento"
         description="Metas por período, frente e equipe. O realizado vem da produção lançada."
         actions={podeEditar ? (

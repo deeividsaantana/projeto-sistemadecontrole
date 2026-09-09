@@ -38,8 +38,10 @@ export default function PermissoesTab() {
   const semAcesso = ALL_NAVIGATION_ITEMS.length - modulos.length;
 
   return (
-    <div id="permissoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="permissoes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Acesso e perfis"
+        photo="ponte-construcao"
         title="Permissões"
         description="O que cada papel enxerga e pode fazer, pela mesma regra que as telas usam."
       />

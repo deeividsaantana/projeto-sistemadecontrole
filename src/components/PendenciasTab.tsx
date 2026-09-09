@@ -47,8 +47,10 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
   const listadas = abaAtiva === 'todas' ? pendencias : pendencias.filter(item => item.categoria === abaAtiva);
 
   return (
-    <div id="pendencias-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="pendencias-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="O que precisa de atenção"
+        photo="rodovia-duplicada"
         title="Pendências"
         description="Itens que necessitam de atenção e resolução."
         actions={(

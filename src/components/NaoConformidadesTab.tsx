@@ -188,8 +188,10 @@ export default function NaoConformidadesTab({
   };
 
   return (
-    <div id="nao-conformidades-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="nao-conformidades-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        eyebrow="Qualidade e conformidade"
+        photo="ponte-construcao"
         title="Não Conformidades"
         description="Causa raiz, ação corretiva e verificação de eficácia, ligadas à FVS e à inspeção de origem."
         actions={podeEditar ? (
