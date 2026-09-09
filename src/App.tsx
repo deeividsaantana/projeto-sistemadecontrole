@@ -442,6 +442,10 @@ export default function App() {
   const uploadsInFlightRef = useRef(0);
   const isCheckingSyncRef = useRef(false);
   const lastSyncCheckAtRef = useRef(0);
+  const automaticDownloadInFlightRef = useRef(false);
+  const pendingRemoteVersionRef = useRef('');
+  const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
+  const currentUserRoleRef = useRef<UserRole>('admin');
   // Ids por tabela da última sincronização concluída neste aparelho. Permite
   // que uma mesclagem saiba diferenciar "eu apaguei isto" de "o colega criou
   // isto depois". Fica só em memória de propósito: não ocupa armazenamento
@@ -450,6 +454,7 @@ export default function App() {
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
+  currentUserRoleRef.current = currentUserRole;
   // Quantos envios do link público de presença já estão no Firebase, pendentes
   // de entrar neste retrato local. Serve só de diagnóstico visível: se ficar
   // preso em um número maior que zero, o processamento em tempo real travou.
@@ -836,20 +841,10 @@ export default function App() {
         const status = await getFirebaseConnectionStatus(db);
         setIsFirebaseConnected(status.connected);
 
-        if (status.updatedAt) {
-          const cloudDate = new Date(status.updatedAt);
-          if (!Number.isNaN(cloudDate.getTime())) {
-            const cloudDateLabel = cloudDate.toLocaleString('pt-BR');
-            setLastCloudSync(cloudDateLabel);
-            writeStorageValue(localStorage, 'renea_last_cloud_sync', cloudDateLabel);
-          }
-
-          // Primeira execucao da versao nova: registra a nuvem atual como base sem
-          // sobrescrever silenciosamente os dados locais que ainda nao foram enviados.
-          if (!localStorage.getItem('renea_last_cloud_sync_iso')) {
-            writeStorageValue(localStorage, 'renea_last_cloud_sync_iso', status.updatedAt);
-          }
-        }
+        // O horario remoto nao pode ser gravado como uma sincronizacao local.
+        // Esse marcador so e atualizado depois de um upload/download concluido;
+        // caso contrario um navegador novo acredita que ja baixou a nuvem e o
+        // primeiro snapshot em tempo real e descartado.
       } catch (error) {
         console.warn('Falha ao validar a conexao real com o Firestore:', error);
         setIsFirebaseConnected(false);
@@ -976,6 +971,9 @@ export default function App() {
       return { success: false, message: formatFirebaseSyncError(error) };
     } finally {
       uploadsInFlightRef.current = Math.max(0, uploadsInFlightRef.current - 1);
+      if (uploadsInFlightRef.current === 0 && pendingRemoteVersionRef.current) {
+        queueMicrotask(() => requestAutomaticRemoteSyncRef.current(pendingRemoteVersionRef.current));
+      }
     }
   };
 
@@ -1072,26 +1070,68 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'ordensServico')) {
           setOrdensServico(normalizeRuntimeCollection<OrdemServico>(data.ordensServico));
+        }
+        if (Object.hasOwn(data, 'checklists')) {
           setChecklists(normalizeRuntimeCollection<ChecklistEquipamento>(data.checklists));
+        }
+        if (Object.hasOwn(data, 'apontamentosOperacionais')) {
           setApontamentosOperacionais(normalizeRuntimeCollection<ApontamentoOperacional>(data.apontamentosOperacionais));
+        }
+        if (Object.hasOwn(data, 'registrosDds')) {
           setRegistrosDds(normalizeRuntimeCollection<RegistroDDS>(data.registrosDds));
+        }
+        if (Object.hasOwn(data, 'treinamentos')) {
           setTreinamentos(normalizeRuntimeCollection<Treinamento>(data.treinamentos));
+        }
+        if (Object.hasOwn(data, 'materiaisCadastro')) {
           setMateriaisCadastro(normalizeRuntimeCollection<Material>(data.materiaisCadastro));
+        }
+        if (Object.hasOwn(data, 'materiaisMovimentos')) {
           setMateriaisMovimentos(normalizeRuntimeCollection<MovimentoMaterial>(data.materiaisMovimentos));
+        }
+        if (Object.hasOwn(data, 'frentesServico')) {
           setFrentesServico(normalizeRuntimeCollection<FrenteServico>(data.frentesServico));
+        }
+        if (Object.hasOwn(data, 'diariosObra')) {
           setDiariosObra(normalizeRuntimeCollection<DiarioObra>(data.diariosObra));
+        }
+        if (Object.hasOwn(data, 'servicosObra')) {
           setServicosObra(normalizeRuntimeCollection<ServicoObra>(data.servicosObra));
+        }
+        if (Object.hasOwn(data, 'producaoRegistros')) {
           setProducaoRegistros(normalizeRuntimeCollection<RegistroProducao>(data.producaoRegistros));
+        }
+        if (Object.hasOwn(data, 'planejamentoItens')) {
           setPlanejamentoItens(normalizeRuntimeCollection<PlanejamentoItem>(data.planejamentoItens));
+        }
+        if (Object.hasOwn(data, 'modelosFvs')) {
           setModelosFvs(normalizeRuntimeCollection<ModeloFvs>(data.modelosFvs));
+        }
+        if (Object.hasOwn(data, 'fichasFvs')) {
           setFichasFvs(normalizeRuntimeCollection<FichaVerificacaoServico>(data.fichasFvs));
+        }
+        if (Object.hasOwn(data, 'inspecoes')) {
           setInspecoes(normalizeRuntimeCollection<Inspecao>(data.inspecoes));
+        }
+        if (Object.hasOwn(data, 'naoConformidades')) {
           setNaoConformidades(normalizeRuntimeCollection<NaoConformidade>(data.naoConformidades));
+        }
+        if (Object.hasOwn(data, 'medicoes')) {
           setMedicoes(normalizeRuntimeCollection<Medicao>(data.medicoes));
+        }
+        if (Object.hasOwn(data, 'documentos')) {
           setDocumentos(normalizeRuntimeCollection<DocumentoArquivo>(data.documentos));
+        }
+        if (Object.hasOwn(data, 'ocorrencias')) {
           setOcorrencias(normalizeRuntimeCollection<Ocorrencia>(data.ocorrencias));
+        }
+        if (Object.hasOwn(data, 'lancamentosCusto')) {
           setLancamentosCusto(normalizeRuntimeCollection<LancamentoCusto>(data.lancamentosCusto));
+        }
+        if (Object.hasOwn(data, 'orcamentoItens')) {
           setOrcamentoItens(normalizeRuntimeCollection<OrcamentoItem>(data.orcamentoItens));
+        }
+        if (Object.hasOwn(data, 'modelosChecklist')) {
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -1148,6 +1188,68 @@ export default function App() {
     }
   };
 
+  // Serializa a reconciliacao automatica. Se um snapshot chegar durante um
+  // upload ou outro download, a versao fica pendente e e processada assim que
+  // a operacao atual terminar, em vez de ser descartada para sempre.
+  const requestAutomaticRemoteSync = async (updatedAt: string) => {
+    if (!updatedAt || !isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
+    pendingRemoteVersionRef.current = updatedAt;
+    if (uploadsInFlightRef.current > 0 || automaticDownloadInFlightRef.current) return;
+
+    automaticDownloadInFlightRef.current = true;
+    let retryPendingImmediately = true;
+    try {
+      while (pendingRemoteVersionRef.current && uploadsInFlightRef.current === 0) {
+        const requestedVersion = pendingRemoteVersionRef.current;
+        pendingRemoteVersionRef.current = '';
+        const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
+
+        if (localCloudVersion === requestedVersion) {
+          if (!cloudBaselineRef.current) cloudBaselineRef.current = captureBaselineFromLocalStorage();
+          continue;
+        }
+
+        // No primeiro acesso ainda nao existe uma base para distinguir dados
+        // locais antigos dos dados da nuvem. Perfis de escrita fazem uma
+        // mesclagem conservadora antes de baixar o retrato publicado; assim
+        // nenhum lancamento que so existe neste aparelho e perdido.
+        if (!localCloudVersion && currentUserRoleRef.current !== 'leitura') {
+          const uploadResult = await handleUploadToFirebase();
+          if (!uploadResult.success) {
+            pendingRemoteVersionRef.current = requestedVersion;
+            retryPendingImmediately = false;
+            addNotification(
+              'Sincronizacao inicial pendente',
+              `Os dados locais foram preservados, mas ainda nao foi possivel conciliar com a nuvem. Motivo: ${uploadResult.message}`,
+              'error',
+              'Sistema Local',
+            );
+            break;
+          }
+        }
+
+        const downloadResult = await handleDownloadFromFirebase();
+        if (!downloadResult.success) {
+          pendingRemoteVersionRef.current = requestedVersion;
+          retryPendingImmediately = false;
+          addNotification(
+            'Nao foi possivel atualizar os dados',
+            `Este aparelho nao conseguiu buscar a versao mais recente da nuvem. Motivo: ${downloadResult.message}`,
+            'error',
+            'Sistema Local',
+          );
+          break;
+        }
+      }
+    } finally {
+      automaticDownloadInFlightRef.current = false;
+      if (retryPendingImmediately && pendingRemoteVersionRef.current && uploadsInFlightRef.current === 0) {
+        queueMicrotask(() => requestAutomaticRemoteSyncRef.current(pendingRemoteVersionRef.current));
+      }
+    }
+  };
+  requestAutomaticRemoteSyncRef.current = updatedAt => { void requestAutomaticRemoteSync(updatedAt); };
+
   // Confere a nuvem e baixa quando outro dispositivo publicou uma versão
   // mais recente. Não é só um pulso periódico: também é chamada direto ao
   // trocar de tela (navigateTo), para que abrir uma tela específica sempre
@@ -1167,31 +1269,7 @@ export default function App() {
       setIsFirebaseConnected(status.connected);
 
       if (!status.updatedAt) return;
-      // Um envio em andamento ainda não publicou a versão mais nova na
-      // nuvem — baixar agora traria de volta a versão de antes dele e
-      // apagaria, na tela, o que acabou de ser lançado neste aparelho.
-      if (uploadsInFlightRef.current > 0) return;
-      const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
-      // Sem versão local registrada, este aparelho nunca completou uma
-      // sincronização — não é seguro presumir que já está em dia. Antes
-      // baixava a nuvem e o resultado ficava perdido no console; agora o
-      // aviso abaixo torna visível se essa primeira sincronização falhar.
-      if (localCloudVersion !== status.updatedAt) {
-        const result = await handleDownloadFromFirebase();
-        if (!result.success) {
-          addNotification(
-            'Não foi possível atualizar os dados',
-            `Este aparelho não conseguiu buscar a versão mais recente da nuvem. Motivo: ${result.message}`,
-            'error',
-            'Sistema Local',
-          );
-        }
-      } else if (!cloudBaselineRef.current) {
-        // Abriu já em dia com a nuvem: nada para baixar, mas é exatamente
-        // aqui que o retrato local vale como base. Sem isto, a primeira
-        // exclusão feita logo após abrir poderia voltar na mesclagem.
-        cloudBaselineRef.current = captureBaselineFromLocalStorage();
-      }
+      await requestAutomaticRemoteSync(status.updatedAt);
     } catch (error) {
       setIsFirebaseConnected(false);
       setCloudRecoveryPending(true);
@@ -1215,10 +1293,8 @@ export default function App() {
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.
     const unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
-      if (uploadsInFlightRef.current > 0) return;
       const updatedAt = String(snapshot.data()?.updatedAt || '');
-      const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
-      if (updatedAt && localCloudVersion && updatedAt !== localCloudVersion) void handleDownloadFromFirebase();
+      if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
     }, error => {
       console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
     });
@@ -1656,7 +1732,6 @@ export default function App() {
     saveAndLog('Motoristas operacionais', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o motorista "${item.nome}" (${matricula}).`, historyLogs, () => {
       setMotoristasOperacionais(next);
       writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
-      if (isAutoSyncEnabled) void handleUploadToFirebase();
     }, { registroId: item.id, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' });
   };
 
@@ -1665,7 +1740,6 @@ export default function App() {
     saveAndLog('Motoristas operacionais', 'Excluiu', `Excluiu o motorista operacional "${id}".`, historyLogs, () => {
       setMotoristasOperacionais(next);
       writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
-      if (isAutoSyncEnabled) void handleUploadToFirebase();
     }, { registroId: id, tipoOperacao: 'DELETE' });
   };
 
