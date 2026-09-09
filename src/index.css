@@ -918,13 +918,22 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .fuel-dashboard [data-fuel-bar],
 .fuel-dashboard [data-fuel-line] { will-change: transform; }
 .fuel-command-center__lead { background: linear-gradient(135deg, #fff 0%, #fff 62%, #eef6f1 100%); }
+/* A foto é uma cunha na borda direita do bloco, recortada na diagonal como a
+   faixa do cabeçalho. Antes ela começava em 58% da coluna e passava por baixo
+   do título e do número grande: a imagem só clareava para a direita, e o texto
+   ficava lendo sobre mato e asfalto. */
 .fuel-command-center__photo {
   position: absolute;
-  inset: 0 0 0 58%;
-  background: linear-gradient(90deg, #fff 0%, rgb(255 255 255 / .55) 24%, rgb(255 255 255 / .08) 100%), url('./assets/renea-editorial/rodovia-serra-1600.webp') center / cover no-repeat;
-  opacity: .34;
+  inset: 0 0 0 auto;
+  width: min(42%, 26rem);
+  clip-path: polygon(18% 0, 100% 0, 100% 100%, 0 100%);
+  background: linear-gradient(90deg, #fff 0%, rgb(255 255 255 / .62) 30%, rgb(255 255 255 / .1) 100%), url('./assets/renea-editorial/rodovia-serra-1600.webp') center / cover no-repeat;
+  opacity: .38;
   transform: scale(1.035);
   animation: renea-v3-image-settle 1.2s cubic-bezier(.2,.8,.2,1) both;
+}
+@media (max-width: 1023px) {
+  .fuel-command-center__photo { width: 100%; clip-path: none; background-image: linear-gradient(180deg, rgb(255 255 255 / .18), #fff 78%), url('./assets/renea-editorial/rodovia-serra-800.webp'); opacity: .22; }
 }
 
 #modo-campo-tab .field-action {
@@ -962,7 +971,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   #presenca-tempo-real > header:first-child::before { inset: 0 0 auto 35%; height: 12rem; opacity: .15; }
   .fuel-workspace-nav { top: 0; }
   .fuel-command-center__lead { min-height: 24rem; }
-  .fuel-command-center__photo { inset: 47% 0 0 35%; opacity: .18; }
+  .fuel-command-center__photo { inset: 47% 0 0 0; width: 100%; opacity: .18; }
 }
 
 /* Peso das fotos: os JPEG originais têm ~2 MB cada e apareciam inteiros no

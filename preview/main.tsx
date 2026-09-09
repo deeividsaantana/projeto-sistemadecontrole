@@ -621,7 +621,17 @@ const previewQueryClient = new QueryClient();
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
-    <div id="main-tab-viewport" style={{ padding: 28, background: '#fff', minHeight: '100vh' }}>
+    <div
+      id="main-tab-viewport"
+      /* Mesmas medidas do App.tsx: o painel roda sem recuo (dashboard-viewport)
+         e as demais telas dentro do padding responsivo. Com um `padding: 28`
+         fixo o preview inventava 5 px de estouro no painel e escondia o recuo
+         real das outras telas — a verificação de largura não valia nada. */
+      className={key === 'painel'
+        ? 'dashboard-viewport mx-auto w-full'
+        : 'mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10'}
+      style={{ background: '#fff', minHeight: '100vh' }}
+    >
       {screens[key] ?? <p>Tela desconhecida: {key}</p>}
     </div>
   </QueryClientProvider>,

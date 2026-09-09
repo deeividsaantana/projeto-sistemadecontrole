@@ -70,7 +70,10 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
           <EmptyState icon={CheckCircle2} title="Nenhuma pendência no período" description="Todos os registros do período estão em dia." />
         </div>
       ) : (
-        <div className="mt-4 grid items-start gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(23rem,.95fr)]">
+        // grid-cols-[minmax(0,1fr)] explícito: a trilha padrão é minmax(auto,1fr)
+        // e o min-content da lista (rótulo com truncate) estourava 169 px no
+        // celular.
+        <div className="mt-4 grid grid-cols-[minmax(0,1fr)] items-start gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(23rem,.95fr)]">
           <div className="space-y-3">
             {porCategoria.map(([categoria, itens]) => (
               <section key={categoria} className="overflow-hidden rounded-[3px] border border-slate-200 bg-white">

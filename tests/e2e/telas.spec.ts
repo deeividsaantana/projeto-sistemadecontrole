@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  * fazia à mão a cada versão.
  */
 const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
-  { screen: 'painel', titulo: 'Painel de Controle' },
+  { screen: 'painel', titulo: 'Visão operacional' },
   { screen: 'central-operacional', titulo: 'Central Operacional' },
   { screen: 'frota', titulo: 'Frota' },
   { screen: 'manutencao', titulo: 'Manutenção' },
@@ -91,4 +91,26 @@ test('CTRL+ENTER salva sem procurar o botão', async ({ page }) => {
   // a mesma validação do botão, em vez de fechar o diálogo em silêncio.
   await page.keyboard.press('Control+Enter');
   await expect(page.getByText('Descreva a ocorrência.')).toBeVisible();
+});
+
+test('painel: 7d, 14d e 30d mudam de verdade a régua do gráfico', async ({ page }) => {
+  await page.goto('/?screen=painel');
+  const eixo = () => page.evaluate(() => [...document.querySelectorAll('#dashboard-tab svg text')]
+    .map(no => no.textContent || '').filter(texto => /^\d{2}\/\d{2}$/.test(texto)));
+
+  const sete = await eixo();
+  expect(sete.length, 'o gráfico começa com a régua de 7 dias').toBeGreaterThan(1);
+
+  await page.getByRole('button', { name: '30d', exact: true }).click();
+  await expect.poll(async () => (await eixo())[0], { message: 'a régua de 30 dias começa antes' }).not.toBe(sete[0]);
+  const trinta = await eixo();
+
+  await page.getByRole('button', { name: '14d', exact: true }).click();
+  await expect.poll(async () => (await eixo())[0]).not.toBe(trinta[0]);
+  const quatorze = await eixo();
+  expect(quatorze[0], 'a régua de 14 dias é diferente da de 7').not.toBe(sete[0]);
+
+  await page.getByRole('button', { name: '7d', exact: true }).click();
+  await expect.poll(async () => (await eixo())[0]).toBe(sete[0]);
+  expect(await eixo(), 'voltar para 7 dias devolve a régua original').toEqual(sete);
 });

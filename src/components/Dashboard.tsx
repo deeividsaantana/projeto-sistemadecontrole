@@ -117,9 +117,23 @@ export default function Dashboard({
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('Todos');
   const [selectedDate, setSelectedDate] = useState('');
 
+  /**
+   * Janela de calendário, não "os últimos N dias que têm lançamento". Com a
+   * segunda leitura, 7d, 14d e 30d desenhavam exatamente o mesmo gráfico
+   * sempre que a obra tinha menos dias lançados do que o período pedido — o
+   * botão mudava de cor e a visualização não mudava. Dia sem lançamento entra
+   * na régua do tempo com `semDados`, para o eixo esticar de verdade sem que
+   * o painel invente 0% de disponibilidade onde ninguém apontou nada.
+   */
   const fleetSeries = useMemo(() => {
-    const dates = Array.from(new Set(controlesEquipamentos.map(item => item.data).filter(Boolean)))
-      .sort().slice(-periodDays);
+    const comLancamento = Array.from(new Set(controlesEquipamentos.map(item => item.data).filter(Boolean))).sort();
+    const fim = comLancamento.at(-1) || new Date().toISOString().slice(0, 10);
+    const base = new Date(`${fim}T12:00:00`);
+    const dates = Array.from({ length: periodDays }, (_, index) => {
+      const dia = new Date(base);
+      dia.setDate(dia.getDate() - (periodDays - 1 - index));
+      return dia.toISOString().slice(0, 10);
+    });
     return dates.map(date => {
       const records = uniqueLatestRecords(controlesEquipamentos.filter(item => item.data === date));
       const operating = records.filter(item => normalizeFleetStatus(item.status) === 'Em operação').length;
@@ -127,11 +141,11 @@ export default function Dashboard({
       const confirm = records.filter(item => normalizeFleetStatus(item.status) === 'A confirmar').length;
       const available = records.length - operating - maintenance - confirm;
       const availability = records.length ? ((operating + available) / records.length) * 100 : 0;
-      return { date, records, operating, maintenance, confirm, available, availability };
+      return { date, records, operating, maintenance, confirm, available, availability, semDados: records.length === 0 };
     });
   }, [controlesEquipamentos, periodDays]);
 
-  const latest = fleetSeries.at(-1) || {
+  const latest = [...fleetSeries].reverse().find(item => !item.semDados) || fleetSeries.at(-1) || {
     date: '', records: [] as ControleEquipamentoDiario[], operating: 0,
     maintenance: 0, confirm: 0, available: 0, availability: 0,
   };
@@ -144,7 +158,12 @@ export default function Dashboard({
     ? chartWidth / 2
     : chartPadding + index * ((chartWidth - chartPadding * 2) / (fleetSeries.length - 1));
   const yAt = (value: number) => chartHeight - chartPadding - (Math.max(0, Math.min(100, value)) / 100) * (chartHeight - chartPadding * 2);
-  const linePoints = fleetSeries.map((item, index) => String(xAt(index)) + ',' + String(yAt(item.availability))).join(' ');
+  const pontosMedidos = fleetSeries
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !item.semDados);
+  const linePoints = pontosMedidos.map(({ item, index }) => String(xAt(index)) + ',' + String(yAt(item.availability))).join(' ');
+  /** Com 30 dias na régua, um rótulo por ponto vira borrão: mostra de N em N. */
+  const passoRotulo = Math.max(1, Math.ceil(fleetSeries.length / 8));
 
   const filteredLatest = useMemo(() => latest.records
     .filter(item => fleetFilter === 'Todos' || normalizeFleetStatus(item.status) === fleetFilter)
@@ -213,7 +232,7 @@ export default function Dashboard({
                 <strong className="text-4xl font-semibold tracking-[-0.05em] tabular-nums">{activePoint.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</strong>
                 <span className="pb-1 text-xs text-[#758188]">{activePoint.operating} operando de {activePoint.records.length}</span>
               </div>
-              {fleetSeries.length ? (
+              {pontosMedidos.length ? (
                 <div className="relative mt-5 overflow-hidden border-y border-[#e4e9e6] py-4">
                   <svg viewBox={'0 0 ' + chartWidth + ' ' + chartHeight} className="h-56 w-full" role="img" aria-label="Evolução da disponibilidade da frota">
                     {[25, 50, 75, 100].map(value => (
@@ -225,11 +244,21 @@ export default function Dashboard({
                     <polyline key={`${periodDays}-${linePoints}`} className="dashboard-trend-line" points={linePoints} fill="none" stroke="#238657" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" pathLength="1" />
                     {fleetSeries.map((item, index) => (
                       <g key={item.date} className="dashboard-trend-point" style={{ animationDelay: `${260 + index * 65}ms` }}>
-                        <circle cx={xAt(index)} cy={yAt(item.availability)} r={index === activePointIndex ? 6 : 4} fill="#fff" stroke={index === activePointIndex ? '#ed5d24' : '#238657'} strokeWidth="3" />
-                        <text x={xAt(index)} y={chartHeight - 2} textAnchor="middle" fill="#78858b" fontSize="9">{shortDate(item.date)}</text>
-                        <circle cx={xAt(index)} cy={yAt(item.availability)} r="15" fill="transparent" className="cursor-pointer"
-                          onClick={() => setSelectedDate(item.date)}>
-                          <title>{formatDate(item.date) + ': ' + item.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'}</title>
+                        {item.semDados ? (
+                          /* Marca de "não teve lançamento" fica abaixo da linha
+                             de base: um ponto em cima dela seria lido como 0%. */
+                          <line x1={xAt(index)} x2={xAt(index)} y1={yAt(0) + 3} y2={yAt(0) + 8} stroke="#c7d2cc" strokeWidth="2" strokeLinecap="round" />
+                        ) : (
+                          <circle cx={xAt(index)} cy={yAt(item.availability)} r={index === activePointIndex ? 6 : 4} fill="#fff" stroke={index === activePointIndex ? '#ed5d24' : '#238657'} strokeWidth="3" />
+                        )}
+                        {index % passoRotulo === 0 || index === fleetSeries.length - 1 ? (
+                          <text x={xAt(index)} y={chartHeight - 2} textAnchor="middle" fill="#78858b" fontSize="9">{shortDate(item.date)}</text>
+                        ) : null}
+                        <circle cx={xAt(index)} cy={item.semDados ? yAt(0) : yAt(item.availability)} r="15" fill="transparent" className={item.semDados ? '' : 'cursor-pointer'}
+                          onClick={() => { if (!item.semDados) setSelectedDate(item.date); }}>
+                          <title>{item.semDados
+                            ? formatDate(item.date) + ': sem lançamento de frota'
+                            : formatDate(item.date) + ': ' + item.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'}</title>
                         </circle>
                       </g>
                     ))}
@@ -240,7 +269,7 @@ export default function Dashboard({
                   </div>
                 </div>
               ) : (
-                <div className="mt-5 flex h-56 items-center justify-center border-y border-[#e4e9e6] text-sm text-[#7a878c]">Sem histórico de frota no período</div>
+                <div className="mt-5 flex h-56 items-center justify-center border-y border-[#e4e9e6] text-sm text-[#7a878c]">Sem lançamento de frota nos últimos {periodDays} dias</div>
               )}
             </div>
           </Panel>

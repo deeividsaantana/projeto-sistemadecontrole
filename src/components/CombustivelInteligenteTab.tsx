@@ -164,11 +164,19 @@ const statusTone: Record<string, string> = {
   'Erro de importação': 'border-rose-500/30 bg-rose-500/10 text-rose-700',
 };
 
+/**
+ * A origem já vem escrita no próprio selo, então a cor é reforço, não a chave
+ * de leitura: cinco matizes viravam arco-íris sem informar nada a mais. Ficam
+ * duas — verde para o que entrou por arquivo, laranja para o que a IA leu de
+ * PDF ou foto e por isso merece conferência — e o resto em cinza. O par
+ * verde/laranja passa nas seis checagens de paleta (ΔE 25,6 na visão normal,
+ * 9,2 em protanopia).
+ */
 const sourceTone: Record<string, string> = {
-  Manual: 'bg-sky-500/10 text-sky-700',
-  Planilha: 'bg-violet-500/10 text-violet-700',
-  OneDrive: 'bg-emerald-500/10 text-emerald-700',
-  'PDF/Foto IA': 'bg-cyan-500/10 text-cyan-700',
+  Manual: 'bg-slate-100 text-slate-700',
+  Planilha: 'bg-emerald-50 text-emerald-800',
+  OneDrive: 'bg-emerald-50 text-emerald-800',
+  'PDF/Foto IA': 'bg-orange-50 text-orange-800',
   'Legado Access': 'bg-[#eef2f0] text-[#3d4a44]',
 };
 const OPERATIONAL_LOCATIONS = ['Ramo 100', 'Ramo 200', 'Ramo 300', 'Ramo 500', 'Ramo 600', 'Ramo 700', 'Ramo 800', 'Ramo 900', 'Ramo 1000', 'Ramo 1100', 'Ramo 1200', 'Ramo 1300', 'Ramo 1400', 'SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica'];
@@ -1132,16 +1140,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           <section className="fuel-command-center grid overflow-hidden border border-slate-200 bg-white xl:grid-cols-[minmax(0,1.25fr)_minmax(22rem,.75fr)]">
             <div className="fuel-command-center__lead relative min-h-[22rem] overflow-hidden p-6 md:p-8">
               <div className="fuel-command-center__photo" aria-hidden="true" />
-              <div className="relative z-[2] flex h-full max-w-[44rem] flex-col justify-between">
+              <div className="relative z-[2] flex h-full max-w-[34rem] flex-col justify-between">
                 <div><span className="text-[10px] font-black uppercase tracking-[.24em] text-emerald-700">Centro de consumo</span><h2 className="mt-2 max-w-xl text-3xl font-black leading-[.98] tracking-[-.055em] text-slate-950 md:text-5xl">Combustível sob controle, do campo à conferência.</h2><p className="mt-3 max-w-lg text-sm leading-6 text-slate-600">Volume, custo e rastreabilidade calculados diretamente sobre os registros do período.</p></div>
                 <div className="mt-10"><span className="text-[10px] font-black uppercase tracking-[.18em] text-slate-500">Volume no recorte</span><div className="mt-1 flex flex-wrap items-baseline gap-x-3"><strong data-fuel-metric className="text-5xl font-black leading-none tracking-[-.065em] text-emerald-700 md:text-7xl">{formatNumber(dashboard.totalLiters, 0)}</strong><span className="text-xl font-black text-emerald-800">litros</span></div><p className="mt-2 text-xs font-semibold text-slate-500">{filteredRecords.length.toLocaleString('pt-BR')} lançamentos · {dashboard.uniqueEquipment.toLocaleString('pt-BR')} equipamentos</p></div>
               </div>
             </div>
             <div className="grid gap-px border-t border-slate-200 bg-slate-200 sm:grid-cols-2 xl:border-l xl:border-t-0">
               {[
-                ['Custo informado', dashboard.totalCost.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}), 'Registros com valor por litro', CircleDollarSign, 'text-emerald-700'],
-                ['Média por lançamento', `${filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0'} L`, 'Volume médio abastecido', Gauge, 'text-sky-700'],
-                ['Importados', filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length.toLocaleString('pt-BR'), 'Planilha, PDF ou foto', FileSpreadsheet, 'text-violet-700'],
+                ['Custo informado', dashboard.totalCost.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}), 'Registros com valor por litro', CircleDollarSign, 'text-slate-800'],
+                ['Média por lançamento', `${filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0'} L`, 'Volume médio abastecido', Gauge, 'text-slate-800'],
+                ['Importados', filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length.toLocaleString('pt-BR'), 'Planilha, PDF ou foto', FileSpreadsheet, 'text-slate-800'],
                 ['Aguardando conferência', dashboard.pendingReview.toLocaleString('pt-BR'), `${dashboard.alerts} alertas · ${dashboard.critical} críticos`, ClipboardCheck, dashboard.pendingReview ? 'text-amber-700' : 'text-emerald-700'],
               ].map(([label,value,detail,Icon,tone]) => <button type="button" key={String(label)} data-fuel-metric onClick={() => label === 'Aguardando conferência' ? setView('conferencia') : undefined} className="group min-h-44 bg-white p-5 text-left transition-colors hover:bg-emerald-50/40"><div className="flex items-start justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[.14em] text-slate-500">{label as string}</span><Icon className="h-5 w-5 text-slate-400 group-hover:text-emerald-700" /></div><strong className={`mt-7 block text-3xl font-black tracking-[-.045em] ${tone as string}`}>{value as string}</strong><span className="mt-2 block text-xs leading-5 text-slate-500">{detail as string}</span></button>)}
             </div>
@@ -1187,7 +1195,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   <h2 className="font-bold text-[#14231e]">Origem dos dados</h2>
                   <span className="text-xs text-[#65716b]">Rastreabilidade dos lançamentos</span>
                 </div>
-                <Database className="text-violet-700" size={20} />
+                <Database className="text-emerald-700" size={20} />
               </div>
               <div className="space-y-4 p-5">
                 {sourceDistribution.map(([source, count]) => (
@@ -1200,7 +1208,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     </div>
                     <div className="h-1.5 bg-[#f7f9f8]">
                       <div data-fuel-line
-                        className="h-full bg-violet-500"
+                        className="h-full bg-emerald-700"
                         style={{ width: `${(count / Math.max(1, filteredRecords.length)) * 100}%` }}
                       />
                     </div>
