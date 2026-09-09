@@ -64,10 +64,34 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #app-root :is(.text-red-200, .text-red-300, .text-red-400) { color: #b91c1c; }
 #app-root :is(.text-blue-200, .text-blue-300, .text-blue-400, .text-cyan-300) { color: #0369a1; }
 #app-root :is(.text-violet-200, .text-violet-300, .text-violet-400) { color: #6d28d9; }
-#app-root .text-white { color: var(--renea-ink); }
+/* .text-white só vira tinta escura onde o fundo escuro foi clareado logo
+   acima — nunca sobre um botão colorido. A regra anterior escurecia todo
+   .text-white e devolvia o branco por uma lista de exceções que não incluía
+   emerald-700, rose-700, amber-600/500 nem slate-500: 53 botões verdes ficaram
+   com texto verde-escuro em cima de verde-escuro, ilegíveis. Aqui a inversão é
+   a segurança: quem não estiver sobre um fundo legado clareado continua
+   branco. */
+#app-root :is(.bg-slate-950, .bg-slate-900, .bg-slate-850, .bg-slate-800, .bg-slate-700).text-white,
+#app-root :is(.bg-slate-950, .bg-slate-900, .bg-slate-850, .bg-slate-800, .bg-slate-700) .text-white,
+#app-root [class^="bg-slate-950/"].text-white, #app-root [class*=" bg-slate-950/"].text-white,
+#app-root [class^="bg-slate-900/"].text-white, #app-root [class*=" bg-slate-900/"].text-white { color: var(--renea-ink); }
 
-#app-root :is(.bg-emerald-600, .bg-emerald-500, .bg-rose-600, .bg-red-600, .bg-blue-600, .bg-cyan-600, .bg-indigo-600, .bg-slate-700).text-white,
-#app-root :is(.bg-emerald-600, .bg-emerald-500, .bg-rose-600, .bg-red-600, .bg-blue-600, .bg-cyan-600, .bg-indigo-600, .bg-slate-700) .text-white { color: #fff; }
+/* Fundo colorido continua com texto branco, inclusive aninhado dentro de um
+   container legado que foi clareado. */
+#app-root :is(
+  .bg-emerald-500, .bg-emerald-600, .bg-emerald-700, .bg-emerald-800, .bg-emerald-900,
+  .bg-rose-500, .bg-rose-600, .bg-rose-700, .bg-red-500, .bg-red-600, .bg-red-700,
+  .bg-amber-500, .bg-amber-600, .bg-amber-700, .bg-orange-500, .bg-orange-600,
+  .bg-blue-600, .bg-blue-700, .bg-cyan-600, .bg-indigo-600, .bg-violet-600,
+  .bg-sky-600, .bg-teal-600, .bg-slate-500, .bg-slate-600
+):is(.text-white, [class*="text-white"]),
+#app-root :is(
+  .bg-emerald-500, .bg-emerald-600, .bg-emerald-700, .bg-emerald-800, .bg-emerald-900,
+  .bg-rose-500, .bg-rose-600, .bg-rose-700, .bg-red-500, .bg-red-600, .bg-red-700,
+  .bg-amber-500, .bg-amber-600, .bg-amber-700, .bg-orange-500, .bg-orange-600,
+  .bg-blue-600, .bg-blue-700, .bg-cyan-600, .bg-indigo-600, .bg-violet-600,
+  .bg-sky-600, .bg-teal-600, .bg-slate-500, .bg-slate-600
+) .text-white { color: #fff; }
 
 #app-root option, #app-root select { background-color: #fff; color: #33413b; }
 #app-root :is(button, a, input, select, textarea) { transition-duration: 240ms; transition-timing-function: cubic-bezier(.32,.72,0,1); }
@@ -458,7 +482,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   z-index: 2;
   display: grid;
   gap: .3rem;
-  padding: clamp(1.15rem, .7rem + 1.5vw, 2.35rem) var(--renea-page-inset-x, 1rem);
+  padding: clamp(1.15rem, .7rem + 1.5vw, 2.35rem) var(--renea-page-gutter, var(--renea-page-inset-x, 1rem));
   animation: renea-header-in 420ms cubic-bezier(.32, .72, 0, 1) both;
 }
 
@@ -495,7 +519,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   flex-wrap: wrap;
   align-items: center;
   gap: .55rem;
-  padding: .85rem var(--renea-page-inset-x, 0px) 0;
+  padding: .85rem var(--renea-page-gutter, var(--renea-page-inset-x, 0px)) 0;
 }
 
 @keyframes renea-header-in {
@@ -540,8 +564,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
    coluna do resto da página. Cada medida soma o recuo da própria tela
    (px-4 / sm:px-7 / lg:px-9) ao do #main-tab-viewport que a envolve
    (p-3.5 / sm:p-4 / md:p-7 / 2xl:p-10) — é essa soma que leva a faixa até a
-   borda do espaço de trabalho e, ao mesmo tempo, alinha o título com o
-   conteúdo da página. */
+   borda do espaço de trabalho. O --renea-page-gutter separa as duas coisas
+   para quem já vive sem recuo, como o painel: lá a faixa não sangra nada e
+   só o texto recua, para alinhar com o conteúdo abaixo. */
 .renea-page { --renea-page-inset-x: 1.875rem; --renea-page-inset-top: 2.375rem; }
 @media (min-width: 640px) { .renea-page { --renea-page-inset-x: 2.75rem; --renea-page-inset-top: 2.5rem; } }
 @media (min-width: 768px) { .renea-page { --renea-page-inset-x: 3.5rem; --renea-page-inset-top: 3.25rem; } }
@@ -568,3 +593,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
    claro da tela para no recuo do container e deixava uma moldura branca em
    volta. Aqui o fundo passa para o container, e a página fica contínua. */
 #main-tab-viewport:has(.renea-page) { background: #f7f8f6; }
+
+/* O painel tem recuo próprio (px-4 / sm:px-6 / lg:px-8) e vive num viewport sem
+   padding, então declara as próprias medidas. */
+.renea-page-dashboard { --renea-page-inset-x: 0px; --renea-page-inset-top: 0px; --renea-page-gutter: 1rem; }
+@media (min-width: 640px) { .renea-page-dashboard { --renea-page-gutter: 1.5rem; } }
+@media (min-width: 1024px) { .renea-page-dashboard { --renea-page-gutter: 2rem; } }

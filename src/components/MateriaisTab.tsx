@@ -13,6 +13,7 @@ import {
   EmptyState,
   Modal,
   PageHeader,
+  SegmentedControl,
   SearchInput,
   StatCard,
   TableBody,
@@ -194,19 +195,13 @@ export default function MateriaisTab({
         ))}
       </section>
 
-      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
-        {([['estoque', 'Estoque'], ['movimentos', 'Movimentos'], ['cadastro', 'Cadastro']] as const).map(([id, rotulo]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setAba(id)}
-            aria-pressed={aba === id}
-            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            {rotulo}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        className="mt-4"
+        label="Seções de materiais"
+        items={[{ id: 'estoque', label: 'Estoque' }, { id: 'movimentos', label: 'Movimentos' }, { id: 'cadastro', label: 'Cadastro' }] as const}
+        value={aba}
+        onChange={setAba}
+      />
 
       <SearchInput
         className="mt-3"

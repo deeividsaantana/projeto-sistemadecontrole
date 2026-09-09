@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  * fazia à mão a cada versão.
  */
 const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
-  { screen: 'painel', titulo: 'Painel de Controle' },
+  { screen: 'painel', titulo: 'Visão operacional' },
   { screen: 'central-operacional', titulo: 'Central Operacional' },
   { screen: 'frota', titulo: 'Frota' },
   { screen: 'manutencao', titulo: 'Manutenção' },

@@ -12,6 +12,7 @@ import type {
   RegistroProducao, StatusControleEquipamentoDiario, TicketJazida, TipoCombustivel,
 } from '../types';
 import { instanteDoHistorico } from '../utils/formato';
+import { PageHeader } from '../shared/ui';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -132,7 +133,7 @@ function Indicador({ label, valor, contexto, proporcao, cor, icone: Icone, onCli
           </span>
           <span className="text-[11px] font-semibold leading-tight text-slate-600">{label}</span>
         </span>
-        <ChevronRight className="hidden size-3.5 shrink-0 text-slate-300 group-hover:text-emerald-600 sm:block" aria-hidden="true" />
+        <ChevronRight className="hidden size-3.5 shrink-0 text-slate-700 group-hover:text-emerald-600 sm:block" aria-hidden="true" />
       </span>
       <strong className="block text-2xl font-bold leading-none tabular-nums text-slate-900">{valor}</strong>
       <span className="block text-[10px] leading-snug text-slate-500">{contexto}</span>
@@ -410,21 +411,14 @@ export default function Dashboard({
   const filtroAtivo = Boolean(tipo || familia || situacao);
 
   return (
-    <div id="dashboard-tab" className="min-h-full bg-[#f8f7f4] pb-14">
-      <div className="border-b border-slate-200 bg-white px-4 pt-5 sm:px-6 lg:px-8">
-        <div className="flex flex-col justify-between gap-3 pb-4 sm:flex-row sm:items-end">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">Visão operacional</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-950">Painel de Controle</h1>
-            <p className="mt-1 truncate text-xs text-slate-500">
-              {obra?.nome || 'Obra não informada'} · {rotuloPeriodo}
-            </p>
-          </div>
-          <p className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-            {numero(analise.janela.length)} lançamentos de frota no período
-          </p>
-        </div>
+    <div id="dashboard-tab" className="renea-page-dashboard min-h-full bg-[#f8f7f4] pb-14">
+      <PageHeader
+        eyebrow="Operação em tempo real"
+        photo="rodovia-duplicada"
+        title="Visão operacional"
+        description={`${obra?.nome || 'Obra não informada'} · ${rotuloPeriodo}`}
+      />
+      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
         <nav className="-mx-4 flex overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" aria-label="Módulos da obra">
           {PROJECT_TABS.map(aba => (
             <button
@@ -499,11 +493,17 @@ export default function Dashboard({
               Limpar filtros
             </button>
           )}
+          {/* Quantos lançamentos sustentam os números da tela: fica junto dos
+              filtros porque é o filtro que muda esse total. */}
+          <p className="ml-auto flex items-center gap-2 text-[11px] font-medium text-slate-600">
+            <span className="size-2 rounded-full bg-emerald-600" aria-hidden="true" />
+            {numero(analise.janela.length)} lançamentos de frota no período
+          </p>
         </div>
 
         {semDados ? (
           <div className="mt-3 flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-6 text-center">
-            <Truck className="size-7 text-slate-300" strokeWidth={1.6} aria-hidden="true" />
+            <Truck className="size-7 text-slate-700" strokeWidth={1.6} aria-hidden="true" />
             <div>
               <p className="text-sm font-bold text-slate-800">Nenhum lançamento de frota registrado</p>
               <p className="mt-1 text-xs text-slate-500">O painel é montado a partir do controle operacional diário.</p>
@@ -540,7 +540,7 @@ export default function Dashboard({
 
             {semDadosNoPeriodo ? (
               <div className="mt-3 flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-center">
-                <Clock3 className="size-6 text-slate-300" strokeWidth={1.6} aria-hidden="true" />
+                <Clock3 className="size-6 text-slate-700" strokeWidth={1.6} aria-hidden="true" />
                 <p className="text-sm font-bold text-slate-800">Sem lançamentos nos últimos {periodo} dias</p>
                 <p className="text-xs text-slate-500">Aumente o período ou limpe os filtros para ver o histórico.</p>
               </div>

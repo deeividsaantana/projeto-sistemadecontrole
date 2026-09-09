@@ -625,7 +625,12 @@ createRoot(document.getElementById('app-root')!).render(
       id="main-tab-viewport"
       // Mesmo recuo do App.tsx: o cabeçalho editorial sangra até a borda deste
       // container, então o preview só é confiável se ele tiver a medida real.
-      className="mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10"
+      // O painel roda sem recuo no App.tsx (dashboard-viewport); as demais telas
+      // ficam dentro do padding. O preview precisa das duas medidas para valer
+      // como verificação de largura.
+      className={key === 'painel'
+        ? 'dashboard-viewport mx-auto w-full'
+        : 'mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10'}
       style={{ background: '#fff', minHeight: '100vh' }}
     >
       {screens[key] ?? <p>Tela desconhecida: {key}</p>}

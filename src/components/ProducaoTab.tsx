@@ -17,6 +17,7 @@ import {
   EmptyState,
   Modal,
   PageHeader,
+  SegmentedControl,
   ProgressBar,
   SearchInput,
   StatCard,
@@ -212,19 +213,13 @@ export default function ProducaoTab({
         </section>
       )}
 
-      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
-        {([['avanco', 'Avanço'], ['lancamentos', 'Lançamentos'], ['servicos', 'Serviços']] as const).map(([id, rotulo]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setAba(id)}
-            aria-pressed={aba === id}
-            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            {rotulo}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        className="mt-4"
+        label="Seções de produção"
+        items={[{ id: 'avanco', label: 'Avanço' }, { id: 'lancamentos', label: 'Lançamentos' }, { id: 'servicos', label: 'Serviços' }] as const}
+        value={aba}
+        onChange={setAba}
+      />
 
       <SearchInput
         className="mt-3"

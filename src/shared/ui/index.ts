@@ -14,6 +14,7 @@ export { Modal } from './Modal';
 export { PeriodFilter, buildPeriod, isoDay, type PeriodPreset, type PeriodValue } from './PeriodFilter';
 export { TextInput } from './TextInput';
 export { PageHeader } from './PageHeader';
+export { SegmentedControl, type SegmentedItem } from './SegmentedControl';
 export { Pagination } from './Pagination';
 export { StatCard } from './StatCard';
 export { TableBody, TableHead, TableShell } from './TableShell';

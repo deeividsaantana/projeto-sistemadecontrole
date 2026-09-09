@@ -7,13 +7,13 @@ interface OperationalAnalysisPanelProps {
 
 const tone = {
   dark: {
-    section: 'border border-cyan-500/30 bg-cyan-500/5 p-4 text-slate-100',
-    card: 'border border-slate-800 bg-slate-900/60 p-3',
-    nested: 'border border-slate-800 bg-slate-950/60 p-2',
+    section: 'border border-cyan-500/30 bg-cyan-500/5 p-4 text-slate-700',
+    card: 'border border-slate-200 bg-white p-3',
+    nested: 'border border-slate-200 bg-white p-2',
     title: 'text-white',
     muted: 'text-slate-400',
-    body: 'text-slate-200',
-    metric: 'text-cyan-300',
+    body: 'text-slate-700',
+    metric: 'text-cyan-700',
   },
   light: {
     section: 'rounded-md border border-cyan-200 bg-cyan-50 p-4 text-slate-900',

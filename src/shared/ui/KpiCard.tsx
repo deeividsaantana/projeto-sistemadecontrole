@@ -47,15 +47,15 @@ export function KpiCard({
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-2">
+        <span className="flex min-w-0 items-start gap-2">
           {Icone && (
             <span className={cn('grid size-8 shrink-0 place-items-center rounded-lg', cores.icone)}>
               <Icone className="h-4 w-4" strokeWidth={2.2} />
             </span>
           )}
-          <span className="min-w-0 truncate text-[12px] font-semibold text-slate-600">{label}</span>
+          <span className="min-w-0 text-[12px] font-semibold leading-tight text-slate-600">{label}</span>
         </span>
-        {onClick && <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-emerald-600" />}
+        {onClick && <ChevronRight className="h-4 w-4 shrink-0 text-slate-700 transition-colors group-hover:text-emerald-600" />}
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-2">
@@ -118,7 +118,7 @@ export function CompactMetric({
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[12px] font-semibold text-slate-600">{label}</span>
+        <span className="block text-[12px] font-semibold leading-tight text-slate-600">{label}</span>
         <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
           <strong className="text-[22px] font-bold leading-none tabular-nums text-slate-900">{valor}</strong>
           {contexto && <span className="text-[11px] text-slate-500">{contexto}</span>}

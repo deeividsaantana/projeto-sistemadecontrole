@@ -24,6 +24,7 @@ import {
   EmptyState,
   Modal,
   PageHeader,
+  SegmentedControl,
   Pagination,
   SearchInput,
   StatCard,
@@ -219,19 +220,13 @@ export default function DocumentosTab({
         ))}
       </section>
 
-      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
-        {([['todos', 'Todos'], ['alertas', 'Vencidos e vencendo']] as const).map(([id, rotulo]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setFiltro(id)}
-            aria-pressed={filtro === id}
-            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${filtro === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            {rotulo}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        className="mt-4"
+        label="Filtro de documentos"
+        items={[{ id: 'todos', label: 'Todos' }, { id: 'alertas', label: 'Vencidos e vencendo' }] as const}
+        value={filtro}
+        onChange={setFiltro}
+      />
 
       <SearchInput
         className="mt-3"

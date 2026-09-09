@@ -6,7 +6,7 @@ import { useMemo, useRef, useState } from 'react';
 import { AlertTriangle, GraduationCap, Paperclip, Plus, ShieldCheck } from 'lucide-react';
 import type { Funcionario, RegistroDDS, Treinamento } from '../types';
 import { DIAS_ALERTA_VENCIMENTO, situacaoTreinamento, treinamentosParaAlertar } from '../utils/treinamentos';
-import { Badge, Card, EmptyState, Modal, PageHeader, TableBody, TableHead, TableShell, isoDay } from '../shared/ui';
+import { Badge, Card, EmptyState, Modal, SegmentedControl, PageHeader, TableBody, TableHead, TableShell, isoDay } from '../shared/ui';
 
 interface DdsTreinamentosTabProps {
   registrosDds: RegistroDDS[];
@@ -153,19 +153,13 @@ export default function DdsTreinamentosTab({
         </div>
       )}
 
-      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
-        {([['dds', 'DDS'], ['treinamentos', 'Treinamentos']] as const).map(([id, rotulo]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setAba(id)}
-            aria-pressed={aba === id}
-            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            {rotulo}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        className="mt-4"
+        label="Seções de DDS e treinamentos"
+        items={[{ id: 'dds', label: 'DDS' }, { id: 'treinamentos', label: 'Treinamentos' }] as const}
+        value={aba}
+        onChange={setAba}
+      />
 
       {aba === 'dds' ? (
         <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">

@@ -120,7 +120,7 @@ export default function NotificacoesTab({
                 >
                   <StatusBadge>{alerta.titulo}</StatusBadge>
                   <span className="min-w-0 flex-1 truncate text-[13px] text-slate-700">{alerta.mensagem}</span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-700" />
                 </button>
               </li>
             ))}

@@ -101,7 +101,7 @@ export default function PermissoesTab() {
                     <td key={capacidade} className="p-3">
                       {permitido
                         ? <Check className="h-4 w-4 text-emerald-600" aria-label="permitido" />
-                        : <Minus className="h-4 w-4 text-slate-300" aria-label="não permitido" />}
+                        : <Minus className="h-4 w-4 text-slate-700" aria-label="não permitido" />}
                     </td>
                   );
                 })}

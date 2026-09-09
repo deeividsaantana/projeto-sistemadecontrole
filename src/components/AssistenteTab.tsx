@@ -118,7 +118,7 @@ export default function AssistenteTab({ dados, onNavigate }: AssistenteTabProps)
       <div className="mt-5 space-y-3">
         {historico.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-            <Bot className="mx-auto h-6 w-6 text-slate-300" />
+            <Bot className="mx-auto h-6 w-6 text-slate-700" />
             <p className="mt-2 text-[14px] font-semibold text-slate-700">Pergunte alguma coisa sobre a obra</p>
             <p className="mt-1 text-[12px] text-slate-500">
               O assistente lê pendências, produção, frota, presença, custos, qualidade e a linha do tempo do período

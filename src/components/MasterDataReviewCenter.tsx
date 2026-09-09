@@ -72,10 +72,10 @@ const statusLabel = {
 } as const;
 
 const statusClass = {
-  ready: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-  matched: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300',
-  duplicate: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  invalid: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+  ready: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700',
+  matched: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700',
+  duplicate: 'border-amber-500/30 bg-amber-500/10 text-amber-700',
+  invalid: 'border-rose-500/30 bg-rose-500/10 text-rose-700',
 } as const;
 
 const columns: ColumnDef<MasterWorkbookReviewRow>[] = [
@@ -87,7 +87,7 @@ const columns: ColumnDef<MasterWorkbookReviewRow>[] = [
   {
     accessorKey: 'displayValue',
     header: 'Valor de origem',
-    cell: info => <strong className="text-slate-100">{String(info.getValue() || 'Sem valor')}</strong>,
+    cell: info => <strong className="text-slate-700">{String(info.getValue() || 'Sem valor')}</strong>,
   },
   {
     accessorKey: 'canonicalKey',
@@ -112,7 +112,7 @@ const columns: ColumnDef<MasterWorkbookReviewRow>[] = [
     id: 'issues',
     header: 'Alertas',
     accessorFn: row => row.issues.join(' '),
-    cell: info => <span className="text-[10px] leading-relaxed text-amber-200">{String(info.getValue() || 'Sem alertas')}</span>,
+    cell: info => <span className="text-[10px] leading-relaxed text-amber-700">{String(info.getValue() || 'Sem alertas')}</span>,
   },
 ];
 
@@ -284,14 +284,14 @@ export default function MasterDataReviewCenter({
   };
 
   return (
-    <section className="rounded-2xl border border-emerald-500/20 bg-slate-900 p-5 shadow-xl" id="master-data-review-center">
+    <section className="rounded-2xl border border-emerald-500/20 bg-white p-5 shadow-xl" id="master-data-review-center">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <div className="mb-2 flex items-center gap-2 text-emerald-300">
+          <div className="mb-2 flex items-center gap-2 text-emerald-700">
             <Database className="h-5 w-5" />
             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Cadastros Mestres v3.2</span>
           </div>
-          <h2 className="text-lg font-extrabold text-white">Central de importação, aliases e duplicidades</h2>
+          <h2 className="text-lg font-extrabold text-slate-800">Central de importação, aliases e duplicidades</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-400">
             Analisa empresas, fornecedores, locais, colaboradores, equipamentos, veículos e identificadores SGE.
             Depois da conferência, os cadastros válidos podem ser aplicados ao ERP; duplicidades e linhas inválidas continuam preservadas para revisão.
@@ -300,8 +300,8 @@ export default function MasterDataReviewCenter({
         <div className="flex flex-wrap items-center gap-2">
           <div className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-[10px] font-black uppercase ${
             gatewayQuery.data?.configured
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-              : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'
+              : 'border-amber-500/30 bg-amber-500/10 text-amber-700'
           }`}>
             {gatewayQuery.isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}
                 {gatewayQuery.data?.configured ? 'Camada protegida pronta' : 'Modo local preservado'}
@@ -320,33 +320,33 @@ export default function MasterDataReviewCenter({
       </div>
 
       {(analysisError || gatewayQuery.error) && (
-        <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+        <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-700">
                 {analysisError || (gatewayQuery.error instanceof Error ? gatewayQuery.error.message : 'Persistência protegida ainda não configurada.')}
         </div>
       )}
 
       {!analysis ? (
-        <div className="mt-5 grid min-h-36 place-items-center rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-6 text-center">
+        <div className="mt-5 grid min-h-36 place-items-center rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center">
           <div>
             <FileSearch className="mx-auto h-8 w-8 text-slate-600" />
-            <p className="mt-2 text-sm font-bold text-slate-300">Nenhuma planilha mestre em revisão</p>
+            <p className="mt-2 text-sm font-bold text-slate-700">Nenhuma planilha mestre em revisão</p>
               <p className="mt-1 text-[10px] text-slate-500">A análise não altera os cadastros atuais e preserva a revisão com segurança.</p>
           </div>
         </div>
       ) : (
         <div className="mt-5 space-y-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><span className="block text-[9px] font-bold uppercase text-slate-500">Linhas mestre</span><strong className="text-xl text-white">{analysis.totalMasterRows}</strong></div>
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-emerald-400">Novas</span><strong className="text-xl text-white">{analysis.rows.filter(row => row.status === 'ready').length}</strong></div>
-            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-cyan-400">Já cadastradas</span><strong className="text-xl text-white">{analysis.rows.filter(row => row.status === 'matched').length}</strong></div>
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-amber-400">Duplicadas</span><strong className="text-xl text-white">{analysis.rows.filter(row => row.status === 'duplicate').length}</strong></div>
-            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-rose-400">Inválidas</span><strong className="text-xl text-white">{analysis.rows.filter(row => row.status === 'invalid').length}</strong></div>
+            <div className="rounded-xl border border-slate-200 bg-white p-3"><span className="block text-[9px] font-bold uppercase text-slate-500">Linhas mestre</span><strong className="text-xl text-slate-800">{analysis.totalMasterRows}</strong></div>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-emerald-700">Novas</span><strong className="text-xl text-slate-800">{analysis.rows.filter(row => row.status === 'ready').length}</strong></div>
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-cyan-700">Já cadastradas</span><strong className="text-xl text-slate-800">{analysis.rows.filter(row => row.status === 'matched').length}</strong></div>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-amber-700">Duplicadas</span><strong className="text-xl text-slate-800">{analysis.rows.filter(row => row.status === 'duplicate').length}</strong></div>
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3"><span className="block text-[9px] font-bold uppercase text-rose-700">Inválidas</span><strong className="text-xl text-slate-800">{analysis.rows.filter(row => row.status === 'invalid').length}</strong></div>
           </div>
 
           <div className="flex flex-col gap-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <strong className="text-sm text-emerald-100">Atualizar os cadastros usados pelo sistema</strong>
-              <p className="mt-1 max-w-3xl text-[10px] leading-relaxed text-slate-300">
+              <p className="mt-1 max-w-3xl text-[10px] leading-relaxed text-slate-700">
                 Empresas, locais, colaboradores, equipamentos e veículos serão criados ou atualizados pela chave mestre.
                 Linhas incompletas, duplicadas e vínculos não localizados permanecem na fila de revisão, sem descarte.
               </p>
@@ -365,14 +365,14 @@ export default function MasterDataReviewCenter({
           {applyOutcome && (
             <div className={`rounded-xl border px-4 py-3 text-xs font-bold ${
               applyOutcome.success
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                : 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'
+                : 'border-rose-500/30 bg-rose-500/10 text-rose-700'
             }`}>
               {applyOutcome.message}
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+          <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
             {analysis.summaries.map(summary => (
               <button
                 key={summary.entity}
@@ -383,8 +383,8 @@ export default function MasterDataReviewCenter({
                 }}
                 className={`rounded-lg border px-3 py-2 text-[10px] font-black uppercase transition ${
                   activeEntity === summary.entity
-                    ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300'
-                    : 'border-slate-700 bg-slate-950 text-slate-400 hover:text-white'
+                    ? 'border-emerald-500 bg-emerald-500/15 text-emerald-700'
+                    : 'border-slate-200 bg-white text-slate-400 hover:text-white'
                 }`}
               >
                 {MASTER_DATA_ENTITY_LABELS[summary.entity]} · {summary.totalRows}
@@ -394,7 +394,7 @@ export default function MasterDataReviewCenter({
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <strong className="text-sm text-white">{MASTER_DATA_ENTITY_LABELS[activeEntity]}</strong>
+              <strong className="text-sm text-slate-800">{MASTER_DATA_ENTITY_LABELS[activeEntity]}</strong>
               <span className="ml-2 text-[10px] text-slate-500">{table.getFilteredRowModel().rows.length} linha(s)</span>
             </div>
             <label className="relative block w-full sm:w-80">
@@ -403,15 +403,15 @@ export default function MasterDataReviewCenter({
                 value={globalFilter}
                 onChange={event => setGlobalFilter(event.target.value)}
                 placeholder="Buscar valor, chave ou alerta..."
-                className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950 pl-9 pr-3 text-xs text-white outline-none focus:border-emerald-500"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs text-slate-800 outline-none focus:border-emerald-500"
               />
             </label>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-800">
+          <div className="overflow-hidden rounded-xl border border-slate-200">
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-xs">
-                <thead className="bg-slate-950 text-[9px] uppercase tracking-wider text-slate-500">
+                <thead className="bg-white text-[9px] uppercase tracking-wider text-slate-500">
                   {table.getHeaderGroups().map(headerGroup => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map(header => (
@@ -422,9 +422,9 @@ export default function MasterDataReviewCenter({
                     </tr>
                   ))}
                 </thead>
-                <tbody className="divide-y divide-slate-800 bg-slate-900">
+                <tbody className="divide-y divide-slate-800 bg-white">
                   {table.getRowModel().rows.map(row => (
-                    <tr key={row.id} className="align-top hover:bg-slate-850/60">
+                    <tr key={row.id} className="align-top hover:bg-slate-50">
                       {row.getVisibleCells().map(cell => (
                         <td key={cell.id} className="max-w-xs px-3 py-3">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -435,11 +435,11 @@ export default function MasterDataReviewCenter({
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between border-t border-slate-800 bg-slate-950 px-3 py-2">
+            <div className="flex items-center justify-between border-t border-slate-200 bg-white px-3 py-2">
               <span className="text-[10px] text-slate-500">Página {table.getState().pagination.pageIndex + 1} de {Math.max(1, table.getPageCount())}</span>
               <div className="flex gap-2">
-                <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="rounded-lg border border-slate-700 p-2 text-slate-300 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
-                <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="rounded-lg border border-slate-700 p-2 text-slate-300 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+                <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="rounded-lg border border-slate-200 p-2 text-slate-700 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+                <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="rounded-lg border border-slate-200 p-2 text-slate-700 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
               </div>
             </div>
           </div>
@@ -447,13 +447,13 @@ export default function MasterDataReviewCenter({
           {analysis.deferredSheets.length > 0 && (
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                 <div>
-                  <strong className="text-xs text-amber-200">{analysis.totalDeferredRows} linha(s) fora do escopo v2.2 não foram convertidas</strong>
+                  <strong className="text-xs text-amber-700">{analysis.totalDeferredRows} linha(s) fora do escopo v2.2 não foram convertidas</strong>
                   <p className="mt-1 text-[10px] leading-relaxed text-slate-400">Elas permanecem na planilha original. A central apenas registra quais abas serão tratadas nas versões de equipamentos e módulos operacionais.</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {analysis.deferredSheets.map(sheet => (
-                      <span key={sheet.sheetName} title={sheet.reason} className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-[9px] text-slate-400">{sheet.sheetName}: {sheet.rowCount}</span>
+                      <span key={sheet.sheetName} title={sheet.reason} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[9px] text-slate-400">{sheet.sheetName}: {sheet.rowCount}</span>
                     ))}
                   </div>
                 </div>
@@ -461,29 +461,29 @@ export default function MasterDataReviewCenter({
             </div>
           )}
 
-          <form onSubmit={submitStage} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+          <form onSubmit={submitStage} className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
               <div className="flex-1">
-                <strong className="text-sm text-white">Preservar fila de revisão protegida</strong>
+                <strong className="text-sm text-slate-800">Preservar fila de revisão protegida</strong>
                 <p className="mt-1 text-[10px] leading-relaxed text-slate-400">Cria um lote por entidade. Duplicidades, inválidos, aliases e valores originais permanecem disponíveis para decisão; nenhum cadastro é promovido automaticamente.</p>
                 <textarea
                   {...register('operatorNote')}
                   rows={2}
                   placeholder="Observação opcional da conferência"
-                  className="mt-3 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white outline-none focus:border-emerald-500"
+                  className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-emerald-500"
                 />
-                {errors.operatorNote && <p className="mt-1 text-[10px] text-rose-300">{errors.operatorNote.message}</p>}
-                <label className="mt-3 flex items-start gap-2 text-[10px] text-slate-300">
+                {errors.operatorNote && <p className="mt-1 text-[10px] text-rose-700">{errors.operatorNote.message}</p>}
+                <label className="mt-3 flex items-start gap-2 text-[10px] text-slate-700">
                   <input {...register('confirmReviewed')} type="checkbox" className="mt-0.5 accent-emerald-500" />
                   Confirmo que revisei os totais e entendo que este envio apenas prepara a homologação.
                 </label>
-                {errors.confirmReviewed && <p className="mt-1 text-[10px] text-rose-300">{errors.confirmReviewed.message}</p>}
+                {errors.confirmReviewed && <p className="mt-1 text-[10px] text-rose-700">{errors.confirmReviewed.message}</p>}
               </div>
               <button
                 type="submit"
                 disabled={stageMutation.isPending || !gatewayQuery.data?.configured}
-                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
               >
                 {stageMutation.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}
                 {stageMutation.isPending ? 'Preservando...' : 'Preservar revisão'}
@@ -494,8 +494,8 @@ export default function MasterDataReviewCenter({
           {stageMutation.data && (
             <div className={`rounded-xl border p-4 text-xs ${
               stageMutation.data.failed.length === 0
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'
+                : 'border-amber-500/30 bg-amber-500/10 text-amber-700'
             }`}>
               <div className="flex items-center gap-2 font-bold">
                 <CheckCircle2 className="h-4 w-4" />
@@ -508,25 +508,25 @@ export default function MasterDataReviewCenter({
           )}
 
           {stageMutation.error && (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-200">
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-700">
               {stageMutation.error instanceof Error ? stageMutation.error.message : 'Não foi possível preservar a revisão.'}
             </div>
           )}
           {pendingApplyConfirmation && (
-            <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-master-apply-title">
-              <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl border border-emerald-500/30 bg-slate-900 p-5 shadow-2xl">
+            <div className="fixed inset-0 z-50 grid place-items-center bg-white px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-master-apply-title">
+              <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl border border-emerald-500/30 bg-white p-5 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-300">
+                    <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-700">
                       <Database className="h-3.5 w-3.5" />
                       Acao operacional
                     </span>
-                    <h3 id="confirm-master-apply-title" className="mt-3 text-base font-black text-white">Aplicar planilha mestre?</h3>
+                    <h3 id="confirm-master-apply-title" className="mt-3 text-base font-black text-slate-800">Aplicar planilha mestre?</h3>
                   </div>
                   <button
                     type="button"
                     onClick={() => setPendingApplyConfirmation(false)}
-                    className="grid h-9 w-9 place-items-center rounded-lg border border-slate-700 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 hover:text-slate-800"
                     aria-label="Fechar confirmacao"
                   >
                     <X className="h-4 w-4" />
@@ -535,24 +535,24 @@ export default function MasterDataReviewCenter({
 
                 <div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                   <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
-                    <span className="block text-[9px] font-black uppercase text-emerald-300">Novas</span>
-                    <strong className="text-lg text-white">{analysis.rows.filter(row => row.status === 'ready').length}</strong>
+                    <span className="block text-[9px] font-black uppercase text-emerald-700">Novas</span>
+                    <strong className="text-lg text-slate-800">{analysis.rows.filter(row => row.status === 'ready').length}</strong>
                   </div>
                   <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3">
-                    <span className="block text-[9px] font-black uppercase text-cyan-300">Atualizaveis</span>
-                    <strong className="text-lg text-white">{analysis.rows.filter(row => row.status === 'matched').length}</strong>
+                    <span className="block text-[9px] font-black uppercase text-cyan-700">Atualizaveis</span>
+                    <strong className="text-lg text-slate-800">{analysis.rows.filter(row => row.status === 'matched').length}</strong>
                   </div>
                   <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
-                    <span className="block text-[9px] font-black uppercase text-amber-300">Duplicadas</span>
-                    <strong className="text-lg text-white">{analysis.rows.filter(row => row.status === 'duplicate').length}</strong>
+                    <span className="block text-[9px] font-black uppercase text-amber-700">Duplicadas</span>
+                    <strong className="text-lg text-slate-800">{analysis.rows.filter(row => row.status === 'duplicate').length}</strong>
                   </div>
                   <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3">
-                    <span className="block text-[9px] font-black uppercase text-rose-300">Invalidas</span>
-                    <strong className="text-lg text-white">{analysis.rows.filter(row => row.status === 'invalid').length}</strong>
+                    <span className="block text-[9px] font-black uppercase text-rose-700">Invalidas</span>
+                    <strong className="text-lg text-slate-800">{analysis.rows.filter(row => row.status === 'invalid').length}</strong>
                   </div>
                 </div>
 
-                <p className="mt-4 text-xs leading-relaxed text-slate-300">
+                <p className="mt-4 text-xs leading-relaxed text-slate-700">
                   O ERP vai criar ou atualizar somente linhas novas e ja correspondidas. Duplicidades, invalidos e vinculos nao localizados continuarao preservados para revisao, sem descarte automatico.
                 </p>
 
@@ -560,7 +560,7 @@ export default function MasterDataReviewCenter({
                   <button
                     type="button"
                     onClick={() => setPendingApplyConfirmation(false)}
-                    className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-xs font-bold text-slate-200 transition hover:bg-slate-800"
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
                   >
                     Cancelar
                   </button>

@@ -6,17 +6,17 @@ interface ToastViewportProps {
 }
 
 const getToastColorClass = (type: AppNotification['type']) => {
-  if (type === 'success') return 'border-emerald-500/20 bg-slate-900/95 text-emerald-400';
-  if (type === 'warning') return 'border-amber-500/20 bg-slate-900/95 text-amber-400';
-  if (type === 'error') return 'border-rose-500/20 bg-slate-900/95 text-rose-400';
-  return 'border-blue-500/20 bg-slate-900/95 text-blue-400';
+  if (type === 'success') return 'border-emerald-500/20 bg-white text-emerald-700';
+  if (type === 'warning') return 'border-amber-500/20 bg-white text-amber-700';
+  if (type === 'error') return 'border-rose-500/20 bg-white text-rose-700';
+  return 'border-blue-500/20 bg-white text-blue-700';
 };
 
 const ToastIcon = ({ type }: { type: AppNotification['type'] }) => {
-  if (type === 'success') return <CheckCircle2 className="w-5 h-5 text-emerald-400" />;
-  if (type === 'warning') return <AlertTriangle className="w-5 h-5 text-amber-400" />;
-  if (type === 'error') return <XCircle className="w-5 h-5 text-rose-400" />;
-  return <Info className="w-5 h-5 text-blue-400" />;
+  if (type === 'success') return <CheckCircle2 className="w-5 h-5 text-emerald-700" />;
+  if (type === 'warning') return <AlertTriangle className="w-5 h-5 text-amber-700" />;
+  if (type === 'error') return <XCircle className="w-5 h-5 text-rose-700" />;
+  return <Info className="w-5 h-5 text-blue-700" />;
 };
 
 export function ToastViewport({ toasts }: ToastViewportProps) {
@@ -32,12 +32,12 @@ export function ToastViewport({ toasts }: ToastViewportProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider block truncate text-slate-100">{toast.title}</span>
+                <span className="text-[10px] font-black uppercase tracking-wider block truncate text-slate-700">{toast.title}</span>
                 <span className="text-[9px] font-mono opacity-50 shrink-0 text-slate-400">{toast.timestamp}</span>
               </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed mt-1">{toast.message}</p>
+              <p className="text-[11px] text-slate-700 leading-relaxed mt-1">{toast.message}</p>
               <div className="flex items-center gap-1.5 mt-2">
-                <span className="text-[8px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md font-mono uppercase font-black">{toast.source}</span>
+                <span className="text-[8px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-700 rounded-md font-mono uppercase font-black">{toast.source}</span>
                 <span className="text-[9px] text-slate-500">Tempo Real</span>
               </div>
             </div>

@@ -27,8 +27,8 @@ const formatDate = (value?: string) => {
 
 const availabilityTone = (value: number | null, belowTarget: boolean) => {
   if (value === null) return 'text-slate-500';
-  if (belowTarget) return 'text-rose-300';
-  return 'text-emerald-300';
+  if (belowTarget) return 'text-rose-700';
+  return 'text-emerald-700';
 };
 
 export default function EquipmentOperationsPanel({
@@ -63,25 +63,25 @@ export default function EquipmentOperationsPanel({
   }), [summaries]);
 
   return (
-    <section className="mb-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/60">
-      <div className="flex flex-col gap-4 border-b border-slate-800 p-5 xl:flex-row xl:items-center xl:justify-between">
+    <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="flex flex-col gap-4 border-b border-slate-200 p-5 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-emerald-300">
+          <div className="flex items-center gap-2 text-emerald-700">
             <Gauge size={18} />
             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Centro Operacional de Frota v2.3</span>
           </div>
-          <h3 className="mt-2 text-lg font-black text-white">Equipamentos, veículos e implementos</h3>
+          <h3 className="mt-2 text-lg font-black text-slate-800">Equipamentos, veículos e implementos</h3>
           <p className="mt-1 text-xs text-slate-400">
             Disponibilidade consolidada com histórico operacional e ordens de serviço, sem duplicar o cadastro mestre.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
           {[
-            { label: 'Mobilizados', value: totals.mobilized, icon: Truck, tone: 'text-cyan-300' },
-            { label: 'Abaixo da meta', value: totals.belowTarget, icon: AlertTriangle, tone: 'text-rose-300' },
-            { label: 'OS abertas', value: totals.openWorkOrders, icon: Settings, tone: 'text-amber-300' },
+            { label: 'Mobilizados', value: totals.mobilized, icon: Truck, tone: 'text-cyan-700' },
+            { label: 'Abaixo da meta', value: totals.belowTarget, icon: AlertTriangle, tone: 'text-rose-700' },
+            { label: 'OS abertas', value: totals.openWorkOrders, icon: Settings, tone: 'text-amber-700' },
           ].map(card => (
-            <div key={card.label} className="group min-w-32 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
+            <div key={card.label} className="group min-w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
               <div className={`flex items-center gap-1.5 ${card.tone}`}>
                 <card.icon size={14} className="transition-transform duration-200 group-hover:scale-110" />
                 <strong className="text-lg tabular-nums"><CountUp value={card.value} /></strong>
@@ -92,7 +92,7 @@ export default function EquipmentOperationsPanel({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-b border-slate-800 p-4 md:flex-row">
+      <div className="flex flex-col gap-3 border-b border-slate-200 p-4 md:flex-row">
         <label className="relative flex-1">
           <span className="sr-only">Buscar frota</span>
           <Search className="pointer-events-none absolute left-3 top-3 text-slate-500" size={16} />
@@ -100,13 +100,13 @@ export default function EquipmentOperationsPanel({
             value={search}
             onChange={event => setSearch(event.target.value)}
             placeholder="Buscar prefixo, SGE, placa, família ou operador"
-            className="h-10 w-full rounded-xl border border-slate-800 bg-slate-950 pl-9 pr-3 text-xs text-white outline-none focus:border-emerald-500"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs text-slate-800 outline-none focus:border-emerald-500"
           />
         </label>
         <select
           value={category}
           onChange={event => setCategory(event.target.value as typeof category)}
-          className="h-10 rounded-xl border border-slate-800 bg-slate-950 px-3 text-xs text-white outline-none focus:border-emerald-500"
+          className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none focus:border-emerald-500"
         >
           <option>Todos</option>
           <option>Equipamento</option>
@@ -117,7 +117,7 @@ export default function EquipmentOperationsPanel({
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1180px] text-left text-xs">
-          <thead className="bg-slate-900/80 text-[9px] font-black uppercase tracking-wider text-slate-500">
+          <thead className="bg-white text-[9px] font-black uppercase tracking-wider text-slate-500">
             <tr>
               <th className="px-4 py-3">Frota</th>
               <th className="px-4 py-3">Categoria / SGE</th>
@@ -129,21 +129,21 @@ export default function EquipmentOperationsPanel({
           </thead>
           <tbody className="divide-y divide-slate-800">
             {filtered.map(item => (
-              <tr key={item.equipment.id} className="transition-colors duration-150 hover:bg-slate-900/50">
+              <tr key={item.equipment.id} className="transition-colors duration-150 hover:bg-slate-50">
                 <td className="px-4 py-3">
-                  <strong className="font-mono text-emerald-300">{item.equipment.prefixo}</strong>
-                  <span className="mt-1 block max-w-52 truncate text-slate-300">{item.equipment.nome}</span>
+                  <strong className="font-mono text-emerald-700">{item.equipment.prefixo}</strong>
+                  <span className="mt-1 block max-w-52 truncate text-slate-700">{item.equipment.nome}</span>
                   {item.equipment.placa && <span className="text-[9px] text-slate-500">Placa {item.equipment.placa}</span>}
                 </td>
                 <td className="px-4 py-3">
-                  <span className="rounded-full border border-slate-700 px-2 py-1 text-[9px] font-black uppercase text-slate-300">
+                  <span className="rounded-full border border-slate-200 px-2 py-1 text-[9px] font-black uppercase text-slate-700">
                     {item.equipment.categoriaFrota || 'Equipamento'}
                   </span>
                   <span className="mt-2 block text-slate-400">{item.equipment.familia || item.equipment.tipo || 'Sem família'}</span>
-                  <span className="font-mono text-[9px] text-cyan-300">SGE {item.equipment.codigoSge || 'não vinculado'}</span>
+                  <span className="font-mono text-[9px] text-cyan-700">SGE {item.equipment.codigoSge || 'não vinculado'}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={item.equipment.mobilizado ? 'text-emerald-300' : 'text-slate-500'}>
+                  <span className={item.equipment.mobilizado ? 'text-emerald-700' : 'text-slate-500'}>
                     {item.equipment.mobilizado ? 'Mobilizado' : 'Não mobilizado'}
                   </span>
                   <span className="mt-1 block text-[9px] text-slate-500">
@@ -152,7 +152,7 @@ export default function EquipmentOperationsPanel({
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="flex items-center gap-1.5 text-slate-300">
+                  <span className="flex items-center gap-1.5 text-slate-700">
                     <UserRound size={14} className="text-slate-500" />
                     {item.responsibleOperator || 'Sem responsável'}
                   </span>
@@ -166,7 +166,7 @@ export default function EquipmentOperationsPanel({
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={item.openWorkOrders > 0 ? 'text-amber-300' : 'text-emerald-300'}>
+                  <span className={item.openWorkOrders > 0 ? 'text-amber-700' : 'text-emerald-700'}>
                     {item.openWorkOrders > 0 ? `${item.openWorkOrders} OS aberta(s)` : 'Sem OS aberta'}
                   </span>
                 </td>
