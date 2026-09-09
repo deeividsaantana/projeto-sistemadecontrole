@@ -2,9 +2,10 @@ import type { PropsWithChildren } from 'react';
 import { useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
+// Importação padrão em vez de nomeada: o bundler resolve o build ESM do plugin,
+// mas o tsx dos testes resolve o build CommonJS, onde o nome não existe — e a
+// suíte inteira quebrava ao carregar este arquivo.
+import ScrollTrigger from 'gsap/ScrollTrigger';
 
 /**
  * Motion orchestration shared by every authenticated ERP route. It animates
@@ -16,6 +17,10 @@ export function RouteMotion({ children }: PropsWithChildren) {
   useGSAP(() => {
     const root = rootRef.current;
     if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // O registro fica aqui, e não no topo do módulo: os testes carregam este
+    // arquivo no Node, onde `gsap` chega como namespace CommonJS e não tem
+    // registerPlugin. Dentro do efeito só roda no navegador.
+    gsap.registerPlugin(ScrollTrigger);
 
     const candidates = Array.from(root.querySelectorAll<HTMLElement>(
       ':scope > header, :scope > section, :scope > article, :scope > main > header, :scope > main > section, :scope > main > article, :scope > div > header, :scope > div > section, :scope > div > article',

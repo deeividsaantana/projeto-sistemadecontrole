@@ -18,6 +18,9 @@ type VisibilityFilter = 'pending' | 'all' | 'informed';
 
 const GROUPS: readonly OperationalFleetReferenceGroup[] = ['Basculantes', 'Apoio'];
 
+/** Quantos equipamentos cada grupo mostra antes de pedir para abrir o resto. */
+const LIMITE_POR_GRUPO = 12;
+
 const formatDate = (date: string): string => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
   return new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR');
@@ -50,6 +53,13 @@ const FleetChip = ({ item }: { item: OperationalFleetReferenceStatus }) => (
 
 export default function FleetDailyReference({ records, date }: Props) {
   const [visibility, setVisibility] = useState<VisibilityFilter>('pending');
+  /**
+   * A relação-base tem 39 equipamentos. Listar todos de uma vez empurra os
+   * filtros e a tabela para 2.000 px abaixo no celular, e o operador que abre a
+   * tela para lançar precisa rolar tudo antes de chegar no que veio fazer.
+   * Cada grupo mostra os primeiros e abre o resto sob demanda.
+   */
+  const [gruposAbertos, setGruposAbertos] = useState<OperationalFleetReferenceGroup[]>([]);
   const [editing, setEditing] = useState(false);
   const [reference, setReference] = useState(() => {
     try {
@@ -116,16 +126,32 @@ export default function FleetDailyReference({ records, date }: Props) {
         {reconciliation.missing === 0 && visibility === 'pending' ? (
           <div className="mt-4 flex items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-800"><CheckCircle2 size={20}/><div><strong className="block text-sm">Relação completa</strong><span className="text-xs">Os {reconciliation.total} equipamentos foram informados nesta data.</span></div></div>
         ) : (
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          /* items-start: sem isso os dois grupos esticam até a altura do maior e o
+             de Apoio, com 7 itens ao lado de 32, vira um cartão com meio metro
+             de vazio. */
+          <div className="mt-4 grid items-start gap-4 xl:grid-cols-2">
             {GROUPS.map(group => {
               const groupItems = visibleItems.filter(item => item.group === group);
               const allGroupItems = reconciliation.items.filter(item => item.group === group);
               const informed = allGroupItems.filter(item => item.informed).length;
               if (!groupItems.length) return null;
+              const aberto = gruposAbertos.includes(group);
+              const visiveis = aberto ? groupItems : groupItems.slice(0, LIMITE_POR_GRUPO);
+              const restantes = groupItems.length - visiveis.length;
               return (
                 <article key={group} className="rounded-md border border-slate-200 bg-slate-50/50 p-3">
                   <header className="mb-3 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Truck size={17} className="text-emerald-700"/><h3 className="text-sm font-black text-slate-950">{group}</h3></div><span className="text-[10px] font-black uppercase text-slate-500">{informed}/{allGroupItems.length} informados</span></header>
-                  <ul className="grid gap-2 sm:grid-cols-2">{groupItems.map(item => <FleetChip key={item.prefix} item={item}/>)}</ul>
+                  <ul className="grid gap-2 sm:grid-cols-2">{visiveis.map(item => <FleetChip key={item.prefix} item={item}/>)}</ul>
+                  {(restantes > 0 || aberto) && (
+                    <button
+                      type="button"
+                      onClick={() => setGruposAbertos(atual => aberto ? atual.filter(item => item !== group) : [...atual, group])}
+                      aria-expanded={aberto}
+                      className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-700 transition-colors hover:border-emerald-400 hover:text-emerald-800"
+                    >
+                      {aberto ? 'Mostrar menos' : `Ver os outros ${restantes} de ${group}`}
+                    </button>
+                  )}
                 </article>
               );
             })}

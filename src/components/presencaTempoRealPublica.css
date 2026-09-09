@@ -519,12 +519,20 @@
 }
 
 @media (max-width: 640px) {
+  /* No celular a contagem de pendentes e os dois botões não cabem na mesma
+     linha: com `width:100%` nas ações e `space-between` na barra, o conjunto
+     media 11 px a mais que a tela e a página ganhava rolagem lateral. A barra
+     quebra em duas linhas e os botões param de crescer além do espaço. */
+  .presence-public__submit-bar { flex-wrap: wrap; }
+
   .presence-public__submit-actions {
     width: 100%;
+    min-width: 0;
   }
 
   .presence-public__submit-actions > button {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 

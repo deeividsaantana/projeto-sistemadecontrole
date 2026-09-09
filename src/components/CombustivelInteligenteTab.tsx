@@ -151,24 +151,32 @@ const getFuelRecordPrefix = (record: Abastecimento, equipamentos: Equipamento[])
   || 'Sem prefixo';
 
 const statusTone: Record<string, string> = {
-  OK: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-  Pendente: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  Duplicado: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
-  'Verificar quantidade': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
-  'Verificar bomba': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
-  'Verificar horímetro': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  'Verificar KM': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  'Verificar sequência': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  'Consumo fora do padrão': 'border-orange-500/30 bg-orange-500/10 text-orange-300',
-  'Conferência necessária': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  'Erro de importação': 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+  OK: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700',
+  Pendente: 'border-amber-500/30 bg-amber-500/10 text-amber-700',
+  Duplicado: 'border-rose-500/30 bg-rose-500/10 text-rose-700',
+  'Verificar quantidade': 'border-orange-500/30 bg-orange-500/10 text-orange-700',
+  'Verificar bomba': 'border-orange-500/30 bg-orange-500/10 text-orange-700',
+  'Verificar horímetro': 'border-amber-500/30 bg-amber-500/10 text-amber-700',
+  'Verificar KM': 'border-amber-500/30 bg-amber-500/10 text-amber-700',
+  'Verificar sequência': 'border-amber-500/30 bg-amber-500/10 text-amber-700',
+  'Consumo fora do padrão': 'border-orange-500/30 bg-orange-500/10 text-orange-700',
+  'Conferência necessária': 'border-amber-500/30 bg-amber-500/10 text-amber-700',
+  'Erro de importação': 'border-rose-500/30 bg-rose-500/10 text-rose-700',
 };
 
+/**
+ * A origem já vem escrita no próprio selo, então a cor é reforço, não a chave
+ * de leitura: cinco matizes viravam arco-íris sem informar nada a mais. Ficam
+ * duas — verde para o que entrou por arquivo, laranja para o que a IA leu de
+ * PDF ou foto e por isso merece conferência — e o resto em cinza. O par
+ * verde/laranja passa nas seis checagens de paleta (ΔE 25,6 na visão normal,
+ * 9,2 em protanopia).
+ */
 const sourceTone: Record<string, string> = {
-  Manual: 'bg-sky-500/10 text-sky-300',
-  Planilha: 'bg-violet-500/10 text-violet-300',
-  OneDrive: 'bg-emerald-500/10 text-emerald-300',
-  'PDF/Foto IA': 'bg-cyan-500/10 text-cyan-300',
+  Manual: 'bg-slate-100 text-slate-700',
+  Planilha: 'bg-emerald-50 text-emerald-800',
+  OneDrive: 'bg-emerald-50 text-emerald-800',
+  'PDF/Foto IA': 'bg-orange-50 text-orange-800',
   'Legado Access': 'bg-[#eef2f0] text-[#3d4a44]',
 };
 const OPERATIONAL_LOCATIONS = ['Ramo 100', 'Ramo 200', 'Ramo 300', 'Ramo 500', 'Ramo 600', 'Ramo 700', 'Ramo 800', 'Ramo 900', 'Ramo 1000', 'Ramo 1100', 'Ramo 1200', 'Ramo 1300', 'Ramo 1400', 'SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica'];
@@ -1101,7 +1109,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       )}
 
       {globalError && (
-        <div className="flex items-start gap-3 border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
+        <div className="flex items-start gap-3 border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-700">
           <AlertTriangle className="mt-0.5 shrink-0" size={18} />
           {globalError}
         </div>
@@ -1111,7 +1119,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         <section className="flex flex-col gap-3 border border-amber-500/30 bg-amber-500/10 p-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-sm font-bold text-amber-100">Prefixos aguardando cadastro auxiliar</h2>
-            <p className="mt-1 text-xs text-amber-200/80">
+            <p className="mt-1 text-xs text-amber-700/80">
               {pendingCadastroPrefixes.slice(0, 8).join(', ')}
               {pendingCadastroPrefixes.length > 8 ? ` +${pendingCadastroPrefixes.length - 8}` : ''}
             </p>
@@ -1132,16 +1140,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           <section className="fuel-command-center grid overflow-hidden border border-slate-200 bg-white xl:grid-cols-[minmax(0,1.25fr)_minmax(22rem,.75fr)]">
             <div className="fuel-command-center__lead relative min-h-[22rem] overflow-hidden p-6 md:p-8">
               <div className="fuel-command-center__photo" aria-hidden="true" />
-              <div className="relative z-[2] flex h-full max-w-[44rem] flex-col justify-between">
+              <div className="relative z-[2] flex h-full max-w-[34rem] flex-col justify-between">
                 <div><span className="text-[10px] font-black uppercase tracking-[.24em] text-emerald-700">Centro de consumo</span><h2 className="mt-2 max-w-xl text-3xl font-black leading-[.98] tracking-[-.055em] text-slate-950 md:text-5xl">Combustível sob controle, do campo à conferência.</h2><p className="mt-3 max-w-lg text-sm leading-6 text-slate-600">Volume, custo e rastreabilidade calculados diretamente sobre os registros do período.</p></div>
                 <div className="mt-10"><span className="text-[10px] font-black uppercase tracking-[.18em] text-slate-500">Volume no recorte</span><div className="mt-1 flex flex-wrap items-baseline gap-x-3"><strong data-fuel-metric className="text-5xl font-black leading-none tracking-[-.065em] text-emerald-700 md:text-7xl">{formatNumber(dashboard.totalLiters, 0)}</strong><span className="text-xl font-black text-emerald-800">litros</span></div><p className="mt-2 text-xs font-semibold text-slate-500">{filteredRecords.length.toLocaleString('pt-BR')} lançamentos · {dashboard.uniqueEquipment.toLocaleString('pt-BR')} equipamentos</p></div>
               </div>
             </div>
             <div className="grid gap-px border-t border-slate-200 bg-slate-200 sm:grid-cols-2 xl:border-l xl:border-t-0">
               {[
-                ['Custo informado', dashboard.totalCost.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}), 'Registros com valor por litro', CircleDollarSign, 'text-emerald-700'],
-                ['Média por lançamento', `${filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0'} L`, 'Volume médio abastecido', Gauge, 'text-sky-700'],
-                ['Importados', filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length.toLocaleString('pt-BR'), 'Planilha, PDF ou foto', FileSpreadsheet, 'text-violet-700'],
+                ['Custo informado', dashboard.totalCost.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}), 'Registros com valor por litro', CircleDollarSign, 'text-slate-800'],
+                ['Média por lançamento', `${filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0'} L`, 'Volume médio abastecido', Gauge, 'text-slate-800'],
+                ['Importados', filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length.toLocaleString('pt-BR'), 'Planilha, PDF ou foto', FileSpreadsheet, 'text-slate-800'],
                 ['Aguardando conferência', dashboard.pendingReview.toLocaleString('pt-BR'), `${dashboard.alerts} alertas · ${dashboard.critical} críticos`, ClipboardCheck, dashboard.pendingReview ? 'text-amber-700' : 'text-emerald-700'],
               ].map(([label,value,detail,Icon,tone]) => <button type="button" key={String(label)} data-fuel-metric onClick={() => label === 'Aguardando conferência' ? setView('conferencia') : undefined} className="group min-h-44 bg-white p-5 text-left transition-colors hover:bg-emerald-50/40"><div className="flex items-start justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[.14em] text-slate-500">{label as string}</span><Icon className="h-5 w-5 text-slate-400 group-hover:text-emerald-700" /></div><strong className={`mt-7 block text-3xl font-black tracking-[-.045em] ${tone as string}`}>{value as string}</strong><span className="mt-2 block text-xs leading-5 text-slate-500">{detail as string}</span></button>)}
             </div>
@@ -1157,7 +1165,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   <h2 className="font-bold text-[#14231e]">Volume diário</h2>
                   <span className="text-xs text-[#65716b]">Últimos {dailyTrend.length} dias com movimento</span>
                 </div>
-                <Activity className="text-emerald-300" size={20} />
+                <Activity className="text-emerald-700" size={20} />
               </div>
               <div className="flex h-64 items-end gap-2 overflow-x-auto p-5">
                 {dailyTrend.map((item) => (
@@ -1187,7 +1195,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                   <h2 className="font-bold text-[#14231e]">Origem dos dados</h2>
                   <span className="text-xs text-[#65716b]">Rastreabilidade dos lançamentos</span>
                 </div>
-                <Database className="text-violet-300" size={20} />
+                <Database className="text-emerald-700" size={20} />
               </div>
               <div className="space-y-4 p-5">
                 {sourceDistribution.map(([source, count]) => (
@@ -1200,7 +1208,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     </div>
                     <div className="h-1.5 bg-[#f7f9f8]">
                       <div data-fuel-line
-                        className="h-full bg-violet-500"
+                        className="h-full bg-emerald-700"
                         style={{ width: `${(count / Math.max(1, filteredRecords.length)) * 100}%` }}
                       />
                     </div>
@@ -1240,7 +1248,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                               {equipment?.tipo || equipment?.nome || 'Pendente de cadastro'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-emerald-300">{formatNumber(item.liters, 0)} L</td>
+                          <td className="px-4 py-3 text-emerald-700">{formatNumber(item.liters, 0)} L</td>
                           <td className="px-4 py-3">{item.averageRate ? formatNumber(item.averageRate) : '-'}</td>
                           <td className="px-4 py-3 text-[#3d4a44]">
                             {item.records}
@@ -1412,7 +1420,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           value={row.prefixo}
                           onChange={(event) => updateQuickRow(row.id, 'prefixo', event.target.value)}
                           onBlur={(event) => updateQuickRow(row.id, 'prefixo', event.target.value)}
-                          className={`h-10 w-full border bg-white px-2 font-mono text-sm font-bold outline-none ${row.equipamentoId ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-200'}`}
+                          className={`h-10 w-full border bg-white px-2 font-mono text-sm font-bold outline-none ${row.equipamentoId ? 'border-emerald-500/40 text-emerald-700' : 'border-amber-500/40 text-amber-700'}`}
                         />
                         <span className="mt-1 block text-[9px] text-[#65716b]">
                           {tankCapacity > 0 ? `Tanque ${formatNumber(tankCapacity, 0)} L` : 'Tanque não cadastrado'}
@@ -1458,7 +1466,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         step="0.01"
                         value={row.quantidadeLitros || ''}
                         onChange={(event) => updateQuickRow(row.id, 'quantidadeLitros', Number(event.target.value))}
-                        className="h-10 border border-emerald-500/40 bg-white px-2 text-sm font-bold text-emerald-300 outline-none focus:border-emerald-400"
+                        className="h-10 border border-emerald-500/40 bg-white px-2 text-sm font-bold text-emerald-700 outline-none focus:border-emerald-400"
                       />
                       <input
                         value={row.observacao}
@@ -1467,7 +1475,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       />
                       <button
                         onClick={() => setGlobalError(evaluation.alertCount ? `${evaluation.alertCount} alerta(s) irão para conferência, sem bloquear o lançamento.` : 'Registro pronto para lançamento.')}
-                        className={`h-10 border text-xs font-bold ${evaluation.alertCount ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}
+                        className={`h-10 border text-xs font-bold ${evaluation.alertCount ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'}`}
                       >
                         {evaluation.alertCount || 'OK'}
                       </button>
@@ -1476,7 +1484,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         onClick={() =>
                           setQuickRows((rows) => (rows.length > 1 ? rows.filter((item) => item.id !== row.id) : rows))
                         }
-                        className="grid h-10 place-items-center text-[#65716b] hover:text-rose-300"
+                        className="grid h-10 place-items-center text-[#65716b] hover:text-rose-700"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -1488,7 +1496,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
             <div className="flex flex-col gap-3 border-t border-[#e2e8e4] p-4 md:flex-row md:items-center md:justify-between">
               <div className="text-sm text-[#65716b]">
                 Volume:{' '}
-                <strong className="text-emerald-300">
+                <strong className="text-emerald-700">
                   {formatNumber(
                     quickRows.reduce((sum, row) => sum + row.quantidadeLitros, 0),
                     0,
@@ -1539,7 +1547,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               className="grid min-h-80 w-full place-items-center border border-dashed border-[#d7ded9] bg-white text-center hover:border-emerald-500"
             >
               <div>
-                <ScanLine className="mx-auto mb-4 text-emerald-300" size={44} />
+                <ScanLine className="mx-auto mb-4 text-emerald-700" size={44} />
                 <strong className="block text-lg text-[#14231e]">Selecionar PDF ou foto</strong>
                 <span className="mt-2 block text-sm text-[#65716b]">PDF, JPG, PNG ou WEBP</span>
               </div>
@@ -1549,7 +1557,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
             <>
               <section className="flex flex-col gap-3 border border-[#e2e8e4] bg-white p-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
-                  <FileSearch className="text-cyan-300" size={24} />
+                  <FileSearch className="text-cyan-700" size={24} />
                   <div>
                     <strong className="block text-[#14231e]">{documentFile.name}</strong>
                     <span className="text-xs text-[#65716b]">
@@ -1575,7 +1583,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 </div>
               </section>
               {aiError && (
-                <div className="flex items-start gap-3 border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
+                <div className="flex items-start gap-3 border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-700">
                   <AlertTriangle className="mt-0.5 shrink-0" size={18} />
                   {aiError}
                 </div>
@@ -1637,7 +1645,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           Página {selectedAiEvaluation.row.pagina} | Linha {selectedAiEvaluation.row.linha}
                         </span>
                         <span
-                          className={`border px-2 py-1 text-xs font-bold ${selectedAiEvaluation.row.confiancaGeral >= 0.8 ? 'border-emerald-500/30 text-emerald-300' : selectedAiEvaluation.row.confiancaGeral >= 0.6 ? 'border-amber-500/30 text-amber-300' : 'border-rose-500/30 text-rose-300'}`}
+                          className={`border px-2 py-1 text-xs font-bold ${selectedAiEvaluation.row.confiancaGeral >= 0.8 ? 'border-emerald-500/30 text-emerald-700' : selectedAiEvaluation.row.confiancaGeral >= 0.6 ? 'border-amber-500/30 text-amber-700' : 'border-rose-500/30 text-rose-700'}`}
                         >
                           {Math.round(selectedAiEvaluation.row.confiancaGeral * 100)}% confiança
                         </span>
@@ -1704,7 +1712,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                             onChange={(event) =>
                               updateAiRow(selectedAiEvaluation.row.id, 'quantidadeLitros', Number(event.target.value))
                             }
-                            className="mt-1 h-10 w-full border border-cyan-500/40 bg-white px-2 text-sm font-bold text-cyan-300 outline-none"
+                            className="mt-1 h-10 w-full border border-cyan-500/40 bg-white px-2 text-sm font-bold text-cyan-700 outline-none"
                           />
                         </label>
                         <label className="text-xs font-bold uppercase text-[#65716b]">
@@ -1797,7 +1805,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         </label>
                       </div>
                       <div
-                        className="border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200"
+                        className="border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700"
                       >
                         <strong>Pronto para lançar</strong>
                       </div>
@@ -1860,12 +1868,12 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                             <td className="px-3 py-3">
                               {item.row.pagina} / {item.row.linha}
                             </td>
-                            <td className="px-3 py-3 font-mono font-bold text-cyan-300">{item.row.prefixo || '-'}</td>
+                            <td className="px-3 py-3 font-mono font-bold text-cyan-700">{item.row.prefixo || '-'}</td>
                             <td className="px-3 py-3">
                               {formatDate(item.row.data)}
                               <span className="block text-xs text-[#65716b]">{item.row.hora || '-'}</span>
                             </td>
-                            <td className="px-3 py-3 font-bold text-emerald-300">
+                            <td className="px-3 py-3 font-bold text-emerald-700">
                               {formatNumber(item.row.quantidadeLitros)} L
                             </td>
                             <td className="px-3 py-3">
@@ -1878,7 +1886,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                             <td className="px-3 py-3">{Math.round(item.row.confiancaGeral * 100)}%</td>
                             <td className="px-3 py-3">
                               <span
-                                className="border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-300"
+                                className="border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-700"
                               >
                                 Livre
                               </span>
@@ -1911,7 +1919,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               <h2 className="font-bold text-[#14231e]">Abastecimentos</h2>
               <span className="text-xs text-[#65716b]">{filteredRecords.length} resultado(s)</span>
             </div>
-            <Fuel className="text-emerald-300" size={20} />
+            <Fuel className="text-emerald-700" size={20} />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1280px] text-left text-sm">
@@ -1947,13 +1955,13 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         <span className="block text-[10px] text-[#53605a]">{record.competencia || getFuelCompetence(record.data)}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <strong className="font-mono text-emerald-300">{getFuelRecordPrefix(record, equipamentos)}</strong>
+                        <strong className="font-mono text-emerald-700">{getFuelRecordPrefix(record, equipamentos)}</strong>
                         <span className="block max-w-48 truncate text-xs text-[#65716b]">{equipment?.nome || 'Pendente de cadastro'}</span>
                       </td>
                       <td className="px-4 py-3">
                         {combustiveis.find((item) => item.id === record.tipoCombustivelId)?.nome || '-'}
                       </td>
-                      <td className="px-4 py-3 font-bold text-emerald-300">
+                      <td className="px-4 py-3 font-bold text-emerald-700">
                         {formatNumber(record.quantidadeLitros)} L
                         {record.custoTotal ? (
                           <span className="block text-[10px] font-normal text-lime-300">
@@ -2012,7 +2020,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           <button
                             title="Editar"
                             onClick={() => editRecord(record)}
-                            className="grid h-9 w-9 place-items-center text-[#65716b] hover:bg-[#f2f5f3] hover:text-sky-300"
+                            className="grid h-9 w-9 place-items-center text-[#65716b] hover:bg-[#f2f5f3] hover:text-sky-700"
                           >
                             <Pencil size={16} />
                           </button>
@@ -2026,7 +2034,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                               )
                                 onDeleteAbastecimento(record.id);
                             }}
-                            className="grid h-9 w-9 place-items-center text-[#65716b] hover:bg-[#f2f5f3] hover:text-rose-300"
+                            className="grid h-9 w-9 place-items-center text-[#65716b] hover:bg-[#f2f5f3] hover:text-rose-700"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -2056,7 +2064,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               <p className="mt-1 text-xs text-[#3d4a44]">
                 Preserva todos os registros do filtro na fila protegida. Nenhuma linha é promovida automaticamente.
               </p>
-              {protectedMessage && <p className="mt-2 text-xs font-semibold text-sky-200">{protectedMessage}</p>}
+              {protectedMessage && <p className="mt-2 text-xs font-semibold text-sky-700">{protectedMessage}</p>}
             </div>
             <button
               onClick={stageCurrentFuelDataset}
@@ -2078,13 +2086,13 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 <div key={item.code} className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <strong className={item.severity === 'critico' ? 'text-rose-300' : 'text-amber-300'}>
+                      <strong className={item.severity === 'critico' ? 'text-rose-700' : 'text-amber-700'}>
                         {item.code}
                       </strong>
                       <p className="mt-1 text-sm text-[#3d4a44]">{item.label}</p>
                     </div>
                     <span
-                      className={`grid h-8 min-w-8 place-items-center px-2 text-sm font-bold ${item.severity === 'critico' ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'}`}
+                      className={`grid h-8 min-w-8 place-items-center px-2 text-sm font-bold ${item.severity === 'critico' ? 'bg-rose-500/15 text-rose-700' : 'bg-amber-500/15 text-amber-700'}`}
                     >
                       {item.count}
                     </span>
@@ -2094,7 +2102,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               {!issueRanking.length && (
                 <div className="grid min-h-64 place-items-center text-center text-sm text-[#65716b]">
                   <div>
-                    <CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={32} />
+                    <CheckCircle2 className="mx-auto mb-2 text-emerald-700" size={32} />
                     Nenhuma deficiência no filtro atual.
                   </div>
                 </div>
@@ -2127,7 +2135,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           <span className="text-xs text-[#65716b]">
                             {formatDate(record.data)} {record.hora}
                           </span>
-                          <span className="text-xs font-bold text-sky-300">
+                          <span className="text-xs font-bold text-sky-700">
                             Qualidade {getFuelQualityScore(record.alertas || [])}%
                           </span>
                         </div>
@@ -2135,7 +2143,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           {record.alertas?.map((alert) => (
                             <p
                               key={alert.codigo}
-                              className={`text-xs ${alert.severidade === 'critico' ? 'text-rose-300' : 'text-amber-300'}`}
+                              className={`text-xs ${alert.severidade === 'critico' ? 'text-rose-700' : 'text-amber-700'}`}
                             >
                               {alert.mensagem}
                             </p>
@@ -2145,14 +2153,14 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       <div className="flex shrink-0 gap-2">
                         <button
                           onClick={() => approveReview(record)}
-                          className="inline-flex h-9 items-center gap-2 border border-emerald-500/40 bg-emerald-500/10 px-3 text-xs font-bold text-emerald-200"
+                          className="inline-flex h-9 items-center gap-2 border border-emerald-500/40 bg-emerald-500/10 px-3 text-xs font-bold text-emerald-700"
                         >
                           <CheckCircle2 size={15} /> Conferido
                         </button>
                         <button
                           title="Editar registro"
                           onClick={() => editRecord(record)}
-                          className="grid h-9 w-9 place-items-center border border-[#e2e8e4] text-[#65716b] hover:text-sky-300"
+                          className="grid h-9 w-9 place-items-center border border-[#e2e8e4] text-[#65716b] hover:text-sky-700"
                         >
                           <Pencil size={16} />
                         </button>
@@ -2211,7 +2219,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                 <tbody className="divide-y divide-[#e2e8e4]">
                   {quickReady.map((item) => (
                     <tr key={item.row.id}>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-300">{item.row.prefixo}</td>
+                      <td className="px-4 py-3 font-mono font-bold text-emerald-700">{item.row.prefixo}</td>
                       <td className="px-4 py-3">
                         {formatDate(entryDate)} {item.record.hora}
                       </td>
@@ -2225,7 +2233,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       <td className="px-4 py-3">
                         {formatNumber(item.record.bombaInicial)} → {formatNumber(item.record.bombaFinal)}
                       </td>
-                      <td className="px-4 py-3 font-bold text-emerald-300">
+                      <td className="px-4 py-3 font-bold text-emerald-700">
                         {formatNumber(item.record.quantidadeLitros)} L
                       </td>
                       <td className="px-4 py-3 text-lime-300">
@@ -2239,7 +2247,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                           : '-'}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`border px-2 py-1 text-xs font-bold ${item.alertCount ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
+                        <span className={`border px-2 py-1 text-xs font-bold ${item.alertCount ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'}`}>
                           {item.alertCount ? `${item.alertCount} para conferir` : 'Pronto'}
                         </span>
                       </td>
