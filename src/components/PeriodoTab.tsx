@@ -171,6 +171,28 @@ export default function PeriodoTab({
     { label: 'Tickets de jazida', valor: decimal(totais.ticketsTotal), apoio: `${decimal(totais.metrosCubicos, 1)} m³ transportado(s)`, icone: Wrench },
   ];
 
+  const ritmoDiario = useMemo(() => {
+    const days: Array<{ iso: string; label: string; total: number }> = [];
+    const cursor = new Date(`${periodo.inicio}T12:00:00`);
+    const end = new Date(`${periodo.fim}T12:00:00`);
+    while (cursor <= end && days.length < 62) {
+      const iso = cursor.toISOString().slice(0, 10);
+      days.push({
+        iso,
+        label: cursor.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        total: registros.filter(item => item.data === iso).length,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return days;
+  }, [periodo.fim, periodo.inicio, registros]);
+
+  const maiorRitmo = Math.max(1, ...ritmoDiario.map(day => day.total));
+  const distribuicao = (['Presença', 'Frota', 'Combustível', 'Tickets'] as TipoRegistro[]).map(tipo => ({
+    tipo,
+    total: registros.filter(item => item.tipo === tipo).length,
+  }));
+
   return (
     <section className="space-y-5 text-[#14231e]">
       <PageHeader
@@ -221,6 +243,67 @@ export default function PeriodoTab({
           <StatCard key={card.label} label={card.label} value={card.valor} icon={card.icone} trend={card.apoio} />
         ))}
       </div>
+
+      <section className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(19rem,.8fr)]" aria-label="Análise interativa do período">
+        <article className={`${PANEL} overflow-hidden`}>
+          <header className="flex items-end justify-between gap-4 border-b border-[#e2e8e4] px-5 py-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-700">Ritmo operacional</p>
+              <h2 className="mt-1 text-base font-black">Registros por dia</h2>
+            </div>
+            <span className="text-xs text-[#65716b]">Clique em um dia para isolar</span>
+          </header>
+          <div className="p-5">
+            {ritmoDiario.length ? (
+              <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-10 lg:grid-cols-14">
+                {ritmoDiario.map(day => {
+                  const intensity = day.total / maiorRitmo;
+                  const tone = day.total === 0 ? '#f1f4f2' : intensity > .7 ? '#087653' : intensity > .35 ? '#54b895' : '#bfe8d7';
+                  return (
+                    <button
+                      key={day.iso}
+                      type="button"
+                      onClick={() => { setFrom(day.iso); setTo(day.iso); setPage(1); }}
+                      className="group relative aspect-square min-h-10 overflow-hidden rounded-[2px] border border-[#d7e0db] text-[9px] font-bold transition-transform hover:z-10 hover:scale-110 focus-visible:z-10"
+                      style={{ backgroundColor: tone, color: intensity > .7 ? '#fff' : '#18372e' }}
+                      title={`${day.label}: ${day.total} registro(s)`}
+                      aria-label={`${day.label}: ${day.total} registro(s)`}
+                    >
+                      <span className="block tabular-nums">{day.total}</span>
+                      <span className="block opacity-70">{day.label.slice(0, 2)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : <p className="py-10 text-center text-sm text-[#65716b]">Sem dias no intervalo.</p>}
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-[10px] font-bold uppercase tracking-wide text-[#65716b]">
+              <span className="inline-flex items-center gap-1.5"><i className="size-2.5 bg-[#f1f4f2]" /> sem registro</span>
+              <span className="inline-flex items-center gap-1.5"><i className="size-2.5 bg-[#bfe8d7]" /> baixo</span>
+              <span className="inline-flex items-center gap-1.5"><i className="size-2.5 bg-[#54b895]" /> médio</span>
+              <span className="inline-flex items-center gap-1.5"><i className="size-2.5 bg-[#087653]" /> intenso</span>
+            </div>
+          </div>
+        </article>
+
+        <article className={`${PANEL} overflow-hidden`}>
+          <header className="border-b border-[#e2e8e4] px-5 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-700">Distribuição real</p>
+            <h2 className="mt-1 text-base font-black">Origem dos registros</h2>
+          </header>
+          <div className="space-y-1 p-3">
+            {distribuicao.map(item => {
+              const share = registros.length ? (item.total / registros.length) * 100 : 0;
+              return (
+                <button key={item.tipo} type="button" onClick={() => { setTipoFilter(item.tipo); setPage(1); }} className="group w-full border-b border-[#edf1ef] px-2 py-3 text-left last:border-0">
+                  <span className="flex items-center justify-between gap-3 text-xs"><strong>{item.tipo}</strong><b className="tabular-nums text-emerald-800">{item.total}</b></span>
+                  <span className="mt-2 block h-1.5 overflow-hidden bg-[#edf1ef]"><i className="block h-full origin-left bg-emerald-600 transition-transform duration-700 group-hover:scale-y-150" style={{ width: `${share}%` }} /></span>
+                  <span className="mt-1 block text-[10px] tabular-nums text-[#65716b]">{decimal(share, 1)}% do período</span>
+                </button>
+              );
+            })}
+          </div>
+        </article>
+      </section>
 
       <article className={`${PANEL} overflow-hidden`}>
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] px-5 py-4">

@@ -89,22 +89,33 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #app-root tbody tr:hover { background-color: #edf2ed; }
 
 #mobile-header { background: #fff; border-bottom: 1px solid var(--renea-line); box-shadow: none; }
-#mobile-drawer { background: rgb(2 43 36 / .62); backdrop-filter: blur(10px); }
-#mobile-drawer > div { background: var(--renea-paper); border-color: var(--renea-line); box-shadow: -24px 0 60px rgb(2 43 36 / .2); }
-#mobile-drawer :is(.text-slate-400, .text-slate-300) { color: #52625c; }
-#mobile-drawer .border-slate-800 { border-color: var(--renea-line); }
+#mobile-drawer { background: rgb(2 43 36 / .46) !important; backdrop-filter: blur(10px); }
+#mobile-drawer > .mobile-sidebar-panel {
+  border-color: #185443;
+  background: #0a4636 !important;
+  color: #eafff6;
+  box-shadow: -18px 0 44px rgb(2 43 36 / .2);
+}
+#mobile-drawer .border-slate-800 { border-color: #185443; }
+#mobile-drawer input { border-color: #2a725e !important; background: #0a3b2e !important; color: #fff !important; }
+#mobile-drawer input::placeholder { color: #a5c8ba !important; }
+#mobile-drawer section > p { color: #8cc7b2 !important; }
+#mobile-drawer nav button:not([class*="bg-rose"]):not([aria-current="page"]) { color: #c6e3d8 !important; }
+#mobile-drawer nav button:not([class*="bg-rose"]):not([aria-current="page"]):hover { background: #0d4c3a !important; color: #fff !important; }
+#mobile-drawer nav button[aria-current="page"] { background: #0d8a65 !important; color: #fff !important; box-shadow: none; }
+#mobile-drawer nav button svg { color: currentColor !important; }
 
-.login-shell { min-height: 100dvh; background: radial-gradient(circle at 12% 18%, rgb(6 60 49 / .18), transparent 24rem), var(--renea-stone); }
+.login-shell { min-height: 100dvh; background: #fff; }
 .login-frame {
   display: grid;
   width: min(70rem, 100%);
   min-height: min(45rem, calc(100dvh - 3rem));
   grid-template-columns: minmax(0,1.08fr) minmax(24rem,.92fr);
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / .82);
-  border-radius: 2rem;
-  background: rgb(255 253 248 / .88);
-  box-shadow: 0 32px 90px rgb(2 43 36 / .16);
+  border: 1px solid #dbe4df;
+  border-radius: .35rem;
+  background: #fff;
+  box-shadow: 0 30px 80px rgb(2 43 36 / .1);
 }
 .login-story {
   position: relative;
@@ -114,12 +125,16 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   justify-content: space-between;
   padding: clamp(2rem,5vw,4.5rem);
   overflow: hidden;
-  color: #fff;
-  background: linear-gradient(180deg, rgb(2 43 36 / .2), rgb(2 43 36 / .9)), url("./assets/equipment/optimized/fleet-truck.jpg") center / cover;
+  color: #10211c;
+  background: linear-gradient(90deg, rgb(255 255 255 / .98) 0%, rgb(255 255 255 / .88) 46%, rgb(255 255 255 / .08) 100%), url("./assets/renea-editorial/rodovia-serra.jpg") center / cover;
 }
-.login-story::after { position: absolute; inset: 0; content: ""; background: linear-gradient(120deg, rgb(15 143 100 / .25), transparent 55%); }
+.login-story::after { position: absolute; inset: 0; content: ""; background: linear-gradient(120deg, rgb(15 143 100 / .06), transparent 55%); }
 .login-story > * { position: relative; z-index: 1; }
-.login-panel { display: flex; flex-direction: column; justify-content: center; padding: clamp(2rem,5vw,4.5rem); }
+.login-panel { display: flex; flex-direction: column; justify-content: center; padding: clamp(2rem,5vw,4.5rem); border-left: 1px solid #e2e8e4; background: #fbfdfb; }
+.login-story > * { animation: renea-white-reveal .65s cubic-bezier(.18,.8,.2,1) both; }
+.login-story > :nth-child(2) { animation-delay: 90ms; }
+.login-story > :nth-child(3) { animation-delay: 160ms; }
+.login-panel > * { animation: renea-white-reveal .65s .12s cubic-bezier(.18,.8,.2,1) both; }
 
 @utility ticket-input {
   width: 100%;
@@ -135,9 +150,11 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .ticket-input:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgb(16 185 129 / .12); }
 
 @media (max-width: 820px) {
-  .login-frame { min-height: auto; grid-template-columns: 1fr; border-radius: 1.25rem; }
-  .login-story { display: none; }
-  .login-panel { padding: 2rem 1.25rem; }
+  .login-frame { min-height: auto; grid-template-columns: 1fr; border-radius: .35rem; }
+  .login-story { display: flex; min-height: 15rem; padding: 1.75rem; }
+  .login-story > div:first-child, .login-story > p:last-child { display: none; }
+  .login-story h1 { max-width: 12ch; font-size: 2.25rem; }
+  .login-panel { padding: 2rem 1.25rem; border-left: 0; border-top: 1px solid #e2e8e4; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -415,3 +432,506 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 /* Largura do menu recolhido precisa morar aqui: a regra base .erp-sidebar
    fixa width/min-width e venceria a classe utilitaria por ordem no arquivo. */
 #app-root .erp-sidebar.erp-sidebar--recolhido { width: 5.25rem; min-width: 5.25rem; }
+
+/* RENEA engineering editorial v3 — approved operational language.
+   This layer intentionally leaves DesktopSidebar markup and the original logo
+   untouched. It standardizes every route through shared primitives. */
+:root {
+  --renea-v3-ink: #0b1714;
+  --renea-v3-forest: #082f25;
+  --renea-v3-green: #008b62;
+  --renea-v3-signal: #00a875;
+  --renea-v3-orange: #ef5b25;
+  --renea-v3-paper: #f5f6f2;
+  --renea-v3-line: #cdd6d1;
+}
+
+.erp-workspace,
+#main-workspace,
+#main-tab-viewport { background: var(--renea-v3-paper); }
+
+/* Context bar: one compact dark strip, matching the approved dashboard. */
+.erp-topbar {
+  min-height: 3.75rem;
+  padding-inline: 1.7rem;
+  border-bottom-color: #1d473d;
+  background: #0a241d;
+  color: #f4faf6;
+}
+.erp-topbar__breadcrumb,
+.erp-topbar__breadcrumb strong,
+.erp-topbar__status,
+.erp-topbar__date,
+.erp-topbar__date strong,
+.erp-topbar__user strong { color: #f2f8f4; }
+.erp-topbar__chevron,
+.erp-topbar__user small { color: #adc3b9; }
+.erp-topbar__date,
+.erp-topbar__user { border-left-color: #315048; }
+.erp-topbar__avatar { border-color: #d7e2dd; background: #edf2ef; color: #17372e; }
+.erp-topbar__project {
+  min-height: 2.65rem;
+  border-color: transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: #fff;
+}
+.erp-topbar__project:hover { border-color: #45665c; background: #12372d; }
+.erp-topbar__project small { color: #9eb7ac; }
+.erp-topbar__project strong { color: #fff; font-size: .72rem; }
+.erp-topbar__project > svg:first-child { color: #4bd19f; }
+.erp-topbar__command { border-color: #42655a; border-radius: 2px; background: #13372e; color: #e9f5ef; }
+.erp-topbar__command:hover { transform: none; border-color: #6d9487; background: #19483b; }
+
+/* Shared surfaces used by every current and future tab. */
+#main-tab-viewport > * { animation: renea-v3-enter 360ms cubic-bezier(.2,.8,.2,1) both; }
+.renea-page-header { position: relative; }
+.renea-page-header::after { position: absolute; bottom: -1px; left: 0; width: 4.5rem; height: 2px; content: ""; background: var(--renea-v3-orange); }
+.renea-card,
+.renea-stat { box-shadow: none !important; }
+.renea-card:hover { border-color: #aebbb4; }
+.renea-table-shell { scrollbar-color: #82958b #edf1ee; }
+.renea-table :is(th, td) { padding: .85rem 1rem; }
+.renea-table tbody tr { background: #fff; }
+.renea-table tbody tr:hover { background: #f0f4f1; }
+
+/* Normalize legacy screen containers without flattening dialogs and popovers. */
+#main-tab-viewport > :not(.erp-dashboard) {
+  color: var(--renea-v3-ink);
+  background-color: var(--renea-v3-paper);
+}
+#main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+  min-height: 2.75rem;
+  border-radius: 3px;
+  border-color: #bbc7c1;
+  background: #fff;
+}
+#main-tab-viewport textarea { min-height: 6rem; }
+
+/* Approved dashboard hero: information first, image as project context. */
+.dashboard-hero { position: relative; min-height: 20rem; overflow: hidden; }
+.dashboard-hero__content { position: relative; z-index: 2; width: min(64%, 64rem); }
+.dashboard-hero__visual { position: absolute; inset: 0 0 0 50%; overflow: hidden; background: #17372e; }
+.dashboard-hero__visual::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, #f7f8f5 0%, rgb(247 248 245 / .92) 9%, rgb(7 27 21 / .1) 45%, rgb(5 25 19 / .58) 100%);
+}
+.dashboard-hero__visual img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.78) contrast(1.06); }
+.dashboard-hero__visual > span { position: absolute; z-index: 2; top: 2.2rem; right: 2rem; padding-left: 1.2rem; border-left: 1px solid rgb(255 255 255 / .65); color: #fff; font-size: .62rem; font-weight: 800; line-height: 1.65; letter-spacing: .25em; text-transform: uppercase; }
+.dashboard-project-tabs { position: relative; z-index: 3; }
+.dashboard-metrics { grid-template-columns: repeat(4, minmax(0,1fr)) minmax(15rem,1.15fr); gap: 0; }
+.dashboard-metric { border-color: #bcc8c2; }
+.dashboard-metric:first-child { border-left: 0; }
+.dashboard-metric.text-\[\#176b4d\] strong { color: #087653; }
+.dashboard-metric.text-\[\#c94f1c\] strong { color: #d34d18; }
+.dashboard-metric.is-active { background: #fff; box-shadow: inset 0 -3px 0 currentColor; }
+.dashboard-metric-cta { border-left: 1px solid #bcc8c2; }
+.erp-dashboard section { border-radius: 2px; }
+.erp-dashboard section > header h2 { font-weight: 900; text-transform: uppercase; letter-spacing: .065em; }
+
+/* The compatibility layer above changes historical .text-white. Approved
+   action surfaces must remain readable regardless of utility ordering. */
+#app-root #main-tab-viewport :is(
+  .bg-emerald-700,
+  .bg-emerald-800,
+  .bg-rose-700,
+  .bg-rose-800,
+  [class*="bg-[#087653]"],
+  [class*="bg-[#183f32]"],
+  [class*="bg-[#123d31]"],
+  [class*="bg-[#ed5d24]"]
+) { color: #fff; }
+
+@keyframes renea-v3-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes renea-v3-line-draw {
+  from { stroke-dashoffset: 900; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes renea-v3-image-settle {
+  from { transform: scale(1.055); filter: saturate(.5) contrast(1.12); }
+  to { transform: scale(1); filter: saturate(.78) contrast(1.06); }
+}
+.dashboard-hero__visual img { animation: renea-v3-image-settle 1.2s cubic-bezier(.2,.8,.2,1) both; }
+.erp-dashboard polyline { stroke-dasharray: 900; animation: renea-v3-line-draw 1.15s .25s cubic-bezier(.2,.8,.2,1) both; }
+.dashboard-metric { animation: renea-v3-enter .45s cubic-bezier(.2,.8,.2,1) both; }
+.dashboard-metric:nth-child(2) { animation-delay: 55ms; }
+.dashboard-metric:nth-child(3) { animation-delay: 110ms; }
+.dashboard-metric:nth-child(4) { animation-delay: 165ms; }
+.dashboard-metric-cta { animation: renea-v3-enter .45s 220ms cubic-bezier(.2,.8,.2,1) both; }
+
+/* Shared motion and hierarchy across all route modules. */
+#main-tab-viewport > :not(.erp-dashboard) > .renea-page-header { animation: renea-v3-enter .38s cubic-bezier(.2,.8,.2,1) both; }
+#main-tab-viewport > :not(.erp-dashboard) > :is(section, article, .renea-card, [role="region"]) { animation: renea-v3-enter .42s .07s cubic-bezier(.2,.8,.2,1) both; }
+#main-tab-viewport .renea-card :is(button, tr),
+#main-tab-viewport .renea-table tr { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
+#main-tab-viewport .renea-card button:hover { transform: translateX(2px); }
+
+/* Portalled entry form shares the system language outside #app-root. */
+.fleet-entry-dialog form > div > div > section {
+  border-radius: 3px;
+  box-shadow: none;
+  border-color: #cdd6d1;
+}
+.fleet-entry-dialog :is(input, select, textarea, button) { border-radius: 3px; }
+.fleet-entry-dialog form > aside,
+.fleet-entry-dialog form > aside > footer { background: #082f25; color: #fff; }
+.fleet-entry-dialog form > aside :is(dt, .text-slate-400, .text-slate-500, .text-slate-600) { color: #b6cbc1; }
+.fleet-entry-dialog form > aside button[type="submit"] { background: #ed5d24; color: #fff; }
+.fleet-entry-dialog form > aside button[type="submit"]:hover { background: #cc4717; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #d6e5dd; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #fff; }
+
+@media (max-width: 767px) {
+  .fleet-entry-dialog :is(input, select, textarea) { font-size: 16px; }
+  .fleet-entry-dialog form > div { padding: 12px; }
+  .fleet-entry-dialog form > div > div { gap: 12px; }
+  .fleet-entry-dialog form > aside > footer { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 1180px) {
+  .dashboard-hero__content { width: min(72%, 54rem); }
+  .dashboard-hero__visual { left: 58%; }
+  .dashboard-metrics { grid-template-columns: repeat(4, minmax(10rem,1fr)); overflow-x: auto; }
+  .dashboard-metric-cta { min-width: 16rem; }
+}
+
+@media (max-width: 767px) {
+  #main-tab-viewport > :not(.erp-dashboard) { padding-inline: .8rem; }
+  .renea-page-header { padding-top: .5rem; }
+  .renea-page-actions { display: flex; flex-wrap: wrap; width: 100%; }
+  .renea-page-actions > * { max-width: 100%; }
+  .fleet-control .renea-page-actions > button:first-child { width: 100%; }
+  .fleet-control .fleet-quick-launch { display: none; }
+  .renea-button { min-height: 3rem; }
+  .dashboard-hero { min-height: auto; }
+  .dashboard-hero__content { width: 100%; padding-top: 2rem; padding-bottom: 1.5rem; }
+  .dashboard-hero__visual { inset: auto 0 0 0; height: 8.5rem; opacity: .17; }
+  .dashboard-hero__visual::before { background: linear-gradient(180deg, #f7f8f5, rgb(247 248 245 / .18)); }
+  .dashboard-hero__visual > span { display: none; }
+  .dashboard-project-tabs { padding-inline: .5rem; }
+  .dashboard-project-tabs button { min-height: 3rem; }
+  .dashboard-metrics { overflow-x: auto; grid-template-columns: repeat(4, minmax(10.5rem,1fr)) minmax(14rem,1fr); }
+  .dashboard-metric { min-height: 9rem; border-left: 1px solid #cdd6d1; }
+  .dashboard-metric:first-child { border-left: 0; }
+  .renea-table-shell { margin-inline: -1px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #main-tab-viewport > * { animation: none; }
+}
+
+/* RENEA white operational system — final approved direction.
+   The original sidebar remains the only dark navigation surface. */
+:root {
+  --renea-v3-paper: #ffffff;
+}
+
+.erp-workspace,
+#main-workspace,
+#main-tab-viewport,
+#main-tab-viewport > :not(.erp-dashboard) { background: #fff; }
+
+.erp-topbar {
+  border-bottom: 1px solid #dce4df;
+  background: rgb(255 255 255 / .96);
+  color: #10211c;
+  box-shadow: 0 1px 0 rgb(10 47 37 / .04);
+  backdrop-filter: blur(14px);
+}
+.erp-topbar__breadcrumb,
+.erp-topbar__breadcrumb strong,
+.erp-topbar__status,
+.erp-topbar__date,
+.erp-topbar__date strong,
+.erp-topbar__user strong { color: #10211c; }
+.erp-topbar__chevron,
+.erp-topbar__user small { color: #60716a; }
+.erp-topbar__date,
+.erp-topbar__user { border-left-color: #dce4df; }
+.erp-topbar__project { color: #10211c; }
+.erp-topbar__project:hover { border-color: #c8d4ce; background: #f7faf8; }
+.erp-topbar__project small { color: #728078; }
+.erp-topbar__project strong { color: #10211c; }
+.erp-topbar__project > svg:first-child { color: #008b62; }
+.erp-topbar__command { border-color: #d4ddd8; background: #fff; color: #18362d; }
+.erp-topbar__command:hover { border-color: #87aa9d; background: #f6faf8; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #63736c; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #10211c; }
+
+.renea-page-header {
+  isolation: isolate;
+  min-height: 12.75rem;
+  overflow: hidden;
+  border: 1px solid #d5dfda;
+  border-radius: 2px;
+  background: #fff;
+}
+.renea-page-header::after {
+  z-index: 4;
+  bottom: 0;
+  width: 5.5rem;
+  height: 3px;
+}
+.renea-page-header__photo {
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 0 51%;
+  overflow: hidden;
+  background: #eef3f0 url('./assets/renea-editorial/rodovia-duplicada.jpg') center / cover no-repeat;
+}
+.renea-page-header[data-visual="bridge"] .renea-page-header__photo { background-image: url('./assets/renea-editorial/ponte-construcao.jpg'); }
+.renea-page-header[data-visual="crane"] .renea-page-header__photo { background-image: url('./assets/renea-editorial/rodovia-serra.jpg'); }
+.renea-page-header__photo::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, #fff 0%, rgb(255 255 255 / .82) 11%, rgb(255 255 255 / .08) 52%, rgb(255 255 255 / .3) 100%);
+}
+.renea-page-header__photo { animation: renea-v3-image-settle 1.1s cubic-bezier(.2,.8,.2,1) both; }
+.renea-page-header__photo > span {
+  position: absolute;
+  z-index: 2;
+  top: 1.5rem;
+  right: 1.5rem;
+  padding-left: .9rem;
+  border-left: 1px solid rgb(255 255 255 / .8);
+  color: #fff;
+  font-size: .56rem;
+  font-weight: 800;
+  line-height: 1.6;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 8px rgb(0 0 0 / .35);
+}
+.renea-page-header__plane {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 12.75rem;
+  width: min(73%, 58rem);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2rem 3.5rem 1.8rem 2rem;
+  background: #fff;
+  clip-path: polygon(0 0, 84% 0, 100% 100%, 0 100%);
+}
+.renea-page-header__copy { max-width: 46rem; }
+.renea-page-header__eyebrow {
+  display: block;
+  margin-bottom: .55rem;
+  color: #176b4d;
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
+.renea-page-header h1 {
+  max-width: 16ch;
+  color: #07130f;
+  font-size: clamp(2.25rem, 4vw, 4.6rem);
+  font-weight: 950;
+  line-height: .89;
+  letter-spacing: -.065em;
+  text-wrap: balance;
+}
+.renea-page-header__copy > p {
+  max-width: 60ch;
+  margin-top: .75rem;
+  color: #42544c;
+  font-size: clamp(.86rem, 1.2vw, 1.08rem);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.renea-page-header .renea-page-actions { padding-right: 1.5rem; padding-bottom: .15rem; }
+
+/* White surfaces across legacy and redesigned screens. */
+#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat)[class*="bg-[#0"],
+#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat).bg-slate-900,
+#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat).bg-emerald-950 {
+  background-color: #fff !important;
+  color: #10211c !important;
+}
+.fleet-control .fleet-quick-launch,
+.fleet-entry-dialog form > aside,
+.fleet-entry-dialog form > aside > footer {
+  border-color: #d5dfda;
+  background: #fff;
+  color: #10211c;
+}
+.fleet-entry-dialog form > aside :is(dt, .text-slate-400, .text-slate-500, .text-slate-600) { color: #64736c; }
+.fleet-entry-dialog form > aside button[type="submit"] { background: #087653; color: #fff; }
+
+/* Clear the remaining legacy dark panels without touching the original
+   navigation or colored primary actions. */
+#main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody)[class*="bg-slate-9"],
+#main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody)[class*="bg-[#0"],
+#main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody)[class*="bg-[#1"] {
+  background-color: #fff !important;
+  color: #10211c !important;
+}
+#main-tab-viewport [class*="bg-slate-50"],
+#main-tab-viewport [class*="bg-gray-50"],
+#main-tab-viewport [class*="bg-[#f7"],
+#main-tab-viewport [class*="bg-[#f8"],
+#main-tab-viewport [class*="bg-[#fa"],
+#main-tab-viewport [class*="bg-[#fb"] { background-color: #fff !important; }
+#main-tab-viewport [class*="border-slate-8"],
+#main-tab-viewport [class*="border-slate-7"] { border-color: #d7e0db !important; }
+#main-tab-viewport :is(input, select, textarea) {
+  border-color: #cbd7d1 !important;
+  background-color: #fff !important;
+  color: #10211c !important;
+}
+#main-tab-viewport :is(input, textarea)::placeholder { color: #839089 !important; }
+#main-tab-viewport :is(h1, h2, h3, h4, h5, p, label, dt, dd, td, th)[class*="text-white"],
+#main-tab-viewport :is(h1, h2, h3, h4, h5, p, label, dt, dd, td, th)[class*="text-slate-1"],
+#main-tab-viewport :is(h1, h2, h3, h4, h5, p, label, dt, dd, td, th)[class*="text-slate-2"] { color: #10211c !important; }
+#main-tab-viewport button[class*="bg-emerald"] :is(span, strong, svg),
+#main-tab-viewport button[class*="bg-[#087653]"] :is(span, strong, svg) { color: #fff !important; }
+#pendencias-tab button[aria-pressed="true"] :is(span, strong, svg) { color: #17352c !important; }
+
+/* Motion is deliberately visible but keeps operational controls steady. */
+@keyframes renea-white-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes renea-white-sweep {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes renea-line-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes renea-point-pop {
+  from { opacity: 0; transform: scale(.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+.dashboard-trend-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: renea-line-draw 1.05s .12s cubic-bezier(.22,.8,.2,1) forwards; }
+.dashboard-trend-point { opacity: 0; transform-box: fill-box; transform-origin: center; animation: renea-point-pop .42s cubic-bezier(.2,.9,.25,1.35) forwards; }
+.renea-page-header__copy > * { animation: renea-white-reveal .55s cubic-bezier(.18,.8,.2,1) both; }
+.renea-page-header__copy > :nth-child(2) { animation-delay: 70ms; }
+.renea-page-header__copy > :nth-child(3) { animation-delay: 140ms; }
+.renea-page-header::after { transform-origin: left; animation: renea-white-sweep .7s .2s cubic-bezier(.18,.8,.2,1) both; }
+#main-tab-viewport > :not(.erp-dashboard) > :is(section, article, div):nth-child(2) { animation-delay: 90ms; }
+#main-tab-viewport > * > :is(header, section, article),
+#main-tab-viewport > * > div > :is(header, section, article) {
+  animation: renea-white-reveal .5s cubic-bezier(.18,.8,.2,1) both;
+}
+#main-tab-viewport > * > :is(header, section, article):nth-child(2),
+#main-tab-viewport > * > div > :is(header, section, article):nth-child(2) { animation-delay: 70ms; }
+#main-tab-viewport > * > :is(header, section, article):nth-child(3),
+#main-tab-viewport > * > div > :is(header, section, article):nth-child(3) { animation-delay: 130ms; }
+#main-tab-viewport > * > :is(header, section, article):nth-child(4),
+#main-tab-viewport > * > div > :is(header, section, article):nth-child(4) { animation-delay: 190ms; }
+#main-tab-viewport button,
+#main-tab-viewport a { transition: color .2s ease, background-color .2s ease, border-color .2s ease, transform .2s cubic-bezier(.2,.8,.2,1); }
+#main-tab-viewport button:active,
+#main-tab-viewport a:active { transform: translateY(1px) scale(.99); }
+#main-tab-viewport :is(button, a, input, select, textarea):focus-visible { outline: 3px solid rgb(0 139 98 / .22); outline-offset: 2px; }
+
+@media (max-width: 767px) {
+  .erp-topbar { background: #fff; }
+  .renea-page-header { min-height: auto; overflow: hidden; }
+  .renea-page-header__photo { inset: 0 0 auto 0; height: 5.25rem; opacity: .24; }
+  .renea-page-header__photo::after { background: linear-gradient(180deg, rgb(255 255 255 / .08), #fff); }
+  .renea-page-header__photo > span { display: none; }
+  .renea-page-header__plane {
+    min-height: 11.5rem;
+    width: 100%;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 2.2rem 1.1rem 1.2rem;
+    background: linear-gradient(180deg, rgb(255 255 255 / .7), #fff 42%);
+    clip-path: none;
+  }
+  .renea-page-header h1 { max-width: none; font-size: clamp(2rem, 11vw, 3.1rem); line-height: .92; }
+  .renea-page-header__copy > p { margin-top: .55rem; font-size: .82rem; }
+  .renea-page-header .renea-page-actions { width: 100%; padding: 0; }
+  .renea-page-header .renea-page-actions > * { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .renea-page-header__photo,
+  .renea-page-header__copy > *,
+  .renea-page-header::after { animation: none; }
+}
+
+/* Presence and fuel keep the same white operational language, but gain
+   responsive data feedback and a lighter visual rhythm. */
+#presenca-tempo-real > header:first-child {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 2px;
+}
+#presenca-tempo-real > header:first-child::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto 58%;
+  height: 13rem;
+  content: "";
+  background: linear-gradient(90deg, #fff, rgb(255 255 255 / .25)), url('./assets/renea-editorial/ponte-construcao.jpg') center / cover no-repeat;
+  opacity: .28;
+}
+.fuel-workspace-nav { position: sticky; z-index: 18; top: 0; border-radius: 2px; }
+.fuel-filter-dock { border-radius: 2px; box-shadow: 0 12px 34px -30px rgb(6 60 45 / .45); }
+.fuel-dashboard > section { border-radius: 2px; }
+.fuel-dashboard [data-fuel-bar],
+.fuel-dashboard [data-fuel-line] { will-change: transform; }
+.fuel-command-center__lead { background: linear-gradient(135deg, #fff 0%, #fff 62%, #eef6f1 100%); }
+.fuel-command-center__photo {
+  position: absolute;
+  inset: 0 0 0 58%;
+  background: linear-gradient(90deg, #fff 0%, rgb(255 255 255 / .55) 24%, rgb(255 255 255 / .08) 100%), url('./assets/renea-editorial/rodovia-serra.jpg') center / cover no-repeat;
+  opacity: .34;
+  transform: scale(1.035);
+  animation: renea-v3-image-settle 1.2s cubic-bezier(.2,.8,.2,1) both;
+}
+
+#modo-campo-tab .field-action {
+  position: relative;
+  overflow: hidden;
+  min-height: 7.5rem;
+  align-items: flex-start;
+  padding: 1.15rem;
+  text-align: left;
+}
+#modo-campo-tab .field-action::after {
+  position: absolute;
+  right: -1rem;
+  bottom: -1.5rem;
+  width: 5rem;
+  height: 5rem;
+  border: 1px solid #d8e9e1;
+  border-radius: 50%;
+  content: "";
+  transition: transform .45s cubic-bezier(.2,.8,.2,1);
+}
+#modo-campo-tab .field-action:hover::after { transform: scale(1.22); }
+#modo-campo-tab .field-action svg { transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+#modo-campo-tab .field-action:hover svg { transform: translateY(-2px) scale(1.06); }
+
+@media (min-width: 1024px) {
+  .erp-sidebar { width: 15.75rem; min-width: 15.75rem; background: #0b4938; border-right-color: #23614e; animation: none; }
+  .erp-sidebar > div:first-child { min-height: 4.7rem; }
+  .erp-sidebar nav { padding-top: .8rem; }
+  .erp-sidebar nav section { margin-bottom: .15rem; }
+  .erp-sidebar nav button { min-height: 2.55rem; }
+}
+
+@media (max-width: 767px) {
+  #presenca-tempo-real > header:first-child::before { inset: 0 0 auto 35%; height: 12rem; opacity: .15; }
+  .fuel-workspace-nav { top: 0; }
+  .fuel-command-center__lead { min-height: 24rem; }
+  .fuel-command-center__photo { inset: 47% 0 0 35%; opacity: .18; }
+}

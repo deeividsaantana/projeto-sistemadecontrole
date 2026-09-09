@@ -12,6 +12,7 @@ import {
   Edit3,
   FileSpreadsheet,
   FileText,
+  Filter,
   History,
   Link2,
   MessageCircle,
@@ -54,6 +55,9 @@ const STATUS_OPTIONS: PresencaStatus[] = [
   'Afastado',
   'Outro',
 ];
+
+const ACTIVE_BRANCHES = ['Ramo 100', 'Ramo 200', 'Ramo 300', 'Ramo 500', 'Ramo 600', 'Ramo 700', 'Ramo 800', 'Ramo 900', 'Ramo 1000', 'Ramo 1100', 'Ramo 1200', 'Ramo 1300', 'Ramo 1400'];
+const ACTIVE_SITES = ['SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica'];
 
 const STATUS_STYLES: Record<PresencaStatus, string> = {
   Presente: 'border-emerald-200 bg-emerald-50 text-emerald-800',
@@ -198,6 +202,12 @@ export default function ControlePresencaTab({
 
   const [view, setView] = useState<View>('ao-vivo');
   const [referenceDate, setReferenceDate] = useState(today);
+  const [dashboardCompany, setDashboardCompany] = useState('todas');
+  const [dashboardGroup, setDashboardGroup] = useState('todos');
+  const [dashboardRole, setDashboardRole] = useState('todas');
+  const [dashboardStatus, setDashboardStatus] = useState<'todos' | PresencaStatus>('todos');
+  const [dashboardBranch, setDashboardBranch] = useState('todos');
+  const [dashboardSite, setDashboardSite] = useState('todos');
   const [recordDate, setRecordDate] = useState(today);
   const [recordGroup, setRecordGroup] = useState('todos');
   const [recordStatus, setRecordStatus] = useState<'todos' | PresencaStatus>('todos');
@@ -246,8 +256,33 @@ export default function ControlePresencaTab({
   );
   const generalToken = useMemo(() => activeGroups.find(group => group.tokenGeral)?.tokenGeral || '', [activeGroups]);
   const dayRecords = useMemo(() => safeRecords.filter(record => record.data === referenceDate), [referenceDate, safeRecords]);
+  const roleOptions = useMemo(() => [...new Set(safeRecords.map(record => record.funcao).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [safeRecords]);
+  const employeeById = useMemo(() => new Map(safeFuncionarios.map(employee => [employee.id, employee])), [safeFuncionarios]);
+  const recordMatchesDashboard = (record: PresencaApontamento) => {
+    const employee = employeeById.get(record.funcionarioId);
+    const operationalLocation = `${record.grupoNome} ${record.frenteServico}`.toLocaleLowerCase('pt-BR');
+    return (dashboardCompany === 'todas' || employee?.empresaId === dashboardCompany)
+      && (dashboardGroup === 'todos' || record.grupoId === dashboardGroup)
+      && (dashboardRole === 'todas' || record.funcao === dashboardRole)
+      && (dashboardStatus === 'todos' || record.status === dashboardStatus)
+      && (dashboardBranch === 'todos' || operationalLocation.includes(dashboardBranch.toLocaleLowerCase('pt-BR')))
+      && (dashboardSite === 'todos' || operationalLocation.includes(dashboardSite.toLocaleLowerCase('pt-BR')));
+  };
+  const dashboardRecords = useMemo(
+    () => dayRecords.filter(recordMatchesDashboard),
+    [dashboardBranch, dashboardCompany, dashboardGroup, dashboardRole, dashboardSite, dashboardStatus, dayRecords, employeeById],
+  );
   const sentGroupIds = useMemo(() => new Set(dayRecords.map(record => record.grupoId).filter(Boolean)), [dayRecords]);
   const pendingGroups = useMemo(() => activeGroups.filter(group => !sentGroupIds.has(group.id)), [activeGroups, sentGroupIds]);
+  const dashboardPendingGroups = useMemo(
+    () => pendingGroups.filter(group => {
+      const location = `${group.nome} ${group.frenteServico}`.toLocaleLowerCase('pt-BR');
+      return (dashboardGroup === 'todos' || group.id === dashboardGroup)
+        && (dashboardBranch === 'todos' || location.includes(dashboardBranch.toLocaleLowerCase('pt-BR')))
+        && (dashboardSite === 'todos' || location.includes(dashboardSite.toLocaleLowerCase('pt-BR')));
+    }),
+    [dashboardBranch, dashboardGroup, dashboardSite, pendingGroups],
+  );
 
   const duplicateKeys = useMemo(() => {
     const counts = new Map<string, number>();
@@ -256,21 +291,34 @@ export default function ControlePresencaTab({
   }, [safeRecords]);
 
   const metrics = useMemo(() => {
-    const planned = activeGroups.reduce((sum, group) => sum + group.funcionarioIds.length, 0);
-    const present = dayRecords.filter(record => record.status === 'Presente').length;
-    const absent = dayRecords.filter(record => record.status === 'Ausente').length;
-    const justified = dayRecords.filter(record => ['Falta justificada', 'Atestado'].includes(record.status)).length;
-    const latest = [...dayRecords].sort((a, b) => b.horaEnvio.localeCompare(a.horaEnvio))[0];
+    const plannedIds = new Set(activeGroups
+      .filter(group => {
+        const location = `${group.nome} ${group.frenteServico}`.toLocaleLowerCase('pt-BR');
+        return (dashboardGroup === 'todos' || group.id === dashboardGroup)
+          && (dashboardBranch === 'todos' || location.includes(dashboardBranch.toLocaleLowerCase('pt-BR')))
+          && (dashboardSite === 'todos' || location.includes(dashboardSite.toLocaleLowerCase('pt-BR')));
+      })
+      .flatMap(group => group.funcionarioIds)
+      .filter(id => {
+        const employee = employeeById.get(id);
+        return (dashboardCompany === 'todas' || employee?.empresaId === dashboardCompany)
+          && (dashboardRole === 'todas' || employee?.cargo === dashboardRole);
+      }));
+    const planned = plannedIds.size;
+    const present = dashboardRecords.filter(record => record.status === 'Presente').length;
+    const absent = dashboardRecords.filter(record => record.status === 'Ausente').length;
+    const justified = dashboardRecords.filter(record => ['Falta justificada', 'Atestado'].includes(record.status)).length;
+    const latest = [...dashboardRecords].sort((a, b) => b.horaEnvio.localeCompare(a.horaEnvio))[0];
     return {
       planned,
       present,
       absent,
       justified,
-      pending: pendingGroups.length,
+      pending: dashboardPendingGroups.length,
       percent: planned ? Math.min(100, Math.round((present / planned) * 100)) : 0,
       latest: latest?.horaEnvio || '',
     };
-  }, [activeGroups, dayRecords, pendingGroups.length]);
+  }, [activeGroups, dashboardBranch, dashboardCompany, dashboardGroup, dashboardPendingGroups.length, dashboardRecords, dashboardRole, dashboardSite, employeeById]);
 
   /** Ultimos 7 dias com movimento, do mais antigo para o mais recente. */
   const tendencia = useMemo(() => {
@@ -280,7 +328,7 @@ export default function ControlePresencaTab({
       const dia = new Date(base);
       dia.setDate(dia.getDate() - (6 - index));
       const iso = dia.toISOString().slice(0, 10);
-      const doDia = safeRecords.filter(record => record.data === iso);
+      const doDia = safeRecords.filter(record => record.data === iso && recordMatchesDashboard(record));
       return {
         iso,
         rotulo: iso.slice(8, 10) + '/' + iso.slice(5, 7),
@@ -288,7 +336,7 @@ export default function ControlePresencaTab({
         total: doDia.length,
       };
     });
-  }, [referenceDate, safeRecords, today]);
+  }, [dashboardBranch, dashboardCompany, dashboardGroup, dashboardRole, dashboardSite, dashboardStatus, employeeById, referenceDate, safeRecords, today]);
 
   const picoTendencia = useMemo(
     () => Math.max(1, ...tendencia.map(item => item.presentes)),
@@ -297,13 +345,20 @@ export default function ControlePresencaTab({
 
   /** Distribuicao completa das situacoes do dia, nao so presente/ausente. */
   const distribuicao = useMemo(() => STATUS_OPTIONS
-    .map(status => ({ status, total: dayRecords.filter(record => record.status === status).length }))
-    .filter(item => item.total > 0), [dayRecords]);
+    .map(status => ({ status, total: dashboardRecords.filter(record => record.status === status).length }))
+    .filter(item => item.total > 0), [dashboardRecords]);
+
+  const funcoesDoDia = useMemo(() => {
+    const mapa = new Map<string, number>();
+    dashboardRecords.forEach(record => mapa.set(record.funcao || 'Função não informada', (mapa.get(record.funcao || 'Função não informada') || 0) + 1));
+    return [...mapa.entries()].map(([funcao, total]) => ({ funcao, total })).sort((a, b) => b.total - a.total);
+  }, [dashboardRecords]);
+  const picoFuncoes = Math.max(1, ...funcoesDoDia.map(item => item.total));
 
   /** Quem esta ausente hoje, para o administrativo agir sem trocar de aba. */
   const ausentesDoDia = useMemo(
-    () => dayRecords.filter(record => record.status === 'Ausente' || record.status === 'Falta justificada'),
-    [dayRecords],
+    () => dashboardRecords.filter(record => record.status === 'Ausente' || record.status === 'Falta justificada'),
+    [dashboardRecords],
   );
 
   useGSAP(() => {
@@ -687,7 +742,7 @@ export default function ControlePresencaTab({
   return (
     <section id="presenca-tempo-real" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-[#14231e] lg:pb-8">
       <header className={`${PANEL} overflow-hidden`}>
-        <div className="relative grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div className="relative grid gap-7 p-5 sm:p-7 lg:grid-cols-[minmax(18rem,.72fr)_minmax(32rem,1.28fr)] lg:items-end">
           <div className="relative">
             <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-8 w-auto" />
             <div className="mt-7 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-800">
@@ -696,11 +751,18 @@ export default function ControlePresencaTab({
             <h1 className="mt-2 max-w-2xl text-3xl font-black tracking-[-0.045em] text-[#101a22] sm:text-4xl">Presença ao vivo</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65716b]">Acompanhe as equipes, compartilhe o link oficial e receba cada envio assim que ele chegar.</p>
           </div>
-          <div className="relative flex flex-wrap items-center gap-2">
-            <label className="min-w-40">
-              <span className="sr-only">Data de referência</span>
-              <input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} className={FIELD} />
-            </label>
+          <div className="relative">
+            <div className="mb-2 flex items-center justify-between gap-3"><span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-emerald-800"><Filter className="h-3.5 w-3.5" /> Recorte do painel</span><button type="button" onClick={() => { setDashboardCompany('todas'); setDashboardGroup('todos'); setDashboardRole('todas'); setDashboardStatus('todos'); setDashboardBranch('todos'); setDashboardSite('todos'); }} className="text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-emerald-800">Limpar</button></div>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              <label><span className="sr-only">Data de referência</span><input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={FIELD} /></label>
+              <label><span className="sr-only">Empresa</span><select value={dashboardCompany} onChange={event => setDashboardCompany(event.target.value)} className={FIELD}><option value="todas">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></label>
+              <label><span className="sr-only">Equipe</span><select value={dashboardGroup} onChange={event => setDashboardGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{activeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select></label>
+              <label><span className="sr-only">Função</span><select value={dashboardRole} onChange={event => setDashboardRole(event.target.value)} className={FIELD}><option value="todas">Todas as funções</option>{roleOptions.map(role => <option key={role}>{role}</option>)}</select></label>
+              <label><span className="sr-only">Situação</span><select value={dashboardStatus} onChange={event => setDashboardStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label>
+              <label><span className="sr-only">Ramo</span><select value={dashboardBranch} onChange={event => setDashboardBranch(event.target.value)} className={FIELD}><option value="todos">Todos os ramos</option>{ACTIVE_BRANCHES.map(branch => <option key={branch}>{branch}</option>)}</select></label>
+              <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{ACTIVE_SITES.map(site => <option key={site}>{site}</option>)}</select></label>
+              <div className="flex min-h-11 items-center justify-between rounded-lg border border-[#e2e8e4] bg-[#f5f8f6] px-3"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Exibindo</span><strong className="text-sm font-black text-emerald-800">{dashboardRecords.length} pessoas</strong></div>
+            </div>
           </div>
         </div>
 
@@ -769,12 +831,12 @@ export default function ControlePresencaTab({
               ))}
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-3 lg:grid-cols-3">
               <article className={`${PANEL} p-5`}>
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Confirmados nos últimos 7 dias</p>
                 <div className="mt-5 flex h-28 items-end gap-2">
                   {tendencia.map(item => (
-                    <div key={item.iso} className="group flex h-full flex-1 flex-col items-center gap-1" title={`${item.presentes} presente(s) em ${item.rotulo}`}>
+                    <button type="button" key={item.iso} onClick={() => setReferenceDate(item.iso)} className="group flex h-full flex-1 flex-col items-center gap-1" title={`Ver ${item.presentes} presente(s) em ${item.rotulo}`}>
                       <span className="text-[10px] font-bold tabular-nums text-[#65716b]">{item.presentes || ''}</span>
                       <div className="flex w-full flex-1 items-end">
                         <div
@@ -784,9 +846,21 @@ export default function ControlePresencaTab({
                         />
                       </div>
                       <span className="text-[9px] font-bold tabular-nums text-[#79847e]">{item.rotulo}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
+              </article>
+
+              <article className={`${PANEL} p-5`}>
+                <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Efetivo por função</p><span className="text-[10px] font-black text-emerald-800">{referenceDate.split('-').reverse().join('/')}</span></div>
+                {funcoesDoDia.length === 0 ? <p className="mt-6 text-sm text-[#65716b]">Nenhuma função registrada neste recorte.</p> : (
+                  <div className="mt-4 space-y-3">
+                    {funcoesDoDia.slice(0, 7).map(item => <button type="button" key={item.funcao} onClick={() => setDashboardRole(item.funcao)} className="group block w-full text-left" aria-label={`Filtrar ${item.funcao}: ${item.total}`}>
+                      <div className="flex items-center justify-between gap-3 text-xs"><span className="truncate font-bold text-[#26362f] group-hover:text-emerald-800">{item.funcao}</span><strong className="tabular-nums text-[#101a22]">{item.total}</strong></div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eef2f0]"><span data-dist-bar data-pct={(item.total / picoFuncoes) * 100} className="block h-full rounded-full bg-[#12a273]" /></div>
+                    </button>)}
+                  </div>
+                )}
               </article>
 
               <article className={`${PANEL} p-5`}>
@@ -796,15 +870,15 @@ export default function ControlePresencaTab({
                 ) : (
                   <ul className="mt-4 space-y-3">
                     {distribuicao.map(item => (
-                      <li key={item.status}>
+                      <li key={item.status}><button type="button" onClick={() => setDashboardStatus(item.status)} className="group block w-full text-left">
                         <div className="flex items-center justify-between gap-3 text-xs font-bold">
-                          <span className="text-[#26362f]">{item.status}</span>
+                          <span className="text-[#26362f] group-hover:text-emerald-800">{item.status}</span>
                           <span className="tabular-nums text-[#65716b]">{item.total}</span>
                         </div>
                         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eef2f0]">
-                          <div data-dist-bar data-pct={(item.total / Math.max(1, dayRecords.length)) * 100} className="h-full rounded-full bg-[#087653]" />
+                          <div data-dist-bar data-pct={(item.total / Math.max(1, dashboardRecords.length)) * 100} className="h-full rounded-full bg-[#087653]" />
                         </div>
-                      </li>
+                      </button></li>
                     ))}
                   </ul>
                 )}

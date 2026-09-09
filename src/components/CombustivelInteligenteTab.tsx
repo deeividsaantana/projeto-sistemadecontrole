@@ -1,4 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   Activity,
   AlertTriangle,
@@ -53,7 +55,7 @@ import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWo
 import { auth } from '../firebase';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import { stageFuelDataset } from '../services/masterDataApi';
-import { PageHeader, StatCard } from '../shared/ui';
+import { PageHeader } from '../shared/ui';
 
 interface CombustivelInteligenteTabProps {
   empresas: Empresa[];
@@ -169,6 +171,7 @@ const sourceTone: Record<string, string> = {
   'PDF/Foto IA': 'bg-cyan-500/10 text-cyan-300',
   'Legado Access': 'bg-[#eef2f0] text-[#3d4a44]',
 };
+const OPERATIONAL_LOCATIONS = ['Ramo 100', 'Ramo 200', 'Ramo 300', 'Ramo 500', 'Ramo 600', 'Ramo 700', 'Ramo 800', 'Ramo 900', 'Ramo 1000', 'Ramo 1100', 'Ramo 1200', 'Ramo 1300', 'Ramo 1400', 'SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica'];
 
 const hashFile = async (file: File) => {
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
@@ -197,10 +200,12 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const [filterEquipment, setFilterEquipment] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSource, setFilterSource] = useState('');
+  const [filterLocation, setFilterLocation] = useState('');
   const [search, setSearch] = useState('');
   const [globalError, setGlobalError] = useState('');
   const [protectedSyncing, setProtectedSyncing] = useState(false);
   const [protectedMessage, setProtectedMessage] = useState('');
+  const fuelDashboardRef = useRef<HTMLDivElement>(null);
 
   const sortedEquipment = useMemo(
     () => [...equipamentos].sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR', { numeric: true })),
@@ -223,6 +228,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           if (filterEquipment && record.equipamentoId !== filterEquipment) return false;
           if (filterStatus && (record.status || 'OK') !== filterStatus) return false;
           if (filterSource && (record.origem || 'Manual') !== filterSource) return false;
+          if (filterLocation && !normalize(record.localAbastecimento || '').includes(normalize(filterLocation))) return false;
           const equipment = equipamentos.find((item) => item.id === record.equipamentoId);
           const term = search.trim().toLowerCase();
           return (
@@ -242,7 +248,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           );
         })
         .sort((a, b) => `${b.data}T${b.hora}`.localeCompare(`${a.data}T${a.hora}`)),
-    [auditedRecords, filterStart, filterEnd, filterEquipment, filterStatus, filterSource, search, equipamentos],
+    [auditedRecords, filterStart, filterEnd, filterEquipment, filterLocation, filterStatus, filterSource, search, equipamentos],
   );
   const operationalFilteredRecords = useMemo(
     () => filteredRecords.filter(isOperationalFuelRecord),
@@ -369,8 +375,17 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
     setFilterEquipment('');
     setFilterStatus('');
     setFilterSource('');
+    setFilterLocation('');
     setSearch('');
   };
+
+  useGSAP(() => {
+    if (view !== 'painel' || !fuelDashboardRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const scope = fuelDashboardRef.current;
+    gsap.fromTo(scope.querySelectorAll('[data-fuel-metric]'), { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: .52, stagger: .055, ease: 'power3.out', clearProps: 'transform,opacity,visibility' });
+    gsap.fromTo(scope.querySelectorAll<HTMLElement>('[data-fuel-bar]'), { scaleY: .03 }, { scaleY: 1, duration: .7, stagger: .035, transformOrigin: 'bottom', ease: 'power3.out' });
+    gsap.fromTo(scope.querySelectorAll<HTMLElement>('[data-fuel-line]'), { scaleX: 0 }, { scaleX: 1, duration: .65, stagger: .045, transformOrigin: 'left', ease: 'power3.out' });
+  }, { scope: fuelDashboardRef, dependencies: [view, filterStart, filterEnd, filterEquipment, filterStatus, filterSource, filterLocation] });
 
   const getLastPump = (
     comboioId: string,
@@ -931,7 +946,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const selectedAiEvaluation = aiEvaluated.find((item) => item.row.id === selectedAiRow);
 
   return (
-    <div className="space-y-5 text-[#26362f]">
+    <div className="fuel-workspace space-y-5 text-[#26362f]">
       <PageHeader
         title="Combustível"
         description={`${abastecimentos.length.toLocaleString('pt-BR')} registro(s) · lançamento livre manual, planilha ou documento`}
@@ -975,14 +990,14 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         </>}
       />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-[#e2e8e4] pb-px">
+      <div className="fuel-workspace-nav flex gap-1 overflow-x-auto border border-[#e2e8e4] bg-white p-1.5">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
             <button
               key={item.id}
               onClick={() => setView(item.id)}
-              className={`inline-flex h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold ${view === item.id ? 'border-emerald-400 text-[#14231e]' : 'border-transparent text-[#65716b] hover:text-[#14231e]'}`}
+              className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-sm px-4 text-sm font-semibold transition-all ${view === item.id ? 'bg-emerald-950 text-white shadow-[0_8px_20px_rgba(6,78,59,.15)]' : 'text-[#65716b] hover:bg-emerald-50 hover:text-[#14231e]'}`}
             >
               <Icon size={17} />
               {item.label}
@@ -992,7 +1007,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       </div>
 
       {view !== 'digitacao' && (
-        <section className="grid gap-3 border-b border-[#e2e8e4] pb-5 md:grid-cols-2 xl:grid-cols-[1.5fr_repeat(5,1fr)_auto]">
+        <section className="fuel-filter-dock grid gap-3 border border-[#e2e8e4] bg-white p-4 md:grid-cols-2 xl:grid-cols-[1.5fr_repeat(6,1fr)_auto]">
           <label className="relative">
             <span className="sr-only">Buscar</span>
             <Search className="absolute left-3 top-3 text-[#65716b]" size={17} />
@@ -1067,6 +1082,14 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
             </select>
             <ChevronDown className="pointer-events-none absolute right-3 top-3 text-[#65716b]" size={17} />
           </label>
+          <label className="relative">
+            <span className="sr-only">Frente ou canteiro</span>
+            <select value={filterLocation} onChange={(event) => setFilterLocation(event.target.value)} className="h-11 w-full appearance-none border border-[#e2e8e4] bg-white px-3 pr-8 text-sm outline-none focus:border-emerald-500">
+              <option value="">Todas as frentes</option>
+              {OPERATIONAL_LOCATIONS.map(location => <option key={location}>{location}</option>)}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-3 text-[#65716b]" size={17} />
+          </label>
           <button
             onClick={clearFilters}
             title="Limpar filtros"
@@ -1105,54 +1128,27 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
       )}
 
       {view === 'painel' && (
-        <div className="space-y-5">
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                label: 'Volume',
-                value: `${formatNumber(dashboard.totalLiters, 0)} L`,
-                detail: `${filteredRecords.length} abastecimento(s)`,
-                icon: Fuel,
-                tone: 'success' as const,
-              },
-              {
-                label: 'Frota atendida',
-                value: dashboard.uniqueEquipment,
-                detail: 'Equipamentos distintos',
-                icon: Truck,
-                tone: 'info' as const,
-              },
-              {
-                label: 'Média por registro',
-                value: filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0',
-                detail: 'Litros por lançamento',
-                icon: Gauge,
-                tone: 'info' as const,
-              },
-              {
-                label: 'Importados',
-                value: filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length,
-                detail: 'Planilha, PDF ou foto',
-                icon: FileSpreadsheet,
-                tone: 'warning' as const,
-              },
-              {
-                label: 'Custo informado',
-                value: dashboard.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-                detail: 'Somente registros com R$/L',
-                icon: CircleDollarSign,
-                tone: 'success' as const,
-              },
-              {
-                label: 'Conferência',
-                value: dashboard.pendingReview,
-                detail: `${dashboard.alerts} alerta(s), ${dashboard.critical} crítico(s)`,
-                icon: ClipboardCheck,
-                tone: dashboard.pendingReview ? 'warning' as const : 'success' as const,
-              },
-            ].map((item) => (
-              <StatCard key={item.label} label={item.label} value={item.value} icon={item.icon} trend={item.detail} tone={item.tone} />
-            ))}
+        <div ref={fuelDashboardRef} className="fuel-dashboard space-y-5">
+          <section className="fuel-command-center grid overflow-hidden border border-slate-200 bg-white xl:grid-cols-[minmax(0,1.25fr)_minmax(22rem,.75fr)]">
+            <div className="fuel-command-center__lead relative min-h-[22rem] overflow-hidden p-6 md:p-8">
+              <div className="fuel-command-center__photo" aria-hidden="true" />
+              <div className="relative z-[2] flex h-full max-w-[44rem] flex-col justify-between">
+                <div><span className="text-[10px] font-black uppercase tracking-[.24em] text-emerald-700">Centro de consumo</span><h2 className="mt-2 max-w-xl text-3xl font-black leading-[.98] tracking-[-.055em] text-slate-950 md:text-5xl">Combustível sob controle, do campo à conferência.</h2><p className="mt-3 max-w-lg text-sm leading-6 text-slate-600">Volume, custo e rastreabilidade calculados diretamente sobre os registros do período.</p></div>
+                <div className="mt-10"><span className="text-[10px] font-black uppercase tracking-[.18em] text-slate-500">Volume no recorte</span><div className="mt-1 flex flex-wrap items-baseline gap-x-3"><strong data-fuel-metric className="text-5xl font-black leading-none tracking-[-.065em] text-emerald-700 md:text-7xl">{formatNumber(dashboard.totalLiters, 0)}</strong><span className="text-xl font-black text-emerald-800">litros</span></div><p className="mt-2 text-xs font-semibold text-slate-500">{filteredRecords.length.toLocaleString('pt-BR')} lançamentos · {dashboard.uniqueEquipment.toLocaleString('pt-BR')} equipamentos</p></div>
+              </div>
+            </div>
+            <div className="grid gap-px border-t border-slate-200 bg-slate-200 sm:grid-cols-2 xl:border-l xl:border-t-0">
+              {[
+                ['Custo informado', dashboard.totalCost.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}), 'Registros com valor por litro', CircleDollarSign, 'text-emerald-700'],
+                ['Média por lançamento', `${filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0'} L`, 'Volume médio abastecido', Gauge, 'text-sky-700'],
+                ['Importados', filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length.toLocaleString('pt-BR'), 'Planilha, PDF ou foto', FileSpreadsheet, 'text-violet-700'],
+                ['Aguardando conferência', dashboard.pendingReview.toLocaleString('pt-BR'), `${dashboard.alerts} alertas · ${dashboard.critical} críticos`, ClipboardCheck, dashboard.pendingReview ? 'text-amber-700' : 'text-emerald-700'],
+              ].map(([label,value,detail,Icon,tone]) => <button type="button" key={String(label)} data-fuel-metric onClick={() => label === 'Aguardando conferência' ? setView('conferencia') : undefined} className="group min-h-44 bg-white p-5 text-left transition-colors hover:bg-emerald-50/40"><div className="flex items-start justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[.14em] text-slate-500">{label as string}</span><Icon className="h-5 w-5 text-slate-400 group-hover:text-emerald-700" /></div><strong className={`mt-7 block text-3xl font-black tracking-[-.045em] ${tone as string}`}>{value as string}</strong><span className="mt-2 block text-xs leading-5 text-slate-500">{detail as string}</span></button>)}
+            </div>
+          </section>
+          <section className="flex flex-col gap-4 border border-[#e2e8e4] bg-white p-4 md:flex-row md:items-center md:justify-between">
+            <p className="text-xs font-semibold text-slate-500">Altere o período ou clique nos gráficos para cruzar todos os indicadores.</p>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => { const end=today(); const start=new Date(`${end}T12:00:00`); start.setDate(start.getDate()-6); setFilterStart(start.toISOString().slice(0,10)); setFilterEnd(end); }} className="min-h-10 rounded-full border border-slate-200 px-4 text-xs font-black text-slate-600 hover:border-emerald-400 hover:text-emerald-800">7 dias</button><button type="button" onClick={() => { const end=today(); const start=new Date(`${end}T12:00:00`); start.setDate(start.getDate()-29); setFilterStart(start.toISOString().slice(0,10)); setFilterEnd(end); }} className="min-h-10 rounded-full border border-slate-200 px-4 text-xs font-black text-slate-600 hover:border-emerald-400 hover:text-emerald-800">30 dias</button><button type="button" onClick={clearFilters} className="min-h-10 rounded-full bg-emerald-950 px-4 text-xs font-black text-white">Todo histórico</button></div>
           </section>
           <section className="grid gap-5 xl:grid-cols-[1.35fr_.85fr]">
             <div className="border border-[#e2e8e4] bg-white">
@@ -1165,18 +1161,18 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               </div>
               <div className="flex h-64 items-end gap-2 overflow-x-auto p-5">
                 {dailyTrend.map((item) => (
-                  <div key={item.date} className="flex h-full min-w-10 flex-1 flex-col justify-end">
+                  <button type="button" key={item.date} onClick={() => { setFilterStart(item.date); setFilterEnd(item.date); }} className="group flex h-full min-w-10 flex-1 flex-col justify-end" aria-label={`Filtrar ${formatDate(item.date)}: ${formatNumber(item.liters,0)} litros`}>
                     <span className="mb-2 text-center text-[10px] font-bold text-[#65716b]">
                       {formatNumber(item.liters, 0)}
                     </span>
                     <div
-                      className="mx-auto w-full max-w-12 bg-emerald-500 transition-all"
+                      data-fuel-bar className="mx-auto w-full max-w-12 bg-emerald-500 transition-colors group-hover:bg-emerald-700"
                       style={{ height: `${Math.max(4, (item.liters / maxDaily) * 100)}%` }}
                     />
                     <span className="mt-2 text-center text-[9px] text-[#53605a]">
                       {item.date.slice(5).split('-').reverse().join('/')}
                     </span>
-                  </div>
+                  </button>
                 ))}
                 {!dailyTrend.length && (
                   <div className="grid h-full w-full place-items-center text-sm text-[#65716b]">
@@ -1195,7 +1191,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               </div>
               <div className="space-y-4 p-5">
                 {sourceDistribution.map(([source, count]) => (
-                  <div key={source}>
+                  <button type="button" key={source} onClick={() => setFilterSource(source)} className="block w-full text-left">
                     <div className="mb-1 flex items-center justify-between text-sm">
                       <span className={`px-2 py-1 text-xs font-bold ${sourceTone[source] || sourceTone.Manual}`}>
                         {source}
@@ -1203,12 +1199,12 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       <strong>{count}</strong>
                     </div>
                     <div className="h-1.5 bg-[#f7f9f8]">
-                      <div
+                      <div data-fuel-line
                         className="h-full bg-violet-500"
                         style={{ width: `${(count / Math.max(1, filteredRecords.length)) * 100}%` }}
                       />
                     </div>
-                  </div>
+                  </button>
                 ))}
                 {!sourceDistribution.length && (
                   <div className="py-16 text-center text-sm text-[#65716b]">Sem registros.</div>
@@ -1237,7 +1233,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                     {equipmentRanking.slice(0, 15).map((item) => {
                       const equipment = equipamentos.find((eq) => eq.id === item.equipmentId);
                       return (
-                        <tr key={item.equipmentId}>
+                        <tr key={item.equipmentId} onClick={() => setFilterEquipment(item.equipmentId)} className="cursor-pointer transition-colors hover:bg-emerald-50" title="Filtrar esta frota">
                           <td className="px-4 py-3">
                             <strong className="text-[#14231e]">{equipment?.prefixo || item.equipmentId || 'Frota'}</strong>
                             <span className="block max-w-48 truncate text-xs text-[#65716b]">

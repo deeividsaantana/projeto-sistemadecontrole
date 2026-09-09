@@ -4,6 +4,7 @@
  */
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';
+import { RouteMotion } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -133,6 +134,7 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 // login e nas demais telas. Ela é carregada antes da hidratação dos dados.
 // Motion and Logo Import
 import reneaLogo from './assets/images/logo-renea-transparent.png';
+import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 
 // Firebase Imports
 import { auth, db } from './firebase';
@@ -4049,6 +4051,7 @@ export default function App() {
     if (closeMobile) setIsMobileMenuOpen(false);
     window.requestAnimationFrame(() => {
       document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
+      window.scrollTo({ top: 0, behavior: 'auto' });
     });
     // Abrir uma tela específica confere a nuvem na hora, em vez de confiar
     // só no retrato que já estava carregado desde o pulso automático
@@ -4129,10 +4132,10 @@ export default function App() {
       {/* Mobile Drawer Menu overlay */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
-          <div className="w-80 max-w-[88vw] bg-slate-900 border-l border-slate-800 p-5 flex flex-col space-y-4 shadow-xl">
+          <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-800 p-4 flex flex-col space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="text-xs font-semibold text-slate-500 tracking-[0.14em]">NAVEGAÇÃO</span>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
+              <img src={reneaLogoWhite} alt="RENEA Infraestrutura" className="h-7 w-auto object-contain" />
+              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-emerald-100 hover:bg-white/10 hover:text-white" aria-label="Fechar navegação">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -4181,7 +4184,7 @@ export default function App() {
         {/* Dynamic Inner Tab Viewport */}
         <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full mx-auto print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3.5 sm:p-4 md:p-7 2xl:p-10 max-w-[1440px]'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
-            <div key={activeTab} className="renea-enter w-full h-full">
+            <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (
               <Dashboard 
                 empresas={empresas}
@@ -4832,7 +4835,7 @@ export default function App() {
               />
             )}
 
-            </div>
+            </RouteMotion>
           </Suspense>
         </div>
         </main>

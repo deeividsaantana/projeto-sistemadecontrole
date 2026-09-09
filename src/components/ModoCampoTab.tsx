@@ -139,7 +139,7 @@ export default function ModoCampoTab({
             key={acao.tab}
             type="button"
             onClick={() => onNavigate(acao.tab)}
-            className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center transition-colors hover:border-emerald-500 hover:bg-emerald-50/40 active:bg-emerald-100"
+            className="field-action flex min-h-24 flex-col items-start justify-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50/40 hover:shadow-lg active:translate-y-0 active:bg-emerald-100"
           >
             <acao.icone className="h-6 w-6 text-emerald-700" />
             <span className="text-sm font-bold text-slate-800">{acao.rotulo}</span>

@@ -11,6 +11,7 @@ import type {
   OrdemServico, PlanejamentoItem, PresencaApontamento, ProdutoLubrificacao,
   RegistroProducao, TicketJazida, TipoCombustivel,
 } from '../types';
+import siteAerial from '../assets/renea-editorial/rodovia-duplicada.jpg';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -31,18 +32,8 @@ interface DashboardProps {
 type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar';
 
 const PROJECT_NAME = 'Rodoanel Mário Covas · Alça Trecho Leste';
-const PROJECT_TABS = [
-  { label: 'Geral', target: 'dashboard' },
-  { label: 'Cronograma', target: 'cronograma' },
-  { label: 'Diário de obra', target: 'diario-obra' },
-  { label: 'Medições', target: 'medicoes' },
-  { label: 'Financeiro', target: 'custos' },
-  { label: 'Materiais', target: 'materiais' },
-  { label: 'Qualidade', target: 'fvs' },
-] as const;
 const MAINTENANCE_STATUSES = new Set(['Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado']);
 const CONFIRM_STATUSES = new Set(['A confirmar', 'Aguardando motorista', 'Não classificado']);
-const CIRCUMFERENCE = 251.2;
 
 const formatDate = (value: string) => {
   if (!value) return 'Sem data';
@@ -93,11 +84,11 @@ function Metric({ icon: Icon, label, value, detail, tone, active, onClick }: {
   };
   return (
     <button type="button" onClick={onClick}
-      className={'group min-w-0 border-l-[3px] bg-white px-4 py-4 text-left transition duration-200 hover:-translate-y-0.5 hover:bg-[#fbfcfb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/40 ' + tones[tone] + (active ? ' ring-1 ring-current/20' : '')}>
-      <span className="flex items-center gap-2 text-xs font-semibold text-[#47555c]">
+      className={'dashboard-metric group min-w-0 border-l bg-transparent px-5 py-5 text-left transition-colors duration-200 hover:bg-white/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#f26a2e]/60 ' + tones[tone] + (active ? ' is-active' : '')}>
+      <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] text-[#47555c]">
         <Icon className="size-4 text-current" strokeWidth={1.8} aria-hidden="true" />{label}
       </span>
-      <strong className="mt-2 block text-3xl font-semibold leading-none tracking-[-0.04em] tabular-nums text-[#172329]">{value}</strong>
+      <strong className="mt-3 block text-[clamp(2.6rem,4.5vw,5.2rem)] font-black leading-[0.82] tracking-[-0.07em] tabular-nums text-[#101c18]">{value}</strong>
       <span className="mt-2 block text-[11px] leading-snug text-[#718087]">{detail}</span>
     </button>
   );
@@ -120,7 +111,7 @@ function Panel({ title, action, children, className = '' }: {
 export default function Dashboard({
   abastecimentos, historyLogs, ordensServico = [],
   controlesEquipamentos = [], planejamento = [], naoConformidades = [],
-  materiais = [], movimentosMaterial = [], onNavigate,
+  materiais = [], movimentosMaterial = [], frentes = [], onNavigate,
 }: DashboardProps) {
   const [periodDays, setPeriodDays] = useState<7 | 14 | 30>(7);
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('Todos');
@@ -178,62 +169,45 @@ export default function Dashboard({
 
   const activity = historyLogs.slice(0, 6);
   const latestActivityTime = activity[0]?.timestamp || (latest.date ? formatDate(latest.date) : 'Sem sincronização');
-  const operatingArc = latest.records.length ? (latest.operating / latest.records.length) * CIRCUMFERENCE : 0;
-  const maintenanceArc = latest.records.length ? (latest.maintenance / latest.records.length) * CIRCUMFERENCE : 0;
-  const confirmArc = latest.records.length ? (latest.confirm / latest.records.length) * CIRCUMFERENCE : 0;
+  const activeFronts = frentes.filter(item => item.ativo && item.situacao !== 'Concluída').slice(0, 3);
 
   const chooseFilter = (filter: FleetFilter) => {
     setFleetFilter(filter);
   };
 
   return (
-    <main id="dashboard-tab" className="min-h-full bg-[#f4f5f2] pb-14 text-[#172329]">
-      <header className="border-b border-[#dce3df] bg-[#fafbf9] px-4 pt-5 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-[1600px] flex-col justify-between gap-4 pb-5 xl:flex-row xl:items-end">
+    <main id="dashboard-tab" className="erp-dashboard min-h-full bg-[#eef0ec] pb-14 text-[#172329]">
+      <header className="dashboard-hero border-b border-[#cbd4cf] bg-[#f7f8f5]">
+        <div className="dashboard-hero__visual" aria-hidden="true">
+          <img src={siteAerial} alt="" />
+          <span>Pessoas<br />e engenharia<br />em movimento</span>
+        </div>
+        <div className="dashboard-hero__content px-4 py-7 sm:px-7 lg:px-8 lg:py-10">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#728179]">Painel de Controle · obra em execução</p>
-            <p className="mt-1 text-sm font-semibold text-[#26343a]">{PROJECT_NAME}</p>
-            <h1 className="mt-5 text-3xl font-semibold tracking-[-0.045em] text-[#111d22] sm:text-4xl">Visão operacional</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#67757b]">
-              Frota, pendências e movimentações recentes reunidas em uma leitura diária.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex border border-[#d7dfda] bg-white p-1" aria-label="Período do painel">
-              {([7, 14, 30] as const).map(days => (
-                <button key={days} type="button" onClick={() => setPeriodDays(days)}
-                  className={'min-h-9 px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/40 ' + (periodDays === days ? 'bg-[#183f32] text-white' : 'text-[#617078] hover:bg-[#f0f3f0]')}>
-                  {days} dias
-                </button>
-              ))}
-            </div>
-            <button type="button" onClick={() => onNavigate('controle-equipamentos')}
-              className="inline-flex min-h-11 items-center gap-2 bg-[#ed5d24] px-4 text-sm font-semibold text-white transition hover:bg-[#d94f18] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/50 focus-visible:ring-offset-2">
-              <Plus className="size-4" aria-hidden="true" />Novo lançamento
-            </button>
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#52615b]">Operação em tempo real</p>
+            <h1 className="mt-3 text-[clamp(3rem,5vw,5.15rem)] font-black leading-[0.86] tracking-[-0.075em] text-[#07110e] lg:whitespace-nowrap">Visão operacional</h1>
+            <p className="mt-4 text-[clamp(1rem,2vw,1.6rem)] font-bold tracking-[-0.025em] text-[#16372e]">{PROJECT_NAME}</p>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#66736e]">Frota, pendências e movimentações recentes reunidas em uma leitura diária.</p>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-[1600px] overflow-x-auto" aria-label="Módulos da obra">
-          {PROJECT_TABS.map(tab => (
-            <button key={tab.target} type="button" onClick={() => onNavigate(tab.target)}
-              aria-current={tab.target === 'dashboard' ? 'page' : undefined}
-              className={'h-11 shrink-0 border-b-2 px-3 text-xs font-semibold transition sm:px-4 ' + (tab.target === 'dashboard' ? 'border-[#ed5d24] text-[#172329]' : 'border-transparent text-[#758188] hover:border-[#b7c2bc] hover:text-[#26343a]')}>
-              {tab.label}
-            </button>
-          ))}
-        </nav>
       </header>
 
-      <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
-        <section className="grid grid-cols-2 gap-px bg-[#dce3df] xl:grid-cols-4" aria-label="Indicadores da frota">
-          <Metric icon={Truck} label="Frotas informadas" value={String(latest.records.length)} detail={latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento no período'} tone="graphite" active={fleetFilter === 'Todos'} onClick={() => chooseFilter('Todos')} />
-          <Metric icon={Activity} label="Em operação" value={String(latest.operating)} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} />
+      <div className="mx-auto max-w-[1600px] px-3 pb-8 sm:px-6 lg:px-8">
+        <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-[#f7f8f4]" aria-label="Indicadores da frota">
+          <Metric icon={Activity} label="Frota ativa" value={String(latest.operating)} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} />
           <Metric icon={Wrench} label="Em manutenção" value={String(latest.maintenance)} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} />
           <Metric icon={Clock3} label="A confirmar" value={String(latest.confirm)} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} />
+          <Metric icon={Truck} label="Disponibilidade" value={latest.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'} detail={latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento no período'} tone="green" active={fleetFilter === 'Todos'} onClick={() => chooseFilter('Todos')} />
+          <div className="dashboard-metric-cta grid place-items-center px-5 py-6">
+            <button type="button" onClick={() => onNavigate('controle-equipamentos')}
+              className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-[2px] bg-[#083c2f] px-5 text-sm font-black text-[#ffffff] transition hover:bg-[#07513c] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/50">
+              <Plus className="size-5" aria-hidden="true" />Novo lançamento
+            </button>
+          </div>
         </section>
 
-        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,.72fr)_minmax(19rem,.78fr)]">
-          <Panel title="Disponibilidade da frota" action={<span className="text-xs text-[#6b797f]">{formatDate(activePoint.date)}</span>}>
+        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.72fr)_minmax(21rem,.78fr)]">
+          <Panel title="Disponibilidade da frota" action={<div className="flex items-center gap-3"><span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#748187]">Últimos {periodDays} dias</span><div className="inline-flex border border-[#d7dfda] bg-white" aria-label="Período do painel">{([7, 14, 30] as const).map(days => <button key={days} type="button" onClick={() => setPeriodDays(days)} aria-pressed={periodDays === days} className={'min-h-8 px-2 text-[10px] font-bold ' + (periodDays === days ? 'bg-[#123d31] text-[#ffffff]' : 'text-[#617078] hover:bg-[#f0f3f0]')}>{days}d</button>)}</div></div>}>
             <div className="px-4 pb-5 sm:px-5">
               <div className="flex items-end gap-3">
                 <strong className="text-4xl font-semibold tracking-[-0.05em] tabular-nums">{activePoint.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</strong>
@@ -248,9 +222,9 @@ export default function Dashboard({
                         <text x="2" y={yAt(value) - 5} fill="#8a969b" fontSize="9">{value}%</text>
                       </g>
                     ))}
-                    <polyline points={linePoints} fill="none" stroke="#238657" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+                    <polyline key={`${periodDays}-${linePoints}`} className="dashboard-trend-line" points={linePoints} fill="none" stroke="#238657" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" pathLength="1" />
                     {fleetSeries.map((item, index) => (
-                      <g key={item.date}>
+                      <g key={item.date} className="dashboard-trend-point" style={{ animationDelay: `${260 + index * 65}ms` }}>
                         <circle cx={xAt(index)} cy={yAt(item.availability)} r={index === activePointIndex ? 6 : 4} fill="#fff" stroke={index === activePointIndex ? '#ed5d24' : '#238657'} strokeWidth="3" />
                         <text x={xAt(index)} y={chartHeight - 2} textAnchor="middle" fill="#78858b" fontSize="9">{shortDate(item.date)}</text>
                         <circle cx={xAt(index)} cy={yAt(item.availability)} r="15" fill="transparent" className="cursor-pointer"
@@ -271,37 +245,7 @@ export default function Dashboard({
             </div>
           </Panel>
 
-          <Panel title="Situação dos equipamentos" action={<ActionLink onClick={() => onNavigate('controle-equipamentos')}>Abrir frota</ActionLink>}>
-            <div className="px-4 pb-5 sm:px-5">
-              <div className="relative mx-auto mt-3 size-44">
-                <svg viewBox="0 0 100 100" className="-rotate-90" role="img" aria-label="Distribuição dos status da frota">
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#e4e9e6" strokeWidth="13" />
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#238657" strokeWidth="13" strokeDasharray={String(operatingArc) + ' ' + String(CIRCUMFERENCE - operatingArc)} />
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#ed5d24" strokeWidth="13" strokeDasharray={String(maintenanceArc) + ' ' + String(CIRCUMFERENCE - maintenanceArc)} strokeDashoffset={-operatingArc} />
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#e4a227" strokeWidth="13" strokeDasharray={String(confirmArc) + ' ' + String(CIRCUMFERENCE - confirmArc)} strokeDashoffset={-(operatingArc + maintenanceArc)} />
-                </svg>
-                <div className="absolute inset-0 grid place-content-center text-center">
-                  <strong className="text-2xl font-semibold tabular-nums">{latest.records.length}</strong>
-                  <span className="text-[10px] text-[#748187]">informados</span>
-                </div>
-              </div>
-              <div className="mt-4 space-y-2.5 text-xs">
-                {[
-                  ['bg-[#238657]', 'Em operação', latest.operating],
-                  ['bg-[#ed5d24]', 'Em manutenção', latest.maintenance],
-                  ['bg-[#e4a227]', 'A confirmar', latest.confirm],
-                  ['bg-[#aeb9b4]', 'À disposição', latest.available],
-                ].map(([tone, label, value]) => (
-                  <button key={String(label)} type="button" onClick={() => setFleetFilter(label === 'À disposição' ? 'Todos' : label as FleetFilter)}
-                    className="flex w-full items-center gap-2 text-left hover:text-[#176b4d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/30">
-                    <span className={'size-2.5 ' + tone} /><span className="flex-1 text-[#637178]">{label}</span><strong className="tabular-nums">{value}</strong>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Panel>
-
-          <Panel title="Atividade em tempo real" action={<span className="text-[10px] text-[#718087]">{latestActivityTime}</span>}>
+          <Panel title="Ocorrências agora" action={<span className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.12em] text-[#008b62]"><i className="size-2 rounded-full bg-[#00a875]" />Ao vivo</span>}>
             <div className="divide-y divide-[#edf0ee]">
               {activity.length ? activity.map(log => (
                 <button key={log.id} type="button" onClick={() => onNavigate('auditoria')}
@@ -320,26 +264,8 @@ export default function Dashboard({
           </Panel>
         </section>
 
-        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.42fr)_minmax(20rem,.58fr)]">
-          <Panel title="Evolução — registros em operação" action={<ActionLink onClick={() => onNavigate('controle-equipamentos')}>Ver histórico</ActionLink>}>
-            <div className="grid min-h-52 grid-cols-7 items-end gap-2 px-4 pb-5 pt-3 sm:px-5">
-              {fleetSeries.slice(-7).map(item => {
-                const max = Math.max(...fleetSeries.slice(-7).map(point => point.records.length), 1);
-                return (
-                  <button key={item.date} type="button" onClick={() => setSelectedDate(item.date)}
-                    className="group flex h-full min-w-0 flex-col justify-end gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/30">
-                    <span className="text-center text-[10px] font-semibold tabular-nums text-[#59676d]">{item.operating}</span>
-                    <span className={'mx-auto w-full max-w-12 transition group-hover:bg-[#ed5d24] ' + (activePoint.date === item.date ? 'bg-[#176b4d]' : 'bg-[#b9dbc9]')}
-                      style={{ height: String(Math.max(8, (item.operating / max) * 130)) + 'px' }} />
-                    <span className="truncate text-center text-[9px] text-[#839096]">{shortDate(item.date)}</span>
-                  </button>
-                );
-              })}
-              {!fleetSeries.length && <div className="col-span-7 self-center text-center text-sm text-[#7a878c]">Sem dados suficientes para evolução</div>}
-            </div>
-          </Panel>
-
-          <Panel title="Pendências críticas" action={<ActionLink onClick={() => onNavigate('timeline')}>Ver todas</ActionLink>}>
+        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.18fr)_minmax(20rem,.82fr)]">
+          <Panel title="Itens críticos" className="border-t-[3px] border-t-[#ed5d24]" action={<ActionLink onClick={() => onNavigate('timeline')}>Ver todos</ActionLink>}>
             <div className="divide-y divide-[#edf0ee]">
               {[
                 { value: latest.maintenance, text: 'equipamento(s) em manutenção', detail: openOrders.length + ' OS abertas', target: 'manutencao', tone: 'bg-[#d94f3d]' },
@@ -355,6 +281,17 @@ export default function Dashboard({
                     <span className="mt-1 block text-[11px] text-[#718087]">{item.detail}</span>
                   </span>
                   <ArrowRight className="mt-1 size-3.5 shrink-0 text-[#9aa5a0]" />
+                </button>
+              ))}
+            </div>
+          </Panel>
+          <Panel title="Status das frentes" action={<ActionLink onClick={() => onNavigate('frentes')}>Ver frentes</ActionLink>}>
+            <div className="divide-y divide-[#edf0ee]">
+              {(activeFronts.length ? activeFronts : [{ id: 'empty', nome: 'Nenhuma frente ativa', servico: 'Cadastre as frentes de serviço', situacao: 'Planejada' as const }]).map((frente, index) => (
+                <button key={frente.id} type="button" onClick={() => onNavigate('frentes')} className="group grid w-full grid-cols-[4.5rem_1fr_auto] items-center gap-3 px-4 py-3 text-left hover:bg-[#f7f9f7] sm:px-5">
+                  <span className="h-11 overflow-hidden bg-[#dfe6e1]"><img src={siteAerial} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" style={{ objectPosition: `${35 + index * 22}% center` }} /></span>
+                  <span className="min-w-0"><strong className="block truncate text-xs font-bold text-[#172329]">{frente.nome}</strong><small className="mt-1 block truncate text-[10px] text-[#718087]">{frente.servico || frente.situacao}</small></span>
+                  <span className="text-[10px] font-black uppercase tracking-[.08em] text-[#087653]">{frente.situacao}</span>
                 </button>
               ))}
             </div>
@@ -399,7 +336,7 @@ export default function Dashboard({
             <CalendarDays className="size-7 text-[#176b4d]" strokeWidth={1.6} />
             <h2 className="mt-3 text-base font-semibold">A visão operacional começa com o primeiro lançamento</h2>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-[#718087]">Registre a situação da frota para liberar indicadores, evolução e pendências deste painel.</p>
-            <button type="button" onClick={() => onNavigate('controle-equipamentos')} className="mt-5 inline-flex min-h-10 items-center gap-2 bg-[#183f32] px-4 text-sm font-semibold text-white hover:bg-[#0f3025]">
+            <button type="button" onClick={() => onNavigate('controle-equipamentos')} className="mt-5 inline-flex min-h-11 items-center gap-2 bg-[#183f32] px-4 text-sm font-semibold text-[#ffffff] hover:bg-[#0f3025]">
               <Plus className="size-4" />Criar lançamento
             </button>
           </section>

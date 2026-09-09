@@ -51,71 +51,46 @@ export default function AssistenteTab({ dados, onNavigate }: AssistenteTabProps)
         actions={<PeriodFilter value={period} onChange={setPeriod} />}
       />
 
-      <form
-        className="mt-4 flex flex-wrap gap-2"
-        onSubmit={event => { event.preventDefault(); perguntar(pergunta); }}
-      >
-        <label className="min-w-0 flex-1">
-          <span className="sr-only">Pergunta</span>
-          <input
-            value={pergunta}
-            onChange={event => setPergunta(event.target.value)}
-            placeholder="O que está pendente? Como está a produção? Onde está o ESC-01?"
-            className="min-h-12 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
-          />
-        </label>
-        <button
-          type="submit"
-          className="inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800"
-        >
-          <Send className="h-4 w-4" /> Perguntar
-        </button>
-      </form>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {SUGESTOES_ASSISTENTE.map(sugestao => (
-          <button
-            key={sugestao}
-            type="button"
-            onClick={() => perguntar(sugestao)}
-            className="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-          >
-            {sugestao}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-4 space-y-3">
-        {historico.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-            <Bot className="mx-auto h-6 w-6 text-slate-300" />
-            <p className="mt-2 text-sm font-bold text-slate-700">Pergunte alguma coisa sobre a obra</p>
-            <p className="mt-1 text-xs text-slate-500">
-              O assistente lê pendências, produção, frota, presença, custos, qualidade e a linha do tempo do período
-              selecionado. Ele não consulta nada fora do sistema.
-            </p>
+      <section className="mt-4 grid min-h-[31rem] overflow-hidden rounded-[3px] border border-slate-200 bg-white xl:grid-cols-[19rem_minmax(0,1fr)]">
+        <aside className="border-b border-slate-200 p-4 xl:border-b-0 xl:border-r">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+            <span className="grid size-10 place-items-center rounded-[3px] border border-emerald-200 bg-emerald-50"><Bot className="h-5 w-5 text-emerald-700" /></span>
+            <div><h2 className="text-sm font-black text-slate-900">Perguntas sugeridas</h2><p className="text-[11px] text-slate-500">Consultas rápidas da operação</p></div>
           </div>
-        ) : (
-          historico.map(troca => (
-            <article key={troca.id} className="rounded-lg border border-slate-200 bg-white p-4">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{troca.pergunta}</p>
-              <h2 className="mt-1 text-sm font-bold text-slate-800">{troca.resposta.titulo}</h2>
-              <ul className="mt-2 space-y-1 text-xs text-slate-600">
-                {troca.resposta.linhas.map(linha => <li key={linha}>{linha}</li>)}
-              </ul>
-              {troca.resposta.tab && (
-                <button
-                  type="button"
-                  onClick={() => onNavigate(troca.resposta.tab!)}
-                  className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-                >
-                  Abrir a tela <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </article>
-          ))
-        )}
-      </div>
+          <div className="mt-3 space-y-1.5">
+            {SUGESTOES_ASSISTENTE.map(sugestao => (
+              <button key={sugestao} type="button" onClick={() => perguntar(sugestao)} className="group flex min-h-12 w-full items-center gap-3 rounded-[3px] border border-transparent px-2.5 text-left text-xs font-bold text-slate-600 transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800">
+                <span className="flex-1">{sugestao}</span><ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <div className="flex min-h-[31rem] flex-col">
+          <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6">
+            {historico.length === 0 ? (
+              <div className="grid min-h-[20rem] place-items-center text-center">
+                <div className="max-w-lg">
+                  <Bot className="mx-auto h-9 w-9 text-emerald-600" />
+                  <p className="mt-4 text-2xl font-black tracking-[-.035em] text-slate-900">Pergunte sobre a operação</p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500">O assistente lê pendências, produção, frota, presença, custos, qualidade e a linha do tempo. Ele responde somente com informações verificáveis do sistema.</p>
+                </div>
+              </div>
+            ) : historico.map(troca => (
+              <article key={troca.id} className="rounded-[3px] border border-slate-200 bg-white p-4 sm:p-5">
+                <p className="text-[10px] font-bold uppercase tracking-[.16em] text-emerald-700">{troca.pergunta}</p>
+                <h2 className="mt-2 text-xl font-black tracking-[-.025em] text-slate-900">{troca.resposta.titulo}</h2>
+                <ul className="mt-3 space-y-1.5 text-sm leading-relaxed text-slate-600">{troca.resposta.linhas.map(linha => <li key={linha}>{linha}</li>)}</ul>
+                {troca.resposta.tab && <button type="button" onClick={() => onNavigate(troca.resposta.tab!)} className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-[3px] border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700">Abrir a tela <ArrowRight className="h-3.5 w-3.5" /></button>}
+              </article>
+            ))}
+          </div>
+          <form className="flex flex-col gap-2 border-t border-slate-200 bg-white p-3 sm:flex-row sm:p-4" onSubmit={event => { event.preventDefault(); perguntar(pergunta); }}>
+            <label className="min-w-0 flex-1"><span className="sr-only">Pergunta</span><input value={pergunta} onChange={event => setPergunta(event.target.value)} placeholder="O que está pendente? Como está a produção?" className="min-h-12 w-full rounded-[3px] border border-slate-200 bg-white px-4 text-sm text-slate-800 outline-none focus:border-emerald-500" /></label>
+            <button type="submit" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-[3px] bg-emerald-700 px-5 text-xs font-bold text-white hover:bg-emerald-800"><Send className="h-4 w-4" /> Perguntar</button>
+          </form>
+        </div>
+      </section>
     </div>
   );
 }

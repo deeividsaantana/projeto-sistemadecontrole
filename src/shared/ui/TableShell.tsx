@@ -14,8 +14,8 @@ interface TableShellProps {
  */
 export function TableShell({ minWidth = 720, children, className }: TableShellProps) {
   return (
-    <div className={cn('w-full overflow-x-auto', className)}>
-      <table className="w-full text-left text-sm" style={{ minWidth: `${minWidth}px` }}>
+    <div className={cn('renea-table-shell w-full overflow-x-auto', className)}>
+      <table className="renea-table w-full text-left text-sm" style={{ minWidth: `${minWidth}px` }}>
         {children}
       </table>
     </div>
@@ -25,7 +25,7 @@ export function TableShell({ minWidth = 720, children, className }: TableShellPr
 /** Cabeçalho padrão das tabelas do sistema. */
 export function TableHead({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <thead className={cn('bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500', className)}>
+    <thead className={cn('bg-[#eef1ed] text-[10px] font-black uppercase tracking-[0.1em] text-[#53635c]', className)}>
       {children}
     </thead>
   );
@@ -33,5 +33,5 @@ export function TableHead({ children, className }: { children: ReactNode; classN
 
 /** Corpo padrão: linhas separadas por linha fina e realce no hover. */
 export function TableBody({ children, className }: { children: ReactNode; className?: string }) {
-  return <tbody className={cn('divide-y divide-slate-100', className)}>{children}</tbody>;
+  return <tbody className={cn('divide-y divide-[#e0e6e2]', className)}>{children}</tbody>;
 }

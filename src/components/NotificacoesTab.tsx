@@ -7,7 +7,7 @@
  * do encarregado não pode apagar o alerta da tela do gestor.
  */
 import { useMemo, useState } from 'react';
-import { Bell, BellOff, CheckCheck } from 'lucide-react';
+import { ArrowUpRight, Bell, BellOff, CheckCheck } from 'lucide-react';
 import type { AppNotification } from '../types';
 import type { Alerta } from '../utils/alertas';
 import {
@@ -47,6 +47,7 @@ export default function NotificacoesTab({
 }: NotificacoesTabProps) {
   const hoje = new Date().toISOString().slice(0, 10);
   const [somenteNaoLidas, setSomenteNaoLidas] = useState(false);
+  const [selectedId, setSelectedId] = useState('');
 
   const visiveis = useMemo(() => {
     const base = notificacoesVisiveis(notificacoes, preferencias);
@@ -59,6 +60,7 @@ export default function NotificacoesTab({
     [alertas],
   );
   const ativos = alertasVisiveis(alertas, preferencias);
+  const selecionada = visiveis.find(item => item.id === selectedId) || visiveis[0];
 
   const alternarCategoria = (categoria: string) => {
     const silenciadas = preferencias.categoriasSilenciadas.includes(categoria)
@@ -168,34 +170,62 @@ export default function NotificacoesTab({
         </section>
       )}
 
-      <div className="mt-4">
+      <div className="mt-4 grid items-start gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(23rem,.95fr)]">
         {grupos.length === 0 ? (
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
             <EmptyState icon={Bell} title="Sem notificações" description="Avisos de sincronização e de cadastro aparecem aqui." />
           </div>
         ) : (
-          <ol className="space-y-4">
+          <ol className="space-y-4 rounded-[3px] border border-slate-200 bg-white p-4">
             {grupos.map(([dia, itens]) => (
               <li key={dia}>
                 <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{formatarDia(dia)}</h2>
                 <ul className="mt-2 space-y-1.5">
-                  {itens.map(item => (
-                    <li
-                      key={item.id}
-                      className={`rounded-lg border p-3 ${item.read ? 'border-slate-200 bg-white' : 'border-emerald-200 bg-emerald-50'}`}
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge tone={tomDoTipo(item.type)}>{item.title}</Badge>
-                        <span className="font-mono text-[11px] text-slate-500">{item.timestamp.slice(11, 16) || item.timestamp}</span>
-                        <span className="text-[11px] text-slate-400">{item.source}</span>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-700">{item.message}</p>
-                    </li>
-                  ))}
+                  {itens.map(item => {
+                    const active = selecionada?.id === item.id;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(item.id)}
+                          aria-pressed={active}
+                          className={`w-full rounded-[3px] border p-3 text-left transition-all ${active ? 'border-emerald-500 bg-emerald-50' : item.read ? 'border-slate-200 bg-white hover:border-emerald-300' : 'border-emerald-200 bg-emerald-50'}`}
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge tone={tomDoTipo(item.type)}>{item.title}</Badge>
+                            <span className="font-mono text-[11px] text-slate-500">{item.timestamp.slice(11, 16) || item.timestamp}</span>
+                            <span className="text-[11px] text-slate-400">{item.source}</span>
+                            {!item.read && <i className="ml-auto size-2 bg-emerald-500" aria-label="Não lida" />}
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-sm text-slate-700">{item.message}</p>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </li>
             ))}
           </ol>
+        )}
+        {selecionada && (
+          <aside key={selecionada.id} className="sticky top-4 rounded-[3px] border border-slate-200 bg-white p-5 xl:min-h-[25rem]">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-emerald-700">Detalhes da notificação</p>
+              <span className="font-mono text-xs text-slate-500">{selecionada.timestamp.slice(11, 16) || selecionada.timestamp}</span>
+            </div>
+            <div className="mt-5 flex items-center gap-3">
+              <span className="grid size-11 place-items-center rounded-[3px] border border-slate-200 bg-white"><Bell className="h-5 w-5 text-emerald-700" /></span>
+              <div><Badge tone={tomDoTipo(selecionada.type)}>{selecionada.title}</Badge><p className="mt-1 text-xs text-slate-500">{selecionada.source}</p></div>
+            </div>
+            <h2 className="mt-6 text-3xl font-black leading-[.98] tracking-[-.04em] text-slate-950">{selecionada.title}</h2>
+            <p className="mt-4 text-sm leading-relaxed text-slate-600">{selecionada.message}</p>
+            <div className="mt-6 border-y border-slate-100 py-4 text-xs text-slate-500">
+              Esta mensagem faz parte do histórico sincronizado. As preferências de exibição continuam específicas deste dispositivo.
+            </div>
+            <button type="button" onClick={() => onNavigate('dashboard')} className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[3px] bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800">
+              Abrir visão operacional <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </aside>
         )}
       </div>
     </div>

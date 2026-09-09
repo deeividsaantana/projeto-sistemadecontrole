@@ -436,7 +436,7 @@ export default function DailyRecordForm({
   };
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-950/45 backdrop-blur-[2px]" role="presentation" onKeyDown={handleRootKeyDown}>
-      <section role="dialog" aria-modal="true" aria-labelledby="daily-record-title" className="ml-auto flex h-[100dvh] w-full max-w-[1180px] flex-col overflow-hidden bg-[#f4f7f5] shadow-2xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="daily-record-title" className="fleet-entry-dialog ml-auto flex h-[100dvh] w-full max-w-[1180px] flex-col overflow-hidden bg-[#f4f7f5] shadow-2xl">
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700"><Zap size={13}/>Central de lançamento</div>

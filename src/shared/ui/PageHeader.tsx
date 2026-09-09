@@ -6,16 +6,24 @@ interface PageHeaderProps {
   description?: string;
   actions?: ReactNode;
   className?: string;
+  eyebrow?: string;
 }
 
-export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, className, eyebrow = 'Operação em tempo real' }: PageHeaderProps) {
+  const visual = ['road', 'bridge', 'crane'][Array.from(title).reduce((total, char) => total + char.charCodeAt(0), 0) % 3];
   return (
-    <header className={cn('flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between', className)}>
-      <div className="min-w-0">
-        <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900 sm:text-2xl">{title}</h1>
-        {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+    <header className={cn('renea-page-header', className)} data-visual={visual}>
+      <div className="renea-page-header__photo" aria-hidden="true">
+        <span>Pessoas<br />e engenharia<br />em movimento</span>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      <div className="renea-page-header__plane">
+        <div className="renea-page-header__copy min-w-0">
+          <span className="renea-page-header__eyebrow">{eyebrow}</span>
+          <h1>{title}</h1>
+          {description && <p>{description}</p>}
+        </div>
+        {actions && <div className="renea-page-actions flex flex-wrap items-center gap-2">{actions}</div>}
+      </div>
     </header>
   );
 }
