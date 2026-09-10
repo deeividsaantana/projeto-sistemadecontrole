@@ -79,8 +79,14 @@ export default function PublicLinksApp() {
       setDataSelecionada(config.dataSelecionada || '');
       setDataAtual(config.dataAtual || '');
       setObservacaoDia(config.observacaoDia || '');
-      setPresenceHistory(config.historicoPorData || { [config.dataSelecionada || '']: config.meusRegistros || [] });
-      setPresenceDayNotes(config.observacoesPorData || { [config.dataSelecionada || '']: config.observacaoDia || '' });
+      // A resposta traz só o dia aberto. Os dias que a pessoa já visitou ficam
+      // guardados aqui para a régua de datas não buscar duas vezes a mesma
+      // coisa; a atualização automática acrescenta, nunca esvazia o que já foi
+      // carregado.
+      const doDia = config.historicoPorData || { [config.dataSelecionada || '']: config.meusRegistros || [] };
+      const notasDoDia = config.observacoesPorData || { [config.dataSelecionada || '']: config.observacaoDia || '' };
+      setPresenceHistory(atual => ({ ...atual, ...doDia }));
+      setPresenceDayNotes(atual => ({ ...atual, ...notasDoDia }));
     } catch (error) {
       // Falha na atualização automática não vira erro na tela: o que já está
       // carregado continua valendo e a próxima tentativa resolve.

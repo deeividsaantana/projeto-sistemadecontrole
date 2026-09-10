@@ -1,4 +1,13 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "sistemarenea_public_submissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "payload.grupoId", "order": "ASCENDING" },
+        { "fieldPath": "payload.data", "order": "DESCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

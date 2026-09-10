@@ -32,11 +32,14 @@ const loadDocuments = async (database, ids) => {
 const loadManifestSnapshot = async (database, manifest, requestedTables, options = {}) => {
   const data = {};
   const allowedTables = requestedTables ? new Set(requestedTables) : null;
-  for (const [table, ids] of Object.entries(manifest.chunks || {})) {
-    if (allowedTables && !allowedTables.has(table)) continue;
+  // As tabelas eram lidas uma depois da outra. Somadas, as idas ao Firestore
+  // viravam a maior parte da espera do link. Elas não dependem entre si.
+  const pedidos = Object.entries(manifest.chunks || {})
+    .filter(([table]) => !allowedTables || allowedTables.has(table));
+  await Promise.all(pedidos.map(async ([table, ids]) => {
     if (!Array.isArray(ids) || ids.length === 0) {
       data[table] = [];
-      continue;
+      return;
     }
     const snapshots = await loadDocuments(database, ids);
     const rows = [];
@@ -54,7 +57,7 @@ const loadManifestSnapshot = async (database, manifest, requestedTables, options
       throw new Error(`Falha de integridade na tabela ${table}.`);
     }
     data[table] = rows;
-  }
+  }));
   return data;
 };
 
