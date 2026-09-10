@@ -29,6 +29,8 @@ export interface EfetivoMigrado {
     equipesNovas: number;
     equipesInativadas: number;
     frentesIncluidas: number;
+    /** O link geral foi transferido para uma equipe que continua ativa. */
+    tokenGeralPreservado: boolean;
   };
 }
 
@@ -100,6 +102,31 @@ export const migrarEfetivoObra3 = (
     grupos.push({ ...antigo, status: 'inativo' });
   }
 
+  // O link geral de presença — o endereço único que abre todas as equipes — é
+  // guardado no campo tokenGeral de UMA equipe. A função pública só reconhece
+  // esse token entre as equipes ATIVAS, então se a equipe que o carregava
+  // acabou de ficar inativa aqui, o link morreria em campo. Ele é transferido
+  // para uma equipe que continua ativa.
+  const tokenGeralExistente = [...gruposLocais, ...gruposSemente]
+    .map(item => item?.tokenGeral)
+    .find((valor): valor is string => Boolean(valor));
+  let tokenGeralPreservado = false;
+  if (tokenGeralExistente) {
+    const jaEstaEmEquipeAtiva = grupos.some(item => item.status === 'ativo' && item.tokenGeral === tokenGeralExistente);
+    if (!jaEstaEmEquipeAtiva) {
+      const anfitria = grupos.find(item => item.status === 'ativo');
+      if (anfitria) {
+        anfitria.tokenGeral = tokenGeralExistente;
+        tokenGeralPreservado = true;
+      }
+    }
+  }
+  // Uma equipe inativa não pode continuar anunciando o token geral: duas
+  // equipes com o mesmo tokenGeral deixariam a origem do link ambígua.
+  for (const item of grupos) {
+    if (item.status !== 'ativo' && item.tokenGeral === tokenGeralExistente) item.tokenGeral = undefined;
+  }
+
   const nomesDeFrente = new Set(frentesLocais.map(item => String(item?.nome || '').trim().toLowerCase()));
   const frentesIncluidas = frentesSemente.filter(item => !nomesDeFrente.has(item.nome.trim().toLowerCase()));
   const frentes = [...frentesLocais, ...frentesIncluidas];
@@ -112,6 +139,7 @@ export const migrarEfetivoObra3 = (
       atualizados, incluidos, inativados,
       equipesReaproveitadas, equipesNovas, equipesInativadas,
       frentesIncluidas: frentesIncluidas.length,
+      tokenGeralPreservado,
     },
   };
 };

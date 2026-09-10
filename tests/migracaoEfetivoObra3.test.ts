@@ -58,3 +58,20 @@ test('frente existente não é sobrescrita; só entra a que falta', () => {
   assert.deepEqual(r.frentes.map(f => f.nome), ['Ramo 100', 'Ramo 2000']);
   assert.equal(r.resumo.frentesIncluidas, 1);
 });
+
+test('o link geral sobrevive quando a equipe que o guardava fica inativa', () => {
+  const antiga = equipe('700', { tokenGeral: 'geral-link-que-esta-em-campo' });
+  const r = migrarEfetivoObra3([], [antiga], [], [], [equipe('800')], []);
+  const ativa = r.grupos.find(g => g.status === 'ativo')!;
+  const inativa = r.grupos.find(g => g.status === 'inativo')!;
+  assert.equal(ativa.tokenGeral, 'geral-link-que-esta-em-campo', 'o link geral passou para uma equipe ativa');
+  assert.equal(inativa.tokenGeral, undefined, 'a equipe inativa parou de anunciar o link geral');
+  assert.equal(r.resumo.tokenGeralPreservado, true);
+});
+
+test('link geral em equipe que continua ativa não é movido à toa', () => {
+  const antiga = equipe('900', { tokenGeral: 'geral-x' });
+  const r = migrarEfetivoObra3([], [antiga], [], [], [equipe('900')], []);
+  assert.equal(r.grupos[0].tokenGeral, 'geral-x');
+  assert.equal(r.resumo.tokenGeralPreservado, false, 'não houve transferência');
+});
