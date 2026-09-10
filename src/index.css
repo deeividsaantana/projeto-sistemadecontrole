@@ -703,7 +703,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   display: block;
   margin-bottom: .15rem;
   color: #4d6a5d;
-  font-size: .68rem;
+  /* 0.68rem dava 10,88px e ficava abaixo do piso de legibilidade da obra. */
+  font-size: .72rem;
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -828,21 +829,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 /* Presence and fuel keep the same white operational language, but gain
    responsive data feedback and a lighter visual rhythm. */
-#presenca-tempo-real > header:first-child {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: 2px;
-}
-#presenca-tempo-real > header:first-child::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0 0 auto 58%;
-  height: 13rem;
-  content: "";
-  background: linear-gradient(90deg, #fff, rgb(255 255 255 / .25)), url('./assets/renea-editorial/ponte-construcao-1600.webp') center / cover no-repeat;
-  opacity: .28;
-}
 .fuel-workspace-nav { position: sticky; z-index: 18; top: 0; border-radius: 2px; }
 .fuel-filter-dock { border-radius: 2px; box-shadow: 0 12px 34px -30px rgb(6 60 45 / .45); }
 .fuel-dashboard > section { border-radius: 2px; }
@@ -899,7 +885,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 }
 
 @media (max-width: 767px) {
-  #presenca-tempo-real > header:first-child::before { inset: 0 0 auto 35%; height: 12rem; opacity: .15; }
   .fuel-workspace-nav { top: 0; }
   .fuel-command-center__lead { min-height: 24rem; }
   .fuel-command-center__photo { inset: 47% 0 0 0; width: 100%; opacity: .18; }

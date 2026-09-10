@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   ClipboardCopy,
   Download,
@@ -31,7 +32,8 @@ import {
   type TeamSyncPlan,
 } from '../utils/teamSpreadsheetSync';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
-import { ConfirmDialog } from '../shared/ui';
+import { ConfirmDialog, PageHeader } from '../shared/ui';
+import { normalizeComparable } from '../utils/canonicalIdentity';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServico';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
@@ -210,6 +212,12 @@ export default function ControlePresencaTab({
   const [dashboardStatus, setDashboardStatus] = useState<'todos' | PresencaStatus>('todos');
   const [dashboardBranch, setDashboardBranch] = useState('todos');
   const [dashboardSite, setDashboardSite] = useState('todos');
+  const [dashboardSearch, setDashboardSearch] = useState('');
+  // No celular a gaveta nasce fechada: o painel tem de mostrar gente, não
+  // formulário. No desktop sobra largura, então já abre.
+  const [filtrosAbertos, setFiltrosAbertos] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth >= 1024,
+  );
   const [recordDate, setRecordDate] = useState(today);
   const [recordGroup, setRecordGroup] = useState('todos');
   const [recordStatus, setRecordStatus] = useState<'todos' | PresencaStatus>('todos');
@@ -236,6 +244,28 @@ export default function ControlePresencaTab({
   const [confirmandoLinkGeral, setConfirmandoLinkGeral] = useState(false);
   const [resumoZerarDia, setResumoZerarDia] = useState<{ equipe: string; quantos: number } | null>(null);
   const [restoringHistory, setRestoringHistory] = useState(false);
+
+  // O crachá no botão diz quantos recortes estão valendo: sem abrir a gaveta,
+  // dá para saber se o número na tela é o efetivo todo ou um pedaço dele.
+  const filtrosAtivos = [
+    dashboardCompany !== 'todas',
+    dashboardGroup !== 'todos',
+    dashboardRole !== 'todas',
+    dashboardStatus !== 'todos',
+    dashboardBranch !== 'todos',
+    dashboardSite !== 'todos',
+    dashboardSearch.trim() !== '',
+  ].filter(Boolean).length;
+
+  const limparFiltrosPainel = () => {
+    setDashboardCompany('todas');
+    setDashboardGroup('todos');
+    setDashboardRole('todas');
+    setDashboardStatus('todos');
+    setDashboardBranch('todos');
+    setDashboardSite('todos');
+    setDashboardSearch('');
+  };
   const liveViewRef = useRef<HTMLDivElement>(null);
 
   const createEmptyGroup = (): GrupoEquipe => ({
@@ -263,6 +293,7 @@ export default function ControlePresencaTab({
   const dayRecords = useMemo(() => safeRecords.filter(record => record.data === referenceDate), [referenceDate, safeRecords]);
   const roleOptions = useMemo(() => [...new Set(safeRecords.map(record => record.funcao).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [safeRecords]);
   const employeeById = useMemo(() => new Map(safeFuncionarios.map(employee => [employee.id, employee])), [safeFuncionarios]);
+  const buscaPainel = normalizeComparable(dashboardSearch.trim());
   const recordMatchesDashboard = (record: PresencaApontamento) => {
     const employee = employeeById.get(record.funcionarioId);
     const operationalLocation = `${record.grupoNome} ${record.frenteServico}`.toLocaleLowerCase('pt-BR');
@@ -271,11 +302,16 @@ export default function ControlePresencaTab({
       && (dashboardRole === 'todas' || record.funcao === dashboardRole)
       && (dashboardStatus === 'todos' || record.status === dashboardStatus)
       && (dashboardBranch === 'todos' || contemTermo(operationalLocation, dashboardBranch))
-      && (dashboardSite === 'todos' || contemTermo(operationalLocation, dashboardSite));
+      && (dashboardSite === 'todos' || contemTermo(operationalLocation, dashboardSite))
+      // Procurar uma pessoa pelo nome ou matrícula é o filtro que mais falta
+      // quando alguém liga perguntando "o fulano bateu hoje?".
+      && (!buscaPainel || normalizeComparable(
+        `${record.funcionarioNome} ${employee?.matricula || ''} ${record.funcao}`,
+      ).includes(buscaPainel));
   };
   const dashboardRecords = useMemo(
     () => dayRecords.filter(recordMatchesDashboard),
-    [dashboardBranch, dashboardCompany, dashboardGroup, dashboardRole, dashboardSite, dashboardStatus, dayRecords, employeeById],
+    [buscaPainel, dashboardBranch, dashboardCompany, dashboardGroup, dashboardRole, dashboardSite, dashboardStatus, dayRecords, employeeById],
   );
   const sentGroupIds = useMemo(() => new Set(dayRecords.map(record => record.grupoId).filter(Boolean)), [dayRecords]);
   const pendingGroups = useMemo(() => activeGroups.filter(group => !sentGroupIds.has(group.id)), [activeGroups, sentGroupIds]);
@@ -417,24 +453,42 @@ export default function ControlePresencaTab({
       });
     });
 
+    // As barras crescem por escala, não por altura/largura. Animar tamanho
+    // obriga o navegador a refazer o layout a cada quadro — no celular da obra
+    // isso engasga. Escala roda na GPU e é o que as regras do projeto pedem.
     const trendBars = scope.querySelectorAll<HTMLElement>('[data-trend-bar]');
-    if (reduceMotion) {
-      trendBars.forEach(bar => { bar.style.height = `${bar.dataset.pct}%`; });
-    } else {
-      gsap.fromTo(trendBars, { height: '3%' }, {
-        height: (_index, target) => `${target.dataset.pct}%`,
-        duration: 0.6, ease: 'power3.out', stagger: 0.05, delay: 0.15,
+    trendBars.forEach(bar => { bar.style.height = `${bar.dataset.pct}%`; bar.style.transformOrigin = 'bottom'; });
+    if (!reduceMotion) {
+      gsap.fromTo(trendBars, { scaleY: 0.02 }, {
+        scaleY: 1, duration: 0.6, ease: 'power3.out', stagger: 0.05, delay: 0.15,
       });
     }
 
     const distBars = scope.querySelectorAll<HTMLElement>('[data-dist-bar]');
-    if (reduceMotion) {
-      distBars.forEach(bar => { bar.style.width = `${bar.dataset.pct}%`; });
-    } else {
-      gsap.fromTo(distBars, { width: '0%' }, {
-        width: (_index, target) => `${target.dataset.pct}%`,
-        duration: 0.7, ease: 'power3.out', stagger: 0.06, delay: 0.1,
+    distBars.forEach(bar => { bar.style.width = `${bar.dataset.pct}%`; bar.style.transformOrigin = 'left'; });
+    if (!reduceMotion) {
+      gsap.fromTo(distBars, { scaleX: 0 }, {
+        scaleX: 1, duration: 0.7, ease: 'power3.out', stagger: 0.06, delay: 0.1,
       });
+    }
+
+    // A barra do efetivo confirmado enche da esquerda, junto com o número.
+    const barraEfetivo = scope.querySelector<HTMLElement>('[data-barra-efetivo]');
+    if (barraEfetivo && !reduceMotion) {
+      gsap.fromTo(barraEfetivo, { scaleX: 0 }, { scaleX: 1, duration: 0.8, ease: 'power3.out', delay: 0.1 });
+    }
+
+    // Os cartões entram em cascata, de baixo para cima e de leve: dá ritmo à
+    // leitura sem atrasar quem só quer ver o número.
+    if (!reduceMotion) {
+      gsap.fromTo(
+        scope.querySelectorAll<HTMLElement>('[data-cartao-painel]'),
+        { autoAlpha: 0, y: 14 },
+        {
+          autoAlpha: 1, y: 0, duration: 0.5, ease: 'power3.out', stagger: 0.07,
+          clearProps: 'transform,opacity,visibility',
+        },
+      );
     }
   }, { scope: liveViewRef, dependencies: [view, metrics.present, tendencia, distribuicao] });
 
@@ -785,43 +839,80 @@ export default function ControlePresencaTab({
 
   return (
     <section id="presenca-tempo-real" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-[#14231e] lg:pb-8">
-      <header className={`${PANEL} overflow-hidden`}>
-        <div className="relative grid gap-7 p-5 sm:p-7 lg:grid-cols-[minmax(18rem,.72fr)_minmax(32rem,1.28fr)] lg:items-end">
-          <div className="relative">
-            <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-8 w-auto" />
-            <div className="mt-7 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-800">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" /> Controle em tempo real
-            </div>
-            <h1 className="mt-2 max-w-2xl text-3xl font-black tracking-[-0.045em] text-[#101a22] sm:text-4xl">Presença ao vivo</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65716b]">Acompanhe as equipes, compartilhe o link oficial e receba cada envio assim que ele chegar.</p>
-          </div>
-          <div className="relative">
-            <div className="mb-2 flex items-center justify-between gap-3"><span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-emerald-800"><Filter className="h-3.5 w-3.5" /> Recorte do painel</span><button type="button" onClick={() => { setDashboardCompany('todas'); setDashboardGroup('todos'); setDashboardRole('todas'); setDashboardStatus('todos'); setDashboardBranch('todos'); setDashboardSite('todos'); }} className="text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-emerald-800">Limpar</button></div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              <label><span className="sr-only">Data de referência</span><input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={FIELD} /></label>
-              <label><span className="sr-only">Empresa</span><select value={dashboardCompany} onChange={event => setDashboardCompany(event.target.value)} className={FIELD}><option value="todas">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></label>
-              <label><span className="sr-only">Equipe</span><select value={dashboardGroup} onChange={event => setDashboardGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{activeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select></label>
-              <label><span className="sr-only">Função</span><select value={dashboardRole} onChange={event => setDashboardRole(event.target.value)} className={FIELD}><option value="todas">Todas as funções</option>{roleOptions.map(role => <option key={role}>{role}</option>)}</select></label>
-              <label><span className="sr-only">Situação</span><select value={dashboardStatus} onChange={event => setDashboardStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label>
-              <label><span className="sr-only">Ramo</span><select value={dashboardBranch} onChange={event => setDashboardBranch(event.target.value)} className={FIELD}><option value="todos">Todos os ramos</option>{ACTIVE_BRANCHES.map(branch => <option key={branch}>{branch}</option>)}</select></label>
-              <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{ACTIVE_SITES.map(site => <option key={site}>{site}</option>)}</select></label>
-              <div className="flex min-h-11 items-center justify-between rounded-lg border border-[#e2e8e4] bg-[#f5f8f6] px-3"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Exibindo</span><strong className="text-sm font-black text-emerald-800">{dashboardRecords.length} pessoas</strong></div>
-            </div>
-          </div>
+      {/* O cabeçalho antigo era um hero: logo repetido, foto de fundo e os sete
+          filtros sempre abertos. Media 307px no desktop e 788px no celular —
+          mais alto que a própria tela de 727px, ou seja, uma tela inteira de
+          rolagem antes da primeira pessoa aparecer. Agora usa o mesmo cabeçalho
+          compacto das outras telas, e os filtros viram uma gaveta que só abre
+          quando alguém quer filtrar. */}
+      <PageHeader
+        eyebrow="Controle em tempo real"
+        title="Presença ao vivo"
+        description="Acompanhe as equipes, compartilhe o link oficial e receba cada envio assim que ele chegar."
+      />
+
+      <nav aria-label="Seções do controle de presença" className={`${PANEL} grid grid-cols-4 p-1.5 sm:flex sm:gap-1.5`}>
+        {navItems.map(item => {
+          const Icon = item.icon;
+          const active = view === item.id;
+          return (
+            <button key={item.id} type="button" onClick={() => setView(item.id)} aria-current={active ? 'page' : undefined} className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-3 text-[11px] font-bold transition sm:min-w-32 sm:text-sm ${active ? 'bg-emerald-700 text-white' : 'text-[#65716b] hover:bg-emerald-50 hover:text-[#14231e]'}`}>
+              <Icon className="h-4 w-4" /> <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      <section className={PANEL} aria-label="Recorte do painel">
+        <div className="flex flex-wrap items-center gap-2 p-3">
+          <button
+            type="button"
+            onClick={() => setFiltrosAbertos(atual => !atual)}
+            aria-expanded={filtrosAbertos}
+            aria-controls="presenca-filtros"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#e2e8e4] bg-white px-3 text-xs font-bold text-[#14231e] transition hover:border-emerald-700"
+          >
+            <Filter className="h-4 w-4 text-emerald-800" />
+            Filtros
+            {filtrosAtivos > 0 && (
+              <span className="rounded-full bg-emerald-700 px-1.5 text-[11px] font-black text-white">{filtrosAtivos}</span>
+            )}
+            <ChevronDown className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
+          </button>
+
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#e2e8e4] bg-[#f5f8f6] px-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Exibindo</span>
+            <strong className="text-sm font-black text-emerald-800">{dashboardRecords.length} pessoas</strong>
+          </span>
+
+          <span className="inline-flex min-h-11 items-center rounded-lg border border-[#e2e8e4] bg-[#f5f8f6] px-3 text-xs font-bold text-[#14231e]">
+            {referenceDate.split('-').reverse().join('/')}
+          </span>
+
+          {filtrosAtivos > 0 && (
+            <button
+              type="button"
+              onClick={limparFiltrosPainel}
+              className="ml-auto inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-emerald-800"
+            >
+              Limpar
+            </button>
+          )}
         </div>
 
-        <nav aria-label="Seções do controle de presença" className="grid grid-cols-4 border-t border-[#e2e8e4] bg-white p-1.5 sm:flex sm:gap-1.5">
-          {navItems.map(item => {
-            const Icon = item.icon;
-            const active = view === item.id;
-            return (
-              <button key={item.id} type="button" onClick={() => setView(item.id)} aria-current={active ? 'page' : undefined} className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-3 text-[11px] font-bold transition sm:min-w-32 sm:text-sm ${active ? 'bg-emerald-700 text-white' : 'text-[#65716b] hover:bg-emerald-50 hover:text-[#14231e]'}`}>
-                <Icon className="h-4 w-4" /> <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </header>
+        {filtrosAbertos && (
+          <div id="presenca-filtros" className="grid gap-2 border-t border-[#e2e8e4] p-3 sm:grid-cols-2 xl:grid-cols-4">
+            <label><span className="sr-only">Data de referência</span><input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={FIELD} /></label>
+            <label><span className="sr-only">Empresa</span><select value={dashboardCompany} onChange={event => setDashboardCompany(event.target.value)} className={FIELD}><option value="todas">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></label>
+            <label><span className="sr-only">Equipe</span><select value={dashboardGroup} onChange={event => setDashboardGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{activeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select></label>
+            <label><span className="sr-only">Função</span><select value={dashboardRole} onChange={event => setDashboardRole(event.target.value)} className={FIELD}><option value="todas">Todas as funções</option>{roleOptions.map(role => <option key={role}>{role}</option>)}</select></label>
+            <label><span className="sr-only">Situação</span><select value={dashboardStatus} onChange={event => setDashboardStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label>
+            <label><span className="sr-only">Ramo</span><select value={dashboardBranch} onChange={event => setDashboardBranch(event.target.value)} className={FIELD}><option value="todos">Todos os ramos</option>{ACTIVE_BRANCHES.map(branch => <option key={branch}>{branch}</option>)}</select></label>
+            <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{ACTIVE_SITES.map(site => <option key={site}>{site}</option>)}</select></label>
+            <label><span className="sr-only">Buscar pessoa</span><input type="search" value={dashboardSearch} onChange={event => setDashboardSearch(event.target.value)} placeholder="Nome ou matrícula" className={FIELD} /></label>
+          </div>
+        )}
+      </section>
 
       {feedback && (
         <div role="status" className="flex items-start justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -848,7 +939,7 @@ export default function ControlePresencaTab({
       {view === 'ao-vivo' && (
         <div ref={liveViewRef} className="space-y-5">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
-            <article className={`${PANEL} relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-7`}>
+            <article data-cartao-painel className={`renea-card ${PANEL} relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-7`}>
               <div className="absolute right-6 top-6 text-emerald-800/20"><ArrowRight className="h-24 w-24" strokeWidth={1} /></div>
               <div className="relative">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -863,7 +954,7 @@ export default function ControlePresencaTab({
                     ao lado de 32 presentes faz o painel parecer quebrado. */}
                 {metrics.planned > 0 ? (
                   <>
-                    <div className="mt-7 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div className="h-full rounded-full bg-[#087653] transition-[width] duration-700 ease-out" style={{ width: `${metrics.percent}%` }} /></div>
+                    <div className="mt-7 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div data-barra-efetivo className="h-full origin-left rounded-full bg-[#087653]" style={{ width: `${metrics.percent}%` }} /></div>
                     <p className="mt-2 text-right text-xs font-bold tabular-nums text-[#65716b]">{metrics.percent}% confirmado</p>
                   </>
                 ) : (
@@ -872,7 +963,7 @@ export default function ControlePresencaTab({
               </div>
             </article>
             <aside className="space-y-5">
-            <article className={`${PANEL} p-5`}>
+            <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
               <div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[#14231e] text-white"><Link2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Link oficial</p><h2 className="mt-0.5 text-lg font-black text-[#101a22]">Registro de campo</h2></div></div>
               <p className="mt-4 text-sm leading-6 text-[#65716b]">Um endereço seguro para o responsável escolher a equipe e enviar a presença diretamente ao painel.</p>
               {generalToken ? (
@@ -881,7 +972,7 @@ export default function ControlePresencaTab({
               {generalToken && <button type="button" onClick={generateGeneralLink} className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-[#65716b] hover:text-emerald-800"><RotateCcw className="h-3.5 w-3.5" /> Renovar link com segurança</button>}
             </article>
 
-            <article className={`${PANEL} p-5`}>
+            <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
               <div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-700" /><h2 className="text-lg font-black text-[#101a22]">Atenção agora</h2></div>
               <div className="mt-4 space-y-2">
                 {pendingGroups.length === 0 && metrics.absent === 0 ? <p className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">Todas as equipes enviaram e não há ausências abertas.</p> : null}
@@ -907,7 +998,7 @@ export default function ControlePresencaTab({
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <article className={`${PANEL} flex flex-col p-5 md:col-span-2`}>
+              <article data-cartao-painel className={`renea-card ${PANEL} flex flex-col p-5 md:col-span-2`}>
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Confirmados nos últimos 7 dias</p>
                 <div className="mt-5 flex min-h-28 flex-1 items-end gap-2">
                   {tendencia.map(item => (
@@ -926,7 +1017,7 @@ export default function ControlePresencaTab({
                 </div>
               </article>
 
-              <article className={`${PANEL} p-5`}>
+              <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
                 <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Efetivo por função</p><span className="text-[10px] font-black text-emerald-800">{referenceDate.split('-').reverse().join('/')}</span></div>
                 {funcoesDoDia.length === 0 ? <p className="mt-6 text-sm text-[#65716b]">Nenhuma função registrada neste recorte.</p> : (
                   <div className="mt-4 space-y-3">
@@ -938,7 +1029,7 @@ export default function ControlePresencaTab({
                 )}
               </article>
 
-              <article className={`${PANEL} p-5`}>
+              <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Situações registradas no dia</p>
                 {distribuicao.length === 0 ? (
                   <p className="mt-6 text-sm text-[#65716b]">Nenhum envio recebido para {referenceDate.split('-').reverse().join('/')}.</p>
@@ -959,7 +1050,7 @@ export default function ControlePresencaTab({
                 )}
               </article>
 
-              <article className={`${PANEL} p-5 md:col-span-2`}>
+              <article data-cartao-painel className={`renea-card ${PANEL} p-5 md:col-span-2`}>
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Efetivo por equipe</p>
                 {equipesDoDia.length === 0 ? <p className="mt-6 text-sm text-[#65716b]">Nenhuma equipe com envio neste recorte.</p> : (
                   <div className="mt-4 space-y-3">
@@ -973,7 +1064,7 @@ export default function ControlePresencaTab({
                 )}
               </article>
 
-            <article className={`${PANEL} p-5 md:col-span-2`}>
+            <article data-cartao-painel className={`renea-card ${PANEL} p-5 md:col-span-2`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Efetivo por ramo e canteiro</p>
                 <span className="text-[10px] font-semibold text-[#79847e]">A lista mostra todas as frentes ativas, inclusive as que estão sem gente hoje.</span>
@@ -1013,7 +1104,7 @@ export default function ControlePresencaTab({
 
 
             {ausentesDoDia.length > 0 && (
-              <article className={`${PANEL} overflow-hidden`}>
+              <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
                 <header className="flex items-center justify-between gap-3 border-b border-[#e4e0d6] px-5 py-4">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-700">Conferência</p>
@@ -1041,7 +1132,7 @@ export default function ControlePresencaTab({
               </article>
             )}
 
-            <article className={`${PANEL} overflow-hidden`}>
+            <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e0d6] px-5 py-4">
                 <div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Equipes</p><h2 className="mt-1 text-xl font-black tracking-tight text-[#101a22]">Situação do dia</h2></div>
                 <div className="flex flex-wrap items-center gap-2">
