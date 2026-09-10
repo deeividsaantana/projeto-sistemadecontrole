@@ -180,7 +180,7 @@ import {
   validatePublicTicketAccess,
 } from './publicApi';
 import { enrichFuelDataset } from './utils/fuelOperations';
-import { rotateWeakPublicLinkTokens } from './utils/publicLinkSecurity';
+import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
 import {
   normalizePresenceLists,
   normalizeRuntimeCollection,
@@ -655,7 +655,15 @@ export default function App() {
           ? INITIAL_PRESENCAS
           : parseStoredJson(savedListasPresenca, 'renea_listas_presenca', INITIAL_PRESENCAS),
       );
-      const securedPublicLinks = rotateWeakPublicLinkTokens(parsedGruposEquipe);
+      // O endereço de presença que o encarregado guardou no celular não pode
+      // mudar sozinho — nem em atualização do sistema, nem quando a nuvem
+      // devolve o grupo. A troca dos tokens fracos herdados é feita uma vez
+      // por aparelho e nunca mais; depois disso só o botão "Renovar link"
+      // troca o endereço, porque aí é decisão de alguém.
+      const securedPublicLinks = estabilizarLinksPublicos(
+        parsedGruposEquipe,
+        readStoredFlag(localStorage, STORAGE_KEYS.linksPublicosEstaveisV1),
+      );
       const loadedEquipamentos = shouldMigrateSpreadsheetSeed
         ? mergeSeedRecordsPreferSeed(parsedEquipamentos, INITIAL_EQUIPAMENTOS, item => item.prefixo.trim().toLowerCase())
         : parsedEquipamentos;
@@ -776,6 +784,7 @@ export default function App() {
         writeStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31, true);
         setPublicLinksRotationPending(true);
       }
+      writeStoredFlag(localStorage, STORAGE_KEYS.linksPublicosEstaveisV1, true);
       if (!savedControleEstacas) {
         writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(INITIAL_CONTROLE_ESTACAS));
       }
@@ -1012,17 +1021,11 @@ export default function App() {
         const downloadedData = backup.data;
         const validation = validateSystemBackup(downloadedData, false);
         if (!validation.valid) throw new Error(describeInvalidBackup(validation));
-        const securedPublicLinks = rotateWeakPublicLinkTokens(
-          Array.isArray(downloadedData.gruposEquipe) ? downloadedData.gruposEquipe : [],
-        );
-        const data: FirebaseCloudData = {
-          ...downloadedData,
-          gruposEquipe: securedPublicLinks.gruposEquipe,
-        };
-        if (securedPublicLinks.changed) {
-          writeStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31, true);
-          setPublicLinksRotationPending(true);
-        }
+        // O que vem da nuvem é aceito como está. Rotacionar aqui trocava o
+        // endereço a cada download: bastava um aparelho publicar um grupo com
+        // token herdado para este trocar e republicar, e o link mudava sozinho
+        // em looping. Token fraco é tratado uma vez, na carga local.
+        const data: FirebaseCloudData = { ...downloadedData };
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
         const nowStr = Number.isNaN(syncDate.getTime())
