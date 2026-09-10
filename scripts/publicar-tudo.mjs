@@ -613,8 +613,10 @@ const runCheck = () => {
     'firebase.json',
     'firestore.rules',
     'netlify/functions/public-presenca.js',
-    'netlify/functions/public-apontamento.js',
+    // public-apontamento.js foi removido junto com o módulo Apontamentos no
+    // commit d756144; a lista ficou para trás e travava toda publicação.
     'netlify/functions/public-tickets.js',
+    'netlify/functions/master-data.js',
   ];
   required.forEach(file => {
     if (!fs.existsSync(path.join(ROOT, file))) throw new Error(`Arquivo obrigatório ausente: ${file}`);
