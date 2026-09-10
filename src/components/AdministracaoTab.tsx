@@ -1,10 +1,17 @@
 /**
- * Administração: saúde do armazenamento e do registro das coleções. A checagem
- * de registro é a mesma que roda nos testes — uma coleção nova que ficar fora do
- * backup ou da sincronização aparece aqui em vez de sumir silenciosamente.
+ * Administração: saúde do armazenamento, registro das coleções e o acesso das
+ * pessoas. A checagem de registro é a mesma que roda nos testes — uma coleção
+ * nova que ficar fora do backup ou da sincronização aparece aqui em vez de
+ * sumir silenciosamente.
+ *
+ * A gestão de usuários mora aqui porque esta é a única aba de administração no
+ * menu. A tela existia solta, sem rota e sem item de menu: ninguém conseguia
+ * criar um acesso pelo sistema. Quem decide se a criação vale é o servidor
+ * (assertAdministrator); esta tela é só o caminho até lá.
  */
 import { useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, Database } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Database, ShieldCheck } from 'lucide-react';
+import UsuariosTab from './UsuariosTab';
 import { INTERMEDIATE_TABLE_IDS } from '../firebaseCloudSync';
 import {
   divergenciasDeRegistro,
@@ -130,6 +137,30 @@ export default function AdministracaoTab({
           </TableBody>
         </TableShell>
       </div>
+
+      <section className="mt-6">
+        <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-700">
+          <ShieldCheck className="h-4 w-4 text-emerald-700" /> Acessos ao sistema
+        </h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Criar um acesso, trocar o perfil de alguém ou inativar quem saiu da obra.
+        </p>
+        <div className="mt-3">
+          <UsuariosTab embutido />
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-700">
+          <ShieldCheck className="h-4 w-4 text-emerald-700" /> Acessos ao sistema
+        </h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Criar um acesso, trocar o perfil de alguém ou inativar quem saiu da obra.
+        </p>
+        <div className="mt-3">
+          <UsuariosTab embutido />
+        </div>
+      </section>
 
       {totalUsuarios !== undefined && (
         <p className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">

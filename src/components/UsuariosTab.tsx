@@ -16,7 +16,14 @@ const roles: Array<{ value: ManagedUserRole; label: string }> = [
   { value: 'leitura', label: 'Visualização' },
 ];
 
-export default function UsuariosTab() {
+interface UsuariosTabProps {
+  /** Dentro da Administração o cabeçalho próprio sai: quem manda no título da
+   *  página é a aba que hospeda, e duas <h1> na mesma tela confundem tanto o
+   *  leitor de tela quanto quem olha. */
+  embutido?: boolean;
+}
+
+export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {}) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -79,13 +86,15 @@ export default function UsuariosTab() {
 
   return (
     <section className="space-y-5">
-      <header className="flex items-center gap-3">
-        <ShieldCheck className="h-7 w-7 text-emerald-700" />
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Administração</p>
-          <h1 className="text-2xl font-black text-slate-900">Usuários e permissões</h1>
-        </div>
-      </header>
+      {!embutido && (
+        <header className="flex items-center gap-3">
+          <ShieldCheck className="h-7 w-7 text-emerald-700" />
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Administração</p>
+            <h1 className="text-2xl font-black text-slate-900">Usuários e permissões</h1>
+          </div>
+        </header>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
         <form onSubmit={createUser} className="space-y-4 rounded-xl border border-[#e2e8e4] bg-white p-5">
