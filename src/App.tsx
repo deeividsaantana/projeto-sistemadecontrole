@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
+
 import { RouteMotion } from './shared/ui';
 import { 
   Empresa, 
@@ -721,6 +722,30 @@ export default function App() {
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
       setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
+
+      // Efetivo do EFETIVO_OBRA_3 em quem já usa o sistema. A semente acima só
+      // vale no primeiro acesso do navegador; sem esta passagem, quem já tinha
+      // o RENEA aberto ficaria com as equipes antigas para sempre. A função é
+      // conservadora de propósito: ninguém é apagado, e o token do link
+      // público de presença é preservado equipe por equipe.
+      if (!readStoredFlag(localStorage, STORAGE_KEYS.efetivoObra3V1)) {
+        const migrado = migrarEfetivoObra3(
+          parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS),
+          securedPublicLinks.gruposEquipe,
+          parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, [] as FrenteServico[]),
+          INITIAL_FUNCIONARIOS,
+          INITIAL_GRUPOS_EQUIPES,
+          INITIAL_FRENTES_SERVICO,
+        );
+        setFuncionarios(migrado.funcionarios);
+        setGruposEquipe(migrado.grupos);
+        setFrentesServico(migrado.frentes);
+        writeStorageValue(localStorage, 'renea_funcionarios', JSON.stringify(migrado.funcionarios));
+        writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(migrado.grupos));
+        writeStorageValue(localStorage, STORAGE_KEYS.frentesServico, JSON.stringify(migrado.frentes));
+        writeStoredFlag(localStorage, STORAGE_KEYS.efetivoObra3V1, true);
+        console.info('[RENEA] Efetivo atualizado pelo EFETIVO_OBRA_3:', migrado.resumo);
+      }
 
       if (shouldMigratePresencePeople) {
         // Grava a marca de "já migrado" no mesmo lote atômico das tabelas que

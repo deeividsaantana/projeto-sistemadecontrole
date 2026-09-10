@@ -47,6 +47,7 @@ export const STORAGE_KEYS = {
   notifications: 'renea_notifications',
   colaboradoresPlanilhaV1: 'renea_colaboradores_planilha_v1',
   planilhasOperacionaisV2: 'renea_planilhas_operacionais_v2',
+  efetivoObra3V1: 'renea_efetivo_obra3_v1',
   publicLinksRotationPendingV31: 'renea_public_links_rotation_pending_v31',
   sessionLastActivity: 'renea_session_last_activity',
   autoSync: 'renea_auto_sync',
