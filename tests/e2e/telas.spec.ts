@@ -270,3 +270,33 @@ test('materiais: a carga que a nota prometeu e não chegou aparece em cima', asy
   // A entrega completa não aparece como pendência.
   await expect(pendentes.getByRole('row').filter({ hasText: 'TUBO DE CONCRETO PA3 DN1000' })).toHaveCount(0);
 });
+
+// "Tudo interativo": o número do painel não é só leitura, é o caminho. Clicar
+// numa frente recorta o painel inteiro por ela, e clicar de novo desfaz.
+test('painel de presença: clicar numa frente recorta o painel e clicar de novo desfaz', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?screen=presenca-admin');
+
+  const frentes = page.locator('article').filter({ hasText: 'Onde falta gente' });
+  await expect(frentes).toBeVisible();
+
+  const primeira = frentes.getByRole('button').first();
+  await expect(primeira).toHaveAttribute('aria-pressed', 'false');
+
+  await primeira.click();
+  await expect(primeira).toHaveAttribute('aria-pressed', 'true');
+  // O recorte passa a valer no painel inteiro: o botão de filtros mostra o crachá.
+  await expect(page.getByRole('button', { name: /^Filtros/ })).toContainText('1');
+
+  await primeira.click();
+  await expect(primeira).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('painel de presença: quem falta sempre leva aos registros da pessoa', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?screen=presenca-admin');
+
+  const cartao = page.locator('article').filter({ hasText: 'Quem falta sempre' });
+  await expect(cartao).toBeVisible();
+  await expect(cartao.getByRole('combobox')).toBeVisible();
+});

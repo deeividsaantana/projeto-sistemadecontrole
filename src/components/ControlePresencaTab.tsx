@@ -35,6 +35,12 @@ import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import type { SituacaoLancada } from '../utils/presencaManual';
+import {
+  diasAntes,
+  efetivoPorEmpresa,
+  efetivoPorFrente,
+  faltasRepetidas,
+} from '../utils/painelPresenca';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServico';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
@@ -417,6 +423,31 @@ export default function ControlePresencaTab({
   const distribuicao = useMemo(() => STATUS_OPTIONS
     .map(status => ({ status, total: dashboardRecords.filter(record => record.status === status).length }))
     .filter(item => item.total > 0), [dashboardRecords]);
+
+  // Por frente: várias equipes trabalham no mesmo Ramo, e é pelo Ramo que se
+  // decide remanejar gente no meio do dia.
+  const efetivoDasFrentes = useMemo(
+    () => efetivoPorFrente(dashboardRecords, activeGroups),
+    [dashboardRecords, activeGroups],
+  );
+
+  // Por empresa: é assim que se cobra quem não entrega o efetivo contratado.
+  const efetivoDasEmpresas = useMemo(
+    () => efetivoPorEmpresa(dashboardRecords, safeFuncionarios, safeEmpresas),
+    [dashboardRecords, safeFuncionarios, safeEmpresas],
+  );
+
+  // O painel mostra o dia; quem falta sempre só aparece no mês. A janela de 30
+  // dias termina na data de referência, não em hoje, para conferir o passado.
+  const [minimoFaltas, setMinimoFaltas] = useState(3);
+  const reincidentes = useMemo(
+    () => faltasRepetidas(safeRecords, {
+      minimo: minimoFaltas,
+      desde: diasAntes(referenceDate, 30),
+      ate: referenceDate,
+    }),
+    [safeRecords, minimoFaltas, referenceDate],
+  );
 
   const funcoesDoDia = useMemo(() => {
     const mapa = new Map<string, number>();
@@ -1199,6 +1230,139 @@ export default function ControlePresencaTab({
                   </div>
                 ))}
               </div>
+            </article>
+
+            {/* Painel interativo: cada linha é um filtro. Clicar numa frente ou
+                numa empresa recorta o painel inteiro por ela; clicar de novo
+                desfaz. O número deixa de ser só leitura e vira o caminho. */}
+            <div className="grid gap-5 xl:grid-cols-2">
+              <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
+                <div className="border-b border-[#e4e0d6] px-5 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Frentes de serviço</p>
+                  <h2 className="mt-1 text-xl font-black tracking-tight text-[#101a22]">Onde falta gente</h2>
+                  <p className="mt-1 text-xs text-[#65716b]">Da maior falta para a menor. Toque numa frente para recortar o painel por ela.</p>
+                </div>
+                <ul className="divide-y divide-[#ebe7dc]">
+                  {efetivoDasFrentes.length === 0 && (
+                    <li className="px-5 py-10 text-center text-sm text-[#65716b]">Nenhum apontamento no recorte.</li>
+                  )}
+                  {efetivoDasFrentes.slice(0, 8).map(linha => {
+                    const ativo = dashboardBranch === linha.chave;
+                    const falta = Math.max(0, linha.previstos - linha.confirmados);
+                    return (
+                      <li key={linha.chave}>
+                        <button
+                          type="button"
+                          aria-pressed={ativo}
+                          onClick={() => setDashboardBranch(ativo ? 'todos' : linha.chave)}
+                          className={`flex w-full items-center gap-3 px-5 py-3 text-left transition ${ativo ? 'bg-emerald-50' : 'hover:bg-[#f7f8f6]'}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-[#101a22]">{linha.rotulo}</p>
+                            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#e8e5db]">
+                              <div
+                                className="h-full rounded-full bg-[#087653]"
+                                style={{ width: `${Math.min(100, linha.percentual ?? 0)}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-base font-black tabular-nums text-[#101a22]">
+                              {linha.confirmados}{linha.previstos > 0 ? <span className="text-xs font-bold text-[#65716b]">/{linha.previstos}</span> : null}
+                            </p>
+                            <p className={`text-[11px] font-bold ${falta > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>
+                              {falta > 0 ? `faltam ${falta}` : 'completa'}
+                            </p>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </article>
+
+              <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
+                <div className="border-b border-[#e4e0d6] px-5 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Empresas</p>
+                  <h2 className="mt-1 text-xl font-black tracking-tight text-[#101a22]">Quem entregou efetivo</h2>
+                  <p className="mt-1 text-xs text-[#65716b]">Toque numa empresa para ver só o efetivo dela.</p>
+                </div>
+                <ul className="divide-y divide-[#ebe7dc]">
+                  {efetivoDasEmpresas.length === 0 && (
+                    <li className="px-5 py-10 text-center text-sm text-[#65716b]">Nenhum apontamento no recorte.</li>
+                  )}
+                  {efetivoDasEmpresas.map(linha => {
+                    const ativo = dashboardCompany === linha.chave;
+                    return (
+                      <li key={linha.chave}>
+                        <button
+                          type="button"
+                          aria-pressed={ativo}
+                          onClick={() => setDashboardCompany(ativo ? 'todas' : linha.chave)}
+                          className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left transition ${ativo ? 'bg-emerald-50' : 'hover:bg-[#f7f8f6]'}`}
+                        >
+                          <p className="min-w-0 flex-1 truncate text-sm font-bold text-[#101a22]">{linha.rotulo}</p>
+                          <div className="shrink-0 text-right">
+                            <p className="text-base font-black tabular-nums text-[#101a22]">{linha.confirmados}</p>
+                            {linha.ausentes > 0 && <p className="text-[11px] font-bold text-rose-700">{linha.ausentes} ausente(s)</p>}
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </article>
+            </div>
+
+            <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e0d6] px-5 py-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Últimos 30 dias</p>
+                  <h2 className="mt-1 text-xl font-black tracking-tight text-[#101a22]">Quem falta sempre</h2>
+                  <p className="mt-1 text-xs text-[#65716b]">O painel mostra o dia; o problema aparece no mês. Toque no nome para ver os registros da pessoa.</p>
+                </div>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <span className="sr-only">Mínimo de faltas</span>
+                  <select
+                    value={minimoFaltas}
+                    onChange={event => setMinimoFaltas(Number(event.target.value))}
+                    className={`${FIELD} w-auto`}
+                  >
+                    {[2, 3, 5, 8].map(quantidade => (
+                      <option key={quantidade} value={quantidade}>{quantidade}+ faltas</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <ul className="divide-y divide-[#ebe7dc]">
+                {reincidentes.length === 0 && (
+                  <li className="px-5 py-10 text-center text-sm text-[#65716b]">
+                    Ninguém com {minimoFaltas} faltas ou mais nos últimos 30 dias.
+                  </li>
+                )}
+                {reincidentes.slice(0, 10).map(pessoa => (
+                  <li key={pessoa.funcionarioId}>
+                    <button
+                      type="button"
+                      onClick={() => { setDashboardSearch(pessoa.nome); setRecordSearch(pessoa.nome); setView('registros'); }}
+                      className="flex w-full items-center gap-3 px-5 py-3 text-left transition hover:bg-[#f7f8f6]"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-[#101a22]">{pessoa.nome}</p>
+                        <p className="mt-0.5 truncate text-xs text-[#65716b]">{pessoa.funcao} · {pessoa.equipe}</p>
+                        <p className="mt-1 truncate text-[11px] text-[#79847e]">
+                          {pessoa.datas.slice(0, 6).map(data => data.slice(8, 10) + '/' + data.slice(5, 7)).join(' · ')}
+                          {pessoa.datas.length > 6 ? ` · +${pessoa.datas.length - 6}` : ''}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-lg font-black tabular-nums text-rose-700">{pessoa.faltas}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#65716b]">faltas</p>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </article>
         </div>
       )}
