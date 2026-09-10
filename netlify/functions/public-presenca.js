@@ -16,6 +16,39 @@ import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
 import { assertIdempotencyKey } from './_shared/api-security.js';
 import { withIdempotency } from './_shared/idempotency.js';
 
+// Quem está enviando é a equipe, não o roteador. No Wi-Fi da obra — e atrás do
+// NAT da operadora — dezenas de celulares saem pelo mesmo IP: contar ali fazia
+// o último encarregado do dia levar 429 sem ter feito nada de errado. O limite
+// que vale passa a ser por equipe; o teto por IP continua, largo, só para
+// impedir script. Corpo ilegível cai no teto por IP e a própria rota devolve o
+// 400 logo em seguida.
+const LIMITE_POR_EQUIPE_HORA = 120;
+const LIMITE_POR_IP_HORA = 400;
+const LIMITE_SEM_IDENTIDADE_HORA = 30;
+
+const identidadeDeEnvio = event => {
+  try {
+    const body = parseJsonBody(event);
+    const grupoId = cleanString(body?.grupoId, 160);
+    if (grupoId) return `grupo-${stableHash(grupoId).slice(0, 24)}`;
+    const token = cleanString(body?.token, 180);
+    if (token) return `token-${stableHash(token).slice(0, 24)}`;
+  } catch {
+    // Sem identidade utilizável: vale o teto por IP.
+  }
+  return '';
+};
+
+export const aplicarLimiteDeEnvio = async (database, event, method, aplicar = enforceRateLimit) => {
+  const identidade = identidadeDeEnvio(event);
+  if (!identidade) {
+    await aplicar(database, event, `public-presenca-${method}`, LIMITE_SEM_IDENTIDADE_HORA, 3600);
+    return;
+  }
+  await aplicar(database, event, `public-presenca-ip-${method}`, LIMITE_POR_IP_HORA, 3600);
+  await aplicar(database, event, `public-presenca-${method}`, LIMITE_POR_EQUIPE_HORA, 3600, identidade);
+};
+
 const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
 const isGeneralToken = token => token.startsWith('geral-');
 const todayInSaoPaulo = () => new Intl.DateTimeFormat('en-CA', {
@@ -454,7 +487,7 @@ export const handler = async event => {
     // GET é somente leitura e não deve abrir uma transação de escrita no
     // Firestore a cada carregamento do link. Escritas continuam protegidas.
     if (method !== 'GET' && method !== 'DELETE') {
-      await enforceRateLimit(database, event, `public-presenca-${method}`, 30, 3600);
+      await aplicarLimiteDeEnvio(database, event, method);
     }
 
     if (method === 'GET') {
