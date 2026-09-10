@@ -181,6 +181,7 @@ import {
 } from './publicApi';
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
+import { estaAtivo, inativar, somenteAtivos } from './utils/inativacao';
 import {
   normalizePresenceLists,
   normalizeRuntimeCollection,
@@ -501,6 +502,15 @@ export default function App() {
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
+
+  // Registro inativado sai das telas e dos totais num ponto só. Filtrar aqui,
+  // e não em cada tela, é o que garante que nenhuma delas fique de fora — e
+  // que os cálculos continuem vendo exatamente o mesmo conjunto que viam
+  // quando a exclusão era definitiva. O arquivo completo continua no estado,
+  // que é o que vai para o armazenamento e para a nuvem.
+  const abastecimentosAtivos = useMemo(() => somenteAtivos(abastecimentos), [abastecimentos]);
+  const ticketsJazidaAtivos = useMemo(() => somenteAtivos(ticketsJazida), [ticketsJazida]);
+  const presencasLinkAtivas = useMemo(() => somenteAtivos(presencasLink), [presencasLink]);
   const [historicoPresencas, setHistoricoPresencas] = useState<HistoricoPresenca[]>([]);
   const [controleEquipamentosDiario, setControleEquipamentosDiario] = useState<ControleEquipamentoDiario[]>([]);
   const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
@@ -1541,7 +1551,7 @@ export default function App() {
     };
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: normalizedItem });
     if (errors.length > 0) {
-      window.alert(errors.join('\n'));
+      addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
     let updated;
@@ -1585,7 +1595,7 @@ export default function App() {
     const previous = obras.find(x => x.id === item.id);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
     if (errors.length > 0) {
-      window.alert(errors.join('\n'));
+      addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
     let updated;
@@ -1629,7 +1639,7 @@ export default function App() {
     const previous = equipamentos.find(x => x.id === item.id);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
     if (errors.length > 0) {
-      window.alert(errors.join('\n'));
+      addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
     let updated;
@@ -1729,7 +1739,7 @@ export default function App() {
     };
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: normalizedItem });
     if (errors.length > 0) {
-      window.alert(errors.join('\n'));
+      addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
     let updated;
@@ -1755,7 +1765,12 @@ export default function App() {
     const matricula = String(item.matricula || '').trim();
     const duplicate = motoristasOperacionais.some(driver => driver.id !== item.id && String(driver.matricula || '').trim() === matricula);
     if (!matricula || !item.nome.trim() || duplicate) {
-      window.alert(duplicate ? 'Já existe motorista operacional com esta matrícula.' : 'Informe matrícula e nome.');
+      addNotification(
+        'Motorista não salvo',
+        duplicate ? 'Já existe motorista operacional com esta matrícula.' : 'Informe matrícula e nome.',
+        'warning',
+        'Sistema Local',
+      );
       return;
     }
     const next = isNew ? [...motoristasOperacionais, item] : motoristasOperacionais.map(driver => driver.id === item.id ? item : driver);
@@ -2400,11 +2415,20 @@ export default function App() {
   const handleDeleteAbastecimentos = (ids: string[]) => {
     const selected = new Set(ids);
     if (selected.size === 0) return;
-    const updated = auditarBaseCombustivel(abastecimentos.filter(item => !selected.has(item.id)));
+    // Abastecimento é registro de valor: inativa, não apaga. Ele sai das telas
+    // e dos totais, mas continua no arquivo e pode voltar. O enriquecimento
+    // roda só sobre os ativos, exatamente como rodava antes sobre a lista já
+    // sem os excluídos — um abastecimento inativado não pode continuar
+    // influenciando o consumo calculado dos vizinhos.
+    const inativados = inativar(abastecimentos, ids, activeUserName);
+    const enriquecidos = new Map(
+      auditarBaseCombustivel(somenteAtivos(inativados)).map(item => [item.id, item]),
+    );
+    const updated = inativados.map(item => enriquecidos.get(item.id) || item);
     saveAndLog(
       'Abastecimentos',
-      'Excluiu',
-      `Excluiu permanentemente ${selected.size} abastecimento(s) selecionado(s).`,
+      'Inativou',
+      `Inativou ${selected.size} abastecimento(s). Os registros saíram das telas e podem ser recuperados.`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -2416,11 +2440,12 @@ export default function App() {
   const handleDeleteTicketsJazida = (ids: string[]) => {
     const selected = new Set(ids);
     if (selected.size === 0) return;
-    const updated = ticketsJazida.filter(item => !selected.has(item.id));
+    // Ticket de jazida é comprovante: inativa, não apaga.
+    const updated = inativar(ticketsJazida, ids, activeUserName);
     saveAndLog(
       'Tickets Jazida',
-      'Excluiu',
-      `Excluiu permanentemente ${selected.size} ticket(s) selecionado(s).`,
+      'Inativou',
+      `Inativou ${selected.size} ticket(s). Os registros saíram das telas e podem ser recuperados.`,
       historyLogs,
       () => {
         setTicketsJazida(updated);
@@ -3015,10 +3040,11 @@ export default function App() {
         })
         .filter(Boolean),
     ));
-    const updatedPresencas = presencasLink.filter(item => !selected.has(item.id));
+    // Apontamento de presença é registro trabalhista: inativa, não apaga.
+    const updatedPresencas = inativar(presencasLink, ids, activeUserName);
     setPresencasLink(updatedPresencas);
     writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
-    addNotification('Presenças excluídas', `${ids.length} registro(s) removido(s) manualmente.`, 'warning', 'Sistema Local');
+    addNotification('Presenças inativadas', `${ids.length} registro(s) saíram das telas e podem ser recuperados.`, 'warning', 'Sistema Local');
     void markPublicSubmissionsProcessed(db, submissionDocIds, currentUser?.uid || activeUserName)
       .catch(error => console.warn('Não foi possível encerrar a submissão pública excluída:', error))
       .finally(() => { void uploadLocalSnapshotToFirebase(); });
@@ -4298,14 +4324,14 @@ export default function App() {
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 lubrificacoes={lubrificacoes}
                 historyLogs={historyLogs}
                 listasPresenca={listasPresenca}
                 ordensServico={ordensServico}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 estacas={controleEstacas}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
                 planejamento={planejamentoItens}
@@ -4327,8 +4353,8 @@ export default function App() {
               <PeriodoTab
                 presencas={presencasLink}
                 controlesEquipamentos={controleEquipamentosDiario}
-                abastecimentos={abastecimentos}
-                ticketsJazida={ticketsJazida}
+                abastecimentos={abastecimentosAtivos}
+                ticketsJazida={ticketsJazidaAtivos}
                 equipamentos={equipamentos}
               />
             )}
@@ -4339,7 +4365,7 @@ export default function App() {
                 obras={obras}
                 equipamentos={equipamentos}
                 funcionarios={funcionarios}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 tickets={ticketsJazida}
                 ordensServico={ordensServico}
                 controlesEquipamentos={controleEquipamentosDiario}
@@ -4391,7 +4417,7 @@ export default function App() {
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 lubrificacoes={lubrificacoes}
                 onSaveAbastecimento={handleSaveAbastecimento}
                 onDeleteAbastecimento={handleDeleteAbastecimento}
@@ -4408,9 +4434,9 @@ export default function App() {
                 equipamentos={equipamentos}
                 controlesEquipamentos={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 ordensServico={ordensServico}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 obras={obras}
                 podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
                 responsavel={activeUserName}
@@ -4421,7 +4447,7 @@ export default function App() {
 
             {activeTab === 'modo-campo' && (
               <ModoCampoTab
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 producao={producaoRegistros}
                 ocorrencias={ocorrencias}
@@ -4550,7 +4576,7 @@ export default function App() {
               <OrcamentoTab
                 orcamentos={orcamentoItens}
                 lancamentos={lancamentosCusto}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 ordensServico={ordensServico}
                 obras={obras}
                 responsavel={activeUserName}
@@ -4562,7 +4588,7 @@ export default function App() {
             {activeTab === 'custos' && (
               <CustosTab
                 lancamentos={lancamentosCusto}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 ordensServico={ordensServico}
                 obras={obras}
                 frentes={frentesServico}
@@ -4740,11 +4766,11 @@ export default function App() {
                 diarios={diariosObra}
                 obras={obras}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 apontamentos={apontamentosOperacionais}
                 movimentosMaterial={materiaisMovimentos}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
                 onSave={handleSaveDiarioObra}
@@ -4756,11 +4782,11 @@ export default function App() {
                 frentes={frentesServico}
                 obras={obras}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 apontamentos={apontamentosOperacionais}
                 movimentosMaterial={materiaisMovimentos}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 podeEditar={pode(currentUserRole, 'frentes', 'editar')}
                 onSave={handleSaveFrente}
               />
@@ -4808,7 +4834,7 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 funcionarios={funcionarios}
                 obras={obras}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 podeRealocar={['admin', 'gestor'].includes(currentUserRole)}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
@@ -4821,9 +4847,9 @@ export default function App() {
                 funcionarios={funcionarios}
                 empresas={empresas}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 checklists={checklists}
                 onNavigate={navigateTo}
               />
@@ -4869,8 +4895,8 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 controlesEquipamentos={controleEquipamentosDiario}
                 ordensServico={ordensServico}
-                abastecimentos={abastecimentos}
-                ticketsJazida={ticketsJazida}
+                abastecimentos={abastecimentosAtivos}
+                ticketsJazida={ticketsJazidaAtivos}
                 onNavigate={navigateTo}
               />
             )}
@@ -4903,7 +4929,7 @@ export default function App() {
                 empresas={empresas}
                 obras={obras}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 historicoPresencas={historicoPresencas}
                 pendingPublicSubmissionsCount={pendingPublicSubmissionsCount}
                 onRestorePresenceHistory={handleRestorePresenceHistory}
@@ -4936,6 +4962,7 @@ export default function App() {
                 controle={controleEstacas}
                 obras={obras}
                 onChange={handleChangeControleEstacas}
+                responsavel={activeUserName}
               />
             )}
 

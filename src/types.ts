@@ -174,6 +174,10 @@ export interface Abastecimento {
   revisadoEm?: string;
   criadoEm?: string; // ISO timestamp
   atualizadoEm?: string; // ISO timestamp
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface Lubrificacao {
@@ -294,6 +298,10 @@ export interface PresencaApontamento {
   atualizadoPor?: string;
   motivoAlteracao?: string;
   historicoEdicoes?: HistoricoEdicaoPresencaLink[];
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface HistoricoPresenca {
@@ -386,6 +394,10 @@ export interface TicketJazida {
   ticketPareadoId?: string;
   viagemId?: string;
   eventos?: EventoTicket[];
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface OrdemServico {
@@ -993,6 +1005,10 @@ export interface LoteEstaca {
   anexos?: AnexoOperacional[];
   criadoEm: string;
   atualizadoEm?: string;
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface CravacaoEstaca {
@@ -1015,6 +1031,10 @@ export interface CravacaoEstaca {
   anexos?: AnexoOperacional[];
   criadoEm: string;
   atualizadoEm?: string;
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface ControleEstacas {

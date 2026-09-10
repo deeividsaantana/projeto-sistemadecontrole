@@ -30,7 +30,7 @@ import {
   Download,
   Layers3
 } from 'lucide-react';
-import { CountUp } from '../shared/ui';
+import { ConfirmDialog, CountUp } from '../shared/ui';
 import type ExcelJS from 'exceljs';
 import { listarMateriais } from '../utils/materiaisJazida';
 import { createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
@@ -304,6 +304,7 @@ export default function TicketsJazidaTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
+  const [confirmandoInativacao, setConfirmandoInativacao] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [importMessage, setImportMessage] = useState('');
   const [viewingTicket, setViewingTicket] = useState<TicketJazida | null>(null);
@@ -2308,7 +2309,7 @@ export default function TicketsJazidaTab({
       <div className="bg-white border border-[#e2e8e4] rounded-lg overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] bg-white px-5 py-3 text-xs">
           <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredTickets.length > 0 && filteredTickets.every(item => selectedTicketIds.includes(item.id))} onChange={event => setSelectedTicketIds(event.target.checked ? filteredTickets.map(item => item.id) : [])} /> Selecionar visíveis ({selectedTicketIds.length})</label>
-          <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedTicketIds.length} ticket(s) selecionado(s)?`)) { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+          <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
@@ -2591,6 +2592,16 @@ export default function TicketsJazidaTab({
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmandoInativacao}
+        tone="warning"
+        title={`Inativar ${selectedTicketIds.length} ticket(s)?`}
+        description="Os tickets saem das telas e dos totais, mas continuam guardados e podem voltar."
+        confirmLabel="Inativar"
+        onConfirm={() => { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); setConfirmandoInativacao(false); }}
+        onCancel={() => setConfirmandoInativacao(false)}
+      />
+
     </div>
   );
 }

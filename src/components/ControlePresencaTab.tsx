@@ -31,6 +31,7 @@ import {
   type TeamSyncPlan,
 } from '../utils/teamSpreadsheetSync';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
+import { ConfirmDialog } from '../shared/ui';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServico';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
@@ -231,6 +232,9 @@ export default function ControlePresencaTab({
   const [syncError, setSyncError] = useState('');
   const [syncBusy, setSyncBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
+  const [confirmandoInativacao, setConfirmandoInativacao] = useState(false);
+  const [confirmandoLinkGeral, setConfirmandoLinkGeral] = useState(false);
+  const [resumoZerarDia, setResumoZerarDia] = useState<{ equipe: string; quantos: number } | null>(null);
   const [restoringHistory, setRestoringHistory] = useState(false);
   const liveViewRef = useRef<HTMLDivElement>(null);
 
@@ -547,9 +551,14 @@ export default function ControlePresencaTab({
       setFeedback('Crie uma equipe ativa antes de gerar o link geral.');
       return;
     }
-    if (generalToken && !window.confirm('O link geral anterior deixará de funcionar. Continuar?')) return;
+    if (generalToken) { setConfirmandoLinkGeral(true); return; }
+    trocarLinkGeral(host);
+  };
+
+  const trocarLinkGeral = (host: GrupoEquipe) => {
     onSaveGrupoEquipe({ ...host, tokenGeral: `geral-${generateToken()}`, updatedAt: new Date().toISOString() }, false);
     setFeedback(generalToken ? 'Link geral renovado.' : 'Link geral criado.');
+    setConfirmandoLinkGeral(false);
   };
 
   const exportCsv = () => {
@@ -643,12 +652,12 @@ export default function ControlePresencaTab({
     if (!onResetPresencaDia || recordGroup === 'todos' || resetBusy) return;
     const equipe = safeGroups.find(group => group.id === recordGroup);
     const quantos = safeRecords.filter(item => item.grupoId === recordGroup && item.data === recordDate).length;
-    const confirmado = window.confirm(
-      `Zerar o dia ${recordDate} da equipe "${equipe?.nome || recordGroup}"?\n\n`
-      + `${quantos} registro(s) serão apagados e a equipe poderá enviar a presença de novo pelo link.\n\n`
-      + 'Esta ação não pode ser desfeita.',
-    );
-    if (!confirmado) return;
+    setResumoZerarDia({ equipe: equipe?.nome || recordGroup, quantos });
+  };
+
+  const confirmarZerarDia = async () => {
+    if (!onResetPresencaDia || recordGroup === 'todos' || resetBusy) return;
+    setResumoZerarDia(null);
     setResetBusy(true);
     try {
       const resposta = await onResetPresencaDia(recordGroup, recordDate);
@@ -757,11 +766,14 @@ export default function ControlePresencaTab({
 
   const deleteSelectedRecords = () => {
     if (selectedRecordIds.length === 0) return;
-    const confirmed = window.confirm(`Excluir ${selectedRecordIds.length} registro(s) de presença? Esta ação não pode ser desfeita.`);
-    if (!confirmed) return;
+    setConfirmandoInativacao(true);
+  };
+
+  const confirmarInativacaoRegistros = () => {
     onDeletePresencaLink?.(selectedRecordIds);
+    setFeedback(`${selectedRecordIds.length} registro(s) de presença inativado(s).`);
     setSelectedRecordIds([]);
-    setFeedback(`${selectedRecordIds.length} registro(s) de presença excluído(s).`);
+    setConfirmandoInativacao(false);
   };
 
   const navItems: Array<{ id: View; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -1256,6 +1268,38 @@ export default function ControlePresencaTab({
       <div className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-30 grid grid-cols-4 gap-1 rounded-lg border border-[#d8d4c8] bg-[#fffefa]/95 p-1.5  backdrop-blur lg:hidden">
         {navItems.map(item => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} type="button" onClick={() => setView(item.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold ${active ? 'bg-[#14231e] text-white' : 'text-[#65716b]'}`}><Icon className="h-4 w-4" />{item.label}</button>; })}
       </div>
+
+      <ConfirmDialog
+        open={confirmandoInativacao}
+        tone="warning"
+        title={`Inativar ${selectedRecordIds.length} registro(s) de presença?`}
+        description="Os apontamentos saem das telas e dos relatórios, mas continuam guardados e podem voltar."
+        confirmLabel="Inativar"
+        onConfirm={confirmarInativacaoRegistros}
+        onCancel={() => setConfirmandoInativacao(false)}
+      />
+      <ConfirmDialog
+        open={confirmandoLinkGeral}
+        tone="warning"
+        title="Renovar o link geral?"
+        description="O endereço atual deixa de funcionar na hora. Quem já tem o link antigo salvo no celular precisará receber o novo."
+        confirmLabel="Renovar"
+        onConfirm={() => {
+          const host = activeGroups.find(group => group.tokenGeral) || activeGroups[0];
+          if (host) trocarLinkGeral(host);
+        }}
+        onCancel={() => setConfirmandoLinkGeral(false)}
+      />
+      <ConfirmDialog
+        open={Boolean(resumoZerarDia)}
+        tone="danger"
+        busy={resetBusy}
+        title={`Zerar o dia ${recordDate}?`}
+        description={`Equipe ${resumoZerarDia?.equipe || ''}: ${resumoZerarDia?.quantos || 0} registro(s) serão apagados e a equipe poderá enviar a presença de novo pelo link. Esta ação não pode ser desfeita.`}
+        confirmLabel="Zerar o dia"
+        onConfirm={confirmarZerarDia}
+        onCancel={() => setResumoZerarDia(null)}
+      />
     </section>
   );
 }

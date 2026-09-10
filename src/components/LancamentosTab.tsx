@@ -37,7 +37,7 @@ import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
-import { CountUp } from '../shared/ui';
+import { ConfirmDialog, CountUp } from '../shared/ui';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -84,6 +84,7 @@ export default function LancamentosTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [selectedAbastecimentoIds, setSelectedAbastecimentoIds] = useState<string[]>([]);
+  const [confirmandoInativacao, setConfirmandoInativacao] = useState(false);
   const [validationError, setValidationError] = useState('');
 
   // --- Filtros avançados do módulo de Combustível/Lubrificação (Prioridade 1) ---
@@ -1635,7 +1636,7 @@ export default function LancamentosTab({
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3 text-xs">
               <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredAbastecimentos.length > 0 && filteredAbastecimentos.every(item => selectedAbastecimentoIds.includes(item.id))} onChange={event => setSelectedAbastecimentoIds(event.target.checked ? filteredAbastecimentos.map(item => item.id) : [])} /> Selecionar visíveis ({selectedAbastecimentoIds.length})</label>
-              <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedAbastecimentoIds.length} abastecimento(s) selecionado(s)?`)) { onDeleteAbastecimentos(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+              <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>
             </div>
             <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -1852,6 +1853,16 @@ export default function LancamentosTab({
         confirming={isConfirmingImport}
         onCancel={handleCancelImport}
         onConfirm={handleConfirmImport}
+      />
+
+      <ConfirmDialog
+        open={confirmandoInativacao}
+        tone="warning"
+        title={`Inativar ${selectedAbastecimentoIds.length} abastecimento(s)?`}
+        description="Os abastecimentos saem das telas e dos totais, mas continuam guardados e podem voltar."
+        confirmLabel="Inativar"
+        onConfirm={() => { onDeleteAbastecimentos(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); setConfirmandoInativacao(false); }}
+        onCancel={() => setConfirmandoInativacao(false)}
       />
 
     </div>

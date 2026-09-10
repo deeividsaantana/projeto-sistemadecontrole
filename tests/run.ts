@@ -20,6 +20,7 @@ import './runtimeDataSafety.test';
 import './publicLinkSecurity.test';
 import './limiteEnvioPresenca.test';
 import './historicoLinkPresenca.test';
+import './inativacao.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';
