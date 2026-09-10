@@ -131,3 +131,21 @@ test('frota: a relação do dia abre e fecha o restante do grupo sem perder iten
   await page.getByRole('button', { name: 'Mostrar menos' }).first().click();
   await expect.poll(async () => chips.count()).toBe(parcial);
 });
+
+test('cabeçalho de módulo é compacto e não repete o nome da obra antigo', async ({ page }, info) => {
+  await page.goto('/?screen=producao');
+  const cabecalho = page.locator('.renea-page-header');
+  await expect(cabecalho).toBeVisible();
+
+  // A capa editorial anterior tinha 12,75 rem de altura mínima e comia a
+  // primeira dobra. Num ERP a primeira dobra é do dado.
+  // No celular o título quebra e as ações ganham uma linha própria, então o
+  // teto é maior — mas continua bem abaixo dos 328 px da capa anterior.
+  const teto = info.project.name === 'celular' ? 170 : 110;
+  const caixa = await cabecalho.boundingBox();
+  expect(caixa!.height, `a faixa do cabeçalho cabe em ${teto}px`).toBeLessThan(teto);
+
+  await expect(page.locator('h1'), 'uma única h1 por tela').toHaveCount(1);
+  await expect(page.locator('.renea-page-header__photo')).toHaveCount(0);
+  await expect(page.getByText(/Mário Covas|Trecho Leste/)).toHaveCount(0);
+});

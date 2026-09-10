@@ -58,6 +58,7 @@ import {
 } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
+import { OBRA } from '../config/obra';
 
 interface TicketsJazidaTabProps {
   tickets: TicketJazida[];
@@ -119,7 +120,7 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
           <img src={reneaLogoFull} alt="RENEA" className="max-h-14 max-w-44 object-contain" />
         </div>
         <div className="h-24 border-r border-b border-[#cfd7d1] grid place-items-center text-center px-3">
-          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-[10px] text-[#53605a]">Rodoanel Mário Covas · Alça Trecho Leste</p></div>
+          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-[10px] text-[#53605a]">{OBRA.nome}</p></div>
         </div>
         <div className="h-24 border-r border-b border-[#cfd7d1] p-2">
           <div className="text-[9px] font-bold uppercase text-[#53605a]">Ticket Nº</div>
@@ -220,7 +221,7 @@ const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTic
     else { doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('RENEA', left + 5, top + 13); }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42);
     doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO - OBRA' : 'LIBERAÇÃO - JAZIDA'}`, left + 60, top + 8);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.text('Rodoanel Mário Covas · Alça Trecho Leste', left + 60, top + 13);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.text(OBRA.nome, left + 60, top + 13);
     label('Ticket Nº', left + 169, top + 5); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text(ticket.ocultarNumeroImpressao ? '' : ticket.ticketNumero, left + 179.5, top + 14, { align: 'center' });
 
     const vehicleTop = top + 20;

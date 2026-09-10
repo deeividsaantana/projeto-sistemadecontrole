@@ -4,6 +4,7 @@ import type { FleetCurrentState, FleetReportViewModel } from './domain';
 import { summarizeFleetCategories } from './categorySummary';
 import { OPERATIONAL_FLEET_REFERENCE } from './operationalFleetReference';
 import { normalizePrefix } from '../utils/canonicalIdentity';
+import { OBRA } from '../config/obra';
 // Keep these as runtime URLs rather than static asset imports. The Excel exporter
 // is also exercised directly by the Node test runner, where importing a PNG as
 // an ESM module is unsupported. Vite still resolves these URLs in the browser.
@@ -209,7 +210,7 @@ const createDetailedSummarySheet = (
     sheet,
     'A1:G1',
     'RELATÓRIO DIÁRIO DE SITUAÇÃO OPERACIONAL',
-    'FROTAS OPERACIONAIS · Rodoanel Mário Covas · Alça Trecho Leste',
+    `FROTAS OPERACIONAIS · ${OBRA.nome}`,
   );
   sheet.mergeCells('A3:G3');
   sheet.getCell('A3').value = viewModel.companyLabel;

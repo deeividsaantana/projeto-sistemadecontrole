@@ -55,6 +55,7 @@ import FleetReportLayout from './fleet/FleetReportLayout';
 import { ConfirmDialog } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import { PageHeader } from '../shared/ui';
+import { OBRA } from '../config/obra';
 
 interface Props {
   registros: ControleEquipamentoDiario[];
@@ -433,7 +434,7 @@ export default function ControleEquipamentosDiarioTab({
       <div data-fleet-enter>
         <PageHeader
           title="Controle Operacional de Frota"
-          description="Rodoanel Mário Covas · Alça Trecho Leste · lançamentos diários, disponibilidade e pendências em uma visão operacional."
+          description={`${OBRA.nome} · lançamentos diários, disponibilidade e pendências em uma visão operacional.`}
           actions={<>
             <button type="button" onClick={openNewRecord} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[2px] bg-emerald-700 px-5 text-xs font-black text-[#ffffff] transition hover:bg-emerald-800 active:translate-y-px"><Plus size={16}/>Novo lançamento <span className="hidden border border-white/30 px-1.5 py-0.5 font-mono text-[9px] lg:inline">N</span></button>
             <button type="button" onClick={handleRefresh} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>

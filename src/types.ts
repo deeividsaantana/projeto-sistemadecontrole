@@ -115,7 +115,13 @@ export type StatusRegistroCombustivel =
   | 'Conferência necessária'
   | 'Erro de importação';
 
-export type OrigemRegistroCombustivel = 'Manual' | 'Planilha' | 'OneDrive' | 'PDF/Foto IA' | 'Legado Access';
+/**
+ * O OneDrive saiu do produto. Registros gravados antes disso ainda chegam da
+ * nuvem com `origem: 'OneDrive'`, então `normalizarOrigemCombustivel` os lê
+ * como 'Planilha' — que é o que eram: importação de arquivo. Apagar o valor
+ * sem traduzir deixaria esses lançamentos sem origem na conferência.
+ */
+export type OrigemRegistroCombustivel = 'Manual' | 'Planilha' | 'PDF/Foto IA' | 'Legado Access';
 export type SeveridadeAlertaCombustivel = 'info' | 'aviso' | 'critico';
 export type StatusRevisaoCombustivel = 'Pendente' | 'Aprovado' | 'Reaberto';
 

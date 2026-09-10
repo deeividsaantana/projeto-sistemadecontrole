@@ -56,6 +56,7 @@ import { auth } from '../firebase';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import { stageFuelDataset } from '../services/masterDataApi';
 import { PageHeader } from '../shared/ui';
+import { normalizarOrigemCombustivel } from '../utils/origemCombustivel';
 
 interface CombustivelInteligenteTabProps {
   empresas: Empresa[];
@@ -175,7 +176,6 @@ const statusTone: Record<string, string> = {
 const sourceTone: Record<string, string> = {
   Manual: 'bg-slate-100 text-slate-700',
   Planilha: 'bg-emerald-50 text-emerald-800',
-  OneDrive: 'bg-emerald-50 text-emerald-800',
   'PDF/Foto IA': 'bg-orange-50 text-orange-800',
   'Legado Access': 'bg-[#eef2f0] text-[#3d4a44]',
 };
@@ -235,7 +235,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
           if (filterEnd && record.data > filterEnd) return false;
           if (filterEquipment && record.equipamentoId !== filterEquipment) return false;
           if (filterStatus && (record.status || 'OK') !== filterStatus) return false;
-          if (filterSource && (record.origem || 'Manual') !== filterSource) return false;
+          if (filterSource && normalizarOrigemCombustivel(record.origem) !== filterSource) return false;
           if (filterLocation && !normalize(record.localAbastecimento || '').includes(normalize(filterLocation))) return false;
           const equipment = equipamentos.find((item) => item.id === record.equipamentoId);
           const term = search.trim().toLowerCase();
@@ -361,7 +361,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   const sourceDistribution = useMemo(() => {
     const map = new Map<string, number>();
     filteredRecords.forEach((item) => {
-      const source = item.origem || 'Manual';
+      const source = normalizarOrigemCombustivel(item.origem);
       map.set(source, (map.get(source) || 0) + 1);
     });
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
@@ -913,7 +913,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         record.kmInicial,
         comboios.find((item) => item.id === record.comboioId)?.nome || '',
         record.responsavel,
-        record.origem || 'Manual',
+        normalizarOrigemCombustivel(record.origem),
         record.status || 'OK',
         record.revisaoStatus || 'Pendente',
         record.revisadoPor || '',
@@ -1149,7 +1149,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               {[
                 ['Custo informado', dashboard.totalCost.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}), 'Registros com valor por litro', CircleDollarSign, 'text-slate-800'],
                 ['Média por lançamento', `${filteredRecords.length ? formatNumber(dashboard.totalLiters / filteredRecords.length, 1) : '0'} L`, 'Volume médio abastecido', Gauge, 'text-slate-800'],
-                ['Importados', filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length.toLocaleString('pt-BR'), 'Planilha, PDF ou foto', FileSpreadsheet, 'text-slate-800'],
+                ['Importados', filteredRecords.filter(item => normalizarOrigemCombustivel(item.origem) !== 'Manual').length.toLocaleString('pt-BR'), 'Planilha, PDF ou foto', FileSpreadsheet, 'text-slate-800'],
                 ['Aguardando conferência', dashboard.pendingReview.toLocaleString('pt-BR'), `${dashboard.alerts} alertas · ${dashboard.critical} críticos`, ClipboardCheck, dashboard.pendingReview ? 'text-amber-700' : 'text-emerald-700'],
               ].map(([label,value,detail,Icon,tone]) => <button type="button" key={String(label)} data-fuel-metric onClick={() => label === 'Aguardando conferência' ? setView('conferencia') : undefined} className="group min-h-44 bg-white p-5 text-left transition-colors hover:bg-emerald-50/40"><div className="flex items-start justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[.14em] text-slate-500">{label as string}</span><Icon className="h-5 w-5 text-slate-400 group-hover:text-emerald-700" /></div><strong className={`mt-7 block text-3xl font-black tracking-[-.045em] ${tone as string}`}>{value as string}</strong><span className="mt-2 block text-xs leading-5 text-slate-500">{detail as string}</span></button>)}
             </div>
@@ -1268,8 +1268,8 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
               </div>
               <div className="grid gap-3 p-5 sm:grid-cols-2">
                 {[
-                  ['Manual', filteredRecords.filter(item => (item.origem || 'Manual') === 'Manual').length],
-                  ['Importados', filteredRecords.filter(item => (item.origem || 'Manual') !== 'Manual').length],
+                  ['Manual', filteredRecords.filter(item => normalizarOrigemCombustivel(item.origem) === 'Manual').length],
+                  ['Importados', filteredRecords.filter(item => normalizarOrigemCombustivel(item.origem) !== 'Manual').length],
                   ['Com documento', filteredRecords.filter(item => item.documentoOrigemNome).length],
                   ['Com observação', filteredRecords.filter(item => item.observacao).length],
                 ].map(([label, value]) => (
@@ -1990,9 +1990,9 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-1 text-xs font-bold ${sourceTone[record.origem || 'Manual'] || sourceTone.Manual}`}
+                          className={`px-2 py-1 text-xs font-bold ${sourceTone[normalizarOrigemCombustivel(record.origem)] || sourceTone.Manual}`}
                         >
-                          {record.origem || 'Manual'}
+                          {normalizarOrigemCombustivel(record.origem)}
                         </span>
                         {record.documentoOrigemNome && (
                           <span className="mt-1 block max-w-40 truncate text-[10px] text-[#53605a]">

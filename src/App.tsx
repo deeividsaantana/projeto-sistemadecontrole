@@ -66,6 +66,7 @@ import {
   INITIAL_PRESENCAS,
   INITIAL_ORDENS_SERVICO,
   INITIAL_GRUPOS_EQUIPES,
+  INITIAL_FRENTES_SERVICO,
   INITIAL_PRESENCAS_LINK,
   INITIAL_HISTORICO_PRESENCAS,
   INITIAL_TICKETS_JAZIDA,
@@ -574,6 +575,7 @@ export default function App() {
         { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO) },
         { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
         { key: 'renea_periodos_arquivados', value: '[]' },
+        { key: STORAGE_KEYS.frentesServico, value: JSON.stringify(INITIAL_FRENTES_SERVICO) },
         { key: 'renea_master_data_review_queue', value: '[]' },
         { key: 'renea_history_logs', value: JSON.stringify([]) },
         { key: 'renea_notifications', value: '[]' },
@@ -694,7 +696,7 @@ export default function App() {
       setTreinamentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.treinamentos), STORAGE_KEYS.treinamentos, [] as Treinamento[]));
       setMateriaisCadastro(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisCadastro), STORAGE_KEYS.materiaisCadastro, [] as Material[]));
       setMateriaisMovimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]));
-      setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, [] as FrenteServico[]));
+      setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, INITIAL_FRENTES_SERVICO));
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
       setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
       setProducaoRegistros(parseStoredJson(localStorage.getItem(STORAGE_KEYS.producaoRegistros), STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]));

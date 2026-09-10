@@ -12,6 +12,7 @@ import type {
   RegistroProducao, TicketJazida, TipoCombustivel,
 } from '../types';
 import siteAerial from '../assets/renea-editorial/rodovia-duplicada-1600.webp';
+import { OBRA } from '../config/obra';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -31,7 +32,7 @@ interface DashboardProps {
 
 type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar';
 
-const PROJECT_NAME = 'Rodoanel Mário Covas · Alça Trecho Leste';
+const PROJECT_NAME = OBRA.nome;
 const MAINTENANCE_STATUSES = new Set(['Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado']);
 const CONFIRM_STATUSES = new Set(['A confirmar', 'Aguardando motorista', 'Não classificado']);
 

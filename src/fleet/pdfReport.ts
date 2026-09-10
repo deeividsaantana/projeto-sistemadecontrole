@@ -11,6 +11,7 @@ import { formatBrazilianDateTime } from './time';
 import reneaLogoUrl from '../assets/images/renea_logo_new.png';
 import spmarLogoUrl from '../assets/images/spmar_logo.png';
 import { summarizeFleetCategories } from './categorySummary';
+import { OBRA } from '../config/obra';
 
 const PAGE_WIDTH = 297;
 const PAGE_HEIGHT = 210;
@@ -79,7 +80,7 @@ const drawHeader = (
   });
   document.setFontSize(8.5);
   document.setTextColor('#086B3D');
-  document.text(`Rodoanel Mário Covas · Alça Trecho Leste · ${viewModel.reportDateLabel}`, PAGE_WIDTH / 2, 17, {
+  document.text(`${OBRA.nome} · ${viewModel.reportDateLabel}`, PAGE_WIDTH / 2, 17, {
     align: 'center',
   });
   document.setDrawColor('#10223A');

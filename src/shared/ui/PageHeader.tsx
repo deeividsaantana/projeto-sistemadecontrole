@@ -6,24 +6,26 @@ interface PageHeaderProps {
   description?: string;
   actions?: ReactNode;
   className?: string;
+  /** Contexto do módulo, em caixa alta. Ex.: "Frota", "Suprimentos". */
   eyebrow?: string;
 }
 
-export function PageHeader({ title, description, actions, className, eyebrow = 'Operação em tempo real' }: PageHeaderProps) {
-  const visual = ['road', 'bridge', 'crane'][Array.from(title).reduce((total, char) => total + char.charCodeAt(0), 0) % 3];
+/**
+ * Cabeçalho de módulo, denso. A versão anterior era editorial — foto de obra
+ * ocupando metade da faixa, título de até 4,6 rem, 12,75 rem de altura mínima —
+ * e comia um terço da primeira dobra antes de qualquer dado aparecer. Num ERP
+ * operacional a primeira dobra pertence ao dado, não à capa: aqui o título, o
+ * contexto e as ações cabem em uma faixa de ~64 px, com uma linha fina embaixo.
+ */
+export function PageHeader({ title, description, actions, className, eyebrow }: PageHeaderProps) {
   return (
-    <header className={cn('renea-page-header', className)} data-visual={visual}>
-      <div className="renea-page-header__photo" aria-hidden="true">
-        <span>Pessoas<br />e engenharia<br />em movimento</span>
+    <header className={cn('renea-page-header', className)}>
+      <div className="renea-page-header__copy">
+        {eyebrow && <span className="renea-page-header__eyebrow">{eyebrow}</span>}
+        <h1>{title}</h1>
+        {description && <p>{description}</p>}
       </div>
-      <div className="renea-page-header__plane">
-        <div className="renea-page-header__copy min-w-0">
-          <span className="renea-page-header__eyebrow">{eyebrow}</span>
-          <h1>{title}</h1>
-          {description && <p>{description}</p>}
-        </div>
-        {actions && <div className="renea-page-actions flex flex-wrap items-center gap-2">{actions}</div>}
-      </div>
+      {actions && <div className="renea-page-actions">{actions}</div>}
     </header>
   );
 }

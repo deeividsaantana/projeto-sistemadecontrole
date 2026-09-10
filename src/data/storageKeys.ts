@@ -52,7 +52,6 @@ export const STORAGE_KEYS = {
   autoSync: 'renea_auto_sync',
   lastCloudSync: 'renea_last_cloud_sync',
   lastCloudSyncIso: 'renea_last_cloud_sync_iso',
-  oneDriveFuelBatch: 'renea_onedrive_fuel_batch',
   lastDeletionRecovery: 'renea_last_deletion_recovery',
 } as const;
 

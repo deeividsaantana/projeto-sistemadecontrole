@@ -22,7 +22,8 @@ export const contemTermo = (texto: string, termo: string): boolean => {
 /** Ramos ativos da obra, na ordem em que a operação os enumera. */
 export const RAMOS_ATIVOS = [
   'Ramo 100', 'Ramo 200', 'Ramo 300', 'Ramo 500', 'Ramo 600', 'Ramo 700',
-  'Ramo 800', 'Ramo 900', 'Ramo 1000', 'Ramo 1100', 'Ramo 1200', 'Ramo 1300', 'Ramo 1400',
+  'Ramo 800', 'Ramo 900', 'Ramo 1000', 'Ramo 1100', 'Ramo 1200', 'Ramo 1300',
+  'Ramo 1400', 'Ramo 2000',
 ] as const;
 
 /** Canteiros e locais de apoio ativos da obra. */
