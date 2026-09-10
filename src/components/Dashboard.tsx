@@ -239,7 +239,7 @@ export default function Dashboard({
                     {[25, 50, 75, 100].map(value => (
                       <g key={value}>
                         <line x1="0" x2={chartWidth} y1={yAt(value)} y2={yAt(value)} stroke="#e4e9e6" strokeWidth="1" />
-                        <text x="2" y={yAt(value) - 5} fill="#8a969b" fontSize="9">{value}%</text>
+                        <text x="2" y={yAt(value) - 5} fill="#8a969b" fontSize="11">{value}%</text>
                       </g>
                     ))}
                     <polyline key={`${periodDays}-${linePoints}`} className="dashboard-trend-line" points={linePoints} fill="none" stroke="#238657" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" pathLength="1" />
@@ -253,7 +253,7 @@ export default function Dashboard({
                           <circle cx={xAt(index)} cy={yAt(item.availability)} r={index === activePointIndex ? 6 : 4} fill="#fff" stroke={index === activePointIndex ? '#ed5d24' : '#238657'} strokeWidth="3" />
                         )}
                         {index % passoRotulo === 0 || index === fleetSeries.length - 1 ? (
-                          <text x={xAt(index)} y={chartHeight - 2} textAnchor="middle" fill="#78858b" fontSize="9">{shortDate(item.date)}</text>
+                          <text x={xAt(index)} y={chartHeight - 2} textAnchor="middle" fill="#78858b" fontSize="11">{shortDate(item.date)}</text>
                         ) : null}
                         <circle cx={xAt(index)} cy={item.semDados ? yAt(0) : yAt(item.availability)} r="15" fill="transparent" className={item.semDados ? '' : 'cursor-pointer'}
                           onClick={() => { if (!item.semDados) setSelectedDate(item.date); }}>

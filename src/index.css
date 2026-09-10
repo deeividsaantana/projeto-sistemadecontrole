@@ -913,3 +913,54 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 /* A tarja "pessoas e engenharia em movimento" fica sobre o céu da foto, que é
    claro: sem um véu atrás, o texto branco some. */
+
+/* ==========================================================================
+   Legibilidade e toque no celular
+   O ERP é operado no canteiro: sol, luva, tela pequena, uma mão só. As regras
+   abaixo valem apenas no toque — no desktop a densidade de ERP continua igual.
+   ========================================================================== */
+@media (max-width: 1023px) {
+  /* Campo com fonte abaixo de 16px faz o iOS dar zoom na página inteira assim
+     que a pessoa toca nele. A tela salta, o dedo erra o alvo, e o apontamento
+     se perde. 16px é o piso que impede o salto. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Piso de legibilidade. 9px e 10px são legíveis num monitor, não num celular
+     ao sol. As classes continuam onde estão; só o tamanho renderizado sobe. */
+  .text-\[8px\],
+  .text-\[9px\],
+  .text-\[10px\] {
+    font-size: 11.5px;
+    line-height: 1.35;
+  }
+
+  /* O piso de 16px do campo tem de vencer as classes utilitárias de tamanho —
+     um <select class="text-[10px]"> continuava abaixo do piso e o iOS voltava
+     a dar zoom. O seletor com [class] empata em especificidade e vem depois. */
+  input[class]:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select[class],
+  textarea[class] {
+    font-size: 16px;
+  }
+
+
+  /* Alvo de toque: 44px é o mínimo para acertar de primeira com luva. Vale para
+     o que é clicável e tem tamanho próprio — não para link dentro de frase. */
+  button,
+  [role='button'],
+  a[href]:not(:where(p, span, li, td) a) {
+    min-height: 44px;
+  }
+}
+
+/* No desktop o alvo confortável é menor, porque o ponteiro é preciso. */
+@media (min-width: 1024px) {
+  button,
+  [role='button'] {
+    min-height: 40px;
+  }
+}

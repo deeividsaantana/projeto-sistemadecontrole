@@ -1335,8 +1335,8 @@ export default function CadastrosTab({
                       <td className="py-4 px-5 text-slate-700">{item.telefone || '—'}</td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -1384,8 +1384,8 @@ export default function CadastrosTab({
                         </td>
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1488,8 +1488,8 @@ export default function CadastrosTab({
                         </td>
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1553,8 +1553,8 @@ export default function CadastrosTab({
                         </td>
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1593,8 +1593,8 @@ export default function CadastrosTab({
                       <td className="py-4 px-5 text-slate-700">{item.responsavel}</td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -1628,8 +1628,8 @@ export default function CadastrosTab({
                       <td className="py-4 px-5 font-black text-slate-700 text-xs">{item.nome}</td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
