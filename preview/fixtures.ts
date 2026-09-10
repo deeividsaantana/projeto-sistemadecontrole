@@ -41,6 +41,14 @@ export const registrosEnviados: PresencaApontamento[] = equipeFuncionarios.slice
   observacao: '', responsavel: 'Renilson', frenteServico: 'Ramo 200', horaEnvio: '08:02',
 } as PresencaApontamento));
 
+// O dia anterior tem gente diferente do dia corrente: é assim que o e2e prova
+// que trocar de dia na régua realmente trouxe outro dia, e não repintou o mesmo.
+export const registrosDiaAnterior: PresencaApontamento[] = equipeFuncionarios.slice(3).map((f, i) => ({
+  id: `pl-ontem-${i}`, data: '2026-09-02', funcionarioId: f.id, funcionarioNome: f.nome,
+  funcao: f.cargo, grupoId: grupo.id, grupoNome: grupo.nome, status: 'Presente',
+  observacao: '', responsavel: 'Renilson', frenteServico: 'Ramo 200', horaEnvio: '07:55',
+} as PresencaApontamento));
+
 // --- Painel de Controle ---
 import type { Abastecimento, Comboio, Lubrificacao, OrdemServico, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../src/types';
 

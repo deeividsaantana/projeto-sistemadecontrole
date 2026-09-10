@@ -149,3 +149,42 @@ test('cabeçalho de módulo é compacto e não repete o nome da obra antigo', as
   await expect(page.locator('.renea-page-header__photo')).toHaveCount(0);
   await expect(page.getByText(/Mário Covas|Trecho Leste/)).toHaveCount(0);
 });
+
+// O link público é o que a obra usa todo dia e era o único caminho sem e2e:
+// os testes provavam o backend, mas ninguém provava que o encarregado
+// consegue marcar, enviar e voltar num dia anterior.
+test('link público: marcar, enviar e voltar a um dia anterior na régua', async ({ page }) => {
+  await page.goto('/?screen=presenca-fluxo');
+
+  const cartoes = page.locator('.presence-public__status-grid');
+  const total = await cartoes.count();
+  expect(total).toBeGreaterThan(0);
+  for (let i = 0; i < total; i += 1) {
+    await cartoes.nth(i).getByRole('button', { name: 'Presente' }).click();
+  }
+
+  const enviar = page.getByRole('button', { name: /Enviar presença/i });
+  await expect(enviar).toBeEnabled();
+  await enviar.click();
+
+  // O comprovante confirma que o envio chegou, e é dele que sai a régua.
+  await expect(page.getByText('env-e2e-001')).toBeVisible();
+  const regua = page.getByRole('region', { name: 'Histórico de apontamentos da equipe' });
+  await expect(regua).toBeVisible();
+
+  // Voltar um dia tem de trazer o dia anterior de verdade — com a gente
+  // daquele dia — e não repintar o dia corrente. O dia anterior chega por
+  // busca sob demanda: é justamente o caminho que passou a valer quando a
+  // resposta deixou de trazer os 30 dias de uma vez.
+  await regua.getByRole('button').last().click();
+  await page.getByRole('button', { name: /Ver a lista deste dia/i }).click();
+
+  // A lista sempre mostra a equipe inteira; o que muda entre um dia e outro é
+  // quem tem situação registrada. No dia anterior, Sebastião tem; João não.
+  const cartaoDe = (nome: string) =>
+    page.locator('.presence-public__employee-card').filter({ hasText: nome });
+  await expect(cartaoDe('Sebastião Rodrigues Lima').locator('.presence-public__status-pill'))
+    .toHaveText('Presente');
+  await expect(cartaoDe('João Batista dos Santos').locator('.presence-public__status-pill'))
+    .toHaveCount(0);
+});

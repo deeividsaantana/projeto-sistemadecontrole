@@ -59,6 +59,53 @@ const previewNotifications = [
   { id: '1', type: 'success' as const, title: 'Sincronizacao concluida', message: 'Dados do periodo enviados para a nuvem.', timestamp: '08:12', read: false, source: 'Firebase Cloud' as const },
   { id: '2', type: 'warning' as const, title: 'Estoque baixo', message: 'Produto de lubrificacao abaixo do minimo.', timestamp: '07:40', read: true, source: 'Sistema Local' as const },
 ];
+
+// Espelha o link público depois da mudança de desempenho: a resposta traz só o
+// dia aberto, e escolher outro dia na régua vai buscar aquele dia. O e2e cobre
+// o caminho inteiro — marcar, enviar, e voltar a um dia anterior.
+const HOJE_PRESENCA = '2026-09-03';
+const ONTEM_PRESENCA = '2026-09-02';
+
+function PresencaFluxoCompleto() {
+  const [dataSelecionada, setDataSelecionada] = React.useState(HOJE_PRESENCA);
+  const [registros, setRegistros] = React.useState<typeof fx.registrosEnviados>([]);
+  const [buscando, setBuscando] = React.useState(false);
+
+  const selecionarDia = (dia: string) => {
+    if (dia === dataSelecionada) return;
+    setBuscando(true);
+    window.setTimeout(() => {
+      setDataSelecionada(dia);
+      setRegistros(dia === HOJE_PRESENCA ? fx.registrosEnviados : fx.registrosDiaAnterior);
+      setBuscando(false);
+    }, 60);
+  };
+
+  return (
+    <PresencaTempoRealPublica
+      token="presenca-exemplo"
+      gruposEquipe={[fx.grupo]}
+      funcionarios={fx.equipeFuncionarios}
+      empresas={fx.empresas}
+      obras={fx.obras}
+      meuGrupo={fx.grupo}
+      meusRegistros={registros}
+      datasDisponiveis={[HOJE_PRESENCA, ONTEM_PRESENCA]}
+      dataSelecionada={dataSelecionada}
+      dataAtual={HOJE_PRESENCA}
+      onSelectDate={selecionarDia}
+      isLoadingCloud={buscando}
+      loadError=""
+      onRetry={noop}
+      onSubmitPresenca={async () => {
+        setRegistros(fx.registrosEnviados);
+        return { success: true, message: 'Enviado.', submissionId: 'env-e2e-001' };
+      }}
+      onUpdateRecord={async () => ({ success: true, message: 'Atualizado.' })}
+    />
+  );
+}
+
 const screens: Record<string, React.ReactNode> = {
   sidebar: (
     <div className="erp-shell" style={{ height: '100dvh' }}>
@@ -596,6 +643,7 @@ const screens: Record<string, React.ReactNode> = {
       onUpdateRecord={async () => ({ success: true, message: 'Atualizado.' })}
     />
   ),
+  'presenca-fluxo': <PresencaFluxoCompleto />,
   'presenca-enviada': (
     <PresencaTempoRealPublica
       token="presenca-exemplo"
