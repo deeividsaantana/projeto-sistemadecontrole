@@ -3,8 +3,9 @@
  * movimentos — não existe contador guardado para divergir do histórico.
  */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Package, Plus, Search } from 'lucide-react';
+import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Package, PackageX, Plus, Search } from 'lucide-react';
 import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
+import { pendenciasDeRecebimento, resumoDeRecebimento } from '../utils/recebimentoMaterial';
 import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/estoque';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
@@ -57,6 +58,8 @@ export default function MateriaisTab({
     quantidade: 0,
     fornecedorId: '',
     notaFiscal: '',
+    solicitacaoCompra: '',
+    quantidadeNota: 0,
     destino: '',
     origem: '',
     servico: '',
@@ -66,6 +69,9 @@ export default function MateriaisTab({
   const ativos = useMemo(() => materiais.filter(item => item.ativo !== false), [materiais]);
   const posicoes = useMemo(() => posicaoEstoque(ativos, movimentos), [ativos, movimentos]);
   const abaixoDoMinimo = posicoes.filter(item => item.abaixoDoMinimo);
+  // Carga que a nota prometeu e não chegou é dinheiro parado: fica em cima.
+  const pendencias = useMemo(() => pendenciasDeRecebimento(movimentos), [movimentos]);
+  const recebimento = useMemo(() => resumoDeRecebimento(movimentos), [movimentos]);
 
   const termo = normalizeComparable(busca).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
@@ -138,6 +144,12 @@ export default function MateriaisTab({
       fornecedorId: fornecedor?.id,
       fornecedorNome: fornecedor?.nome,
       notaFiscal: movimento.notaFiscal.trim() || undefined,
+      solicitacaoCompra: movimento.solicitacaoCompra.trim() || undefined,
+      // Só a entrada tem nota a conferir. Guardar o que a nota prometeu é o
+      // que permite saber, depois, que faltou carga.
+      quantidadeNota: movimento.tipo === 'Entrada' && Number(movimento.quantidadeNota) > 0
+        ? Number(movimento.quantidadeNota)
+        : undefined,
       destino: movimento.destino.trim() || undefined,
       origem: movimento.origem.trim() || undefined,
       servico: movimento.servico.trim() || undefined,
@@ -145,7 +157,7 @@ export default function MateriaisTab({
       observacao: movimento.observacao.trim() || undefined,
       criadoEm: new Date().toISOString(),
     });
-    setMovimento({ ...movimento, quantidade: 0, notaFiscal: '', destino: '', origem: '', servico: '', observacao: '' });
+    setMovimento({ ...movimento, quantidade: 0, notaFiscal: '', solicitacaoCompra: '', quantidadeNota: 0, destino: '', origem: '', servico: '', observacao: '' });
     setErro('');
     setMovimentoAberto(false);
   };
@@ -166,6 +178,55 @@ export default function MateriaisTab({
           </div>
         ) : undefined}
       />
+
+      {/* Carga que a nota prometeu e não chegou é nota paga sem material na
+          obra. Fica antes do estoque porque é a conversa mais cara. */}
+      {pendencias.length > 0 && (
+        <section id="recebimentos-pendentes" className="mt-4 overflow-hidden rounded-lg border border-rose-200 bg-white">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-200 bg-rose-50 px-4 py-3">
+            <p className="flex items-center gap-2 text-xs font-bold text-rose-900">
+              <PackageX className="h-4 w-4 shrink-0 text-rose-600" />
+              {pendencias.length} entrega(s) com carga faltando
+            </p>
+            <span className="text-[11px] font-bold text-rose-800">
+              {recebimento.percentualRecebido}% do que as notas prometeram já chegou
+            </span>
+          </header>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-xs">
+              <thead className="bg-[#fafcfb] text-[11px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="p-3">Material</th>
+                  <th className="p-3">SC / Nota</th>
+                  <th className="p-3">Aplicação</th>
+                  <th className="p-3 text-right">Nota</th>
+                  <th className="p-3 text-right">Recebido</th>
+                  <th className="p-3 text-right">Falta</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pendencias.map(item => (
+                  <tr key={item.movimentoId}>
+                    <td className="p-3">
+                      <strong className="block font-bold text-slate-900">{item.material}</strong>
+                      <span className="text-[11px] text-slate-500">{item.data.split('-').reverse().join('/')}</span>
+                    </td>
+                    <td className="p-3 text-slate-600">
+                      {[item.solicitacaoCompra, item.notaFiscal && `NF ${item.notaFiscal}`].filter(Boolean).join(' · ') || '—'}
+                    </td>
+                    <td className="p-3 text-slate-600">{item.destino || '—'}</td>
+                    <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeNota.toLocaleString('pt-BR')}</td>
+                    <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeRecebida.toLocaleString('pt-BR')}</td>
+                    <td className="p-3 text-right font-black tabular-nums text-rose-700">
+                      {item.faltante.toLocaleString('pt-BR')} {item.unidade}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {abaixoDoMinimo.length > 0 && (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
@@ -402,6 +463,24 @@ export default function MateriaisTab({
               <label className="text-xs font-bold text-slate-600">
                 Nota fiscal
                 <input value={movimento.notaFiscal} onChange={event => setMovimento({ ...movimento, notaFiscal: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+              </label>
+              {movimento.tipo === 'Entrada' && (
+                <label className="text-xs font-bold text-slate-600">
+                  Quantidade na nota
+                  <input
+                    type="number" min="0" step="0.01" inputMode="decimal"
+                    value={movimento.quantidadeNota || ''}
+                    onChange={event => setMovimento({ ...movimento, quantidadeNota: Number(event.target.value) })}
+                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+                  />
+                  <span className="mt-1 block text-[11px] font-medium text-slate-400">
+                    O que a nota promete. A quantidade acima é o que de fato chegou — a diferença vira pendência.
+                  </span>
+                </label>
+              )}
+              <label className="text-xs font-bold text-slate-600">
+                Solicitação de compra
+                <input value={movimento.solicitacaoCompra} onChange={event => setMovimento({ ...movimento, solicitacaoCompra: event.target.value })} placeholder="SC 93011249" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
               </label>
               <label className="text-xs font-bold text-slate-600 sm:col-span-2">
                 Fornecedor

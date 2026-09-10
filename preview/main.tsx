@@ -480,8 +480,8 @@ const screens: Record<string, React.ReactNode> = {
   ),
   materiais: (
     <MateriaisTab
-      materiais={[]}
-      movimentos={[]}
+      materiais={fx.materiaisObra}
+      movimentos={fx.movimentosMateriaisObra}
       empresas={fx.empresas}
       responsavel="Deivid Santana"
       podeEditar

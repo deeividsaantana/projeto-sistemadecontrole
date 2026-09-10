@@ -190,7 +190,7 @@ equipesPresenca.push({
 
 // Um mês de diário com pluviômetro, para o mapa de chuvas ter o que mostrar:
 // dias secos, chuva fraca, forte, e dias sem diário nenhum no fim do mês.
-import type { DiarioObra } from '../src/types';
+import type { DiarioObra, Material, MovimentoMaterial } from '../src/types';
 
 export const diariosChuva: DiarioObra[] = [
   { dia: 1, mm: 0 }, { dia: 2, mm: 3 }, { dia: 3, mm: 0 }, { dia: 4, mm: 12 },
@@ -210,3 +210,17 @@ export const diariosChuva: DiarioObra[] = [
   criadoEm: '',
   atualizadoEm: '',
 } as DiarioObra));
+
+// Recebimento de material com pendência, no formato da planilha da obra:
+// a nota promete, chega menos, e a diferença é carga paga que não está aqui.
+export const materiaisObra: Material[] = [
+  { id: 'mt-1', codigo: '1486', descricao: 'ESTACA MADEIRA C/ PONTA', categoria: 'Madeira', unidade: 'PC', ativo: true, criadoEm: '', atualizadoEm: '' },
+  { id: 'mt-2', codigo: '766', descricao: 'CHAPA PLASTIFICADO 18MM', categoria: 'Madeira', unidade: 'UN', ativo: true, criadoEm: '', atualizadoEm: '' },
+  { id: 'mt-3', codigo: 'TB-1000', descricao: 'TUBO DE CONCRETO PA3 DN1000', categoria: 'Tubos de concreto', unidade: 'MT', ativo: true, criadoEm: '', atualizadoEm: '' },
+] as Material[];
+
+export const movimentosMateriaisObra: MovimentoMaterial[] = [
+  { id: 'mv-1', data: '2026-07-02', tipo: 'Entrada', materialId: 'mt-1', materialDescricao: 'ESTACA MADEIRA C/ PONTA', quantidade: 0, quantidadeNota: 2000, unidade: 'PC', notaFiscal: '4789', solicitacaoCompra: 'SC 92998794', destino: 'Ramo 1300', responsavel: 'Deivid', criadoEm: '' },
+  { id: 'mv-2', data: '2026-07-02', tipo: 'Entrada', materialId: 'mt-2', materialDescricao: 'CHAPA PLASTIFICADO 18MM', quantidade: 50, quantidadeNota: 450, unidade: 'UN', notaFiscal: '4789', solicitacaoCompra: 'SC 92998795', destino: 'Ramo 1400', responsavel: 'Deivid', criadoEm: '' },
+  { id: 'mv-3', data: '2026-08-17', tipo: 'Entrada', materialId: 'mt-3', materialDescricao: 'TUBO DE CONCRETO PA3 DN1000', quantidade: 6, quantidadeNota: 6, unidade: 'MT', notaFiscal: '132636', solicitacaoCompra: 'SC 93011249', destino: 'Ramo 1300', responsavel: 'Deivid', criadoEm: '' },
+] as MovimentoMaterial[];

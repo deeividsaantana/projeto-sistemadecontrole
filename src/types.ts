@@ -554,6 +554,15 @@ export interface MovimentoMaterial {
   fornecedorId?: string;
   fornecedorNome?: string;
   notaFiscal?: string;
+  /** Solicitação de compra que originou a entrega (SC). */
+  solicitacaoCompra?: string;
+  /**
+   * O que a nota diz que veio. `quantidade` continua sendo o que de fato
+   * entrou na obra — é ela que move o estoque. A pendência é a diferença entre
+   * as duas, calculada na hora: um terceiro número gravado seria só mais uma
+   * verdade para divergir.
+   */
+  quantidadeNota?: number;
   /** Para onde foi: frente, obra ou ponto de apoio. */
   destino?: string;
   origem?: string;

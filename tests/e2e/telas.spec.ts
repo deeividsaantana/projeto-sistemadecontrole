@@ -252,3 +252,21 @@ test('mapa de chuvas soma o pluviômetro do diário e marca o dia sem lançament
 
   await expect(mapa.getByRole('button', { name: 'PDF' })).toBeVisible();
 });
+
+// Nota paga sem material na obra é a conversa mais cara do almoxarifado: o
+// painel precisa dizer o que falta, de qual nota e de qual solicitação.
+test('materiais: a carga que a nota prometeu e não chegou aparece em cima', async ({ page }) => {
+  await page.goto('/?screen=materiais');
+
+  const pendentes = page.locator('#recebimentos-pendentes');
+  await expect(pendentes).toBeVisible();
+  await expect(pendentes.getByText('2 entrega(s) com carga faltando')).toBeVisible();
+
+  const linha = pendentes.getByRole('row').filter({ hasText: 'ESTACA MADEIRA C/ PONTA' });
+  await expect(linha).toContainText('SC 92998794');
+  await expect(linha).toContainText('NF 4789');
+  await expect(linha).toContainText('2.000 PC');
+
+  // A entrega completa não aparece como pendência.
+  await expect(pendentes.getByRole('row').filter({ hasText: 'TUBO DE CONCRETO PA3 DN1000' })).toHaveCount(0);
+});
