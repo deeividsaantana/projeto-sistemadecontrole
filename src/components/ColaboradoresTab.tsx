@@ -3,7 +3,7 @@
  * registraram sobre a pessoa — equipe, presença, frota operada e viagens.
  */
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Building2, ClipboardCheck, Search, Truck, UserRound, Users } from 'lucide-react';
+import { ArrowLeft, Building2, ClipboardCheck, Search, Truck, UserRound, UserCog, Users } from 'lucide-react';
 import type {
   ChecklistEquipamento,
   ControleEquipamentoDiario,
@@ -14,7 +14,14 @@ import type {
   TicketJazida,
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
-import { Badge, Card, EmptyState, PageHeader, statusTone } from '../shared/ui';
+import { Badge, Card, EmptyState, Modal, PageHeader, TextInput, statusTone } from '../shared/ui';
+import {
+  SITUACOES_COLABORADOR,
+  aplicarSituacao,
+  descreverMudanca,
+  situacaoAtualDe,
+  type SituacaoColaborador,
+} from '../utils/situacaoColaborador';
 
 interface ColaboradoresTabProps {
   funcionarios: Funcionario[];
@@ -25,6 +32,9 @@ interface ColaboradoresTabProps {
   ticketsJazida: TicketJazida[];
   checklists?: ChecklistEquipamento[];
   onNavigate: (tab: string) => void;
+  /** Ausente quando o perfil não pode mexer no cadastro: a ação nem aparece. */
+  onAlterarSituacao?: (proximo: Funcionario, descricao: string) => void;
+  responsavel?: string;
 }
 
 const SITUACOES = ['Todas', 'ATIVO', 'INATIVO', 'FÉRIAS', 'AFASTADO', 'DESMOBILIZADO'] as const;
@@ -40,10 +50,14 @@ export default function ColaboradoresTab({
   ticketsJazida,
   checklists = [],
   onNavigate,
+  onAlterarSituacao,
+  responsavel = '',
 }: ColaboradoresTabProps) {
   const [busca, setBusca] = useState('');
   const [situacao, setSituacao] = useState<(typeof SITUACOES)[number]>('Todas');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+  // Mudança de situação: sempre com data e motivo, porque é registro de RH.
+  const [mudanca, setMudanca] = useState<{ situacao: SituacaoColaborador; data: string; motivo: string } | null>(null);
 
   const equipePorFuncionario = useMemo(() => {
     const mapa = new Map<string, GrupoEquipe>();
@@ -106,7 +120,24 @@ export default function ColaboradoresTab({
         <PageHeader
           title={selecionado.nome}
           description={[selecionado.matricula && `Matrícula ${selecionado.matricula}`, selecionado.cargo, empresa].filter(Boolean).join(' · ')}
-          actions={<span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(situacaoAtual)}`}>{situacaoAtual}</span>}
+          actions={(
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(situacaoAtual)}`}>{situacaoAtual}</span>
+              {onAlterarSituacao && (
+                <button
+                  type="button"
+                  onClick={() => setMudanca({
+                    situacao: situacaoAtual === 'ATIVO' ? 'FÉRIAS' : 'ATIVO',
+                    data: new Date().toISOString().slice(0, 10),
+                    motivo: '',
+                  })}
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
+                >
+                  <UserCog className="h-4 w-4" /> Alterar situação
+                </button>
+              )}
+            </div>
+          )}
         />
 
         <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
@@ -225,6 +256,70 @@ export default function ColaboradoresTab({
             )}
           </Card>
         </div>
+
+        <Modal
+          open={Boolean(mudanca)}
+          title={`Situação de ${selecionado.nome}`}
+          size="sm"
+          onClose={() => setMudanca(null)}
+          footer={(
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setMudanca(null)}
+                className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!mudanca?.data}
+                onClick={() => {
+                  if (!mudanca || !onAlterarSituacao) return;
+                  const entrada = { ...mudanca, por: responsavel };
+                  onAlterarSituacao(aplicarSituacao(selecionado, entrada), descreverMudanca(selecionado, entrada));
+                  setMudanca(null);
+                }}
+                className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                Salvar situação
+              </button>
+            </div>
+          )}
+        >
+          <div className="space-y-3">
+            <label className="block space-y-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Situação</span>
+              <select
+                value={mudanca?.situacao || 'ATIVO'}
+                onChange={event => setMudanca(atual => atual && { ...atual, situacao: event.target.value as SituacaoColaborador })}
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800"
+              >
+                {SITUACOES_COLABORADOR.map(item => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">A partir de</span>
+              <TextInput
+                type="date"
+                value={mudanca?.data || ''}
+                onChange={event => setMudanca(atual => atual && { ...atual, data: event.target.value })}
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Motivo</span>
+              <TextInput
+                placeholder="Fim de contrato, férias programadas, atestado…"
+                value={mudanca?.motivo || ''}
+                onChange={event => setMudanca(atual => atual && { ...atual, motivo: event.target.value })}
+              />
+            </label>
+            <p className="text-[11px] leading-5 text-slate-500">
+              Desmobilizado e inativo tiram a pessoa do efetivo disponível e guardam a data de saída.
+              Férias e afastamento mantêm a pessoa no efetivo — ela volta.
+            </p>
+          </div>
+        </Modal>
       </div>
     );
   }

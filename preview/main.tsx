@@ -533,6 +533,8 @@ const screens: Record<string, React.ReactNode> = {
       controlesEquipamentos={fx.controlesEquipamentos}
       ticketsJazida={fx.ticketsJazida}
       onNavigate={noop}
+      responsavel="Preview"
+      onAlterarSituacao={noop}
     />
   ),
   checklist: (

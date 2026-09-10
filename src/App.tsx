@@ -4852,6 +4852,11 @@ export default function App() {
                 ticketsJazida={ticketsJazidaAtivos}
                 checklists={checklists}
                 onNavigate={navigateTo}
+                responsavel={activeUserName}
+                onAlterarSituacao={(proximo, descricao) => {
+                  handleSaveFuncionario(proximo, false);
+                  addNotification('Situação atualizada', descricao, 'info', 'Sistema Local');
+                }}
               />
             )}
 

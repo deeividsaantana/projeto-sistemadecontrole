@@ -188,3 +188,23 @@ test('link público: marcar, enviar e voltar a um dia anterior na régua', async
   await expect(cartaoDe('João Batista dos Santos').locator('.presence-public__status-pill'))
     .toHaveCount(0);
 });
+
+// Desligar alguém ou marcar férias é registro de RH: precisa de data e motivo,
+// e a situação escolhida decide se a pessoa continua no efetivo da obra.
+test('colaborador: mudar a situação pede data e motivo', async ({ page }) => {
+  await page.goto('/?screen=colaboradores');
+  await page.getByText('João Batista dos Santos').first().click();
+
+  await page.getByRole('button', { name: /Alterar situação/i }).click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo).toBeVisible();
+
+  await expect(dialogo.getByRole('combobox')).toBeVisible();
+  await expect(dialogo.locator('input[type="date"]')).toBeVisible();
+  await expect(dialogo.getByPlaceholder(/Fim de contrato/i)).toBeVisible();
+
+  for (const situacao of ['ATIVO', 'FÉRIAS', 'AFASTADO', 'DESMOBILIZADO', 'INATIVO']) {
+    // exact: 'ATIVO' é pedaço de 'INATIVO'.
+    await expect(dialogo.getByRole('option', { name: situacao, exact: true })).toHaveCount(1);
+  }
+});
