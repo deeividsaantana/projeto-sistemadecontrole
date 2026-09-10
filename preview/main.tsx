@@ -625,6 +625,7 @@ const screens: Record<string, React.ReactNode> = {
       onSaveGrupoEquipe={noop}
       onDeleteGrupoEquipe={noop}
       onUpdatePresencaLink={noop}
+      onLancarPresencaManual={noop}
     />
   ),
   presenca: (

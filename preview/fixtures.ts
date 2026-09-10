@@ -170,3 +170,20 @@ export const presencasHistorico: PresencaApontamento[] = diasDePresenca.flatMap(
     } as PresencaApontamento;
   }).filter((_, i) => (d + i) % 9 !== 0),
 );
+
+// Uma equipe que ainda não enviou nada: é ela que exercita o aviso do painel e
+// o lançamento manual. Entra depois dos registros, justamente para não ganhar
+// nenhum apontamento.
+equipesPresenca.push({
+  id: 'g-6',
+  nome: 'Equipe do Ramo 1300',
+  responsavel: 'Renato',
+  frenteServico: 'Ramo 1300',
+  obraId: 'obr-1',
+  funcionarioIds: efetivoPresenca.slice(0, 4).map(pessoa => pessoa.id),
+  token: 'presenca-r1300',
+  status: 'ativo',
+  linkAtivo: true,
+  createdAt: '',
+  updatedAt: '',
+} as GrupoEquipe);

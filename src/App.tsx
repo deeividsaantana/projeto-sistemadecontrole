@@ -182,6 +182,7 @@ import {
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
 import { estaAtivo, inativar, somenteAtivos } from './utils/inativacao';
+import { aplicarPresencaManual, montarPresencaManual, type SituacaoLancada } from './utils/presencaManual';
 import {
   normalizePresenceLists,
   normalizeRuntimeCollection,
@@ -3028,6 +3029,38 @@ export default function App() {
     void handleUploadToFirebase();
   };
 
+  /**
+   * Lançamento manual pelo painel: a equipe que não usou o link não pode ficar
+   * sem apontamento. O registro nasce marcado como manual, com quem lançou, e
+   * relançar o mesmo dia corrige em vez de duplicar.
+   */
+  const handleLancarPresencaManual = (
+    grupo: GrupoEquipe,
+    data: string,
+    situacoes: SituacaoLancada[],
+    observacaoDia: string,
+  ) => {
+    const novos = montarPresencaManual({
+      grupo,
+      funcionarios,
+      data,
+      situacoes,
+      responsavel: activeUserName,
+      observacaoDia,
+    });
+    if (novos.length === 0) return;
+    const atualizados = aplicarPresencaManual(presencasLink, novos);
+    setPresencasLink(atualizados);
+    writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(atualizados));
+    addNotification(
+      'Presença lançada pelo painel',
+      `${novos.length} situação(ões) de ${grupo.nome} em ${data.split('-').reverse().join('/')}.`,
+      'success',
+      'Sistema Local',
+    );
+    void handleUploadToFirebase();
+  };
+
   const handleDeletePresencaLink = (ids: string[]) => {
     const selected = new Set(ids);
     const submissionDocIds = Array.from(new Set(
@@ -4941,6 +4974,7 @@ export default function App() {
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
                 onUpdatePresencaLink={handleUpdatePresencaLink}
+                onLancarPresencaManual={handleLancarPresencaManual}
                 onDeletePresencaLink={handleDeletePresencaLink}
                 onResetPresencaDia={handleResetPresencaDia}
                 onSyncEquipesPlanilha={handleSyncEquipesPlanilha}

@@ -32,8 +32,9 @@ import {
   type TeamSyncPlan,
 } from '../utils/teamSpreadsheetSync';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
-import { ConfirmDialog, PageHeader } from '../shared/ui';
+import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import type { SituacaoLancada } from '../utils/presencaManual';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServico';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
@@ -90,6 +91,13 @@ interface ControlePresencaTabProps {
   onSaveGrupoEquipe: (grupo: GrupoEquipe, isNew: boolean) => void;
   onDeleteGrupoEquipe: (id: string) => void;
   onUpdatePresencaLink: (id: string, status: PresencaStatus, observacao: string, motivo: string) => void;
+  /** Lançar a presença de uma equipe que não usou o link. */
+  onLancarPresencaManual?: (
+    grupo: GrupoEquipe,
+    data: string,
+    situacoes: SituacaoLancada[],
+    observacaoDia: string,
+  ) => void;
   onDeletePresencaLink?: (ids: string[]) => void;
   /** Apaga os envios e a reserva do dia, liberando um novo apontamento. */
   onResetPresencaDia?: (grupoId: string, data: string) => Promise<{ success: boolean; message: string }>;
@@ -190,6 +198,7 @@ export default function ControlePresencaTab({
   onSaveGrupoEquipe,
   onDeleteGrupoEquipe,
   onUpdatePresencaLink,
+  onLancarPresencaManual,
   onDeletePresencaLink,
   onResetPresencaDia,
   onSyncEquipesPlanilha,
@@ -244,6 +253,9 @@ export default function ControlePresencaTab({
   const [confirmandoLinkGeral, setConfirmandoLinkGeral] = useState(false);
   const [resumoZerarDia, setResumoZerarDia] = useState<{ equipe: string; quantos: number } | null>(null);
   const [restoringHistory, setRestoringHistory] = useState(false);
+  // Lançamento manual: equipe escolhida, dia, e a situação de cada um.
+  const [lancamento, setLancamento] = useState<{ grupoId: string; data: string; observacaoDia: string } | null>(null);
+  const [situacoesLancadas, setSituacoesLancadas] = useState<Record<string, SituacaoLancada>>({});
 
   // O crachá no botão diz quantos recortes estão valendo: sem abrir a gaveta,
   // dá para saber se o número na tela é o efetivo todo ou um pedaço dele.
@@ -256,6 +268,23 @@ export default function ControlePresencaTab({
     dashboardSite !== 'todos',
     dashboardSearch.trim() !== '',
   ].filter(Boolean).length;
+
+  const abrirLancamento = (grupoId: string) => {
+    // A lista já vem com o que a equipe tem hoje: quem estiver apontado no dia
+    // aparece com a situação atual, para o lançamento ser correção e não
+    // recomeço.
+    const jaApontado = new Map(
+      dayRecords.filter(item => item.grupoId === grupoId).map(item => [item.funcionarioId, item]),
+    );
+    const grupo = safeGroups.find(item => item.id === grupoId);
+    const inicial: Record<string, SituacaoLancada> = {};
+    (grupo?.funcionarioIds || []).forEach(id => {
+      const atual = jaApontado.get(id);
+      if (atual) inicial[id] = { funcionarioId: id, status: atual.status, observacao: atual.observacao };
+    });
+    setSituacoesLancadas(inicial);
+    setLancamento({ grupoId, data: referenceDate, observacaoDia: '' });
+  };
 
   const limparFiltrosPainel = () => {
     setDashboardCompany('todas');
@@ -976,7 +1005,22 @@ export default function ControlePresencaTab({
               <div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-700" /><h2 className="text-lg font-black text-[#101a22]">Atenção agora</h2></div>
               <div className="mt-4 space-y-2">
                 {pendingGroups.length === 0 && metrics.absent === 0 ? <p className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">Todas as equipes enviaram e não há ausências abertas.</p> : null}
-                {pendingGroups.slice(0, 5).map(group => <p key={group.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><strong>{group.nome}</strong> ainda não enviou a presença.</p>)}
+                {/* A equipe que não usou o link precisa de saída aqui mesmo: é
+                    neste cartão que alguém descobre que falta apontamento. */}
+                {pendingGroups.slice(0, 5).map(group => (
+                  <div key={group.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                    <span><strong>{group.nome}</strong> ainda não enviou a presença.</span>
+                    {onLancarPresencaManual && (
+                      <button
+                        type="button"
+                        onClick={() => abrirLancamento(group.id)}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-bold text-amber-900 transition hover:border-emerald-700 hover:text-emerald-800"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" /> Lançar presença
+                      </button>
+                    )}
+                  </div>
+                ))}
                 {metrics.absent > 0 && <button type="button" onClick={() => { setRecordStatus('Ausente'); setView('registros'); }} className="flex w-full items-center justify-between rounded-xl border border-rose-200 bg-rose-50 p-3 text-left text-sm font-semibold text-rose-900"><span>{metrics.absent} ausência(s) aguardando conferência</span><ChevronRight className="h-4 w-4" /></button>}
               </div>
             </article>
@@ -1391,6 +1435,120 @@ export default function ControlePresencaTab({
         onConfirm={confirmarZerarDia}
         onCancel={() => setResumoZerarDia(null)}
       />
+
+      {lancamento && onLancarPresencaManual && (() => {
+        const grupo = safeGroups.find(item => item.id === lancamento.grupoId);
+        if (!grupo) return null;
+        const pessoas = (grupo.funcionarioIds || [])
+          .map(id => employeeById.get(id))
+          .filter((pessoa): pessoa is Funcionario => Boolean(pessoa));
+        const conferidos = pessoas.filter(pessoa => situacoesLancadas[pessoa.id]?.status).length;
+
+        return (
+          <Modal
+            open
+            size="lg"
+            title={`Lançar presença · ${grupo.nome}`}
+            onClose={() => setLancamento(null)}
+            footer={(
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs font-bold text-[#65716b]">
+                  {conferidos} de {pessoas.length} conferido(s)
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLancamento(null)}
+                    className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={conferidos === 0}
+                    onClick={() => {
+                      onLancarPresencaManual(
+                        grupo,
+                        lancamento.data,
+                        Object.values(situacoesLancadas).filter(item => item.status),
+                        lancamento.observacaoDia,
+                      );
+                      setFeedback(`Presença de ${grupo.nome} lançada pelo painel.`);
+                      setLancamento(null);
+                    }}
+                    className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                  >
+                    Lançar presença
+                  </button>
+                </div>
+              </div>
+            )}
+          >
+            <div className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="block space-y-1.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Dia</span>
+                  <input
+                    type="date"
+                    max={today}
+                    value={lancamento.data}
+                    onChange={event => setLancamento(atual => atual && { ...atual, data: event.target.value })}
+                    className={FIELD}
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Observação do dia</span>
+                  <input
+                    value={lancamento.observacaoDia}
+                    onChange={event => setLancamento(atual => atual && { ...atual, observacaoDia: event.target.value })}
+                    placeholder="Chuva, parada de frente…"
+                    className={FIELD}
+                  />
+                </label>
+              </div>
+
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-900">
+                O lançamento fica marcado como feito pelo painel, com o seu nome. Relançar o mesmo dia
+                corrige as situações escolhidas e não duplica ninguém.
+              </p>
+
+              <ul className="space-y-2">
+                {pessoas.map(pessoa => {
+                  const atual = situacoesLancadas[pessoa.id]?.status;
+                  return (
+                    <li key={pessoa.id} className="rounded-lg border border-[#e2e8e4] p-3">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <strong className="text-sm font-bold text-[#101a22]">{pessoa.nome}</strong>
+                        <span className="text-[11px] text-[#65716b]">{pessoa.cargo}{pessoa.matricula ? ` · Mat. ${pessoa.matricula}` : ''}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {STATUS_OPTIONS.map(status => (
+                          <button
+                            key={status}
+                            type="button"
+                            aria-pressed={atual === status}
+                            onClick={() => setSituacoesLancadas(atuais => ({
+                              ...atuais,
+                              [pessoa.id]: { funcionarioId: pessoa.id, status, observacao: atuais[pessoa.id]?.observacao },
+                            }))}
+                            className={`min-h-10 rounded-lg border px-3 text-xs font-bold transition ${
+                              atual === status
+                                ? 'border-emerald-700 bg-emerald-700 text-white'
+                                : 'border-[#e2e8e4] bg-white text-[#65716b] hover:border-emerald-700'
+                            }`}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </Modal>
+        );
+      })()}
     </section>
   );
 }

@@ -22,6 +22,7 @@ import './limiteEnvioPresenca.test';
 import './historicoLinkPresenca.test';
 import './inativacao.test';
 import './situacaoColaborador.test';
+import './presencaManual.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';

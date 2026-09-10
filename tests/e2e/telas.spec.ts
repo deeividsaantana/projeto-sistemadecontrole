@@ -208,3 +208,27 @@ test('colaborador: mudar a situação pede data e motivo', async ({ page }) => {
     await expect(dialogo.getByRole('option', { name: situacao, exact: true })).toHaveCount(1);
   }
 });
+
+// A equipe que não usou o link não pode ficar sem apontamento: o painel avisa
+// que faltou e é dali mesmo que sai o lançamento manual.
+test('presença: a equipe que não enviou pode ser lançada pelo painel', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/?screen=presenca-admin');
+
+  const lancar = page.getByRole('button', { name: /Lançar presença/i }).first();
+  await expect(lancar).toBeVisible();
+  await lancar.click();
+
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo).toBeVisible();
+  // O lançamento tem de deixar claro que foi feito pelo painel, e não no campo.
+  await expect(dialogo.getByText(/marcado como feito pelo painel/i)).toBeVisible();
+  await expect(dialogo.locator('input[type="date"]')).toBeVisible();
+
+  // Sem conferir ninguém, não dá para lançar.
+  const confirmar = dialogo.getByRole('button', { name: 'Lançar presença', exact: true });
+  await expect(confirmar).toBeDisabled();
+
+  await dialogo.getByRole('button', { name: 'Presente', exact: true }).first().click();
+  await expect(confirmar).toBeEnabled();
+});
