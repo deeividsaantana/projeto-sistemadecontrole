@@ -364,7 +364,13 @@ const indexGroupHistory = documents => {
 const HISTORY_DOCS_LIMIT = 120;
 
 const loadGroupHistory = async (database, grupoId) => {
+  // A coleção guarda três tipos: 'presence', 'presence-reset' e 'equipe' —
+  // esta última nasce a cada inclusão ou remoção de colaborador pelo link e
+  // carrega grupoId e data iguais aos de um envio. Sem separar o tipo aqui,
+  // uma equipe que mexe no efetivo gastaria o limite com documentos que a
+  // régua de datas descarta logo depois, e perderia dias de presença reais.
   const base = database.collection('sistemarenea_public_submissions')
+    .where('kind', '==', 'presence')
     .where('payload.grupoId', '==', grupoId);
   try {
     const snapshot = await base.orderBy('payload.data', 'desc').limit(HISTORY_DOCS_LIMIT).get();
@@ -510,6 +516,13 @@ export const handler = async event => {
       if (!token) return jsonResponse(400, { success: false, message: 'Token de presença não informado.' });
       const snapshot = await loadPresenceSnapshot(database);
       const tokenGroupIds = activeGroupsForToken(snapshot, token).map(group => group.id);
+      // Token que não bate com nenhuma equipe ativa termina aqui, antes de
+      // qualquer consulta do dia. Ao paralelizar as duas leituras eu havia
+      // trazido a consulta dos envios para antes desta checagem, e um token
+      // inválido passou a custar uma consulta a mais do que custava antes.
+      if (tokenGroupIds.length === 0) {
+        return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
+      }
       const today = todayInSaoPaulo();
       // Uma consulta não depende da outra; esperar em fila só somava latência
       // no 4G do canteiro.

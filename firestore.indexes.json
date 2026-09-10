@@ -4,6 +4,7 @@
       "collectionGroup": "sistemarenea_public_submissions",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "kind", "order": "ASCENDING" },
         { "fieldPath": "payload.grupoId", "order": "ASCENDING" },
         { "fieldPath": "payload.data", "order": "DESCENDING" }
       ]
