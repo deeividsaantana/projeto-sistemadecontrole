@@ -187,3 +187,26 @@ equipesPresenca.push({
   createdAt: '',
   updatedAt: '',
 } as GrupoEquipe);
+
+// Um mês de diário com pluviômetro, para o mapa de chuvas ter o que mostrar:
+// dias secos, chuva fraca, forte, e dias sem diário nenhum no fim do mês.
+import type { DiarioObra } from '../src/types';
+
+export const diariosChuva: DiarioObra[] = [
+  { dia: 1, mm: 0 }, { dia: 2, mm: 3 }, { dia: 3, mm: 0 }, { dia: 4, mm: 12 },
+  { dia: 5, mm: 28, impraticavel: true }, { dia: 8, mm: 0 }, { dia: 9, mm: 1.5 },
+  { dia: 10, mm: 0 }, { dia: 11, mm: 62, impraticavel: true }, { dia: 12, mm: 7 },
+  { dia: 15, mm: 0 }, { dia: 16, mm: 0 }, { dia: 17, mm: 4 }, { dia: 18, mm: 33 },
+  { dia: 19, mm: 0 }, { dia: 22, mm: 0 }, { dia: 23, mm: 9 },
+].map(({ dia, mm, impraticavel }) => ({
+  id: `dob-${dia}`,
+  data: `2026-09-${String(dia).padStart(2, '0')}`,
+  climaManha: (impraticavel ? 'Impraticável' : mm > 0 ? 'Chuva fraca' : 'Bom'),
+  climaTarde: (impraticavel ? 'Impraticável' : mm > 25 ? 'Chuva forte' : 'Bom'),
+  precipitacaoMm: mm,
+  horasParadasClima: impraticavel ? 8 : mm > 10 ? 2 : 0,
+  responsavel: 'Deivid Santana',
+  ativo: true,
+  criadoEm: '',
+  atualizadoEm: '',
+} as DiarioObra));

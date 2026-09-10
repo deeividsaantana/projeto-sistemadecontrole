@@ -23,6 +23,7 @@ import './historicoLinkPresenca.test';
 import './inativacao.test';
 import './situacaoColaborador.test';
 import './presencaManual.test';
+import './mapaChuva.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';

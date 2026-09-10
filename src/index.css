@@ -949,3 +949,49 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
     min-height: 40px;
   }
 }
+
+/* ==========================================================================
+   Mapa de chuvas
+   As nuvens andam devagar atrás do título. Só transform e opacity — nada que
+   force o navegador a refazer o layout — e param de vez para quem pediu
+   movimento reduzido no sistema.
+   ========================================================================== */
+.mapa-chuva__ceu {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mapa-chuva__nuvem {
+  position: absolute;
+  top: -6px;
+  left: -140px;
+  opacity: .34;
+  will-change: transform;
+  animation: mapa-chuva-passa 34s linear infinite;
+}
+
+.mapa-chuva__nuvem--1 { top: 10px; opacity: .22; animation-duration: 52s; animation-delay: -14s; }
+.mapa-chuva__nuvem--2 { top: 26px; opacity: .16; animation-duration: 68s; animation-delay: -30s; }
+
+@keyframes mapa-chuva-passa {
+  from { transform: translateX(0) scale(.9); }
+  to { transform: translateX(calc(100vw + 160px)) scale(.9); }
+}
+
+/* O quadradinho do dia cresce de leve ao passar o ponteiro: ajuda a mirar sem
+   deslocar os vizinhos, porque a escala não muda o espaço ocupado. */
+.mapa-chuva__dia {
+  transition: transform .18s ease-out;
+}
+.mapa-chuva__dia:hover {
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapa-chuva__nuvem { animation: none; }
+  .mapa-chuva__dia { transition: none; }
+  .mapa-chuva__dia:hover { transform: none; }
+}

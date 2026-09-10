@@ -451,7 +451,7 @@ const screens: Record<string, React.ReactNode> = {
   ),
   'diario-obra': (
     <DiarioObraTab
-      diarios={[]}
+      diarios={fx.diariosChuva}
       obras={fx.obras}
       gruposEquipe={[fx.grupo]}
       presencasLink={fx.presencasHistorico}

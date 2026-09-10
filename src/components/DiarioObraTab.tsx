@@ -5,6 +5,7 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { Camera, CloudRain, NotebookPen, Users } from 'lucide-react';
+import MapaChuva from './MapaChuva';
 import type {
   ApontamentoOperacional,
   CondicaoClimatica,
@@ -118,6 +119,7 @@ export default function DiarioObraTab({
       climaManha: (valor.climaManha as CondicaoClimatica) || 'Bom',
       climaTarde: (valor.climaTarde as CondicaoClimatica) || 'Bom',
       horasParadasClima: Number(valor.horasParadasClima) || undefined,
+      precipitacaoMm: Number(valor.precipitacaoMm) || undefined,
       visitas: valor.visitas?.trim() || undefined,
       observacao: valor.observacao?.trim() || undefined,
       fotos: valor.fotos,
@@ -190,6 +192,18 @@ export default function DiarioObraTab({
                 onChange={event => setRascunho({ ...rascunho, horasParadasClima: Number(event.target.value) })}
                 className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
               />
+            </label>
+            <label className="text-xs font-bold text-slate-600">
+              Pluviômetro (mm)
+              <input
+                type="number" min="0" step="0.5" inputMode="decimal"
+                value={valor.precipitacaoMm ?? ''}
+                disabled={!podeEditar}
+                onChange={event => setRascunho({ ...rascunho, precipitacaoMm: Number(event.target.value) })}
+                placeholder="0"
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
+              />
+              <span className="mt-1 block text-[11px] font-medium text-slate-400">Alimenta o mapa de chuvas do mês.</span>
             </label>
             <label className="text-xs font-bold text-slate-600">
               Fotos do dia
@@ -291,6 +305,11 @@ export default function DiarioObraTab({
           </ul>
         )}
       </Card>
+
+      {/* O mapa fica na mesma aba do diário porque é o mesmo assunto: quem
+          lança o pluviômetro é quem consulta o acumulado. A sidebar é aprovada
+          e não ganha item novo. */}
+      <MapaChuva diarios={diarios} responsavel={responsavel} />
     </div>
   );
 }

@@ -594,6 +594,9 @@ export interface DiarioObra {
   climaTarde: CondicaoClimatica;
   /** Horas paradas por chuva no dia, quando houver. */
   horasParadasClima?: number;
+  /** Leitura do pluviômetro do dia, em milímetros. É o que alimenta o mapa de
+   *  chuvas — o documento que justifica prorrogação de prazo em contrato. */
+  precipitacaoMm?: number;
   visitas?: string;
   observacao?: string;
   /** Fotos do dia em data URL. */

@@ -232,3 +232,23 @@ test('presença: a equipe que não enviou pode ser lançada pelo painel', async 
   await dialogo.getByRole('button', { name: 'Presente', exact: true }).first().click();
   await expect(confirmar).toBeEnabled();
 });
+
+// O mapa de chuvas é o quadro que justifica prazo em contrato. Ele lê o
+// pluviômetro do diário e precisa distinguir "não choveu" de "ninguém lançou".
+test('mapa de chuvas soma o pluviômetro do diário e marca o dia sem lançamento', async ({ page }) => {
+  await page.goto('/?screen=diario-obra');
+
+  const mapa = page.locator('#mapa-de-chuvas');
+  await expect(mapa).toBeVisible();
+
+  // 0+3+12+28+1,5+62+7+4+33+9 = 159,5 mm no mês da amostra.
+  await expect(mapa.getByText('159,5 mm')).toBeVisible();
+
+  const dia4 = mapa.getByRole('gridcell', { name: /Dia 4:/ });
+  await expect(dia4).toHaveAttribute('aria-label', /12 mm/);
+
+  const dia6 = mapa.getByRole('gridcell', { name: /Dia 6:/ });
+  await expect(dia6).toHaveAttribute('aria-label', /sem diário lançado/);
+
+  await expect(mapa.getByRole('button', { name: 'PDF' })).toBeVisible();
+});
