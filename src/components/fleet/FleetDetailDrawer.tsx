@@ -41,7 +41,7 @@ export default function FleetDetailDrawer({ state, onClose, onEdit }: Props) {
   }, [onClose, state]);
   if (!state) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[90] bg-white backdrop-blur-[2px]" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <div data-app-portal className="fixed inset-0 z-[90] bg-white backdrop-blur-[2px]" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
       <aside role="dialog" aria-modal="true" aria-labelledby="fleet-detail-title" className="fixed inset-y-0 right-0 flex w-full max-w-xl flex-col overflow-hidden bg-[#f4f7f5] shadow-2xl">
         <header className="flex shrink-0 items-start justify-between bg-white px-5 py-5 text-slate-800 sm:px-6">
           <div>
