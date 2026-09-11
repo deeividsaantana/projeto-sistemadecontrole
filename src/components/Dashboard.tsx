@@ -35,7 +35,10 @@ interface DashboardProps {
 type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar' | 'À disposição';
 
 const PROJECT_NAME = OBRA.nome;
-const MAINTENANCE_STATUSES = new Set(['Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado']);
+const MAINTENANCE_STATUSES = new Set([
+  'Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado',
+  'Aguardando equipamento', 'Reserva', 'Desmobilizado',
+]);
 const CONFIRM_STATUSES = new Set(['A confirmar', 'Aguardando motorista', 'Não classificado']);
 
 const formatDate = (value: string) => {
@@ -135,13 +138,13 @@ function StatusDistribution({ segments, total, active, onSelect }: {
   }
   return (
     <div className="px-4 pb-5 sm:px-5">
-      <div className="flex overflow-hidden rounded-[4px]" role="group" aria-label="Distribuição da frota por situação">
-        {segments.filter(segment => segment.value > 0).map((segment, index, list) => (
+      <div className="flex gap-0.5 overflow-hidden rounded-[4px]" role="group" aria-label="Distribuição da frota por situação">
+        {segments.filter(segment => segment.value > 0).map(segment => (
           <button key={segment.filter} type="button" onClick={() => onSelect(active === segment.filter ? 'Todos' : segment.filter)}
             aria-pressed={active === segment.filter}
             title={`${segment.label}: ${segment.value} de ${total} (${(segment.value / total * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)`}
-            style={{ width: `${segment.value / total * 100}%`, backgroundColor: segment.color, marginRight: index === list.length - 1 ? 0 : 2 }}
-            className={'h-4 min-w-[3px] shrink-0 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[#f26a2e]/60' + (active !== 'Todos' && active !== segment.filter ? ' opacity-40' : '')}>
+            style={{ flex: `${segment.value} 1 0%`, backgroundColor: segment.color }}
+            className={'h-4 min-w-[3px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[#f26a2e]/60' + (active !== 'Todos' && active !== segment.filter ? ' opacity-40' : '')}>
             <span className="sr-only">{segment.label}: {segment.value} equipamentos, {(segment.value / total * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>
           </button>
         ))}
