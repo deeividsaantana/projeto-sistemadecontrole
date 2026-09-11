@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2,
-  Clock3, Fuel, HardHat, PackageSearch, Plus, ShieldCheck,
+  Clock3, Fuel, HardHat, PackageSearch, PauseCircle, Plus, ShieldCheck,
   Truck, Users, WalletCards, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type {
@@ -14,6 +14,8 @@ import type {
 } from '../types';
 import siteAerial from '../assets/renea-editorial/rodovia-duplicada-1600.webp';
 import { OBRA } from '../config/obra';
+import { FLEET_STATUS_DEFINITIONS } from '../fleet/status';
+import { FLEET_OPERATIONAL_STATUS } from '../fleet/domain';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -31,10 +33,13 @@ interface DashboardProps {
   frentes?: FrenteServico[]; onNavigate: (tab: string) => void;
 }
 
-type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar';
+type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar' | 'À disposição';
 
 const PROJECT_NAME = OBRA.nome;
-const MAINTENANCE_STATUSES = new Set(['Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado']);
+const MAINTENANCE_STATUSES = new Set([
+  'Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado',
+  'Aguardando equipamento', 'Reserva', 'Desmobilizado',
+]);
 const CONFIRM_STATUSES = new Set(['A confirmar', 'Aguardando motorista', 'Não classificado']);
 
 const formatDate = (value: string) => {
@@ -107,6 +112,69 @@ function Panel({ title, action, children, className = '' }: {
       </header>
       {children}
     </section>
+  );
+}
+
+interface FleetStatusSegment {
+  filter: Exclude<FleetFilter, 'Todos'>;
+  label: string;
+  icon: LucideIcon;
+  color: string;
+  value: number;
+}
+
+/**
+ * Uma única barra empilhada com a leitura mais recente da frota. Cor nunca
+ * carrega o significado sozinha: cada trecho tem ícone + rótulo + valor por
+ * extenso na legenda, e a cor reaproveita FLEET_STATUS_DEFINITIONS — a mesma
+ * paleta de status usada nos relatórios em PDF e nos badges da frota, para
+ * não inventar um quarto sistema de cor dentro do painel.
+ */
+function StatusDistribution({ segments, total, active, onSelect }: {
+  segments: FleetStatusSegment[]; total: number;
+  active: FleetFilter; onSelect: (filter: FleetFilter) => void;
+}) {
+  if (!total) {
+    return <div className="flex h-32 items-center justify-center px-5 text-sm text-[#7a878c]">Sem lançamento de frota na data mais recente</div>;
+  }
+  return (
+    <div className="px-4 pb-5 sm:px-5">
+      <div className="flex gap-0.5 overflow-hidden rounded-[4px]" role="group" aria-label="Distribuição da frota por situação">
+        {segments.filter(segment => segment.value > 0).map(segment => (
+          <button key={segment.filter} type="button" onClick={() => onSelect(active === segment.filter ? 'Todos' : segment.filter)}
+            aria-pressed={active === segment.filter}
+            title={`${segment.label}: ${segment.value} de ${total} (${(segment.value / total * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)`}
+            style={{ flex: `${segment.value} 1 0%`, backgroundColor: segment.color }}
+            className={'h-4 min-w-[3px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[#f26a2e]/60' + (active !== 'Todos' && active !== segment.filter ? ' opacity-40' : '')}>
+            <span className="sr-only">{segment.label}: {segment.value} equipamentos, {(segment.value / total * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>
+          </button>
+        ))}
+      </div>
+      <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+        {segments.map(segment => {
+          const Icon = segment.icon;
+          const share = total ? segment.value / total * 100 : 0;
+          return (
+            <li key={segment.filter}>
+              <button type="button" onClick={() => onSelect(active === segment.filter ? 'Todos' : segment.filter)}
+                aria-pressed={active === segment.filter}
+                className={'flex w-full items-center gap-2 rounded-[2px] px-1 py-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/50' + (active === segment.filter ? ' bg-[#f2f4f1]' : ' hover:bg-[#f7f9f7]')}>
+                <span className="grid size-6 shrink-0 place-items-center rounded-full" style={{ backgroundColor: segment.color + '1a' }}>
+                  <Icon className="size-3.5" style={{ color: segment.color }} aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[11px] font-semibold text-[#47555c]">{segment.label}</span>
+                  <span className="flex items-baseline gap-1.5">
+                    <strong className="text-sm font-bold tabular-nums text-[#172329]">{segment.value}</strong>
+                    <span className="text-[10px] tabular-nums text-[#8a969b]">{share.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -292,6 +360,15 @@ export default function Dashboard({
     setFleetFilter(filter);
   };
 
+  const statusColor = (status: (typeof FLEET_OPERATIONAL_STATUS)[keyof typeof FLEET_OPERATIONAL_STATUS]) =>
+    FLEET_STATUS_DEFINITIONS.find(definition => definition.value === status)?.reportColor || '#5e6c72';
+  const fleetSegments: FleetStatusSegment[] = [
+    { filter: 'Em operação', label: 'Em operação', icon: Activity, color: statusColor(FLEET_OPERATIONAL_STATUS.operating), value: latest.operating },
+    { filter: 'Em manutenção', label: 'Em manutenção', icon: Wrench, color: statusColor(FLEET_OPERATIONAL_STATUS.maintenance), value: latest.maintenance },
+    { filter: 'A confirmar', label: 'A confirmar', icon: Clock3, color: statusColor(FLEET_OPERATIONAL_STATUS.pending), value: latest.confirm },
+    { filter: 'À disposição', label: 'À disposição', icon: PauseCircle, color: statusColor(FLEET_OPERATIONAL_STATUS.available), value: latest.available },
+  ];
+
   return (
     <main id="dashboard-tab" className="erp-dashboard min-h-full bg-[#eef0ec] pb-14 text-[#172329]">
       <header className="dashboard-hero border-b border-[#cbd4cf] bg-[#f7f8f5]">
@@ -428,6 +505,10 @@ export default function Dashboard({
             </div>
           </Panel>
         </section>
+
+        <Panel title="Distribuição da frota" className="mt-4" action={<span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#748187]">{latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento'} · {latest.records.length} equipamento(s)</span>}>
+          <StatusDistribution segments={fleetSegments} total={latest.records.length} active={fleetFilter} onSelect={chooseFilter} />
+        </Panel>
 
         <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.18fr)_minmax(20rem,.82fr)]">
           <Panel title="Itens críticos" className="border-t-[3px] border-t-[#ed5d24]" action={<ActionLink onClick={() => onNavigate('timeline')}>Ver todos</ActionLink>}>

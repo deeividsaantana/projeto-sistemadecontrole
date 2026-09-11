@@ -1922,71 +1922,55 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
             <Fuel className="text-emerald-700" size={20} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1280px] text-left text-sm">
+            <table className="w-full min-w-[880px] text-left text-sm">
               <thead className="bg-white text-xs uppercase text-[#65716b]">
                 <tr>
                   {[
                     'Data / hora',
                     'Frota',
-                    'Produto',
-                    'Litros',
-                    'Tanque',
-                    'Bomba',
-                    'Leitura',
+                    'Produto / litros',
+                    'Bomba / leitura',
                     'Origem',
-                    'Status',
-                    'Revisão',
-                    'Ações',
+                    'Status / revisão',
                   ].map((label) => (
                     <th key={label} className="px-4 py-3">
                       {label}
                     </th>
                   ))}
+                  {/* Ações fica fixa na borda direita: numa tabela com muitas
+                      colunas, era a primeira a sumir da tela sem rolar. */}
+                  <th className="sticky right-0 bg-white px-4 py-3">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e2e8e4]">
                 {filteredRecords.map((record) => {
                   const equipment = equipamentos.find((item) => item.id === record.equipamentoId);
                   return (
-                    <tr key={record.id} className="hover:bg-[#f2f5f3]">
+                    <tr key={record.id} className="group hover:bg-[#f2f5f3]">
                       <td className="px-4 py-3">
                         <strong className="text-[#14231e]">{formatDate(record.data)}</strong>
                         <span className="block text-xs text-[#65716b]">{record.hora}</span>
-                        <span className="block text-[10px] text-[#53605a]">{record.competencia || getFuelCompetence(record.data)}</span>
                       </td>
                       <td className="px-4 py-3">
                         <strong className="font-mono text-emerald-700">{getFuelRecordPrefix(record, equipamentos)}</strong>
                         <span className="block max-w-48 truncate text-xs text-[#65716b]">{equipment?.nome || 'Pendente de cadastro'}</span>
                       </td>
                       <td className="px-4 py-3">
-                        {combustiveis.find((item) => item.id === record.tipoCombustivelId)?.nome || '-'}
-                      </td>
-                      <td className="px-4 py-3 font-bold text-emerald-700">
-                        {formatNumber(record.quantidadeLitros)} L
-                        {record.custoTotal ? (
-                          <span className="block text-[10px] font-normal text-lime-300">
-                            {record.custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </span>
-                        ) : null}
+                        <span className="block text-[#14231e]">{combustiveis.find((item) => item.id === record.tipoCombustivelId)?.nome || '-'}</span>
+                        <strong className="text-emerald-700">
+                          {formatNumber(record.quantidadeLitros)} L
+                          {record.custoTotal ? ` · ${record.custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}
+                        </strong>
                       </td>
                       <td className="px-4 py-3">
-                        {record.capacidadeTanqueLitros
-                          ? `${formatNumber(record.capacidadeTanqueLitros, 0)} L`
-                          : '-'}
-                        {record.percentualTanque ? (
-                          <span className="block text-[10px] text-[#65716b]">{formatNumber(record.percentualTanque)}%</span>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-[#65716b]">{formatNumber(record.bombaInicial)} →</span>
-                        <strong className="ml-1">{formatNumber(record.bombaFinal)}</strong>
-                      </td>
-                      <td className="px-4 py-3">
-                        {record.horimetroInicial
-                          ? `H ${formatNumber(record.horimetroInicial)}`
-                          : record.kmInicial
-                            ? `KM ${formatNumber(record.kmInicial, 0)}`
-                            : '-'}
+                        <span className="text-xs text-[#65716b]">{formatNumber(record.bombaInicial)} → <strong className="text-[#14231e]">{formatNumber(record.bombaFinal)}</strong></span>
+                        <span className="block text-xs text-[#65716b]">
+                          {record.horimetroInicial
+                            ? `H ${formatNumber(record.horimetroInicial)}`
+                            : record.kmInicial
+                              ? `KM ${formatNumber(record.kmInicial, 0)}`
+                              : '-'}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -2006,21 +1990,16 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                         >
                           {record.status || 'OK'}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex border px-2 py-1 text-xs font-bold ${record.revisaoStatus === 'Aprovado' ? statusTone.OK : statusTone.Pendente}`}>
+                        <span className={`mt-1 block w-fit border px-2 py-1 text-xs font-bold ${record.revisaoStatus === 'Aprovado' ? statusTone.OK : statusTone.Pendente}`}>
                           {record.revisaoStatus || 'Pendente'}
                         </span>
-                        {record.revisadoPor && (
-                          <span className="mt-1 block max-w-36 truncate text-[10px] text-[#53605a]">{record.revisadoPor}</span>
-                        )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="sticky right-0 bg-white px-4 py-3 group-hover:bg-[#f2f5f3]">
                         <div className="flex gap-1">
                           <button
                             title="Editar"
                             onClick={() => editRecord(record)}
-                            className="grid h-9 w-9 place-items-center text-[#65716b] hover:bg-[#f2f5f3] hover:text-sky-700"
+                            className="grid h-9 w-9 place-items-center text-[#65716b] hover:bg-white hover:text-sky-700"
                           >
                             <Pencil size={16} />
                           </button>
@@ -2034,7 +2013,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
                               )
                                 onDeleteAbastecimento(record.id);
                             }}
-                            className="grid h-9 w-9 place-items-center text-[#65716b] hover:bg-[#f2f5f3] hover:text-rose-700"
+                            className="grid h-9 w-9 place-items-center text-[#65716b] hover:bg-white hover:text-rose-700"
                           >
                             <Trash2 size={16} />
                           </button>
