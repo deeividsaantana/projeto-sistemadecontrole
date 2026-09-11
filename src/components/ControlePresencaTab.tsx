@@ -538,6 +538,13 @@ export default function ControlePresencaTab({
       gsap.fromTo(barraEfetivo, { scaleX: 0 }, { scaleX: 1, duration: 0.8, ease: 'power3.out', delay: 0.1 });
     }
 
+    // Seta decorativa do card de efetivo: um leve vaivém contínuo sugere que o
+    // número segue vivo, sem competir com a leitura do valor.
+    const setaEfetivo = scope.querySelector<HTMLElement>('[data-seta-efetivo]');
+    if (setaEfetivo && !reduceMotion) {
+      gsap.to(setaEfetivo, { x: 5, duration: 1.3, ease: 'sine.inOut', repeat: -1, yoyo: true, delay: 0.5 });
+    }
+
     // Os cartões entram em cascata, de baixo para cima e de leve: dá ritmo à
     // leitura sem atrasar quem só quer ver o número.
     if (!reduceMotion) {
@@ -999,26 +1006,26 @@ export default function ControlePresencaTab({
       {view === 'ao-vivo' && (
         <div ref={liveViewRef} className="space-y-5">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
-            <article data-cartao-painel className={`renea-card ${PANEL} relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-7`}>
-              <div className="absolute right-6 top-6 text-emerald-800/20"><ArrowRight className="h-24 w-24" strokeWidth={1} /></div>
+            <article data-cartao-painel className={`renea-card ${PANEL} relative overflow-hidden p-4 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-5`}>
+              <div data-seta-efetivo className="absolute right-5 top-5 text-emerald-800/20"><ArrowRight className="h-12 w-12" strokeWidth={1} /></div>
               <div className="relative">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#65716b]">Efetivo confirmado</p>
                   <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
                 </div>
-                <div className="mt-7 flex items-end gap-3">
-                  <strong data-count={metrics.present} className="text-7xl font-black tabular-nums tracking-[-0.075em] text-[#101a22] sm:text-8xl">0</strong>
-                  <div className="pb-2"><p className="text-2xl font-bold text-emerald-800">presentes</p><p className="text-sm text-[#65716b]">{metrics.planned ? `de ${metrics.planned} previstos` : 'sem efetivo previsto vinculado às equipes'}</p></div>
+                <div className="mt-4 flex items-end gap-3">
+                  <strong data-count={metrics.present} className="text-4xl font-black tabular-nums tracking-[-0.045em] text-[#101a22] sm:text-5xl">0</strong>
+                  <div className="pb-1"><p className="text-base font-bold text-emerald-800">presentes</p><p className="text-xs text-[#65716b]">{metrics.planned ? `de ${metrics.planned} previstos` : 'sem efetivo previsto vinculado às equipes'}</p></div>
                 </div>
                 {/* Sem efetivo previsto não existe percentual: mostrar "0% confirmado"
                     ao lado de 32 presentes faz o painel parecer quebrado. */}
                 {metrics.planned > 0 ? (
                   <>
-                    <div className="mt-7 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div data-barra-efetivo className="h-full origin-left rounded-full bg-[#087653]" style={{ width: `${metrics.percent}%` }} /></div>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div data-barra-efetivo className="h-full origin-left rounded-full bg-[#087653]" style={{ width: `${metrics.percent}%` }} /></div>
                     <p className="mt-2 text-right text-xs font-bold tabular-nums text-[#65716b]">{metrics.percent}% confirmado</p>
                   </>
                 ) : (
-                  <p className="mt-7 text-xs text-[#79847e]">Vincule os colaboradores às equipes em <strong className="font-bold text-[#26362f]">Equipes</strong> para acompanhar o percentual confirmado.</p>
+                  <p className="mt-4 text-xs text-[#79847e]">Vincule os colaboradores às equipes em <strong className="font-bold text-[#26362f]">Equipes</strong> para acompanhar o percentual confirmado.</p>
                 )}
               </div>
             </article>
