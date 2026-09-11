@@ -128,6 +128,32 @@ export const NAVIGATION_GROUPS = [
   },
 ] as const;
 
+/**
+ * Navegação diária enxuta. Os outros módulos permanecem registrados abaixo,
+ * com permissões, rotas, dados, busca global e atalhos internos preservados.
+ */
+const SIDEBAR_MODULE_IDS = new Set([
+  'dashboard',
+  'modo-campo', 'central-operacional', 'diario-obra', 'planejamento',
+  'controle-equipamentos', 'manutencao', 'lancamentos',
+  'presenca', 'colaboradores',
+  'materiais',
+  'relatorios', 'cadastros',
+]);
+
+const SIDEBAR_GROUP_LABELS: Record<string, string> = {
+  Equipamentos: 'Frota',
+  Análise: 'Gestão',
+};
+
+export const SIDEBAR_NAVIGATION_GROUPS = NAVIGATION_GROUPS
+  .map(group => ({
+    ...group,
+    label: SIDEBAR_GROUP_LABELS[group.label] || group.label,
+    items: group.items.filter(item => SIDEBAR_MODULE_IDS.has(item.id)),
+  }))
+  .filter(group => group.items.length > 0);
+
 export const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
   .map(group => group.items as readonly NavigationItem[])
   .reduce<NavigationItem[]>((items, groupItems) => items.concat(groupItems), []);

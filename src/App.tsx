@@ -200,7 +200,7 @@ import { validateCentralRecord } from './masterData/centralRegistry';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
-  NAVIGATION_GROUPS,
+  SIDEBAR_NAVIGATION_GROUPS,
   ROLE_ACCESS,
   normalizeUserRole,
   type UserRole,
@@ -4201,7 +4201,7 @@ export default function App() {
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase('pt-BR');
   const allowedTabs = ROLE_ACCESS[currentUserRole];
-  const filteredNavigationGroups = NAVIGATION_GROUPS
+  const filteredNavigationGroups = SIDEBAR_NAVIGATION_GROUPS
     .map(group => ({
       ...group,
       items: group.items.filter(item => allowedTabs.includes(item.id)
