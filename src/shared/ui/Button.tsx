@@ -45,7 +45,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'renea-button inline-flex shrink-0 items-center justify-center gap-2 rounded-[3px] border font-bold tracking-[-0.01em] transition-[background-color,border-color,color,transform] duration-200 ease-out active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-600/20 disabled:cursor-not-allowed disabled:opacity-60',
+        'renea-button inline-flex shrink-0 items-center justify-center gap-2 rounded-md border font-bold transition-[background-color,border-color,color,transform,box-shadow] duration-200 ease-out active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-600/20 disabled:cursor-not-allowed disabled:opacity-60',
         sizeClass[size],
         variantClass[variant],
         className,

@@ -46,6 +46,7 @@ import {
   CheckCircle,
   Upload
 } from 'lucide-react';
+import { PageHeader } from '../shared/ui';
 
 type SubTab = 'empresas' | 'fornecedores' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
 
@@ -668,7 +669,35 @@ export default function CadastrosTab({
   };
 
   return (
-    <div className="space-y-6" id="cadastros-container">
+    <div className="erp-module erp-module--cadastros space-y-5" id="cadastros-container">
+      <PageHeader
+        eyebrow="Base corporativa"
+        title="Cadastros mestres"
+        description="Cadastre uma única vez e reutilize dados oficiais em toda a operação."
+        actions={<>
+          <button
+            onClick={() => importFileInputRef.current?.click()}
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800"
+          >
+            <Upload className="w-4.5 h-4.5" />
+            Importar planilha
+          </button>
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept=".xlsx,.xlsm,.csv,.tsv"
+            onChange={handleImportSpreadsheet}
+            className="hidden"
+          />
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-md transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            {subTab === 'funcionarios' ? 'Novo colaborador' : 'Novo registro'}
+          </button>
+        </>}
+      />
       <CentralRegistryOverview
         empresas={empresas}
         obras={obras}
@@ -697,41 +726,6 @@ export default function CadastrosTab({
         onApplyMasterWorkbook={onApplyMasterWorkbook}
       />
       
-      {/* Upper header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-emerald-500" />
-             Sistema Central de Cadastros e Controle de Obra
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">Cadastre uma única vez e reutilize os dados oficiais no efetivo, combustível, viagens, equipamentos e estacas.</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => importFileInputRef.current?.click()}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800"
-          >
-            <Upload className="w-4.5 h-4.5" />
-            Importar planilha
-          </button>
-          <input
-            ref={importFileInputRef}
-            type="file"
-            accept=".xlsx,.xlsm,.csv,.tsv"
-            onChange={handleImportSpreadsheet}
-            className="hidden"
-          />
-          <button
-            onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all  flex items-center gap-2 cursor-pointer"
-          >
-            <Plus className="w-4.5 h-4.5" />
-            {subTab === 'funcionarios' ? 'NOVO COLABORADOR' : 'NOVO REGISTRO'}
-          </button>
-        </div>
-      </div>
-
       {/* Auxiliary Tabs Grid Selector */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2.5" id="subtab-selector">
         {[
@@ -912,8 +906,8 @@ export default function CadastrosTab({
             <X className="w-5 h-5" />
           </button>
 
-          <h3 className="text-sm uppercase tracking-widest font-black text-emerald-700 font-mono mb-5 flex items-center gap-2">
-            {editingId ? '✏️ Editando Registro' : '➕ Novo Cadastro'} • {subTab.toUpperCase()}
+          <h3 className="text-sm font-bold text-emerald-700 mb-5 flex items-center gap-2">
+            {editingId ? 'Editar registro' : 'Novo cadastro'} · {subTab}
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">

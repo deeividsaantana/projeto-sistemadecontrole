@@ -37,7 +37,7 @@ import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
-import { ConfirmDialog, CountUp } from '../shared/ui';
+import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -1159,19 +1159,14 @@ export default function LancamentosTab({
   }
 
   return (
-    <div className="space-y-6" id="lancamentos-tab">
+    <div className="erp-module erp-module--lancamentos space-y-5" id="lancamentos-tab">
       
       {/* Tab Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-emerald-500" />
-            Lançamentos de Campo Diários
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">Insira abastecimentos rápidos e manutenções de lubrificação.</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+      <PageHeader
+        eyebrow="Operação de campo"
+        title="Lançamentos diários"
+        description="Registre abastecimentos e lubrificações com rastreabilidade operacional."
+        actions={<>
           {mode === 'abastecimentos' && (
             <>
               <button
@@ -1209,8 +1204,8 @@ export default function LancamentosTab({
             <Plus className="w-4.5 h-4.5" />
             {mode === 'abastecimentos' ? 'Novo Abastecimento' : 'Nova Lubrificação'}
           </button>
-        </div>
-      </div>
+        </>}
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -1394,8 +1389,8 @@ export default function LancamentosTab({
             <X className="w-5 h-5" />
           </button>
 
-          <h3 className="text-xs uppercase tracking-widest font-black text-emerald-700 font-mono mb-5 flex items-center gap-2">
-            {editingId ? '✏️ Editando Lançamento' : '➕ Novo Lançamento'} • {mode === 'abastecimentos' ? 'Abastecimento de Combustível' : 'Manutenção / Lubrificação de Máquina'}
+          <h3 className="text-sm font-bold text-emerald-700 mb-5 flex items-center gap-2">
+            {editingId ? 'Editar lançamento' : 'Novo lançamento'} · {mode === 'abastecimentos' ? 'Abastecimento de combustível' : 'Lubrificação de máquina'}
           </h3>
 
           <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-5">

@@ -25,7 +25,7 @@ export function TableShell({ minWidth = 720, children, className }: TableShellPr
 /** Cabeçalho padrão das tabelas do sistema. */
 export function TableHead({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <thead className={cn('bg-[#eef1ed] text-[10px] font-black uppercase tracking-[0.1em] text-[#53635c]', className)}>
+    <thead className={cn('sticky top-0 z-[1] bg-[#f3f6f4] text-[11px] font-bold uppercase text-[#53635c]', className)}>
       {children}
     </thead>
   );

@@ -23,7 +23,7 @@ export function TextInput({
       <input
         type={type}
         className={cn(
-          'h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-medium text-slate-800 shadow-sm outline-none transition-all duration-300 placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500',
+          'h-11 w-full rounded-md border border-[#c8d3cd] bg-white px-3.5 text-sm font-medium text-[#17231f] outline-none transition-[border-color,box-shadow,background-color] duration-200 placeholder:text-[#84918b] focus:border-[#087653] focus:ring-4 focus:ring-[#087653]/10 disabled:cursor-not-allowed disabled:bg-[#f1f4f2] disabled:text-[#7a8781]',
           Icon && 'pl-9',
           className,
         )}

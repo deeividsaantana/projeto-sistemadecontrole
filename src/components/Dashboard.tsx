@@ -371,18 +371,15 @@ export default function Dashboard({
 
   return (
     <main id="dashboard-tab" className="erp-dashboard min-h-full bg-[#eef0ec] pb-14 text-[#172329]">
-      <header className="dashboard-hero border-b border-[#cbd4cf] bg-[#f7f8f5]">
-        <div className="dashboard-hero__visual" aria-hidden="true">
-          <img src={siteAerial} alt="" />
-          <span>Pessoas<br />e engenharia<br />em movimento</span>
+      <header className="dashboard-command-header">
+        <div className="min-w-0">
+          <p className="dashboard-command-header__eyebrow"><span />Central de comando</p>
+          <h1>Visão operacional</h1>
+          <p><strong>{PROJECT_NAME}</strong><span>Dados consolidados de campo, frota, pessoas, materiais e custos.</span></p>
         </div>
-        <div className="dashboard-hero__content px-4 py-7 sm:px-7 lg:px-8 lg:py-10">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#52615b]">Operação em tempo real</p>
-            <h1 className="mt-3 text-[clamp(3rem,5vw,5.15rem)] font-black leading-[0.86] tracking-[-0.075em] text-[#07110e] lg:whitespace-nowrap">Visão operacional</h1>
-            <p className="mt-4 text-[clamp(1rem,2vw,1.6rem)] font-bold tracking-[-0.025em] text-[#16372e]">{PROJECT_NAME}</p>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#66736e]">Frota, pendências e movimentações recentes reunidas em uma leitura diária.</p>
-          </div>
+        <div className="dashboard-command-header__status" aria-label="Estado da operação">
+          <span><i />Operação conectada</span>
+          <small>Posição de {formatDate(referenceDate)}</small>
         </div>
       </header>
 
