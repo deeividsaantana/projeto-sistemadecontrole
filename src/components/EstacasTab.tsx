@@ -6,12 +6,15 @@ import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal } from '../
 import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
 import { uploadOperationalAttachment } from '../services/operationalAttachments';
 import StakeDrivingMap from './StakeDrivingMap';
-import { CountUp, PageHeader } from '../shared/ui';
+import { ConfirmDialog, CountUp } from '../shared/ui';
+import { inativar, somenteAtivos } from '../utils/inativacao';
 
 type Props = {
   controle: ControleEstacas;
   obras: ObraLocal[];
   onChange: (next: ControleEstacas, description: string) => void;
+  /** Quem fica registrado na inativação. */
+  responsavel?: string;
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -61,7 +64,8 @@ const emptyDriving = (): Omit<CravacaoEstaca, 'id' | 'criadoEm'> => ({
   observacao: '', origem: 'Manual',
 });
 
-export default function EstacasTab({ controle, obras, onChange }: Props) {
+export default function EstacasTab({ controle, obras, onChange, responsavel = 'Sistema' }: Props) {
+  const responsavelAcao = responsavel;
   const [mode, setMode] = useState<'lotes' | 'cravacoes' | 'notas'>('lotes');
   const [lot, setLot] = useState(emptyLot);
   const [driving, setDriving] = useState(emptyDriving);
@@ -73,12 +77,21 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
   const [editingDrivingId, setEditingDrivingId] = useState<string | null>(null);
   const [selectedLotIds, setSelectedLotIds] = useState<string[]>([]);
   const [selectedDrivingIds, setSelectedDrivingIds] = useState<string[]>([]);
-  const [visibleDrivingIds, setVisibleDrivingIds] = useState<string[]>(controle.cravacoes.map(item => item.id));
+  const [confirmandoLotes, setConfirmandoLotes] = useState(false);
+  const [confirmandoCravacoes, setConfirmandoCravacoes] = useState(false);
+
+  // Um filtro só: lote e cravação inativados somem das tabelas, dos saldos e
+  // dos relatórios desta tela, sem sair do arquivo.
+  const controleVisivel = useMemo<ControleEstacas>(() => ({
+    lotes: somenteAtivos(controle.lotes),
+    cravacoes: somenteAtivos(controle.cravacoes),
+  }), [controle]);
+  const [visibleDrivingIds, setVisibleDrivingIds] = useState<string[]>(controleVisivel.cravacoes.map(item => item.id));
   const summary = useMemo(() => buildStakeSummary(controle), [controle]);
   const balances = useMemo(() => buildStakeBalances(controle), [controle]);
   const invoices = useMemo(
-    () => Array.from(new Set(controle.lotes.map(item => item.notaFiscal).filter(Boolean))).map(nota => reconcileStakeInvoice(controle.lotes, nota)),
-    [controle.lotes]
+    () => Array.from(new Set(controleVisivel.lotes.map(item => item.notaFiscal).filter(Boolean))).map(nota => reconcileStakeInvoice(controleVisivel.lotes, nota)),
+    [controleVisivel.lotes]
   );
 
   const saveLot = async (event: React.FormEvent) => {
@@ -243,7 +256,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
         };
         importedDrivings.push({
           ...draft,
-          loteId: suggestStakeLot(draft, { lotes: [...importedLots, ...controle.lotes], cravacoes: [...importedDrivings, ...controle.cravacoes] })?.id,
+          loteId: suggestStakeLot(draft, { lotes: [...importedLots, ...controleVisivel.lotes], cravacoes: [...importedDrivings, ...controleVisivel.cravacoes] })?.id,
           id: uid(`cravacao-${rowNumber}`),
           criadoEm: new Date().toISOString(),
         });
@@ -260,39 +273,46 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
     }
   };
 
-  const removeLot = (id: string) => onChange({
-    lotes: controle.lotes.filter(item => item.id !== id),
-    cravacoes: controle.cravacoes.map(item => item.loteId === id ? { ...item, loteId: undefined } : item),
-  }, 'Excluiu um lote e preservou as cravações para reassociação.');
+  // Lote e cravação são registro de obra medido e pago: inativa, não apaga. O
+  // dado sai das telas e dos saldos, mas continua no arquivo e pode voltar.
+  const inativarLotes = (ids: string[], quem: string) => onChange({
+    lotes: inativar(controle.lotes, ids, quem),
+    cravacoes: controle.cravacoes.map(item => item.loteId && ids.includes(item.loteId)
+      ? { ...item, loteId: undefined }
+      : item),
+  }, ids.length === 1
+    ? 'Inativou um lote e preservou as cravações para reassociação.'
+    : `Inativou ${ids.length} lote(s) e preservou as cravações.`);
+
+  const removeLot = (id: string) => inativarLotes([id], responsavelAcao);
   const removeDriving = (id: string) => {
-    onChange({ ...controle, cravacoes: controle.cravacoes.filter(item => item.id !== id) }, 'Excluiu uma cravação.');
+    onChange({ ...controle, cravacoes: inativar(controle.cravacoes, [id], responsavelAcao) }, 'Inativou uma cravação.');
     if (editingDrivingId === id) cancelDrivingEdit();
   };
-  const removeSelectedLots = () => {
-    if (selectedLotIds.length === 0 || !window.confirm(`Excluir ${selectedLotIds.length} lote(s) selecionado(s)? As cravações serão preservadas para reassociação.`)) return;
-    const selected = new Set(selectedLotIds);
-    onChange({
-      lotes: controle.lotes.filter(item => !selected.has(item.id)),
-      cravacoes: controle.cravacoes.map(item => item.loteId && selected.has(item.loteId) ? { ...item, loteId: undefined } : item),
-    }, `Excluiu ${selected.size} lote(s) selecionado(s) e preservou as cravações.`);
+  const confirmarInativacaoLotes = () => {
+    inativarLotes(selectedLotIds, responsavelAcao);
     setSelectedLotIds([]);
+    setConfirmandoLotes(false);
   };
-  const removeSelectedDrivings = () => {
-    if (selectedDrivingIds.length === 0 || !window.confirm(`Excluir ${selectedDrivingIds.length} cravação(ões) selecionada(s)?`)) return;
-    const selected = new Set(selectedDrivingIds);
-    onChange({ ...controle, cravacoes: controle.cravacoes.filter(item => !selected.has(item.id)) }, `Excluiu ${selected.size} cravação(ões) selecionada(s).`);
+  const confirmarInativacaoCravacoes = () => {
+    onChange(
+      { ...controle, cravacoes: inativar(controle.cravacoes, selectedDrivingIds, responsavelAcao) },
+      `Inativou ${selectedDrivingIds.length} cravação(ões) selecionada(s).`,
+    );
     setSelectedDrivingIds([]);
+    setConfirmandoCravacoes(false);
   };
 
   return (
-    <div className="renea-page-viewport space-y-5">
-      <PageHeader
-        eyebrow="Recebimento e cravação"
-        photo="ponte-construcao"
-        title="Controle de Estacas"
-        description="Recebimento, NF, lote físico, cravação, sobra, perda e saldo confirmado."
-        actions={(
-          <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
+    <div className="space-y-5">
+      <section className="rounded-lg border border-emerald-500/20 bg-white p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700">ERP v2.6</p>
+            <h1 className="mt-1 text-2xl font-black text-slate-800">Controle de Estacas</h1>
+            <p className="mt-1 text-xs text-slate-400">Recebimento, NF, lote físico, cravação, sobra, perda e saldo confirmado.</p>
+          </div>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-500">
             <FileSpreadsheet className="h-4 w-4" />
             {isImporting ? 'Importando...' : 'Importar controle Excel'}
             <input type="file" accept=".xlsx" className="hidden" disabled={isImporting} onChange={event => {
@@ -301,8 +321,8 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
               event.target.value = '';
             }} />
           </label>
-        )}
-      />
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
@@ -351,14 +371,14 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
             {editingLotId && <button type="button" onClick={cancelLotEdit} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700"><X className="h-4 w-4" /> Cancelar edição</button>}
           </form>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
-            <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={controle.lotes.length > 0 && selectedLotIds.length === controle.lotes.length} onChange={e => setSelectedLotIds(e.target.checked ? controle.lotes.map(item => item.id) : [])} /> Selecionar todos ({selectedLotIds.length})</label>
-            <button type="button" disabled={selectedLotIds.length === 0} onClick={removeSelectedLots} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+            <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={controleVisivel.lotes.length > 0 && selectedLotIds.length === controleVisivel.lotes.length} onChange={e => setSelectedLotIds(e.target.checked ? controleVisivel.lotes.map(item => item.id) : [])} /> Selecionar todos ({selectedLotIds.length})</label>
+            <button type="button" disabled={selectedLotIds.length === 0} onClick={() => setConfirmandoLotes(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
           </div>
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full min-w-[900px] text-left text-xs">
               <thead className="bg-white text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Sel.</th><th>Data/NF</th><th>Material</th><th>Perfil</th><th>Recebido</th><th>Cravado</th><th>Saldo</th><th>Status</th><th /></tr></thead>
               <tbody className="divide-y divide-slate-800 bg-white">
-                {controle.lotes.map(item => {
+                {controleVisivel.lotes.map(item => {
                   const balance = balances.find(entry => entry.loteId === item.id);
                   return <tr key={item.id}><td className="p-3"><input type="checkbox" checked={selectedLotIds.includes(item.id)} onChange={e => setSelectedLotIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /></td><td className="text-slate-700">{item.data}<br /><b className="text-slate-800">NF {item.notaFiscal}</b></td><td className="text-slate-700">{item.descricao}<br /><span className="text-slate-600">{item.materialCodigo}</span></td><td className="text-slate-700">{item.perfilModelo || item.comprimentoM}</td><td className="text-slate-700">{balance?.recebidoM} m</td><td className="text-slate-700">{balance?.cravadoM} m</td><td className={balance?.status === 'Divergente' ? 'font-black text-rose-700' : 'font-black text-emerald-700'}>{balance?.saldoConfirmadoM} m</td><td className="text-slate-400">{item.nfConferida ? 'NF conferida' : item.status}</td><td><button type="button" title="Editar lote" onClick={() => editLot(item)} className="p-2 text-sky-700"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir lote" onClick={() => removeLot(item.id)} className="p-2 text-rose-700"><Trash2 className="h-4 w-4" /></button></td></tr>;
                 })}
@@ -371,7 +391,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
       {mode === 'cravacoes' && (
         <>
           <StakeDrivingMap
-            items={controle.cravacoes}
+            items={controleVisivel.cravacoes}
             obras={obras}
             activeId={activeDrivingId}
             onActiveIdChange={setActiveDrivingId}
@@ -385,7 +405,7 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
             <input type="number" step="0.01" placeholder="Comprimento (m)" value={driving.comprimentoM || ''} onChange={e => setDriving({ ...driving, comprimentoM: Number(e.target.value) })} className="input-dark" />
             <input type="number" step="0.01" placeholder="Cravado (m)" value={driving.comprimentoCravadoM || ''} onChange={e => setDriving({ ...driving, comprimentoCravadoM: Number(e.target.value) })} className="input-dark" />
             <input type="number" step="0.01" placeholder="Perda (m)" value={driving.perdaM || ''} onChange={e => setDriving({ ...driving, perdaM: Number(e.target.value) })} className="input-dark" />
-            <select value={driving.loteId || ''} onChange={e => setDriving({ ...driving, loteId: e.target.value || undefined })} className="input-dark"><option value="">Associação automática</option>{controle.lotes.map(item => <option key={item.id} value={item.id}>NF {item.notaFiscal} · {item.perfilModelo || item.descricao}</option>)}</select>
+            <select value={driving.loteId || ''} onChange={e => setDriving({ ...driving, loteId: e.target.value || undefined })} className="input-dark"><option value="">Associação automática</option>{controleVisivel.lotes.map(item => <option key={item.id} value={item.id}>NF {item.notaFiscal} · {item.perfilModelo || item.descricao}</option>)}</select>
             <select value={driving.obraLocalId || ''} onChange={e => setDriving({ ...driving, obraLocalId: e.target.value || undefined })} className="input-dark"><option value="">Obra/local</option>{obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
             <input placeholder="Responsável" value={driving.responsavel} onChange={e => setDriving({ ...driving, responsavel: e.target.value })} className="input-dark" />
             <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><Hammer className="h-4 w-4" /> {editingDrivingId ? 'Salvar alterações' : 'Registrar cravação'}</button>
@@ -393,10 +413,10 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
           </form>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
             <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={visibleDrivingIds.length > 0 && visibleDrivingIds.every(id => selectedDrivingIds.includes(id))} onChange={e => setSelectedDrivingIds(e.target.checked ? visibleDrivingIds : [])} /> Selecionar visíveis ({selectedDrivingIds.length})</label>
-            <button type="button" disabled={selectedDrivingIds.length === 0} onClick={removeSelectedDrivings} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionadas</button>
+            <button type="button" disabled={selectedDrivingIds.length === 0} onClick={() => setConfirmandoCravacoes(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionadas</button>
           </div>
           <div className="grid gap-3">
-            {controle.cravacoes.filter(item => visibleDrivingIds.includes(item.id)).sort((a, b) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true })).map(item => <div id={`stake-row-${item.id}`} key={item.id} onMouseEnter={() => setActiveDrivingId(item.id)} onMouseLeave={() => editingDrivingId !== item.id && setActiveDrivingId(null)} className={`flex flex-col gap-2 rounded-xl border bg-white p-4 transition md:flex-row md:items-center ${activeDrivingId === item.id ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}><input type="checkbox" checked={selectedDrivingIds.includes(item.id)} onChange={e => setSelectedDrivingIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /><div className="flex-1"><p className="font-black text-slate-900">{item.identificacao} · {item.perfil || 'Perfil não informado'}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} / {item.comprimentoM} m · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-700' : 'text-amber-700'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" title="Editar cravação" onClick={() => editDriving(item)} className="p-2 text-sky-600 hover:text-sky-800"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir cravação" onClick={() => removeDriving(item.id)} className="p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button></div>)}
+            {controleVisivel.cravacoes.filter(item => visibleDrivingIds.includes(item.id)).sort((a, b) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true })).map(item => <div id={`stake-row-${item.id}`} key={item.id} onMouseEnter={() => setActiveDrivingId(item.id)} onMouseLeave={() => editingDrivingId !== item.id && setActiveDrivingId(null)} className={`flex flex-col gap-2 rounded-xl border bg-white p-4 transition md:flex-row md:items-center ${activeDrivingId === item.id ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}><input type="checkbox" checked={selectedDrivingIds.includes(item.id)} onChange={e => setSelectedDrivingIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /><div className="flex-1"><p className="font-black text-slate-900">{item.identificacao} · {item.perfil || 'Perfil não informado'}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} / {item.comprimentoM} m · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-700' : 'text-amber-700'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" title="Editar cravação" onClick={() => editDriving(item)} className="p-2 text-sky-600 hover:text-sky-800"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir cravação" onClick={() => removeDriving(item.id)} className="p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button></div>)}
           </div>
         </>
       )}
@@ -406,6 +426,25 @@ export default function EstacasTab({ controle, obras, onChange }: Props) {
           {invoices.map(invoice => <div key={invoice.notaFiscal} className="rounded-xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><h3 className="font-black text-slate-800">NF {invoice.notaFiscal}</h3>{invoice.status === 'Conforme' ? <CheckCircle2 className="h-5 w-5 text-emerald-700" /> : <AlertTriangle className="h-5 w-5 text-amber-700" />}</div><div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-400"><span>{invoice.itens} item(ns)</span><span>{invoice.pesoKg.toLocaleString('pt-BR')} kg</span><span>R$ {invoice.valorTotal.toLocaleString('pt-BR')}</span><span>{invoice.conferidos}/{invoice.itens} conferidos</span></div></div>)}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmandoLotes}
+        tone="warning"
+        title={`Inativar ${selectedLotIds.length} lote(s)?`}
+        description="Os lotes saem das tabelas e dos saldos, mas continuam guardados e podem voltar. As cravações são preservadas para reassociação."
+        confirmLabel="Inativar"
+        onConfirm={confirmarInativacaoLotes}
+        onCancel={() => setConfirmandoLotes(false)}
+      />
+      <ConfirmDialog
+        open={confirmandoCravacoes}
+        tone="warning"
+        title={`Inativar ${selectedDrivingIds.length} cravação(ões)?`}
+        description="As cravações saem das tabelas e dos saldos, mas continuam guardadas e podem voltar."
+        confirmLabel="Inativar"
+        onConfirm={confirmarInativacaoCravacoes}
+        onCancel={() => setConfirmandoCravacoes(false)}
+      />
     </div>
   );
 }

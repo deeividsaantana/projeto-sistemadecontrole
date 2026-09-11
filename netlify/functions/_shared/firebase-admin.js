@@ -110,9 +110,15 @@ export const requestIpHash = event => {
   return stableHash(forwarded.split(',')[0].trim()).slice(0, 24);
 };
 
-export const enforceRateLimit = async (database, event, bucket, limit, windowSeconds) => {
+/**
+ * `identity` permite contar por quem de fato está agindo (a equipe do link,
+ * por exemplo) em vez de contar por endereço de rede. No Wi-Fi do canteiro
+ * dezenas de celulares saem pelo mesmo IP: contar por IP ali derruba gente
+ * honesta. Sem `identity`, continua sendo por IP, como antes.
+ */
+export const enforceRateLimit = async (database, event, bucket, limit, windowSeconds, identity = '') => {
   const windowId = Math.floor(Date.now() / (windowSeconds * 1000));
-  const documentId = stableHash(`${bucket}|${requestIpHash(event)}|${windowId}`).slice(0, 48);
+  const documentId = stableHash(`${bucket}|${identity || requestIpHash(event)}|${windowId}`).slice(0, 48);
   const reference = database.collection('sistemarenea_rate_limits').doc(documentId);
   await database.runTransaction(async transaction => {
     const snapshot = await transaction.get(reference);

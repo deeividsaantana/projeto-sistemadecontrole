@@ -37,7 +37,7 @@ import CombustivelInteligenteTab from './CombustivelInteligenteTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
-import { CountUp, PageHeader } from '../shared/ui';
+import { ConfirmDialog, CountUp } from '../shared/ui';
 
 interface LancamentosTabProps {
   empresas: Empresa[];
@@ -84,6 +84,7 @@ export default function LancamentosTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [selectedAbastecimentoIds, setSelectedAbastecimentoIds] = useState<string[]>([]);
+  const [confirmandoInativacao, setConfirmandoInativacao] = useState(false);
   const [validationError, setValidationError] = useState('');
 
   // --- Filtros avançados do módulo de Combustível/Lubrificação (Prioridade 1) ---
@@ -1158,55 +1159,58 @@ export default function LancamentosTab({
   }
 
   return (
-    <div className="renea-page-viewport space-y-6" id="lancamentos-tab">
+    <div className="space-y-6" id="lancamentos-tab">
       
-      <PageHeader
-        eyebrow="Lançamento de campo"
-        photo="rodovia-duplicada"
-        title="Lançamentos diários"
-        description="Insira abastecimentos rápidos e manutenções de lubrificação."
-        actions={(
-          <>
-            {mode === 'abastecimentos' && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isParsingImport}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Upload className="w-4 h-4" />
-                  {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportExcelAbastecimentos}
-                  disabled={isExportingExcel}
-                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  {isExportingExcel ? 'Exportando...' : 'Exportar Excel'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownloadModeloCombustivel}
-                  className="px-4 py-2.5 border border-slate-200 bg-white text-slate-700 hover:border-slate-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  Baixar modelo
-                </button>
-              </>
-            )}
-            <button
-              onClick={handleOpenCreate}
-              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-4.5 h-4.5" />
-              {mode === 'abastecimentos' ? 'Novo Abastecimento' : 'Nova Lubrificação'}
-            </button>
-          </>
-        )}
-      />
+      {/* Tab Header bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-emerald-500" />
+            Lançamentos de Campo Diários
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">Insira abastecimentos rápidos e manutenções de lubrificação.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {mode === 'abastecimentos' && (
+            <>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isParsingImport}
+                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportExcelAbastecimentos}
+                disabled={isExportingExcel}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                {isExportingExcel ? 'Exportando...' : 'Exportar Excel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadModeloCombustivel}
+                className="px-4 py-2.5 bg-white border border-slate-200 hover:border-slate-500 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Baixar modelo
+              </button>
+            </>
+          )}
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            {mode === 'abastecimentos' ? 'Novo Abastecimento' : 'Nova Lubrificação'}
+          </button>
+        </div>
+      </div>
       <input
         ref={fileInputRef}
         type="file"
@@ -1632,7 +1636,7 @@ export default function LancamentosTab({
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3 text-xs">
               <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredAbastecimentos.length > 0 && filteredAbastecimentos.every(item => selectedAbastecimentoIds.includes(item.id))} onChange={event => setSelectedAbastecimentoIds(event.target.checked ? filteredAbastecimentos.map(item => item.id) : [])} /> Selecionar visíveis ({selectedAbastecimentoIds.length})</label>
-              <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedAbastecimentoIds.length} abastecimento(s) selecionado(s)?`)) { onDeleteAbastecimentos(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+              <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>
             </div>
             <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -1849,6 +1853,16 @@ export default function LancamentosTab({
         confirming={isConfirmingImport}
         onCancel={handleCancelImport}
         onConfirm={handleConfirmImport}
+      />
+
+      <ConfirmDialog
+        open={confirmandoInativacao}
+        tone="warning"
+        title={`Inativar ${selectedAbastecimentoIds.length} abastecimento(s)?`}
+        description="Os abastecimentos saem das telas e dos totais, mas continuam guardados e podem voltar."
+        confirmLabel="Inativar"
+        onConfirm={() => { onDeleteAbastecimentos(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); setConfirmandoInativacao(false); }}
+        onCancel={() => setConfirmandoInativacao(false)}
       />
 
     </div>

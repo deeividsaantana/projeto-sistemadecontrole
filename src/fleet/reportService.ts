@@ -3,6 +3,7 @@ import { FLEET_OPERATIONAL_STATUS, createEmptyFleetMetrics } from './domain';
 import { reconcileFleetRecords } from './reconciliation';
 import { assertFleetStatusPartition, sortFleetStatesByStatus } from './status';
 import { formatBrazilianDate, formatDurationMinutes } from './time';
+import { OBRA } from '../config/obra';
 import {
   normalizeComparable,
   normalizeEmployeeCode,
@@ -186,7 +187,7 @@ export const createFleetReportViewModel = (
     generatedAt: now.toISOString(),
     reportDate: filters.date,
     reportDateLabel: formatBrazilianDate(filters.date),
-    operationName: 'Operação - Rodoanel Mário Covas · Alça Trecho Leste',
+    operationName: `Operação - ${OBRA.nome}`,
     companyLabel,
     filters: { ...filters },
     metrics,
@@ -200,7 +201,7 @@ export const createFleetReportViewModel = (
     sections: [
       {
         id: 'operating',
-        title: 'Operação - Trecho Leste',
+        title: `Operação - ${OBRA.nomeCurto}`,
         emptyMessage: 'Nenhum CB em operação neste período.',
         rows: operating,
       },

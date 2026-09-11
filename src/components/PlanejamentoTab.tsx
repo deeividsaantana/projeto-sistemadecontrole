@@ -3,13 +3,12 @@
  * é digitado — vem dos lançamentos de produção que atendem ao plano.
  */
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, CalendarRange, Clock3, Plus, Search } from 'lucide-react';
+import { AlertTriangle, CalendarRange, Plus, Search } from 'lucide-react';
 import type { FrenteServico, GrupoEquipe, ObraLocal, PlanejamentoItem, RegistroProducao, ServicoObra, SituacaoPlano } from '../types';
 import { aderenciaDosPlanos, planosNoPeriodo, validarPlano } from '../utils/planejamento';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
 import {
-  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -157,10 +156,8 @@ export default function PlanejamentoTab({
   };
 
   return (
-    <div id="planejamento-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="planejamento-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Planejamento"
-        photo="rodovia-serra"
         title="Planejamento"
         description="Metas por período, frente e equipe. O realizado vem da produção lançada."
         actions={podeEditar ? (
@@ -184,11 +181,15 @@ export default function PlanejamentoTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Planos no período', valor: linhas.length, tone: 'info' as const, icone: Clock3 },
-          { label: 'Planejado', valor: numero(totalPlanejado), tone: 'neutral' as const, icone: CalendarRange },
-          { label: 'Realizado', valor: numero(totalRealizado), tone: 'success' as const, icone: CalendarRange },
+          { label: 'Planos no período', valor: String(linhas.length) },
+          { label: 'Planejado', valor: numero(totalPlanejado) },
+          { label: 'Realizado', valor: numero(totalRealizado) },
+          { label: 'Aderência', valor: `${aderenciaGeral}%` },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block truncate text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 

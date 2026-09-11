@@ -4,7 +4,7 @@
  * escrita, para a decisão ficar registrada em vez de virar aprovação silenciosa.
  */
 import { useMemo, useState } from 'react';
-import { AlertOctagon, CheckCircle2, ClipboardCheck, FileText, Plus, Search, Trash2 } from 'lucide-react';
+import { ClipboardCheck, Plus, Search, Trash2 } from 'lucide-react';
 import type {
   FichaVerificacaoServico,
   FrenteServico,
@@ -29,9 +29,6 @@ import {
   EmptyState,
   Modal,
   PageHeader,
-  SegmentedControl,
-  SearchInput,
-  StatCard,
   TableBody,
   TableHead,
   TableShell,
@@ -215,10 +212,8 @@ export default function FvsTab({
   const sugerida = situacaoSugerida(itens);
 
   return (
-    <div id="fvs-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="fvs-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Verificação de serviço"
-        photo="ponte-construcao"
         title="FVS"
         description="Ficha de Verificação de Serviço. Item obrigatório não conforme não é aprovado."
         actions={podeEditar ? (
@@ -233,31 +228,43 @@ export default function FvsTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Fichas', valor: fichasAtivas.length, tone: 'neutral' as const, icone: FileText },
-          { label: 'Aprovadas', valor: aprovadas, tone: 'success' as const, icone: CheckCircle2 },
-          { label: 'Com pendência', valor: comPendencia, tone: 'warning' as const, icone: AlertOctagon },
-          { label: 'Reprovadas', valor: reprovadas, tone: 'danger' as const, icone: AlertOctagon },
+          { label: 'Fichas', valor: String(fichasAtivas.length) },
+          { label: 'Aprovadas', valor: String(aprovadas) },
+          { label: 'Com pendência', valor: String(comPendencia) },
+          { label: 'Reprovadas', valor: String(reprovadas) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 
-      <SegmentedControl
-        className="mt-4"
-        label="Seções da FVS"
-        items={[{ id: 'fichas', label: 'Fichas' }, { id: 'modelos', label: 'Modelos' }] as const}
-        value={aba}
-        onChange={setAba}
-      />
+      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+        {([['fichas', 'Fichas'], ['modelos', 'Modelos']] as const).map(([id, rotulo]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAba(id)}
+            aria-pressed={aba === id}
+            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
 
       {aba === 'fichas' && (
-        <SearchInput
-        className="mt-3"
-        label="Buscar ficha"
-        value={busca}
-        onChange={setBusca}
-        placeholder="Número, local, serviço, frente ou situação"
-      />
+        <label className="relative mt-3 block">
+          <span className="sr-only">Buscar ficha</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={busca}
+            onChange={event => setBusca(event.target.value)}
+            placeholder="Número, local, serviço, frente ou situação"
+            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+          />
+        </label>
       )}
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">

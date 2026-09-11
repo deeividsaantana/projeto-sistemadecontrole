@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
+
+import { RouteMotion } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -65,6 +67,7 @@ import {
   INITIAL_PRESENCAS,
   INITIAL_ORDENS_SERVICO,
   INITIAL_GRUPOS_EQUIPES,
+  INITIAL_FRENTES_SERVICO,
   INITIAL_PRESENCAS_LINK,
   INITIAL_HISTORICO_PRESENCAS,
   INITIAL_TICKETS_JAZIDA,
@@ -133,6 +136,7 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 // login e nas demais telas. Ela é carregada antes da hidratação dos dados.
 // Motion and Logo Import
 import reneaLogo from './assets/images/logo-renea-transparent.png';
+import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 
 // Firebase Imports
 import { auth, db } from './firebase';
@@ -176,7 +180,9 @@ import {
   validatePublicTicketAccess,
 } from './publicApi';
 import { enrichFuelDataset } from './utils/fuelOperations';
-import { rotateWeakPublicLinkTokens } from './utils/publicLinkSecurity';
+import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
+import { estaAtivo, inativar, somenteAtivos } from './utils/inativacao';
+import { aplicarPresencaManual, montarPresencaManual, type SituacaoLancada } from './utils/presencaManual';
 import {
   normalizePresenceLists,
   normalizeRuntimeCollection,
@@ -194,7 +200,7 @@ import { validateCentralRecord } from './masterData/centralRegistry';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
-  NAVIGATION_GROUPS,
+  SIDEBAR_NAVIGATION_GROUPS,
   ROLE_ACCESS,
   normalizeUserRole,
   type UserRole,
@@ -440,6 +446,10 @@ export default function App() {
   const uploadsInFlightRef = useRef(0);
   const isCheckingSyncRef = useRef(false);
   const lastSyncCheckAtRef = useRef(0);
+  const automaticDownloadInFlightRef = useRef(false);
+  const pendingRemoteVersionRef = useRef('');
+  const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
+  const currentUserRoleRef = useRef<UserRole>('admin');
   // Ids por tabela da última sincronização concluída neste aparelho. Permite
   // que uma mesclagem saiba diferenciar "eu apaguei isto" de "o colega criou
   // isto depois". Fica só em memória de propósito: não ocupa armazenamento
@@ -448,6 +458,7 @@ export default function App() {
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
+  currentUserRoleRef.current = currentUserRole;
   // Quantos envios do link público de presença já estão no Firebase, pendentes
   // de entrar neste retrato local. Serve só de diagnóstico visível: se ficar
   // preso em um número maior que zero, o processamento em tempo real travou.
@@ -492,6 +503,15 @@ export default function App() {
   const [modeloChecklist, setModeloChecklist] = useState<ModeloChecklist>(MODELO_CHECKLIST_PADRAO);
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [presencasLink, setPresencasLink] = useState<PresencaApontamento[]>([]);
+
+  // Registro inativado sai das telas e dos totais num ponto só. Filtrar aqui,
+  // e não em cada tela, é o que garante que nenhuma delas fique de fora — e
+  // que os cálculos continuem vendo exatamente o mesmo conjunto que viam
+  // quando a exclusão era definitiva. O arquivo completo continua no estado,
+  // que é o que vai para o armazenamento e para a nuvem.
+  const abastecimentosAtivos = useMemo(() => somenteAtivos(abastecimentos), [abastecimentos]);
+  const ticketsJazidaAtivos = useMemo(() => somenteAtivos(ticketsJazida), [ticketsJazida]);
+  const presencasLinkAtivas = useMemo(() => somenteAtivos(presencasLink), [presencasLink]);
   const [historicoPresencas, setHistoricoPresencas] = useState<HistoricoPresenca[]>([]);
   const [controleEquipamentosDiario, setControleEquipamentosDiario] = useState<ControleEquipamentoDiario[]>([]);
   const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
@@ -567,6 +587,7 @@ export default function App() {
         { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO) },
         { key: 'renea_controle_estacas', value: JSON.stringify(INITIAL_CONTROLE_ESTACAS) },
         { key: 'renea_periodos_arquivados', value: '[]' },
+        { key: STORAGE_KEYS.frentesServico, value: JSON.stringify(INITIAL_FRENTES_SERVICO) },
         { key: 'renea_master_data_review_queue', value: '[]' },
         { key: 'renea_history_logs', value: JSON.stringify([]) },
         { key: 'renea_notifications', value: '[]' },
@@ -645,7 +666,15 @@ export default function App() {
           ? INITIAL_PRESENCAS
           : parseStoredJson(savedListasPresenca, 'renea_listas_presenca', INITIAL_PRESENCAS),
       );
-      const securedPublicLinks = rotateWeakPublicLinkTokens(parsedGruposEquipe);
+      // O endereço de presença que o encarregado guardou no celular não pode
+      // mudar sozinho — nem em atualização do sistema, nem quando a nuvem
+      // devolve o grupo. A troca dos tokens fracos herdados é feita uma vez
+      // por aparelho e nunca mais; depois disso só o botão "Renovar link"
+      // troca o endereço, porque aí é decisão de alguém.
+      const securedPublicLinks = estabilizarLinksPublicos(
+        parsedGruposEquipe,
+        readStoredFlag(localStorage, STORAGE_KEYS.linksPublicosEstaveisV1),
+      );
       const loadedEquipamentos = shouldMigrateSpreadsheetSeed
         ? mergeSeedRecordsPreferSeed(parsedEquipamentos, INITIAL_EQUIPAMENTOS, item => item.prefixo.trim().toLowerCase())
         : parsedEquipamentos;
@@ -687,7 +716,7 @@ export default function App() {
       setTreinamentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.treinamentos), STORAGE_KEYS.treinamentos, [] as Treinamento[]));
       setMateriaisCadastro(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisCadastro), STORAGE_KEYS.materiaisCadastro, [] as Material[]));
       setMateriaisMovimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]));
-      setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, [] as FrenteServico[]));
+      setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, INITIAL_FRENTES_SERVICO));
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
       setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
       setProducaoRegistros(parseStoredJson(localStorage.getItem(STORAGE_KEYS.producaoRegistros), STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]));
@@ -712,6 +741,30 @@ export default function App() {
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
       setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
+
+      // Efetivo do EFETIVO_OBRA_3 em quem já usa o sistema. A semente acima só
+      // vale no primeiro acesso do navegador; sem esta passagem, quem já tinha
+      // o RENEA aberto ficaria com as equipes antigas para sempre. A função é
+      // conservadora de propósito: ninguém é apagado, e o token do link
+      // público de presença é preservado equipe por equipe.
+      if (!readStoredFlag(localStorage, STORAGE_KEYS.efetivoObra3V1)) {
+        const migrado = migrarEfetivoObra3(
+          parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS),
+          securedPublicLinks.gruposEquipe,
+          parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, [] as FrenteServico[]),
+          INITIAL_FUNCIONARIOS,
+          INITIAL_GRUPOS_EQUIPES,
+          INITIAL_FRENTES_SERVICO,
+        );
+        setFuncionarios(migrado.funcionarios);
+        setGruposEquipe(migrado.grupos);
+        setFrentesServico(migrado.frentes);
+        writeStorageValue(localStorage, 'renea_funcionarios', JSON.stringify(migrado.funcionarios));
+        writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(migrado.grupos));
+        writeStorageValue(localStorage, STORAGE_KEYS.frentesServico, JSON.stringify(migrado.frentes));
+        writeStoredFlag(localStorage, STORAGE_KEYS.efetivoObra3V1, true);
+        console.info('[RENEA] Efetivo atualizado pelo EFETIVO_OBRA_3:', migrado.resumo);
+      }
 
       if (shouldMigratePresencePeople) {
         // Grava a marca de "já migrado" no mesmo lote atômico das tabelas que
@@ -742,6 +795,7 @@ export default function App() {
         writeStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31, true);
         setPublicLinksRotationPending(true);
       }
+      writeStoredFlag(localStorage, STORAGE_KEYS.linksPublicosEstaveisV1, true);
       if (!savedControleEstacas) {
         writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(INITIAL_CONTROLE_ESTACAS));
       }
@@ -834,20 +888,10 @@ export default function App() {
         const status = await getFirebaseConnectionStatus(db);
         setIsFirebaseConnected(status.connected);
 
-        if (status.updatedAt) {
-          const cloudDate = new Date(status.updatedAt);
-          if (!Number.isNaN(cloudDate.getTime())) {
-            const cloudDateLabel = cloudDate.toLocaleString('pt-BR');
-            setLastCloudSync(cloudDateLabel);
-            writeStorageValue(localStorage, 'renea_last_cloud_sync', cloudDateLabel);
-          }
-
-          // Primeira execucao da versao nova: registra a nuvem atual como base sem
-          // sobrescrever silenciosamente os dados locais que ainda nao foram enviados.
-          if (!localStorage.getItem('renea_last_cloud_sync_iso')) {
-            writeStorageValue(localStorage, 'renea_last_cloud_sync_iso', status.updatedAt);
-          }
-        }
+        // O horario remoto nao pode ser gravado como uma sincronizacao local.
+        // Esse marcador so e atualizado depois de um upload/download concluido;
+        // caso contrario um navegador novo acredita que ja baixou a nuvem e o
+        // primeiro snapshot em tempo real e descartado.
       } catch (error) {
         console.warn('Falha ao validar a conexao real com o Firestore:', error);
         setIsFirebaseConnected(false);
@@ -974,6 +1018,9 @@ export default function App() {
       return { success: false, message: formatFirebaseSyncError(error) };
     } finally {
       uploadsInFlightRef.current = Math.max(0, uploadsInFlightRef.current - 1);
+      if (uploadsInFlightRef.current === 0 && pendingRemoteVersionRef.current) {
+        queueMicrotask(() => requestAutomaticRemoteSyncRef.current(pendingRemoteVersionRef.current));
+      }
     }
   };
 
@@ -985,17 +1032,11 @@ export default function App() {
         const downloadedData = backup.data;
         const validation = validateSystemBackup(downloadedData, false);
         if (!validation.valid) throw new Error(describeInvalidBackup(validation));
-        const securedPublicLinks = rotateWeakPublicLinkTokens(
-          Array.isArray(downloadedData.gruposEquipe) ? downloadedData.gruposEquipe : [],
-        );
-        const data: FirebaseCloudData = {
-          ...downloadedData,
-          gruposEquipe: securedPublicLinks.gruposEquipe,
-        };
-        if (securedPublicLinks.changed) {
-          writeStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31, true);
-          setPublicLinksRotationPending(true);
-        }
+        // O que vem da nuvem é aceito como está. Rotacionar aqui trocava o
+        // endereço a cada download: bastava um aparelho publicar um grupo com
+        // token herdado para este trocar e republicar, e o link mudava sozinho
+        // em looping. Token fraco é tratado uma vez, na carga local.
+        const data: FirebaseCloudData = { ...downloadedData };
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
         const nowStr = Number.isNaN(syncDate.getTime())
@@ -1070,26 +1111,68 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'ordensServico')) {
           setOrdensServico(normalizeRuntimeCollection<OrdemServico>(data.ordensServico));
+        }
+        if (Object.hasOwn(data, 'checklists')) {
           setChecklists(normalizeRuntimeCollection<ChecklistEquipamento>(data.checklists));
+        }
+        if (Object.hasOwn(data, 'apontamentosOperacionais')) {
           setApontamentosOperacionais(normalizeRuntimeCollection<ApontamentoOperacional>(data.apontamentosOperacionais));
+        }
+        if (Object.hasOwn(data, 'registrosDds')) {
           setRegistrosDds(normalizeRuntimeCollection<RegistroDDS>(data.registrosDds));
+        }
+        if (Object.hasOwn(data, 'treinamentos')) {
           setTreinamentos(normalizeRuntimeCollection<Treinamento>(data.treinamentos));
+        }
+        if (Object.hasOwn(data, 'materiaisCadastro')) {
           setMateriaisCadastro(normalizeRuntimeCollection<Material>(data.materiaisCadastro));
+        }
+        if (Object.hasOwn(data, 'materiaisMovimentos')) {
           setMateriaisMovimentos(normalizeRuntimeCollection<MovimentoMaterial>(data.materiaisMovimentos));
+        }
+        if (Object.hasOwn(data, 'frentesServico')) {
           setFrentesServico(normalizeRuntimeCollection<FrenteServico>(data.frentesServico));
+        }
+        if (Object.hasOwn(data, 'diariosObra')) {
           setDiariosObra(normalizeRuntimeCollection<DiarioObra>(data.diariosObra));
+        }
+        if (Object.hasOwn(data, 'servicosObra')) {
           setServicosObra(normalizeRuntimeCollection<ServicoObra>(data.servicosObra));
+        }
+        if (Object.hasOwn(data, 'producaoRegistros')) {
           setProducaoRegistros(normalizeRuntimeCollection<RegistroProducao>(data.producaoRegistros));
+        }
+        if (Object.hasOwn(data, 'planejamentoItens')) {
           setPlanejamentoItens(normalizeRuntimeCollection<PlanejamentoItem>(data.planejamentoItens));
+        }
+        if (Object.hasOwn(data, 'modelosFvs')) {
           setModelosFvs(normalizeRuntimeCollection<ModeloFvs>(data.modelosFvs));
+        }
+        if (Object.hasOwn(data, 'fichasFvs')) {
           setFichasFvs(normalizeRuntimeCollection<FichaVerificacaoServico>(data.fichasFvs));
+        }
+        if (Object.hasOwn(data, 'inspecoes')) {
           setInspecoes(normalizeRuntimeCollection<Inspecao>(data.inspecoes));
+        }
+        if (Object.hasOwn(data, 'naoConformidades')) {
           setNaoConformidades(normalizeRuntimeCollection<NaoConformidade>(data.naoConformidades));
+        }
+        if (Object.hasOwn(data, 'medicoes')) {
           setMedicoes(normalizeRuntimeCollection<Medicao>(data.medicoes));
+        }
+        if (Object.hasOwn(data, 'documentos')) {
           setDocumentos(normalizeRuntimeCollection<DocumentoArquivo>(data.documentos));
+        }
+        if (Object.hasOwn(data, 'ocorrencias')) {
           setOcorrencias(normalizeRuntimeCollection<Ocorrencia>(data.ocorrencias));
+        }
+        if (Object.hasOwn(data, 'lancamentosCusto')) {
           setLancamentosCusto(normalizeRuntimeCollection<LancamentoCusto>(data.lancamentosCusto));
+        }
+        if (Object.hasOwn(data, 'orcamentoItens')) {
           setOrcamentoItens(normalizeRuntimeCollection<OrcamentoItem>(data.orcamentoItens));
+        }
+        if (Object.hasOwn(data, 'modelosChecklist')) {
           const modelosNuvem = normalizeRuntimeCollection<ModeloChecklist>(data.modelosChecklist);
           if (modelosNuvem[0]) setModeloChecklist(modelosNuvem[0]);
         }
@@ -1146,6 +1229,68 @@ export default function App() {
     }
   };
 
+  // Serializa a reconciliacao automatica. Se um snapshot chegar durante um
+  // upload ou outro download, a versao fica pendente e e processada assim que
+  // a operacao atual terminar, em vez de ser descartada para sempre.
+  const requestAutomaticRemoteSync = async (updatedAt: string) => {
+    if (!updatedAt || !isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
+    pendingRemoteVersionRef.current = updatedAt;
+    if (uploadsInFlightRef.current > 0 || automaticDownloadInFlightRef.current) return;
+
+    automaticDownloadInFlightRef.current = true;
+    let retryPendingImmediately = true;
+    try {
+      while (pendingRemoteVersionRef.current && uploadsInFlightRef.current === 0) {
+        const requestedVersion = pendingRemoteVersionRef.current;
+        pendingRemoteVersionRef.current = '';
+        const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
+
+        if (localCloudVersion === requestedVersion) {
+          if (!cloudBaselineRef.current) cloudBaselineRef.current = captureBaselineFromLocalStorage();
+          continue;
+        }
+
+        // No primeiro acesso ainda nao existe uma base para distinguir dados
+        // locais antigos dos dados da nuvem. Perfis de escrita fazem uma
+        // mesclagem conservadora antes de baixar o retrato publicado; assim
+        // nenhum lancamento que so existe neste aparelho e perdido.
+        if (!localCloudVersion && currentUserRoleRef.current !== 'leitura') {
+          const uploadResult = await handleUploadToFirebase();
+          if (!uploadResult.success) {
+            pendingRemoteVersionRef.current = requestedVersion;
+            retryPendingImmediately = false;
+            addNotification(
+              'Sincronizacao inicial pendente',
+              `Os dados locais foram preservados, mas ainda nao foi possivel conciliar com a nuvem. Motivo: ${uploadResult.message}`,
+              'error',
+              'Sistema Local',
+            );
+            break;
+          }
+        }
+
+        const downloadResult = await handleDownloadFromFirebase();
+        if (!downloadResult.success) {
+          pendingRemoteVersionRef.current = requestedVersion;
+          retryPendingImmediately = false;
+          addNotification(
+            'Nao foi possivel atualizar os dados',
+            `Este aparelho nao conseguiu buscar a versao mais recente da nuvem. Motivo: ${downloadResult.message}`,
+            'error',
+            'Sistema Local',
+          );
+          break;
+        }
+      }
+    } finally {
+      automaticDownloadInFlightRef.current = false;
+      if (retryPendingImmediately && pendingRemoteVersionRef.current && uploadsInFlightRef.current === 0) {
+        queueMicrotask(() => requestAutomaticRemoteSyncRef.current(pendingRemoteVersionRef.current));
+      }
+    }
+  };
+  requestAutomaticRemoteSyncRef.current = updatedAt => { void requestAutomaticRemoteSync(updatedAt); };
+
   // Confere a nuvem e baixa quando outro dispositivo publicou uma versão
   // mais recente. Não é só um pulso periódico: também é chamada direto ao
   // trocar de tela (navigateTo), para que abrir uma tela específica sempre
@@ -1165,31 +1310,7 @@ export default function App() {
       setIsFirebaseConnected(status.connected);
 
       if (!status.updatedAt) return;
-      // Um envio em andamento ainda não publicou a versão mais nova na
-      // nuvem — baixar agora traria de volta a versão de antes dele e
-      // apagaria, na tela, o que acabou de ser lançado neste aparelho.
-      if (uploadsInFlightRef.current > 0) return;
-      const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
-      // Sem versão local registrada, este aparelho nunca completou uma
-      // sincronização — não é seguro presumir que já está em dia. Antes
-      // baixava a nuvem e o resultado ficava perdido no console; agora o
-      // aviso abaixo torna visível se essa primeira sincronização falhar.
-      if (localCloudVersion !== status.updatedAt) {
-        const result = await handleDownloadFromFirebase();
-        if (!result.success) {
-          addNotification(
-            'Não foi possível atualizar os dados',
-            `Este aparelho não conseguiu buscar a versão mais recente da nuvem. Motivo: ${result.message}`,
-            'error',
-            'Sistema Local',
-          );
-        }
-      } else if (!cloudBaselineRef.current) {
-        // Abriu já em dia com a nuvem: nada para baixar, mas é exatamente
-        // aqui que o retrato local vale como base. Sem isto, a primeira
-        // exclusão feita logo após abrir poderia voltar na mesclagem.
-        cloudBaselineRef.current = captureBaselineFromLocalStorage();
-      }
+      await requestAutomaticRemoteSync(status.updatedAt);
     } catch (error) {
       setIsFirebaseConnected(false);
       setCloudRecoveryPending(true);
@@ -1213,10 +1334,8 @@ export default function App() {
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.
     const unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
-      if (uploadsInFlightRef.current > 0) return;
       const updatedAt = String(snapshot.data()?.updatedAt || '');
-      const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso');
-      if (updatedAt && localCloudVersion && updatedAt !== localCloudVersion) void handleDownloadFromFirebase();
+      if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
     }, error => {
       console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
     });
@@ -1433,7 +1552,7 @@ export default function App() {
     };
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: normalizedItem });
     if (errors.length > 0) {
-      window.alert(errors.join('\n'));
+      addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
     let updated;
@@ -1477,7 +1596,7 @@ export default function App() {
     const previous = obras.find(x => x.id === item.id);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
     if (errors.length > 0) {
-      window.alert(errors.join('\n'));
+      addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
     let updated;
@@ -1521,7 +1640,7 @@ export default function App() {
     const previous = equipamentos.find(x => x.id === item.id);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
     if (errors.length > 0) {
-      window.alert(errors.join('\n'));
+      addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
     let updated;
@@ -1621,7 +1740,7 @@ export default function App() {
     };
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: normalizedItem });
     if (errors.length > 0) {
-      window.alert(errors.join('\n'));
+      addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
     let updated;
@@ -1647,14 +1766,18 @@ export default function App() {
     const matricula = String(item.matricula || '').trim();
     const duplicate = motoristasOperacionais.some(driver => driver.id !== item.id && String(driver.matricula || '').trim() === matricula);
     if (!matricula || !item.nome.trim() || duplicate) {
-      window.alert(duplicate ? 'Já existe motorista operacional com esta matrícula.' : 'Informe matrícula e nome.');
+      addNotification(
+        'Motorista não salvo',
+        duplicate ? 'Já existe motorista operacional com esta matrícula.' : 'Informe matrícula e nome.',
+        'warning',
+        'Sistema Local',
+      );
       return;
     }
     const next = isNew ? [...motoristasOperacionais, item] : motoristasOperacionais.map(driver => driver.id === item.id ? item : driver);
     saveAndLog('Motoristas operacionais', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o motorista "${item.nome}" (${matricula}).`, historyLogs, () => {
       setMotoristasOperacionais(next);
       writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
-      if (isAutoSyncEnabled) void handleUploadToFirebase();
     }, { registroId: item.id, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' });
   };
 
@@ -1663,7 +1786,6 @@ export default function App() {
     saveAndLog('Motoristas operacionais', 'Excluiu', `Excluiu o motorista operacional "${id}".`, historyLogs, () => {
       setMotoristasOperacionais(next);
       writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
-      if (isAutoSyncEnabled) void handleUploadToFirebase();
     }, { registroId: id, tipoOperacao: 'DELETE' });
   };
 
@@ -2294,11 +2416,20 @@ export default function App() {
   const handleDeleteAbastecimentos = (ids: string[]) => {
     const selected = new Set(ids);
     if (selected.size === 0) return;
-    const updated = auditarBaseCombustivel(abastecimentos.filter(item => !selected.has(item.id)));
+    // Abastecimento é registro de valor: inativa, não apaga. Ele sai das telas
+    // e dos totais, mas continua no arquivo e pode voltar. O enriquecimento
+    // roda só sobre os ativos, exatamente como rodava antes sobre a lista já
+    // sem os excluídos — um abastecimento inativado não pode continuar
+    // influenciando o consumo calculado dos vizinhos.
+    const inativados = inativar(abastecimentos, ids, activeUserName);
+    const enriquecidos = new Map(
+      auditarBaseCombustivel(somenteAtivos(inativados)).map(item => [item.id, item]),
+    );
+    const updated = inativados.map(item => enriquecidos.get(item.id) || item);
     saveAndLog(
       'Abastecimentos',
-      'Excluiu',
-      `Excluiu permanentemente ${selected.size} abastecimento(s) selecionado(s).`,
+      'Inativou',
+      `Inativou ${selected.size} abastecimento(s). Os registros saíram das telas e podem ser recuperados.`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -2310,11 +2441,12 @@ export default function App() {
   const handleDeleteTicketsJazida = (ids: string[]) => {
     const selected = new Set(ids);
     if (selected.size === 0) return;
-    const updated = ticketsJazida.filter(item => !selected.has(item.id));
+    // Ticket de jazida é comprovante: inativa, não apaga.
+    const updated = inativar(ticketsJazida, ids, activeUserName);
     saveAndLog(
       'Tickets Jazida',
-      'Excluiu',
-      `Excluiu permanentemente ${selected.size} ticket(s) selecionado(s).`,
+      'Inativou',
+      `Inativou ${selected.size} ticket(s). Os registros saíram das telas e podem ser recuperados.`,
       historyLogs,
       () => {
         setTicketsJazida(updated);
@@ -2897,6 +3029,38 @@ export default function App() {
     void handleUploadToFirebase();
   };
 
+  /**
+   * Lançamento manual pelo painel: a equipe que não usou o link não pode ficar
+   * sem apontamento. O registro nasce marcado como manual, com quem lançou, e
+   * relançar o mesmo dia corrige em vez de duplicar.
+   */
+  const handleLancarPresencaManual = (
+    grupo: GrupoEquipe,
+    data: string,
+    situacoes: SituacaoLancada[],
+    observacaoDia: string,
+  ) => {
+    const novos = montarPresencaManual({
+      grupo,
+      funcionarios,
+      data,
+      situacoes,
+      responsavel: activeUserName,
+      observacaoDia,
+    });
+    if (novos.length === 0) return;
+    const atualizados = aplicarPresencaManual(presencasLink, novos);
+    setPresencasLink(atualizados);
+    writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(atualizados));
+    addNotification(
+      'Presença lançada pelo painel',
+      `${novos.length} situação(ões) de ${grupo.nome} em ${data.split('-').reverse().join('/')}.`,
+      'success',
+      'Sistema Local',
+    );
+    void handleUploadToFirebase();
+  };
+
   const handleDeletePresencaLink = (ids: string[]) => {
     const selected = new Set(ids);
     const submissionDocIds = Array.from(new Set(
@@ -2909,10 +3073,11 @@ export default function App() {
         })
         .filter(Boolean),
     ));
-    const updatedPresencas = presencasLink.filter(item => !selected.has(item.id));
+    // Apontamento de presença é registro trabalhista: inativa, não apaga.
+    const updatedPresencas = inativar(presencasLink, ids, activeUserName);
     setPresencasLink(updatedPresencas);
     writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
-    addNotification('Presenças excluídas', `${ids.length} registro(s) removido(s) manualmente.`, 'warning', 'Sistema Local');
+    addNotification('Presenças inativadas', `${ids.length} registro(s) saíram das telas e podem ser recuperados.`, 'warning', 'Sistema Local');
     void markPublicSubmissionsProcessed(db, submissionDocIds, currentUser?.uid || activeUserName)
       .catch(error => console.warn('Não foi possível encerrar a submissão pública excluída:', error))
       .finally(() => { void uploadLocalSnapshotToFirebase(); });
@@ -4036,7 +4201,7 @@ export default function App() {
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase('pt-BR');
   const allowedTabs = ROLE_ACCESS[currentUserRole];
-  const filteredNavigationGroups = NAVIGATION_GROUPS
+  const filteredNavigationGroups = SIDEBAR_NAVIGATION_GROUPS
     .map(group => ({
       ...group,
       items: group.items.filter(item => allowedTabs.includes(item.id)
@@ -4049,6 +4214,7 @@ export default function App() {
     if (closeMobile) setIsMobileMenuOpen(false);
     window.requestAnimationFrame(() => {
       document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
+      window.scrollTo({ top: 0, behavior: 'auto' });
     });
     // Abrir uma tela específica confere a nuvem na hora, em vez de confiar
     // só no retrato que já estava carregado desde o pulso automático
@@ -4129,10 +4295,10 @@ export default function App() {
       {/* Mobile Drawer Menu overlay */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
-          <div className="w-80 max-w-[88vw] bg-slate-900 border-l border-slate-800 p-5 flex flex-col space-y-4 shadow-xl">
+          <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-800 p-4 flex flex-col space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="text-xs font-semibold text-slate-500 tracking-[0.14em]">NAVEGAÇÃO</span>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
+              <img src={reneaLogoWhite} alt="RENEA Infraestrutura" className="h-7 w-auto object-contain" />
+              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-emerald-100 hover:bg-white/10 hover:text-white" aria-label="Fechar navegação">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -4181,7 +4347,7 @@ export default function App() {
         {/* Dynamic Inner Tab Viewport */}
         <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full mx-auto print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3.5 sm:p-4 md:p-7 2xl:p-10 max-w-[1440px]'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
-            <div key={activeTab} className="renea-enter w-full h-full">
+            <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (
               <Dashboard 
                 empresas={empresas}
@@ -4191,14 +4357,14 @@ export default function App() {
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 lubrificacoes={lubrificacoes}
                 historyLogs={historyLogs}
                 listasPresenca={listasPresenca}
                 ordensServico={ordensServico}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 estacas={controleEstacas}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
                 planejamento={planejamentoItens}
@@ -4220,8 +4386,8 @@ export default function App() {
               <PeriodoTab
                 presencas={presencasLink}
                 controlesEquipamentos={controleEquipamentosDiario}
-                abastecimentos={abastecimentos}
-                ticketsJazida={ticketsJazida}
+                abastecimentos={abastecimentosAtivos}
+                ticketsJazida={ticketsJazidaAtivos}
                 equipamentos={equipamentos}
               />
             )}
@@ -4232,7 +4398,7 @@ export default function App() {
                 obras={obras}
                 equipamentos={equipamentos}
                 funcionarios={funcionarios}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 tickets={ticketsJazida}
                 ordensServico={ordensServico}
                 controlesEquipamentos={controleEquipamentosDiario}
@@ -4284,7 +4450,7 @@ export default function App() {
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 lubrificacoes={lubrificacoes}
                 onSaveAbastecimento={handleSaveAbastecimento}
                 onDeleteAbastecimento={handleDeleteAbastecimento}
@@ -4301,9 +4467,9 @@ export default function App() {
                 equipamentos={equipamentos}
                 controlesEquipamentos={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 ordensServico={ordensServico}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 obras={obras}
                 podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
                 responsavel={activeUserName}
@@ -4314,7 +4480,7 @@ export default function App() {
 
             {activeTab === 'modo-campo' && (
               <ModoCampoTab
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 producao={producaoRegistros}
                 ocorrencias={ocorrencias}
@@ -4443,7 +4609,7 @@ export default function App() {
               <OrcamentoTab
                 orcamentos={orcamentoItens}
                 lancamentos={lancamentosCusto}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 ordensServico={ordensServico}
                 obras={obras}
                 responsavel={activeUserName}
@@ -4455,7 +4621,7 @@ export default function App() {
             {activeTab === 'custos' && (
               <CustosTab
                 lancamentos={lancamentosCusto}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 ordensServico={ordensServico}
                 obras={obras}
                 frentes={frentesServico}
@@ -4633,11 +4799,11 @@ export default function App() {
                 diarios={diariosObra}
                 obras={obras}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 apontamentos={apontamentosOperacionais}
                 movimentosMaterial={materiaisMovimentos}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
                 onSave={handleSaveDiarioObra}
@@ -4649,11 +4815,11 @@ export default function App() {
                 frentes={frentesServico}
                 obras={obras}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 apontamentos={apontamentosOperacionais}
                 movimentosMaterial={materiaisMovimentos}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 podeEditar={pode(currentUserRole, 'frentes', 'editar')}
                 onSave={handleSaveFrente}
               />
@@ -4701,7 +4867,7 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 funcionarios={funcionarios}
                 obras={obras}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 podeRealocar={['admin', 'gestor'].includes(currentUserRole)}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
@@ -4714,11 +4880,16 @@ export default function App() {
                 funcionarios={funcionarios}
                 empresas={empresas}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
-                ticketsJazida={ticketsJazida}
+                ticketsJazida={ticketsJazidaAtivos}
                 checklists={checklists}
                 onNavigate={navigateTo}
+                responsavel={activeUserName}
+                onAlterarSituacao={(proximo, descricao) => {
+                  handleSaveFuncionario(proximo, false);
+                  addNotification('Situação atualizada', descricao, 'info', 'Sistema Local');
+                }}
               />
             )}
 
@@ -4762,8 +4933,8 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 controlesEquipamentos={controleEquipamentosDiario}
                 ordensServico={ordensServico}
-                abastecimentos={abastecimentos}
-                ticketsJazida={ticketsJazida}
+                abastecimentos={abastecimentosAtivos}
+                ticketsJazida={ticketsJazidaAtivos}
                 onNavigate={navigateTo}
               />
             )}
@@ -4796,13 +4967,14 @@ export default function App() {
                 empresas={empresas}
                 obras={obras}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLink}
+                presencasLink={presencasLinkAtivas}
                 historicoPresencas={historicoPresencas}
                 pendingPublicSubmissionsCount={pendingPublicSubmissionsCount}
                 onRestorePresenceHistory={handleRestorePresenceHistory}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
                 onUpdatePresencaLink={handleUpdatePresencaLink}
+                onLancarPresencaManual={handleLancarPresencaManual}
                 onDeletePresencaLink={handleDeletePresencaLink}
                 onResetPresencaDia={handleResetPresencaDia}
                 onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
@@ -4829,10 +5001,11 @@ export default function App() {
                 controle={controleEstacas}
                 obras={obras}
                 onChange={handleChangeControleEstacas}
+                responsavel={activeUserName}
               />
             )}
 
-            </div>
+            </RouteMotion>
           </Suspense>
         </div>
         </main>

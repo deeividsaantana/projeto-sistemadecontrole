@@ -3,7 +3,7 @@
  * As horas paradas saem da própria ordem — abertura até liberação.
  */
 import { useMemo, useState } from 'react';
-import { Activity, AlertOctagon, CheckCircle2, Plus, Search, Wrench } from 'lucide-react';
+import { Plus, Search, Wrench } from 'lucide-react';
 import type { Equipamento, OrdemServico } from '../types';
 import {
   FLUXO_MANUTENCAO,
@@ -12,7 +12,7 @@ import {
   proximoStatusManutencao,
 } from '../utils/manutencao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
-import { Badge, ConfirmDialog, EmptyState, Modal, PageHeader, StatCard, TableBody, TableHead, TableShell, statusTone } from '../shared/ui';
+import { Badge, ConfirmDialog, EmptyState, Modal, PageHeader, TableBody, TableHead, TableShell, statusTone } from '../shared/ui';
 
 interface ManutencaoTabProps {
   ordensServico: OrdemServico[];
@@ -189,10 +189,8 @@ export default function ManutencaoTab({
   };
 
   return (
-    <div id="manutencao-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="manutencao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Manutenção da frota"
-        photo="rodovia-duplicada"
         title="Manutenção"
         description="Ordens de serviço da frota, do chamado até a liberação."
         actions={podeEditar ? (
@@ -208,11 +206,15 @@ export default function ManutencaoTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Em aberto', valor: resumo.abertas, tone: 'warning' as const, icone: AlertOctagon },
-          { label: 'Aguardando peça', valor: resumo.aguardandoPeca, tone: 'info' as const, icone: Wrench },
-          { label: 'Concluídas', valor: resumo.concluidas, tone: 'success' as const, icone: CheckCircle2 },
+          { label: 'Em aberto', valor: resumo.abertas },
+          { label: 'Aguardando peça', valor: resumo.aguardandoPeca },
+          { label: 'Concluídas', valor: resumo.concluidas },
+          { label: 'Horas paradas em aberto', valor: `${resumo.horasAbertas} h` },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 

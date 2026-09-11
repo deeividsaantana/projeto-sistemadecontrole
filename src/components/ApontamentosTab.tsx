@@ -3,7 +3,7 @@
  * dos indicadores de produtividade.
  */
 import { useMemo, useState } from 'react';
-import { Activity, BarChart3, ClipboardList, Clock3, Plus, Search, Users } from 'lucide-react';
+import { ClipboardList, Plus, Search } from 'lucide-react';
 import type { ApontamentoOperacional, EtapaServico, Funcionario, GrupoEquipe } from '../types';
 import { horasNoDia, horasPor, validarApontamento } from '../utils/apontamentos';
 import { normalizeComparable } from '../utils/canonicalIdentity';
@@ -15,8 +15,6 @@ import {
   Modal,
   PageHeader,
   PeriodFilter,
-  SearchInput,
-  StatCard,
   TableBody,
   TableHead,
   TableShell,
@@ -143,10 +141,8 @@ export default function ApontamentosTab({
     : 0;
 
   return (
-    <div id="apontamentos-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="apontamentos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Apontamento de campo"
-        photo="rodovia-duplicada"
         title="Apontamentos"
         description="Horas por colaborador, serviço e frente — a base da produtividade."
         actions={podeEditar ? (
@@ -163,12 +159,15 @@ export default function ApontamentosTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Horas apontadas', valor: horasTexto(totalHoras), tone: 'info' as const, icone: Clock3 },
-          { label: 'Lançamentos', valor: noPeriodo.length, tone: 'info' as const, icone: BarChart3 },
-          { label: 'Colaboradores', valor: new Set(noPeriodo.map(item => item.funcionarioId)).size, tone: 'neutral' as const, icone: Users },
-          { label: 'Serviços', valor: porServico.length, tone: 'neutral' as const, icone: ClipboardList },
+          { label: 'Horas apontadas', valor: horasTexto(totalHoras) },
+          { label: 'Lançamentos', valor: String(noPeriodo.length) },
+          { label: 'Colaboradores', valor: String(new Set(noPeriodo.map(item => item.funcionarioId)).size) },
+          { label: 'Serviços', valor: String(porServico.length) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 
@@ -194,13 +193,16 @@ export default function ApontamentosTab({
         ))}
       </div>
 
-      <SearchInput
-        className="mt-3"
-        label="Buscar apontamento"
-        value={busca}
-        onChange={setBusca}
-        placeholder="Colaborador, atividade, serviço, frente ou equipe"
-      />
+      <label className="relative mt-4 block">
+        <span className="sr-only">Buscar apontamento</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={busca}
+          onChange={event => setBusca(event.target.value)}
+          placeholder="Colaborador, atividade, serviço, frente ou equipe"
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+        />
+      </label>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {lista.length === 0 ? (

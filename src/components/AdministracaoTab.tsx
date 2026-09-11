@@ -1,10 +1,17 @@
 /**
- * Administração: saúde do armazenamento e do registro das coleções. A checagem
- * de registro é a mesma que roda nos testes — uma coleção nova que ficar fora do
- * backup ou da sincronização aparece aqui em vez de sumir silenciosamente.
+ * Administração: saúde do armazenamento, registro das coleções e o acesso das
+ * pessoas. A checagem de registro é a mesma que roda nos testes — uma coleção
+ * nova que ficar fora do backup ou da sincronização aparece aqui em vez de
+ * sumir silenciosamente.
+ *
+ * A gestão de usuários mora aqui porque esta é a única aba de administração no
+ * menu. A tela existia solta, sem rota e sem item de menu: ninguém conseguia
+ * criar um acesso pelo sistema. Quem decide se a criação vale é o servidor
+ * (assertAdministrator); esta tela é só o caminho até lá.
  */
 import { useMemo } from 'react';
-import { Activity, AlertTriangle, CheckCircle2, Database } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Database, ShieldCheck } from 'lucide-react';
+import UsuariosTab from './UsuariosTab';
 import { INTERMEDIATE_TABLE_IDS } from '../firebaseCloudSync';
 import {
   divergenciasDeRegistro,
@@ -13,7 +20,7 @@ import {
   volumePorColecao,
 } from '../utils/diagnostico';
 import { APP_VERSION_LABEL } from '../app/version';
-import { PageHeader, StatCard, TableBody, TableHead, TableShell } from '../shared/ui';
+import { PageHeader, TableBody, TableHead, TableShell } from '../shared/ui';
 
 interface AdministracaoTabProps {
   ultimaSincronizacao: string;
@@ -36,10 +43,8 @@ export default function AdministracaoTab({
   const divergencias = useMemo(() => divergenciasDeRegistro(INTERMEDIATE_TABLE_IDS), []);
 
   return (
-    <div id="administracao-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="administracao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Configuração do sistema"
-        photo="ponte-construcao"
         title="Administração"
         description="Saúde do armazenamento, registro das coleções e estado da sincronização."
       />
@@ -67,12 +72,15 @@ export default function AdministracaoTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Coleções', valor: resumo.colecoes, tone: 'info' as const, icone: Database },
-          { label: 'Registros', valor: resumo.registros.toLocaleString('pt-BR'), tone: 'info' as const, icone: Database },
-          { label: 'Uso local', valor: formatarBytes(resumo.bytes), tone: 'neutral' as const, icone: Database },
-          { label: 'Coleções vazias', valor: resumo.vazias, tone: 'neutral' as const, icone: Database },
+          { label: 'Coleções', valor: String(resumo.colecoes) },
+          { label: 'Registros', valor: resumo.registros.toLocaleString('pt-BR') },
+          { label: 'Uso local', valor: formatarBytes(resumo.bytes) },
+          { label: 'Coleções vazias', valor: String(resumo.vazias) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 
@@ -129,6 +137,30 @@ export default function AdministracaoTab({
           </TableBody>
         </TableShell>
       </div>
+
+      <section className="mt-6">
+        <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-700">
+          <ShieldCheck className="h-4 w-4 text-emerald-700" /> Acessos ao sistema
+        </h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Criar um acesso, trocar o perfil de alguém ou inativar quem saiu da obra.
+        </p>
+        <div className="mt-3">
+          <UsuariosTab embutido />
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-700">
+          <ShieldCheck className="h-4 w-4 text-emerald-700" /> Acessos ao sistema
+        </h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Criar um acesso, trocar o perfil de alguém ou inativar quem saiu da obra.
+        </p>
+        <div className="mt-3">
+          <UsuariosTab embutido />
+        </div>
+      </section>
 
       {totalUsuarios !== undefined && (
         <p className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">

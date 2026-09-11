@@ -3,7 +3,7 @@
  * pendências — e a realocação de colaborador entre equipes.
  */
 import { useMemo, useState } from 'react';
-import { Activity, ArrowLeft, ArrowRightLeft, HardHat, Truck, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, HardHat, Truck, Users } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
   Funcionario,
@@ -12,7 +12,7 @@ import type {
   PresencaApontamento,
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
-import { Badge, Card, ConfirmDialog, EmptyState, PageHeader, StatCard, isoDay, statusTone } from '../shared/ui';
+import { Badge, Card, ConfirmDialog, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
 
 interface EquipesTabProps {
   gruposEquipe: GrupoEquipe[];
@@ -101,7 +101,7 @@ export default function EquipesTab({
     ].filter((item): item is string => Boolean(item));
 
     return (
-      <div id="equipe-ficha" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div id="equipe-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadoId(null)}
@@ -111,8 +111,6 @@ export default function EquipesTab({
         </button>
 
         <PageHeader
-          eyebrow="Composição das equipes"
-          photo="rodovia-duplicada"
           title={selecionada.nome}
           description={[selecionada.responsavel && `Encarregado ${selecionada.responsavel}`, selecionada.frenteServico, resumo.obra].filter(Boolean).join(' · ')}
           actions={(
@@ -127,15 +125,18 @@ export default function EquipesTab({
         />
 
         <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {[
-          { label: 'Efetivo', valor: resumo.efetivo, tone: 'info' as const, icone: HardHat },
-          { label: 'Presentes', valor: resumo.presentes, tone: 'success' as const, icone: Users },
-          { label: 'Ausentes', valor: resumo.ausentes, tone: 'danger' as const, icone: Users },
-          { label: 'Frota do dia', valor: frota.length, tone: 'neutral' as const, icone: Truck },
-        ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
-        ))}
-      </section>
+          {[
+            { label: 'Efetivo', valor: resumo.efetivo },
+            { label: 'Presentes', valor: resumo.presentes },
+            { label: 'Ausentes', valor: resumo.ausentes },
+            { label: 'Frota do dia', valor: frota.length },
+          ].map(item => (
+            <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+              <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+            </div>
+          ))}
+        </section>
 
         {pendencias.length > 0 && (
           <ul className="mt-3 space-y-1.5">
@@ -228,10 +229,8 @@ export default function EquipesTab({
   }
 
   return (
-    <div id="equipes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="equipes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Composição das equipes"
-        photo="rodovia-duplicada"
         title="Equipes"
         description="Como cada equipe está no dia: efetivo, presença, frota e pendências."
         actions={(

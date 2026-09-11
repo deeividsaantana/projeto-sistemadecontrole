@@ -56,10 +56,16 @@ export default function PublicLinksApp() {
   const [ticketLoading, setTicketLoading] = useState(Boolean(ticketLink));
   const [ticketError, setTicketError] = useState('');
 
-  const reloadPresence = useCallback(async (data = '') => {
+  // `silencioso` é a atualização automática: ela não acende o carregando nem
+  // limpa a tela, porque a pessoa pode estar no meio do apontamento. O que ela
+  // já marcou fica — a lista de itens preserva todo status existente e o
+  // rascunho continua salvo no aparelho.
+  const reloadPresence = useCallback(async (data = '', silencioso = false) => {
     if (!presenceToken) return;
-    setPresenceLoading(true);
-    setPresenceError('');
+    if (!silencioso) {
+      setPresenceLoading(true);
+      setPresenceError('');
+    }
     try {
       const config = await loadPublicPresenceConfig(presenceToken, data);
       setGruposEquipe(config.gruposEquipe);
@@ -73,12 +79,22 @@ export default function PublicLinksApp() {
       setDataSelecionada(config.dataSelecionada || '');
       setDataAtual(config.dataAtual || '');
       setObservacaoDia(config.observacaoDia || '');
-      setPresenceHistory(config.historicoPorData || { [config.dataSelecionada || '']: config.meusRegistros || [] });
-      setPresenceDayNotes(config.observacoesPorData || { [config.dataSelecionada || '']: config.observacaoDia || '' });
+      // A resposta traz só o dia aberto. Os dias que a pessoa já visitou ficam
+      // guardados aqui para a régua de datas não buscar duas vezes a mesma
+      // coisa; a atualização automática acrescenta, nunca esvazia o que já foi
+      // carregado.
+      const doDia = config.historicoPorData || { [config.dataSelecionada || '']: config.meusRegistros || [] };
+      const notasDoDia = config.observacoesPorData || { [config.dataSelecionada || '']: config.observacaoDia || '' };
+      setPresenceHistory(atual => ({ ...atual, ...doDia }));
+      setPresenceDayNotes(atual => ({ ...atual, ...notasDoDia }));
     } catch (error) {
-      setPresenceError(error instanceof Error ? error.message : 'Não foi possível carregar as equipes.');
+      // Falha na atualização automática não vira erro na tela: o que já está
+      // carregado continua valendo e a próxima tentativa resolve.
+      if (!silencioso) {
+        setPresenceError(error instanceof Error ? error.message : 'Não foi possível carregar as equipes.');
+      }
     } finally {
-      setPresenceLoading(false);
+      if (!silencioso) setPresenceLoading(false);
     }
   }, [presenceToken]);
 
@@ -134,6 +150,33 @@ export default function PublicLinksApp() {
   useEffect(() => {
     void reloadPresence();
   }, [reloadPresence]);
+
+  // O link é permanente, então ele precisa se manter atual sozinho: equipe
+  // nova, colaborador incluído, virada do dia. A atualização só acontece com a
+  // página aberta e visível — celular no bolso não consulta nada — e no máximo
+  // uma vez por minuto, para não pesar na nuvem.
+  useEffect(() => {
+    if (!presenceToken) return;
+    const INTERVALO_MINIMO_MS = 60_000;
+    const INTERVALO_EM_USO_MS = 300_000;
+    let ultimaAtualizacao = Date.now();
+
+    const atualizar = () => {
+      if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+      if (Date.now() - ultimaAtualizacao < INTERVALO_MINIMO_MS) return;
+      ultimaAtualizacao = Date.now();
+      void reloadPresence('', true);
+    };
+
+    const timer = window.setInterval(atualizar, INTERVALO_EM_USO_MS);
+    document.addEventListener('visibilitychange', atualizar);
+    window.addEventListener('online', atualizar);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', atualizar);
+      window.removeEventListener('online', atualizar);
+    };
+  }, [presenceToken, reloadPresence]);
 
   useEffect(() => {
     if (!ticketLink) return;

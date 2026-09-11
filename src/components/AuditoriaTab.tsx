@@ -5,7 +5,7 @@
  * existe contador salvo que possa divergir do histórico.
  */
 import { useMemo, useState } from 'react';
-import { Activity, Clock3, ShieldCheck, Users } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import type { HistoryLog } from '../types';
 import {
   contarPor,
@@ -16,7 +16,6 @@ import {
   usuariosDosLogs,
 } from '../utils/auditoria';
 import {
-  StatCard,
   Badge,
   EmptyState,
   PageHeader,
@@ -72,10 +71,8 @@ export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
   const visiveis = filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA);
 
   return (
-    <div id="auditoria-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="auditoria-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Rastro de alterações"
-        photo="ponte-construcao"
         title="Auditoria"
         description="Quem alterou o quê e quando, com destaque para ações sensíveis."
         actions={<PeriodFilter value={period} onChange={setPeriod} />}
@@ -83,12 +80,15 @@ export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Ações no período', valor: resumo.total, tone: 'info' as const, icone: Clock3 },
-          { label: 'Ações sensíveis', valor: resumo.sensiveis, tone: 'neutral' as const, icone: ShieldCheck },
-          { label: 'Exclusões', valor: resumo.exclusoes, tone: 'danger' as const, icone: ShieldCheck },
-          { label: 'Usuários ativos', valor: resumo.usuarios, tone: 'neutral' as const, icone: Users },
+          { label: 'Ações no período', valor: String(resumo.total) },
+          { label: 'Ações sensíveis', valor: String(resumo.sensiveis) },
+          { label: 'Exclusões', valor: String(resumo.exclusoes) },
+          { label: 'Usuários ativos', valor: String(resumo.usuarios) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 

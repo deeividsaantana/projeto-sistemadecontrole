@@ -137,7 +137,7 @@ export default function FrotaTab({
     ];
 
     return (
-      <div id="frota-ficha" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div id="frota-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadoId(null)}
@@ -147,8 +147,6 @@ export default function FrotaTab({
         </button>
 
         <PageHeader
-          eyebrow="Ficha do equipamento"
-          photo="rodovia-duplicada"
           title={`${selecionado.prefixo} · ${selecionado.nome}`}
           description={[selecionado.marca, selecionado.modelo, selecionado.placa || selecionado.seriePlaca].filter(Boolean).join(' · ')}
           actions={(
@@ -333,10 +331,8 @@ export default function FrotaTab({
   }
 
   return (
-    <div id="frota-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="frota-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Ativos e equipamentos"
-        photo="rodovia-duplicada"
         title="Frota"
         description="Cadastro de equipamentos, veículos e implementos. Abra um prefixo para ver a ficha completa."
         actions={<button type="button" onClick={() => onNavigate('cadastros')} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Cadastrar equipamento</button>}

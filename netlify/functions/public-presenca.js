@@ -16,6 +16,39 @@ import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
 import { assertIdempotencyKey } from './_shared/api-security.js';
 import { withIdempotency } from './_shared/idempotency.js';
 
+// Quem está enviando é a equipe, não o roteador. No Wi-Fi da obra — e atrás do
+// NAT da operadora — dezenas de celulares saem pelo mesmo IP: contar ali fazia
+// o último encarregado do dia levar 429 sem ter feito nada de errado. O limite
+// que vale passa a ser por equipe; o teto por IP continua, largo, só para
+// impedir script. Corpo ilegível cai no teto por IP e a própria rota devolve o
+// 400 logo em seguida.
+const LIMITE_POR_EQUIPE_HORA = 120;
+const LIMITE_POR_IP_HORA = 400;
+const LIMITE_SEM_IDENTIDADE_HORA = 30;
+
+const identidadeDeEnvio = event => {
+  try {
+    const body = parseJsonBody(event);
+    const grupoId = cleanString(body?.grupoId, 160);
+    if (grupoId) return `grupo-${stableHash(grupoId).slice(0, 24)}`;
+    const token = cleanString(body?.token, 180);
+    if (token) return `token-${stableHash(token).slice(0, 24)}`;
+  } catch {
+    // Sem identidade utilizável: vale o teto por IP.
+  }
+  return '';
+};
+
+export const aplicarLimiteDeEnvio = async (database, event, method, aplicar = enforceRateLimit) => {
+  const identidade = identidadeDeEnvio(event);
+  if (!identidade) {
+    await aplicar(database, event, `public-presenca-${method}`, LIMITE_SEM_IDENTIDADE_HORA, 3600);
+    return;
+  }
+  await aplicar(database, event, `public-presenca-ip-${method}`, LIMITE_POR_IP_HORA, 3600);
+  await aplicar(database, event, `public-presenca-${method}`, LIMITE_POR_EQUIPE_HORA, 3600, identidade);
+};
+
 const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
 const isGeneralToken = token => token.startsWith('geral-');
 const todayInSaoPaulo = () => new Intl.DateTimeFormat('en-CA', {
@@ -323,11 +356,30 @@ const indexGroupHistory = documents => {
   return { byDate, notesByDate, datas };
 };
 
+// A varredura antiga trazia todo envio que a equipe já fez desde o primeiro
+// dia, para no fim usar só os 30 últimos: o link ficava mais lento a cada
+// semana de obra. O corte agora acontece no banco. O índice composto pode
+// ainda não estar publicado no projeto — nesse caso a varredura completa
+// atende, mais lenta, mas o link nunca fica fora do ar por causa disso.
+const HISTORY_DOCS_LIMIT = 120;
+
 const loadGroupHistory = async (database, grupoId) => {
-  const snapshot = await database.collection('sistemarenea_public_submissions')
-    .where('payload.grupoId', '==', grupoId)
-    .get();
-  return indexGroupHistory(snapshot.docs);
+  // A coleção guarda três tipos: 'presence', 'presence-reset' e 'equipe' —
+  // esta última nasce a cada inclusão ou remoção de colaborador pelo link e
+  // carrega grupoId e data iguais aos de um envio. Sem separar o tipo aqui,
+  // uma equipe que mexe no efetivo gastaria o limite com documentos que a
+  // régua de datas descarta logo depois, e perderia dias de presença reais.
+  const base = database.collection('sistemarenea_public_submissions')
+    .where('kind', '==', 'presence')
+    .where('payload.grupoId', '==', grupoId);
+  try {
+    const snapshot = await base.orderBy('payload.data', 'desc').limit(HISTORY_DOCS_LIMIT).get();
+    return indexGroupHistory(snapshot.docs);
+  } catch (error) {
+    if (error?.code !== 9 && !String(error?.message || '').includes('index')) throw error;
+    const snapshot = await base.get();
+    return indexGroupHistory(snapshot.docs);
+  }
 };
 
 // Aplica a alteração de um único colaborador sobre o array de registros já
@@ -437,6 +489,8 @@ export const __testing = {
   applyRecordEdit,
   applyTeamAdditions,
   indexGroupHistory,
+  loadGroupHistory,
+  HISTORY_DOCS_LIMIT,
   buildPresenceRecords,
   filterSubmittedGroups,
   presenceLockId,
@@ -454,7 +508,7 @@ export const handler = async event => {
     // GET é somente leitura e não deve abrir uma transação de escrita no
     // Firestore a cada carregamento do link. Escritas continuam protegidas.
     if (method !== 'GET' && method !== 'DELETE') {
-      await enforceRateLimit(database, event, `public-presenca-${method}`, 30, 3600);
+      await aplicarLimiteDeEnvio(database, event, method);
     }
 
     if (method === 'GET') {
@@ -462,11 +516,22 @@ export const handler = async event => {
       if (!token) return jsonResponse(400, { success: false, message: 'Token de presença não informado.' });
       const snapshot = await loadPresenceSnapshot(database);
       const tokenGroupIds = activeGroupsForToken(snapshot, token).map(group => group.id);
-      const additionsByGroup = await loadTeamAdditions(database, tokenGroupIds);
+      // Token que não bate com nenhuma equipe ativa termina aqui, antes de
+      // qualquer consulta do dia. Ao paralelizar as duas leituras eu havia
+      // trazido a consulta dos envios para antes desta checagem, e um token
+      // inválido passou a custar uma consulta a mais do que custava antes.
+      if (tokenGroupIds.length === 0) {
+        return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
+      }
+      const today = todayInSaoPaulo();
+      // Uma consulta não depende da outra; esperar em fila só somava latência
+      // no 4G do canteiro.
+      const [additionsByGroup, submittedGroupIds] = await Promise.all([
+        loadTeamAdditions(database, tokenGroupIds),
+        loadSubmittedGroupIds(database, today),
+      ]);
       const config = getPublicConfig(snapshot, token, additionsByGroup);
       if (!config) return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
-      const today = todayInSaoPaulo();
-      const submittedGroupIds = await loadSubmittedGroupIds(database, today);
       const availableConfig = filterSubmittedGroups(config, submittedGroupIds);
       // O link individual (não-geral) sempre reabre a própria equipe, mesmo já
       // enviada: o responsável precisa continuar acessando a lista e editando
@@ -479,6 +544,9 @@ export const handler = async event => {
       let datasDisponiveis = [];
       let dataSelecionada = today;
       let observacaoDia = '';
+      // Só o dia aberto viaja. Antes iam os 30 dias inteiros — cerca de 260 kB
+      // de registros que ninguém tinha pedido, em toda abertura do link, no
+      // 4G da obra. Ao escolher outro dia na régua, a tela busca aquele dia.
       let historicoPorData = {};
       let observacoesPorData = {};
       if (meuGrupo) {
@@ -487,10 +555,8 @@ export const handler = async event => {
         dataSelecionada = isIsoDate(requestedDate) && history.byDate.has(requestedDate) ? requestedDate : today;
         meusRegistros = history.byDate.get(dataSelecionada) || [];
         observacaoDia = history.notesByDate.get(dataSelecionada) || '';
-        historicoPorData = Object.fromEntries(history.datas.map(date => [date, history.byDate.get(date) || []]));
-        historicoPorData[today] ??= [];
-        observacoesPorData = Object.fromEntries(history.datas.map(date => [date, history.notesByDate.get(date) || '']));
-        observacoesPorData[today] ??= '';
+        historicoPorData = { [dataSelecionada]: meusRegistros };
+        observacoesPorData = { [dataSelecionada]: observacaoDia };
       }
       return jsonResponse(200, {
         success: true,

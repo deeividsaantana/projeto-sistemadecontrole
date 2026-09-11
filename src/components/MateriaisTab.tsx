@@ -3,8 +3,9 @@
  * movimentos — não existe contador guardado para divergir do histórico.
  */
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Coins, Package, Plus, Search } from 'lucide-react';
+import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Package, PackageX, Plus, Search } from 'lucide-react';
 import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
+import { pendenciasDeRecebimento, resumoDeRecebimento } from '../utils/recebimentoMaterial';
 import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/estoque';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
@@ -13,9 +14,6 @@ import {
   EmptyState,
   Modal,
   PageHeader,
-  SegmentedControl,
-  SearchInput,
-  StatCard,
   TableBody,
   TableHead,
   TableShell,
@@ -60,6 +58,8 @@ export default function MateriaisTab({
     quantidade: 0,
     fornecedorId: '',
     notaFiscal: '',
+    solicitacaoCompra: '',
+    quantidadeNota: 0,
     destino: '',
     origem: '',
     servico: '',
@@ -69,6 +69,9 @@ export default function MateriaisTab({
   const ativos = useMemo(() => materiais.filter(item => item.ativo !== false), [materiais]);
   const posicoes = useMemo(() => posicaoEstoque(ativos, movimentos), [ativos, movimentos]);
   const abaixoDoMinimo = posicoes.filter(item => item.abaixoDoMinimo);
+  // Carga que a nota prometeu e não chegou é dinheiro parado: fica em cima.
+  const pendencias = useMemo(() => pendenciasDeRecebimento(movimentos), [movimentos]);
+  const recebimento = useMemo(() => resumoDeRecebimento(movimentos), [movimentos]);
 
   const termo = normalizeComparable(busca).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
@@ -141,6 +144,12 @@ export default function MateriaisTab({
       fornecedorId: fornecedor?.id,
       fornecedorNome: fornecedor?.nome,
       notaFiscal: movimento.notaFiscal.trim() || undefined,
+      solicitacaoCompra: movimento.solicitacaoCompra.trim() || undefined,
+      // Só a entrada tem nota a conferir. Guardar o que a nota prometeu é o
+      // que permite saber, depois, que faltou carga.
+      quantidadeNota: movimento.tipo === 'Entrada' && Number(movimento.quantidadeNota) > 0
+        ? Number(movimento.quantidadeNota)
+        : undefined,
       destino: movimento.destino.trim() || undefined,
       origem: movimento.origem.trim() || undefined,
       servico: movimento.servico.trim() || undefined,
@@ -148,7 +157,7 @@ export default function MateriaisTab({
       observacao: movimento.observacao.trim() || undefined,
       criadoEm: new Date().toISOString(),
     });
-    setMovimento({ ...movimento, quantidade: 0, notaFiscal: '', destino: '', origem: '', servico: '', observacao: '' });
+    setMovimento({ ...movimento, quantidade: 0, notaFiscal: '', solicitacaoCompra: '', quantidadeNota: 0, destino: '', origem: '', servico: '', observacao: '' });
     setErro('');
     setMovimentoAberto(false);
   };
@@ -156,10 +165,8 @@ export default function MateriaisTab({
   const saldoAtualDoForm = movimento.materialId ? saldoDoMaterial(movimentos, movimento.materialId) : 0;
 
   return (
-    <div id="materiais-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="materiais-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Estoque e movimentação"
-        photo="rodovia-serra"
         title="Materiais"
         description="Cadastro, movimentação e estoque. O saldo vem da soma dos movimentos."
         actions={podeEditar ? (
@@ -171,6 +178,55 @@ export default function MateriaisTab({
           </div>
         ) : undefined}
       />
+
+      {/* Carga que a nota prometeu e não chegou é nota paga sem material na
+          obra. Fica antes do estoque porque é a conversa mais cara. */}
+      {pendencias.length > 0 && (
+        <section id="recebimentos-pendentes" className="mt-4 overflow-hidden rounded-lg border border-rose-200 bg-white">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-200 bg-rose-50 px-4 py-3">
+            <p className="flex items-center gap-2 text-xs font-bold text-rose-900">
+              <PackageX className="h-4 w-4 shrink-0 text-rose-600" />
+              {pendencias.length} entrega(s) com carga faltando
+            </p>
+            <span className="text-[11px] font-bold text-rose-800">
+              {recebimento.percentualRecebido}% do que as notas prometeram já chegou
+            </span>
+          </header>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-xs">
+              <thead className="bg-[#fafcfb] text-[11px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="p-3">Material</th>
+                  <th className="p-3">SC / Nota</th>
+                  <th className="p-3">Aplicação</th>
+                  <th className="p-3 text-right">Nota</th>
+                  <th className="p-3 text-right">Recebido</th>
+                  <th className="p-3 text-right">Falta</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pendencias.map(item => (
+                  <tr key={item.movimentoId}>
+                    <td className="p-3">
+                      <strong className="block font-bold text-slate-900">{item.material}</strong>
+                      <span className="text-[11px] text-slate-500">{item.data.split('-').reverse().join('/')}</span>
+                    </td>
+                    <td className="p-3 text-slate-600">
+                      {[item.solicitacaoCompra, item.notaFiscal && `NF ${item.notaFiscal}`].filter(Boolean).join(' · ') || '—'}
+                    </td>
+                    <td className="p-3 text-slate-600">{item.destino || '—'}</td>
+                    <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeNota.toLocaleString('pt-BR')}</td>
+                    <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeRecebida.toLocaleString('pt-BR')}</td>
+                    <td className="p-3 text-right font-black tabular-nums text-rose-700">
+                      {item.faltante.toLocaleString('pt-BR')} {item.unidade}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {abaixoDoMinimo.length > 0 && (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
@@ -186,30 +242,42 @@ export default function MateriaisTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Materiais ativos', valor: ativos.length, tone: 'info' as const, icone: Package },
-          { label: 'Movimentos', valor: movimentos.length, tone: 'neutral' as const, icone: Package },
-          { label: 'Abaixo do mínimo', valor: abaixoDoMinimo.length, tone: 'warning' as const, icone: Package },
-          { label: 'Sem saldo', valor: posicoes.filter(item => item.saldo <= 0).length, tone: 'info' as const, icone: Coins },
+          { label: 'Materiais ativos', valor: String(ativos.length) },
+          { label: 'Movimentos', valor: String(movimentos.length) },
+          { label: 'Abaixo do mínimo', valor: String(abaixoDoMinimo.length) },
+          { label: 'Sem saldo', valor: String(posicoes.filter(item => item.saldo <= 0).length) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 
-      <SegmentedControl
-        className="mt-4"
-        label="Seções de materiais"
-        items={[{ id: 'estoque', label: 'Estoque' }, { id: 'movimentos', label: 'Movimentos' }, { id: 'cadastro', label: 'Cadastro' }] as const}
-        value={aba}
-        onChange={setAba}
-      />
+      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+        {([['estoque', 'Estoque'], ['movimentos', 'Movimentos'], ['cadastro', 'Cadastro']] as const).map(([id, rotulo]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAba(id)}
+            aria-pressed={aba === id}
+            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
 
-      <SearchInput
-        className="mt-3"
-        label="Buscar material"
-        value={busca}
-        onChange={setBusca}
-        placeholder="Código, descrição, categoria, fornecedor ou nota"
-      />
+      <label className="relative mt-3 block">
+        <span className="sr-only">Buscar material</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={busca}
+          onChange={event => setBusca(event.target.value)}
+          placeholder="Código, descrição, categoria, fornecedor ou nota"
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+        />
+      </label>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {aba === 'movimentos' ? (
@@ -395,6 +463,24 @@ export default function MateriaisTab({
               <label className="text-xs font-bold text-slate-600">
                 Nota fiscal
                 <input value={movimento.notaFiscal} onChange={event => setMovimento({ ...movimento, notaFiscal: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+              </label>
+              {movimento.tipo === 'Entrada' && (
+                <label className="text-xs font-bold text-slate-600">
+                  Quantidade na nota
+                  <input
+                    type="number" min="0" step="0.01" inputMode="decimal"
+                    value={movimento.quantidadeNota || ''}
+                    onChange={event => setMovimento({ ...movimento, quantidadeNota: Number(event.target.value) })}
+                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+                  />
+                  <span className="mt-1 block text-[11px] font-medium text-slate-400">
+                    O que a nota promete. A quantidade acima é o que de fato chegou — a diferença vira pendência.
+                  </span>
+                </label>
+              )}
+              <label className="text-xs font-bold text-slate-600">
+                Solicitação de compra
+                <input value={movimento.solicitacaoCompra} onChange={event => setMovimento({ ...movimento, solicitacaoCompra: event.target.value })} placeholder="SC 93011249" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
               </label>
               <label className="text-xs font-bold text-slate-600 sm:col-span-2">
                 Fornecedor

@@ -2,6 +2,7 @@
 // Serve o build do frontend (dist/) e as mesmas 7 funções públicas, no mesmo
 // domínio e nos mesmos caminhos relativos que o app já usa
 // (/.netlify/functions/...). O front não precisa saber onde está hospedado.
+import crypto from 'node:crypto';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,8 +47,13 @@ app.all('/.netlify/functions/usage-telemetry', toExpressHandler(usageTelemetry))
 // sem cartão) chama esta rota 1x/dia com o segredo configurado no painel.
 app.post('/tasks/cleanup-cloud-data', async (req, res) => {
   const expected = process.env.CLEANUP_TASK_SECRET || '';
-  const provided = req.headers['x-task-secret'] || '';
-  if (!expected || provided !== expected) {
+  const provided = String(req.headers['x-task-secret'] || '');
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
+  const matches = expected
+    && expectedBuffer.length === providedBuffer.length
+    && crypto.timingSafeEqual(expectedBuffer, providedBuffer);
+  if (!matches) {
     res.status(403).json({ success: false, message: 'Segredo da tarefa ausente ou inválido.' });
     return;
   }

@@ -7,10 +7,10 @@
  * gravação é a regra do Firestore, pela claim de papel do usuário.
  */
 import { useMemo, useState } from 'react';
-import { Activity, Check, KeyRound, Minus, ShieldAlert } from 'lucide-react';
+import { Check, KeyRound, Minus, ShieldAlert } from 'lucide-react';
 import { ALL_NAVIGATION_ITEMS, ROLE_ACCESS, type UserRole } from '../app/navigation/navigation';
 import { CAPACIDADES_CONHECIDAS, pode } from '../utils/permissoes';
-import { PageHeader, StatCard, TableBody, TableHead, TableShell } from '../shared/ui';
+import { PageHeader, TableBody, TableHead, TableShell } from '../shared/ui';
 
 const PAPEIS: UserRole[] = ['admin', 'gestor', 'operador', 'leitura'];
 
@@ -38,10 +38,8 @@ export default function PermissoesTab() {
   const semAcesso = ALL_NAVIGATION_ITEMS.length - modulos.length;
 
   return (
-    <div id="permissoes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="permissoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Acesso e perfis"
-        photo="ponte-construcao"
         title="Permissões"
         description="O que cada papel enxerga e pode fazer, pela mesma regra que as telas usam."
       />
@@ -72,12 +70,15 @@ export default function PermissoesTab() {
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Telas visíveis', valor: modulos.length, tone: 'info' as const, icone: KeyRound },
-          { label: 'Telas ocultas', valor: semAcesso, tone: 'neutral' as const, icone: KeyRound },
-          { label: 'Pode editar', valor: modulos.filter(item => pode(papel, item.id, 'editar')).length, tone: 'neutral' as const, icone: KeyRound },
-          { label: 'Pode aprovar', valor: modulos.filter(item => pode(papel, item.id, 'aprovar')).length, tone: 'neutral' as const, icone: KeyRound },
+          { label: 'Telas visíveis', valor: String(modulos.length) },
+          { label: 'Telas ocultas', valor: String(semAcesso) },
+          { label: 'Pode editar', valor: String(modulos.filter(item => pode(papel, item.id, 'editar')).length) },
+          { label: 'Pode aprovar', valor: String(modulos.filter(item => pode(papel, item.id, 'aprovar')).length) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 

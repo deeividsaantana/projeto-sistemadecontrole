@@ -55,6 +55,7 @@ import FleetReportLayout from './fleet/FleetReportLayout';
 import { ConfirmDialog } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import { PageHeader } from '../shared/ui';
+import { OBRA } from '../config/obra';
 
 interface Props {
   registros: ControleEquipamentoDiario[];
@@ -429,24 +430,22 @@ export default function ControleEquipamentosDiarioTab({
     }
   };
   return (
-    <main ref={pageRef} className="renea-page-viewport fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
+    <main ref={pageRef} className="fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
       <div data-fleet-enter>
         <PageHeader
-          eyebrow="Operação em tempo real"
-          photo="rodovia-duplicada"
           title="Controle Operacional de Frota"
-          description="Rodoanel Mário Covas · Alça Trecho Leste · lançamentos diários, disponibilidade e pendências em uma visão operacional."
+          description={`${OBRA.nome} · lançamentos diários, disponibilidade e pendências em uma visão operacional.`}
           actions={<>
-            <button type="button" onClick={openNewRecord} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-xs font-black text-white shadow-[0_8px_24px_rgba(4,120,87,0.2)] transition hover:-translate-y-0.5 hover:bg-emerald-800 active:translate-y-0"><Plus size={16}/>Novo lançamento <span className="hidden rounded bg-white/15 px-1.5 py-0.5 font-mono text-[9px] lg:inline">N</span></button>
-            <button type="button" onClick={handleRefresh} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
+            <button type="button" onClick={openNewRecord} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[2px] bg-emerald-700 px-5 text-xs font-black text-[#ffffff] transition hover:bg-emerald-800 active:translate-y-px"><Plus size={16}/>Novo lançamento <span className="hidden border border-white/30 px-1.5 py-0.5 font-mono text-[9px] lg:inline">N</span></button>
+            <button type="button" onClick={handleRefresh} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
             <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
             <details className="group relative"><summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:bg-slate-50">Relatórios e dados <ChevronDown size={14} className="transition group-open:rotate-180"/></summary><div className="absolute right-0 z-30 mt-2 w-56 space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"><button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Printer size={15}/>Relatório PDF</button><button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><FileSpreadsheet size={15}/>Exportar Excel</button><button type="button" onClick={() => inputRef.current?.click()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"><Upload size={15}/>Importar planilha</button>{onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"><Plus size={15}/>Cadastrar equipamento</button>}</div></details>
           </>}
         />
       </div>
-      <section data-fleet-enter className="grid gap-4 overflow-hidden rounded-2xl bg-white px-5 py-5 text-slate-800 shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:grid-cols-[1fr_auto] sm:items-center sm:px-6">
-        <div className="flex items-start gap-3"><span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-700"><Zap size={19}/></span><div><p className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">Lançamento rápido</p><h2 className="mt-1 text-lg font-black tracking-tight">Registre motorista, prefixo e situação sem sair do teclado.</h2><p className="mt-1 text-xs leading-5 text-slate-400">Pressione <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-slate-700">N</kbd> para começar. No formulário, use <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-slate-700">Alt + 1…4</kbd> para escolher a situação e <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-slate-700">Ctrl + Enter</kbd> para salvar.</p></div></div>
-        <button type="button" onClick={openNewRecord} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 text-sm font-black text-slate-950 transition hover:bg-emerald-300 active:scale-[0.99]"><Plus size={17}/>Fazer lançamento</button>
+      <section data-fleet-enter className="fleet-quick-launch grid gap-4 overflow-hidden rounded-[3px] border border-slate-200 bg-white px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-center sm:px-6">
+        <div className="flex items-start gap-3"><span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700"><Zap size={19}/></span><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Lançamento rápido</p><h2 className="mt-1 text-lg font-black tracking-tight text-slate-950">Registre motorista, prefixo e situação sem sair do teclado.</h2><p className="mt-1 text-xs leading-5 text-slate-600">Pressione <kbd className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 font-mono font-bold text-slate-800">N</kbd> para começar. Use <kbd className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 font-mono font-bold text-slate-800">Alt + 1…4</kbd> para escolher a situação e <kbd className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 font-mono font-bold text-slate-800">Ctrl + Enter</kbd> para salvar.</p></div></div>
+        <button type="button" onClick={openNewRecord} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[2px] bg-[#ef5b25] px-5 text-sm font-black text-[#ffffff] transition hover:bg-[#d94e1c] active:translate-y-px"><Plus size={17}/>Fazer lançamento</button>
       </section>
       <nav data-fleet-enter className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-transparent" aria-label="Visões do controle de frotas">
         {([

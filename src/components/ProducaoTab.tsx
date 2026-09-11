@@ -4,24 +4,16 @@
  * quantidade prevista no contrato o sistema não exibe percentual inventado.
  */
 import { useMemo, useState } from 'react';
-import { Activity, BarChart3, ClipboardList, Download, Plus, Search, TrendingUp } from 'lucide-react';
+import { BarChart3, ClipboardList, Plus, Search, TrendingUp } from 'lucide-react';
 import type { FrenteServico, GrupoEquipe, ObraLocal, RegistroProducao, ServicoObra, SituacaoServico } from '../types';
 import { avancoDosServicos, producaoPorDia, validarProducao } from '../utils/producao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
 import {
   Badge,
-  BarrasMini,
-  Button,
-  CompactMetric,
   EmptyState,
   Modal,
   PageHeader,
-  SegmentedControl,
-  ProgressBar,
-  SearchInput,
-  StatCard,
-  StatusBadge,
   TableBody,
   TableHead,
   TableShell,
@@ -172,32 +164,32 @@ export default function ProducaoTab({
   const avancoDoForm = avancos.find(item => item.servico.id === lancamento.servicoId);
 
   return (
-    <div id="producao-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="producao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Execução que entrega resultados"
-        photo="rodovia-serra"
         title="Produção"
-        description="Acompanhamento da produção e produtividade."
-        actions={(
+        description="Serviços contratados e produção executada. O avanço vem da soma dos lançamentos."
+        actions={podeEditar ? (
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" icon={Download} onClick={() => window.print()}>Exportar</Button>
-            {podeEditar && <Button variant="secondary" onClick={() => abrirServico()}>Novo serviço</Button>}
-            {podeEditar && <Button variant="primary" icon={Plus} onClick={() => abrirLancamento()}>Lançar produção</Button>}
+            <button type="button" onClick={() => abrirServico()} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Novo serviço</button>
+            <button type="button" onClick={() => abrirLancamento()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
+              <Plus className="h-4 w-4" /> Lançar produção
+            </button>
           </div>
-        )}
+        ) : undefined}
       />
 
-      <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <CompactMetric label="Total de lançamentos" valor={registrosAtivos.length} contexto="registros" icone={ClipboardList} estado="operacao" />
-        <CompactMetric label="Serviços ativos" valor={servicosAtivos.length} contexto={`${concluidos} em 100%`} icone={BarChart3} estado="confirmar" />
-        <CompactMetric label="Lançados hoje" valor={totalExecutadoHoje} contexto="registros" icone={TrendingUp} estado="neutro" />
-        <CompactMetric
-          label="Média por serviço"
-          valor={servicosAtivos.length ? (registrosAtivos.length / servicosAtivos.length).toFixed(1).replace('.', ',') : '0'}
-          contexto="lançamentos"
-          icone={Activity}
-          estado="manutencao"
-        />
+      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        {[
+          { label: 'Serviços ativos', valor: String(servicosAtivos.length) },
+          { label: 'Lançamentos', valor: String(registrosAtivos.length) },
+          { label: 'Lançados hoje', valor: String(totalExecutadoHoje) },
+          { label: 'Serviços em 100%', valor: String(concluidos) },
+        ].map(item => (
+          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
+        ))}
       </section>
 
       {ultimosDias.length > 0 && (
@@ -205,29 +197,45 @@ export default function ProducaoTab({
           <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
             <TrendingUp className="h-4 w-4 text-emerald-600" /> Produção dos últimos dias
           </h2>
-          <BarrasMini
-            className="mt-3"
-            dados={ultimosDias.map(item => ({ rotulo: `${item.data.slice(8)}/${item.data.slice(5, 7)}`, valor: item.quantidade }))}
-            formatar={valor => numero(valor)}
-          />
+          <div className="mt-3 flex items-end gap-1.5 overflow-x-auto">
+            {ultimosDias.map(item => (
+              <div key={item.data} className="flex min-w-0 flex-1 shrink-0 basis-8 flex-col items-center gap-1">
+                <span className="text-[10px] font-bold tabular-nums text-slate-500">{numero(item.quantidade)}</span>
+                <div
+                  className="w-full rounded-t bg-emerald-600/80"
+                  style={{ height: `${picoDia > 0 ? Math.max(6, (item.quantidade / picoDia) * 72) : 6}px` }}
+                />
+                <span className="text-[9px] text-slate-400">{item.data.slice(8)}/{item.data.slice(5, 7)}</span>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
-      <SegmentedControl
-        className="mt-4"
-        label="Seções de produção"
-        items={[{ id: 'avanco', label: 'Avanço' }, { id: 'lancamentos', label: 'Lançamentos' }, { id: 'servicos', label: 'Serviços' }] as const}
-        value={aba}
-        onChange={setAba}
-      />
+      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+        {([['avanco', 'Avanço'], ['lancamentos', 'Lançamentos'], ['servicos', 'Serviços']] as const).map(([id, rotulo]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAba(id)}
+            aria-pressed={aba === id}
+            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
 
-      <SearchInput
-        className="mt-3"
-        label="Buscar serviço ou lançamento"
-        value={busca}
-        onChange={setBusca}
-        placeholder="Serviço, frente, equipe ou responsável"
-      />
+      <label className="relative mt-3 block">
+        <span className="sr-only">Buscar serviço ou lançamento</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={busca}
+          onChange={event => setBusca(event.target.value)}
+          placeholder="Serviço, frente, equipe ou responsável"
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+        />
+      </label>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {aba === 'lancamentos' ? (
@@ -276,11 +284,10 @@ export default function ProducaoTab({
                 <th className="p-3">Unidade</th>
                 {aba === 'avanco' ? (
                   <>
-                    <th className="p-3">Meta</th>
-                    <th className="p-3">Quantidade</th>
+                    <th className="p-3">Previsto</th>
+                    <th className="p-3">Executado</th>
                     <th className="p-3">Saldo</th>
-                    <th className="p-3">%</th>
-                    <th className="p-3">Status</th>
+                    <th className="p-3">Avanço</th>
                   </>
                 ) : (
                   <>
@@ -305,13 +312,15 @@ export default function ProducaoTab({
                       <td className="p-3 font-mono text-slate-600">{item.saldo === undefined ? '—' : numero(item.saldo)}</td>
                       <td className="p-3">
                         {item.percentual === undefined ? (
-                          <span className="text-[11px] text-slate-400">sem meta</span>
+                          <span className="text-[11px] text-slate-400">sem previsto</span>
                         ) : (
-                          <ProgressBar valor={item.percentual} rotulo={`${item.percentual}%`} tone={item.percentual >= 100 ? 'success' : item.percentual >= 60 ? 'info' : 'warning'} />
+                          <div className="flex min-w-28 items-center gap-2">
+                            <div className="h-1.5 flex-1 rounded-full bg-slate-100">
+                              <div className="h-1.5 rounded-full bg-emerald-600" style={{ width: `${Math.min(100, item.percentual)}%` }} />
+                            </div>
+                            <span className="font-mono text-[11px] font-bold text-slate-700">{item.percentual}%</span>
+                          </div>
                         )}
-                      </td>
-                      <td className="p-3">
-                        <StatusBadge>{item.percentual !== undefined && item.percentual >= 100 ? 'Concluído' : item.servico.situacao === 'Ativo' ? 'Em andamento' : item.servico.situacao}</StatusBadge>
                       </td>
                     </>
                   ) : (

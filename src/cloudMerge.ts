@@ -172,6 +172,23 @@ export const resolvePublishPayload = ({
  * a base para não desfazer exclusões locais. É o que o caminho de conflito
  * usa: lá já se sabe que outro usuário publicou, não há o que decidir.
  */
+/**
+ * Tabelas em que sumir daqui NUNCA significa "apague da nuvem".
+ *
+ * O histórico é registro de auditoria e é cortado em 2.000 eventos por
+ * navegador, para não estourar o armazenamento local. Esse corte é uma decisão
+ * de espaço deste aparelho, não uma exclusão — mas a regra de base lia como
+ * exclusão: "estava na base, não está mais aqui, então o usuário apagou".
+ *
+ * Com dois aparelhos o efeito era mútuo e silencioso. Cada um guarda os seus
+ * 2.000 eventos mais recentes; ao publicar, cada um apagava da nuvem o que o
+ * outro havia lançado e que não coubera no próprio corte. O histórico
+ * compartilhado ficava preso no teto e as entradas dos colegas apareciam e
+ * sumiam. Aqui essas tabelas só ganham linhas: quem quiser apagar auditoria
+ * faz pelo backend, não por um corte de armazenamento do navegador.
+ */
+const TABELAS_SOMENTE_ACRESCIMO = new Set(['historyLogs']);
+
 export const mergeCloudSnapshotsWithBaseline = (
   remote: CloudSnapshot | null | undefined,
   local: CloudSnapshot,
@@ -183,7 +200,9 @@ export const mergeCloudSnapshotsWithBaseline = (
     const remoteValue = (remote as CloudSnapshot)[key];
     const localValue = local[key];
     if (Array.isArray(remoteValue) && Array.isArray(localValue)) {
-      merged[key] = mergeCloudTableWithBaseline(remoteValue, localValue, baseline?.[key]);
+      merged[key] = TABELAS_SOMENTE_ACRESCIMO.has(key)
+        ? mergeCloudTable(remoteValue, localValue)
+        : mergeCloudTableWithBaseline(remoteValue, localValue, baseline?.[key]);
     }
   }
   return merged;

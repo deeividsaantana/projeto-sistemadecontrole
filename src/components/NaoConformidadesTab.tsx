@@ -4,7 +4,7 @@
  * a pendência some sozinha quando a NC é criada, sem fila para sincronizar.
  */
 import { useMemo, useState } from 'react';
-import { Activity, AlertOctagon, AlertTriangle, CheckCircle2, Plus, Search } from 'lucide-react';
+import { AlertOctagon, Plus, Search } from 'lucide-react';
 import type {
   FichaVerificacaoServico,
   FrenteServico,
@@ -29,10 +29,7 @@ import {
   EmptyState,
   Modal,
   PageHeader,
-  SegmentedControl,
   Pagination,
-  SearchInput,
-  StatCard,
   TableBody,
   TableHead,
   TableShell,
@@ -189,10 +186,8 @@ export default function NaoConformidadesTab({
   };
 
   return (
-    <div id="nao-conformidades-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="nao-conformidades-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Qualidade e conformidade"
-        photo="ponte-construcao"
         title="Não Conformidades"
         description="Causa raiz, ação corretiva e verificação de eficácia, ligadas à FVS e à inspeção de origem."
         actions={podeEditar ? (
@@ -224,30 +219,42 @@ export default function NaoConformidadesTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Em aberto', valor: painel.abertas, tone: 'warning' as const, icone: AlertOctagon },
-          { label: 'Atrasadas', valor: painel.atrasadas, tone: 'danger' as const, icone: AlertTriangle },
-          { label: 'Encerradas', valor: painel.encerradas, tone: 'success' as const, icone: CheckCircle2 },
-          { label: 'Ação ineficaz', valor: painel.ineficazes, tone: 'danger' as const, icone: AlertOctagon },
+          { label: 'Em aberto', valor: String(painel.abertas) },
+          { label: 'Atrasadas', valor: String(painel.atrasadas) },
+          { label: 'Encerradas', valor: String(painel.encerradas) },
+          { label: 'Ação ineficaz', valor: String(painel.ineficazes) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 
-      <SegmentedControl
-        className="mt-4"
-        label="Filtro de não conformidades"
-        items={[{ id: 'abertas', label: 'Em aberto' }, { id: 'todas', label: 'Todas' }] as const}
-        value={filtro}
-        onChange={setFiltro}
-      />
+      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+        {([['abertas', 'Em aberto'], ['todas', 'Todas']] as const).map(([id, rotulo]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setFiltro(id)}
+            aria-pressed={filtro === id}
+            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${filtro === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
 
-      <SearchInput
-        className="mt-3"
-        label="Buscar não conformidade"
-        value={busca}
-        onChange={setBusca}
-        placeholder="Número, descrição, origem, local ou responsável"
-      />
+      <label className="relative mt-3 block">
+        <span className="sr-only">Buscar não conformidade</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={busca}
+          onChange={event => setBusca(event.target.value)}
+          placeholder="Número, descrição, origem, local ou responsável"
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+        />
+      </label>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {listadas.length === 0 ? (

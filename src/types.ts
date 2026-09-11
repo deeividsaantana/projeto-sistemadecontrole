@@ -115,7 +115,13 @@ export type StatusRegistroCombustivel =
   | 'Conferência necessária'
   | 'Erro de importação';
 
-export type OrigemRegistroCombustivel = 'Manual' | 'Planilha' | 'OneDrive' | 'PDF/Foto IA' | 'Legado Access';
+/**
+ * O OneDrive saiu do produto. Registros gravados antes disso ainda chegam da
+ * nuvem com `origem: 'OneDrive'`, então `normalizarOrigemCombustivel` os lê
+ * como 'Planilha' — que é o que eram: importação de arquivo. Apagar o valor
+ * sem traduzir deixaria esses lançamentos sem origem na conferência.
+ */
+export type OrigemRegistroCombustivel = 'Manual' | 'Planilha' | 'PDF/Foto IA' | 'Legado Access';
 export type SeveridadeAlertaCombustivel = 'info' | 'aviso' | 'critico';
 export type StatusRevisaoCombustivel = 'Pendente' | 'Aprovado' | 'Reaberto';
 
@@ -168,6 +174,10 @@ export interface Abastecimento {
   revisadoEm?: string;
   criadoEm?: string; // ISO timestamp
   atualizadoEm?: string; // ISO timestamp
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface Lubrificacao {
@@ -288,6 +298,10 @@ export interface PresencaApontamento {
   atualizadoPor?: string;
   motivoAlteracao?: string;
   historicoEdicoes?: HistoricoEdicaoPresencaLink[];
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface HistoricoPresenca {
@@ -380,6 +394,10 @@ export interface TicketJazida {
   ticketPareadoId?: string;
   viagemId?: string;
   eventos?: EventoTicket[];
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface OrdemServico {
@@ -536,6 +554,15 @@ export interface MovimentoMaterial {
   fornecedorId?: string;
   fornecedorNome?: string;
   notaFiscal?: string;
+  /** Solicitação de compra que originou a entrega (SC). */
+  solicitacaoCompra?: string;
+  /**
+   * O que a nota diz que veio. `quantidade` continua sendo o que de fato
+   * entrou na obra — é ela que move o estoque. A pendência é a diferença entre
+   * as duas, calculada na hora: um terceiro número gravado seria só mais uma
+   * verdade para divergir.
+   */
+  quantidadeNota?: number;
   /** Para onde foi: frente, obra ou ponto de apoio. */
   destino?: string;
   origem?: string;
@@ -576,6 +603,9 @@ export interface DiarioObra {
   climaTarde: CondicaoClimatica;
   /** Horas paradas por chuva no dia, quando houver. */
   horasParadasClima?: number;
+  /** Leitura do pluviômetro do dia, em milímetros. É o que alimenta o mapa de
+   *  chuvas — o documento que justifica prorrogação de prazo em contrato. */
+  precipitacaoMm?: number;
   visitas?: string;
   observacao?: string;
   /** Fotos do dia em data URL. */
@@ -987,6 +1017,10 @@ export interface LoteEstaca {
   anexos?: AnexoOperacional[];
   criadoEm: string;
   atualizadoEm?: string;
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface CravacaoEstaca {
@@ -1009,6 +1043,10 @@ export interface CravacaoEstaca {
   anexos?: AnexoOperacional[];
   criadoEm: string;
   atualizadoEm?: string;
+  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
+   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
+  inativoEm?: string;
+  inativoPor?: string;
 }
 
 export interface ControleEstacas {

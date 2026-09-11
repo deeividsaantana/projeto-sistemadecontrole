@@ -5,7 +5,7 @@
  * evidência para decidir regra contratual no lugar de quem responde por ela.
  */
 import { useMemo, useState } from 'react';
-import { AlertOctagon, AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Plus, RefreshCw, Search } from 'lucide-react';
+import { AlertTriangle, FileSpreadsheet, Plus, RefreshCw, Search } from 'lucide-react';
 import type { ItemMedicao, Medicao, ObraLocal, RegistroProducao, ServicoObra, SituacaoMedicao } from '../types';
 import {
   excedentesDoContrato,
@@ -21,8 +21,6 @@ import {
   EmptyState,
   Modal,
   PageHeader,
-  SearchInput,
-  StatCard,
   TableBody,
   TableHead,
   TableShell,
@@ -153,10 +151,8 @@ export default function MedicoesTab({
   const total = totalMedicao(itens);
 
   return (
-    <div id="medicoes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="medicoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Medição contratual"
-        photo="rodovia-serra"
         title="Medições"
         description="Boletim por período com quantidades sugeridas pela produção e confirmadas por quem mede."
         actions={podeEditar ? (
@@ -168,22 +164,28 @@ export default function MedicoesTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Medições', valor: ativas.length, tone: 'info' as const, icone: FileText },
-          { label: 'Em aberto', valor: emAberto, tone: 'warning' as const, icone: AlertOctagon },
-          { label: 'Aprovadas', valor: aprovadas.length, tone: 'success' as const, icone: CheckCircle2 },
-          { label: 'Total aprovado', valor: moeda(aprovadas.reduce((soma, item) => soma + totalMedicao(item.itens), 0)), tone: 'success' as const, icone: CheckCircle2 },
+          { label: 'Medições', valor: String(ativas.length) },
+          { label: 'Em aberto', valor: String(emAberto) },
+          { label: 'Aprovadas', valor: String(aprovadas.length) },
+          { label: 'Total aprovado', valor: moeda(aprovadas.reduce((soma, item) => soma + totalMedicao(item.itens), 0)) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 
-      <SearchInput
-        className="mt-3"
-        label="Buscar medição"
-        value={busca}
-        onChange={setBusca}
-        placeholder="Número, situação ou responsável"
-      />
+      <label className="relative mt-4 block">
+        <span className="sr-only">Buscar medição</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={busca}
+          onChange={event => setBusca(event.target.value)}
+          placeholder="Número, situação ou responsável"
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+        />
+      </label>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {listadas.length === 0 ? (

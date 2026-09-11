@@ -59,6 +59,53 @@ const previewNotifications = [
   { id: '1', type: 'success' as const, title: 'Sincronizacao concluida', message: 'Dados do periodo enviados para a nuvem.', timestamp: '08:12', read: false, source: 'Firebase Cloud' as const },
   { id: '2', type: 'warning' as const, title: 'Estoque baixo', message: 'Produto de lubrificacao abaixo do minimo.', timestamp: '07:40', read: true, source: 'Sistema Local' as const },
 ];
+
+// Espelha o link público depois da mudança de desempenho: a resposta traz só o
+// dia aberto, e escolher outro dia na régua vai buscar aquele dia. O e2e cobre
+// o caminho inteiro — marcar, enviar, e voltar a um dia anterior.
+const HOJE_PRESENCA = '2026-09-03';
+const ONTEM_PRESENCA = '2026-09-02';
+
+function PresencaFluxoCompleto() {
+  const [dataSelecionada, setDataSelecionada] = React.useState(HOJE_PRESENCA);
+  const [registros, setRegistros] = React.useState<typeof fx.registrosEnviados>([]);
+  const [buscando, setBuscando] = React.useState(false);
+
+  const selecionarDia = (dia: string) => {
+    if (dia === dataSelecionada) return;
+    setBuscando(true);
+    window.setTimeout(() => {
+      setDataSelecionada(dia);
+      setRegistros(dia === HOJE_PRESENCA ? fx.registrosEnviados : fx.registrosDiaAnterior);
+      setBuscando(false);
+    }, 60);
+  };
+
+  return (
+    <PresencaTempoRealPublica
+      token="presenca-exemplo"
+      gruposEquipe={[fx.grupo]}
+      funcionarios={fx.equipeFuncionarios}
+      empresas={fx.empresas}
+      obras={fx.obras}
+      meuGrupo={fx.grupo}
+      meusRegistros={registros}
+      datasDisponiveis={[HOJE_PRESENCA, ONTEM_PRESENCA]}
+      dataSelecionada={dataSelecionada}
+      dataAtual={HOJE_PRESENCA}
+      onSelectDate={selecionarDia}
+      isLoadingCloud={buscando}
+      loadError=""
+      onRetry={noop}
+      onSubmitPresenca={async () => {
+        setRegistros(fx.registrosEnviados);
+        return { success: true, message: 'Enviado.', submissionId: 'env-e2e-001' };
+      }}
+      onUpdateRecord={async () => ({ success: true, message: 'Atualizado.' })}
+    />
+  );
+}
+
 const screens: Record<string, React.ReactNode> = {
   sidebar: (
     <div className="erp-shell" style={{ height: '100dvh' }}>
@@ -404,7 +451,7 @@ const screens: Record<string, React.ReactNode> = {
   ),
   'diario-obra': (
     <DiarioObraTab
-      diarios={[]}
+      diarios={fx.diariosChuva}
       obras={fx.obras}
       gruposEquipe={[fx.grupo]}
       presencasLink={fx.presencasHistorico}
@@ -433,8 +480,8 @@ const screens: Record<string, React.ReactNode> = {
   ),
   materiais: (
     <MateriaisTab
-      materiais={[]}
-      movimentos={[]}
+      materiais={fx.materiaisObra}
+      movimentos={fx.movimentosMateriaisObra}
       empresas={fx.empresas}
       responsavel="Deivid Santana"
       podeEditar
@@ -486,6 +533,8 @@ const screens: Record<string, React.ReactNode> = {
       controlesEquipamentos={fx.controlesEquipamentos}
       ticketsJazida={fx.ticketsJazida}
       onNavigate={noop}
+      responsavel="Preview"
+      onAlterarSituacao={noop}
     />
   ),
   checklist: (
@@ -556,7 +605,7 @@ const screens: Record<string, React.ReactNode> = {
       lubrificantes={fx.lubrificantes}
       abastecimentos={fx.abastecimentos}
       lubrificacoes={[]}
-      historyLogs={fx.historyLogs}
+      historyLogs={[]}
       ordensServico={fx.ordensServico}
       ticketsJazida={fx.ticketsJazida}
       presencasLink={fx.registrosEnviados}
@@ -568,14 +617,15 @@ const screens: Record<string, React.ReactNode> = {
   'presenca-admin': (
     <ControlePresencaTab
       empresas={fx.empresas}
-      funcionarios={fx.equipeFuncionarios}
+      funcionarios={fx.efetivoPresenca}
       obras={fx.obras}
-      gruposEquipe={[fx.grupo]}
+      gruposEquipe={fx.equipesPresenca}
       presencasLink={fx.presencasHistorico}
       historicoPresencas={[]}
       onSaveGrupoEquipe={noop}
       onDeleteGrupoEquipe={noop}
       onUpdatePresencaLink={noop}
+      onLancarPresencaManual={noop}
     />
   ),
   presenca: (
@@ -596,6 +646,7 @@ const screens: Record<string, React.ReactNode> = {
       onUpdateRecord={async () => ({ success: true, message: 'Atualizado.' })}
     />
   ),
+  'presenca-fluxo': <PresencaFluxoCompleto />,
   'presenca-enviada': (
     <PresencaTempoRealPublica
       token="presenca-exemplo"
@@ -623,11 +674,10 @@ createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
     <div
       id="main-tab-viewport"
-      // Mesmo recuo do App.tsx: o cabeçalho editorial sangra até a borda deste
-      // container, então o preview só é confiável se ele tiver a medida real.
-      // O painel roda sem recuo no App.tsx (dashboard-viewport); as demais telas
-      // ficam dentro do padding. O preview precisa das duas medidas para valer
-      // como verificação de largura.
+      /* Mesmas medidas do App.tsx: o painel roda sem recuo (dashboard-viewport)
+         e as demais telas dentro do padding responsivo. Com um `padding: 28`
+         fixo o preview inventava 5 px de estouro no painel e escondia o recuo
+         real das outras telas — a verificação de largura não valia nada. */
       className={key === 'painel'
         ? 'dashboard-viewport mx-auto w-full'
         : 'mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10'}

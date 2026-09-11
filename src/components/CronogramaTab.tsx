@@ -5,7 +5,7 @@
  * O avanço da barra é o mesmo avanço físico calculado no planejamento.
  */
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, CalendarClock } from 'lucide-react';
+import { CalendarClock } from 'lucide-react';
 import type { FrenteServico, PlanejamentoItem, RegistroProducao } from '../types';
 import {
   barrasDoCronograma,
@@ -13,7 +13,7 @@ import {
   posicaoDaBarra,
   posicaoDeHoje,
 } from '../utils/cronograma';
-import { Badge, EmptyState, SegmentedControl, PageHeader, StatCard, isoDay } from '../shared/ui';
+import { Badge, EmptyState, PageHeader, isoDay } from '../shared/ui';
 import { formatarData } from '../utils/formato';
 
 interface CronogramaTabProps {
@@ -37,32 +37,39 @@ export default function CronogramaTab({ planos, producao, frentes }: CronogramaT
   const atrasadas = barras.filter(item => item.atrasado).length;
 
   return (
-    <div id="cronograma-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="cronograma-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Prazos e marcos"
-        photo="rodovia-serra"
         title="Cronograma"
         description="Planos de produção e frentes com data prevista, na mesma linha do tempo."
       />
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Barras', valor: barras.length, tone: 'info' as const, icone: CalendarClock },
-          { label: 'Atrasadas', valor: atrasadas, tone: 'danger' as const, icone: AlertTriangle },
-          { label: 'Início', valor: formatarData(janela.inicio), tone: 'neutral' as const, icone: CalendarClock },
-          { label: 'Fim', valor: formatarData(janela.fim), tone: 'neutral' as const, icone: CalendarClock },
+          { label: 'Barras', valor: String(barras.length) },
+          { label: 'Atrasadas', valor: String(atrasadas) },
+          { label: 'Início', valor: formatarData(janela.inicio) },
+          { label: 'Fim', valor: formatarData(janela.fim) },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 
-      <SegmentedControl
-        className="mt-4"
-        label="Seções do cronograma"
-        items={[{ id: 'todas', label: 'Tudo' }, { id: 'planos', label: 'Planos' }, { id: 'frentes', label: 'Frentes' }] as const}
-        value={filtro}
-        onChange={setFiltro}
-      />
+      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+        {([['todas', 'Tudo'], ['planos', 'Planos'], ['frentes', 'Frentes']] as const).map(([id, rotulo]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setFiltro(id)}
+            aria-pressed={filtro === id}
+            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${filtro === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {barras.length === 0 ? (

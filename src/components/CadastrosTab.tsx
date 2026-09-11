@@ -23,7 +23,6 @@ import EquipmentOperationsPanel from './EquipmentOperationsPanel';
 import CentralRegistryOverview from './CentralRegistryOverview';
 import OrganizationChart from './OrganizationChart';
 import { validateEquipmentMasterRecord } from '../utils/equipmentOperations';
-import { PageHeader } from '../shared/ui';
 import {
   isActiveCollaborator,
   isSupplier,
@@ -669,40 +668,7 @@ export default function CadastrosTab({
   };
 
   return (
-    <div className="renea-page-viewport space-y-6" id="cadastros-container">
-      <PageHeader
-        eyebrow="Base de dados da obra"
-        photo="ponte-construcao"
-        title="Cadastros"
-        description="Cadastre uma única vez e reutilize os dados oficiais no efetivo, combustível, viagens, equipamentos e estacas."
-        actions={(
-          <>
-            <button
-              type="button"
-              onClick={() => importFileInputRef.current?.click()}
-              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-            >
-              <Upload className="w-4.5 h-4.5" />
-              Importar planilha
-            </button>
-            <input
-              ref={importFileInputRef}
-              type="file"
-              accept=".xlsx,.xlsm,.csv,.tsv"
-              onChange={handleImportSpreadsheet}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800"
-            >
-              <Plus className="w-4.5 h-4.5" />
-              {subTab === 'funcionarios' ? 'Novo colaborador' : 'Novo registro'}
-            </button>
-          </>
-        )}
-      />
+    <div className="space-y-6" id="cadastros-container">
       <CentralRegistryOverview
         empresas={empresas}
         obras={obras}
@@ -731,6 +697,40 @@ export default function CadastrosTab({
         onApplyMasterWorkbook={onApplyMasterWorkbook}
       />
       
+      {/* Upper header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-emerald-500" />
+             Sistema Central de Cadastros e Controle de Obra
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">Cadastre uma única vez e reutilize os dados oficiais no efetivo, combustível, viagens, equipamentos e estacas.</p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => importFileInputRef.current?.click()}
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800"
+          >
+            <Upload className="w-4.5 h-4.5" />
+            Importar planilha
+          </button>
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept=".xlsx,.xlsm,.csv,.tsv"
+            onChange={handleImportSpreadsheet}
+            className="hidden"
+          />
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all  flex items-center gap-2 cursor-pointer"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            {subTab === 'funcionarios' ? 'NOVO COLABORADOR' : 'NOVO REGISTRO'}
+          </button>
+        </div>
+      </div>
 
       {/* Auxiliary Tabs Grid Selector */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2.5" id="subtab-selector">
@@ -1335,8 +1335,8 @@ export default function CadastrosTab({
                       <td className="py-4 px-5 text-slate-700">{item.telefone || '—'}</td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -1384,8 +1384,8 @@ export default function CadastrosTab({
                         </td>
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1488,8 +1488,8 @@ export default function CadastrosTab({
                         </td>
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1553,8 +1553,8 @@ export default function CadastrosTab({
                         </td>
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1593,8 +1593,8 @@ export default function CadastrosTab({
                       <td className="py-4 px-5 text-slate-700">{item.responsavel}</td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -1628,8 +1628,8 @@ export default function CadastrosTab({
                       <td className="py-4 px-5 font-black text-slate-700 text-xs">{item.nome}</td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>

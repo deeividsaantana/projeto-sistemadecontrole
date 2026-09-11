@@ -5,12 +5,11 @@
  * visto.
  */
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, Coins, Plus, Scale } from 'lucide-react';
+import { AlertTriangle, Plus, Scale } from 'lucide-react';
 import type { Abastecimento, CategoriaCusto, LancamentoCusto, ObraLocal, OrcamentoItem, OrdemServico } from '../types';
 import { consolidarCustos, custosDeOutrosModulos } from '../utils/custos';
 import { compararOrcamento, resumoOrcamento, validarOrcamento } from '../utils/orcamento';
 import {
-  StatCard,
   Badge,
   EmptyState,
   Modal,
@@ -111,10 +110,8 @@ export default function OrcamentoTab({
   };
 
   return (
-    <div id="orcamento-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="orcamento-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Orçamento e realização"
-        photo="ponte-construcao"
         title="Orçado x Realizado"
         description="Comparativo mensal por categoria. O realizado vem do consolidado de custos, não é digitado."
         actions={(
@@ -148,11 +145,15 @@ export default function OrcamentoTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Orçado', valor: moeda(resumo.orcado), tone: 'info' as const, icone: Coins },
-          { label: 'Realizado', valor: moeda(resumo.realizado), tone: 'success' as const, icone: Scale },
-          { label: 'Saldo', valor: moeda(resumo.saldo), tone: 'info' as const, icone: Coins },
+          { label: 'Orçado', valor: moeda(resumo.orcado) },
+          { label: 'Realizado', valor: moeda(resumo.realizado) },
+          { label: 'Saldo', valor: moeda(resumo.saldo) },
+          { label: 'Consumo', valor: resumo.consumo === undefined ? '—' : `${resumo.consumo}%` },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 

@@ -4,7 +4,7 @@
  * equipes e lançamentos já usam.
  */
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Boxes, ClipboardList, Clock3, MapPin, Plus, Truck, Users } from 'lucide-react';
+import { ArrowLeft, Boxes, ClipboardList, MapPin, Plus, Truck, Users } from 'lucide-react';
 import type {
   ApontamentoOperacional,
   ControleEquipamentoDiario,
@@ -19,19 +19,7 @@ import type {
 import type { FleetPersistedRecord } from '../fleet/domain';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { horasPor } from '../utils/apontamentos';
-import {
-  Badge,
-  Button,
-  Card,
-  DataTable,
-  EmptyState,
-  Modal,
-  PageHeader,
-  StatCard,
-  StatusBadge,
-  isoDay,
-  statusTone,
-} from '../shared/ui';
+import { Badge, Card, EmptyState, Modal, PageHeader, isoDay, statusTone } from '../shared/ui';
 
 interface FrentesTabProps {
   frentes: FrenteServico[];
@@ -134,7 +122,7 @@ export default function FrentesTab({
     const totalHoras = horasFrente.reduce((soma, item) => soma + (Number(item.horas) || 0), 0);
 
     return (
-      <div id="frente-ficha" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div id="frente-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadaId(null)}
@@ -144,8 +132,6 @@ export default function FrentesTab({
         </button>
 
         <PageHeader
-          eyebrow="Frente de serviço"
-          photo="rodovia-serra"
           title={selecionada.nome}
           description={[selecionada.ramoLocal, selecionada.servico, obras.find(item => item.id === selecionada.obraId)?.nome].filter(Boolean).join(' · ')}
           actions={(
@@ -157,15 +143,18 @@ export default function FrentesTab({
         />
 
         <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {[
-          { label: 'Equipes', valor: equipes.length, tone: 'neutral' as const, icone: Users },
-          { label: 'Presentes hoje', valor: presencasDoDia.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status)).length, tone: 'success' as const, icone: Users },
-          { label: 'Frota hoje', valor: frotaDoDia.length, tone: 'neutral' as const, icone: Truck },
-          { label: 'Horas apontadas', valor: `${totalHoras.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`, tone: 'info' as const, icone: Clock3 },
-        ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
-        ))}
-      </section>
+          {[
+            { label: 'Equipes', valor: String(equipes.length) },
+            { label: 'Presentes hoje', valor: String(presencasDoDia.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status)).length) },
+            { label: 'Frota hoje', valor: String(frotaDoDia.length) },
+            { label: 'Horas apontadas', valor: `${totalHoras.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` },
+          ].map(item => (
+            <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+              <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+              <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+            </div>
+          ))}
+        </section>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
           <Card className="min-w-0" title="Planejamento">
@@ -276,41 +265,50 @@ export default function FrentesTab({
   }
 
   return (
-    <div id="frentes-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="frentes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Operação em tempo real"
-        photo="rodovia-serra"
         title="Frentes de Serviço"
-        description="Gestão e acompanhamento das frentes."
-        actions={podeEditar ? <Button variant="primary" icon={Plus} onClick={() => abrirForm()}>Nova frente</Button> : undefined}
+        description="Onde a obra está trabalhando. Abra uma frente para ver tudo que passou por ela."
+        actions={podeEditar ? (
+          <button type="button" onClick={() => abrirForm()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
+            <Plus className="h-4 w-4" /> Nova frente
+          </button>
+        ) : undefined}
       />
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <DataTable
-          larguraMinima={940}
-          itens={ordenadas}
-          chaveDe={frente => frente.id}
-          onRowClick={frente => setSelecionadaId(frente.id)}
-          vazio={<EmptyState icon={MapPin} title="Nenhuma frente cadastrada" description="Cadastre a frente com o mesmo nome que as equipes já usam, para o histórico se ligar sozinho." />}
-          acoes={podeEditar
-            ? [
-              { rotulo: 'Abrir frente', onSelect: (frente: FrenteServico) => setSelecionadaId(frente.id) },
-              { rotulo: 'Editar', onSelect: (frente: FrenteServico) => abrirForm(frente) },
-            ]
-            : [{ rotulo: 'Abrir frente', onSelect: (frente: FrenteServico) => setSelecionadaId(frente.id) }]}
-          colunas={[
-            { chave: 'nome', titulo: 'Frente', render: frente => <span className="font-semibold text-slate-800">{frente.nome}</span> },
-            { chave: 'servico', titulo: 'Descrição', render: frente => frente.servico || frente.ramoLocal || '—', larguraMinima: 200 },
-            {
-              chave: 'equipamentos',
-              titulo: 'Equipamentos',
-              render: frente => controlesEquipamentos.filter(item => normalizeComparable((item as { frenteServico?: string }).frenteServico || '') === normalizeComparable(frente.nome)).length,
-            },
-            { chave: 'responsavel', titulo: 'Responsável', render: frente => frente.responsavel || '—', ocultarNoCelular: true },
-            { chave: 'situacao', titulo: 'Status', render: frente => <StatusBadge>{frente.situacao}</StatusBadge> },
-          ]}
-        />
-      </div>
+      {ordenadas.length === 0 ? (
+        <div className="mt-4 rounded-lg border border-slate-200 bg-white">
+          <EmptyState icon={MapPin} title="Nenhuma frente cadastrada" description="Cadastre a frente com o mesmo nome que as equipes já usam, para o histórico se ligar sozinho." />
+        </div>
+      ) : (
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {ordenadas.map(frente => {
+            const alvo = normalizeComparable(frente.nome);
+            const equipes = gruposEquipe.filter(item => normalizeComparable(item.frenteServico || '') === alvo).length;
+            return (
+              <li key={frente.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelecionadaId(frente.id)}
+                  className="group flex w-full flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <strong className="block truncate text-sm font-bold text-slate-900">{frente.nome}</strong>
+                      <span className="block truncate text-xs text-slate-500">{frente.servico || frente.ramoLocal || 'Sem serviço informado'}</span>
+                    </div>
+                    <Badge tone={situacaoTone(frente.situacao)}>{frente.situacao}</Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                    <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{equipes} equipe(s)</span>
+                    <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{obras.find(item => item.id === frente.obraId)?.nome || 'Sem obra'}</span>
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <FormFrente
         aberto={formAberto}

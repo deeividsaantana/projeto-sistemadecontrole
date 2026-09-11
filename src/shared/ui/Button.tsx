@@ -20,15 +20,15 @@ const variantClass: Record<ButtonVariant, string> = {
   // para uma lista fixa de fundos — e isso deixava este botão com texto
   // invisível sobre fundo escuro.
   primary: 'border-[#087653] bg-[#087653] text-[#ffffff] hover:bg-[#066344] hover:border-[#066344]',
-  secondary: 'border-slate-300 bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:bg-slate-50 hover:border-slate-400',
-  subtle: 'border-slate-200 bg-slate-50 text-slate-700 hover:-translate-y-0.5 hover:bg-slate-100 hover:border-slate-300',
+  secondary: 'border-[#bfcac4] bg-white text-[#20302a] hover:bg-[#f0f3ef] hover:border-[#87978f]',
+  subtle: 'border-[#d7ded9] bg-[#eef1ed] text-[#30423b] hover:bg-[#e4e9e5] hover:border-[#b9c5bf]',
   ghost: 'border-transparent bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-  danger: 'border-rose-700 bg-rose-700 text-white shadow-sm hover:-translate-y-0.5 hover:bg-rose-800 hover:border-rose-800',
+  danger: 'border-rose-700 bg-rose-700 text-[#ffffff] hover:bg-rose-800 hover:border-rose-800',
 };
 
 const sizeClass: Record<ButtonSize, string> = {
-  sm: 'h-8 px-2.5 text-[11px]',
-  md: 'h-10 px-3 text-xs',
+  sm: 'min-h-10 px-3 text-[11px]',
+  md: 'min-h-11 px-4 text-xs',
 };
 
 export function Button({
@@ -45,7 +45,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border font-semibold tracking-[-0.01em] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-600/20 disabled:cursor-not-allowed disabled:opacity-60',
+        'renea-button inline-flex shrink-0 items-center justify-center gap-2 rounded-[3px] border font-bold tracking-[-0.01em] transition-[background-color,border-color,color,transform] duration-200 ease-out active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-600/20 disabled:cursor-not-allowed disabled:opacity-60',
         sizeClass[size],
         variantClass[variant],
         className,

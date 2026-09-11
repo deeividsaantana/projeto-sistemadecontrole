@@ -4,14 +4,20 @@
  * leva para onde a pendência se resolve, em vez de virar uma segunda lista.
  */
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Download } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, ChevronRight, ListChecks } from 'lucide-react';
 import { listarPendencias, resumoPendencias, type ContextoPendencias, type GravidadePendencia } from '../utils/pendencias';
-import { Button, DataTable, EmptyState, PageHeader, PeriodFilter, StatusBadge, buildPeriod, type PeriodValue } from '../shared/ui';
+import { Badge, EmptyState, PageHeader, PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
 
 interface PendenciasTabProps {
   dados: Omit<ContextoPendencias, 'hoje' | 'inicio' | 'fim'>;
   onNavigate: (tab: string) => void;
 }
+
+const TOM: Record<GravidadePendencia, 'danger' | 'warning' | 'neutral'> = {
+  alta: 'danger',
+  media: 'warning',
+  baixa: 'neutral',
+};
 
 const ROTULO: Record<GravidadePendencia, string> = {
   alta: 'Alta',
@@ -21,7 +27,7 @@ const ROTULO: Record<GravidadePendencia, string> = {
 
 export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps) {
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
-  const [abaAtiva, setAbaAtiva] = useState('todas');
+  const [selectedId, setSelectedId] = useState('');
   const hoje = new Date().toISOString().slice(0, 10);
 
   const pendencias = useMemo(
@@ -35,85 +41,99 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
     pendencias.forEach(item => mapa.set(item.categoria, [...(mapa.get(item.categoria) || []), item]));
     return [...mapa.entries()];
   }, [pendencias]);
-
-  const abas = useMemo(() => [
-    { id: 'todas', rotulo: `Todas (${resumo.registros})` },
-    ...porCategoria.map(([categoria, itens]) => ({
-      id: categoria,
-      rotulo: `${categoria} (${itens.reduce((total, item) => total + item.quantidade, 0)})`,
-    })),
-  ], [porCategoria, resumo.registros]);
-
-  const listadas = abaAtiva === 'todas' ? pendencias : pendencias.filter(item => item.categoria === abaAtiva);
+  const selecionada = pendencias.find(item => item.id === selectedId) || pendencias[0];
 
   return (
-    <div id="pendencias-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="pendencias-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="O que precisa de atenção"
-        photo="rodovia-duplicada"
         title="Pendências"
-        description="Itens que necessitam de atenção e resolução."
-        actions={(
-          <div className="flex flex-wrap items-center gap-2">
-            <PeriodFilter value={period} onChange={setPeriod} />
-            <Button variant="primary" icon={Download} onClick={() => window.print()}>Exportar</Button>
-          </div>
-        )}
+        description="Tudo que está em aberto no sistema, derivado dos registros — cada linha leva para onde se resolve."
+        actions={<PeriodFilter value={period} onChange={setPeriod} />}
       />
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {abas.map(aba => (
-          <button
-            key={aba.id}
-            type="button"
-            onClick={() => setAbaAtiva(aba.id)}
-            aria-pressed={abaAtiva === aba.id}
-            className={`h-9 rounded-lg px-4 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-[0.98] ${abaAtiva === aba.id
-              ? 'bg-[#087353] text-white'
-              : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
-          >
-            {aba.rotulo}
-          </button>
+      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        {[
+          { label: 'Tipos de pendência', valor: String(resumo.itens) },
+          { label: 'Registros pendentes', valor: String(resumo.registros) },
+          { label: 'Gravidade alta', valor: String(resumo.altas) },
+          { label: 'Áreas afetadas', valor: String(resumo.categorias) },
+        ].map(item => (
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
-      </div>
+      </section>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <DataTable
-          larguraMinima={860}
-          itens={listadas}
-          chaveDe={item => item.id}
-          vazio={<EmptyState icon={CheckCircle2} title="Nenhuma pendência no período" description="Todos os registros do período estão em dia." />}
-          colunas={[
-            {
-              chave: 'prioridade',
-              titulo: 'Prioridade',
-              render: item => <StatusBadge>{ROTULO[item.gravidade]}</StatusBadge>,
-            },
-            {
-              chave: 'quantidade',
-              titulo: 'Quantidade',
-              render: item => <strong className="text-[15px] font-bold tabular-nums text-slate-900">{item.quantidade}</strong>,
-            },
-            { chave: 'descricao', titulo: 'Descrição', render: item => item.titulo, larguraMinima: 280 },
-            { chave: 'categoria', titulo: 'Categoria', render: item => item.categoria, ocultarNoCelular: true },
-            {
-              chave: 'acao',
-              titulo: 'Ações',
-              alinhamento: 'direita',
-              render: item => (
-                <button
-                  type="button"
-                  onClick={() => onNavigate(item.tab)}
-                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-                >
-                  Ver detalhes
-                </button>
-              ),
-            },
-          ]}
-        />
-      </div>
+      {pendencias.length === 0 ? (
+        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <EmptyState icon={CheckCircle2} title="Nenhuma pendência no período" description="Todos os registros do período estão em dia." />
+        </div>
+      ) : (
+        // grid-cols-[minmax(0,1fr)] explícito: a trilha padrão é minmax(auto,1fr)
+        // e o min-content da lista (rótulo com truncate) estourava 169 px no
+        // celular.
+        <div className="mt-4 grid grid-cols-[minmax(0,1fr)] items-start gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(23rem,.95fr)]">
+          <div className="space-y-3">
+            {porCategoria.map(([categoria, itens]) => (
+              <section key={categoria} className="overflow-hidden rounded-[3px] border border-slate-200 bg-white">
+                <h2 className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <ListChecks className="h-4 w-4 text-emerald-600" /> {categoria}
+                </h2>
+                <ul className="divide-y divide-slate-100">
+                  {itens.map(item => {
+                    const active = selecionada?.id === item.id;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(item.id)}
+                          aria-pressed={active}
+                          className={`relative flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition-all ${active ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}
+                        >
+                          <i className={`absolute inset-y-0 left-0 w-1 ${item.gravidade === 'alta' ? 'bg-orange-600' : item.gravidade === 'media' ? 'bg-amber-400' : 'bg-slate-300'}`} />
+                          <strong className="grid size-10 shrink-0 place-items-center rounded-[2px] border border-slate-200 bg-white text-sm font-black tabular-nums text-slate-800">
+                            {item.quantidade}
+                          </strong>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold text-slate-800">{item.titulo}</span>
+                            {item.detalhe && <span className="block truncate text-[11px] text-slate-500">{item.detalhe}</span>}
+                          </span>
+                          <Badge tone={TOM[item.gravidade]}>{ROTULO[item.gravidade]}</Badge>
+                          <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${active ? 'translate-x-1 text-emerald-700' : 'text-slate-400'}`} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
+
+          {selecionada && (
+            <aside key={selecionada.id} className="sticky top-4 overflow-hidden rounded-[3px] border border-slate-200 bg-white p-5 shadow-none xl:min-h-[25rem]">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[.2em] text-emerald-700">Detalhe da pendência</p>
+                  <p className="mt-2 text-xs text-slate-500">{selecionada.categoria}</p>
+                </div>
+                <Badge tone={TOM[selecionada.gravidade]}>{ROTULO[selecionada.gravidade]}</Badge>
+              </div>
+              <strong className="mt-6 block max-w-[18ch] text-3xl font-black leading-[.98] tracking-[-.04em] text-slate-950">{selecionada.titulo}</strong>
+              <div className="mt-5 grid grid-cols-[auto_1fr] gap-x-5 gap-y-1 border-y border-slate-100 py-4">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Quantidade</span>
+                <b className="text-right text-2xl tabular-nums text-slate-950">{selecionada.quantidade}</b>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Área</span>
+                <b className="text-right text-sm text-slate-800">{selecionada.categoria}</b>
+              </div>
+              {selecionada.detalhe && <p className="mt-5 text-sm leading-relaxed text-slate-600">{selecionada.detalhe}</p>}
+              <button type="button" onClick={() => onNavigate(selecionada.tab)} className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[3px] bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800">
+                Abrir área responsável <ArrowUpRight className="h-4 w-4" />
+              </button>
+            </aside>
+          )}
+        </div>
+      )}
     </div>
   );
-
 }

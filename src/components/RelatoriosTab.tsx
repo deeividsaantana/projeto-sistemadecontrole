@@ -78,10 +78,8 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
   };
 
   return (
-    <div id="relatorios-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="relatorios-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Relatórios e exportações"
-        photo="ponte-construcao"
         title="Relatórios"
         description="Leitura consolidada dos módulos, com os mesmos números das telas de origem."
         actions={(

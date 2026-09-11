@@ -30,7 +30,7 @@ import {
   Download,
   Layers3
 } from 'lucide-react';
-import { CountUp, PageHeader } from '../shared/ui';
+import { ConfirmDialog, CountUp } from '../shared/ui';
 import type ExcelJS from 'exceljs';
 import { listarMateriais } from '../utils/materiaisJazida';
 import { createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
@@ -58,6 +58,7 @@ import {
 } from '../types';
 import reneaLogoFull from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
+import { OBRA } from '../config/obra';
 
 interface TicketsJazidaTabProps {
   tickets: TicketJazida[];
@@ -119,7 +120,7 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
           <img src={reneaLogoFull} alt="RENEA" className="max-h-14 max-w-44 object-contain" />
         </div>
         <div className="h-24 border-r border-b border-[#cfd7d1] grid place-items-center text-center px-3">
-          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-[10px] text-[#53605a]">Rodoanel Mário Covas · Alça Trecho Leste</p></div>
+          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-[10px] text-[#53605a]">{OBRA.nome}</p></div>
         </div>
         <div className="h-24 border-r border-b border-[#cfd7d1] p-2">
           <div className="text-[9px] font-bold uppercase text-[#53605a]">Ticket Nº</div>
@@ -220,7 +221,7 @@ const drawTicketPairOnPdf = (doc: jsPDF, releaseTicket: TicketJazida, receiptTic
     else { doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('RENEA', left + 5, top + 13); }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42);
     doc.text(`TICKET DE ${isReceipt ? 'RECEBIMENTO - OBRA' : 'LIBERAÇÃO - JAZIDA'}`, left + 60, top + 8);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.text('Rodoanel Mário Covas · Alça Trecho Leste', left + 60, top + 13);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.text(OBRA.nome, left + 60, top + 13);
     label('Ticket Nº', left + 169, top + 5); doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.text(ticket.ocultarNumeroImpressao ? '' : ticket.ticketNumero, left + 179.5, top + 14, { align: 'center' });
 
     const vehicleTop = top + 20;
@@ -303,6 +304,7 @@ export default function TicketsJazidaTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
+  const [confirmandoInativacao, setConfirmandoInativacao] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [importMessage, setImportMessage] = useState('');
   const [viewingTicket, setViewingTicket] = useState<TicketJazida | null>(null);
@@ -1684,7 +1686,7 @@ export default function TicketsJazidaTab({
   const viewingPair = viewingTicket ? getTicketPair(viewingTicket) : null;
 
   return (
-    <div className="renea-page-viewport space-y-6" id="tickets-jazida-tab">
+    <div className="space-y-6" id="tickets-jazida-tab">
       <datalist id="ticket-equipment-prefixes">
         {equipmentOptions.map(item => (
           <option key={item.id} value={item.prefixo}>{item.nome}{equipmentPlate(item) ? ` · ${equipmentPlate(item)}` : ''}</option>
@@ -1712,68 +1714,70 @@ export default function TicketsJazidaTab({
         onConfirm={confirmTicketsImport}
       />
 
-      <PageHeader
-        eyebrow="Controle diário da jazida"
-        photo="rodovia-serra"
-        title="Jazida"
-        description="Impressão, devolução das duas vias e fechamento do dia em um único fluxo."
-        actions={(
-          <>
-            <button
-              type="button"
-              onClick={handlePrintBlankForm}
-              disabled={isBatchPrinting}
-              title="Gerar uma folha apenas com o próximo número sequencial preenchido"
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-xs font-black text-emerald-700 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50"
-            >
-              <Printer className="w-4 h-4" />
-              Imprimir em branco
-            </button>
-            <button
-              type="button"
-              onClick={() => importInputRef.current?.click()}
-              disabled={isImporting}
-              title="Escolher uma planilha XLSX ou XLSM, revisar as linhas e só depois confirmar"
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[#e2e8e4] bg-white px-4 text-xs font-black text-[#26362f] transition-colors hover:border-emerald-500 hover:text-[#14231e] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Upload className="w-4 h-4 text-emerald-700" />
-              {isImporting ? 'Lendo planilha...' : 'Importar planilha'}
-            </button>
-            <button
-              type="button"
-              onClick={openBatchModal}
-              title="Criar e imprimir tickets em ordem crescente"
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[#e2e8e4] bg-white px-4 text-xs font-black text-[#26362f] transition-colors hover:border-emerald-500 hover:text-[#14231e]"
-            >
-              <Printer className="w-4 h-4 text-emerald-700" />
-              Imprimir sequência
-            </button>
-            {operationsOpen && <button
-              onClick={copyPublicLink}
-              title="Copiar o link único para liberação e recebimento"
-              className="px-4 py-2.5 bg-white border border-emerald-500/40 hover:border-emerald-400 text-emerald-700 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Link2 className="w-4 h-4" /> Copiar link público
-            </button>}
-            <button
-              onClick={handleOpenCreate}
-              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-4.5 h-4.5" />
-              Novo lançamento
-            </button>
-            <button
-              type="button"
-              onClick={() => { setOperationsOpen(value => !value); setIsFormOpen(false); }}
-              className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${operationsOpen ? 'border-amber-500/50 bg-amber-500/10 text-amber-700' : 'border-[#e2e8e4] bg-white text-[#26362f] hover:border-emerald-500'}`}
-            >
-              <FilePenLine className="h-4 w-4" />
-              {operationsOpen ? 'Ocultar lista e notas' : 'Ver lista e notas'}
-            </button>
-            <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportTicketsFile} className="hidden" />
-          </>
-        )}
-      />
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8e4] pb-4">
+        <div>
+          <h1 className="text-xl font-extrabold text-[#14231e] flex items-center gap-2">
+            <Truck className="w-5 h-5 text-emerald-500" />
+            Jazida • Controle diário
+          </h1>
+          <p className="text-xs text-[#65716b] mt-1">Impressão, devolução das duas vias e fechamento do dia em um único fluxo.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handlePrintBlankForm}
+            disabled={isBatchPrinting}
+            title="Gerar uma folha apenas com o próximo número sequencial preenchido"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 text-xs font-black text-emerald-700 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50"
+          >
+            <Printer className="w-4 h-4" />
+            Imprimir em branco
+          </button>
+          <button
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+            disabled={isImporting}
+            title="Escolher uma planilha XLSX ou XLSM, revisar as linhas e só depois confirmar"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[#e2e8e4] bg-white px-4 text-xs font-black text-[#26362f] transition-colors hover:border-emerald-500 hover:text-[#14231e] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Upload className="w-4 h-4 text-emerald-700" />
+            {isImporting ? 'Lendo planilha...' : 'Importar planilha'}
+          </button>
+          <button
+            type="button"
+            onClick={openBatchModal}
+            title="Criar e imprimir tickets em ordem crescente"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[#e2e8e4] bg-white px-4 text-xs font-black text-[#26362f] transition-colors hover:border-emerald-500 hover:text-[#14231e]"
+          >
+            <Printer className="w-4 h-4 text-emerald-700" />
+            Imprimir sequência
+          </button>
+          {operationsOpen && <button
+            onClick={copyPublicLink}
+            title="Copiar o link único para liberação e recebimento"
+            className="px-4 py-2.5 bg-white border border-emerald-500/40 hover:border-emerald-400 text-emerald-700 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Link2 className="w-4 h-4" /> Copiar link público
+          </button>}
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            Novo lançamento
+          </button>
+          <button
+            type="button"
+            onClick={() => { setOperationsOpen(value => !value); setIsFormOpen(false); }}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${operationsOpen ? 'border-amber-500/50 bg-amber-500/10 text-amber-700' : 'border-[#e2e8e4] bg-white text-[#26362f] hover:border-emerald-500'}`}
+          >
+            <FilePenLine className="h-4 w-4" />
+            {operationsOpen ? 'Ocultar lista e notas' : 'Ver lista e notas'}
+          </button>
+          <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportTicketsFile} className="hidden" />
+        </div>
+      </div>
 
       {linkMessage && (
         <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-700">
@@ -1898,7 +1902,7 @@ export default function TicketsJazidaTab({
             </div>
             <div className={`rounded-xl border p-4 ${dailyControl.pendentesRecebimento.length ? 'border-sky-500/25 bg-sky-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
               <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Recebimento</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-sky-700">{dailyControl.pendentesRecebimento.length}</span></div>
-              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-sky-200">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-700">Todos os recebimentos retornaram.</span>}</div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-sky-700">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-700">Todos os recebimentos retornaram.</span>}</div>
             </div>
           </div>
 
@@ -1922,7 +1926,7 @@ export default function TicketsJazidaTab({
                       <td className="px-4 py-3 font-mono text-sm font-black text-[#14231e]">{row.numero}</td>
                       <td className="px-4 py-3"><b className="block text-[#26362f]">{formatEventDateTime(row.criadoEm)}</b><span className="text-[9px] text-[#53605a]">{row.loteId.startsWith('avulso-') ? 'Cadastro avulso' : 'Lote impresso'}</span></td>
                       <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Liberação')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.liberacaoRecebida ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-amber-500/30 bg-amber-500/10 text-amber-700 hover:border-amber-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.liberacaoRecebida ? '✓' : ''}</span>{row.liberacaoRecebida ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.liberacaoRecebidaEm)}</small></button></td>
-                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Recebimento')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.recebimentoRecebido ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-sky-500/30 bg-sky-500/10 text-sky-200 hover:border-sky-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.recebimentoRecebido ? '✓' : ''}</span>{row.recebimentoRecebido ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.recebimentoRecebidoEm)}</small></button></td>
+                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Recebimento')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.recebimentoRecebido ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-sky-500/30 bg-sky-500/10 text-sky-700 hover:border-sky-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.recebimentoRecebido ? '✓' : ''}</span>{row.recebimentoRecebido ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.recebimentoRecebidoEm)}</small></button></td>
                       <td className="px-4 py-3"><b className="block text-[#26362f]">{ticket?.prefixo || '—'}</b><span className="text-[9px] text-[#65716b]">{ticket?.placa || 'Sem placa'}</span></td>
                       <td className="px-4 py-3">{operationsOpen ? <button type="button" onClick={() => handleOpenNoteModal(row.numero)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-700 hover:bg-cyan-500/20' : 'bg-[#f7f9f8] text-[#65716b] hover:text-[#14231e]'}`}><FileText className="h-3 w-3" />{note || 'Lançar nota'}</button> : <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-700' : 'bg-[#f7f9f8] text-[#65716b]'}`}><FileText className="h-3 w-3" />{note || 'Área oculta'}</span>}</td>
                     </tr>;
@@ -2305,7 +2309,7 @@ export default function TicketsJazidaTab({
       <div className="bg-white border border-[#e2e8e4] rounded-lg overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] bg-white px-5 py-3 text-xs">
           <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredTickets.length > 0 && filteredTickets.every(item => selectedTicketIds.includes(item.id))} onChange={event => setSelectedTicketIds(event.target.checked ? filteredTickets.map(item => item.id) : [])} /> Selecionar visíveis ({selectedTicketIds.length})</label>
-          <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => { if (window.confirm(`Excluir permanentemente ${selectedTicketIds.length} ticket(s) selecionado(s)?`)) { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); } }} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
+          <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
@@ -2588,6 +2592,16 @@ export default function TicketsJazidaTab({
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmandoInativacao}
+        tone="warning"
+        title={`Inativar ${selectedTicketIds.length} ticket(s)?`}
+        description="Os tickets saem das telas e dos totais, mas continuam guardados e podem voltar."
+        confirmLabel="Inativar"
+        onConfirm={() => { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); setConfirmandoInativacao(false); }}
+        onCancel={() => setConfirmandoInativacao(false)}
+      />
+
     </div>
   );
 }

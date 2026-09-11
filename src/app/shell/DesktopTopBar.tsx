@@ -7,6 +7,7 @@ import type { Alerta } from '../../utils/alertas';
 import type { NavigationGroupView } from './NavigationMenu';
 import { NAVIGATION_GROUPS } from '../navigation/navigation';
 import { Breadcrumb } from '../../shared/ui';
+import { OBRA } from '../../config/obra';
 
 const ICON_STROKE = 1.75;
 
@@ -124,12 +125,12 @@ export function DesktopTopBar({
       <div
         className="erp-topbar__project"
         title="Obra ativa"
-        aria-label="Obra ativa: Rodoanel Complexo do Alto Tietê, Alça"
+        aria-label={`Obra ativa: ${OBRA.nome}`}
       >
         <Building2 aria-hidden="true" />
         <span>
           <small>Projeto atual</small>
-          <strong>Rodoanel Complexo do Alto Tietê · Alça</strong>
+          <strong>{OBRA.nome}</strong>
         </span>
       </div>
 

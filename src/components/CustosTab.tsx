@@ -6,7 +6,7 @@
  * previsto — nunca somado ao realizado.
  */
 import { useMemo, useState } from 'react';
-import { BarChart3, Coins, Plus, Search, Truck } from 'lucide-react';
+import { Coins, Plus, Search } from 'lucide-react';
 import type {
   Abastecimento,
   CategoriaCusto,
@@ -35,8 +35,6 @@ import {
   PageHeader,
   Pagination,
   PeriodFilter,
-  SearchInput,
-  StatCard,
   TableBody,
   TableHead,
   TableShell,
@@ -166,10 +164,8 @@ export default function CustosTab({
   };
 
   return (
-    <div id="custos-tab" className="renea-page min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="custos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
-        eyebrow="Custo da operação"
-        photo="ponte-construcao"
         title="Custos"
         description="Consolidado do período: combustível e manutenção vêm dos registros; locação e terceiros são lançados aqui."
         actions={(
@@ -186,11 +182,15 @@ export default function CustosTab({
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
-          { label: 'Custo do período', valor: moeda(totalCustos(custos)), tone: 'info' as const, icone: Coins },
-          { label: 'Lançamentos', valor: custos.length, tone: 'neutral' as const, icone: BarChart3 },
-          { label: 'Manutenção prevista', valor: moeda(previsto), tone: 'warning' as const, icone: Truck },
+          { label: 'Custo do período', valor: moeda(totalCustos(custos)) },
+          { label: 'Lançamentos', valor: String(custos.length) },
+          { label: 'Manutenção prevista', valor: moeda(previsto) },
+          { label: 'Maior categoria', valor: porCategoria[0] ? `${porCategoria[0].grupo}` : '—' },
         ].map(item => (
-          <StatCard key={item.label} label={item.label} value={item.valor} tone={item.tone} icon={item.icone} />
+          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+          </div>
         ))}
       </section>
 
@@ -233,13 +233,16 @@ export default function CustosTab({
         </section>
       </div>
 
-      <SearchInput
-        className="mt-3"
-        label="Buscar custo"
-        value={busca}
-        onChange={setBusca}
-        placeholder="Descrição, categoria ou origem"
-      />
+      <label className="relative mt-4 block">
+        <span className="sr-only">Buscar custo</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={busca}
+          onChange={event => setBusca(event.target.value)}
+          placeholder="Descrição, categoria ou origem"
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+        />
+      </label>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {listados.length === 0 ? (

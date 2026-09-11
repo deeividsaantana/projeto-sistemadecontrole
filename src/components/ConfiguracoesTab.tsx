@@ -8,7 +8,7 @@ import { HistoryLog, PeriodoArquivado } from '../types';
 import { isSnapshotIntact } from '../utils/snapshotIntegrity';
 import { loadUsageSummary, type UsageSummary } from '../usageTelemetry';
 import { loadMasterDataGatewayStatus, type MasterDataGatewayStatus } from '../services/masterDataApi';
-import { CountUp, PageHeader, SegmentedControl } from '../shared/ui';
+import { CountUp } from '../shared/ui';
 import { 
   Settings, 
   Clock, 
@@ -290,22 +290,22 @@ export default function ConfiguracoesTab({
   };
 
   return (
-    <div className="renea-page-viewport space-y-6" id="configuracoes-tab">
+    <div className="space-y-6" id="configuracoes-tab">
       
-      <PageHeader
-        eyebrow="Configuração do sistema"
-        photo="ponte-construcao"
-        title="Configurações"
-        description="Gerencie a segurança local, importe ou exporte backups, faça auditorias e acesse o manual."
-        actions={(
-          <SegmentedControl
-            label="Seções das configurações"
-            items={[{ id: 'geral', label: 'Configurações' }, { id: 'usuarios', label: 'Usuários' }] as const}
-            value={section}
-            onChange={setSection}
-          />
-        )}
-      />
+      {/* Upper header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+            <Settings className="w-5 h-5 text-emerald-500" />
+            Configurações & Painel Administrativo
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">Gerencie a segurança local, importe ou exporte backups, faça auditorias e acesse o manual.</p>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setSection('geral')} className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-xs font-black uppercase tracking-wide transition ${section === 'geral' ? 'bg-emerald-600 text-white' : 'border border-slate-200 text-slate-700 hover:border-emerald-600'}`}><Settings className="h-4 w-4" /> Configurações</button>
+          <button type="button" onClick={() => setSection('usuarios')} className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-xs font-black uppercase tracking-wide transition ${section === 'usuarios' ? 'bg-emerald-600 text-white' : 'border border-slate-200 text-slate-700 hover:border-emerald-600'}`}><Users className="h-4 w-4" /> Usuários</button>
+        </div>
+      </div>
 
       {section === 'usuarios' && (
         <Suspense fallback={<p className="text-xs text-slate-400">Carregando...</p>}>

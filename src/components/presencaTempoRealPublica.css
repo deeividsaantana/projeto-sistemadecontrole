@@ -519,12 +519,20 @@
 }
 
 @media (max-width: 640px) {
+  /* No celular a contagem de pendentes e os dois botões não cabem na mesma
+     linha: com `width:100%` nas ações e `space-between` na barra, o conjunto
+     media 11 px a mais que a tela e a página ganhava rolagem lateral. A barra
+     quebra em duas linhas e os botões param de crescer além do espaço. */
+  .presence-public__submit-bar { flex-wrap: wrap; }
+
   .presence-public__submit-actions {
     width: 100%;
+    min-width: 0;
   }
 
   .presence-public__submit-actions > button {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 
@@ -1264,5 +1272,33 @@
     animation-duration: 0.01ms;
     animation-iteration-count: 1;
     transition-duration: 0.01ms;
+  }
+}
+
+/* O link é usado no celular, em pé, no sol. Campo abaixo de 16px faz o iOS dar
+   zoom na página inteira ao toque: a tela salta e o dedo erra a situação do
+   colaborador. Aqui, e não no CSS global, porque esta folha carrega depois. */
+@media (max-width: 1023px) {
+  .presence-public input:not([type='checkbox']):not([type='radio']),
+  .presence-public select,
+  .presence-public textarea,
+  .presence-public__search input,
+  .presence-public__progress-card input,
+  .presence-public__employee-card select,
+  .presence-public__employee-card textarea,
+  .presence-public__daynote textarea {
+    font-size: 16px;
+  }
+
+  /* Piso de legibilidade: 9px e 10px são legíveis num monitor, não na tela do
+     encarregado ao sol. Cada rótulo aqui é conferência de gente presente. */
+  .presence-public__group-count span,
+  .presence-public__pending-count span,
+  .presence-public__draft-badge,
+  .presence-public__success-total span,
+  .presence-public__summary-grid span,
+  .presence-public__audit-id,
+  .presence-public__status-pill {
+    font-size: 11.5px;
   }
 }

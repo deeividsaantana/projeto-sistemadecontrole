@@ -46,3 +46,20 @@ export const rotateWeakPublicLinkTokens = (
     changed: rotatedPresence > 0,
   };
 };
+
+/**
+ * O endereço de presença que o encarregado guardou no celular só muda quando
+ * alguém manda mudar. A troca dos tokens previsíveis herdados das versões
+ * antigas acontece uma única vez por aparelho: depois disso `jaEstabilizado`
+ * fica verdadeiro e a lista volta intacta, mesmo em atualização do sistema ou
+ * quando a nuvem devolve o grupo. Renovar link continua sendo um botão.
+ */
+export const estabilizarLinksPublicos = (
+  gruposEquipe: GrupoEquipe[],
+  jaEstabilizado: boolean,
+  createToken: (purpose: 'presenca') => string = generateSecurePublicToken,
+) => (
+  jaEstabilizado
+    ? { gruposEquipe, rotatedPresence: 0, changed: false }
+    : rotateWeakPublicLinkTokens(gruposEquipe, createToken)
+);

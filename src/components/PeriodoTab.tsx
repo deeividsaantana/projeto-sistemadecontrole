@@ -14,18 +14,7 @@ import type {
   PresencaApontamento,
   TicketJazida,
 } from '../types';
-import {
-  Button,
-  CompactMetric,
-  DataTable,
-  Field,
-  FilterBar,
-  PageHeader,
-  Pagination,
-  SearchInput,
-  SelectField,
-  StatusBadge,
-} from '../shared/ui';
+import { PageHeader, Pagination, StatCard, statusTone } from '../shared/ui';
 
 interface PeriodoTabProps {
   presencas: PresencaApontamento[];
@@ -176,53 +165,145 @@ export default function PeriodoTab({
   ];
 
   const cards = [
-    { label: 'Equipamentos', valor: decimal(totais.frotaTotal), apoio: `${decimal(totais.frotaManutencao)} em manutenção`, icone: Truck, estado: 'operacao' as const },
-    { label: 'Colaboradores', valor: decimal(totais.presentes), apoio: `de ${decimal(totais.presencaTotal)} apontamentos`, icone: Users, estado: 'confirmar' as const },
-    { label: 'Viagens', valor: decimal(totais.ticketsTotal), apoio: `${decimal(totais.metrosCubicos, 1)} m³`, icone: Wrench, estado: 'neutro' as const },
-    { label: 'Abastecimentos', valor: decimal(periodo.combustivel.length), apoio: `${decimal(totais.litros, 1)} L`, icone: Droplets, estado: 'manutencao' as const },
+    { label: 'Presenças confirmadas', valor: decimal(totais.presentes), apoio: `${decimal(totais.presencaTotal)} registro(s) de presença`, icone: Users },
+    { label: 'Lançamentos de frota', valor: decimal(totais.frotaTotal), apoio: `${decimal(totais.frotaManutencao)} em manutenção no período`, icone: Truck },
+    { label: 'Combustível', valor: `${decimal(totais.litros, 1)} L`, apoio: `${decimal(periodo.combustivel.length)} abastecimento(s)`, icone: Droplets },
+    { label: 'Tickets de jazida', valor: decimal(totais.ticketsTotal), apoio: `${decimal(totais.metrosCubicos, 1)} m³ transportado(s)`, icone: Wrench },
   ];
 
+  const ritmoDiario = useMemo(() => {
+    const days: Array<{ iso: string; label: string; total: number }> = [];
+    const cursor = new Date(`${periodo.inicio}T12:00:00`);
+    const end = new Date(`${periodo.fim}T12:00:00`);
+    while (cursor <= end && days.length < 62) {
+      const iso = cursor.toISOString().slice(0, 10);
+      days.push({
+        iso,
+        label: cursor.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        total: registros.filter(item => item.data === iso).length,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return days;
+  }, [periodo.fim, periodo.inicio, registros]);
+
+  const maiorRitmo = Math.max(1, ...ritmoDiario.map(day => day.total));
+  const distribuicao = (['Presença', 'Frota', 'Combustível', 'Tickets'] as TipoRegistro[]).map(tipo => ({
+    tipo,
+    total: registros.filter(item => item.tipo === tipo).length,
+  }));
+
   return (
-    <section className="renea-page-viewport space-y-5 text-[#14231e]">
+    <section className="space-y-5 text-[#14231e]">
       <PageHeader
-        eyebrow="Operação em tempo real"
-        photo="rodovia-serra"
-        title="Registros por Período"
-        description="Visualize e filtre registros por um período específico."
-        actions={<Button variant="primary" icon={Download} onClick={exportarResumo}>Exportar</Button>}
+        title={`Registros de ${formatDay(periodo.inicio)} a ${formatDay(periodo.fim)}`}
+        description="Presença, frota, combustível e jazida no mesmo intervalo."
+        actions={<button type="button" onClick={exportarResumo} className={CHIP}><Download className="mr-2 h-4 w-4" /> Exportar</button>}
       />
 
-      <FilterBar
-        acao={<Button variant="primary" onClick={() => setPage(1)} className="h-9">Filtrar</Button>}
-      >
-        <div className="flex flex-wrap items-center gap-1 self-end rounded-lg border border-slate-200 bg-white p-1">
-          {presets.map(([label, aplicar]) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => { aplicar(); setPage(1); }}
-              className="h-8 rounded-md px-3 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-100"
-            >
-              {label}
-            </button>
-          ))}
+      <div className={`${PANEL} p-5 sm:p-6`}>
+        <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,180px))_1fr]">
+          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
+            Do dia
+            <input type="date" value={from} max={to} onChange={event => { setFrom(event.target.value); setPage(1); }} className={`${FIELD} mt-1`} />
+          </label>
+          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
+            Até o dia
+            <input type="date" value={to} min={from} onChange={event => { setTo(event.target.value); setPage(1); }} className={`${FIELD} mt-1`} />
+          </label>
+          <div className="flex flex-wrap items-end gap-2">
+            {presets.map(([label, aplicar]) => (
+              <button key={label} type="button" onClick={aplicar} className={CHIP}>{label}</button>
+            ))}
+          </div>
         </div>
-        <Field label="Data inicial" type="date" value={from} max={to} onChange={event => { setFrom(event.target.value); setPage(1); }} className="min-w-36" />
-        <Field label="Data final" type="date" value={to} min={from} onChange={event => { setTo(event.target.value); setPage(1); }} className="min-w-36" />
-        <SelectField label="Tipo" value={tipoFilter} onChange={event => { setTipoFilter(event.target.value as 'Todos' | TipoRegistro); setPage(1); }} className="min-w-36">
-          <option>Todos</option><option>Presença</option><option>Frota</option><option>Combustível</option><option>Tickets</option>
-        </SelectField>
-        <SelectField label="Equipamento" value={equipamentoFilter} onChange={event => { setEquipamentoFilter(event.target.value); setPage(1); }} className="min-w-40">
-          {equipamentosDoPeriodo.map(value => <option key={value}>{value}</option>)}
-        </SelectField>
-        <SearchInput className="min-w-52 flex-1" label="Buscar registros" value={busca} onChange={valor => { setBusca(valor); setPage(1); }} placeholder="Equipamento, descrição..." />
-      </FilterBar>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
+            Tipo de registro
+            <select value={tipoFilter} onChange={event => { setTipoFilter(event.target.value as 'Todos' | TipoRegistro); setPage(1); }} className={`${FIELD} mt-1 font-bold`}>
+              <option>Todos</option><option>Presença</option><option>Frota</option><option>Combustível</option><option>Tickets</option>
+            </select>
+          </label>
+          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
+            Equipamento
+            <select value={equipamentoFilter} onChange={event => { setEquipamentoFilter(event.target.value); setPage(1); }} className={`${FIELD} mt-1 font-bold`}>
+              {equipamentosDoPeriodo.map(value => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="relative text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
+            Buscar
+            <Search className="pointer-events-none absolute left-3 top-[calc(50%+7px)] h-4 w-4 -translate-y-1/2 text-[#79847e]" />
+            <input value={busca} onChange={event => { setBusca(event.target.value); setPage(1); }} placeholder="Equipamento, descrição..." className={`${FIELD} mt-1 pl-9`} />
+          </label>
+        </div>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(card => (
-          <CompactMetric key={card.label} label={card.label} valor={card.valor} contexto={card.apoio} icone={card.icone} estado={card.estado} />
+          <StatCard key={card.label} label={card.label} value={card.valor} icon={card.icone} trend={card.apoio} />
         ))}
       </div>
+
+      <section className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(19rem,.8fr)]" aria-label="Análise interativa do período">
+        <article className={`${PANEL} overflow-hidden`}>
+          <header className="flex items-end justify-between gap-4 border-b border-[#e2e8e4] px-5 py-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-700">Ritmo operacional</p>
+              <h2 className="mt-1 text-base font-black">Registros por dia</h2>
+            </div>
+            <span className="text-xs text-[#65716b]">Clique em um dia para isolar</span>
+          </header>
+          <div className="p-5">
+            {ritmoDiario.length ? (
+              <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-10 lg:grid-cols-14">
+                {ritmoDiario.map(day => {
+                  const intensity = day.total / maiorRitmo;
+                  const tone = day.total === 0 ? '#f1f4f2' : intensity > .7 ? '#087653' : intensity > .35 ? '#54b895' : '#bfe8d7';
+                  return (
+                    <button
+                      key={day.iso}
+                      type="button"
+                      onClick={() => { setFrom(day.iso); setTo(day.iso); setPage(1); }}
+                      className="group relative aspect-square min-h-10 overflow-hidden rounded-[2px] border border-[#d7e0db] text-[9px] font-bold transition-transform hover:z-10 hover:scale-110 focus-visible:z-10"
+                      style={{ backgroundColor: tone, color: intensity > .7 ? '#fff' : '#18372e' }}
+                      title={`${day.label}: ${day.total} registro(s)`}
+                      aria-label={`${day.label}: ${day.total} registro(s)`}
+                    >
+                      <span className="block tabular-nums">{day.total}</span>
+                      <span className="block opacity-70">{day.label.slice(0, 2)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : <p className="py-10 text-center text-sm text-[#65716b]">Sem dias no intervalo.</p>}
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-[10px] font-bold uppercase tracking-wide text-[#65716b]">
+              <span className="inline-flex items-center gap-1.5"><i className="size-2.5 bg-[#f1f4f2]" /> sem registro</span>
+              <span className="inline-flex items-center gap-1.5"><i className="size-2.5 bg-[#bfe8d7]" /> baixo</span>
+              <span className="inline-flex items-center gap-1.5"><i className="size-2.5 bg-[#54b895]" /> médio</span>
+              <span className="inline-flex items-center gap-1.5"><i className="size-2.5 bg-[#087653]" /> intenso</span>
+            </div>
+          </div>
+        </article>
+
+        <article className={`${PANEL} overflow-hidden`}>
+          <header className="border-b border-[#e2e8e4] px-5 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-700">Distribuição real</p>
+            <h2 className="mt-1 text-base font-black">Origem dos registros</h2>
+          </header>
+          <div className="space-y-1 p-3">
+            {distribuicao.map(item => {
+              const share = registros.length ? (item.total / registros.length) * 100 : 0;
+              return (
+                <button key={item.tipo} type="button" onClick={() => { setTipoFilter(item.tipo); setPage(1); }} className="group w-full border-b border-[#edf1ef] px-2 py-3 text-left last:border-0">
+                  <span className="flex items-center justify-between gap-3 text-xs"><strong>{item.tipo}</strong><b className="tabular-nums text-emerald-800">{item.total}</b></span>
+                  <span className="mt-2 block h-1.5 overflow-hidden bg-[#edf1ef]"><i className="block h-full origin-left bg-emerald-600 transition-transform duration-700 group-hover:scale-y-150" style={{ width: `${share}%` }} /></span>
+                  <span className="mt-1 block text-[10px] tabular-nums text-[#65716b]">{decimal(share, 1)}% do período</span>
+                </button>
+              );
+            })}
+          </div>
+        </article>
+      </section>
 
       <article className={`${PANEL} overflow-hidden`}>
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] px-5 py-4">
@@ -232,21 +313,29 @@ export default function PeriodoTab({
           </div>
           <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-[#e2e8e4] px-2 text-xs font-bold text-[#65716b]"><option value={10}>10 por página</option><option value={25}>25 por página</option><option value={50}>50 por página</option></select>
         </header>
-        <DataTable
-          larguraMinima={940}
-          itens={pagedRegistros}
-          chaveDe={item => item.id}
-          vazio={<p className="px-5 py-14 text-center text-[13px] text-slate-500">Nenhum registro entre {formatDay(periodo.inicio)} e {formatDay(periodo.fim)}.</p>}
-          acoes={[{ rotulo: 'Ver no módulo', onSelect: () => undefined }]}
-          colunas={[
-            { chave: 'data', titulo: 'Data', render: item => <span className="font-mono tabular-nums">{formatDay(item.data)}</span> },
-            { chave: 'horario', titulo: 'Horário', render: item => <span className="tabular-nums text-slate-500">{item.horario || '—'}</span> },
-            { chave: 'tipo', titulo: 'Tipo', render: item => item.tipo },
-            { chave: 'codigo', titulo: 'Código', render: item => <span className="font-semibold text-slate-800">{item.equipamento}</span> },
-            { chave: 'descricao', titulo: 'Descrição', render: item => <span className="line-clamp-1" title={item.descricao}>{item.descricao}</span>, larguraMinima: 220 },
-            { chave: 'situacao', titulo: 'Situação', render: item => <StatusBadge>{item.status}</StatusBadge> },
-          ]}
-        />
+        {pagedRegistros.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead className="bg-[#f7f9f8] text-[10px] uppercase tracking-wider text-[#65716b]">
+                <tr>{['Data', 'Horário', 'Equipamento', 'Tipo', 'Descrição', 'Status'].map(label => <th key={label} className="border-b border-[#e2e8e4] px-4 py-3 font-bold">{label}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-[#eef2f0]">
+                {pagedRegistros.map(item => (
+                  <tr key={item.id} className="hover:bg-[#f8fbf9]">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums">{formatDay(item.data)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums text-[#65716b]">{item.horario || '—'}</td>
+                    <td className="px-4 py-3 font-black">{item.equipamento}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-[#65716b]">{item.tipo}</td>
+                    <td className="max-w-[280px] truncate px-4 py-3 text-[#65716b]" title={item.descricao}>{item.descricao}</td>
+                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(item.status)}`}>{item.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="px-5 py-14 text-center text-sm text-[#65716b]">Nenhum registro entre {formatDay(periodo.inicio)} e {formatDay(periodo.fim)}.</p>
+        )}
         {totalPages > 1 && (
           <div className="flex items-center justify-between gap-3 border-t border-[#eef2f0] px-5 py-4">
             <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />

@@ -45,20 +45,20 @@ export function LoginScreen({
     <main className="login-shell flex items-center justify-center p-4 text-slate-900 antialiased font-sans" id="login-viewport">
       <div className="login-frame">
         <section className="login-story" aria-label="Operação RENEA">
-          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em]">
+          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
             <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_0_5px_rgb(52_211_153_/_0.16)]" />
             Operação conectada
           </div>
           <div className="max-w-lg">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">RENEA Infraestrutura</p>
-            <h1 className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] text-white md:text-5xl">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">RENEA Infraestrutura</p>
+            <h1 className="max-w-xl text-4xl font-black leading-[.98] tracking-[-0.055em] text-slate-950 md:text-6xl">
               Decisões de campo com informação confiável.
             </h1>
-            <p className="mt-5 max-w-md text-sm leading-6 text-white/75">
+            <p className="mt-5 max-w-md text-sm leading-6 text-slate-600">
               Frota, equipes, combustível e produção reunidos em um ambiente operacional seguro.
             </p>
           </div>
-          <p className="text-[11px] text-white/55">Ambiente corporativo · acesso monitorado</p>
+          <p className="text-[11px] font-semibold text-slate-500">Ambiente corporativo · acesso monitorado</p>
         </section>
 
         <section className="login-panel">
