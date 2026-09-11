@@ -1,8 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
+import ScrollTrigger from 'gsap/ScrollTrigger';
 import {
   Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2,
   Clock3, Fuel, HardHat, PackageSearch, PauseCircle, Plus, ShieldCheck,
-  Truck, Users, WalletCards, Wrench, type LucideIcon,
+  SlidersHorizontal, Truck, Users, WalletCards, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type {
   Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa,
@@ -227,6 +230,7 @@ export default function Dashboard({
   lancamentosCusto = [], orcamento = [], materiais = [], movimentosMaterial = [],
   frentes = [], onNavigate,
 }: DashboardProps) {
+  const dashboardRef = useRef<HTMLElement>(null);
   const [periodDays, setPeriodDays] = useState<7 | 14 | 30>(7);
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('Todos');
   const [selectedDate, setSelectedDate] = useState('');
@@ -369,26 +373,90 @@ export default function Dashboard({
     { filter: 'À disposição', label: 'À disposição', icon: PauseCircle, color: statusColor(FLEET_OPERATIONAL_STATUS.available), value: latest.available },
   ];
 
+  useGSAP(() => {
+    const root = dashboardRef.current;
+    if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    gsap.registerPlugin(ScrollTrigger);
+    const hero = root.querySelector<HTMLElement>('[data-dashboard-hero]');
+    const visual = root.querySelector<HTMLElement>('[data-dashboard-visual]');
+    const metrics = root.querySelectorAll<HTMLElement>('[data-dashboard-metric]');
+    const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-dashboard-section]'));
+
+    const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    timeline
+      .fromTo(hero?.querySelectorAll('[data-dashboard-hero-copy]') || [], { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: .72, stagger: .09, clearProps: 'transform,opacity,visibility' })
+      .fromTo(visual, { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 1.1, clearProps: 'transform,opacity,visibility' }, .05)
+      .fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, .18);
+
+    sections.forEach((section, index) => {
+      gsap.fromTo(section, { autoAlpha: 0, y: 22 }, {
+        autoAlpha: 1,
+        y: 0,
+        duration: .65,
+        ease: 'power3.out',
+        clearProps: 'transform,opacity,visibility',
+        scrollTrigger: { trigger: section, start: `top ${index < 2 ? '92%' : '88%'}`, once: true },
+      });
+    });
+
+    if (visual && window.matchMedia('(min-width: 1024px)').matches) {
+      const image = visual.querySelector('img');
+      if (image) {
+        gsap.to(image, {
+          yPercent: 10,
+          ease: 'none',
+          scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: .55 },
+        });
+        const moveX = gsap.quickTo(image, 'xPercent', { duration: .7, ease: 'power3.out' });
+        const moveY = gsap.quickTo(image, 'yPercent', { duration: .7, ease: 'power3.out' });
+        const onMove = (event: PointerEvent) => {
+          const rect = visual.getBoundingClientRect();
+          moveX(((event.clientX - rect.left) / rect.width - .5) * 2.5);
+          moveY(10 + ((event.clientY - rect.top) / rect.height - .5) * 2.5);
+        };
+        const onLeave = () => { moveX(0); moveY(10); };
+        visual.addEventListener('pointermove', onMove);
+        visual.addEventListener('pointerleave', onLeave);
+        return () => {
+          visual.removeEventListener('pointermove', onMove);
+          visual.removeEventListener('pointerleave', onLeave);
+        };
+      }
+    }
+  }, { scope: dashboardRef, dependencies: [periodDays, fleetFilter, referenceDate] });
+
   return (
-    <main id="dashboard-tab" className="erp-dashboard min-h-full bg-[#eef0ec] pb-14 text-[#172329]">
-      <header className="dashboard-command-header">
-        <div className="min-w-0">
-          <p className="dashboard-command-header__eyebrow"><span />Central de comando</p>
-          <h1>Visão operacional</h1>
-          <p><strong>{PROJECT_NAME}</strong><span>Dados consolidados de campo, frota, pessoas, materiais e custos.</span></p>
+    <main ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full bg-[#eef0ec] pb-14 text-[#172329]">
+      <header className="dashboard-command-header dashboard-command-header--visual" data-dashboard-hero>
+        <div className="dashboard-command-header__media" data-dashboard-visual aria-hidden="true">
+          <img src={siteAerial} alt="" />
         </div>
-        <div className="dashboard-command-header__status" aria-label="Estado da operação">
+        <div className="min-w-0">
+          <p className="dashboard-command-header__eyebrow" data-dashboard-hero-copy><span />Central de comando</p>
+          <h1 data-dashboard-hero-copy>Visão operacional</h1>
+          <p data-dashboard-hero-copy><strong>{PROJECT_NAME}</strong><span>Dados consolidados de campo, frota, pessoas, materiais e custos.</span></p>
+        </div>
+        <div className="dashboard-command-header__status" data-dashboard-hero-copy aria-label="Estado da operação">
           <span><i />Operação conectada</span>
           <small>Posição de {formatDate(referenceDate)}</small>
         </div>
+        <nav className="dashboard-command-header__actions" data-dashboard-hero-copy aria-label="Ações rápidas do painel">
+          <button type="button" onClick={() => onNavigate('controle-equipamentos')}>
+            <Plus className="size-4" aria-hidden="true" />Registrar operação
+          </button>
+          <button type="button" onClick={() => onNavigate('timeline')}>
+            <SlidersHorizontal className="size-4" aria-hidden="true" />Linha do tempo
+          </button>
+        </nav>
       </header>
 
       <div className="mx-auto max-w-[1600px] px-3 pb-8 sm:px-6 lg:px-8">
-        <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-white" aria-label="Indicadores da frota">
-          <Metric icon={Activity} label="Frota ativa" value={String(latest.operating)} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} />
-          <Metric icon={Wrench} label="Em manutenção" value={String(latest.maintenance)} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} />
-          <Metric icon={Clock3} label="A confirmar" value={String(latest.confirm)} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} />
-          <Metric icon={Truck} label="Disponibilidade" value={latest.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'} detail={latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento no período'} tone="green" active={fleetFilter === 'Todos'} onClick={() => chooseFilter('Todos')} />
+        <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-white" data-dashboard-section aria-label="Indicadores da frota">
+          <span data-dashboard-metric><Metric icon={Activity} label="Frota ativa" value={String(latest.operating)} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} /></span>
+          <span data-dashboard-metric><Metric icon={Wrench} label="Em manutenção" value={String(latest.maintenance)} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} /></span>
+          <span data-dashboard-metric><Metric icon={Clock3} label="A confirmar" value={String(latest.confirm)} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} /></span>
+          <span data-dashboard-metric><Metric icon={Truck} label="Disponibilidade" value={latest.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'} detail={latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento no período'} tone="green" active={fleetFilter === 'Todos'} onClick={() => chooseFilter('Todos')} /></span>
           <div className="dashboard-metric-cta grid place-items-center px-5 py-6">
             <button type="button" onClick={() => onNavigate('controle-equipamentos')}
               className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-[2px] bg-[#083c2f] px-5 text-sm font-black text-[#ffffff] transition hover:bg-[#07513c] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/50">
@@ -397,7 +465,7 @@ export default function Dashboard({
           </div>
         </section>
 
-        <section className="dashboard-integrated mt-4 overflow-hidden border border-[#d5ddd8] bg-white" aria-labelledby="integrated-operation-title">
+        <section className="dashboard-integrated mt-4 overflow-hidden border border-[#d5ddd8] bg-white" data-dashboard-section aria-labelledby="integrated-operation-title">
           <header className="flex flex-wrap items-end justify-between gap-2 border-b border-[#dfe5e1] px-4 py-3 sm:px-5">
             <div>
               <p className="text-[9px] font-black uppercase tracking-[.17em] text-[#16805a]">Dados conectados</p>
