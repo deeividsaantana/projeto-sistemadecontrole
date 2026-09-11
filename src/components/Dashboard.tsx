@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
-  Activity, ArrowRight, CalendarDays, CheckCircle2,
-  Clock3, Fuel, Plus, Truck, Wrench, type LucideIcon,
+  Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2,
+  Clock3, Fuel, HardHat, PackageSearch, Plus, ShieldCheck,
+  Truck, Users, WalletCards, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type {
   Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa,
@@ -109,10 +110,54 @@ function Panel({ title, action, children, className = '' }: {
   );
 }
 
+function IntegratedMetric({ icon: Icon, eyebrow, value, detail, progress, featured = false, onClick }: {
+  icon: LucideIcon; eyebrow: string; value: string; detail: string;
+  progress?: number; featured?: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={'dashboard-integrated-metric group min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#ed5d24]/55 ' + (featured ? 'is-featured' : '')}
+    >
+      <span className="flex items-center justify-between gap-3">
+        <span className="text-[10px] font-black uppercase tracking-[.13em] text-current/65">{eyebrow}</span>
+        <Icon className="size-4 opacity-65 transition-transform duration-200 group-hover:-translate-y-0.5" strokeWidth={1.8} aria-hidden="true" />
+      </span>
+      <strong className="mt-4 block truncate text-[clamp(1.9rem,3vw,3.25rem)] font-black leading-none tracking-[-.055em] tabular-nums">{value}</strong>
+      <span className="mt-2 block min-h-8 text-[11px] leading-4 opacity-70">{detail}</span>
+      {progress !== undefined && (
+        <span className="mt-4 block h-1 overflow-hidden bg-current/10" aria-hidden="true">
+          <span className="block h-full bg-current transition-[width] duration-700" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+        </span>
+      )}
+    </button>
+  );
+}
+
+function ModuleSignal({ label, value, detail, progress, tone = 'green', onClick }: {
+  label: string; value: string; detail: string; progress?: number;
+  tone?: 'green' | 'orange' | 'graphite'; onClick: () => void;
+}) {
+  const barTone = tone === 'orange' ? 'bg-[#ed5d24]' : tone === 'graphite' ? 'bg-[#52615b]' : 'bg-[#16865b]';
+  return (
+    <button type="button" onClick={onClick} className="dashboard-module-signal group grid w-full grid-cols-[minmax(7.5rem,.8fr)_minmax(5rem,.45fr)_minmax(9rem,1.2fr)] items-center gap-4 border-t border-[#e5eae7] px-4 py-3 text-left transition hover:bg-[#f7f9f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#ed5d24]/35 sm:px-5">
+      <span className="text-xs font-bold text-[#25352f]">{label}</span>
+      <strong className="text-lg font-black tracking-[-.035em] tabular-nums text-[#101c18]">{value}</strong>
+      <span className="min-w-0">
+        <span className="block truncate text-[10px] text-[#718087]">{detail}</span>
+        {progress !== undefined && <span className="mt-1.5 block h-1 bg-[#e6ebe8]"><span className={'block h-full ' + barTone} style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} /></span>}
+      </span>
+    </button>
+  );
+}
+
 export default function Dashboard({
-  abastecimentos, historyLogs, ordensServico = [],
-  controlesEquipamentos = [], planejamento = [], naoConformidades = [],
-  materiais = [], movimentosMaterial = [], frentes = [], onNavigate,
+  abastecimentos, historyLogs, funcionarios, listasPresenca = [], ordensServico = [],
+  controlesEquipamentos = [], gruposEquipe = [], presencasLink = [], planejamento = [],
+  producao = [], fichasFvs = [], inspecoes = [], naoConformidades = [],
+  lancamentosCusto = [], orcamento = [], materiais = [], movimentosMaterial = [],
+  frentes = [], onNavigate,
 }: DashboardProps) {
   const [periodDays, setPeriodDays] = useState<7 | 14 | 30>(7);
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('Todos');
@@ -187,6 +232,58 @@ export default function Dashboard({
   }, [movimentosMaterial]);
   const criticalMaterials = materiais.filter(item => item.ativo && Number(item.estoqueMinimo || 0) > (stock.get(item.id) || 0));
 
+  const referenceDate = useMemo(() => {
+    const dates = [
+      ...controlesEquipamentos.map(item => item.data),
+      ...abastecimentos.map(item => item.data),
+      ...presencasLink.filter(item => !item.inativoEm).map(item => item.data),
+      ...listasPresenca.map(item => item.data),
+      ...producao.filter(item => item.ativo).map(item => item.data),
+      ...movimentosMaterial.map(item => item.data),
+    ].filter(Boolean).sort();
+    return dates.at(-1) || latest.date || new Date().toISOString().slice(0, 10);
+  }, [abastecimentos, controlesEquipamentos, latest.date, listasPresenca, movimentosMaterial, presencasLink, producao]);
+
+  const activeEmployees = funcionarios.filter(item => item.ativo && !['INATIVO', 'DESMOBILIZADO'].includes(item.status || 'ATIVO'));
+  const linkedExpected = new Set(gruposEquipe
+    .filter(item => item.status === 'ativo')
+    .flatMap(item => item.funcionarioIds || []));
+  const publicPresenceToday = presencasLink.filter(item => !item.inativoEm && item.data === referenceDate);
+  const publicPresentIds = new Set(publicPresenceToday
+    .filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status))
+    .map(item => item.funcionarioId));
+  const legacyListsToday = listasPresenca.filter(item => item.data === referenceDate);
+  const legacyPresentIds = new Set(legacyListsToday.flatMap(item => item.funcionarios.filter(person => person.presente).map(person => person.funcionarioId)));
+  const presentCount = publicPresenceToday.length ? publicPresentIds.size : legacyPresentIds.size;
+  const expectedCount = linkedExpected.size || activeEmployees.length;
+  const presencePercent = expectedCount ? Math.min(100, (presentCount / expectedCount) * 100) : undefined;
+
+  const productionToday = producao.filter(item => item.ativo && item.data === referenceDate);
+  const productionServices = new Set(productionToday.map(item => item.servicoId || item.servicoDescricao));
+  const productionUnits = new Set(productionToday.map(item => item.unidade).filter(Boolean));
+  const productionTotal = productionToday.reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
+  const productionValue = productionToday.length && productionUnits.size === 1
+    ? `${productionTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} ${Array.from(productionUnits)[0]}`
+    : `${productionToday.length} registro${productionToday.length === 1 ? '' : 's'}`;
+
+  const fuelOnReferenceDate = abastecimentos.filter(item => item.data === referenceDate && item.status !== 'Cancelado');
+  const fuelLiters = fuelOnReferenceDate.reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0);
+  const fuelPending = fuelOnReferenceDate.filter(item => item.status && !['OK', 'Cancelado'].includes(item.status)).length;
+  const executingFronts = frentes.filter(item => item.ativo && item.situacao === 'Em execução');
+  const plannedFronts = frentes.filter(item => item.ativo && item.situacao === 'Planejada');
+
+  const activePlans = planejamento.filter(item => item.ativo && item.situacao !== 'Cancelado');
+  const plansDone = activePlans.filter(item => item.situacao === 'Concluído').length;
+  const planningPercent = activePlans.length ? (plansDone / activePlans.length) * 100 : undefined;
+  const openInspections = inspecoes.filter(item => item.ativo && !['Corrigida', 'Cancelada'].includes(item.situacao));
+  const pendingFvs = fichasFvs.filter(item => item.ativo && !['Aprovada'].includes(item.situacao));
+  const qualityOpen = openQuality.length + openInspections.length + pendingFvs.length;
+  const referenceMonth = referenceDate.slice(0, 7);
+  const monthCosts = lancamentosCusto.filter(item => item.ativo && item.data.startsWith(referenceMonth)).reduce((sum, item) => sum + Number(item.valor || 0), 0);
+  const monthBudget = orcamento.filter(item => item.ativo && item.competencia === referenceMonth).reduce((sum, item) => sum + Number(item.valorOrcado || 0), 0);
+  const budgetPercent = monthBudget ? (monthCosts / monthBudget) * 100 : undefined;
+  const compactCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 }).format(value);
+
   const activity = historyLogs.slice(0, 6);
   const latestActivityTime = activity[0]?.timestamp || (latest.date ? formatDate(latest.date) : 'Sem sincronização');
   const activeFronts = frentes.filter(item => item.ativo && item.situacao !== 'Concluída').slice(0, 3);
@@ -213,7 +310,7 @@ export default function Dashboard({
       </header>
 
       <div className="mx-auto max-w-[1600px] px-3 pb-8 sm:px-6 lg:px-8">
-        <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-[#f7f8f4]" aria-label="Indicadores da frota">
+        <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-white" aria-label="Indicadores da frota">
           <Metric icon={Activity} label="Frota ativa" value={String(latest.operating)} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} />
           <Metric icon={Wrench} label="Em manutenção" value={String(latest.maintenance)} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} />
           <Metric icon={Clock3} label="A confirmar" value={String(latest.confirm)} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} />
@@ -224,6 +321,44 @@ export default function Dashboard({
               <Plus className="size-5" aria-hidden="true" />Novo lançamento
             </button>
           </div>
+        </section>
+
+        <section className="dashboard-integrated mt-4 overflow-hidden border border-[#d5ddd8] bg-white" aria-labelledby="integrated-operation-title">
+          <header className="flex flex-wrap items-end justify-between gap-2 border-b border-[#dfe5e1] px-4 py-3 sm:px-5">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[.17em] text-[#16805a]">Dados conectados</p>
+              <h2 id="integrated-operation-title" className="mt-1 text-base font-black tracking-[-.025em] text-[#10211b]">Pulso integrado da operação</h2>
+            </div>
+            <span className="text-[10px] font-semibold tabular-nums text-[#718087]">Posição de {formatDate(referenceDate)}</span>
+          </header>
+          <div className="dashboard-integrated-grid grid">
+            <IntegratedMetric icon={Users} eyebrow="Pessoas em campo" value={String(presentCount)} detail={expectedCount ? `${presentCount} de ${expectedCount} previstos` : 'Sem efetivo previsto cadastrado'} progress={presencePercent} featured onClick={() => onNavigate('presenca')} />
+            <IntegratedMetric icon={BarChart3} eyebrow="Produção do dia" value={productionValue} detail={`${productionServices.size} serviço(s) apontado(s)`} onClick={() => onNavigate('producao')} />
+            <IntegratedMetric icon={Fuel} eyebrow="Combustível" value={`${fuelLiters.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L`} detail={fuelPending ? `${fuelPending} lançamento(s) pedem conferência` : `${fuelOnReferenceDate.length} abastecimento(s) conferidos`} onClick={() => onNavigate('lancamentos')} />
+            <IntegratedMetric icon={HardHat} eyebrow="Frentes ativas" value={String(executingFronts.length)} detail={`${plannedFronts.length} planejada(s) para iniciar`} onClick={() => onNavigate('frentes')} />
+          </div>
+        </section>
+
+        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(23rem,.65fr)]">
+          <Panel title="Saúde dos módulos" action={<span className="text-[10px] font-semibold text-[#718087]">Consolidado sem duplicar lançamentos</span>}>
+            <ModuleSignal label="Planejamento" value={activePlans.length ? `${plansDone}/${activePlans.length}` : 'Sem base'} detail={activePlans.length ? 'atividades concluídas' : 'nenhuma atividade cadastrada'} progress={planningPercent} onClick={() => onNavigate('planejamento')} />
+            <ModuleSignal label="Qualidade e campo" value={String(qualityOpen)} detail="FVS, inspeções e NC em tratamento" tone={qualityOpen ? 'orange' : 'green'} progress={qualityOpen ? undefined : 100} onClick={() => onNavigate(openQuality.length ? 'nao-conformidades' : openInspections.length ? 'inspecoes' : 'fvs')} />
+            <ModuleSignal label="Materiais" value={String(criticalMaterials.length)} detail="itens abaixo do estoque mínimo" tone={criticalMaterials.length ? 'orange' : 'green'} progress={criticalMaterials.length ? undefined : 100} onClick={() => onNavigate('materiais')} />
+            <ModuleSignal label="Custos do mês" value={monthCosts ? compactCurrency(monthCosts) : 'Sem base'} detail={monthBudget ? `${budgetPercent?.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do orçamento de ${compactCurrency(monthBudget)}` : 'orçamento da competência não informado'} progress={budgetPercent} tone={budgetPercent !== undefined && budgetPercent > 100 ? 'orange' : 'graphite'} onClick={() => onNavigate('custos')} />
+          </Panel>
+
+          <Panel title="Leitura executiva" action={<ShieldCheck className="size-4 text-[#16865b]" aria-hidden="true" />}>
+            <div className="px-4 pb-5 pt-1 sm:px-5">
+              <strong className="block text-3xl font-black tracking-[-.05em] tabular-nums text-[#10211b]">{openOrders.length + overduePlans.length + qualityOpen + criticalMaterials.length}</strong>
+              <p className="mt-1 text-xs leading-5 text-[#718087]">pontos abertos somando manutenção, prazo, qualidade e estoque.</p>
+              <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden border border-[#dfe5e1] bg-[#dfe5e1]">
+                <button type="button" onClick={() => onNavigate('manutencao')} className="bg-white px-3 py-3 text-left transition hover:bg-[#f6f9f7]"><Wrench className="size-4 text-[#d34d18]" /><strong className="mt-2 block text-xl tabular-nums">{openOrders.length}</strong><span className="text-[10px] text-[#718087]">OS abertas</span></button>
+                <button type="button" onClick={() => onNavigate('planejamento')} className="bg-white px-3 py-3 text-left transition hover:bg-[#f6f9f7]"><Clock3 className="size-4 text-[#d34d18]" /><strong className="mt-2 block text-xl tabular-nums">{overduePlans.length}</strong><span className="text-[10px] text-[#718087]">fora do prazo</span></button>
+                <button type="button" onClick={() => onNavigate('materiais')} className="bg-white px-3 py-3 text-left transition hover:bg-[#f6f9f7]"><PackageSearch className="size-4 text-[#176b4d]" /><strong className="mt-2 block text-xl tabular-nums">{criticalMaterials.length}</strong><span className="text-[10px] text-[#718087]">estoques críticos</span></button>
+                <button type="button" onClick={() => onNavigate('custos')} className="bg-white px-3 py-3 text-left transition hover:bg-[#f6f9f7]"><WalletCards className="size-4 text-[#176b4d]" /><strong className="mt-2 block truncate text-xl tabular-nums">{monthCosts ? compactCurrency(monthCosts) : '—'}</strong><span className="text-[10px] text-[#718087]">custo lançado</span></button>
+              </div>
+            </div>
+          </Panel>
         </section>
 
         <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.72fr)_minmax(21rem,.78fr)]">
