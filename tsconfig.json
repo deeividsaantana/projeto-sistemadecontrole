@@ -22,5 +22,10 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "dist",
+    "artifacts",
+    "test-results"
+  ]
 }
