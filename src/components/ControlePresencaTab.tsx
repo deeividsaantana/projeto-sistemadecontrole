@@ -15,7 +15,6 @@ import {
   FileText,
   Filter,
   History,
-  Link2,
   MessageCircle,
   Plus,
   Radio,
@@ -256,7 +255,6 @@ export default function ControlePresencaTab({
   const [syncBusy, setSyncBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [confirmandoInativacao, setConfirmandoInativacao] = useState(false);
-  const [confirmandoLinkGeral, setConfirmandoLinkGeral] = useState(false);
   const [resumoZerarDia, setResumoZerarDia] = useState<{ equipe: string; quantos: number } | null>(null);
   const [restoringHistory, setRestoringHistory] = useState(false);
   // Lançamento manual: equipe escolhida, dia, e a situação de cada um.
@@ -324,7 +322,6 @@ export default function ControlePresencaTab({
     () => safeGroups.filter(group => group.status === 'ativo' && group.linkAtivo),
     [safeGroups],
   );
-  const generalToken = useMemo(() => activeGroups.find(group => group.tokenGeral)?.tokenGeral || '', [activeGroups]);
   const dayRecords = useMemo(() => safeRecords.filter(record => record.data === referenceDate), [referenceDate, safeRecords]);
   const roleOptions = useMemo(() => [...new Set(safeRecords.map(record => record.funcao).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [safeRecords]);
   const employeeById = useMemo(() => new Map(safeFuncionarios.map(employee => [employee.id, employee])), [safeFuncionarios]);
@@ -467,25 +464,6 @@ export default function ControlePresencaTab({
     return [...mapa.entries()].map(([nome, dados]) => ({ nome, ...dados })).sort((a, b) => b.total - a.total);
   }, [dashboardRecords]);
   const picoEquipes = Math.max(1, ...equipesDoDia.map(item => item.total));
-
-  /**
-   * Ramos e canteiros ativos da obra, sempre a lista inteira. Frente sem gente
-   * no dia aparece com zero em vez de sumir: quem olha o painel precisa saber
-   * que a frente existe e está vazia, não achar que ela não foi cadastrada.
-   */
-  const porFrente = useMemo(() => {
-    const contar = (termos: readonly string[]) => termos.map(termo => ({
-      termo,
-      total: dashboardRecords.filter(record => contemTermo(`${record.grupoNome} ${record.frenteServico}`, termo)).length,
-    }));
-    const ramos = contar(ACTIVE_BRANCHES);
-    const canteiros = contar(ACTIVE_SITES);
-    const semVinculo = dashboardRecords.filter(record => {
-      const local = `${record.grupoNome} ${record.frenteServico}`;
-      return ![...ACTIVE_BRANCHES, ...ACTIVE_SITES].some(termo => contemTermo(local, termo));
-    }).length;
-    return { ramos, canteiros, semVinculo, pico: Math.max(1, ...ramos.map(i => i.total), ...canteiros.map(i => i.total)) };
-  }, [dashboardRecords]);
 
   /** Quem esta ausente hoje, para o administrativo agir sem trocar de aba. */
   const ausentesDoDia = useMemo(
@@ -657,22 +635,6 @@ export default function ControlePresencaTab({
   const shareOnWhatsApp = (group: GrupoEquipe) => {
     const message = `Olá ${group.responsavel}, registre a presença da equipe ${group.nome}: ${presenceLink(group.token)}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-  };
-
-  const generateGeneralLink = () => {
-    const host = activeGroups.find(group => group.tokenGeral) || activeGroups[0];
-    if (!host) {
-      setFeedback('Crie uma equipe ativa antes de gerar o link geral.');
-      return;
-    }
-    if (generalToken) { setConfirmandoLinkGeral(true); return; }
-    trocarLinkGeral(host);
-  };
-
-  const trocarLinkGeral = (host: GrupoEquipe) => {
-    onSaveGrupoEquipe({ ...host, tokenGeral: `geral-${generateToken()}`, updatedAt: new Date().toISOString() }, false);
-    setFeedback(generalToken ? 'Link geral renovado.' : 'Link geral criado.');
-    setConfirmandoLinkGeral(false);
   };
 
   const exportCsv = () => {
@@ -999,22 +961,22 @@ export default function ControlePresencaTab({
       {view === 'ao-vivo' && (
         <div ref={liveViewRef} className="space-y-5">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
-            <article data-cartao-painel className={`renea-card ${PANEL} relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-7`}>
+            <article data-cartao-painel className={`renea-card ${PANEL} relative overflow-hidden p-4 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-5`}>
               <div className="absolute right-6 top-6 text-emerald-800/20"><ArrowRight className="h-24 w-24" strokeWidth={1} /></div>
               <div className="relative">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#65716b]">Efetivo confirmado</p>
                   <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
                 </div>
-                <div className="mt-7 flex items-end gap-3">
-                  <strong data-count={metrics.present} className="text-7xl font-black tabular-nums tracking-[-0.075em] text-[#101a22] sm:text-8xl">0</strong>
+                <div className="mt-4 flex items-end gap-3">
+                  <strong data-count={metrics.present} className="text-6xl font-black tabular-nums tracking-[-0.075em] text-[#101a22] sm:text-7xl">0</strong>
                   <div className="pb-2"><p className="text-2xl font-bold text-emerald-800">presentes</p><p className="text-sm text-[#65716b]">{metrics.planned ? `de ${metrics.planned} previstos` : 'sem efetivo previsto vinculado às equipes'}</p></div>
                 </div>
                 {/* Sem efetivo previsto não existe percentual: mostrar "0% confirmado"
                     ao lado de 32 presentes faz o painel parecer quebrado. */}
                 {metrics.planned > 0 ? (
                   <>
-                    <div className="mt-7 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div data-barra-efetivo className="h-full origin-left rounded-full bg-[#087653]" style={{ width: `${metrics.percent}%` }} /></div>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div data-barra-efetivo className="h-full origin-left rounded-full bg-[#087653]" style={{ width: `${metrics.percent}%` }} /></div>
                     <p className="mt-2 text-right text-xs font-bold tabular-nums text-[#65716b]">{metrics.percent}% confirmado</p>
                   </>
                 ) : (
@@ -1023,15 +985,6 @@ export default function ControlePresencaTab({
               </div>
             </article>
             <aside className="space-y-5">
-            <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
-              <div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[#14231e] text-white"><Link2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Link oficial</p><h2 className="mt-0.5 text-lg font-black text-[#101a22]">Registro de campo</h2></div></div>
-              <p className="mt-4 text-sm leading-6 text-[#65716b]">Um endereço seguro para o responsável escolher a equipe e enviar a presença diretamente ao painel.</p>
-              {generalToken ? (
-                <div className="mt-4 space-y-3"><input readOnly value={presenceLink(generalToken)} className={`${FIELD} font-mono text-xs`} /><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => copyLink(generalToken, 'Link geral')} className={SECONDARY_BUTTON}><ClipboardCopy className="h-4 w-4" /> Copiar</button><button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Registre a presença da sua equipe: ${presenceLink(generalToken)}`)}`, '_blank', 'noopener,noreferrer')} className={PRIMARY_BUTTON}><MessageCircle className="h-4 w-4" /> WhatsApp</button></div></div>
-              ) : <button type="button" onClick={generateGeneralLink} className={`${PRIMARY_BUTTON} mt-4 w-full`}><Plus className="h-4 w-4" /> Criar link geral</button>}
-              {generalToken && <button type="button" onClick={generateGeneralLink} className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-[#65716b] hover:text-emerald-800"><RotateCcw className="h-3.5 w-3.5" /> Renovar link com segurança</button>}
-            </article>
-
             <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
               <div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-700" /><h2 className="text-lg font-black text-[#101a22]">Atenção agora</h2></div>
               <div className="mt-4 space-y-2">
@@ -1139,42 +1092,6 @@ export default function ControlePresencaTab({
                 )}
               </article>
 
-            <article data-cartao-painel className={`renea-card ${PANEL} p-5 md:col-span-2`}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#65716b]">Efetivo por ramo e canteiro</p>
-                <span className="text-[10px] font-semibold text-[#79847e]">A lista mostra todas as frentes ativas, inclusive as que estão sem gente hoje.</span>
-              </div>
-              <div className="mt-4 grid gap-6 lg:grid-cols-2">
-                {([['Ramos', porFrente.ramos, setDashboardBranch], ['Canteiros', porFrente.canteiros, setDashboardSite]] as const).map(([titulo, itens, aplicar]) => (
-                  <div key={titulo}>
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8d968f]">{titulo}</p>
-                    <div className="mt-3 space-y-2">
-                      {itens.map(item => (
-                        <button
-                          type="button"
-                          key={item.termo}
-                          onClick={() => aplicar(item.termo)}
-                          disabled={item.total === 0}
-                          className="group flex w-full items-center gap-3 text-left disabled:cursor-default"
-                          aria-label={`${item.termo}: ${item.total} pessoa(s)`}
-                        >
-                          <span className={`w-36 shrink-0 truncate text-xs font-bold ${item.total ? 'text-[#26362f] group-hover:text-emerald-800' : 'text-[#9aa39d]'}`}>{item.termo}</span>
-                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#eef2f0]">
-                            <span data-dist-bar data-pct={(item.total / porFrente.pico) * 100} className={`block h-full rounded-full ${item.total ? 'bg-[#12a273]' : 'bg-transparent'}`} />
-                          </span>
-                          <strong className={`w-8 shrink-0 text-right text-xs tabular-nums ${item.total ? 'text-[#101a22]' : 'text-[#b3bab5]'}`}>{item.total}</strong>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {porFrente.semVinculo > 0 && (
-                <p className="mt-4 border-t border-[#eef2f0] pt-3 text-xs text-[#65716b]">
-                  <strong className="tabular-nums text-[#101a22]">{porFrente.semVinculo}</strong> apontamento(s) sem ramo ou canteiro reconhecido no nome da equipe ou da frente de serviço.
-                </p>
-              )}
-            </article>
             </div>
 
 
@@ -1576,18 +1493,6 @@ export default function ControlePresencaTab({
         confirmLabel="Inativar"
         onConfirm={confirmarInativacaoRegistros}
         onCancel={() => setConfirmandoInativacao(false)}
-      />
-      <ConfirmDialog
-        open={confirmandoLinkGeral}
-        tone="warning"
-        title="Renovar o link geral?"
-        description="O endereço atual deixa de funcionar na hora. Quem já tem o link antigo salvo no celular precisará receber o novo."
-        confirmLabel="Renovar"
-        onConfirm={() => {
-          const host = activeGroups.find(group => group.tokenGeral) || activeGroups[0];
-          if (host) trocarLinkGeral(host);
-        }}
-        onCancel={() => setConfirmandoLinkGeral(false)}
       />
       <ConfirmDialog
         open={Boolean(resumoZerarDia)}
