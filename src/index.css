@@ -987,7 +987,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .dashboard-command-header {
   position: relative;
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
   max-width: 1600px;
@@ -995,6 +995,35 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   padding: 1.5rem clamp(1rem, 2vw, 2rem) 1.35rem;
   border-bottom: 1px solid var(--erp-line);
   background: var(--erp-surface);
+}
+
+.dashboard-command-header--command {
+  min-height: 8.5rem;
+  background:
+    linear-gradient(90deg, rgb(8 60 47 / .045) 1px, transparent 1px),
+    linear-gradient(rgb(8 60 47 / .045) 1px, transparent 1px),
+    var(--erp-surface);
+  background-size: 1.5rem 1.5rem;
+}
+
+.dashboard-command-header--command::after {
+  position: absolute;
+  right: clamp(1rem, 2vw, 2rem);
+  bottom: 0;
+  left: clamp(1rem, 2vw, 2rem);
+  height: 3px;
+  content: '';
+  background: linear-gradient(90deg, var(--erp-brand) 0 18%, #dfe7e2 18% 100%);
+}
+
+.dashboard-command-header__copy { max-width: 46rem; }
+
+.dashboard-command-header__tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-left: auto;
 }
 
 .dashboard-command-header--visual {
@@ -1079,6 +1108,10 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   font-weight: 700;
 }
 
+.dashboard-command-header > div:first-child > p:last-child span {
+  margin-left: .15rem;
+}
+
 .dashboard-command-header__status {
   display: grid;
   justify-items: end;
@@ -1087,10 +1120,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 }
 
 .dashboard-command-header__actions {
-  position: absolute;
-  z-index: 2;
-  right: clamp(1rem, 2vw, 2rem);
-  bottom: 1.25rem;
   display: flex;
   gap: .5rem;
 }
@@ -1262,6 +1291,15 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
     padding: 1rem .85rem;
   }
 
+  .dashboard-command-header--command {
+    min-height: 13rem;
+    padding-bottom: 4.25rem;
+  }
+
+  .dashboard-command-header__tools {
+    margin-left: 0;
+  }
+
   .dashboard-command-header--visual {
     min-height: 12rem;
     padding-bottom: 5.25rem;
@@ -1297,6 +1335,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   }
 
   .dashboard-command-header__actions {
+    position: absolute;
     right: .85rem;
     bottom: .7rem;
     left: .85rem;

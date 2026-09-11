@@ -384,10 +384,15 @@ export default function Dashboard({
     const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-dashboard-section]'));
 
     const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
-    timeline
-      .fromTo(hero?.querySelectorAll('[data-dashboard-hero-copy]') || [], { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: .72, stagger: .09, clearProps: 'transform,opacity,visibility' })
-      .fromTo(visual, { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 1.1, clearProps: 'transform,opacity,visibility' }, .05)
-      .fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, .18);
+    timeline.fromTo(
+      hero?.querySelectorAll('[data-dashboard-hero-copy]') || [],
+      { autoAlpha: 0, y: 20 },
+      { autoAlpha: 1, y: 0, duration: .72, stagger: .09, clearProps: 'transform,opacity,visibility' },
+    );
+    if (visual) {
+      timeline.fromTo(visual, { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 1.1, clearProps: 'transform,opacity,visibility' }, .05);
+    }
+    timeline.fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, visual ? .18 : .1);
 
     sections.forEach((section, index) => {
       gsap.fromTo(section, { autoAlpha: 0, y: 22 }, {
@@ -428,27 +433,26 @@ export default function Dashboard({
 
   return (
     <main ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full bg-[#eef0ec] pb-14 text-[#172329]">
-      <header className="dashboard-command-header dashboard-command-header--visual" data-dashboard-hero>
-        <div className="dashboard-command-header__media" data-dashboard-visual aria-hidden="true">
-          <img src={siteAerial} alt="" />
-        </div>
-        <div className="min-w-0">
+      <header className="dashboard-command-header dashboard-command-header--command" data-dashboard-hero>
+        <div className="dashboard-command-header__copy min-w-0">
           <p className="dashboard-command-header__eyebrow" data-dashboard-hero-copy><span />Central de comando</p>
           <h1 data-dashboard-hero-copy>Visão operacional</h1>
           <p data-dashboard-hero-copy><strong>{PROJECT_NAME}</strong><span>Dados consolidados de campo, frota, pessoas, materiais e custos.</span></p>
         </div>
-        <div className="dashboard-command-header__status" data-dashboard-hero-copy aria-label="Estado da operação">
-          <span><i />Operação conectada</span>
-          <small>Posição de {formatDate(referenceDate)}</small>
+        <div className="dashboard-command-header__tools" data-dashboard-hero-copy>
+          <div className="dashboard-command-header__status" aria-label="Estado da operação">
+            <span><i />Operação conectada</span>
+            <small>Posição de {formatDate(referenceDate)}</small>
+          </div>
+          <nav className="dashboard-command-header__actions" aria-label="Ações rápidas do painel">
+            <button type="button" onClick={() => onNavigate('controle-equipamentos')}>
+              <Plus className="size-4" aria-hidden="true" />Registrar operação
+            </button>
+            <button type="button" onClick={() => onNavigate('timeline')}>
+              <SlidersHorizontal className="size-4" aria-hidden="true" />Linha do tempo
+            </button>
+          </nav>
         </div>
-        <nav className="dashboard-command-header__actions" data-dashboard-hero-copy aria-label="Ações rápidas do painel">
-          <button type="button" onClick={() => onNavigate('controle-equipamentos')}>
-            <Plus className="size-4" aria-hidden="true" />Registrar operação
-          </button>
-          <button type="button" onClick={() => onNavigate('timeline')}>
-            <SlidersHorizontal className="size-4" aria-hidden="true" />Linha do tempo
-          </button>
-        </nav>
       </header>
 
       <div className="mx-auto max-w-[1600px] px-3 pb-8 sm:px-6 lg:px-8">
