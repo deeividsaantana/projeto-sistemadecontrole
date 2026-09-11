@@ -692,7 +692,14 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #10211c; }
 
 /* Cabeçalho de módulo: faixa densa, sem foto e sem capa editorial. */
+#main-tab-viewport :has(> .renea-page-header) {
+  position: relative;
+  z-index: 24;
+  overflow: visible;
+}
 .renea-page-header {
+  position: relative;
+  z-index: 24;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -701,6 +708,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   padding-block: .55rem .7rem;
   border-block-end: 1px solid #dde4e0;
   background: transparent;
+  overflow: visible;
 }
 .renea-page-header__copy { min-width: 0; flex: 1 1 22rem; }
 .renea-page-header__eyebrow {
@@ -727,7 +735,17 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   font-size: .82rem;
   line-height: 1.4;
 }
-.renea-page-header .renea-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.renea-page-header .renea-page-actions {
+  position: relative;
+  z-index: 25;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+.renea-page-header .renea-page-actions details { position: relative; }
+.renea-page-header .renea-page-actions details[open] { z-index: 60; }
+.renea-page-header .renea-page-actions details > div { z-index: 70; }
 @media (max-width: 767px) {
   .renea-page-header { align-items: stretch; }
   .renea-page-header .renea-page-actions { width: 100%; }
