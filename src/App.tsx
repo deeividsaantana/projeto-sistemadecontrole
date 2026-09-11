@@ -4536,6 +4536,8 @@ export default function App() {
               <AdministracaoTab
                 ultimaSincronizacao={lastCloudSync}
                 nuvemConectada={isFirebaseConnected}
+                gruposEquipe={gruposEquipe}
+                onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onNavigate={navigateTo}
               />
             )}

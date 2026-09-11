@@ -138,7 +138,7 @@ const SIDEBAR_MODULE_IDS = new Set([
   'controle-equipamentos', 'manutencao', 'lancamentos',
   'presenca', 'colaboradores',
   'materiais',
-  'relatorios', 'cadastros',
+  'relatorios', 'administracao',
 ]);
 
 const SIDEBAR_GROUP_LABELS: Record<string, string> = {

@@ -316,6 +316,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__breadcrumb strong { overflow: hidden; color: #10213c; font-weight: 760; text-overflow: ellipsis; white-space: nowrap; }
 .erp-topbar__chevron { color: #a3aea7; }
 .erp-topbar__actions { display: flex; align-items: center; gap: .9rem; }
+.erp-topbar__searchbox { min-width: 10rem; flex: 1 1 20rem; }
 .erp-topbar__status { display: flex; align-items: center; gap: .4rem; color: #496178; font-size: .7rem; font-weight: 650; }
 .erp-topbar__status span { width: .42rem; height: .42rem; border-radius: 50%; background: #0a9867; }
 .erp-topbar__date { display: grid; gap: .13rem; padding: 0 .9rem; border-left: 1px solid #e0e5df; color: #708098; font-size: .6rem; text-align: right; }
@@ -329,7 +330,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__command:hover { border-color: #4d88ff; background: #eaf1ff; }
 .erp-topbar__project {
   display: flex;
-  width: min(25rem, 32vw);
+  width: auto;
+  max-width: 22rem;
+  flex: 1 1 15rem;
   min-height: 2.8rem;
   align-items: center;
   gap: .7rem;
@@ -352,7 +355,18 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .erp-topbar { padding-inline: 1.1rem; }
   .erp-topbar__command { display: none; }
   .erp-topbar__status { display: none; }
-  .erp-topbar__project { width: min(22rem, 35vw); }
+  .erp-topbar__project { max-width: 18rem; }
+}
+@media (max-width: 1320px) {
+  .erp-topbar { gap: .75rem; padding-inline: 1rem; }
+  .erp-topbar__actions { gap: .45rem; }
+  .erp-topbar__user > span:last-child { display: none; }
+  .erp-topbar__user { padding-left: .45rem; }
+  .erp-topbar__searchbox { max-width: 15rem; }
+}
+@media (max-width: 1100px) {
+  .erp-topbar__searchbox { display: none; }
+  .erp-topbar__project { max-width: none; }
 }
 @media (max-width: 1023px) {
   .erp-shell { min-height: auto; }
@@ -555,6 +569,20 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .dashboard-metric.text-\[\#c94f1c\] strong { color: #d34d18; }
 .dashboard-metric.is-active { background: #fff; box-shadow: inset 0 -3px 0 currentColor; }
 .dashboard-metric-cta { border-left: 1px solid #bcc8c2; }
+.dashboard-integrated-grid { grid-template-columns: minmax(15rem, 1.25fr) repeat(3, minmax(12rem, 1fr)); }
+.dashboard-integrated-metric {
+  min-height: 10.5rem;
+  padding: 1.2rem;
+  border-left: 1px solid #dfe5e1;
+  background: #fff;
+  color: #10211b;
+  transition: background-color .2s ease, color .2s ease, transform .2s ease;
+}
+.dashboard-integrated-metric:first-child { border-left: 0; }
+.dashboard-integrated-metric:hover { background: #f6f9f7; }
+.dashboard-integrated-metric:active { transform: translateY(1px); }
+.dashboard-integrated-metric.is-featured { background: #0b4938; color: #f4faf6; }
+.dashboard-integrated-metric.is-featured:hover { background: #0e5a45; }
 .erp-dashboard section { border-radius: 2px; }
 .erp-dashboard section > header h2 { font-weight: 900; text-transform: uppercase; letter-spacing: .065em; }
 
@@ -626,6 +654,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-hero__visual { left: 58%; }
   .dashboard-metrics { grid-template-columns: repeat(4, minmax(10rem,1fr)); overflow-x: auto; }
   .dashboard-metric-cta { min-width: 16rem; }
+  .dashboard-integrated-grid { grid-template-columns: repeat(2, minmax(14rem, 1fr)); }
+  .dashboard-integrated-metric:nth-child(3) { border-top: 1px solid #dfe5e1; border-left: 0; }
+  .dashboard-integrated-metric:nth-child(4) { border-top: 1px solid #dfe5e1; }
 }
 
 @media (max-width: 767px) {
@@ -646,6 +677,11 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-metrics { overflow-x: auto; grid-template-columns: repeat(4, minmax(10.5rem,1fr)) minmax(14rem,1fr); }
   .dashboard-metric { min-height: 9rem; border-left: 1px solid #cdd6d1; }
   .dashboard-metric:first-child { border-left: 0; }
+  .dashboard-integrated { margin-inline: 0; }
+  .dashboard-integrated-grid { display: flex; overflow-x: auto; scroll-snap-type: x proximity; }
+  .dashboard-integrated-metric { min-width: min(78vw, 18rem); min-height: 9.5rem; scroll-snap-align: start; border-top: 0 !important; border-left: 1px solid #dfe5e1 !important; }
+  .dashboard-integrated-metric:first-child { border-left: 0 !important; }
+  .dashboard-module-signal { grid-template-columns: minmax(6.5rem,.8fr) minmax(4.5rem,.45fr) minmax(7rem,1fr); gap: .65rem; }
   .renea-table-shell { margin-inline: -1px; }
 }
 

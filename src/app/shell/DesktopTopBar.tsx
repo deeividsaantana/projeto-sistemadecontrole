@@ -96,7 +96,7 @@ export function DesktopTopBar({
   return (
     <header className="erp-topbar hidden lg:flex" aria-label="Barra de contexto do sistema">
       <Breadcrumb items={breadcrumbItems} className="hidden shrink-0 xl:flex" />
-      <label className="relative block w-full max-w-sm">
+      <label className="erp-topbar__searchbox relative block w-full max-w-sm">
         <span className="sr-only">Buscar no sistema</span>
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" strokeWidth={ICON_STROKE} />
         <input
