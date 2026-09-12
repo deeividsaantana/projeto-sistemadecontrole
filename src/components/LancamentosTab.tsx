@@ -33,7 +33,7 @@ import {
 import type ExcelJS from 'exceljs';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
-import CombustivelInteligenteTab from './CombustivelInteligenteTab';
+import CombustivelOperacionalTab from './CombustivelOperacionalTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
@@ -1098,7 +1098,7 @@ export default function LancamentosTab({
             <button type="button" onClick={() => setImportReport('')} className="rounded p-1 text-emerald-700 hover:bg-emerald-100" aria-label="Fechar relatório"><X className="h-4 w-4" /></button>
           </div>
         )}
-        <CombustivelInteligenteTab
+        <CombustivelOperacionalTab
           empresas={empresas}
           equipamentos={equipamentos}
           comboios={comboios}
