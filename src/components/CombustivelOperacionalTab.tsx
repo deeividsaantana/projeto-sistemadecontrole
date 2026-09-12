@@ -10,6 +10,7 @@ interface Props {
   abastecimentos: Abastecimento[];
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
+  onImportAbastecimentos?: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
   onOpenLubrificacao: () => void;
   onOpenCadastros?: () => void;
   onOpenSpreadsheetImport: () => void;
