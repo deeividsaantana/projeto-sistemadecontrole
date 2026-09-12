@@ -5,7 +5,7 @@
  * sistema, carregado só quando alguém exporta de fato.
  */
 import { useMemo, useState } from 'react';
-import { Download, FileBarChart, Printer } from 'lucide-react';
+import { Download, FileBarChart, FileText, Printer } from 'lucide-react';
 import { montarRelatorios, type ContextoRelatorios, type Relatorio } from '../utils/relatorios';
 import { EmptyState, PageHeader, PeriodFilter, TableBody, TableHead, TableShell, buildPeriod, type PeriodValue } from '../shared/ui';
 
@@ -26,6 +26,7 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [selecionado, setSelecionado] = useState('producao-por-servico');
   const [exportando, setExportando] = useState(false);
+  const [exportandoPdf, setExportandoPdf] = useState(false);
   const [erro, setErro] = useState('');
 
   const relatorios = useMemo(() => {
@@ -77,14 +78,48 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
     }
   };
 
+  const exportarPdf = async () => {
+    setExportandoPdf(true);
+    setErro('');
+    try {
+      const { generateUniversalPdfReport } = await import('../utils/universalPdfReport');
+      const columns = relatorio.colunas.map((header, index) => ({ header, dataKey: `coluna_${index}` }));
+      await generateUniversalPdfReport({
+        title: relatorio.titulo,
+        subtitle: relatorio.descricao,
+        columns,
+        rows: relatorio.linhas.map(linha => Object.fromEntries(linha.map((valor, index) => [`coluna_${index}`, valor]))),
+        work: 'Rodoanel Complexo do Alto Tietê · Alça',
+        period: `${period.from.split('-').reverse().join('/')} a ${period.to.split('-').reverse().join('/')}`,
+        filters: [`Período: ${period.from} a ${period.to}`],
+        summary: [
+          { label: 'Linhas', value: relatorio.linhas.length },
+          { label: 'Relatório', value: relatorio.titulo },
+        ],
+      });
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'Não foi possível gerar o PDF.');
+    } finally {
+      setExportandoPdf(false);
+    }
+  };
+
   return (
-    <div id="relatorios-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="relatorios-tab" className="reports-workspace min-h-full w-full px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Relatórios"
         description="Leitura consolidada dos módulos, com os mesmos números das telas de origem."
         actions={(
           <div className="flex flex-wrap items-center gap-2 print:hidden">
             <PeriodFilter value={period} onChange={setPeriod} />
+            <button
+              type="button"
+              onClick={() => void exportarPdf()}
+              disabled={exportandoPdf || relatorio.linhas.length === 0}
+              className="reports-export-pdf inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-emerald-700 bg-white px-3 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-50 disabled:opacity-50"
+            >
+              <FileText className="h-4 w-4" /> {exportandoPdf ? 'Gerando…' : 'PDF'}
+            </button>
             <button
               type="button"
               onClick={() => window.print()}
@@ -104,7 +139,15 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
         )}
       />
 
-      <div className="mt-4 flex flex-wrap gap-1.5 print:hidden">
+      <section className="reports-command mt-4 print:hidden" aria-label="Escolha do relatório">
+        <div>
+          <span>Biblioteca de relatórios</span>
+          <strong>{relatorios.length} leituras disponíveis</strong>
+        </div>
+        <p>Os números são montados a partir dos registros operacionais, sem bases paralelas.</p>
+      </section>
+
+      <div className="reports-catalog mt-3 flex flex-wrap gap-1.5 print:hidden">
         {relatorios.map(item => (
           <button
             key={item.id}
@@ -120,7 +163,7 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
         ))}
       </div>
 
-      <section className="mt-4 rounded-lg border border-slate-200 bg-white">
+      <section className="reports-preview mt-4 rounded-lg border border-slate-200 bg-white">
         <header className="border-b border-slate-100 px-4 py-3">
           <h2 className="text-sm font-bold text-slate-800">{relatorio.titulo}</h2>
           <p className="text-[11px] text-slate-500">
