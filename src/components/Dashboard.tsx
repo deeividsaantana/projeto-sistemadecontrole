@@ -3,9 +3,9 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 import {
-  Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2,
+  Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2, ClipboardPenLine,
   Clock3, Fuel, HardHat, PackageSearch, PauseCircle, Plus, ShieldCheck,
-  SlidersHorizontal, Truck, Users, WalletCards, Wrench, type LucideIcon,
+  Landmark, ListChecks, Package, SlidersHorizontal, Truck, Users, WalletCards, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type {
   Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa,
@@ -39,6 +39,15 @@ interface DashboardProps {
 type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar' | 'À disposição';
 
 const PROJECT_NAME = OBRA.nome;
+const PROJECT_WORKSPACE_TABS = [
+  { label: 'Geral', tab: 'dashboard', icon: Activity },
+  { label: 'Cronograma', tab: 'cronograma', icon: CalendarDays },
+  { label: 'Diário de obra', tab: 'diario-obra', icon: ClipboardPenLine },
+  { label: 'Medições', tab: 'medicoes', icon: ListChecks },
+  { label: 'Financeiro', tab: 'custos', icon: Landmark },
+  { label: 'Materiais', tab: 'materiais', icon: Package },
+  { label: 'Qualidade', tab: 'inspecoes', icon: ShieldCheck },
+] as const;
 const MAINTENANCE_STATUSES = new Set([
   'Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado',
   'Aguardando equipamento', 'Reserva', 'Desmobilizado',
@@ -456,6 +465,20 @@ export default function Dashboard({
       </header>
 
       <div className="mx-auto max-w-[1600px] px-3 pb-8 sm:px-6 lg:px-8">
+        <nav className="project-workspace-tabs" aria-label="Módulos da obra">
+          {PROJECT_WORKSPACE_TABS.map(({ label, tab, icon: Icon }) => (
+            <button
+              key={tab}
+              type="button"
+              aria-current={tab === 'dashboard' ? 'page' : undefined}
+              onClick={() => onNavigate(tab)}
+              className={tab === 'dashboard' ? 'is-active' : ''}
+            >
+              <Icon className="size-4" strokeWidth={1.8} aria-hidden="true" />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
         <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-white" data-dashboard-section aria-label="Indicadores da frota">
           <span data-dashboard-metric><Metric icon={Activity} label="Frota ativa" value={String(latest.operating)} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} /></span>
           <span data-dashboard-metric><Metric icon={Wrench} label="Em manutenção" value={String(latest.maintenance)} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} /></span>

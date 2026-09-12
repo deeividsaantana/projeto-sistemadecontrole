@@ -1172,6 +1172,44 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   padding-top: 1rem;
 }
 
+.project-workspace-tabs {
+  display: flex;
+  gap: .15rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--erp-line);
+  padding: 0 .2rem;
+  scrollbar-width: thin;
+}
+
+.project-workspace-tabs button {
+  display: inline-flex;
+  min-height: 3.35rem;
+  flex: none;
+  align-items: center;
+  gap: .5rem;
+  border-bottom: 2px solid transparent;
+  padding: 0 .8rem;
+  color: #67756f;
+  font-size: .76rem;
+  font-weight: 680;
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease;
+}
+
+.project-workspace-tabs button:hover {
+  background: #f6f8f6;
+  color: #123d31;
+}
+
+.project-workspace-tabs button.is-active {
+  border-bottom-color: var(--erp-brand);
+  color: var(--erp-brand);
+}
+
+.project-workspace-tabs button:focus-visible {
+  outline: 2px solid #ed5d24;
+  outline-offset: -3px;
+}
+
 .dashboard-metrics,
 .dashboard-integrated,
 .erp-dashboard section {
@@ -1348,6 +1386,11 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   }
 
   .erp-dashboard > div {
+    padding-inline: .7rem;
+  }
+
+  .project-workspace-tabs {
+    margin-inline: -.7rem;
     padding-inline: .7rem;
   }
 
