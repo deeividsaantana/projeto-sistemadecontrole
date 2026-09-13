@@ -457,7 +457,6 @@ export default function App() {
   const cloudBaselineRef = useRef<CloudBaseline | undefined>(undefined);
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
-  const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
   currentUserRoleRef.current = currentUserRole;
   // Quantos envios do link público de presença já estão no Firebase, pendentes
   // de entrar neste retrato local. Serve só de diagnóstico visível: se ficar
@@ -1313,7 +1312,6 @@ export default function App() {
       await requestAutomaticRemoteSync(status.updatedAt);
     } catch (error) {
       setIsFirebaseConnected(false);
-      setCloudRecoveryPending(true);
       console.warn('Verificacao automatica do Firebase falhou:', error);
     } finally {
       isCheckingSyncRef.current = false;
@@ -1361,17 +1359,6 @@ export default function App() {
       window.removeEventListener('focus', onReconnect);
     };
   }, [isLoggedIn, isAutoSyncEnabled, externalPresenceToken, externalTicketLink]);
-
-  // Se a nuvem estiver com um manifesto antigo/inconsistente, regrava o
-  // retrato local já carregado uma única vez. Isso recupera os links sem
-  // apagar dados locais nem entrar em loop de tentativas.
-  useEffect(() => {
-    if (!cloudRecoveryPending || !isLoggedIn || externalPresenceToken || externalTicketLink) return;
-    setCloudRecoveryPending(false);
-    void uploadLocalSnapshotToFirebase().then(result => {
-      if (!result.success) console.warn('Recuperação do retrato remoto pendente:', result.message);
-    });
-  }, [cloudRecoveryPending, externalPresenceToken, externalTicketLink, isLoggedIn]);
 
   const reloadExternalPresence = async (data = '') => {
     if (!externalPresenceToken) return;

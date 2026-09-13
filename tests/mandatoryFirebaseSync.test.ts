@@ -34,6 +34,15 @@ test('snapshot recebido durante upload permanece na fila automatica', () => {
   );
 });
 
+test('falha transitória de leitura nunca republica o retrato local', () => {
+  const pullRemoteChanges = appSource.slice(
+    appSource.indexOf('const pullRemoteChanges = async () =>'),
+    appSource.indexOf('// Com a sincronizacao automatica ativa'),
+  );
+  assert.match(pullRemoteChanges, /setIsFirebaseConnected\(false\)/);
+  assert.doesNotMatch(appSource, /cloudRecoveryPending|setCloudRecoveryPending/);
+});
+
 test('tabelas operacionais sao hidratadas sem depender de ordens de servico', () => {
   assert.match(appSource, /if \(Object\.hasOwn\(data, 'checklists'\)\) \{\s*setChecklists/);
   assert.match(appSource, /if \(Object\.hasOwn\(data, 'materiaisCadastro'\)\) \{\s*setMateriaisCadastro/);
