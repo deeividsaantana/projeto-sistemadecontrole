@@ -1827,7 +1827,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 .reports-command span {
   color: #087a59;
-  font-size: .65rem;
+  font-size: .7rem;
   font-weight: 800;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -1889,6 +1889,15 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 .reports-export-pdf {
   box-shadow: inset 0 -1px 0 rgb(5 97 66 / .08);
+}
+
+@media (max-width: 767px) {
+  .fuel-operations__header p,
+  .fuel-entry-form p,
+  .fuel-history header p,
+  .fuel-operations__empty-or-list p {
+    font-size: .7rem;
+  }
 }
 
 @media (max-width: 767px) {

@@ -65,7 +65,19 @@ app.post('/tasks/cleanup-cloud-data', async (req, res) => {
 // no plano gratuito e serve como checagem simples de saúde.
 app.get('/health', (req, res) => res.status(200).json({ ok: true }));
 
-app.use(express.static(distDir, { maxAge: '1y', index: false }));
+app.use(express.static(distDir, {
+  maxAge: '1y',
+  index: false,
+  setHeaders: (res, filePath) => {
+    // O browser consulta o service worker para saber se existe uma versão nova.
+    // Cache de um ano aqui fazia um deploy continuar servindo o shell antigo.
+    if (filePath.endsWith('service-worker.js') || filePath.endsWith('manifest.webmanifest')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  },
+}));
 
 app.get('*', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
