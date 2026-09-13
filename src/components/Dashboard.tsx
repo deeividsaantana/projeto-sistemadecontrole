@@ -19,6 +19,7 @@ import siteAerial from '../assets/renea-editorial/rodovia-duplicada-1600.webp';
 import { OBRA } from '../config/obra';
 import { FLEET_STATUS_DEFINITIONS } from '../fleet/status';
 import { FLEET_OPERATIONAL_STATUS } from '../fleet/domain';
+import { CountUp } from '../shared/ui';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -92,7 +93,7 @@ function ActionLink({ children, onClick }: { children: ReactNode; onClick: () =>
 }
 
 function Metric({ icon: Icon, label, value, detail, tone, active, onClick }: {
-  icon: LucideIcon; label: string; value: string; detail: string;
+  icon: LucideIcon; label: string; value: ReactNode; detail: string;
   tone: 'graphite' | 'green' | 'orange' | 'amber'; active?: boolean; onClick: () => void;
 }) {
   const tones = {
@@ -480,9 +481,9 @@ export default function Dashboard({
           ))}
         </nav>
         <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-white" data-dashboard-section aria-label="Indicadores da frota">
-          <span data-dashboard-metric><Metric icon={Activity} label="Frota ativa" value={String(latest.operating)} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} /></span>
-          <span data-dashboard-metric><Metric icon={Wrench} label="Em manutenção" value={String(latest.maintenance)} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} /></span>
-          <span data-dashboard-metric><Metric icon={Clock3} label="A confirmar" value={String(latest.confirm)} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} /></span>
+          <span data-dashboard-metric><Metric icon={Activity} label="Frota ativa" value={<CountUp value={latest.operating} />} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} /></span>
+          <span data-dashboard-metric><Metric icon={Wrench} label="Em manutenção" value={<CountUp value={latest.maintenance} />} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} /></span>
+          <span data-dashboard-metric><Metric icon={Clock3} label="A confirmar" value={<CountUp value={latest.confirm} />} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} /></span>
           <span data-dashboard-metric><Metric icon={Truck} label="Disponibilidade" value={latest.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'} detail={latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento no período'} tone="green" active={fleetFilter === 'Todos'} onClick={() => chooseFilter('Todos')} /></span>
           <div className="dashboard-metric-cta grid place-items-center px-5 py-6">
             <button type="button" onClick={() => onNavigate('controle-equipamentos')}
