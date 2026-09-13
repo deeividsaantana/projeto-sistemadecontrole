@@ -1779,8 +1779,14 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-command-header--command { min-height: auto; gap: 1.1rem; padding-top: 1.25rem; padding-bottom: 1.15rem; }
   .dashboard-command-header__tools { display: block; padding: 0; border: 0; background: transparent; }
   .dashboard-command-header__status { display: flex; align-items: center; justify-content: space-between; margin-bottom: .8rem; }
+  .dashboard-command-header__status > span { font-size: .72rem; }
   .dashboard-command-header__status small { display: block; }
-  .dashboard-command-header__actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .dashboard-command-header__actions {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
   .dashboard-command-header__actions button { min-height: 2.8rem; font-size: .7rem; }
   .dashboard-metrics { grid-template-columns: 1fr 1fr; gap: .55rem; }
   .dashboard-metric { min-height: 8.8rem; padding: .9rem; }
