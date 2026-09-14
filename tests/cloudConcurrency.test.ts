@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { mergeCloudSnapshotsWithBaseline, resolvePublishPayload } from '../src/cloudMerge';
+import { mergeCloudSnapshotsWithBaseline, normalizeCloudBaseline, resolvePublishPayload } from '../src/cloudMerge';
 
 const cloudSyncSource = readFileSync(new URL('../src/firebaseCloudSync.ts', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
@@ -207,13 +207,23 @@ test('o envio real usa essa protecao, e nao so a checagem de geracao', () => {
   // A base precisa ser reabastecida nos dois momentos em que este aparelho
   // volta a ficar igual à nuvem: ao publicar e ao baixar.
   assert.match(appSource, /cloudBaselineRef\.current = uploadResult\.publishedBaseline/);
-  assert.match(appSource, /cloudBaselineRef\.current = captureCloudBaseline\(data\)/);
+  assert.match(appSource, /cloudBaselineRef\.current = downloadedBaseline/);
+  assert.match(appSource, /STORAGE_KEYS\.cloudBaseline/);
   // O caminho de conflito também precisa honrar a base, e não só a
   // pré-checagem — senão a exclusão volta justamente quando há concorrência.
   assert.match(
     cloudSyncSource,
     /mergeCloudSnapshotsWithBaseline\(\s*remote\.data,\s*payload,\s*baseline,\s*\)/,
   );
+});
+
+test('base persistida sobrevive ao reload e rejeita formato corrompido', () => {
+  assert.deepEqual(
+    normalizeCloudBaseline({ presencasLink: ['p1', 'p1', 'p2'], ticketsJazida: [] }),
+    { presencasLink: ['p1', 'p2'], ticketsJazida: [] },
+  );
+  assert.equal(normalizeCloudBaseline({ presencasLink: ['p1', 2] }), undefined);
+  assert.equal(normalizeCloudBaseline(['p1']), undefined);
 });
 
 test('edicao mais recente do colega vence a copia velha do aparelho atrasado', () => {

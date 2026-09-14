@@ -1794,11 +1794,9 @@ export default function LancamentosTab({
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">{mode === 'abastecimentos' ? 'Confirmar cancelamento?' : 'Confirmar exclusão?'}</h3>
+              <h3 className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">Confirmar exclusão permanente?</h3>
               <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                {mode === 'abastecimentos'
-                  ? 'O lançamento ficará marcado como Cancelado, continuará disponível para auditoria e deixará de compor os indicadores operacionais.'
-                  : 'Você tem certeza que deseja excluir esta movimentação? Isso recalculará os saldos operacionais na mesma hora.'}
+                O registro será apagado da base e não voltará pela sincronização. Os indicadores serão recalculados na mesma hora.
               </p>
             </div>
             <div className="flex gap-2">
@@ -1806,7 +1804,7 @@ export default function LancamentosTab({
                 onClick={() => executeDeletion(deleteConfirmId)}
                 className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
               >
-                {mode === 'abastecimentos' ? 'Sim, Cancelar lançamento' : 'Sim, Excluir'}
+                Sim, excluir permanentemente
               </button>
               <button 
                 onClick={() => setDeleteConfirmId(null)}

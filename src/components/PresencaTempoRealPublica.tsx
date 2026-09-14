@@ -26,15 +26,17 @@ import type {
   PresencaStatus,
 } from '../types';
 import reneaLogo from '../assets/images/logo-renea-branco.png';
+import {
+  PRESENCA_STATUS_AFASTAMENTO,
+  PRESENCA_STATUS_OUTROS,
+  PRESENCA_STATUS_PRINCIPAIS,
+  PRESENCA_STATUS_SECUNDARIOS,
+  resumirPresencas,
+} from '../utils/presencaStatus';
 import './presencaTempoRealPublica.css';
 
-const PRIMARY_STATUSES: PresencaStatus[] = ['Presente', 'Ausente', 'Falta justificada', 'Atestado'];
-// Afastamento previsto: a pessoa não está na frente por um motivo já sabido
-// com antecedência. Fica separado das demais situações no select para o
-// encarregado nunca confundir isso com falta.
-const AFASTAMENTO_PREVISTO_STATUSES: PresencaStatus[] = ['Férias', 'Baixada', 'Recesso'];
-const OUTRAS_SITUACOES_STATUSES: PresencaStatus[] = ['Atraso', 'Saída antecipada', 'Afastado', 'Outro'];
-const SECONDARY_STATUSES: PresencaStatus[] = [...AFASTAMENTO_PREVISTO_STATUSES, ...OUTRAS_SITUACOES_STATUSES];
+const PRIMARY_STATUSES = PRESENCA_STATUS_PRINCIPAIS;
+const SECONDARY_STATUSES = PRESENCA_STATUS_SECUNDARIOS;
 
 /** Opções do select "Outras situações", agrupadas para o afastamento previsto
  *  nunca se misturar visualmente com falta/atraso/outro. */
@@ -43,10 +45,10 @@ function SecondaryStatusOptions() {
     <>
       <option value="">Outras situações</option>
       <optgroup label="Afastamento previsto">
-        {AFASTAMENTO_PREVISTO_STATUSES.map(option => <option key={option}>{option}</option>)}
+        {PRESENCA_STATUS_AFASTAMENTO.map(option => <option key={option}>{option}</option>)}
       </optgroup>
       <optgroup label="Outras situações">
-        {OUTRAS_SITUACOES_STATUSES.map(option => <option key={option}>{option}</option>)}
+        {PRESENCA_STATUS_OUTROS.map(option => <option key={option}>{option}</option>)}
       </optgroup>
     </>
   );
@@ -934,8 +936,7 @@ export default function PresencaTempoRealPublica({
       summary[status] = (summary[status] || 0) + 1;
       return summary;
     }, {});
-    const draftOutsideCount = (draftCounts.Ausente || 0) + (draftCounts['Falta justificada'] || 0)
-      + (draftCounts.Atestado || 0) + (draftCounts.Férias || 0) + (draftCounts.Afastado || 0) + (draftCounts.Outro || 0);
+    const draftSummary = resumirPresencas(groupEmployees.map(employee => items[employee.id]?.status));
     return (
       <main className="presence-public presence-public--center">
         <section className="presence-public__success-card presence-public__success-card--draft">
@@ -947,9 +948,9 @@ export default function PresencaTempoRealPublica({
           <time>{draftSavedAt ? new Date(draftSavedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
           <div className="presence-public__success-total"><strong>{reviewed}</strong><span>conferidos de {groupEmployees.length}</span></div>
           <div className="presence-public__summary-grid">
-            <div><strong>{draftCounts.Presente || 0}</strong><span>Presentes</span></div>
-            <div><strong>{draftOutsideCount}</strong><span>Fora</span></div>
-            <div><strong>{draftCounts.Atestado || 0}</strong><span>Atestados</span></div>
+            <div><strong>{draftSummary.presentes}</strong><span>Presentes</span></div>
+            <div><strong>{draftSummary.faltas}</strong><span>Faltas</span></div>
+            <div><strong>{draftSummary.afastamentos}</strong><span>Baixa/recesso/férias</span></div>
             <div><strong>{draftCounts.Pendente || 0}</strong><span>Pendentes</span></div>
           </div>
           <p className="presence-public__draft-warning"><Clock3 className="h-4 w-4" /> Este rascunho ainda não foi enviado para o controle de presença.</p>
@@ -972,8 +973,7 @@ export default function PresencaTempoRealPublica({
       summary[status] = (summary[status] || 0) + 1;
       return summary;
     }, {});
-    const foraCount = (counts.Ausente || 0) + (counts['Falta justificada'] || 0)
-      + (counts.Atestado || 0) + (counts.Férias || 0) + (counts.Afastado || 0) + (counts.Outro || 0);
+    const receiptSummary = resumirPresencas(receiptRoster);
     const receiptIso = result?.createdAtIso
       || meusRegistros.map(record => record.updatedAt || record.createdAt).filter(Boolean).sort().at(-1)
       || '';
@@ -990,12 +990,12 @@ export default function PresencaTempoRealPublica({
               : `${group.nome} · apontamento de ${receiptDayLabel.toLocaleLowerCase('pt-BR')} já enviado.`}
           </p>
           <time>{receiptIso ? new Date(receiptIso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
-          <div className="presence-public__success-total"><strong>{counts.Presente || 0}</strong><span>presentes de {receiptRoster.length}</span></div>
+          <div className="presence-public__success-total"><strong>{receiptSummary.presentes}</strong><span>presentes de {receiptSummary.previstos}</span></div>
           <div className="presence-public__summary-grid">
-            <div><strong>{counts.Presente || 0}</strong><span>Presentes</span></div>
-            <div><strong>{foraCount}</strong><span>Fora</span></div>
-            <div><strong>{counts.Ausente || 0}</strong><span>Ausentes</span></div>
-            <div><strong>{counts.Atestado || 0}</strong><span>Atestados</span></div>
+            <div><strong>{receiptSummary.presentes}</strong><span>Presentes</span></div>
+            <div><strong>{receiptSummary.faltas}</strong><span>Faltas</span></div>
+            <div><strong>{receiptSummary.afastamentos}</strong><span>Baixa/recesso/férias</span></div>
+            <div><strong>{receiptSummary.justificados}</strong><span>Justificados</span></div>
           </div>
           {result?.submissionId && <p className="presence-public__audit-id">ID do envio: {result.submissionId}</p>}
           <button type="button" onClick={() => setShowSuccessScreen(false)} className="presence-public__primary">
@@ -1027,11 +1027,7 @@ export default function PresencaTempoRealPublica({
   }
 
   if (alreadySubmitted) {
-    const counts = Object.values(items).reduce<Record<string, number>>((summary, item) => {
-      const status = item.status || 'Outro';
-      summary[status] = (summary[status] || 0) + 1;
-      return summary;
-    }, {});
+    const submittedSummary = resumirPresencas(Object.values(items).map(item => item.status));
     return (
       <main className="presence-public">
         <header className="presence-public__header">
@@ -1068,10 +1064,10 @@ export default function PresencaTempoRealPublica({
             </section>
           )}
           <div className="presence-public__summary-grid presence-public__summary-grid--compact">
-            <div><strong>{counts.Presente || 0}</strong><span>Presentes</span></div>
-            <div><strong>{counts.Ausente || 0}</strong><span>Ausentes</span></div>
-            <div><strong>{counts.Atestado || 0}</strong><span>Atestados</span></div>
-            <div><strong>{(counts['Falta justificada'] || 0) + (counts.Férias || 0) + (counts.Afastado || 0) + (counts.Outro || 0)}</strong><span>Outros</span></div>
+            <div><strong>{submittedSummary.presentes}</strong><span>Presentes</span></div>
+            <div><strong>{submittedSummary.faltas}</strong><span>Faltas</span></div>
+            <div><strong>{submittedSummary.afastamentos}</strong><span>Baixa/recesso/férias</span></div>
+            <div><strong>{submittedSummary.justificados}</strong><span>Justificados</span></div>
           </div>
           {dayNoteSection}
           {viewingPastDay && observacaoDia && (

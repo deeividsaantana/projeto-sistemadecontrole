@@ -237,6 +237,7 @@ export type PresencaStatus =
   | 'Baixada'
   | 'Recesso'
   | 'Afastado'
+  | 'Desligado'
   | 'Outro';
 
 export interface GrupoEquipe {

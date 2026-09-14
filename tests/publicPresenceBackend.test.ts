@@ -60,6 +60,23 @@ test('backend publico aceita somente uma situacao valida por colaborador', () =>
   }), /lista da equipe mudou ou está incompleta/i);
 });
 
+test('backend aceita baixa, recesso, ferias e desligado no link', () => {
+  const [resolvedGroup] = __testing.resolveGroupEmployeeIds([group], employees);
+  for (const status of ['Baixada', 'Recesso', 'Férias', 'Desligado']) {
+    const result = __testing.buildPresenceRecords({
+      group: resolvedGroup,
+      employees,
+      date: '2026-08-25',
+      token: group.token,
+      items: [
+        { funcionarioId: 'employee-1', status, observacao: '' },
+        { funcionarioId: 'employee-2', status: 'Presente', observacao: '' },
+      ],
+    });
+    assert.equal(result.records[0].status, status);
+  }
+});
+
 test('backend rejeita datas ISO que nao existem no calendario', async () => {
   const source = await import('../netlify/functions/_shared/firebase-admin.js');
   assert.equal(source.isIsoDate('2026-02-29'), false);

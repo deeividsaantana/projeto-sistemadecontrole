@@ -886,9 +886,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 /* ERP premium foundation v4. Dense, calm and consistent across operational
    screens while keeping the established sidebar untouched. */
 :root {
-  --erp-canvas: #f4f7f5;
+  --erp-canvas: #ffffff;
   --erp-surface: #ffffff;
-  --erp-surface-muted: #f7f9f8;
+  --erp-surface-muted: #ffffff;
   --erp-ink: #14231e;
   --erp-muted: #64736c;
   --erp-line: #d7dfda;
@@ -1932,4 +1932,33 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .reports-preview header p {
     margin-top: .35rem;
   }
+}
+
+/* Full white operacional. Mantém a sidebar aprovada em verde e neutraliza
+   somente os antigos fundos cinza/bege da área de trabalho. Cores semânticas
+   de alerta, sucesso e seleção continuam visíveis. */
+body,
+#app-root,
+.erp-shell,
+.erp-workspace,
+#main-workspace,
+#main-tab-viewport,
+#main-tab-viewport > * {
+  background-color: #fff;
+}
+
+#main-tab-viewport :is(
+  [class~="bg-[#f7f8f6]"],
+  [class~="bg-[#f4f7f5]"],
+  [class~="bg-[#f7f9f8]"],
+  [class~="bg-[#f5f8f6]"],
+  [class~="bg-[#f7f5ef]"],
+  [class~="bg-[#f0eee6]"],
+  [class~="bg-[#f2f4f1]"],
+  [class~="bg-[#f2f5f3]"],
+  [class~="bg-slate-50"],
+  [class~="bg-gray-50"],
+  [class~="bg-stone-50"]
+) {
+  background-color: #fff !important;
 }

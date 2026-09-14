@@ -54,6 +54,7 @@ export const STORAGE_KEYS = {
   autoSync: 'renea_auto_sync',
   lastCloudSync: 'renea_last_cloud_sync',
   lastCloudSyncIso: 'renea_last_cloud_sync_iso',
+  cloudBaseline: 'renea_cloud_baseline_v1',
   lastDeletionRecovery: 'renea_last_deletion_recovery',
 } as const;
 

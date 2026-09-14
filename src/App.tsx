@@ -165,9 +165,10 @@ import {
   type PublicSubmission,
 } from './firebasePublicSubmissions';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
-import { captureCloudBaseline, type CloudBaseline } from './cloudMerge';
+import { captureCloudBaseline, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import {
   addPublicPresenceMember,
+  deletePublicPresenceRecords,
   resetPresenceDay,
   removePublicPresenceMember,
   updatePublicPresenceDayNote,
@@ -181,7 +182,7 @@ import {
 } from './publicApi';
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
-import { estaAtivo, inativar, somenteAtivos } from './utils/inativacao';
+import { estaAtivo, somenteAtivos } from './utils/inativacao';
 import { aplicarPresencaManual, montarPresencaManual, type SituacaoLancada } from './utils/presencaManual';
 import {
   normalizePresenceLists,
@@ -390,6 +391,21 @@ const captureBaselineFromLocalStorage = (): CloudBaseline => {
   return captureCloudBaseline(snapshot);
 };
 
+const readPersistedCloudBaseline = (): CloudBaseline | undefined => {
+  if (typeof localStorage === 'undefined') return undefined;
+  const raw = localStorage.getItem(STORAGE_KEYS.cloudBaseline);
+  if (!raw) return undefined;
+  try {
+    return normalizeCloudBaseline(JSON.parse(raw));
+  } catch {
+    return undefined;
+  }
+};
+
+const persistCloudBaseline = (baseline: CloudBaseline) => {
+  writeStorageValue(localStorage, STORAGE_KEYS.cloudBaseline, JSON.stringify(baseline));
+};
+
 /** Intervalo mínimo entre duas checagens de nuvem, para não pagar uma leitura por clique. */
 const SYNC_CHECK_MIN_INTERVAL_MS = 15_000;
 /**
@@ -448,13 +464,13 @@ export default function App() {
   const lastSyncCheckAtRef = useRef(0);
   const automaticDownloadInFlightRef = useRef(false);
   const pendingRemoteVersionRef = useRef('');
+  const publicTicketIdsRef = useRef<Set<string>>(new Set());
   const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
   const currentUserRoleRef = useRef<UserRole>('admin');
-  // Ids por tabela da última sincronização concluída neste aparelho. Permite
-  // que uma mesclagem saiba diferenciar "eu apaguei isto" de "o colega criou
-  // isto depois". Fica só em memória de propósito: não ocupa armazenamento
-  // local, e sem ele a mesclagem apenas preserva tudo (nunca apaga por engano).
-  const cloudBaselineRef = useRef<CloudBaseline | undefined>(undefined);
+  // Ids por tabela da última sincronização concluída neste aparelho. A base é
+  // persistida: sem ela, recarregar a página apagava a memória da exclusão e a
+  // mesclagem seguinte trazia o registro remoto de volta.
+  const cloudBaselineRef = useRef<CloudBaseline | undefined>(readPersistedCloudBaseline());
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   currentUserRoleRef.current = currentUserRole;
@@ -810,6 +826,14 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(loadedControleEstacas));
         writeStorageValue(localStorage, 'renea_planilhas_operacionais_v2', 'true');
       }
+      // Compatibilidade com aparelhos que já tinham uma versão sincronizada
+      // antes desta correção. A fotografia é feita ainda durante a hidratação,
+      // antes que o usuário possa excluir qualquer registro nesta sessão.
+      if (!cloudBaselineRef.current && localStorage.getItem(STORAGE_KEYS.lastCloudSyncIso)) {
+        const initialBaseline = captureBaselineFromLocalStorage();
+        cloudBaselineRef.current = initialBaseline;
+        persistCloudBaseline(initialBaseline);
+      }
     }
     };
     void hydrateLocalData();
@@ -997,6 +1021,7 @@ export default function App() {
         commitStorageBatch(localStorage, [
           { key: 'renea_last_cloud_sync', value: nowStr },
           { key: 'renea_last_cloud_sync_iso', value: uploadResult.updatedAt },
+          { key: STORAGE_KEYS.cloudBaseline, value: JSON.stringify(uploadResult.publishedBaseline) },
         ]);
       } catch (storageError) {
         // O envio remoto já foi confirmado. Uma falha apenas no indicador local
@@ -1036,6 +1061,7 @@ export default function App() {
         // token herdado para este trocar e republicar, e o link mudava sozinho
         // em looping. Token fraco é tratado uma vez, na carga local.
         const data: FirebaseCloudData = { ...downloadedData };
+        const downloadedBaseline = captureCloudBaseline(data);
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
         const nowStr = Number.isNaN(syncDate.getTime())
@@ -1062,6 +1088,7 @@ export default function App() {
               : []),
             { key: 'renea_last_cloud_sync', value: nowStr },
             { key: 'renea_last_cloud_sync_iso', value: syncIso },
+            { key: STORAGE_KEYS.cloudBaseline, value: JSON.stringify(downloadedBaseline) },
           ]);
         } catch (error) {
           if (!isStorageQuotaExceededError(error)) throw error;
@@ -1213,7 +1240,7 @@ export default function App() {
         setIsFirebaseConnected(true);
         // Acabou de igualar com a nuvem: este é o retrato que serve de base
         // para diferenciar exclusões locais de novidades dos colegas depois.
-        cloudBaselineRef.current = captureCloudBaseline(data);
+        cloudBaselineRef.current = downloadedBaseline;
         return {
           success: true,
           message: `Dados atualizados com sucesso (${backup.totalRecords.toLocaleString('pt-BR')} registros).`,
@@ -1245,7 +1272,10 @@ export default function App() {
         const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
 
         if (localCloudVersion === requestedVersion) {
-          if (!cloudBaselineRef.current) cloudBaselineRef.current = captureBaselineFromLocalStorage();
+          if (!cloudBaselineRef.current) {
+            cloudBaselineRef.current = captureBaselineFromLocalStorage();
+            persistCloudBaseline(cloudBaselineRef.current);
+          }
           continue;
         }
 
@@ -1416,12 +1446,16 @@ export default function App() {
   useEffect(() => {
     if (!isLoggedIn || externalTicketLink) return;
     const unsubscribe = subscribePublicTickets(db, publicTickets => {
-      if (publicTickets.length === 0) return;
+      const incomingIds = new Set(publicTickets.map(item => item.id));
       setTicketsJazida(current => {
-        const merged = mergeTicketCollections(current, publicTickets);
+        const withoutRemovedPublicTickets = current.filter(item => (
+          !publicTicketIdsRef.current.has(item.id) || incomingIds.has(item.id)
+        ));
+        const merged = mergeTicketCollections(withoutRemovedPublicTickets, publicTickets);
         writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(merged));
         return merged;
       });
+      publicTicketIdsRef.current = incomingIds;
     }, error => console.warn('Listener de tickets públicos indisponível:', error));
     return () => unsubscribe();
   }, [isLoggedIn, externalTicketLink]);
@@ -1564,18 +1598,17 @@ export default function App() {
   const handleDeleteEmpresa = (id: string) => {
     const item = empresas.find(x => x.id === id);
     if (!item) return;
-    const inactive: Empresa = { ...item, status: 'INATIVO', atualizadoEm: new Date().toISOString() };
-    const updated = empresas.map(x => x.id === id ? inactive : x);
+    const updated = empresas.filter(x => x.id !== id);
     saveAndLog(
       'Empresas', 
-      'Inativou',
-      `Inativou a empresa/fornecedor "${item.nome}" preservando o histórico.`,
+      'Excluiu',
+      `Excluiu permanentemente a empresa/fornecedor "${item.nome}".`,
       historyLogs,
       () => {
         setEmpresas(updated);
         writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -1608,18 +1641,17 @@ export default function App() {
   const handleDeleteObra = (id: string) => {
     const item = obras.find(x => x.id === id);
     if (!item) return;
-    const inactive: ObraLocal = { ...item, status: 'Concluída' };
-    const updated = obras.map(x => x.id === id ? inactive : x);
+    const updated = obras.filter(x => x.id !== id);
     saveAndLog(
       'Obras/Locais', 
-      'Inativou',
-      `Inativou a obra/local "${item.nome}" preservando vínculos existentes.`,
+      'Excluiu',
+      `Excluiu permanentemente a obra/local "${item.nome}".`,
       historyLogs,
       () => {
         setObras(updated);
         writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -1700,18 +1732,17 @@ export default function App() {
   const handleDeleteEquipamento = (id: string) => {
     const item = equipamentos.find(x => x.id === id);
     if (!item) return;
-    const inactive: Equipamento = { ...item, status: 'Desmobilizado', mobilizado: false, dataDesmobilizacao: new Date().toISOString().slice(0, 10) };
-    const updated = equipamentos.map(x => x.id === id ? inactive : x);
+    const updated = equipamentos.filter(x => x.id !== id);
     saveAndLog(
       'Equipamentos', 
-      'Desmobilizou',
-      `Desmobilizou o equipamento/veículo "${item.prefixo} - ${item.nome}" preservando lançamentos vinculados.`,
+      'Excluiu',
+      `Excluiu permanentemente o equipamento/veículo "${item.prefixo} - ${item.nome}".`,
       historyLogs,
       () => {
         setEquipamentos(updated);
         writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'DEMOBILIZE' },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -1779,18 +1810,17 @@ export default function App() {
   const handleDeleteFuncionario = (id: string) => {
     const item = funcionarios.find(x => x.id === id);
     if (!item) return;
-    const inactive: Funcionario = { ...item, ativo: false, status: 'INATIVO', atualizadoEm: new Date().toISOString() };
-    const updated = funcionarios.map(x => x.id === id ? inactive : x);
+    const updated = funcionarios.filter(x => x.id !== id);
     saveAndLog(
       'Funcionários', 
-      'Inativou',
-      `Inativou o colaborador "${item.nome}" preservando efetivo, viagens e histórico.`,
+      'Excluiu',
+      `Excluiu permanentemente o colaborador "${item.nome}".`,
       historyLogs,
       () => {
         setFuncionarios(updated);
         writeStorageValue(localStorage, 'renea_funcionarios', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -2263,19 +2293,11 @@ export default function App() {
   const handleDeleteAbastecimento = (id: string) => {
     const item = abastecimentos.find(x => x.id === id);
     if (!item) return;
-    const cancelledAt = new Date().toISOString();
-    let updated = abastecimentos.map(x => x.id === id ? {
-      ...x,
-      status: 'Cancelado' as const,
-      atualizadoEm: cancelledAt,
-      revisaoStatus: 'Reaberto' as const,
-      revisaoObservacao: [x.revisaoObservacao, `Registro cancelado em ${new Date(cancelledAt).toLocaleString('pt-BR')}.`].filter(Boolean).join(' '),
-    } : x);
-    updated = auditarBaseCombustivel(updated);
+    const updated = auditarBaseCombustivel(abastecimentos.filter(x => x.id !== id));
     saveAndLog(
-      'Abastecimentos', 
-      'Editou', 
-      `Cancelou lançamento de abastecimento ID ${id.substring(0, 8)} sem apagar o histórico operacional.`,
+      'Abastecimentos',
+      'Excluiu',
+      `Excluiu permanentemente o lançamento de abastecimento ID ${id.substring(0, 8)}.`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -2403,20 +2425,11 @@ export default function App() {
   const handleDeleteAbastecimentos = (ids: string[]) => {
     const selected = new Set(ids);
     if (selected.size === 0) return;
-    // Abastecimento é registro de valor: inativa, não apaga. Ele sai das telas
-    // e dos totais, mas continua no arquivo e pode voltar. O enriquecimento
-    // roda só sobre os ativos, exatamente como rodava antes sobre a lista já
-    // sem os excluídos — um abastecimento inativado não pode continuar
-    // influenciando o consumo calculado dos vizinhos.
-    const inativados = inativar(abastecimentos, ids, activeUserName);
-    const enriquecidos = new Map(
-      auditarBaseCombustivel(somenteAtivos(inativados)).map(item => [item.id, item]),
-    );
-    const updated = inativados.map(item => enriquecidos.get(item.id) || item);
+    const updated = auditarBaseCombustivel(abastecimentos.filter(item => !selected.has(item.id)));
     saveAndLog(
       'Abastecimentos',
-      'Inativou',
-      `Inativou ${selected.size} abastecimento(s). Os registros saíram das telas e podem ser recuperados.`,
+      'Excluiu',
+      `Excluiu permanentemente ${selected.size} abastecimento(s).`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -2428,18 +2441,20 @@ export default function App() {
   const handleDeleteTicketsJazida = (ids: string[]) => {
     const selected = new Set(ids);
     if (selected.size === 0) return;
-    // Ticket de jazida é comprovante: inativa, não apaga.
-    const updated = inativar(ticketsJazida, ids, activeUserName);
+    const updated = ticketsJazida.filter(item => !selected.has(item.id));
     saveAndLog(
       'Tickets Jazida',
-      'Inativou',
-      `Inativou ${selected.size} ticket(s). Os registros saíram das telas e podem ser recuperados.`,
+      'Excluiu',
+      `Excluiu permanentemente ${selected.size} ticket(s).`,
       historyLogs,
       () => {
         setTicketsJazida(updated);
         writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(updated));
       }
     );
+    ids.forEach(id => {
+      void deletePublicTicket(db, id).catch(error => console.warn('Falha ao excluir ticket público:', error));
+    });
   };
 
   const handleImportTicketsJazida = (novosItens: TicketJazida[]) => {
@@ -3048,26 +3063,28 @@ export default function App() {
     void handleUploadToFirebase();
   };
 
-  const handleDeletePresencaLink = (ids: string[]) => {
+  const handleDeletePresencaLink = async (ids: string[]) => {
     const selected = new Set(ids);
-    const submissionDocIds = Array.from(new Set(
-      presencasLink
-        .filter(item => selected.has(item.id))
-        .map(item => {
-          if (item.submissionDocId) return item.submissionDocId;
-          const legacyMatch = /^plink-(.+)-\d+$/.exec(item.id);
-          return legacyMatch ? `presence_${legacyMatch[1]}` : '';
-        })
-        .filter(Boolean),
-    ));
-    // Apontamento de presença é registro trabalhista: inativa, não apaga.
-    const updatedPresencas = inativar(presencasLink, ids, activeUserName);
+    const targetMap = new Map<string, string[]>();
+    presencasLink.filter(item => selected.has(item.id)).forEach(item => {
+      const legacyMatch = /^plink-(.+)-\d+$/.exec(item.id);
+      const submissionDocId = item.submissionDocId || (legacyMatch ? `presence_${legacyMatch[1]}` : '');
+      if (!submissionDocId) return;
+      targetMap.set(submissionDocId, [...(targetMap.get(submissionDocId) || []), item.id]);
+    });
+    try {
+      if (targetMap.size > 0) {
+        await deletePublicPresenceRecords(Array.from(targetMap, ([submissionDocId, recordIds]) => ({ submissionDocId, recordIds })));
+      }
+    } catch (error) {
+      addNotification('Exclusão não concluída', error instanceof Error ? error.message : 'A fonte pública não confirmou a exclusão.', 'error', 'Sistema Local');
+      return;
+    }
+    const updatedPresencas = presencasLink.filter(item => !selected.has(item.id));
     setPresencasLink(updatedPresencas);
     writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
-    addNotification('Presenças inativadas', `${ids.length} registro(s) saíram das telas e podem ser recuperados.`, 'warning', 'Sistema Local');
-    void markPublicSubmissionsProcessed(db, submissionDocIds, currentUser?.uid || activeUserName)
-      .catch(error => console.warn('Não foi possível encerrar a submissão pública excluída:', error))
-      .finally(() => { void uploadLocalSnapshotToFirebase(); });
+    addNotification('Presenças excluídas', `${ids.length} registro(s) foram excluídos permanentemente.`, 'success', 'Sistema Local');
+    void uploadLocalSnapshotToFirebase();
   };
 
   const handleChangeControleEstacas = (next: ControleEstacas, description: string) => {
