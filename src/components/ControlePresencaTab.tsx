@@ -66,6 +66,7 @@ const STATUS_OPTIONS: PresencaStatus[] = [
   'Baixada',
   'Recesso',
   'Afastado',
+  'Desligado',
   'Outro',
 ];
 
@@ -85,6 +86,7 @@ const STATUS_STYLES: Record<PresencaStatus, string> = {
   Baixada: 'border-stone-200 bg-stone-100 text-stone-700',
   Recesso: 'border-stone-200 bg-stone-100 text-stone-700',
   Afastado: 'border-orange-200 bg-orange-50 text-orange-800',
+  Desligado: 'border-slate-300 bg-slate-100 text-slate-700',
   Outro: 'border-violet-200 bg-violet-50 text-violet-800',
 };
 
@@ -875,7 +877,7 @@ export default function ControlePresencaTab({
 
   const confirmarInativacaoRegistros = () => {
     onDeletePresencaLink?.(selectedRecordIds);
-    setFeedback(`${selectedRecordIds.length} registro(s) de presença inativado(s).`);
+    setFeedback(`${selectedRecordIds.length} registro(s) de presença enviado(s) para exclusão permanente.`);
     setSelectedRecordIds([]);
     setConfirmandoInativacao(false);
   };

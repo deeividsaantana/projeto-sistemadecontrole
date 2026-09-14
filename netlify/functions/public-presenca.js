@@ -49,7 +49,10 @@ export const aplicarLimiteDeEnvio = async (database, event, method, aplicar = en
   await aplicar(database, event, `public-presenca-${method}`, LIMITE_POR_EQUIPE_HORA, 3600, identidade);
 };
 
-const VALID_STATUSES = new Set(['Presente', 'Ausente', 'Falta justificada', 'Atestado', 'Férias', 'Afastado', 'Outro']);
+const VALID_STATUSES = new Set([
+  'Presente', 'Atraso', 'Saída antecipada', 'Ausente', 'Falta justificada', 'Atestado',
+  'Baixada', 'Recesso', 'Férias', 'Afastado', 'Desligado', 'Outro',
+]);
 const isGeneralToken = token => token.startsWith('geral-');
 const todayInSaoPaulo = () => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Sao_Paulo',
@@ -712,6 +715,56 @@ export const handler = async event => {
     // ela remove a reserva do dia e libera um novo envio pelo link.
     if (method === 'DELETE') {
       const staff = await requireStaffUser(event);
+      const body = parseJsonBody(event);
+      if (cleanString(body.action, 40) === 'excluir-registros') {
+        const targets = Array.isArray(body.targets) ? body.targets.slice(0, 100) : [];
+        if (targets.length === 0) {
+          return jsonResponse(400, { success: false, message: 'Nenhum registro foi informado para exclusão.' });
+        }
+        let registrosRemovidos = 0;
+        for (const target of targets) {
+          const submissionDocId = cleanString(target?.submissionDocId, 220);
+          const recordIds = new Set((Array.isArray(target?.recordIds) ? target.recordIds : [])
+            .slice(0, 500)
+            .map(id => cleanString(id, 220))
+            .filter(Boolean));
+          if (!submissionDocId || recordIds.size === 0) continue;
+          const submissionRef = database.collection('sistemarenea_public_submissions').doc(submissionDocId);
+          const removedFromDocument = await database.runTransaction(async transaction => {
+            const document = await transaction.get(submissionRef);
+            if (!document.exists) return 0;
+            const submission = document.data();
+            if (submission?.kind !== 'presence') return 0;
+            const records = Array.isArray(submission?.payload?.records) ? submission.payload.records : [];
+            const remaining = records.filter(record => !recordIds.has(cleanString(record?.id, 220)));
+            const removed = records.length - remaining.length;
+            if (removed === 0) return 0;
+            if (remaining.length === 0) {
+              transaction.delete(submissionRef);
+              const grupoId = cleanString(submission?.payload?.grupoId, 160);
+              const date = cleanString(submission?.payload?.data, 10);
+              if (grupoId && isIsoDate(date)) {
+                transaction.delete(database.collection(PRESENCE_LOCKS_COLLECTION).doc(presenceLockId(grupoId, date)));
+              }
+              return removed;
+            }
+            transaction.update(submissionRef, {
+              'payload.records': remaining,
+              status: 'processed',
+              updatedAt: serverTimestamp(),
+              updatedAtIso: new Date().toISOString(),
+              excludedBy: cleanString(staff.email, 320),
+            });
+            return removed;
+          });
+          registrosRemovidos += removedFromDocument;
+        }
+        return jsonResponse(200, {
+          success: true,
+          data: { registrosRemovidos },
+          message: `${registrosRemovidos} registro(s) excluído(s) permanentemente.`,
+        });
+      }
       const grupoId = cleanString(event.queryStringParameters?.grupoId, 160);
       const date = cleanString(event.queryStringParameters?.data, 10);
       if (!grupoId || !isIsoDate(date)) {

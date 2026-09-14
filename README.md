@@ -12,6 +12,7 @@ Webapp operacional para controle de equipamentos, combustível, materiais, ticke
 - Tickets de liberação e recebimento vinculados, assinatura digital, histórico e impressão em duas vias.
 - Links públicos operacionais para tickets, apontamentos e presença, com rascunhos isolados por aparelho.
 - Sincronização segmentada com Firebase para respeitar o limite de tamanho dos documentos do Firestore.
+- Migração incremental para Supabase por gateway, com Firebase padrão, dual-write de homologação e RLS por organização.
 
 ## Executar localmente
 
@@ -38,6 +39,7 @@ Consulte:
 - `INSTRUCOES_CONTAS_FIREBASE.md`
 - `LEGADO_SGE_CONVERSAO.md`
 - `VALIDACAO_V7.md`
+- `docs/ARQUITETURA_MIGRACAO_SUPABASE.md`
 
 ## Segurança dos documentos
 

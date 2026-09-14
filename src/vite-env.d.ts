@@ -9,6 +9,11 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID?: string;
   readonly VITE_FIREBASE_APP_ID?: string;
   readonly VITE_FIREBASE_MEASUREMENT_ID?: string;
+  readonly VITE_CLOUD_PROVIDER?: 'firebase' | 'supabase' | 'dual-write';
+  readonly VITE_SUPABASE_URL?: string;
+  readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
+  readonly VITE_SUPABASE_ANON_KEY?: string;
+  readonly VITE_SUPABASE_ORGANIZATION_ID?: string;
 }
 
 interface ImportMeta {

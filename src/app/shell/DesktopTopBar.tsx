@@ -20,7 +20,7 @@ interface DesktopTopBarProps {
   notifications: AppNotification[];
   unreadCount: number;
   alertas?: Alerta[];
-  isFirebaseConnected: boolean;
+  isCloudConnected: boolean;
   lastCloudSync: string;
   onMenuSearchChange: (value: string) => void;
   onNavigate: (tab: string) => void;
@@ -41,7 +41,7 @@ export function DesktopTopBar({
   notifications,
   unreadCount,
   alertas,
-  isFirebaseConnected,
+  isCloudConnected,
   lastCloudSync,
   onMenuSearchChange,
   onNavigate,
@@ -137,11 +137,11 @@ export function DesktopTopBar({
       <div className="erp-topbar__actions">
         <div
           className="erp-topbar__status"
-          data-offline={!isFirebaseConnected || undefined}
+          data-offline={!isCloudConnected || undefined}
           title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
         >
           <span />
-          {isFirebaseConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}
+          {isCloudConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}
         </div>
         <NotificationCenter
           isOpen={isNotificationOpen}

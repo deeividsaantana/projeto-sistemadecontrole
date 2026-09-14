@@ -26,6 +26,7 @@ export default defineConfig(() => {
                 if (id.includes('/storage/') || id.includes('\\storage\\')) return 'vendor-firebase-storage';
                 return 'vendor-firebase';
               }
+              if (id.includes('/@supabase/') || id.includes('\\@supabase\\')) return 'vendor-supabase';
               if (id.includes('/exceljs/') || id.includes('\\exceljs\\')) return 'vendor-excel';
               if (id.includes('/jspdf') || id.includes('\\jspdf')) return 'vendor-pdf';
               if (id.includes('/html2canvas/') || id.includes('\\html2canvas\\')) return 'vendor-canvas';

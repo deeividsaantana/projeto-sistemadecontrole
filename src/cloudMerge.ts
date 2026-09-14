@@ -81,6 +81,21 @@ export const mergeCloudTable = (remoteItems: unknown[], localItems: unknown[]): 
 export type CloudBaseline = Record<string, string[]>;
 
 /**
+ * Aceita somente a forma mínima usada pela mesclagem de três vias. Além de
+ * proteger a leitura do localStorage, remove ids repetidos para manter a base
+ * pequena mesmo depois de muitas sincronizações.
+ */
+export const normalizeCloudBaseline = (value: unknown): CloudBaseline | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const normalized: CloudBaseline = {};
+  for (const [table, ids] of Object.entries(value)) {
+    if (!Array.isArray(ids) || ids.some(id => typeof id !== 'string')) return undefined;
+    normalized[table] = Array.from(new Set(ids.filter(Boolean)));
+  }
+  return normalized;
+};
+
+/**
  * Fotografa só os ids de cada tabela de um retrato. É o suficiente para,
  * mais tarde, distinguir "eu apaguei isso" de "o colega criou isso depois",
  * sem guardar uma segunda cópia inteira dos dados.

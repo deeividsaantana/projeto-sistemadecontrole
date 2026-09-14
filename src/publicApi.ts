@@ -207,6 +207,27 @@ export const resetPresenceDay = async (grupoId: string, data: string) => {
   };
 };
 
+/** Remove registros específicos também da fonte pública, para que a recuperação
+ * manual não os recrie depois da exclusão no painel. */
+export const deletePublicPresenceRecords = async (
+  targets: Array<{ submissionDocId: string; recordIds: string[] }>,
+) => {
+  const { auth } = await import('./firebase');
+  const user = auth.currentUser;
+  if (!user) throw new Error('Faça login novamente para excluir os registros.');
+  const idToken = await user.getIdToken();
+  const response = await callPublicApi<{ registrosRemovidos: number }>('/.netlify/functions/public-presenca', {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ action: 'excluir-registros', targets }),
+  });
+  return {
+    success: true,
+    message: response.message || 'Registros excluídos permanentemente.',
+    registrosRemovidos: response.data?.registrosRemovidos || 0,
+  };
+};
+
 
 const ticketAccessHeaders = (accessToken: string) => ({
   'X-Renea-Ticket-Access': accessToken,

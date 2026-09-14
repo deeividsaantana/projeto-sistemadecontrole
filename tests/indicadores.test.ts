@@ -28,6 +28,21 @@ test('presença efetiva conta atraso e saída antecipada como presença', () => 
   assert.equal(indicadores.find(item => item.id === 'presenca')?.valor, 66.7);
 });
 
+test('baixa, recesso e férias não viram falta nem reduzem a presença efetiva', () => {
+  const indicadores = calcularIndicadores({
+    ...contexto,
+    presencasLink: [
+      presenca('1', 'Presente'),
+      presenca('2', 'Ausente'),
+      presenca('3', 'Baixada'),
+      presenca('4', 'Recesso'),
+      presenca('5', 'Férias'),
+      presenca('6', 'Desligado'),
+    ],
+  });
+  assert.equal(indicadores.find(item => item.id === 'presenca')?.valor, 50);
+});
+
 test('variação compara com o período anterior de mesmo tamanho', () => {
   const indicadores = calcularIndicadores({
     ...contexto,

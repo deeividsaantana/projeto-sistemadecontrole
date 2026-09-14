@@ -146,12 +146,13 @@ import {
 } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import {
-  downloadFirebaseBackup,
-  formatFirebaseSyncError,
-  getFirebaseConnectionStatus,
-  uploadFirebaseBackup,
-  type FirebaseCloudData,
-} from './firebaseCloudSync';
+  downloadCloudBackup,
+  formatCloudSyncError,
+  getCloudConnectionStatus,
+  uploadCloudBackup,
+  type CloudData,
+} from './cloud/cloudSyncGateway';
+import { cloudProvider } from './platform/cloudProvider';
 import {
   deletePublicTicket,
   subscribePublicTickets,
@@ -165,9 +166,10 @@ import {
   type PublicSubmission,
 } from './firebasePublicSubmissions';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
-import { captureCloudBaseline, type CloudBaseline } from './cloudMerge';
+import { captureCloudBaseline, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import {
   addPublicPresenceMember,
+  deletePublicPresenceRecords,
   resetPresenceDay,
   removePublicPresenceMember,
   updatePublicPresenceDayNote,
@@ -181,7 +183,7 @@ import {
 } from './publicApi';
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
-import { estaAtivo, inativar, somenteAtivos } from './utils/inativacao';
+import { estaAtivo, somenteAtivos } from './utils/inativacao';
 import { aplicarPresencaManual, montarPresencaManual, type SituacaoLancada } from './utils/presencaManual';
 import {
   normalizePresenceLists,
@@ -390,6 +392,21 @@ const captureBaselineFromLocalStorage = (): CloudBaseline => {
   return captureCloudBaseline(snapshot);
 };
 
+const readPersistedCloudBaseline = (): CloudBaseline | undefined => {
+  if (typeof localStorage === 'undefined') return undefined;
+  const raw = localStorage.getItem(STORAGE_KEYS.cloudBaseline);
+  if (!raw) return undefined;
+  try {
+    return normalizeCloudBaseline(JSON.parse(raw));
+  } catch {
+    return undefined;
+  }
+};
+
+const persistCloudBaseline = (baseline: CloudBaseline) => {
+  writeStorageValue(localStorage, STORAGE_KEYS.cloudBaseline, JSON.stringify(baseline));
+};
+
 /** Intervalo mínimo entre duas checagens de nuvem, para não pagar uma leitura por clique. */
 const SYNC_CHECK_MIN_INTERVAL_MS = 15_000;
 /**
@@ -433,8 +450,9 @@ export default function App() {
     () => typeof localStorage === 'undefined' ? { categoriasSilenciadas: [], mostrarSistema: true } : carregarPreferencias(localStorage),
   );
 
-  // Firebase Sync States
-  const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
+  // Estado do provedor de nuvem ativo. O gateway mantém Firebase, Supabase e
+  // o período de dual-write fora dos componentes operacionais.
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   // Evita repetir o mesmo aviso de falha de sincronização a cada salvamento
   // enquanto a causa não muda (ex.: ficar sem internet por vários lançamentos).
   const lastSyncFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
@@ -448,13 +466,13 @@ export default function App() {
   const lastSyncCheckAtRef = useRef(0);
   const automaticDownloadInFlightRef = useRef(false);
   const pendingRemoteVersionRef = useRef('');
+  const publicTicketIdsRef = useRef<Set<string>>(new Set());
   const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
   const currentUserRoleRef = useRef<UserRole>('admin');
-  // Ids por tabela da última sincronização concluída neste aparelho. Permite
-  // que uma mesclagem saiba diferenciar "eu apaguei isto" de "o colega criou
-  // isto depois". Fica só em memória de propósito: não ocupa armazenamento
-  // local, e sem ele a mesclagem apenas preserva tudo (nunca apaga por engano).
-  const cloudBaselineRef = useRef<CloudBaseline | undefined>(undefined);
+  // Ids por tabela da última sincronização concluída neste aparelho. A base é
+  // persistida: sem ela, recarregar a página apagava a memória da exclusão e a
+  // mesclagem seguinte trazia o registro remoto de volta.
+  const cloudBaselineRef = useRef<CloudBaseline | undefined>(readPersistedCloudBaseline());
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   currentUserRoleRef.current = currentUserRole;
@@ -810,6 +828,14 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(loadedControleEstacas));
         writeStorageValue(localStorage, 'renea_planilhas_operacionais_v2', 'true');
       }
+      // Compatibilidade com aparelhos que já tinham uma versão sincronizada
+      // antes desta correção. A fotografia é feita ainda durante a hidratação,
+      // antes que o usuário possa excluir qualquer registro nesta sessão.
+      if (!cloudBaselineRef.current && localStorage.getItem(STORAGE_KEYS.lastCloudSyncIso)) {
+        const initialBaseline = captureBaselineFromLocalStorage();
+        cloudBaselineRef.current = initialBaseline;
+        persistCloudBaseline(initialBaseline);
+      }
     }
     };
     void hydrateLocalData();
@@ -878,22 +904,22 @@ export default function App() {
     setLastCloudSync(savedLastSync);
 
     if (!isLoggedIn || externalTicketLink || externalPresenceToken) {
-      setIsFirebaseConnected(false);
+      setIsCloudConnected(false);
       return;
     }
 
     const checkConnection = async () => {
       try {
-        const status = await getFirebaseConnectionStatus(db);
-        setIsFirebaseConnected(status.connected);
+        const status = await getCloudConnectionStatus(db);
+        setIsCloudConnected(status.connected);
 
         // O horario remoto nao pode ser gravado como uma sincronizacao local.
         // Esse marcador so e atualizado depois de um upload/download concluido;
         // caso contrario um navegador novo acredita que ja baixou a nuvem e o
         // primeiro snapshot em tempo real e descartado.
       } catch (error) {
-        console.warn('Falha ao validar a conexao real com o Firestore:', error);
-        setIsFirebaseConnected(false);
+        console.warn('Falha ao validar a conexão real com a nuvem:', error);
+        setIsCloudConnected(false);
       }
     };
     void checkConnection();
@@ -909,7 +935,7 @@ export default function App() {
    * dois pontos, e o envio dependia da ORDEM de 20 parametros posicionais:
    * trocar dois de lugar publicava uma tabela no campo de outra, em silencio.
    */
-  const readLocalCloudTables = (): FirebaseCloudData => ({
+  const readLocalCloudTables = (): CloudData => ({
     empresas: readTable('renea_empresas', INITIAL_EMPRESAS),
     obras: readTable('renea_obras', INITIAL_OBRAS),
     equipamentos: readTable('renea_equipamentos', INITIAL_EQUIPAMENTOS),
@@ -956,9 +982,9 @@ export default function App() {
     historyLogs: readTable('renea_history_logs', [] as HistoryLog[]),
   });
 
-  // Firebase Upload Cloud Sync
+  // Envio para a nuvem pelo gateway de migração.
   const handleUploadToFirebase = async (
-    overrides: Partial<FirebaseCloudData> = {},
+    overrides: Partial<CloudData> = {},
   ): Promise<{ success: boolean; message: string }> => {
     uploadsInFlightRef.current += 1;
     try {
@@ -981,7 +1007,7 @@ export default function App() {
       // ao envio saber se está publicando em cima de algo conhecido ou se
       // precisa mesclar antes para não apagar o trabalho de outro usuário.
       const knownCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
-      const uploadResult = await uploadFirebaseBackup(
+      const uploadResult = await uploadCloudBackup(
         db,
         data,
         knownCloudVersion,
@@ -997,24 +1023,25 @@ export default function App() {
         commitStorageBatch(localStorage, [
           { key: 'renea_last_cloud_sync', value: nowStr },
           { key: 'renea_last_cloud_sync_iso', value: uploadResult.updatedAt },
+          { key: STORAGE_KEYS.cloudBaseline, value: JSON.stringify(uploadResult.publishedBaseline) },
         ]);
       } catch (storageError) {
         // O envio remoto já foi confirmado. Uma falha apenas no indicador local
         // não pode ser reportada como se o backup na nuvem tivesse falhado.
-        console.warn('O Firebase foi atualizado, mas o horário local não pôde ser salvo:', storageError);
+        console.warn('A nuvem foi atualizada, mas o horário local não pôde ser salvo:', storageError);
       }
-      setIsFirebaseConnected(true);
+      setIsCloudConnected(true);
       return {
         success: true,
         message: `${uploadResult.totalRecords.toLocaleString('pt-BR')} registros atualizados com segurança.`,
       };
     } catch (error: unknown) {
-      setIsFirebaseConnected(false);
-      console.error('Falha ao sincronizar o backup no Firebase:', error);
+      setIsCloudConnected(false);
+      console.error('Falha ao sincronizar o backup na nuvem:', error);
       if (!navigator.onLine) {
         void enqueueOfflineCommand('firebase-backup', { requestedAt: new Date().toISOString() });
       }
-      return { success: false, message: formatFirebaseSyncError(error) };
+      return { success: false, message: formatCloudSyncError(error) };
     } finally {
       uploadsInFlightRef.current = Math.max(0, uploadsInFlightRef.current - 1);
       if (uploadsInFlightRef.current === 0 && pendingRemoteVersionRef.current) {
@@ -1023,10 +1050,10 @@ export default function App() {
     }
   };
 
-  // Firebase Download Cloud Sync
+  // Download da nuvem pelo provedor autoritativo da fase atual.
   const handleDownloadFromFirebase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
     try {
-      const backup = await downloadFirebaseBackup(db);
+      const backup = await downloadCloudBackup(db);
       if (backup.data) {
         const downloadedData = backup.data;
         const validation = validateSystemBackup(downloadedData, false);
@@ -1035,7 +1062,8 @@ export default function App() {
         // endereço a cada download: bastava um aparelho publicar um grupo com
         // token herdado para este trocar e republicar, e o link mudava sozinho
         // em looping. Token fraco é tratado uma vez, na carga local.
-        const data: FirebaseCloudData = { ...downloadedData };
+        const data: CloudData = { ...downloadedData };
+        const downloadedBaseline = captureCloudBaseline(data);
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
         const nowStr = Number.isNaN(syncDate.getTime())
@@ -1062,6 +1090,7 @@ export default function App() {
               : []),
             { key: 'renea_last_cloud_sync', value: nowStr },
             { key: 'renea_last_cloud_sync_iso', value: syncIso },
+            { key: STORAGE_KEYS.cloudBaseline, value: JSON.stringify(downloadedBaseline) },
           ]);
         } catch (error) {
           if (!isStorageQuotaExceededError(error)) throw error;
@@ -1210,10 +1239,10 @@ export default function App() {
       }
         
         setLastCloudSync(nowStr);
-        setIsFirebaseConnected(true);
+        setIsCloudConnected(true);
         // Acabou de igualar com a nuvem: este é o retrato que serve de base
         // para diferenciar exclusões locais de novidades dos colegas depois.
-        cloudBaselineRef.current = captureCloudBaseline(data);
+        cloudBaselineRef.current = downloadedBaseline;
         return {
           success: true,
           message: `Dados atualizados com sucesso (${backup.totalRecords.toLocaleString('pt-BR')} registros).`,
@@ -1222,9 +1251,9 @@ export default function App() {
         return { success: false, message: 'Nenhuma cópia de dados foi encontrada.' };
       }
     } catch (error: unknown) {
-      setIsFirebaseConnected(false);
-      console.error('Falha ao restaurar o backup do Firebase:', error);
-      return { success: false, message: formatFirebaseSyncError(error) };
+      setIsCloudConnected(false);
+      console.error('Falha ao restaurar o backup da nuvem:', error);
+      return { success: false, message: formatCloudSyncError(error) };
     }
   };
 
@@ -1245,7 +1274,10 @@ export default function App() {
         const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
 
         if (localCloudVersion === requestedVersion) {
-          if (!cloudBaselineRef.current) cloudBaselineRef.current = captureBaselineFromLocalStorage();
+          if (!cloudBaselineRef.current) {
+            cloudBaselineRef.current = captureBaselineFromLocalStorage();
+            persistCloudBaseline(cloudBaselineRef.current);
+          }
           continue;
         }
 
@@ -1298,21 +1330,21 @@ export default function App() {
   const pullRemoteChanges = async () => {
     if (!isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
     if (isCheckingSyncRef.current) return;
-    // Cada checagem é uma leitura cobrada no Firebase. Passar por cinco telas
+    // Cada checagem é uma leitura remota. Passar por cinco telas
     // seguidas não precisa de cinco leituras: o ouvinte em tempo real já
     // avisa de qualquer publicação nova nesse intervalo.
     if (Date.now() - lastSyncCheckAtRef.current < SYNC_CHECK_MIN_INTERVAL_MS) return;
     isCheckingSyncRef.current = true;
     lastSyncCheckAtRef.current = Date.now();
     try {
-      const status = await getFirebaseConnectionStatus(db);
-      setIsFirebaseConnected(status.connected);
+      const status = await getCloudConnectionStatus(db);
+      setIsCloudConnected(status.connected);
 
       if (!status.updatedAt) return;
       await requestAutomaticRemoteSync(status.updatedAt);
     } catch (error) {
-      setIsFirebaseConnected(false);
-      console.warn('Verificacao automatica do Firebase falhou:', error);
+      setIsCloudConnected(false);
+      console.warn('Verificação automática da nuvem falhou:', error);
     } finally {
       isCheckingSyncRef.current = false;
     }
@@ -1331,12 +1363,14 @@ export default function App() {
     // O manifesto dispara a atualização imediatamente quando outro cliente
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.
-    const unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
-      const updatedAt = String(snapshot.data()?.updatedAt || '');
-      if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
-    }, error => {
-      console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
-    });
+    const unsubscribeManifest = cloudProvider === 'supabase'
+      ? () => undefined
+      : onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
+          const updatedAt = String(snapshot.data()?.updatedAt || '');
+          if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
+        }, error => {
+          console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
+        });
     const interval = window.setInterval(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS);
     // O canal em tempo real do Firestore pode cair sem avisar quando o
     // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
@@ -1416,12 +1450,16 @@ export default function App() {
   useEffect(() => {
     if (!isLoggedIn || externalTicketLink) return;
     const unsubscribe = subscribePublicTickets(db, publicTickets => {
-      if (publicTickets.length === 0) return;
+      const incomingIds = new Set(publicTickets.map(item => item.id));
       setTicketsJazida(current => {
-        const merged = mergeTicketCollections(current, publicTickets);
+        const withoutRemovedPublicTickets = current.filter(item => (
+          !publicTicketIdsRef.current.has(item.id) || incomingIds.has(item.id)
+        ));
+        const merged = mergeTicketCollections(withoutRemovedPublicTickets, publicTickets);
         writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(merged));
         return merged;
       });
+      publicTicketIdsRef.current = incomingIds;
     }, error => console.warn('Listener de tickets públicos indisponível:', error));
     return () => unsubscribe();
   }, [isLoggedIn, externalTicketLink]);
@@ -1479,7 +1517,7 @@ export default function App() {
       if (isRepeat) return;
       addNotification(
         'Sincronização com a nuvem falhou',
-        `${tableName} foi salvo neste aparelho, mas não chegou ao Firebase. Motivo: ${res.message}`,
+        `${tableName} foi salvo neste aparelho, mas não chegou à nuvem. Motivo: ${res.message}`,
         'error',
         'Sistema Local',
       );
@@ -1564,18 +1602,17 @@ export default function App() {
   const handleDeleteEmpresa = (id: string) => {
     const item = empresas.find(x => x.id === id);
     if (!item) return;
-    const inactive: Empresa = { ...item, status: 'INATIVO', atualizadoEm: new Date().toISOString() };
-    const updated = empresas.map(x => x.id === id ? inactive : x);
+    const updated = empresas.filter(x => x.id !== id);
     saveAndLog(
       'Empresas', 
-      'Inativou',
-      `Inativou a empresa/fornecedor "${item.nome}" preservando o histórico.`,
+      'Excluiu',
+      `Excluiu permanentemente a empresa/fornecedor "${item.nome}".`,
       historyLogs,
       () => {
         setEmpresas(updated);
         writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -1608,18 +1645,17 @@ export default function App() {
   const handleDeleteObra = (id: string) => {
     const item = obras.find(x => x.id === id);
     if (!item) return;
-    const inactive: ObraLocal = { ...item, status: 'Concluída' };
-    const updated = obras.map(x => x.id === id ? inactive : x);
+    const updated = obras.filter(x => x.id !== id);
     saveAndLog(
       'Obras/Locais', 
-      'Inativou',
-      `Inativou a obra/local "${item.nome}" preservando vínculos existentes.`,
+      'Excluiu',
+      `Excluiu permanentemente a obra/local "${item.nome}".`,
       historyLogs,
       () => {
         setObras(updated);
         writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -1700,18 +1736,17 @@ export default function App() {
   const handleDeleteEquipamento = (id: string) => {
     const item = equipamentos.find(x => x.id === id);
     if (!item) return;
-    const inactive: Equipamento = { ...item, status: 'Desmobilizado', mobilizado: false, dataDesmobilizacao: new Date().toISOString().slice(0, 10) };
-    const updated = equipamentos.map(x => x.id === id ? inactive : x);
+    const updated = equipamentos.filter(x => x.id !== id);
     saveAndLog(
       'Equipamentos', 
-      'Desmobilizou',
-      `Desmobilizou o equipamento/veículo "${item.prefixo} - ${item.nome}" preservando lançamentos vinculados.`,
+      'Excluiu',
+      `Excluiu permanentemente o equipamento/veículo "${item.prefixo} - ${item.nome}".`,
       historyLogs,
       () => {
         setEquipamentos(updated);
         writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'DEMOBILIZE' },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -1779,18 +1814,17 @@ export default function App() {
   const handleDeleteFuncionario = (id: string) => {
     const item = funcionarios.find(x => x.id === id);
     if (!item) return;
-    const inactive: Funcionario = { ...item, ativo: false, status: 'INATIVO', atualizadoEm: new Date().toISOString() };
-    const updated = funcionarios.map(x => x.id === id ? inactive : x);
+    const updated = funcionarios.filter(x => x.id !== id);
     saveAndLog(
       'Funcionários', 
-      'Inativou',
-      `Inativou o colaborador "${item.nome}" preservando efetivo, viagens e histórico.`,
+      'Excluiu',
+      `Excluiu permanentemente o colaborador "${item.nome}".`,
       historyLogs,
       () => {
         setFuncionarios(updated);
         writeStorageValue(localStorage, 'renea_funcionarios', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, valorNovo: inactive, tipoOperacao: 'INACTIVATE' },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -2263,19 +2297,11 @@ export default function App() {
   const handleDeleteAbastecimento = (id: string) => {
     const item = abastecimentos.find(x => x.id === id);
     if (!item) return;
-    const cancelledAt = new Date().toISOString();
-    let updated = abastecimentos.map(x => x.id === id ? {
-      ...x,
-      status: 'Cancelado' as const,
-      atualizadoEm: cancelledAt,
-      revisaoStatus: 'Reaberto' as const,
-      revisaoObservacao: [x.revisaoObservacao, `Registro cancelado em ${new Date(cancelledAt).toLocaleString('pt-BR')}.`].filter(Boolean).join(' '),
-    } : x);
-    updated = auditarBaseCombustivel(updated);
+    const updated = auditarBaseCombustivel(abastecimentos.filter(x => x.id !== id));
     saveAndLog(
-      'Abastecimentos', 
-      'Editou', 
-      `Cancelou lançamento de abastecimento ID ${id.substring(0, 8)} sem apagar o histórico operacional.`,
+      'Abastecimentos',
+      'Excluiu',
+      `Excluiu permanentemente o lançamento de abastecimento ID ${id.substring(0, 8)}.`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -2403,20 +2429,11 @@ export default function App() {
   const handleDeleteAbastecimentos = (ids: string[]) => {
     const selected = new Set(ids);
     if (selected.size === 0) return;
-    // Abastecimento é registro de valor: inativa, não apaga. Ele sai das telas
-    // e dos totais, mas continua no arquivo e pode voltar. O enriquecimento
-    // roda só sobre os ativos, exatamente como rodava antes sobre a lista já
-    // sem os excluídos — um abastecimento inativado não pode continuar
-    // influenciando o consumo calculado dos vizinhos.
-    const inativados = inativar(abastecimentos, ids, activeUserName);
-    const enriquecidos = new Map(
-      auditarBaseCombustivel(somenteAtivos(inativados)).map(item => [item.id, item]),
-    );
-    const updated = inativados.map(item => enriquecidos.get(item.id) || item);
+    const updated = auditarBaseCombustivel(abastecimentos.filter(item => !selected.has(item.id)));
     saveAndLog(
       'Abastecimentos',
-      'Inativou',
-      `Inativou ${selected.size} abastecimento(s). Os registros saíram das telas e podem ser recuperados.`,
+      'Excluiu',
+      `Excluiu permanentemente ${selected.size} abastecimento(s).`,
       historyLogs,
       () => {
         setAbastecimentos(updated);
@@ -2428,18 +2445,20 @@ export default function App() {
   const handleDeleteTicketsJazida = (ids: string[]) => {
     const selected = new Set(ids);
     if (selected.size === 0) return;
-    // Ticket de jazida é comprovante: inativa, não apaga.
-    const updated = inativar(ticketsJazida, ids, activeUserName);
+    const updated = ticketsJazida.filter(item => !selected.has(item.id));
     saveAndLog(
       'Tickets Jazida',
-      'Inativou',
-      `Inativou ${selected.size} ticket(s). Os registros saíram das telas e podem ser recuperados.`,
+      'Excluiu',
+      `Excluiu permanentemente ${selected.size} ticket(s).`,
       historyLogs,
       () => {
         setTicketsJazida(updated);
         writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(updated));
       }
     );
+    ids.forEach(id => {
+      void deletePublicTicket(db, id).catch(error => console.warn('Falha ao excluir ticket público:', error));
+    });
   };
 
   const handleImportTicketsJazida = (novosItens: TicketJazida[]) => {
@@ -2579,7 +2598,7 @@ export default function App() {
         message: `${addedCount} registro(s) de presença recuperado(s) e publicado(s) na nuvem.`,
       };
     } catch (error) {
-      return { success: false, message: formatFirebaseSyncError(error) };
+      return { success: false, message: formatCloudSyncError(error) };
     }
   };
 
@@ -2799,7 +2818,7 @@ export default function App() {
         console.warn('Falha ao acompanhar os envios públicos em tempo real:', error);
         addNotification(
           'Presenças do link público podem não estar chegando',
-          `O acompanhamento em tempo real dos envios públicos falhou. Motivo: ${formatFirebaseSyncError(error)}`,
+          `O acompanhamento em tempo real dos envios públicos falhou. Motivo: ${formatCloudSyncError(error)}`,
           'error',
           'Sistema Local',
         );
@@ -3048,26 +3067,28 @@ export default function App() {
     void handleUploadToFirebase();
   };
 
-  const handleDeletePresencaLink = (ids: string[]) => {
+  const handleDeletePresencaLink = async (ids: string[]) => {
     const selected = new Set(ids);
-    const submissionDocIds = Array.from(new Set(
-      presencasLink
-        .filter(item => selected.has(item.id))
-        .map(item => {
-          if (item.submissionDocId) return item.submissionDocId;
-          const legacyMatch = /^plink-(.+)-\d+$/.exec(item.id);
-          return legacyMatch ? `presence_${legacyMatch[1]}` : '';
-        })
-        .filter(Boolean),
-    ));
-    // Apontamento de presença é registro trabalhista: inativa, não apaga.
-    const updatedPresencas = inativar(presencasLink, ids, activeUserName);
+    const targetMap = new Map<string, string[]>();
+    presencasLink.filter(item => selected.has(item.id)).forEach(item => {
+      const legacyMatch = /^plink-(.+)-\d+$/.exec(item.id);
+      const submissionDocId = item.submissionDocId || (legacyMatch ? `presence_${legacyMatch[1]}` : '');
+      if (!submissionDocId) return;
+      targetMap.set(submissionDocId, [...(targetMap.get(submissionDocId) || []), item.id]);
+    });
+    try {
+      if (targetMap.size > 0) {
+        await deletePublicPresenceRecords(Array.from(targetMap, ([submissionDocId, recordIds]) => ({ submissionDocId, recordIds })));
+      }
+    } catch (error) {
+      addNotification('Exclusão não concluída', error instanceof Error ? error.message : 'A fonte pública não confirmou a exclusão.', 'error', 'Sistema Local');
+      return;
+    }
+    const updatedPresencas = presencasLink.filter(item => !selected.has(item.id));
     setPresencasLink(updatedPresencas);
     writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
-    addNotification('Presenças inativadas', `${ids.length} registro(s) saíram das telas e podem ser recuperados.`, 'warning', 'Sistema Local');
-    void markPublicSubmissionsProcessed(db, submissionDocIds, currentUser?.uid || activeUserName)
-      .catch(error => console.warn('Não foi possível encerrar a submissão pública excluída:', error))
-      .finally(() => { void uploadLocalSnapshotToFirebase(); });
+    addNotification('Presenças excluídas', `${ids.length} registro(s) foram excluídos permanentemente.`, 'success', 'Sistema Local');
+    void uploadLocalSnapshotToFirebase();
   };
 
   const handleChangeControleEstacas = (next: ControleEstacas, description: string) => {
@@ -4234,11 +4255,11 @@ export default function App() {
         />
 
         <div
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${isFirebaseConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
           title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
         >
-          <span className={`w-2 h-2 rounded-full shrink-0 ${isFirebaseConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-          <span>{isFirebaseConnected ? 'Nuvem OK' : 'Sem nuvem'}</span>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          <span>{isCloudConnected ? 'Nuvem OK' : 'Sem nuvem'}</span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -4321,7 +4342,7 @@ export default function App() {
           notifications={notifications}
           unreadCount={unreadCount}
           alertas={alertasDoSino}
-          isFirebaseConnected={isFirebaseConnected}
+          isCloudConnected={isCloudConnected}
           lastCloudSync={lastCloudSync}
           onNavigate={tab => navigateTo(tab)}
           onToggleNotifications={() => setIsNotifDropdownOpen(value => !value)}
@@ -4471,7 +4492,7 @@ export default function App() {
                 controlesEquipamentos={controleEquipamentosDiario}
                 producao={producaoRegistros}
                 ocorrencias={ocorrencias}
-                nuvemConectada={isFirebaseConnected}
+                nuvemConectada={isCloudConnected}
                 onNavigate={navigateTo}
               />
             )}
@@ -4522,7 +4543,7 @@ export default function App() {
             {activeTab === 'administracao' && (
               <AdministracaoTab
                 ultimaSincronizacao={lastCloudSync}
-                nuvemConectada={isFirebaseConnected}
+                nuvemConectada={isCloudConnected}
                 gruposEquipe={gruposEquipe}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onNavigate={navigateTo}
