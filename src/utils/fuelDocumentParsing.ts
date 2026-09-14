@@ -11,7 +11,7 @@ export interface LocalFuelDocumentAnalysis {
   dataDocumento?: string | null;
   paginas: number;
   avisosDocumento: string[];
-  registros: Array<Record<string, any>>;
+  registros: Array<Record<string, unknown>>;
   analiseOperacional?: OperationalAnalysis;
 }
 
@@ -325,7 +325,7 @@ const parseFuelRowsFromText = (text: string, defaultDate: string, catalogs: Fuel
     .map(line => line.replace(/\s+/g, ' ').trim())
     .filter(line => line.length >= 4);
   const documentDate = lines.map(parseDateFromText).find(Boolean) || defaultDate;
-  const registros: Array<Record<string, any>> = [];
+  const registros: Array<Record<string, unknown>> = [];
   let headerMap: Array<string | undefined> | null = null;
 
   lines.forEach((line, index) => {
@@ -357,7 +357,7 @@ const parseFuelRowsFromText = (text: string, defaultDate: string, catalogs: Fuel
 };
 
 export const buildFuelOperationalAnalysis = (
-  registros: Array<Record<string, any>>,
+  registros: Array<Record<string, unknown>>,
   avisosDocumento: string[] = [],
 ): OperationalAnalysis => {
   const totalRegistros = registros.length;
