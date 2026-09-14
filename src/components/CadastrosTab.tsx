@@ -237,7 +237,7 @@ export default function CadastrosTab({
     setIsFormOpen(true);
   };
 
-  const handleOpenEdit = (item: any) => {
+  const handleOpenEdit = (item: Empresa | ObraLocal | Equipamento | Funcionario | Comboio | TipoCombustivel | ProdutoLubrificacao | EtapaServico) => {
     resetFormState();
     setEditingId(item.id);
     setValidationError('');
@@ -551,14 +551,18 @@ export default function CadastrosTab({
     return etapas.length;
   };
 
-  const cellToText = (value: any): string => {
+  const cellToText = (value: unknown): string => {
     if (value === null || value === undefined) return '';
     if (value instanceof Date) return value.toISOString().split('T')[0];
     if (typeof value === 'object') {
-      if ('text' in value) return String(value.text ?? '').trim();
-      if ('result' in value) return cellToText(value.result);
-      if ('richText' in value && Array.isArray(value.richText)) {
-        return value.richText.map((part: any) => part.text || '').join('').trim();
+      const record = value as Record<string, unknown>;
+      if ('text' in record) return String(record.text ?? '').trim();
+      if ('result' in record) return cellToText(record.result);
+      if ('richText' in record && Array.isArray(record.richText)) {
+        return record.richText
+          .map(part => (typeof (part as Record<string, unknown>)?.text === 'string' ? (part as Record<string, unknown>).text : ''))
+          .join('')
+          .trim();
       }
     }
     return String(value).trim();
@@ -651,9 +655,9 @@ export default function CadastrosTab({
         return;
       }
       setPendingImport({ fileName: file.name, rows });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao importar planilha de cadastros:', error);
-      setImportFeedback({ type: 'error', message: error?.message || 'Não foi possível ler a planilha. Use CSV, TSV, XLSX ou XLSM.' });
+      setImportFeedback({ type: 'error', message: error instanceof Error && error.message ? error.message : 'Não foi possível ler a planilha. Use CSV, TSV, XLSX ou XLSM.' });
     } finally {
       if (importFileInputRef.current) importFileInputRef.current.value = '';
     }
@@ -950,7 +954,7 @@ export default function CadastrosTab({
                 </div>
                 <div className="space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status Operacional</label>
-                  <select value={obrStatus} onChange={e => setObrStatus(e.target.value as any)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
+                  <select value={obrStatus} onChange={e => setObrStatus(e.target.value as 'Ativa' | 'Concluída' | 'Planejada')} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
                     <option value="Ativa" className="bg-white text-slate-700">Ativa</option>
                     <option value="Concluída" className="bg-white text-slate-700">Concluída</option>
                     <option value="Planejada" className="bg-white text-slate-700">Planejada</option>
@@ -1004,7 +1008,7 @@ export default function CadastrosTab({
                 </div>
                 <div className="space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status Operacional</label>
-                  <select value={eqStatus} onChange={e => setEqStatus(e.target.value as any)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
+                  <select value={eqStatus} onChange={e => setEqStatus(e.target.value as Equipamento['status'])} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
                     <option value="Ativo" className="bg-white text-slate-800">Ativo</option>
                     <option value="Parado" className="bg-white text-slate-800">Parado</option>
                     <option value="Manutenção" className="bg-white text-slate-800">Manutenção</option>

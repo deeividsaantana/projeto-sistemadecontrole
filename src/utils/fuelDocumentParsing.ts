@@ -126,7 +126,7 @@ const binaryStringToBytes = (value: string) => {
 };
 
 const inflatePdfStream = async (bytes: Uint8Array) => {
-  const Decompression = (globalThis as any).DecompressionStream;
+  const Decompression = typeof DecompressionStream === 'undefined' ? undefined : DecompressionStream;
   if (!Decompression) return '';
   try {
     const stream = new Blob([bytes as unknown as BlobPart]).stream().pipeThrough(new Decompression('deflate'));
