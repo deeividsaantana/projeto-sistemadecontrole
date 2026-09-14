@@ -1962,3 +1962,86 @@ body,
 ) {
   background-color: #fff !important;
 }
+
+/* Master data is used repeatedly; keep selection, search and editing calm. */
+.erp-module--cadastros {
+  max-width: 1580px;
+  margin: 0 auto;
+}
+
+.erp-module--cadastros #subtab-selector {
+  gap: .6rem;
+  padding: .65rem;
+  border: 1px solid #dce5df;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.erp-module--cadastros #subtab-selector > button {
+  min-height: 5.3rem;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.erp-module--cadastros #subtab-selector > button:hover {
+  border-color: #82b9a4;
+  background: #f4faf6;
+  transform: none;
+}
+
+.erp-module--cadastros #subtab-selector > button[class*='bg-emerald'] {
+  border-color: #167958;
+  background: #eaf6ef;
+  box-shadow: inset 0 -2px 0 #0b815d;
+}
+
+.erp-module--cadastros #subtab-selector > button span:first-of-type {
+  color: inherit;
+  font-size: .67rem;
+  letter-spacing: .04em;
+}
+
+.erp-module--cadastros #subtab-selector + div {
+  padding: .85rem;
+  border-color: #dce5df;
+  box-shadow: 0 12px 28px -29px rgb(11 56 42 / .7);
+}
+
+.erp-module--cadastros #subtab-selector + div input,
+.erp-module--cadastros #subtab-selector + div select,
+.erp-module--cadastros #inline-form-card input,
+.erp-module--cadastros #inline-form-card select,
+.erp-module--cadastros #inline-form-card textarea {
+  border-radius: 6px;
+}
+
+.erp-module--cadastros #inline-form-card {
+  padding: 1.4rem;
+  border-color: #d7e5dc;
+  border-top: 3px solid #0b815d;
+  background: #fff;
+  box-shadow: 0 18px 40px -35px rgb(9 61 44 / .8);
+}
+
+.erp-module--cadastros #inline-form-card h3 {
+  color: #135b43;
+  font-size: .9rem;
+}
+
+@media (max-width: 767px) {
+  .erp-module--cadastros #subtab-selector {
+    display: flex;
+    overflow-x: auto;
+    padding: .5rem;
+    scrollbar-width: thin;
+  }
+
+  .erp-module--cadastros #subtab-selector > button {
+    flex: 0 0 8rem;
+    min-height: 5rem;
+  }
+
+  .erp-module--cadastros #inline-form-card {
+    padding: 1rem;
+  }
+}
