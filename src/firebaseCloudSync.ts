@@ -70,7 +70,7 @@ const FIREBASE_READ_TIMEOUT_MS = 20_000;
 const FIREBASE_WRITE_TIMEOUT_MS = 45_000;
 const MAX_PARALLEL_OPERATIONS = 4;
 
-export type FirebaseCloudData = Record<string, any>;
+export type FirebaseCloudData = Record<string, unknown>;
 
 interface CloudManifest {
   schemaVersion: number;
@@ -280,7 +280,7 @@ const sanitizeCloudRecord = (table: string, item: unknown): unknown => {
 };
 
 const countRecords = (data: FirebaseCloudData) => (
-  Object.values(data).reduce(
+  Object.values(data).reduce<number>(
     (total, value) => total + (Array.isArray(value) ? value.length : 0),
     0,
   )

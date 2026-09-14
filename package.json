@@ -13,8 +13,6 @@
     "test": "node scripts/run-tests.mjs",
     "start": "node server/index.js",
     "provision:staff": "node scripts/provision-staff.mjs",
-    "publicar": "node scripts/publicar-tudo.mjs",
-    "publicar:check": "node scripts/publicar-tudo.mjs --check",
     "prepare": "node scripts/install-git-hooks.mjs",
     "e2e": "playwright test"
   },

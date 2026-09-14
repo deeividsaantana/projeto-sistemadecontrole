@@ -1,9 +1,5 @@
 # Contas de usuario no Firebase
 
-> Caminho recomendado: execute `PUBLICAR_TUDO.cmd`. O assistente cria ou
-> localiza o usuário, tenta habilitar e-mail/senha, concede `staff: true` e
-> publica as regras. As etapas abaixo são a alternativa manual.
-
 O sistema agora usa contas reais do Firebase Authentication. A senha padrao
 `admin / renea123` foi removida do codigo.
 
@@ -38,9 +34,10 @@ anteriores. O usuário deve sair e entrar novamente.
 
 ## Ordem segura de publicação
 
-1. Configurar a conta de serviço no Netlify e no terminal administrativo.
+1. Configurar a conta de serviço Firebase no terminal administrativo (variáveis
+   `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64`/`FIREBASE_DATABASE_URL` no Render).
 2. Criar o usuário no Firebase Authentication.
 3. Executar `npm run provision:staff -- EMAIL`.
-4. Publicar as funções e o site no Netlify.
-5. Publicar `firestore.rules` com `firebase deploy --only firestore:rules`.
+4. Publicar `firestore.rules` com `firebase deploy --only firestore:rules`.
+5. Dar push em `main`; o Render publica automaticamente o site e o backend.
 6. Testar login, presença, apontamento e ticket em uma janela anônima.

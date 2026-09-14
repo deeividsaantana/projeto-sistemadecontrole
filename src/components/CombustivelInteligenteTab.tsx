@@ -117,7 +117,7 @@ interface AiAnalysisResponse {
   dataDocumento?: string | null;
   paginas: number;
   avisosDocumento: string[];
-  registros: Array<Record<string, any>>;
+  registros: Array<Record<string, unknown>>;
   analiseOperacional?: OperationalAnalysis;
 }
 

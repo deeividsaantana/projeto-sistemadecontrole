@@ -16,7 +16,7 @@ interface SnapshotRow {
   record_count: number;
 }
 
-const countRecords = (data: FirebaseCloudData) => Object.values(data).reduce(
+const countRecords = (data: FirebaseCloudData) => Object.values(data).reduce<number>(
   (total, value) => total + (Array.isArray(value) ? value.length : 0),
   0,
 );
