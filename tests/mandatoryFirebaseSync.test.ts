@@ -39,7 +39,7 @@ test('falha transitória de leitura nunca republica o retrato local', () => {
     appSource.indexOf('const pullRemoteChanges = async () =>'),
     appSource.indexOf('// Com a sincronizacao automatica ativa'),
   );
-  assert.match(pullRemoteChanges, /setIsFirebaseConnected\(false\)/);
+  assert.match(pullRemoteChanges, /setIsCloudConnected\(false\)/);
   assert.doesNotMatch(appSource, /cloudRecoveryPending|setCloudRecoveryPending/);
 });
 

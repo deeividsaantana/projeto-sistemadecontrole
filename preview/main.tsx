@@ -129,7 +129,7 @@ const screens: Record<string, React.ReactNode> = {
           isNotificationOpen={false}
           notifications={previewNotifications}
           unreadCount={1}
-          isFirebaseConnected
+          isCloudConnected
           lastCloudSync="04/09/2026 21:40"
           onMenuSearchChange={noop}
           onNavigate={noop}

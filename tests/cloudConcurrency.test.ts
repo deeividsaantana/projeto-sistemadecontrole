@@ -203,7 +203,7 @@ test('o envio real usa essa protecao, e nao so a checagem de geracao', () => {
     appSource,
     /const knownCloudVersion = localStorage\.getItem\('renea_last_cloud_sync_iso'\)/,
   );
-  assert.match(appSource, /uploadFirebaseBackup\(\s*db,\s*data,\s*knownCloudVersion,\s*cloudBaselineRef\.current,\s*\)/);
+  assert.match(appSource, /uploadCloudBackup\(\s*db,\s*data,\s*knownCloudVersion,\s*cloudBaselineRef\.current,\s*\)/);
   // A base precisa ser reabastecida nos dois momentos em que este aparelho
   // volta a ficar igual à nuvem: ao publicar e ao baixar.
   assert.match(appSource, /cloudBaselineRef\.current = uploadResult\.publishedBaseline/);

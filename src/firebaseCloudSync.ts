@@ -115,7 +115,7 @@ export interface FirebaseUploadResult {
 
 export interface FirebaseDownloadResult {
   data: FirebaseCloudData | null;
-  source: 'v2' | 'intermediate' | 'legacy' | 'none';
+  source: 'v2' | 'intermediate' | 'legacy' | 'supabase' | 'none';
   updatedAt: string;
   totalRecords: number;
 }

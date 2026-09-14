@@ -146,12 +146,13 @@ import {
 } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import {
-  downloadFirebaseBackup,
-  formatFirebaseSyncError,
-  getFirebaseConnectionStatus,
-  uploadFirebaseBackup,
-  type FirebaseCloudData,
-} from './firebaseCloudSync';
+  downloadCloudBackup,
+  formatCloudSyncError,
+  getCloudConnectionStatus,
+  uploadCloudBackup,
+  type CloudData,
+} from './cloud/cloudSyncGateway';
+import { cloudProvider } from './platform/cloudProvider';
 import {
   deletePublicTicket,
   subscribePublicTickets,
@@ -449,8 +450,9 @@ export default function App() {
     () => typeof localStorage === 'undefined' ? { categoriasSilenciadas: [], mostrarSistema: true } : carregarPreferencias(localStorage),
   );
 
-  // Firebase Sync States
-  const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
+  // Estado do provedor de nuvem ativo. O gateway mantém Firebase, Supabase e
+  // o período de dual-write fora dos componentes operacionais.
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   // Evita repetir o mesmo aviso de falha de sincronização a cada salvamento
   // enquanto a causa não muda (ex.: ficar sem internet por vários lançamentos).
   const lastSyncFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
@@ -902,22 +904,22 @@ export default function App() {
     setLastCloudSync(savedLastSync);
 
     if (!isLoggedIn || externalTicketLink || externalPresenceToken) {
-      setIsFirebaseConnected(false);
+      setIsCloudConnected(false);
       return;
     }
 
     const checkConnection = async () => {
       try {
-        const status = await getFirebaseConnectionStatus(db);
-        setIsFirebaseConnected(status.connected);
+        const status = await getCloudConnectionStatus(db);
+        setIsCloudConnected(status.connected);
 
         // O horario remoto nao pode ser gravado como uma sincronizacao local.
         // Esse marcador so e atualizado depois de um upload/download concluido;
         // caso contrario um navegador novo acredita que ja baixou a nuvem e o
         // primeiro snapshot em tempo real e descartado.
       } catch (error) {
-        console.warn('Falha ao validar a conexao real com o Firestore:', error);
-        setIsFirebaseConnected(false);
+        console.warn('Falha ao validar a conexão real com a nuvem:', error);
+        setIsCloudConnected(false);
       }
     };
     void checkConnection();
@@ -933,7 +935,7 @@ export default function App() {
    * dois pontos, e o envio dependia da ORDEM de 20 parametros posicionais:
    * trocar dois de lugar publicava uma tabela no campo de outra, em silencio.
    */
-  const readLocalCloudTables = (): FirebaseCloudData => ({
+  const readLocalCloudTables = (): CloudData => ({
     empresas: readTable('renea_empresas', INITIAL_EMPRESAS),
     obras: readTable('renea_obras', INITIAL_OBRAS),
     equipamentos: readTable('renea_equipamentos', INITIAL_EQUIPAMENTOS),
@@ -980,9 +982,9 @@ export default function App() {
     historyLogs: readTable('renea_history_logs', [] as HistoryLog[]),
   });
 
-  // Firebase Upload Cloud Sync
+  // Envio para a nuvem pelo gateway de migração.
   const handleUploadToFirebase = async (
-    overrides: Partial<FirebaseCloudData> = {},
+    overrides: Partial<CloudData> = {},
   ): Promise<{ success: boolean; message: string }> => {
     uploadsInFlightRef.current += 1;
     try {
@@ -1005,7 +1007,7 @@ export default function App() {
       // ao envio saber se está publicando em cima de algo conhecido ou se
       // precisa mesclar antes para não apagar o trabalho de outro usuário.
       const knownCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
-      const uploadResult = await uploadFirebaseBackup(
+      const uploadResult = await uploadCloudBackup(
         db,
         data,
         knownCloudVersion,
@@ -1026,20 +1028,20 @@ export default function App() {
       } catch (storageError) {
         // O envio remoto já foi confirmado. Uma falha apenas no indicador local
         // não pode ser reportada como se o backup na nuvem tivesse falhado.
-        console.warn('O Firebase foi atualizado, mas o horário local não pôde ser salvo:', storageError);
+        console.warn('A nuvem foi atualizada, mas o horário local não pôde ser salvo:', storageError);
       }
-      setIsFirebaseConnected(true);
+      setIsCloudConnected(true);
       return {
         success: true,
         message: `${uploadResult.totalRecords.toLocaleString('pt-BR')} registros atualizados com segurança.`,
       };
     } catch (error: unknown) {
-      setIsFirebaseConnected(false);
-      console.error('Falha ao sincronizar o backup no Firebase:', error);
+      setIsCloudConnected(false);
+      console.error('Falha ao sincronizar o backup na nuvem:', error);
       if (!navigator.onLine) {
         void enqueueOfflineCommand('firebase-backup', { requestedAt: new Date().toISOString() });
       }
-      return { success: false, message: formatFirebaseSyncError(error) };
+      return { success: false, message: formatCloudSyncError(error) };
     } finally {
       uploadsInFlightRef.current = Math.max(0, uploadsInFlightRef.current - 1);
       if (uploadsInFlightRef.current === 0 && pendingRemoteVersionRef.current) {
@@ -1048,10 +1050,10 @@ export default function App() {
     }
   };
 
-  // Firebase Download Cloud Sync
+  // Download da nuvem pelo provedor autoritativo da fase atual.
   const handleDownloadFromFirebase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
     try {
-      const backup = await downloadFirebaseBackup(db);
+      const backup = await downloadCloudBackup(db);
       if (backup.data) {
         const downloadedData = backup.data;
         const validation = validateSystemBackup(downloadedData, false);
@@ -1060,7 +1062,7 @@ export default function App() {
         // endereço a cada download: bastava um aparelho publicar um grupo com
         // token herdado para este trocar e republicar, e o link mudava sozinho
         // em looping. Token fraco é tratado uma vez, na carga local.
-        const data: FirebaseCloudData = { ...downloadedData };
+        const data: CloudData = { ...downloadedData };
         const downloadedBaseline = captureCloudBaseline(data);
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
@@ -1237,7 +1239,7 @@ export default function App() {
       }
         
         setLastCloudSync(nowStr);
-        setIsFirebaseConnected(true);
+        setIsCloudConnected(true);
         // Acabou de igualar com a nuvem: este é o retrato que serve de base
         // para diferenciar exclusões locais de novidades dos colegas depois.
         cloudBaselineRef.current = downloadedBaseline;
@@ -1249,9 +1251,9 @@ export default function App() {
         return { success: false, message: 'Nenhuma cópia de dados foi encontrada.' };
       }
     } catch (error: unknown) {
-      setIsFirebaseConnected(false);
-      console.error('Falha ao restaurar o backup do Firebase:', error);
-      return { success: false, message: formatFirebaseSyncError(error) };
+      setIsCloudConnected(false);
+      console.error('Falha ao restaurar o backup da nuvem:', error);
+      return { success: false, message: formatCloudSyncError(error) };
     }
   };
 
@@ -1328,21 +1330,21 @@ export default function App() {
   const pullRemoteChanges = async () => {
     if (!isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
     if (isCheckingSyncRef.current) return;
-    // Cada checagem é uma leitura cobrada no Firebase. Passar por cinco telas
+    // Cada checagem é uma leitura remota. Passar por cinco telas
     // seguidas não precisa de cinco leituras: o ouvinte em tempo real já
     // avisa de qualquer publicação nova nesse intervalo.
     if (Date.now() - lastSyncCheckAtRef.current < SYNC_CHECK_MIN_INTERVAL_MS) return;
     isCheckingSyncRef.current = true;
     lastSyncCheckAtRef.current = Date.now();
     try {
-      const status = await getFirebaseConnectionStatus(db);
-      setIsFirebaseConnected(status.connected);
+      const status = await getCloudConnectionStatus(db);
+      setIsCloudConnected(status.connected);
 
       if (!status.updatedAt) return;
       await requestAutomaticRemoteSync(status.updatedAt);
     } catch (error) {
-      setIsFirebaseConnected(false);
-      console.warn('Verificacao automatica do Firebase falhou:', error);
+      setIsCloudConnected(false);
+      console.warn('Verificação automática da nuvem falhou:', error);
     } finally {
       isCheckingSyncRef.current = false;
     }
@@ -1361,12 +1363,14 @@ export default function App() {
     // O manifesto dispara a atualização imediatamente quando outro cliente
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.
-    const unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
-      const updatedAt = String(snapshot.data()?.updatedAt || '');
-      if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
-    }, error => {
-      console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
-    });
+    const unsubscribeManifest = cloudProvider === 'supabase'
+      ? () => undefined
+      : onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
+          const updatedAt = String(snapshot.data()?.updatedAt || '');
+          if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
+        }, error => {
+          console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
+        });
     const interval = window.setInterval(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS);
     // O canal em tempo real do Firestore pode cair sem avisar quando o
     // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
@@ -1513,7 +1517,7 @@ export default function App() {
       if (isRepeat) return;
       addNotification(
         'Sincronização com a nuvem falhou',
-        `${tableName} foi salvo neste aparelho, mas não chegou ao Firebase. Motivo: ${res.message}`,
+        `${tableName} foi salvo neste aparelho, mas não chegou à nuvem. Motivo: ${res.message}`,
         'error',
         'Sistema Local',
       );
@@ -2594,7 +2598,7 @@ export default function App() {
         message: `${addedCount} registro(s) de presença recuperado(s) e publicado(s) na nuvem.`,
       };
     } catch (error) {
-      return { success: false, message: formatFirebaseSyncError(error) };
+      return { success: false, message: formatCloudSyncError(error) };
     }
   };
 
@@ -2814,7 +2818,7 @@ export default function App() {
         console.warn('Falha ao acompanhar os envios públicos em tempo real:', error);
         addNotification(
           'Presenças do link público podem não estar chegando',
-          `O acompanhamento em tempo real dos envios públicos falhou. Motivo: ${formatFirebaseSyncError(error)}`,
+          `O acompanhamento em tempo real dos envios públicos falhou. Motivo: ${formatCloudSyncError(error)}`,
           'error',
           'Sistema Local',
         );
@@ -4251,11 +4255,11 @@ export default function App() {
         />
 
         <div
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${isFirebaseConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
           title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
         >
-          <span className={`w-2 h-2 rounded-full shrink-0 ${isFirebaseConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-          <span>{isFirebaseConnected ? 'Nuvem OK' : 'Sem nuvem'}</span>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          <span>{isCloudConnected ? 'Nuvem OK' : 'Sem nuvem'}</span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -4338,7 +4342,7 @@ export default function App() {
           notifications={notifications}
           unreadCount={unreadCount}
           alertas={alertasDoSino}
-          isFirebaseConnected={isFirebaseConnected}
+          isCloudConnected={isCloudConnected}
           lastCloudSync={lastCloudSync}
           onNavigate={tab => navigateTo(tab)}
           onToggleNotifications={() => setIsNotifDropdownOpen(value => !value)}
@@ -4488,7 +4492,7 @@ export default function App() {
                 controlesEquipamentos={controleEquipamentosDiario}
                 producao={producaoRegistros}
                 ocorrencias={ocorrencias}
-                nuvemConectada={isFirebaseConnected}
+                nuvemConectada={isCloudConnected}
                 onNavigate={navigateTo}
               />
             )}
@@ -4539,7 +4543,7 @@ export default function App() {
             {activeTab === 'administracao' && (
               <AdministracaoTab
                 ultimaSincronizacao={lastCloudSync}
-                nuvemConectada={isFirebaseConnected}
+                nuvemConectada={isCloudConnected}
                 gruposEquipe={gruposEquipe}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onNavigate={navigateTo}
