@@ -35,6 +35,7 @@ import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import type { SituacaoLancada } from '../utils/presencaManual';
 import {
+  AFASTAMENTOS_PREVISTOS,
   diasAntes,
   efetivoPorEmpresa,
   efetivoPorFrente,
@@ -62,6 +63,8 @@ const STATUS_OPTIONS: PresencaStatus[] = [
   'Falta justificada',
   'Atestado',
   'Férias',
+  'Baixada',
+  'Recesso',
   'Afastado',
   'Outro',
 ];
@@ -76,7 +79,11 @@ const STATUS_STYLES: Record<PresencaStatus, string> = {
   Ausente: 'border-rose-200 bg-rose-50 text-rose-800',
   'Falta justificada': 'border-amber-200 bg-amber-50 text-amber-800',
   Atestado: 'border-sky-200 bg-sky-50 text-sky-800',
+  // Afastamento previsto: mesma família visual, para o olho já saber que não
+  // é falta antes de ler o texto.
   Férias: 'border-stone-200 bg-stone-100 text-stone-700',
+  Baixada: 'border-stone-200 bg-stone-100 text-stone-700',
+  Recesso: 'border-stone-200 bg-stone-100 text-stone-700',
   Afastado: 'border-orange-200 bg-orange-50 text-orange-800',
   Outro: 'border-violet-200 bg-violet-50 text-violet-800',
 };
@@ -425,8 +432,8 @@ export default function ControlePresencaTab({
   // Por frente: várias equipes trabalham no mesmo Ramo, e é pelo Ramo que se
   // decide remanejar gente no meio do dia.
   const efetivoDasFrentes = useMemo(
-    () => efetivoPorFrente(dashboardRecords, activeGroups),
-    [dashboardRecords, activeGroups],
+    () => efetivoPorFrente(dashboardRecords, activeGroups, safeFuncionarios),
+    [dashboardRecords, activeGroups, safeFuncionarios],
   );
 
   // Por empresa: é assim que se cobra quem não entrega o efetivo contratado.
@@ -1090,7 +1097,14 @@ export default function ControlePresencaTab({
                     {distribuicao.map(item => (
                       <li key={item.status}><button type="button" onClick={() => setDashboardStatus(item.status)} className="group block w-full text-left">
                         <div className="flex items-center justify-between gap-3 text-xs font-bold">
-                          <span className="text-[#26362f] group-hover:text-emerald-800">{item.status}</span>
+                          <span className="flex items-center gap-1.5 text-[#26362f] group-hover:text-emerald-800">
+                            {item.status}
+                            {AFASTAMENTOS_PREVISTOS.includes(item.status) && (
+                              <span className="rounded-full border border-stone-300 bg-stone-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-stone-600">
+                                Afastamento previsto
+                              </span>
+                            )}
+                          </span>
                           <span className="tabular-nums text-[#65716b]">{item.total}</span>
                         </div>
                         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eef2f0]">

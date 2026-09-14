@@ -1,4 +1,5 @@
-import type { Empresa, Funcionario, GrupoEquipe, PresencaApontamento } from '../types';
+import type { Empresa, Funcionario, GrupoEquipe, PresencaApontamento, PresencaStatus } from '../types';
+import { estaNoEfetivo } from './situacaoColaborador';
 
 /**
  * Números do painel de presença que não saem de uma contagem simples.
@@ -7,6 +8,13 @@ import type { Empresa, Funcionario, GrupoEquipe, PresencaApontamento } from '../
  */
 
 const AUSENCIAS: readonly string[] = ['Ausente', 'Falta justificada'];
+
+/**
+ * Afastamento previsto: a pessoa não está na obra por um motivo já sabido
+ * com antecedência (férias, baixada, recesso). Nunca é falta — nem aqui,
+ * nem em nenhum outro lugar que leia PresencaStatus.
+ */
+export const AFASTAMENTOS_PREVISTOS: readonly PresencaStatus[] = ['Férias', 'Baixada', 'Recesso'];
 
 export interface EfetivoPorGrupo {
   chave: string;
@@ -46,12 +54,20 @@ const montar = (
 export const efetivoPorFrente = (
   registros: PresencaApontamento[],
   equipes: GrupoEquipe[],
+  funcionarios: Funcionario[] = [],
 ): EfetivoPorGrupo[] => {
+  const funcionarioPorId = new Map((Array.isArray(funcionarios) ? funcionarios : []).map(item => [item.id, item]));
   const previstoPorFrente = new Map<string, number>();
   (Array.isArray(equipes) ? equipes : []).forEach(equipe => {
     if (!equipe || equipe.status !== 'ativo') return;
     const frente = equipe.frenteServico?.trim() || 'Frente não informada';
-    previstoPorFrente.set(frente, (previstoPorFrente.get(frente) || 0) + (equipe.funcionarioIds?.length || 0));
+    // Quem já saiu do efetivo (desligado) não é uma vaga em aberto: a
+    // ausência dele é desligamento já sabido pela obra, não falta.
+    const previstosDaEquipe = (equipe.funcionarioIds || []).filter(id => {
+      const funcionario = funcionarioPorId.get(id);
+      return !funcionario || estaNoEfetivo(funcionario);
+    }).length;
+    previstoPorFrente.set(frente, (previstoPorFrente.get(frente) || 0) + previstosDaEquipe);
   });
 
   const confirmados = new Map<string, number>();
