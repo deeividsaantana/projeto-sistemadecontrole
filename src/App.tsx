@@ -185,6 +185,7 @@ import { enrichFuelDataset } from './utils/fuelOperations';
 import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
 import { estaAtivo, somenteAtivos } from './utils/inativacao';
 import { aplicarPresencaManual, montarPresencaManual, type SituacaoLancada } from './utils/presencaManual';
+import { aplicarSituacao, descreverMudanca, type MudancaDeSituacao } from './utils/situacaoColaborador';
 import {
   normalizePresenceLists,
   normalizeRuntimeCollection,
@@ -2930,6 +2931,63 @@ export default function App() {
     void reloadExternalPresence(data);
   };
 
+  /**
+   * "Desligado" no apontamento não é só um status do dia: é o colaborador
+   * saindo da obra. Aplicar a mesma transição de situação que a tela de
+   * Colaboradores usa (aplicarSituacao → DESMOBILIZADO) tira a pessoa do
+   * efetivo em todo o sistema, não só naquele registro de presença — e some
+   * da equipe na hora, sem esperar alguém remover manualmente depois.
+   */
+  const processarDesligamentosDaPresenca = (
+    items: Array<{ funcionarioId: string; status: PresencaStatus }>,
+    grupoId: string,
+    data: string,
+  ) => {
+    const mudancasPorId = new Map<string, { funcionario: Funcionario; mudanca: MudancaDeSituacao }>();
+    items.forEach(({ funcionarioId, status }) => {
+      if (status !== 'Desligado' || mudancasPorId.has(funcionarioId)) return;
+      const atual = funcionarios.find(item => item.id === funcionarioId);
+      if (!atual || atual.status === 'DESMOBILIZADO') return;
+      mudancasPorId.set(funcionarioId, {
+        funcionario: atual,
+        mudanca: {
+          situacao: 'DESMOBILIZADO',
+          data,
+          motivo: 'Desligamento registrado pelo apontamento de presença',
+          por: activeUserName,
+        },
+      });
+    });
+    if (mudancasPorId.size === 0) return;
+
+    const funcionariosAtualizados = funcionarios.map(item => {
+      const entrada = mudancasPorId.get(item.id);
+      return entrada ? aplicarSituacao(entrada.funcionario, entrada.mudanca) : item;
+    });
+    saveAndLog(
+      'Funcionários',
+      'Editou',
+      `Desligou ${mudancasPorId.size} colaborador(es) pelo apontamento de presença: `
+      + `${[...mudancasPorId.values()].map(({ funcionario }) => funcionario.nome).join(', ')}.`,
+      historyLogs,
+      () => {
+        setFuncionarios(funcionariosAtualizados);
+        writeStorageValue(localStorage, 'renea_funcionarios', JSON.stringify(funcionariosAtualizados));
+      },
+    );
+    mudancasPorId.forEach(({ funcionario, mudanca }) => {
+      addNotification('Colaborador desligado', descreverMudanca(funcionario, mudanca), 'warning', 'Sistema Local');
+    });
+
+    const idsDesligados = new Set(mudancasPorId.keys());
+    setGruposEquipe(current => current.map(group => group.id === grupoId
+      ? { ...group, funcionarioIds: (group.funcionarioIds || []).filter(id => !idsDesligados.has(id)) }
+      : group));
+    setExternalMeuGrupo(current => current?.id === grupoId
+      ? { ...current, funcionarioIds: (current.funcionarioIds || []).filter(id => !idsDesligados.has(id)) }
+      : current);
+  };
+
   const handleSubmitPresencaLink = async (
     grupo: GrupoEquipe,
     data: string,
@@ -2937,7 +2995,9 @@ export default function App() {
     observacaoDia = '',
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      return await submitPublicPresence(externalPresenceToken, grupo.id, data, items, observacaoDia);
+      const resposta = await submitPublicPresence(externalPresenceToken, grupo.id, data, items, observacaoDia);
+      if (resposta.success) processarDesligamentosDaPresenca(items, grupo.id, data);
+      return resposta;
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Não foi possível enviar a presença.' };
     }
@@ -2985,7 +3045,11 @@ export default function App() {
     observacao: string
   ) => {
     try {
-      return await updatePublicPresenceRecord(externalPresenceToken, grupoId, funcionarioId, status, observacao);
+      const resposta = await updatePublicPresenceRecord(externalPresenceToken, grupoId, funcionarioId, status, observacao);
+      if (resposta.success) {
+        processarDesligamentosDaPresenca([{ funcionarioId, status }], grupoId, externalDataSelecionada);
+      }
+      return resposta;
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Não foi possível salvar a alteração.' };
     }
@@ -3029,6 +3093,7 @@ export default function App() {
     setHistoricoPresencas(updatedHistorico);
     writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
     writeStorageValue(localStorage, 'renea_historico_presencas', JSON.stringify(updatedHistorico));
+    processarDesligamentosDaPresenca([{ funcionarioId: item.funcionarioId, status }], item.grupoId, item.data);
 
     // presencasLink e historicoPresencas ja foram gravados acima; as
     // notificacoes tambem. O envio le tudo do armazenamento local.
@@ -3064,6 +3129,7 @@ export default function App() {
       'success',
       'Sistema Local',
     );
+    processarDesligamentosDaPresenca(situacoes, grupo.id, data);
     void handleUploadToFirebase();
   };
 
