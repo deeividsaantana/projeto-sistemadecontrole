@@ -25,7 +25,7 @@ if (missingEnvKeys.length > 0) {
   console.warn(
     `[RENEA] Firebase sem configuração de ambiente: ${missingEnvKeys.join(', ')}. `
     + `O sistema está usando o projeto embutido "${FALLBACK_FIREBASE_PROJECT_ID}". `
-    + 'Confirme que é o projeto correto e gere .env.local pelo PUBLICAR_TUDO.cmd.',
+    + 'Confirme que é o projeto correto e preencha .env.local a partir de .env.example.',
   );
 }
 
