@@ -4,14 +4,15 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { 
-  Empresa, 
-  Equipamento, 
-  Comboio, 
-  TipoCombustivel, 
-  ProdutoLubrificacao, 
-  Abastecimento, 
-  Lubrificacao
+import {
+  Empresa,
+  Equipamento,
+  Comboio,
+  TipoCombustivel,
+  ProdutoLubrificacao,
+  Abastecimento,
+  Lubrificacao,
+  StatusRegistroCombustivel,
 } from '../types';
 
 import { 
@@ -176,19 +177,24 @@ export default function LancamentosTab({
 
   const normalizeCompact = (value: string) => normalizeHeader(value).replace(/\s+/g, '');
 
-  const unwrapCellValue = (value: any): any => {
+  const unwrapCellValue = (value: ExcelJS.CellValue): ExcelJS.CellValue => {
     if (value === null || value === undefined) return '';
     if (value instanceof Date) return value;
     if (typeof value === 'object') {
-      if (value.result !== undefined) return unwrapCellValue(value.result);
-      if (value.text !== undefined) return unwrapCellValue(value.text);
-      if (Array.isArray(value.richText)) return value.richText.map((part: any) => part.text || '').join('');
-      if (value.hyperlink && value.text) return unwrapCellValue(value.text);
+      const record = value as unknown as Record<string, unknown>;
+      if (record.result !== undefined) return unwrapCellValue(record.result as ExcelJS.CellValue);
+      if (record.text !== undefined) return unwrapCellValue(record.text as ExcelJS.CellValue);
+      if (Array.isArray(record.richText)) {
+        return record.richText
+          .map(part => (typeof (part as Record<string, unknown>)?.text === 'string' ? (part as Record<string, unknown>).text : ''))
+          .join('') as ExcelJS.CellValue;
+      }
+      if (record.hyperlink && record.text) return unwrapCellValue(record.text as ExcelJS.CellValue);
     }
     return value;
   };
 
-  const cellToText = (value: any) => {
+  const cellToText = (value: ExcelJS.CellValue) => {
     const raw = unwrapCellValue(value);
     if (raw === null || raw === undefined) return '';
     if (raw instanceof Date) {
@@ -209,7 +215,7 @@ export default function LancamentosTab({
     return values.join(' | ');
   };
 
-  const parseDateValue = (val: any): string => {
+  const parseDateValue = (val: ExcelJS.CellValue): string => {
     if (!val) return '';
     if (val instanceof Date) {
       const y = val.getUTCFullYear(), m = String(val.getUTCMonth() + 1).padStart(2, '0'), d = String(val.getUTCDate()).padStart(2, '0');
@@ -241,7 +247,7 @@ export default function LancamentosTab({
     return '';
   };
 
-  const parseTimeValue = (val: any): string => {
+  const parseTimeValue = (val: ExcelJS.CellValue): string => {
     if (val === null || val === undefined || val === '') return '';
     if (val instanceof Date) {
       return `${String(val.getUTCHours()).padStart(2, '0')}:${String(val.getUTCMinutes()).padStart(2, '0')}`;
@@ -260,7 +266,7 @@ export default function LancamentosTab({
     return normalized.valid ? normalized.value : str;
   };
 
-  const parseNumberValue = (val: any): number => {
+  const parseNumberValue = (val: ExcelJS.CellValue): number => {
     if (val === null || val === undefined || val === '') return NaN;
     if (typeof val === 'number') return val;
     const raw = String(val).trim().replace(/\s/g, '');
@@ -374,7 +380,7 @@ export default function LancamentosTab({
         const fallbackMode = headerCandidate.score < 2;
         const getCell = (row: ExcelJS.Row, key: string) => {
           const idx = colMap[key];
-          return idx ? unwrapCellValue(row.getCell(idx).value as any) : undefined;
+          return idx ? unwrapCellValue(row.getCell(idx).value) : undefined;
         };
 
         ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
@@ -457,7 +463,7 @@ export default function LancamentosTab({
           ].filter(Boolean);
 
           // Checagem de bomba final (Prioridade 4)
-          let statusFinal: string = 'OK';
+          let statusFinal: StatusRegistroCombustivel = 'OK';
           const bombaFinalCalculada = Number.isFinite(bombaInicial) && Number.isFinite(quantidade) ? bombaInicial + quantidade : NaN;
           if (Number.isFinite(bombaFinalPlanilha) && Number.isFinite(bombaFinalCalculada) && Math.abs(bombaFinalPlanilha - bombaFinalCalculada) > 0.01) {
             statusFinal = 'Verificar bomba';
@@ -473,8 +479,8 @@ export default function LancamentosTab({
             equipamentoId: eq?.id || '',
             prefixoInformado: frotaTexto.toUpperCase(),
             quantidadeLitros: quantidadeFinal,
-            bombaInicial: Number.isFinite(bombaInicial) ? bombaInicial : undefined as any,
-            bombaFinal: Number.isFinite(bombaFinal) ? bombaFinal : undefined as any,
+            bombaInicial: Number.isFinite(bombaInicial) ? bombaInicial : undefined,
+            bombaFinal: Number.isFinite(bombaFinal) ? bombaFinal : undefined,
           };
           const dupKey = buildFuelImportKey(candidate);
           const dupNoSistema = abastecimentos.some(a => buildFuelImportKey({
@@ -520,7 +526,7 @@ export default function LancamentosTab({
               quantidadeFoiCalculada ? 'Quantidade calculada pela diferença entre bomba final e inicial.' : '',
               motivo,
             ].filter(Boolean).join(' | '),
-            status: (motivo && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal) as any,
+            status: motivo && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal,
             origem: 'Planilha',
             documentoOrigemNome: file.name,
             documentoOrigemHash: dupKey,
@@ -546,9 +552,9 @@ export default function LancamentosTab({
       setImportRows(rows);
       setImportedFuelTypes(Array.from(createdFuelTypes.values()));
       setIsImportModalOpen(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao ler planilha:', err);
-      setValidationError(err?.message || 'Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx válido.');
+      setValidationError(err instanceof Error && err.message ? err.message : 'Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx válido.');
     } finally {
       setIsParsingImport(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -680,7 +686,7 @@ export default function LancamentosTab({
     setIsFormOpen(true);
   };
 
-  const handleOpenEdit = (item: any) => {
+  const handleOpenEdit = (item: Abastecimento | Lubrificacao) => {
     resetFormFields();
     setEditingId(item.id);
     setValidationError('');

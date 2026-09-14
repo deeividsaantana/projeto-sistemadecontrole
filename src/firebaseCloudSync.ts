@@ -169,16 +169,18 @@ const getDocumentFromServer = (database: Firestore, documentId: string) => (
   )
 );
 
-const isV2Manifest = (value: any): value is CloudManifest => (
-  value?.schemaVersion === CLOUD_SCHEMA_VERSION
-  && value?.kind === 'manifest'
-  && typeof value?.generation === 'string'
-  && typeof value?.updatedAt === 'string'
-  && value?.chunks !== null
-  && typeof value?.chunks === 'object'
-  && value?.tableHashes !== null
-  && typeof value?.tableHashes === 'object'
-);
+const isV2Manifest = (value: unknown): value is CloudManifest => {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return record.schemaVersion === CLOUD_SCHEMA_VERSION
+    && record.kind === 'manifest'
+    && typeof record.generation === 'string'
+    && typeof record.updatedAt === 'string'
+    && record.chunks !== null
+    && typeof record.chunks === 'object'
+    && record.tableHashes !== null
+    && typeof record.tableHashes === 'object';
+};
 
 const readV2Manifest = async (database: Firestore): Promise<CloudManifest | null> => {
   const snapshot = await getDocumentFromServer(database, CLOUD_MANIFEST_ID);

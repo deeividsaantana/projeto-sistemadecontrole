@@ -57,13 +57,16 @@ const addHeaderLogos = (
   sheet: ExcelJS.Worksheet,
   logos: { renea?: string; spmar?: string },
 ): void => {
+  // ExcelJS tipa tl/br como a classe Anchor completa, mas a API em runtime
+  // aceita (e a documentação usa) apenas { col, row }. O cast em duas etapas
+  // documenta essa divergência sem recorrer a `any`.
   if (logos.renea) {
     const imageId = workbook.addImage({ base64: logos.renea, extension: 'png' });
-    sheet.addImage(imageId, { tl: { col: 0.08, row: 0.2 }, br: { col: 1.35, row: 1.75 }, editAs: 'oneCell' } as any);
+    sheet.addImage(imageId, { tl: { col: 0.08, row: 0.2 }, br: { col: 1.35, row: 1.75 }, editAs: 'oneCell' } as unknown as ExcelJS.ImageRange & { editAs: string });
   }
   if (logos.spmar) {
     const imageId = workbook.addImage({ base64: logos.spmar, extension: 'png' });
-    sheet.addImage(imageId, { tl: { col: 7.55, row: 0.2 }, br: { col: 8.95, row: 1.72 }, editAs: 'oneCell' } as any);
+    sheet.addImage(imageId, { tl: { col: 7.55, row: 0.2 }, br: { col: 8.95, row: 1.72 }, editAs: 'oneCell' } as unknown as ExcelJS.ImageRange & { editAs: string });
   }
 };
 

@@ -13,11 +13,16 @@ export const cleanImportValue = (value: unknown): string => {
   if (value instanceof Date) return value.toISOString().split('T')[0];
   if (typeof value === 'number') return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
   if (typeof value === 'object') {
-    const anyValue = value as any;
-    if (anyValue.result !== undefined) return cleanImportValue(anyValue.result);
-    if (anyValue.text !== undefined) return cleanImportValue(anyValue.text);
-    if (Array.isArray(anyValue.richText)) return anyValue.richText.map((part: any) => part.text || '').join('').trim();
-    if (anyValue.hyperlink && anyValue.text) return cleanImportValue(anyValue.text);
+    const record = value as Record<string, unknown>;
+    if (record.result !== undefined) return cleanImportValue(record.result);
+    if (record.text !== undefined) return cleanImportValue(record.text);
+    if (Array.isArray(record.richText)) {
+      return record.richText
+        .map(part => (typeof (part as Record<string, unknown>)?.text === 'string' ? (part as Record<string, unknown>).text : ''))
+        .join('')
+        .trim();
+    }
+    if (record.hyperlink && record.text) return cleanImportValue(record.text);
   }
   return String(value).trim().replace(/\s+/g, ' ');
 };

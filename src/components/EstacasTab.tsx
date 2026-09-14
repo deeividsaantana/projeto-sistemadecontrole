@@ -200,7 +200,9 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
     setMessage('');
     try {
       const workbook = await createCorporateWorkbook();
-      await workbook.xlsx.load(await file.arrayBuffer() as any);
+      // ExcelJS tipa .load() para o Buffer do Node; no navegador só existe
+      // ArrayBuffer, que a implementação real aceita normalmente.
+      await workbook.xlsx.load((await file.arrayBuffer()) as unknown as Buffer);
       const importedLots: LoteEstaca[] = [];
       const importedDrivings: CravacaoEstaca[] = [];
       const launchSheet = workbook.getWorksheet('Lançamentos');

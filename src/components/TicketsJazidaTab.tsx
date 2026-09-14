@@ -1229,17 +1229,22 @@ export default function TicketsJazidaTab({
     status: ['status conferencia', 'status / conferencia', 'status', 'conferencia'],
   };
 
-  const readCellValue = (cell: ExcelJS.Cell): any => {
-    const value = cell.value as any;
+  const readCellValue = (cell: ExcelJS.Cell): ExcelJS.CellValue => {
+    const value = cell.value;
     if (value && typeof value === 'object') {
-      if (value.result !== undefined) return value.result;
-      if (value.text !== undefined) return value.text;
-      if (Array.isArray(value.richText)) return value.richText.map((part: any) => part.text || '').join('');
+      const record = value as unknown as Record<string, unknown>;
+      if (record.result !== undefined) return record.result as ExcelJS.CellValue;
+      if (record.text !== undefined) return record.text as ExcelJS.CellValue;
+      if (Array.isArray(record.richText)) {
+        return record.richText
+          .map(part => (typeof (part as Record<string, unknown>)?.text === 'string' ? (part as Record<string, unknown>).text : ''))
+          .join('') as ExcelJS.CellValue;
+      }
     }
     return value;
   };
 
-  const parseDateValue = (value: any) => {
+  const parseDateValue = (value: ExcelJS.CellValue) => {
     if (!value) return '';
     if (value instanceof Date) return value.toISOString().slice(0, 10);
     if (typeof value === 'number') {
@@ -1253,7 +1258,7 @@ export default function TicketsJazidaTab({
     return iso ? `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}` : '';
   };
 
-  const parseTimeValue = (value: any) => {
+  const parseTimeValue = (value: ExcelJS.CellValue) => {
     if (!value) return '';
     if (value instanceof Date) return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
     if (typeof value === 'number') {
@@ -1265,25 +1270,25 @@ export default function TicketsJazidaTab({
     return match ? `${match[1].padStart(2, '0')}:${match[2]}` : '';
   };
 
-  const parseNumberValue = (value: any) => {
+  const parseNumberValue = (value: ExcelJS.CellValue) => {
     if (typeof value === 'number') return value;
     const parsed = Number(String(value || '').replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, ''));
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
-  const normalizeMaterialValue = (value: any): TipoMaterialJazida => {
+  const normalizeMaterialValue = (value: ExcelJS.CellValue): TipoMaterialJazida => {
     const text = String(value || '').trim();
     return TIPOS_MATERIAL.find(item => item.toLowerCase() === text.toLowerCase()) || 'Outros';
   };
 
-  const normalizeEmpresaValue = (value: any): EmpresaTicketJazida => {
+  const normalizeEmpresaValue = (value: ExcelJS.CellValue): EmpresaTicketJazida => {
     const text = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (text.includes('terce')) return 'Terceiro';
     if (text.includes('outro')) return 'Outros';
     return 'RENEA';
   };
 
-  const normalizeStatusValue = (value: any): TicketJazida['status'] => {
+  const normalizeStatusValue = (value: ExcelJS.CellValue): TicketJazida['status'] => {
     const text = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (text.includes('duplic')) return 'Duplicado';
     if (text.includes('quant')) return 'Verificar quantidade';
@@ -1293,7 +1298,7 @@ export default function TicketsJazidaTab({
     return 'OK';
   };
 
-  const normalizeDestinoValue = (value: any): DestinoObraJazida => {
+  const normalizeDestinoValue = (value: ExcelJS.CellValue): DestinoObraJazida => {
     const text = String(value || '').trim();
     if (!text) return 'Outros';
     const normalized = normalizeImportHeader(text);
@@ -1422,9 +1427,9 @@ export default function TicketsJazidaTab({
         return;
       }
       setPendingImport({ fileName: file.name, items: imported, ignored });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao importar tickets:', err);
-      setValidationError(err?.message || 'Não foi possível importar a planilha de tickets. Use um arquivo .xlsx ou .xlsm no modelo de liberação/recebimento.');
+      setValidationError(err instanceof Error && err.message ? err.message : 'Não foi possível importar a planilha de tickets. Use um arquivo .xlsx ou .xlsm no modelo de liberação/recebimento.');
     } finally {
       setIsImporting(false);
       if (importInputRef.current) importInputRef.current.value = '';

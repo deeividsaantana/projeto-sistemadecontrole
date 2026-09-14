@@ -65,11 +65,13 @@ const addLogo = (
 ) => {
   if (!base64) return;
   const imageId = workbook.addImage({ base64, extension: 'png' });
+  // ExcelJS tipa tl/br como a classe Anchor completa, mas a API em runtime
+  // aceita apenas { col, row }. Cast em duas etapas documenta a divergência.
   worksheet.addImage(imageId, {
     tl: { col: position.col, row: position.row },
     br: { col: position.endCol, row: position.endRow },
     editAs: 'oneCell',
-  } as any);
+  } as unknown as ExcelJS.ImageRange & { editAs: string });
 };
 
 const configureSheet = (

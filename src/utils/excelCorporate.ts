@@ -246,7 +246,9 @@ export const loadValidatedWorkbook = async (file: File, maxSizeMb = 25) => {
     // funciona em alguns navegadores, mas falha em outros e fazia planilhas
     // .xlsx válidas serem reportadas como corrompidas.
     try {
-      await workbook.xlsx.load(bytes as any);
+      // ExcelJS tipa .load() para o Buffer do Node; no navegador só existe
+      // Uint8Array, que a implementação real aceita normalmente.
+      await workbook.xlsx.load(bytes as unknown as Buffer);
     } catch (firstError) {
       // Algumas planilhas válidas geradas pelo Excel contêm relações de
       // desenhos que o ExcelJS 4.x não reconcilia. Como a importação usa só
@@ -255,7 +257,7 @@ export const loadValidatedWorkbook = async (file: File, maxSizeMb = 25) => {
       console.info('Nova tentativa de leitura sem elementos visuais incompatíveis.', firstError);
       workbook = new ExcelJSModule.Workbook();
       const sanitizedBytes = await stripUnsupportedWorkbookVisuals(bytes);
-      await workbook.xlsx.load(sanitizedBytes as any);
+      await workbook.xlsx.load(sanitizedBytes as unknown as Buffer);
     }
   } catch (error) {
     console.warn('Falha técnica ao abrir a planilha:', error);
