@@ -29,7 +29,28 @@ import reneaLogo from '../assets/images/logo-renea-branco.png';
 import './presencaTempoRealPublica.css';
 
 const PRIMARY_STATUSES: PresencaStatus[] = ['Presente', 'Ausente', 'Falta justificada', 'Atestado'];
-const SECONDARY_STATUSES: PresencaStatus[] = ['Atraso', 'Saída antecipada', 'Férias', 'Afastado', 'Outro'];
+// Afastamento previsto: a pessoa não está na frente por um motivo já sabido
+// com antecedência. Fica separado das demais situações no select para o
+// encarregado nunca confundir isso com falta.
+const AFASTAMENTO_PREVISTO_STATUSES: PresencaStatus[] = ['Férias', 'Baixada', 'Recesso'];
+const OUTRAS_SITUACOES_STATUSES: PresencaStatus[] = ['Atraso', 'Saída antecipada', 'Afastado', 'Outro'];
+const SECONDARY_STATUSES: PresencaStatus[] = [...AFASTAMENTO_PREVISTO_STATUSES, ...OUTRAS_SITUACOES_STATUSES];
+
+/** Opções do select "Outras situações", agrupadas para o afastamento previsto
+ *  nunca se misturar visualmente com falta/atraso/outro. */
+function SecondaryStatusOptions() {
+  return (
+    <>
+      <option value="">Outras situações</option>
+      <optgroup label="Afastamento previsto">
+        {AFASTAMENTO_PREVISTO_STATUSES.map(option => <option key={option}>{option}</option>)}
+      </optgroup>
+      <optgroup label="Outras situações">
+        {OUTRAS_SITUACOES_STATUSES.map(option => <option key={option}>{option}</option>)}
+      </optgroup>
+    </>
+  );
+}
 
 interface SubmissionResult {
   success: boolean;
@@ -203,8 +224,7 @@ const EmployeeCard = memo(function EmployeeCard({
         value={SECONDARY_STATUSES.includes(status as PresencaStatus) ? status : ''}
         onChange={event => event.target.value && onStatus(employee.id, event.target.value as PresencaStatus)}
       >
-        <option value="">Outras situações</option>
-        {SECONDARY_STATUSES.map(option => <option key={option}>{option}</option>)}
+        <SecondaryStatusOptions />
       </select>
       <textarea
         value={observacao}
@@ -297,8 +317,7 @@ const SubmittedEmployeeCard = memo(function SubmittedEmployeeCard({
         disabled={isSaving}
         onChange={event => event.target.value && onUpdateStatus(employee.id, event.target.value as PresencaStatus)}
       >
-        <option value="">Outras situações</option>
-        {SECONDARY_STATUSES.map(status => <option key={status}>{status}</option>)}
+        <SecondaryStatusOptions />
       </select>
       <textarea
         value={draftObservacao}

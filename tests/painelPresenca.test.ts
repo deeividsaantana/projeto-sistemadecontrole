@@ -63,6 +63,31 @@ test('ausência conta separada do presente, na frente certa', () => {
   assert.equal(linhas[0].ausentes, 2);
 });
 
+test('quem já foi desligado não conta como vaga em aberto no previsto', () => {
+  const funcionarios = [
+    { id: 'g-1-p0', status: 'ATIVO' },
+    { id: 'g-1-p1', status: 'DESMOBILIZADO' },
+    { id: 'g-1-p2', status: 'ATIVO' },
+  ] as Funcionario[];
+
+  const linhas = efetivoPorFrente(
+    [registro({ frenteServico: 'Ramo 100', funcionarioId: 'g-1-p0' })],
+    [equipe('g-1', 'Ramo 100', 3)],
+    funcionarios,
+  );
+
+  assert.equal(linhas[0].previstos, 2, 'o desligado sai da conta, sem virar falta implícita');
+  assert.equal(linhas[0].confirmados, 1);
+});
+
+test('sem a lista de funcionários, o previsto continua contando todo mundo do grupo (compatibilidade)', () => {
+  const linhas = efetivoPorFrente(
+    [registro({ frenteServico: 'Ramo 100' })],
+    [equipe('g-1', 'Ramo 100', 3)],
+  );
+  assert.equal(linhas[0].previstos, 3);
+});
+
 test('o efetivo por empresa usa o cadastro do colaborador, não o texto do apontamento', () => {
   const pessoas = [
     { id: 'c-1', empresaId: 'e-1' }, { id: 'c-2', empresaId: 'e-2' }, { id: 'c-3', empresaId: 'e-1' },

@@ -231,7 +231,11 @@ export type PresencaStatus =
   | 'Ausente'
   | 'Falta justificada'
   | 'Atestado'
+  // Afastamento previsto: a pessoa não está na obra, mas por um motivo já
+  // sabido com antecedência — nunca entra na contagem de falta.
   | 'Férias'
+  | 'Baixada'
+  | 'Recesso'
   | 'Afastado'
   | 'Outro';
 
