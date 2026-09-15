@@ -310,6 +310,7 @@ export default function ControlePresencaTab({
     setDashboardSearch('');
   };
   const liveViewRef = useRef<HTMLDivElement>(null);
+  const tabRef = useRef<HTMLElement>(null);
 
   const createEmptyGroup = (): GrupoEquipe => ({
     id: '',
@@ -546,6 +547,20 @@ export default function ControlePresencaTab({
       );
     }
   }, { scope: liveViewRef, dependencies: [view, metrics.present, tendencia, distribuicao] });
+
+  // Registros e histórico são listas longas de conferência. A mesma cascata
+  // curta do painel ao vivo dá referência de ordem sem atrasar a leitura.
+  useGSAP(() => {
+    const scope = tabRef.current;
+    if (!scope || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const rows = scope.querySelectorAll('[data-presence-row]');
+    if (!rows.length) return;
+    gsap.fromTo(
+      rows,
+      { autoAlpha: 0, y: 8 },
+      { autoAlpha: 1, y: 0, duration: 0.3, stagger: 0.02, ease: 'power2.out', clearProps: 'transform,opacity,visibility' },
+    );
+  }, { scope: tabRef, dependencies: [view] });
 
   const teamRows = useMemo(() => activeGroups.map(group => {
     const records = dayRecords.filter(record => record.grupoId === group.id);
@@ -890,7 +905,7 @@ export default function ControlePresencaTab({
   ];
 
   return (
-    <section id="presenca-tempo-real" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-[#14231e] lg:pb-8">
+    <section ref={tabRef} id="presenca-tempo-real" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-[#14231e] lg:pb-8">
       {/* O cabeçalho antigo era um hero: logo repetido, foto de fundo e os sete
           filtros sempre abertos. Media 307px no desktop e 788px no celular —
           mais alto que a própria tela de 727px, ou seja, uma tela inteira de
@@ -1392,7 +1407,7 @@ export default function ControlePresencaTab({
             {filteredRecords.length === 0 ? <div className={`${PANEL} px-5 py-14 text-center text-sm text-[#65716b]`}>Nenhum registro encontrado para os filtros selecionados.</div> : filteredRecords.map(record => {
               const duplicated = duplicateKeys.has(duplicateKey(record));
               return (
-                <article key={record.id || `${duplicateKey(record)}-${record.horaEnvio}`} className={`${PANEL} grid gap-4 p-4 lg:grid-cols-[28px_150px_1.2fr_1.2fr_180px_auto] lg:items-center`}>
+                <article key={record.id || `${duplicateKey(record)}-${record.horaEnvio}`} data-presence-row className={`${PANEL} grid gap-4 p-4 lg:grid-cols-[28px_150px_1.2fr_1.2fr_180px_auto] lg:items-center`}>
                   <label className="flex items-start justify-center pt-1"><input type="checkbox" checked={selectedRecordIds.includes(record.id)} onChange={event => setSelectedRecordIds(current => event.target.checked ? [...new Set([...current, record.id])] : current.filter(id => id !== record.id))} aria-label={`Selecionar presença de ${record.funcionarioNome}`} className="h-4 w-4 accent-emerald-700" /></label><div><p className="text-xs font-bold text-[#65716b]">{record.data.split('-').reverse().join('/')}</p><p className="mt-1 text-lg font-black tabular-nums text-[#101a22]">{record.horaEnvio || '--:--'}</p>{duplicated && <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800"><AlertTriangle className="h-3 w-3" /> Duplicado</span>}</div>
                   <div><p className="text-sm font-black text-[#101a22]">{record.funcionarioNome || 'Colaborador não informado'}</p><p className="mt-1 text-xs text-[#65716b]">{record.funcao || 'Função não informada'}</p></div>
                   <div><p className="text-sm font-bold text-[#101a22]">{record.grupoNome || 'Equipe não informada'}</p><p className="mt-1 text-xs text-[#65716b]">{record.responsavel} · {record.frenteServico}</p></div>
@@ -1411,7 +1426,7 @@ export default function ControlePresencaTab({
           {safeHistory.length === 0 ? <div className={`${PANEL} px-5 py-14 text-center text-sm text-[#65716b]`}>Nenhuma alteração de presença registrada.</div> : safeHistory.map(item => {
             const employee = safeFuncionarios.find(person => person.id === item.funcionarioId);
             return (
-              <article key={item.id} className={`${PANEL} grid gap-3 p-4 md:grid-cols-[180px_1fr_1fr] md:items-center`}>
+              <article key={item.id} data-presence-row className={`${PANEL} grid gap-3 p-4 md:grid-cols-[180px_1fr_1fr] md:items-center`}>
                 <div><p className="text-xs font-bold text-[#65716b]">{item.data}</p><p className="mt-1 text-sm font-black text-[#101a22]">{safeText(employee?.nome) || item.funcionarioId}</p></div>
                 <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-[#79847e]">Alteração</p><p className="mt-1 text-sm text-[#26362f]"><span className="text-rose-700">{item.valorAnterior}</span> <ArrowRight className="mx-1 inline h-3.5 w-3.5" /> <span className="font-bold text-emerald-800">{item.valorNovo}</span></p><p className="mt-1 text-xs text-[#65716b]">{item.motivo}</p></div>
                 <div className="md:text-right"><p className="text-sm font-semibold text-[#26362f]">{item.editadoPor}</p><p className="mt-1 text-xs text-[#65716b]">{item.editadoEm}</p></div>
