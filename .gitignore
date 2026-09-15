@@ -41,3 +41,5 @@ firebase-debug.log*
 # Playwright
 test-results/
 playwright-report/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

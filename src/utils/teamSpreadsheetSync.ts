@@ -1,5 +1,6 @@
 import type { Funcionario, GrupoEquipe } from '../types';
 import { cleanImportValue, normalizeImportText } from './importHelpers';
+import { aplicarSituacao, estaNoEfetivo } from './situacaoColaborador';
 
 /**
  * Sincronização das equipes de presença com a planilha de efetivo da obra.
@@ -41,6 +42,12 @@ export interface TeamSyncPlan {
   colaboradoresNovos: Funcionario[];
   /** Colaboradores já cadastrados cujo vínculo de liderança vem da planilha. */
   colaboradoresAtualizados: Funcionario[];
+  /**
+   * Colaboradores do cadastro (com matrícula) que não aparecem em nenhuma
+   * linha da planilha — já com a situação DESMOBILIZADO aplicada. Ninguém é
+   * apagado: o registro continua existindo, só sai do efetivo.
+   */
+  colaboradoresParaDesmobilizar: Funcionario[];
   /** Linhas descartadas, com o motivo, para o administrativo conferir. */
   ignoradas: Array<{ linha: number; motivo: string }>;
   resumo: {
@@ -49,6 +56,7 @@ export interface TeamSyncPlan {
     desativar: number;
     inalteradas: number;
     colaboradoresNovos: number;
+    desmobilizar: number;
     pessoasNaPlanilha: number;
   };
 }
@@ -96,9 +104,21 @@ const normalizeName = (value: string) => normalizeImportText(value);
  */
 export const parseEfetivoRows = (
   rows: Array<Record<string, unknown>>,
-): { linhas: EfetivoRow[]; ignoradas: Array<{ linha: number; motivo: string }> } => {
+): {
+  linhas: EfetivoRow[];
+  ignoradas: Array<{ linha: number; motivo: string }>;
+  /**
+   * Toda matrícula vista em alguma linha da planilha, mesmo quando a linha
+   * não teve vínculo de encarregado utilizável para montar equipe. É o sinal
+   * de "esta pessoa ainda está na planilha" — mais amplo que `linhas`, para
+   * nunca marcar alguém como desmobilizado só porque a linha dela não pôde
+   * virar um vínculo de equipe.
+   */
+  matriculasNaPlanilha: Set<string>;
+} => {
   const linhas: EfetivoRow[] = [];
   const ignoradas: Array<{ linha: number; motivo: string }> = [];
+  const matriculasNaPlanilha = new Set<string>();
   (Array.isArray(rows) ? rows : []).forEach((row, index) => {
     const matricula = normalizeRegistration(valorDaColuna(row, ALIASES.matricula));
     const nome = cleanImportValue(valorDaColuna(row, ALIASES.nome));
@@ -108,6 +128,7 @@ export const parseEfetivoRows = (
       ignoradas.push({ linha: index + 1, motivo: `${nome || 'Linha sem nome'}: sem matrícula.` });
       return;
     }
+    matriculasNaPlanilha.add(matricula);
     const matriculaLider = normalizeRegistration(valorDaColuna(row, ALIASES.matriculaLider));
     if (!matriculaLider && !encarregado) {
       ignoradas.push({ linha: index + 1, motivo: `${nome || matricula}: sem vínculo com encarregado.` });
@@ -123,12 +144,18 @@ export const parseEfetivoRows = (
       responsavel: cleanImportValue(valorDaColuna(row, ALIASES.responsavel)),
     });
   });
-  return { linhas, ignoradas };
+  return { linhas, ignoradas, matriculasNaPlanilha };
 };
 
 interface BuildPlanInput {
   linhas: EfetivoRow[];
   ignoradas?: Array<{ linha: number; motivo: string }>;
+  /**
+   * Toda matrícula vista na planilha (ver `parseEfetivoRows`). Quando
+   * omitido, usa só as matrículas de `linhas` — menos seguro, pois perde
+   * quem apareceu na planilha sem vínculo de encarregado utilizável.
+   */
+  matriculasNaPlanilha?: Set<string>;
   funcionarios: Funcionario[];
   gruposEquipe: GrupoEquipe[];
   obraId: string;
@@ -150,6 +177,7 @@ const chaveDoEncarregado = (matriculaLider: string, encarregado: string) => {
 export const buildTeamSyncPlan = ({
   linhas,
   ignoradas = [],
+  matriculasNaPlanilha,
   funcionarios,
   gruposEquipe,
   obraId,
@@ -163,6 +191,23 @@ export const buildTeamSyncPlan = ({
     const chave = normalizeRegistration(employee.matricula) || normalizeRegistration(employee.id);
     if (chave && !porMatricula.has(chave)) porMatricula.set(chave, employee);
   });
+
+  const presentes = matriculasNaPlanilha ?? new Set(linhas.map(linha => linha.matricula));
+  const hoje = agoraIso.slice(0, 10);
+  // Quem tem matrícula, está no efetivo hoje e não aparece em nenhuma linha
+  // da planilha saiu da obra. O cadastro nunca é apagado, só a situação muda.
+  const colaboradoresParaDesmobilizar = cadastro
+    .filter(employee => {
+      const chave = normalizeRegistration(employee.matricula);
+      if (!chave) return false;
+      if (presentes.has(chave)) return false;
+      return estaNoEfetivo(employee);
+    })
+    .map(employee => aplicarSituacao(employee, {
+      situacao: 'DESMOBILIZADO',
+      data: hoje,
+      motivo: 'Fora da planilha de efetivo sincronizada',
+    }, agoraIso));
 
   // A planilha manda: se a mesma pessoa aparecer duas vezes, vale a última
   // linha. Ninguém pode ficar em duas equipes — seria contado duas vezes.
@@ -344,6 +389,7 @@ export const buildTeamSyncPlan = ({
     entradas,
     colaboradoresNovos,
     colaboradoresAtualizados,
+    colaboradoresParaDesmobilizar,
     ignoradas,
     resumo: {
       criar: conta('criar'),
@@ -351,6 +397,7 @@ export const buildTeamSyncPlan = ({
       desativar: conta('desativar'),
       inalteradas: conta('inalterada'),
       colaboradoresNovos: colaboradoresNovos.length,
+      desmobilizar: colaboradoresParaDesmobilizar.length,
       pessoasNaPlanilha: vinculo.size,
     },
   };
@@ -364,7 +411,10 @@ export const applyTeamSyncPlan = (
 ) => {
   const porId = new Map((Array.isArray(gruposEquipe) ? gruposEquipe : []).filter(Boolean).map(group => [group.id, group]));
   plan.entradas.forEach(entry => porId.set(entry.grupo.id, entry.grupo));
-  const atualizadosPorId = new Map(plan.colaboradoresAtualizados.map(employee => [employee.id, employee]));
+  const atualizadosPorId = new Map([
+    ...plan.colaboradoresAtualizados.map(employee => [employee.id, employee] as const),
+    ...plan.colaboradoresParaDesmobilizar.map(employee => [employee.id, employee] as const),
+  ]);
   const cadastro = (Array.isArray(funcionarios) ? funcionarios : [])
     .filter(Boolean)
     .map(employee => atualizadosPorId.get(employee.id) || employee);
