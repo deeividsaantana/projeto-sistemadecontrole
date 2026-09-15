@@ -178,11 +178,35 @@ export default function ControleEquipamentosDiarioTab({
   const [driverEditor, setDriverEditor] = useState<Partial<Funcionario> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   useGSAP(() => {
+    const root = pageRef.current;
+    if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     gsap.fromTo(
       '[data-fleet-enter]',
       { autoAlpha: 0, y: 14 },
       { autoAlpha: 1, y: 0, duration: 0.48, stagger: 0.075, ease: 'power2.out', clearProps: 'transform,visibility,opacity' },
     );
+
+    // Mesma profundidade do painel principal: o cartão sobe 3px ao receber
+    // ponteiro ou foco, sem deslocar o texto a ponto de atrapalhar a leitura.
+    const cleanups: Array<() => void> = [];
+    root.querySelectorAll<HTMLElement>('[data-fleet-lift]').forEach(target => {
+      const lift = gsap.quickTo(target, 'y', { duration: 0.28, ease: 'power3.out' });
+      const enter = () => lift(-3);
+      const leave = () => lift(0);
+      target.addEventListener('pointerenter', enter);
+      target.addEventListener('pointerleave', leave);
+      target.addEventListener('focusin', enter);
+      target.addEventListener('focusout', leave);
+      cleanups.push(() => {
+        target.removeEventListener('pointerenter', enter);
+        target.removeEventListener('pointerleave', leave);
+        target.removeEventListener('focusin', enter);
+        target.removeEventListener('focusout', leave);
+      });
+    });
+
+    return () => cleanups.forEach(cleanup => cleanup());
   }, { scope: pageRef });
   const filteredOperationalDrivers = useMemo(() => {
     const query = driverSearch.trim().toLocaleUpperCase('pt-BR');
@@ -468,7 +492,7 @@ export default function ControleEquipamentosDiarioTab({
       </>}
       {activeView === 'history' && <section className="overflow-hidden rounded-lg border border-slate-200 bg-white"><header className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-black text-slate-950">Fechamentos por data</h2><p className="text-xs text-slate-500">Comparativo dos registros operacionais e exportação dos últimos sete dias.</p></div><div className="flex flex-wrap gap-2"><button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyPdf()} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-40"><Printer size={15}/>{exporting==='weekly-pdf'?'Gerando...':'Semanal PDF'}</button><button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyExcel()} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-40"><FileSpreadsheet size={15}/>{exporting==='weekly-excel'?'Gerando...':'Semanal Excel'}</button></div></header><div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left text-sm"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr>{['Data','Total de frotas','Em operação','Em manutenção','À disposição','A confirmar','Disponibilidade'].map(label=><th key={label} className="border-b border-slate-200 px-4 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{historyByDate.map(item=><tr key={item.date}><td className="px-4 py-3 font-black">{new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3">{item.total}</td><td className="px-4 py-3 font-bold text-emerald-700">{item.operating}</td><td className="px-4 py-3 font-bold text-rose-700">{item.maintenance}</td><td className="px-4 py-3 font-bold text-sky-700">{item.available}</td><td className="px-4 py-3 font-bold text-amber-700">{item.pending}</td><td className="px-4 py-3 font-black">{item.total ? `${(((item.operating + item.available) / item.total) * 100).toFixed(1).replace('.', ',')}%` : '—'}</td></tr>)}</tbody></table></div>{!historyByDate.length&&<p className="p-10 text-center text-sm text-slate-500">Nenhum fechamento disponível.</p>}</section>}
       {activeView === 'registry' && <section className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-        <article className="rounded-lg border border-slate-200 bg-white p-4">
+        <article data-fleet-lift className="rounded-lg border border-slate-200 bg-white p-4 transition-shadow duration-200 hover:shadow-[0_1px_2px_rgb(7_17_14/.04),0_10px_28px_-14px_rgb(7_17_14/.18)]">
           <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Frotas cadastradas</p>
           <strong className="mt-2 block text-3xl text-slate-950">{equipamentos.length}</strong>
           <p className="mt-1 text-xs text-slate-500">Equipamentos disponíveis para vínculo nos lançamentos.</p>

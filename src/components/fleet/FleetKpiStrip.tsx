@@ -49,7 +49,7 @@ export default function FleetKpiStrip({ metrics }: Props) {
       {items.map(item => {
         const isNumeric = typeof item.value === 'number';
         return (
-          <div key={item.label} className="group px-3 py-3 transition-colors duration-150 hover:bg-slate-50">
+          <div key={item.label} className="group px-3 py-3 transition-[background-color,box-shadow] duration-200 hover:bg-white hover:shadow-[0_1px_2px_rgb(7_17_14/.04),0_8px_24px_-12px_rgb(7_17_14/.16)]">
             <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               <span className={`size-1.5 rounded-full ${item.dot} transition-transform duration-150 group-hover:scale-150`} />
               {item.label}

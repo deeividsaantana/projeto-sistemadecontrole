@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Eye, Pencil, Trash2 } from 'lucide-react';
 import type { FleetCurrentState } from '../../fleet/domain';
 import FleetMobileCard from './FleetMobileCard';
@@ -70,6 +72,18 @@ export default function FleetDataTable({
   const pageRows = sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize);
   const pageIds = pageRows.map(row => row.recordId);
   const allPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.includes(id));
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+
+  // Cascata curta ao trocar de página, ordenação ou filtro: dá referência de
+  // leitura sem atrasar quem opera a tabela o dia inteiro.
+  useGSAP(() => {
+    if (!bodyRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(
+      bodyRef.current.querySelectorAll('tr'),
+      { autoAlpha: 0, y: 8 },
+      { autoAlpha: 1, y: 0, duration: 0.32, stagger: 0.025, ease: 'power2.out', clearProps: 'transform,opacity,visibility' },
+    );
+  }, { scope: bodyRef, dependencies: [safePage, sortKey, sortDirection, pageSize, rows.length] });
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDirection(direction => direction === 'asc' ? 'desc' : 'asc');
     else {
@@ -185,7 +199,7 @@ export default function FleetDataTable({
               <th className="border-b border-slate-200 p-2 text-center">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody ref={bodyRef} className="divide-y divide-slate-100">
             {pageRows.map((row, index) => {
               const selected = selectedIds.includes(row.recordId);
               return (
