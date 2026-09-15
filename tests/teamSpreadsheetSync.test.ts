@@ -4,6 +4,7 @@ import {
   applyTeamSyncPlan,
   buildTeamSyncPlan,
   normalizeRegistration,
+  parseCadastroOficialRows,
   parseEfetivoRows,
 } from '../src/utils/teamSpreadsheetSync';
 import type { Funcionario, GrupoEquipe } from '../src/types';
@@ -246,4 +247,22 @@ test('matricula casa mesmo com zero a esquerda ou formatacao diferente', () => {
   const plan = buildTeamSyncPlan({ ...base, linhas, gruposEquipe: [] });
   assert.equal(plan.colaboradoresNovos.length, 0, 'reaproveita o cadastro existente');
   assert.deepEqual(plan.entradas[0].grupo.funcionarioIds, ['fun-101671']);
+});
+
+test('cadastro mestre atualiza quem nao esta em equipe e evita desmobilizacao indevida', () => {
+  const cadastrosOficiais = parseCadastroOficialRows([
+    { 'CÓDIGO': '101671', NOME: 'ANDERSON ATUALIZADO', CARGO: 'OPERADOR', DIVISÃO: 'DIRETO DE OBRA', SEÇÃO: 'MAO DE OBRA', SITUAÇÃO: 'ATIVO' },
+    { 'CÓDIGO': '102364', NOME: 'JOSE ILDO', CARGO: 'APOIO', DIVISÃO: 'APOIO A OBRAS', SEÇÃO: 'ADMINISTRATIVO', SITUAÇÃO: 'ATIVO' },
+    { 'CÓDIGO': '103999', NOME: 'NOVO APOIO', CARGO: 'ANALISTA', DIVISÃO: 'APOIO A OBRAS', SEÇÃO: 'ENGENHARIA', SITUAÇÃO: 'ATIVO' },
+  ]);
+  const { linhas, matriculasNaPlanilha } = parseEfetivoRows([
+    linha('101671', 'ANDERSON ATUALIZADO', 'RENILSON DOS SANTOS'),
+  ]);
+  const plan = buildTeamSyncPlan({ ...base, linhas, matriculasNaPlanilha, cadastrosOficiais, gruposEquipe: [] });
+  const applied = applyTeamSyncPlan(plan, base.funcionarios, []);
+
+  assert.equal(plan.resumo.desmobilizar, 0);
+  assert.equal(applied.funcionarios.find(item => item.matricula === '102364')?.secao, 'ADMINISTRATIVO');
+  assert.equal(applied.funcionarios.find(item => item.matricula === '103999')?.nome, 'NOVO APOIO');
+  assert.equal(applied.funcionarios.find(item => item.matricula === '101671')?.divisao, 'DIRETO DE OBRA');
 });

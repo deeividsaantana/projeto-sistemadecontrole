@@ -27,6 +27,8 @@ import {
 import {
   applyTeamSyncPlan,
   buildTeamSyncPlan,
+  normalizeRegistration,
+  parseCadastroOficialRows,
   parseEfetivoRows,
   type TeamSyncPlan,
 } from '../utils/teamSpreadsheetSync';
@@ -45,6 +47,7 @@ import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServ
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { generateUniversalPdfReport } from '../utils/universalPdfReport';
+import { cleanImportValue } from '../utils/importHelpers';
 import type {
   Empresa,
   Funcionario,
@@ -164,6 +167,19 @@ const normalizeGroup = (group: GrupoEquipe): GrupoEquipe => ({
   updatedAt: safeText(group?.updatedAt),
 });
 
+/** Recupera equipes antigas que guardavam apenas as matrículas dos membros. */
+const resolveGroupMembers = (group: GrupoEquipe, funcionarios: Funcionario[]): GrupoEquipe => {
+  const ids = new Set(safeIds(group.funcionarioIds));
+  const byRegistration = new Map(
+    funcionarios.map(employee => [normalizeRegistration(employee.matricula), employee.id]),
+  );
+  safeIds(group.funcionarioMatriculas).forEach(matricula => {
+    const id = byRegistration.get(normalizeRegistration(matricula));
+    if (id) ids.add(id);
+  });
+  return { ...group, funcionarioIds: [...ids] };
+};
+
 const normalizeRecord = (record: PresencaApontamento): PresencaApontamento => ({
   ...record,
   id: safeText(record?.id),
@@ -223,7 +239,10 @@ export default function ControlePresencaTab({
   const safeFuncionarios = useMemo(() => (Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean), [funcionarios]);
   const safeEmpresas = useMemo(() => (Array.isArray(empresas) ? empresas : []).filter(Boolean), [empresas]);
   const safeObras = useMemo(() => (Array.isArray(obras) ? obras : []).filter(Boolean), [obras]);
-  const safeGroups = useMemo(() => (Array.isArray(gruposEquipe) ? gruposEquipe : []).filter(Boolean).map(normalizeGroup), [gruposEquipe]);
+  const safeGroups = useMemo(() => (Array.isArray(gruposEquipe) ? gruposEquipe : [])
+    .filter(Boolean)
+    .map(normalizeGroup)
+    .map(group => resolveGroupMembers(group, safeFuncionarios)), [gruposEquipe, safeFuncionarios]);
   const safeRecords = useMemo(() => (Array.isArray(presencasLink) ? presencasLink : []).filter(Boolean).map(normalizeRecord), [presencasLink]);
   const safeHistory = useMemo(() => (Array.isArray(historicoPresencas) ? historicoPresencas : []).filter(Boolean), [historicoPresencas]);
 
@@ -690,7 +709,32 @@ export default function ControlePresencaTab({
     saveBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `presenca-${today}.csv`);
   };
 
-  // Lê a aba "Efetivo" e monta o plano. Nada é gravado aqui.
+  const extractRows = (sheet: { rowCount: number; getRow: (index: number) => { values: unknown[] | Record<string, unknown> } }, headerMatcher: (values: string[]) => boolean) => {
+    const rowValues = (row: number) => {
+      const raw = sheet.getRow(row).values;
+      return (Array.isArray(raw) ? raw : Object.values(raw)).slice(1);
+    };
+    let headerRow = 0;
+    let headers: string[] = [];
+    for (let row = 1; row <= Math.min(sheet.rowCount, 12); row += 1) {
+      const values = rowValues(row).map(cleanImportValue);
+      if (headerMatcher(values)) {
+        headerRow = row;
+        headers = values;
+        break;
+      }
+    }
+    if (!headerRow) return [];
+    return Array.from({ length: sheet.rowCount - headerRow }, (_, index) => {
+      const values = rowValues(headerRow + index + 1);
+      return headers.reduce<Record<string, unknown>>((registro, header, column) => {
+        if (header) registro[header] = values[column];
+        return registro;
+      }, {});
+    }).filter(registro => Object.values(registro).some(value => cleanImportValue(value)));
+  };
+
+  // Lê o cadastro mestre e os vínculos de equipe. Nada é gravado aqui.
   const lerPlanilhaEfetivo = async (file: File) => {
     setSyncBusy(true);
     setSyncError('');
@@ -701,38 +745,21 @@ export default function ControlePresencaTab({
       const sheet = workbook.getWorksheet('Efetivo')
         || workbook.worksheets.find(item => /efetivo/i.test(item.name));
       if (!sheet) throw new Error('A planilha não tem a aba "Efetivo".');
-
-      // O cabeçalho não fica na primeira linha: a aba abre com um título.
-      let headerRow = 0;
-      let headers: string[] = [];
-      for (let row = 1; row <= Math.min(sheet.rowCount, 10); row += 1) {
-        const values = (sheet.getRow(row).values as unknown[]).slice(1).map(value => String(value ?? '').trim());
-        if (values.some(value => /mat/i.test(value)) && values.some(value => /encarregado/i.test(value))) {
-          headerRow = row;
-          headers = values;
-          break;
-        }
-      }
-      if (!headerRow) throw new Error('Não encontrei o cabeçalho com "MAT. COLAB." e "NOME ENCARREGADO".');
-
-      const rows: Array<Record<string, unknown>> = [];
-      for (let row = headerRow + 1; row <= sheet.rowCount; row += 1) {
-        const values = (sheet.getRow(row).values as unknown[]).slice(1);
-        const registro: Record<string, unknown> = {};
-        headers.forEach((header, index) => {
-          if (header) registro[header] = values[index];
-        });
-        if (Object.values(registro).some(value => value !== undefined && value !== null && String(value).trim())) {
-          rows.push(registro);
-        }
-      }
-
+      const rows = extractRows(sheet, values => values.some(value => /mat/i.test(value)) && values.some(value => /encarregado/i.test(value)));
+      if (!rows.length) throw new Error('Não encontrei o cabeçalho com "MATRÍCULA" e "NOME ENCARREGADO".');
+      const cadastroSheet = workbook.getWorksheet('Custo Gerencial')
+        || workbook.worksheets.find(item => /custo\s*gerencial/i.test(item.name));
+      const cadastroRows = cadastroSheet
+        ? extractRows(cadastroSheet, values => values.some(value => /c[oó]digo|matr[ií]cula/i.test(value)) && values.some(value => /situa[cç][aã]o/i.test(value)))
+        : [];
+      const cadastrosOficiais = parseCadastroOficialRows(cadastroRows);
       const { linhas, ignoradas, matriculasNaPlanilha } = parseEfetivoRows(rows);
       if (linhas.length === 0) throw new Error('Nenhuma linha aproveitável: confira as colunas de matrícula e encarregado.');
       const plano = buildTeamSyncPlan({
         linhas,
         ignoradas,
         matriculasNaPlanilha,
+        cadastrosOficiais,
         funcionarios: safeFuncionarios,
         gruposEquipe: safeGroups,
         obraId: safeObras[0]?.id || '',
@@ -1446,7 +1473,7 @@ export default function ControlePresencaTab({
             <header className="flex items-start justify-between gap-4 border-b border-[#ebe7dc] p-5">
               <div>
                 <h2 className="text-lg font-black text-[#101a22]">Conferir antes de gravar</h2>
-                <p className="mt-1 text-sm text-[#65716b]">{syncFileName} · {syncPlan.resumo.pessoasNaPlanilha} pessoas na planilha</p>
+                <p className="mt-1 text-sm text-[#65716b]">{syncFileName} · {syncPlan.resumo.pessoasNaPlanilha} pessoas no cadastro oficial</p>
               </div>
               <button type="button" onClick={() => setSyncPlan(null)} aria-label="Fechar" className="rounded-lg p-2 text-[#65716b] hover:bg-[#f2f0e8]"><X className="h-5 w-5" /></button>
             </header>
@@ -1512,7 +1539,7 @@ export default function ControlePresencaTab({
             </div>
 
             <footer className="flex flex-col gap-3 border-t border-[#ebe7dc] p-5 sm:flex-row sm:justify-end">
-              <p className="flex-1 text-xs text-[#65716b]">Equipes fora da planilha ficam inativas, nunca são excluídas. Colaboradores fora da planilha são marcados como desmobilizados (saem do efetivo), o cadastro nunca é apagado. Os links já distribuídos continuam valendo.</p>
+              <p className="flex-1 text-xs text-[#65716b]">A base oficial atualiza cadastro e equipes. Registros fora dela ficam desmobilizados, nunca excluídos. Equipes fora dos vínculos de campo ficam inativas. Os links já distribuídos continuam valendo.</p>
               <button type="button" onClick={() => setSyncPlan(null)} className={SECONDARY_BUTTON}>Cancelar</button>
               <button type="button" onClick={() => void confirmarSincronizacao()} disabled={syncBusy} className={PRIMARY_BUTTON}>{syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {syncBusy ? 'Gravando no Firebase' : 'Gravar sincronização'}</button>
             </footer>
@@ -1522,21 +1549,26 @@ export default function ControlePresencaTab({
 
       {isGroupEditorOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101a22]/55 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label={editingGroupId ? 'Editar equipe' : 'Nova equipe'}>
-          <div ref={groupEditorScrollRef} className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-[1.75rem] bg-[#fffefa] p-5  sm:rounded-[1.75rem] sm:p-7">
-            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Controle ao vivo</p><h2 className="mt-1 text-2xl font-black tracking-tight text-[#101a22]">{editingGroupId ? 'Editar equipe' : 'Nova equipe'}</h2></div><button type="button" onClick={() => setIsGroupEditorOpen(false)} className="rounded-xl border border-[#ddd9cd] p-2.5 text-[#65716b] hover:text-[#101a22]"><X className="h-5 w-5" /></button></div>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div ref={groupEditorScrollRef} className="flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden bg-[#fbfcfa] sm:h-[min(90dvh,860px)] sm:rounded-xl sm:border sm:border-[#dce5df] sm:shadow-2xl">
+            <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[#e3e9e5] bg-white px-5 py-4 sm:px-7">
+              <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Cadastro operacional</p><h2 className="mt-1 text-xl font-black text-[#101a22]">{editingGroupId ? 'Editar equipe' : 'Nova equipe'}</h2><p className="mt-1 text-xs text-[#65716b]">{safeIds(groupForm.funcionarioIds).length} colaborador(es) selecionado(s)</p></div>
+              <button type="button" onClick={() => setIsGroupEditorOpen(false)} aria-label="Fechar editor" className="rounded-lg border border-[#dde5df] bg-white p-2.5 text-[#65716b] transition hover:border-emerald-600 hover:text-emerald-800"><X className="h-5 w-5" /></button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+              <section className="grid gap-4 rounded-lg border border-[#e0e8e2] bg-white p-4 sm:grid-cols-2">
               <label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Nome da equipe</span><input value={groupForm.nome} onChange={event => setGroupForm(current => ({ ...current, nome: event.target.value }))} className={FIELD} /></label>
               <label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Responsável</span><input value={groupForm.responsavel} onChange={event => setGroupForm(current => ({ ...current, responsavel: event.target.value }))} className={FIELD} /></label>
               <label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Obra</span><select value={groupForm.obraId} onChange={event => { const work = safeObras.find(item => item.id === event.target.value); setGroupForm(current => ({ ...current, obraId: event.target.value, frenteServico: work?.nome || current.frenteServico })); }} className={FIELD}><option value="">Selecione</option>{safeObras.map(work => <option key={work.id} value={work.id}>{work.nome}</option>)}</select></label>
               <label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Frente de serviço</span><input value={groupForm.frenteServico} onChange={event => setGroupForm(current => ({ ...current, frenteServico: event.target.value }))} className={FIELD} /></label>
               <label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Situação</span><select value={groupForm.status} onChange={event => setGroupForm(current => ({ ...current, status: event.target.value as GrupoEquipe['status'] }))} className={FIELD}><option value="ativo">Ativa</option><option value="inativo">Inativa</option></select></label>
               <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-[#d8d4c8] bg-white px-3 text-sm font-semibold text-[#26362f]"><input type="checkbox" checked={groupForm.linkAtivo} onChange={event => setGroupForm(current => ({ ...current, linkAtivo: event.target.checked }))} className="h-4 w-4 accent-emerald-700" /> Link de campo ativo</label>
-            </div>
-            <div className="mt-6 border-t border-[#e4e0d6] pt-5"><div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
-              <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">{visibleEmployees.map(employee => { const checked = safeIds(groupForm.funcionarioIds).includes(employee.id); return <label key={employee.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked ? 'border-emerald-300 bg-emerald-50' : 'border-[#e1ddd2] bg-white hover:border-emerald-300'}`}><input type="checkbox" checked={checked} onChange={event => setGroupForm(current => ({ ...current, funcionarioIds: event.target.checked ? [...safeIds(current.funcionarioIds), employee.id] : safeIds(current.funcionarioIds).filter(id => id !== employee.id) }))} className="h-4 w-4 accent-emerald-700" /><div className="min-w-0"><p className="truncate text-sm font-bold text-[#101a22]">{employee.nome}</p><p className="truncate text-xs text-[#65716b]">{employee.cargo}{employee.matricula ? ` · ${employee.matricula}` : ''}</p></div></label>; })}</div>
-            </div>
+              </section>
+              <section className="mt-5 border-t border-[#e3e9e5] pt-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-black text-[#15231c]">Composição da equipe</p><p className="mt-1 text-xs text-[#65716b]">Busque para incluir ou remover pessoas sem perder a posição na tela.</p></div><span className="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">{safeIds(groupForm.funcionarioIds).length} selecionado(s)</span></div><div className="mt-4 flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
+                <div className="mt-4 grid max-h-[42dvh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">{visibleEmployees.map(employee => { const checked = safeIds(groupForm.funcionarioIds).includes(employee.id); return <label key={employee.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition ${checked ? 'border-emerald-400 bg-emerald-50' : 'border-[#e1e7e2] bg-white hover:border-emerald-300'}`}><input type="checkbox" checked={checked} onChange={event => setGroupForm(current => ({ ...current, funcionarioIds: event.target.checked ? [...safeIds(current.funcionarioIds), employee.id] : safeIds(current.funcionarioIds).filter(id => id !== employee.id) }))} className="h-4 w-4 accent-emerald-700" /><div className="min-w-0"><p className="truncate text-sm font-bold text-[#101a22]">{employee.nome}</p><p className="truncate text-xs text-[#65716b]">{employee.cargo}{employee.matricula ? ` · ${employee.matricula}` : ''}</p></div></label>; })}</div>
+              </section>
             {feedback && <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{feedback}</p>}
-            <div className="sticky bottom-0 mt-6 flex gap-3 border-t border-[#e4e0d6] bg-[#fffefa] pt-4"><button type="button" onClick={() => setIsGroupEditorOpen(false)} className={`${SECONDARY_BUTTON} flex-1`}>Cancelar</button><button type="button" onClick={saveGroup} className={`${PRIMARY_BUTTON} flex-1`}><CheckCircle2 className="h-4 w-4" /> Salvar equipe</button></div>
+            </div>
+            <footer className="flex shrink-0 gap-3 border-t border-[#e3e9e5] bg-white px-5 py-4 sm:px-7"><button type="button" onClick={() => setIsGroupEditorOpen(false)} className={`${SECONDARY_BUTTON} flex-1`}>Cancelar</button><button type="button" onClick={saveGroup} className={`${PRIMARY_BUTTON} flex-1`}><CheckCircle2 className="h-4 w-4" /> Salvar equipe</button></footer>
           </div>
         </div>
       )}

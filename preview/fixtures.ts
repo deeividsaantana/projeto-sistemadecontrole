@@ -140,6 +140,15 @@ export const efetivoPresenca: Funcionario[] = Array.from({ length: 46 }, (_, i) 
   telefone: '', empresaId: i % 5 === 0 ? 'emp-2' : 'emp-1', ativo: true, status: 'ATIVO',
 } as Funcionario));
 
+// O preview deve refletir a composição exibida nos indicadores. Sem estes
+// vínculos, o editor de uma equipe de demonstração abre vazio por um dado de
+// teste incompleto, não por uma falha do editor.
+equipesPresenca.forEach((equipe, indice) => {
+  equipe.funcionarioIds = efetivoPresenca
+    .filter((_, pessoaIndice) => pessoaIndice % equipesPresenca.length === indice)
+    .map(pessoa => pessoa.id);
+});
+
 const diasDePresenca = Array.from({ length: 14 }, (_, i) => {
   const dia = new Date();
   dia.setHours(12, 0, 0, 0);

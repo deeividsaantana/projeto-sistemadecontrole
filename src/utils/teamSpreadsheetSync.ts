@@ -15,10 +15,21 @@ export interface EfetivoRow {
   matricula: string;
   nome: string;
   funcao: string;
+  telefone: string;
   matriculaLider: string;
   encarregado: string;
   area: string;
   responsavel: string;
+}
+
+/** Cadastro de RH vindo da aba Custo Gerencial. */
+export interface CadastroOficialRow {
+  matricula: string;
+  nome: string;
+  cargo: string;
+  divisao: string;
+  secao: string;
+  situacao: NonNullable<Funcionario['status']>;
 }
 
 export type TeamSyncAction = 'criar' | 'atualizar' | 'desativar' | 'inalterada';
@@ -69,6 +80,16 @@ const ALIASES = {
   encarregado: ['nomeencarregado', 'encarregado'],
   area: ['area', 'frente', 'frenteservico'],
   responsavel: ['responsavel', 'responsavelarea'],
+  telefone: ['contato', 'telefone', 'celular'],
+};
+
+const CADASTRO_ALIASES = {
+  matricula: ['codigo', 'matricula'],
+  nome: ['nome'],
+  cargo: ['cargo', 'funcao'],
+  divisao: ['divisao'],
+  secao: ['secao'],
+  situacao: ['situacao', 'status'],
 };
 
 /**
@@ -96,6 +117,37 @@ export const normalizeRegistration = (value: unknown) => {
 };
 
 const normalizeName = (value: string) => normalizeImportText(value);
+
+const normalizarSituacao = (value: unknown): NonNullable<Funcionario['status']> => {
+  const situacao = normalizeImportText(cleanImportValue(value));
+  if (situacao.includes('feria')) return 'FÉRIAS';
+  if (situacao.includes('afast')) return 'AFASTADO';
+  if (situacao.includes('desmobil')) return 'DESMOBILIZADO';
+  if (situacao.includes('inativ') || situacao.includes('deslig')) return 'INATIVO';
+  return 'ATIVO';
+};
+
+/**
+ * Lê o cadastro mestre de RH. Ele é deliberadamente separado dos vínculos de
+ * equipe: há pessoas ativas em apoio, administração e engenharia que não
+ * aparecem na aba Efetivo, mas continuam na obra e não podem ser desligadas.
+ */
+export const parseCadastroOficialRows = (rows: Array<Record<string, unknown>>): CadastroOficialRow[] => {
+  const porMatricula = new Map<string, CadastroOficialRow>();
+  (Array.isArray(rows) ? rows : []).forEach(row => {
+    const matricula = normalizeRegistration(valorDaColuna(row, CADASTRO_ALIASES.matricula));
+    if (!matricula) return;
+    porMatricula.set(matricula, {
+      matricula,
+      nome: cleanImportValue(valorDaColuna(row, CADASTRO_ALIASES.nome)),
+      cargo: cleanImportValue(valorDaColuna(row, CADASTRO_ALIASES.cargo)),
+      divisao: cleanImportValue(valorDaColuna(row, CADASTRO_ALIASES.divisao)),
+      secao: cleanImportValue(valorDaColuna(row, CADASTRO_ALIASES.secao)),
+      situacao: normalizarSituacao(valorDaColuna(row, CADASTRO_ALIASES.situacao)),
+    });
+  });
+  return [...porMatricula.values()];
+};
 
 /**
  * Converte as linhas cruas da aba em registros aproveitáveis. Linha sem
@@ -138,6 +190,7 @@ export const parseEfetivoRows = (
       matricula,
       nome,
       funcao: cleanImportValue(valorDaColuna(row, ALIASES.funcao)),
+      telefone: cleanImportValue(valorDaColuna(row, ALIASES.telefone)),
       matriculaLider,
       encarregado,
       area: cleanImportValue(valorDaColuna(row, ALIASES.area)),
@@ -156,6 +209,8 @@ interface BuildPlanInput {
    * quem apareceu na planilha sem vínculo de encarregado utilizável.
    */
   matriculasNaPlanilha?: Set<string>;
+  /** Cadastro mestre de RH, que complementa a composição das equipes. */
+  cadastrosOficiais?: CadastroOficialRow[];
   funcionarios: Funcionario[];
   gruposEquipe: GrupoEquipe[];
   obraId: string;
@@ -178,6 +233,7 @@ export const buildTeamSyncPlan = ({
   linhas,
   ignoradas = [],
   matriculasNaPlanilha,
+  cadastrosOficiais = [],
   funcionarios,
   gruposEquipe,
   obraId,
@@ -192,7 +248,10 @@ export const buildTeamSyncPlan = ({
     if (chave && !porMatricula.has(chave)) porMatricula.set(chave, employee);
   });
 
-  const presentes = matriculasNaPlanilha ?? new Set(linhas.map(linha => linha.matricula));
+  const presentes = new Set([
+    ...(matriculasNaPlanilha ?? linhas.map(linha => linha.matricula)),
+    ...cadastrosOficiais.map(item => item.matricula),
+  ]);
   const hoje = agoraIso.slice(0, 10);
   // Quem tem matrícula, está no efetivo hoje e não aparece em nenhuma linha
   // da planilha saiu da obra. O cadastro nunca é apagado, só a situação muda.
@@ -214,42 +273,70 @@ export const buildTeamSyncPlan = ({
   const vinculo = new Map<string, EfetivoRow>();
   linhas.forEach(linha => vinculo.set(linha.matricula, linha));
 
-  const colaboradoresNovos: Funcionario[] = [];
-  const colaboradoresAtualizados: Funcionario[] = [];
+  const novosPorMatricula = new Map<string, Funcionario>();
+  const atualizadosPorMatricula = new Map<string, Funcionario>();
+  const cadastroOficialPorMatricula = new Map(cadastrosOficiais.map(item => [item.matricula, item]));
+  const atualizarPeloCadastroOficial = (base: Funcionario | undefined, oficial: CadastroOficialRow): Funcionario => {
+    const ativo = oficial.situacao !== 'INATIVO' && oficial.situacao !== 'DESMOBILIZADO';
+    const proximo: Funcionario = {
+      ...(base || {
+        id: `fun-${oficial.matricula}`,
+        matricula: oficial.matricula,
+        telefone: '',
+        empresaId,
+        criadoEm: agoraIso,
+      }),
+      matricula: oficial.matricula,
+      nome: oficial.nome || base?.nome || '',
+      cargo: oficial.cargo || base?.cargo || '',
+      divisao: oficial.divisao || undefined,
+      secao: oficial.secao || undefined,
+      status: oficial.situacao,
+      ativo,
+      atualizadoEm: agoraIso,
+    };
+    if (oficial.situacao === 'ATIVO') delete proximo.dataDesmobilizacao;
+    return proximo;
+  };
+
+  cadastroOficialPorMatricula.forEach((oficial, matricula) => {
+    const existente = porMatricula.get(matricula);
+    const atualizado = atualizarPeloCadastroOficial(existente, oficial);
+    if (existente) atualizadosPorMatricula.set(matricula, atualizado);
+    else novosPorMatricula.set(matricula, atualizado);
+  });
+
   const resolvido = new Map<string, Funcionario>();
   vinculo.forEach((linha, matricula) => {
-    const existente = porMatricula.get(matricula);
-    if (existente) {
-      const atualizado: Funcionario = {
-        ...existente,
-        ...(linha.nome ? { nome: linha.nome } : {}),
-        ...(linha.funcao ? { cargo: linha.funcao } : {}),
-        liderMatricula: linha.matriculaLider || undefined,
-        liderNome: linha.encarregado || undefined,
-        area: linha.area || undefined,
-        responsavelArea: linha.responsavel || undefined,
-      };
-      colaboradoresAtualizados.push(atualizado);
-      resolvido.set(matricula, atualizado);
-      return;
-    }
+    const existente = atualizadosPorMatricula.get(matricula)
+      || novosPorMatricula.get(matricula)
+      || porMatricula.get(matricula);
     const novo: Funcionario = {
-      id: `fun-${matricula}`,
-      matricula,
-      nome: linha.nome,
-      cargo: linha.funcao,
-      telefone: '',
-      empresaId,
-      ativo: true,
+      ...(existente || {
+        id: `fun-${matricula}`,
+        matricula,
+        telefone: '',
+        empresaId,
+        ativo: true,
+        criadoEm: agoraIso,
+      }),
+      nome: linha.nome || existente?.nome || '',
+      cargo: linha.funcao || existente?.cargo || '',
+      ...(linha.telefone ? { telefone: linha.telefone } : {}),
       liderMatricula: linha.matriculaLider || undefined,
       liderNome: linha.encarregado || undefined,
       area: linha.area || undefined,
       responsavelArea: linha.responsavel || undefined,
-      criadoEm: agoraIso,
+      ativo: true,
+      status: existente?.status === 'FÉRIAS' || existente?.status === 'AFASTADO' ? existente.status : 'ATIVO',
+      atualizadoEm: agoraIso,
     };
-    colaboradoresNovos.push(novo);
+    if (porMatricula.has(matricula)) atualizadosPorMatricula.set(matricula, novo);
+    else novosPorMatricula.set(matricula, novo);
     resolvido.set(matricula, novo);
   });
+  const colaboradoresNovos = [...novosPorMatricula.values()];
+  const colaboradoresAtualizados = [...atualizadosPorMatricula.values()];
 
   // Uma equipe por vínculo de encarregado. A matrícula é a chave estável;
   // o nome é apenas a identificação legível e pode mudar ou vir vazio.
@@ -398,7 +485,7 @@ export const buildTeamSyncPlan = ({
       inalteradas: conta('inalterada'),
       colaboradoresNovos: colaboradoresNovos.length,
       desmobilizar: colaboradoresParaDesmobilizar.length,
-      pessoasNaPlanilha: vinculo.size,
+      pessoasNaPlanilha: presentes.size,
     },
   };
 };
