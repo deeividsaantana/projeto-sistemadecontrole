@@ -9,6 +9,7 @@ import { isSnapshotIntact } from '../utils/snapshotIntegrity';
 import { loadUsageSummary, type UsageSummary } from '../usageTelemetry';
 import { loadMasterDataGatewayStatus, type MasterDataGatewayStatus } from '../services/masterDataApi';
 import { CountUp } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import { 
   Settings, 
   Clock, 
@@ -289,8 +290,10 @@ export default function ConfiguracoesTab({
     }
   };
 
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+
   return (
-    <div className="space-y-6" id="configuracoes-tab">
+    <div ref={escopoMotion} className="space-y-6" id="configuracoes-tab">
       
       {/* Upper header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
@@ -378,7 +381,7 @@ export default function ConfiguracoesTab({
                   {usageSummary.tabs.map(item => {
                     const percentage = usageSummary.totalViews ? Math.max(4, Math.round((item.count / usageSummary.totalViews) * 100)) : 0;
                     return (
-                      <div key={item.id} className="grid grid-cols-[minmax(130px,1fr)_2fr_52px] items-center gap-3 text-xs">
+                      <div key={item.id} data-linha-lista className="grid grid-cols-[minmax(130px,1fr)_2fr_52px] items-center gap-3 text-xs">
                         <span className="truncate text-slate-700">{item.label}</span>
                         <div className="h-2 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-emerald-500 transition-[width] duration-700 ease-out" style={{ width: `${percentage}%` }} /></div>
                         <strong className="text-right font-mono text-slate-800">{item.count}</strong>

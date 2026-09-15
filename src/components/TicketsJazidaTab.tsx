@@ -31,6 +31,7 @@ import {
   Layers3
 } from 'lucide-react';
 import { ConfirmDialog, CountUp } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import type ExcelJS from 'exceljs';
 import { listarMateriais } from '../utils/materiaisJazida';
 import { createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
@@ -1690,8 +1691,10 @@ export default function TicketsJazidaTab({
 
   const viewingPair = viewingTicket ? getTicketPair(viewingTicket) : null;
 
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+
   return (
-    <div className="space-y-6" id="tickets-jazida-tab">
+    <div ref={escopoMotion} className="space-y-6" id="tickets-jazida-tab">
       <datalist id="ticket-equipment-prefixes">
         {equipmentOptions.map(item => (
           <option key={item.id} value={item.prefixo}>{item.nome}{equipmentPlate(item) ? ` · ${equipmentPlate(item)}` : ''}</option>
@@ -1837,7 +1840,7 @@ export default function TicketsJazidaTab({
                     const statusClass = operation.status === 'Divergência' || operation.status === 'Ticket duplicado'
                       ? 'border-rose-500/25 bg-rose-500/10 text-rose-700'
                       : 'border-amber-500/25 bg-amber-500/10 text-amber-700';
-                    return <tr key={operation.ticketNumber} className="text-[#3d4a44]">
+                    return <tr key={operation.ticketNumber} data-linha-lista className="text-[#3d4a44]">
                       <td className="px-4 py-3 font-mono font-black text-emerald-700">{operation.ticketNumber}</td>
                       <td className="px-4 py-3"><span className={`rounded-md border px-2 py-1 font-bold ${statusClass}`}>{operation.status}</span></td>
                       <td className="px-4 py-3"><b className="block">{operation.release?.prefixo || '—'}</b><span className="text-[#53605a]">{operation.releaseEvent?.ocorridoEm.replace('T', ' ').slice(0, 16) || 'Sem evento'}</span></td>
@@ -1927,7 +1930,7 @@ export default function TicketsJazidaTab({
                   {!dailyControl.rows.length ? <tr><td colSpan={6} className="px-4 py-12 text-center text-[#65716b]"><Layers3 className="mx-auto mb-3 h-7 w-7 text-slate-700" />Nenhum ticket criado neste dia. Use “Imprimir sequência” para cadastrar a faixa.</td></tr> : dailyControl.rows.map(row => {
                     const ticket = row.liberacao || row.recebimento;
                     const note = row.recebimento?.notaFiscalNumero || row.liberacao?.notaFiscalNumero;
-                    return <tr key={row.numero} className="bg-[#f7f9f8] hover:bg-[#f2f5f3]">
+                    return <tr key={row.numero} data-linha-lista className="bg-[#f7f9f8] hover:bg-[#f2f5f3]">
                       <td className="px-4 py-3 font-mono text-sm font-black text-[#14231e]">{row.numero}</td>
                       <td className="px-4 py-3"><b className="block text-[#26362f]">{formatEventDateTime(row.criadoEm)}</b><span className="text-[9px] text-[#53605a]">{row.loteId.startsWith('avulso-') ? 'Cadastro avulso' : 'Lote impresso'}</span></td>
                       <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Liberação')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.liberacaoRecebida ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-amber-500/30 bg-amber-500/10 text-amber-700 hover:border-amber-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.liberacaoRecebida ? '✓' : ''}</span>{row.liberacaoRecebida ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.liberacaoRecebidaEm)}</small></button></td>

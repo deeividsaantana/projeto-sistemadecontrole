@@ -47,6 +47,7 @@ import {
   Upload
 } from 'lucide-react';
 import { PageHeader } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 type SubTab = 'empresas' | 'fornecedores' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
 
@@ -672,8 +673,10 @@ export default function CadastrosTab({
     setIsConfirmingImport(false);
   };
 
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+
   return (
-    <div className="erp-module erp-module--cadastros space-y-5" id="cadastros-container">
+    <div ref={escopoMotion} className="erp-module erp-module--cadastros space-y-5" id="cadastros-container">
       <PageHeader
         eyebrow="Base corporativa"
         title="Cadastros mestres"
@@ -1326,7 +1329,7 @@ export default function CadastrosTab({
                   </tr>
                 ) : (
                   displayedEmpresas.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
                       <td className="py-4 px-5 font-black text-slate-700">{item.nome}</td>
                       <td className="py-4 px-5 font-mono text-slate-700">{item.cnpj}</td>
                       <td className="py-4 px-5 text-slate-700">{item.responsavel || '—'}</td>
@@ -1371,7 +1374,7 @@ export default function CadastrosTab({
                       : 'bg-blue-500/10 text-blue-700 border-blue-500/20';
 
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-5 font-black text-slate-700">{item.nome}</td>
                         <td className="py-4 px-5 text-slate-700">{item.endereco}</td>
                         <td className="py-4 px-5 text-slate-700">{item.responsavel || '—'}</td>
@@ -1433,7 +1436,7 @@ export default function CadastrosTab({
                       : 'bg-white text-slate-400 border-slate-200/60';
 
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-5">
                           <div className="flex items-center gap-2">
                             {item.foto ? (
@@ -1584,7 +1587,7 @@ export default function CadastrosTab({
                   </tr>
                 ) : (
                   filteredComboios.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
                       <td className="py-4 px-5 font-black text-slate-700">{item.nome}</td>
                       <td className="py-4 px-5 font-mono text-emerald-700">{item.placa}</td>
                       <td className="py-4 px-5 font-mono text-slate-700 font-bold">{item.capacidadeLitros.toLocaleString('pt-BR')} Litros</td>
@@ -1621,7 +1624,7 @@ export default function CadastrosTab({
                   </tr>
                 ) : (
                   (subTab === 'combustiveis' ? filteredCombustiveis : subTab === 'lubrificantes' ? filteredLubrificantes : filteredEtapas).map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
                       <td className="py-4 px-5 font-mono text-slate-500 text-xxs">{item.id}</td>
                       <td className="py-4 px-5 font-black text-slate-700 text-xs">{item.nome}</td>
                       <td className="py-4 px-5 text-right">
