@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 import { Building2, LogOut, Search, X } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { AppNotification } from '../../types';
@@ -52,7 +54,9 @@ export function DesktopTopBar({
   onMarkNotificationAsRead,
   onLogout,
 }: DesktopTopBarProps) {
+  const headerRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const logoutBtnRef = useRef<HTMLButtonElement>(null);
   const userName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
   const userInitials = userName.trim().slice(0, 2).toUpperCase();
 
@@ -67,6 +71,26 @@ export function DesktopTopBar({
     }
     return [];
   }, [activeTab]);
+
+  useGSAP(() => {
+    if (!logoutBtnRef.current) return;
+    const btn = logoutBtnRef.current;
+
+    const onEnter = () => {
+      gsap.to(btn, { scale: 1.12, rotate: 10, duration: 0.3, ease: 'power2.out' });
+    };
+    const onLeave = () => {
+      gsap.to(btn, { scale: 1, rotate: 0, duration: 0.3, ease: 'power2.out' });
+    };
+
+    btn.addEventListener('mouseenter', onEnter);
+    btn.addEventListener('mouseleave', onLeave);
+
+    return () => {
+      btn.removeEventListener('mouseenter', onEnter);
+      btn.removeEventListener('mouseleave', onLeave);
+    };
+  }, { scope: headerRef });
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -94,7 +118,12 @@ export function DesktopTopBar({
   };
 
   return (
-    <header className="erp-topbar hidden lg:flex" aria-label="Barra de contexto do sistema">
+    <header
+      ref={headerRef}
+      className="erp-topbar hidden lg:flex backdrop-blur-sm"
+      style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}
+      aria-label="Barra de contexto do sistema"
+    >
       <Breadcrumb items={breadcrumbItems} className="hidden shrink-0 xl:flex" />
       <label className="erp-topbar__searchbox relative block w-full max-w-sm">
         <span className="sr-only">Buscar no sistema</span>
@@ -106,7 +135,7 @@ export function DesktopTopBar({
           onChange={event => onMenuSearchChange(event.target.value)}
           onKeyDown={abrirPrimeiroResultado}
           placeholder="Buscar no sistema..."
-          className="h-10 w-full rounded-full border border-slate-200 bg-slate-50 pl-10 pr-16 text-xs text-slate-700 outline-none transition-colors duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/15"
+          className="h-10 w-full rounded-full border border-slate-200/50 bg-white/60 pl-10 pr-16 text-xs text-slate-700 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/15 backdrop-blur-sm"
         />
         {menuSearch
           ? (
@@ -119,7 +148,7 @@ export function DesktopTopBar({
               <X className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} />
             </button>
           )
-          : <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-400">⌘K</kbd>}
+          : <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200/50 bg-white/40 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 backdrop-blur-sm">⌘K</kbd>}
       </label>
 
       <div
@@ -166,11 +195,12 @@ export function DesktopTopBar({
           </span>
         </div>
         <button
+          ref={logoutBtnRef}
           type="button"
           onClick={onLogout}
           title="Sair da conta"
           aria-label="Sair da conta"
-          className="shrink-0 rounded-lg p-2 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700"
+          className="shrink-0 rounded-lg p-2 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 hover:shadow-sm"
         >
           <LogOut className="h-4 w-4" strokeWidth={ICON_STROKE} />
         </button>
