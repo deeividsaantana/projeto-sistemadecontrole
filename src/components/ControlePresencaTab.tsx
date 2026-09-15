@@ -1006,32 +1006,48 @@ export default function ControlePresencaTab({
       {view === 'ao-vivo' && (
         <div ref={liveViewRef} className="space-y-5">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
-            {/* self-start: sem isso o grid de duas colunas esticava este card
-                até a altura da coluna ao lado (Link oficial + Atenção agora),
-                deixando uma faixa em branco depois que o card ficou menor. */}
-            <article data-cartao-painel className={`renea-card ${PANEL} relative self-start overflow-hidden p-4 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-5`}>
-              <div data-seta-efetivo className="absolute right-5 top-5 text-emerald-800/20"><ArrowRight className="h-12 w-12" strokeWidth={1} /></div>
-              <div className="relative">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#65716b]">Efetivo confirmado</p>
-                  <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
+            {/* Os 4 cards de estatística entram aqui, embaixo do efetivo, em vez
+                de numa faixa própria abaixo das duas colunas: "Atenção agora"
+                é naturalmente mais alto (lista de equipes pendentes), e sem
+                esse preenchimento sobrava uma faixa em branco do lado esquerdo. */}
+            <div className="space-y-5">
+              <article data-cartao-painel className={`renea-card ${PANEL} relative overflow-hidden p-4 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-5`}>
+                <div data-seta-efetivo className="absolute right-5 top-5 text-emerald-800/20"><ArrowRight className="h-12 w-12" strokeWidth={1} /></div>
+                <div className="relative">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#65716b]">Efetivo confirmado</p>
+                    <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
+                  </div>
+                  <div className="mt-4 flex items-end gap-3">
+                    <strong data-count={metrics.present} className="text-4xl font-black tabular-nums tracking-[-0.045em] text-[#101a22] sm:text-5xl">0</strong>
+                    <div className="pb-1"><p className="text-base font-bold text-emerald-800">presentes</p><p className="text-xs text-[#65716b]">{metrics.planned ? `de ${metrics.planned} previstos` : 'sem efetivo previsto vinculado às equipes'}</p></div>
+                  </div>
+                  {/* Sem efetivo previsto não existe percentual: mostrar "0% confirmado"
+                      ao lado de 32 presentes faz o painel parecer quebrado. */}
+                  {metrics.planned > 0 ? (
+                    <>
+                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div data-barra-efetivo className="h-full origin-left rounded-full bg-[#087653]" style={{ width: `${metrics.percent}%` }} /></div>
+                      <p className="mt-2 text-right text-xs font-bold tabular-nums text-[#65716b]">{metrics.percent}% confirmado</p>
+                    </>
+                  ) : (
+                    <p className="mt-4 text-xs text-[#79847e]">Vincule os colaboradores às equipes em <strong className="font-bold text-[#26362f]">Equipes</strong> para acompanhar o percentual confirmado.</p>
+                  )}
                 </div>
-                <div className="mt-4 flex items-end gap-3">
-                  <strong data-count={metrics.present} className="text-4xl font-black tabular-nums tracking-[-0.045em] text-[#101a22] sm:text-5xl">0</strong>
-                  <div className="pb-1"><p className="text-base font-bold text-emerald-800">presentes</p><p className="text-xs text-[#65716b]">{metrics.planned ? `de ${metrics.planned} previstos` : 'sem efetivo previsto vinculado às equipes'}</p></div>
-                </div>
-                {/* Sem efetivo previsto não existe percentual: mostrar "0% confirmado"
-                    ao lado de 32 presentes faz o painel parecer quebrado. */}
-                {metrics.planned > 0 ? (
-                  <>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e8e5db]"><div data-barra-efetivo className="h-full origin-left rounded-full bg-[#087653]" style={{ width: `${metrics.percent}%` }} /></div>
-                    <p className="mt-2 text-right text-xs font-bold tabular-nums text-[#65716b]">{metrics.percent}% confirmado</p>
-                  </>
-                ) : (
-                  <p className="mt-4 text-xs text-[#79847e]">Vincule os colaboradores às equipes em <strong className="font-bold text-[#26362f]">Equipes</strong> para acompanhar o percentual confirmado.</p>
-                )}
+              </article>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ['Ausentes', metrics.absent, 'text-rose-700'],
+                  ['Justificados', metrics.justified, 'text-amber-700'],
+                  ['Equipes pendentes', metrics.pending, 'text-[#101a22]'],
+                  ['Equipes ativas', activeGroups.length, 'text-emerald-800'],
+                ].map(([label, value, tone]) => (
+                  <article key={String(label)} className={`${PANEL} p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-16px_rgba(16,24,32,0.3)] sm:p-5`}>
+                    <strong data-count={value} className={`block text-3xl font-black tabular-nums ${tone}`}>0</strong>
+                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b] sm:text-xs">{label}</span>
+                  </article>
+                ))}
               </div>
-            </article>
+            </div>
             <aside className="space-y-5">
             <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
               <div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-700" /><h2 className="text-lg font-black text-[#101a22]">Atenção agora</h2></div>
@@ -1058,20 +1074,6 @@ export default function ControlePresencaTab({
             </article>
             </aside>
           </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                ['Ausentes', metrics.absent, 'text-rose-700'],
-                ['Justificados', metrics.justified, 'text-amber-700'],
-                ['Equipes pendentes', metrics.pending, 'text-[#101a22]'],
-                ['Equipes ativas', activeGroups.length, 'text-emerald-800'],
-              ].map(([label, value, tone]) => (
-                <article key={String(label)} className={`${PANEL} p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-16px_rgba(16,24,32,0.3)] sm:p-5`}>
-                  <strong data-count={value} className={`block text-3xl font-black tabular-nums ${tone}`}>0</strong>
-                  <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b] sm:text-xs">{label}</span>
-                </article>
-              ))}
-            </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <article data-cartao-painel className={`renea-card ${PANEL} flex flex-col p-5 md:col-span-2`}>

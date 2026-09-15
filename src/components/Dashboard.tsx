@@ -540,7 +540,7 @@ export default function Dashboard({
             <span className="text-[10px] font-semibold tabular-nums text-[#718087]">Posição de {formatDate(referenceDate)}</span>
           </header>
           <div className="dashboard-integrated-grid grid">
-            <IntegratedMetric icon={Users} eyebrow="Pessoas em campo" value={String(presentCount)} detail={expectedCount ? `${presentCount} de ${expectedCount} previstos` : 'Sem efetivo previsto cadastrado'} progress={presencePercent} featured onClick={() => onNavigate('presenca')} />
+            <IntegratedMetric icon={Users} eyebrow="Pessoas em campo" value={String(presentCount)} detail={expectedCount ? `${presentCount} de ${expectedCount} previstos` : 'Sem efetivo previsto cadastrado'} progress={presencePercent} onClick={() => onNavigate('presenca')} />
             <IntegratedMetric icon={BarChart3} eyebrow="Produção do dia" value={productionValue} detail={`${productionServices.size} serviço(s) apontado(s)`} onClick={() => onNavigate('producao')} />
             <IntegratedMetric icon={Fuel} eyebrow="Combustível" value={`${fuelLiters.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L`} detail={fuelPending ? `${fuelPending} lançamento(s) pedem conferência` : `${fuelOnReferenceDate.length} abastecimento(s) conferidos`} onClick={() => onNavigate('lancamentos')} />
             <IntegratedMetric icon={HardHat} eyebrow="Frentes ativas" value={String(executingFronts.length)} detail={`${plannedFronts.length} planejada(s) para iniciar`} onClick={() => onNavigate('frentes')} />
