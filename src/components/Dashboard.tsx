@@ -404,6 +404,27 @@ export default function Dashboard({
     }
     timeline.fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, visual ? .18 : .1);
 
+    // Profundidade sutil ao apontar um KPI. quickTo evita criar uma tween nova
+    // a cada evento e translateY não desloca o texto o bastante para atrapalhar
+    // a leitura de quem usa o painel o dia inteiro.
+    const liftTargets = root.querySelectorAll<HTMLElement>('.dashboard-metric, .dashboard-integrated-metric');
+    const liftCleanups: Array<() => void> = [];
+    liftTargets.forEach(target => {
+      const lift = gsap.quickTo(target, 'y', { duration: .28, ease: 'power3.out' });
+      const enter = () => lift(-3);
+      const leave = () => lift(0);
+      target.addEventListener('pointerenter', enter);
+      target.addEventListener('pointerleave', leave);
+      target.addEventListener('focusin', enter);
+      target.addEventListener('focusout', leave);
+      liftCleanups.push(() => {
+        target.removeEventListener('pointerenter', enter);
+        target.removeEventListener('pointerleave', leave);
+        target.removeEventListener('focusin', enter);
+        target.removeEventListener('focusout', leave);
+      });
+    });
+
     sections.forEach((section, index) => {
       gsap.fromTo(section, { autoAlpha: 0, y: 22 }, {
         autoAlpha: 1,
@@ -414,6 +435,21 @@ export default function Dashboard({
         scrollTrigger: { trigger: section, start: `top ${index < 2 ? '92%' : '88%'}`, once: true },
       });
     });
+
+    // A tabela de destaque é a leitura final do painel: as linhas entram em
+    // cascata curta para o olho acompanhar a ordem, sem atrasar a operação.
+    const tableRows = root.querySelectorAll<HTMLElement>('[data-dashboard-row]');
+    if (tableRows.length) {
+      gsap.fromTo(tableRows, { autoAlpha: 0, y: 10 }, {
+        autoAlpha: 1,
+        y: 0,
+        duration: .38,
+        stagger: .035,
+        ease: 'power2.out',
+        clearProps: 'transform,opacity,visibility',
+        scrollTrigger: { trigger: tableRows[0], start: 'top 95%', once: true },
+      });
+    }
 
     if (visual && window.matchMedia('(min-width: 1024px)').matches) {
       const image = visual.querySelector('img');
@@ -433,16 +469,18 @@ export default function Dashboard({
         const onLeave = () => { moveX(0); moveY(10); };
         visual.addEventListener('pointermove', onMove);
         visual.addEventListener('pointerleave', onLeave);
-        return () => {
+        liftCleanups.push(() => {
           visual.removeEventListener('pointermove', onMove);
           visual.removeEventListener('pointerleave', onLeave);
-        };
+        });
       }
     }
+
+    return () => liftCleanups.forEach(cleanup => cleanup());
   }, { scope: dashboardRef, dependencies: [periodDays, fleetFilter, referenceDate] });
 
   return (
-    <main ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full bg-[#eef0ec] pb-14 text-[#172329]">
+    <main ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full bg-[#f7f8f6] pb-14 text-[#172329]">
       <header className="dashboard-command-header dashboard-command-header--command" data-dashboard-hero>
         <div className="dashboard-command-header__copy min-w-0">
           <p className="dashboard-command-header__eyebrow" data-dashboard-hero-copy><span />Central de comando</p>
@@ -649,7 +687,7 @@ export default function Dashboard({
               </thead>
               <tbody className="divide-y divide-[#e6ebe8]">
                 {filteredLatest.map(item => (
-                  <tr key={item.id} onClick={() => onNavigate('controle-equipamentos')} className="cursor-pointer bg-white transition hover:bg-[#f7f9f7]">
+                  <tr key={item.id} data-dashboard-row onClick={() => onNavigate('controle-equipamentos')} className="cursor-pointer bg-white transition hover:bg-[#f7f9f7]">
                     <td className="whitespace-nowrap px-4 py-3 font-semibold text-[#172329] sm:px-5">{item.prefixo || '—'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-[#5e6c72]">{item.tipoEquipamento || item.familia || 'Equipamento'}</td>
                     <td className="whitespace-nowrap px-4 py-3"><span className="inline-flex items-center gap-2"><i className={'size-2 ' + (normalizeFleetStatus(item.status) === 'Em operação' ? 'bg-[#238657]' : normalizeFleetStatus(item.status) === 'Em manutenção' ? 'bg-[#ed5d24]' : 'bg-[#e4a227]')} />{item.status}</span></td>
