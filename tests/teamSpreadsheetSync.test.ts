@@ -174,6 +174,69 @@ test('linha sem matricula ou sem qualquer vinculo de encarregado e reportada', (
   assert.match(ignoradas[1].motivo, /sem vínculo com encarregado/i);
 });
 
+test('colaborador ausente da planilha e desmobilizado, sem sumir do cadastro', () => {
+  const { linhas, matriculasNaPlanilha } = parseEfetivoRows([
+    linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS'),
+  ]);
+  const plan = buildTeamSyncPlan({ ...base, linhas, matriculasNaPlanilha, gruposEquipe: [] });
+
+  assert.equal(plan.resumo.desmobilizar, 1);
+  assert.equal(plan.colaboradoresParaDesmobilizar[0].matricula, '102364');
+  assert.equal(plan.colaboradoresParaDesmobilizar[0].status, 'DESMOBILIZADO');
+  assert.equal(plan.colaboradoresParaDesmobilizar[0].ativo, false);
+  assert.equal(plan.colaboradoresParaDesmobilizar[0].dataDesmobilizacao, base.agoraIso.slice(0, 10));
+  assert.match(plan.colaboradoresParaDesmobilizar[0].situacaoRh || '', /Fora da planilha de efetivo sincronizada/);
+
+  const applied = applyTeamSyncPlan(plan, base.funcionarios, []);
+  const joseIldo = applied.funcionarios.find(item => item.matricula === '102364')!;
+  assert.ok(joseIldo, 'o cadastro continua existindo, so a situacao muda');
+  assert.equal(joseIldo.status, 'DESMOBILIZADO');
+  assert.equal(applied.funcionarios.length, base.funcionarios.length, 'ninguem e removido do cadastro');
+});
+
+test('colaborador que aparece na planilha sem vinculo de encarregado NAO e desmobilizado', () => {
+  const { linhas, matriculasNaPlanilha } = parseEfetivoRows([
+    linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS'),
+    { ...linha('102364', 'JOSE ILDO', '', 'CIVIL', '') },
+  ]);
+  const plan = buildTeamSyncPlan({ ...base, linhas, matriculasNaPlanilha, gruposEquipe: [] });
+
+  assert.equal(plan.resumo.desmobilizar, 0, 'apareceu na planilha, so nao deu pra montar equipe');
+  assert.equal(plan.colaboradoresParaDesmobilizar.length, 0);
+});
+
+test('colaborador ja desmobilizado nao e reprocessado quando some da planilha de novo', () => {
+  const jaDesmobilizado: Funcionario = { ...funcionario('102364', 'JOSE ILDO'), status: 'DESMOBILIZADO', ativo: false };
+  const { linhas, matriculasNaPlanilha } = parseEfetivoRows([
+    linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS'),
+  ]);
+  const plan = buildTeamSyncPlan({
+    ...base,
+    funcionarios: [funcionario('101671', 'ANDERSON PEIXOTO'), jaDesmobilizado],
+    linhas,
+    matriculasNaPlanilha,
+    gruposEquipe: [],
+  });
+
+  assert.equal(plan.resumo.desmobilizar, 0);
+});
+
+test('colaborador sem matricula no cadastro nunca e desmobilizado pela sincronizacao', () => {
+  const semMatricula: Funcionario = { id: 'fun-sem-mat', nome: 'SEM MATRICULA', cargo: 'X', telefone: '', empresaId: 'emp-1', ativo: true };
+  const { linhas, matriculasNaPlanilha } = parseEfetivoRows([
+    linha('101671', 'ANDERSON PEIXOTO', 'RENILSON DOS SANTOS'),
+  ]);
+  const plan = buildTeamSyncPlan({
+    ...base,
+    funcionarios: [...base.funcionarios, semMatricula],
+    linhas,
+    matriculasNaPlanilha,
+    gruposEquipe: [],
+  });
+
+  assert.equal(plan.colaboradoresParaDesmobilizar.some(item => item.id === 'fun-sem-mat'), false);
+});
+
 test('matricula casa mesmo com zero a esquerda ou formatacao diferente', () => {
   assert.equal(normalizeRegistration('0101671'), '101671');
   assert.equal(normalizeRegistration(101671), '101671');

@@ -712,11 +712,12 @@ export default function ControlePresencaTab({
         }
       }
 
-      const { linhas, ignoradas } = parseEfetivoRows(rows);
+      const { linhas, ignoradas, matriculasNaPlanilha } = parseEfetivoRows(rows);
       if (linhas.length === 0) throw new Error('Nenhuma linha aproveitável: confira as colunas de matrícula e encarregado.');
       const plano = buildTeamSyncPlan({
         linhas,
         ignoradas,
+        matriculasNaPlanilha,
         funcionarios: safeFuncionarios,
         gruposEquipe: safeGroups,
         obraId: safeObras[0]?.id || '',
@@ -746,7 +747,8 @@ export default function ControlePresencaTab({
       }
       setSyncPlan(null);
       setSyncFileName('');
-      setFeedback(`Equipes sincronizadas no Firebase: ${syncPlan.resumo.criar} criadas, ${syncPlan.resumo.atualizar} atualizadas, ${syncPlan.resumo.desativar} desativadas.`);
+      const desmobilizados = syncPlan.resumo.desmobilizar > 0 ? ` ${syncPlan.resumo.desmobilizar} colaborador(es) desmobilizado(s) por sair da planilha.` : '';
+      setFeedback(`Equipes sincronizadas no Firebase: ${syncPlan.resumo.criar} criadas, ${syncPlan.resumo.atualizar} atualizadas, ${syncPlan.resumo.desativar} desativadas.${desmobilizados}`);
     } finally {
       setSyncBusy(false);
     }
@@ -1434,15 +1436,16 @@ export default function ControlePresencaTab({
               <button type="button" onClick={() => setSyncPlan(null)} aria-label="Fechar" className="rounded-lg p-2 text-[#65716b] hover:bg-[#f2f0e8]"><X className="h-5 w-5" /></button>
             </header>
 
-            <div className="grid grid-cols-2 gap-3 border-b border-[#ebe7dc] p-5 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 border-b border-[#ebe7dc] p-5 sm:grid-cols-5">
               {[
                 { rotulo: 'Equipes novas', valor: syncPlan.resumo.criar },
                 { rotulo: 'Atualizadas', valor: syncPlan.resumo.atualizar },
                 { rotulo: 'Desativadas', valor: syncPlan.resumo.desativar },
                 { rotulo: 'Colaboradores criados', valor: syncPlan.resumo.colaboradoresNovos },
+                { rotulo: 'Saem do efetivo', valor: syncPlan.resumo.desmobilizar, destaque: syncPlan.resumo.desmobilizar > 0 },
               ].map(item => (
-                <div key={item.rotulo} className="rounded-xl bg-[#f7f5ef] p-3">
-                  <strong className="text-2xl font-black text-[#101a22]">{item.valor}</strong>
+                <div key={item.rotulo} className={`rounded-xl p-3 ${item.destaque ? 'bg-rose-50' : 'bg-[#f7f5ef]'}`}>
+                  <strong className={`text-2xl font-black ${item.destaque ? 'text-rose-800' : 'text-[#101a22]'}`}>{item.valor}</strong>
                   <span className="mt-1 block text-xs text-[#65716b]">{item.rotulo}</span>
                 </div>
               ))}
@@ -1473,6 +1476,16 @@ export default function ControlePresencaTab({
                   </li>
                 ))}
               </ul>
+              {syncPlan.colaboradoresParaDesmobilizar.length > 0 && (
+                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3">
+                  <p className="text-xs font-bold text-rose-900">{syncPlan.colaboradoresParaDesmobilizar.length} colaborador(es) fora da planilha — serão marcados como DESMOBILIZADO</p>
+                  <ul className="mt-1 max-h-40 space-y-0.5 overflow-y-auto text-xs text-rose-900">
+                    {syncPlan.colaboradoresParaDesmobilizar.map(item => (
+                      <li key={item.id}>{item.nome}{item.matricula ? ` · ${item.matricula}` : ''}{item.cargo ? ` · ${item.cargo}` : ''}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {syncPlan.ignoradas.length > 0 && (
                 <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs font-bold text-amber-900">{syncPlan.ignoradas.length} linha(s) ignorada(s)</p>
@@ -1484,7 +1497,7 @@ export default function ControlePresencaTab({
             </div>
 
             <footer className="flex flex-col gap-3 border-t border-[#ebe7dc] p-5 sm:flex-row sm:justify-end">
-              <p className="flex-1 text-xs text-[#65716b]">Equipes fora da planilha ficam inativas, nunca são excluídas. Os links já distribuídos continuam valendo.</p>
+              <p className="flex-1 text-xs text-[#65716b]">Equipes fora da planilha ficam inativas, nunca são excluídas. Colaboradores fora da planilha são marcados como desmobilizados (saem do efetivo), o cadastro nunca é apagado. Os links já distribuídos continuam valendo.</p>
               <button type="button" onClick={() => setSyncPlan(null)} className={SECONDARY_BUTTON}>Cancelar</button>
               <button type="button" onClick={() => void confirmarSincronizacao()} disabled={syncBusy} className={PRIMARY_BUTTON}>{syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {syncBusy ? 'Gravando no Firebase' : 'Gravar sincronização'}</button>
             </footer>
