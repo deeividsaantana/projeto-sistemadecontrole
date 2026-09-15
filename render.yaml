@@ -4,6 +4,8 @@ services:
     runtime: node
     plan: free
     region: oregon
+    # Keep new Blueprint-based services synchronized with pushes to main.
+    autoDeployTrigger: commit
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /health
