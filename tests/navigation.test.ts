@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   ALL_NAVIGATION_ITEMS,
   ROLE_ACCESS,
+  SIDEBAR_NAVIGATION_GROUPS,
   normalizeUserRole,
 } from '../src/app/navigation/navigation';
 
@@ -59,4 +60,13 @@ test('claim desconhecida aplica privilégio mínimo', () => {
   assert.equal(normalizeUserRole('administrador'), 'admin');
   assert.equal(normalizeUserRole('perfil-antigo'), 'leitura');
   assert.equal(normalizeUserRole(undefined), 'leitura');
+});
+
+test('sidebar diária permanece concisa e os demais módulos seguem descobríveis', () => {
+  const daily: string[] = SIDEBAR_NAVIGATION_GROUPS.flatMap(group => group.items).map(item => item.id);
+  assert.equal(daily.includes('materiais'), true);
+  assert.equal(daily.includes('presenca'), true);
+  assert.equal(daily.includes('configuracoes'), false);
+  assert.ok(ALL_NAVIGATION_ITEMS.length > daily.length);
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'medicoes'), true);
 });

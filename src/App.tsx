@@ -203,6 +203,7 @@ import { validateCentralRecord } from './masterData/centralRegistry';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
+  NAVIGATION_GROUPS,
   SIDEBAR_NAVIGATION_GROUPS,
   ROLE_ACCESS,
   normalizeUserRole,
@@ -221,6 +222,7 @@ import {
   type PreferenciasNotificacao,
 } from './utils/notificacoes';
 import { DesktopSidebar } from './app/shell/DesktopSidebar';
+import { ModuleHubDialog } from './app/shell/ModuleHubDialog';
 import { APP_VERSION_LABEL } from './app/version';
 import {
   getPresenceTokenFromUrl,
@@ -259,6 +261,7 @@ import {
   X,
   LogOut,
   FolderPlus,
+  Search,
 } from 'lucide-react';
 
 import { AppNotification } from './types';
@@ -445,6 +448,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [menuSearch, setMenuSearch] = useState<string>('');
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
+  const [isModuleHubOpen, setIsModuleHubOpen] = useState(false);
   // Preferência de notificação é do dispositivo: fica no navegador e não sobe
   // para a nuvem, senão silenciar no celular apagaria o alerta do gestor.
   const [preferenciasNotificacao, setPreferenciasNotificacao] = useState<PreferenciasNotificacao>(
@@ -4282,6 +4287,10 @@ export default function App() {
         && (!normalizedMenuSearch || item.label.toLocaleLowerCase('pt-BR').includes(normalizedMenuSearch))),
     }))
     .filter(group => group.items.length > 0);
+  const availableNavigationGroups = NAVIGATION_GROUPS
+    .map(group => ({ ...group, items: group.items.filter(item => allowedTabs.includes(item.id)) }))
+    .filter(group => group.items.length > 0)
+    .map(group => ({ ...group, items: [...group.items] }));
 
   const navigateTo = (tab: string, closeMobile = false) => {
     setActiveTab(allowedTabs.includes(tab) ? tab : 'dashboard');
@@ -4329,6 +4338,15 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setIsGlobalSearchOpen(true)}
+            title="Buscar no sistema"
+            aria-label="Buscar no sistema"
+            className="cursor-pointer rounded-xl p-2.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800"
+          >
+            <Search className="w-5 h-5" />
+          </button>
           <button
             type="button"
             onClick={() => navigateTo('cadastros', true)}
@@ -4396,13 +4414,13 @@ export default function App() {
           activeTab={activeTab}
           groups={filteredNavigationGroups}
           onNavigate={tab => navigateTo(tab)}
+          onOpenModules={() => setIsModuleHubOpen(true)}
         />
         <main className="erp-workspace" id="main-workspace">
         <DesktopTopBar
           activeTab={activeTab}
-          groups={filteredNavigationGroups}
-          menuSearch={menuSearch}
-          onMenuSearchChange={setMenuSearch}
+          onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
+          onOpenProjectContext={() => setIsModuleHubOpen(true)}
           currentUser={currentUser}
           isNotificationOpen={isNotifDropdownOpen}
           notifications={notifications}
@@ -5088,6 +5106,13 @@ export default function App() {
       </div>
 
       <OfflineStatusV29 />
+      <ModuleHubDialog
+        activeTab={activeTab}
+        groups={availableNavigationGroups}
+        open={isModuleHubOpen}
+        onClose={() => setIsModuleHubOpen(false)}
+        onNavigate={navigateTo}
+      />
       <PesquisaGlobal
         fontes={{
           equipamentos,
@@ -5105,6 +5130,9 @@ export default function App() {
           documentos,
           ocorrencias,
         }}
+        groups={availableNavigationGroups}
+        open={isGlobalSearchOpen}
+        onOpenChange={setIsGlobalSearchOpen}
         onNavigate={navigateTo}
       />
       <ToastViewport toasts={activeToasts} />

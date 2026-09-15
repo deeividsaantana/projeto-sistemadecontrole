@@ -7,9 +7,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CornerDownLeft, Search } from 'lucide-react';
 import { buscarGlobal, type FontesBusca } from '../../utils/buscaGlobal';
+import type { NavigationGroupView } from './NavigationMenu';
 
 interface PesquisaGlobalProps {
   fontes: FontesBusca;
+  groups: NavigationGroupView[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onNavigate: (tab: string) => void;
 }
 
@@ -20,13 +24,28 @@ const editando = (alvo: EventTarget | null) => {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || elemento.isContentEditable;
 };
 
-export function PesquisaGlobal({ fontes, onNavigate }: PesquisaGlobalProps) {
-  const [aberto, setAberto] = useState(false);
+const normalize = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase('pt-BR');
+
+export function PesquisaGlobal({ fontes, groups, open, onOpenChange, onNavigate }: PesquisaGlobalProps) {
   const [termo, setTermo] = useState('');
   const [indice, setIndice] = useState(0);
   const campoRef = useRef<HTMLInputElement>(null);
 
-  const resultados = useMemo(() => aberto ? buscarGlobal(termo, fontes) : [], [aberto, termo, fontes]);
+  const registros = useMemo(() => open ? buscarGlobal(termo, fontes) : [], [open, termo, fontes]);
+  const modulos = useMemo(() => {
+    if (!open) return [];
+    const query = normalize(termo.trim());
+    const items = groups.flatMap(group => group.items.map(item => ({ ...item, grupo: group.label })));
+    if (!query) return items.filter(item => ['dashboard', 'modo-campo', 'central-operacional', 'presenca', 'lancamentos', 'materiais', 'relatorios'].includes(item.id));
+    return items.filter(item => normalize(`${item.label} ${item.grupo}`).includes(query));
+  }, [groups, open, termo]);
+  const resultados = useMemo(() => [
+    ...modulos.map(item => ({ id: `modulo-${item.id}`, titulo: item.label, subtitulo: item.grupo, tipo: 'Módulo', tab: item.id })),
+    ...registros,
+  ], [modulos, registros]);
 
   useEffect(() => {
     const abrirPorAtalho = (evento: KeyboardEvent) => {
@@ -34,29 +53,29 @@ export function PesquisaGlobal({ fontes, onNavigate }: PesquisaGlobalProps) {
       const atalhoK = evento.key.toLowerCase() === 'k' && (evento.ctrlKey || evento.metaKey);
       if (atalhoBarra || atalhoK) {
         evento.preventDefault();
-        setAberto(true);
+        onOpenChange(true);
         setTermo('');
         setIndice(0);
       }
     };
     document.addEventListener('keydown', abrirPorAtalho);
     return () => document.removeEventListener('keydown', abrirPorAtalho);
-  }, []);
+  }, [onOpenChange]);
 
   useEffect(() => {
-    if (aberto) campoRef.current?.focus();
-  }, [aberto]);
+    if (open) campoRef.current?.focus();
+  }, [open]);
 
-  if (!aberto) return null;
+  if (!open) return null;
 
   const escolher = (tab: string) => {
-    setAberto(false);
+    onOpenChange(false);
     onNavigate(tab);
   };
 
   const aoTeclar = (evento: React.KeyboardEvent) => {
     if (evento.key === 'Escape') {
-      setAberto(false);
+      onOpenChange(false);
       return;
     }
     if (evento.key === 'ArrowDown') {
@@ -74,9 +93,9 @@ export function PesquisaGlobal({ fontes, onNavigate }: PesquisaGlobalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-slate-900/40 px-4 pt-20" role="dialog" aria-label="Pesquisa global">
-      <div className="absolute inset-0" onClick={() => setAberto(false)} aria-hidden />
-      <div className="relative w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[130] flex items-start justify-center px-4 pt-20" style={{ backgroundColor: 'rgb(19 33 28 / 0.36)' }} role="dialog" aria-label="Pesquisa global">
+      <div className="absolute inset-0" onClick={() => onOpenChange(false)} aria-hidden />
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
         <label className="flex items-center gap-2 border-b border-slate-100 px-4">
           <Search className="h-4 w-4 shrink-0 text-slate-400" />
           <span className="sr-only">Pesquisar em todo o sistema</span>
@@ -92,10 +111,8 @@ export function PesquisaGlobal({ fontes, onNavigate }: PesquisaGlobalProps) {
         </label>
 
         <div className="max-h-80 overflow-y-auto">
-          {termo.trim().length < 2 ? (
-            <p className="px-4 py-6 text-center text-xs text-slate-500">Digite ao menos duas letras. Use ↑ ↓ para navegar e Enter para abrir.</p>
-          ) : resultados.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-slate-500">Nada encontrado para “{termo}”.</p>
+          {resultados.length === 0 ? (
+            <p className="px-4 py-6 text-center text-xs text-slate-500">{termo.trim().length < 2 ? 'Digite ao menos duas letras para pesquisar registros.' : `Nada encontrado para “${termo}”.`}</p>
           ) : (
             <ul className="divide-y divide-slate-100">
               {resultados.map((resultado, posicao) => (

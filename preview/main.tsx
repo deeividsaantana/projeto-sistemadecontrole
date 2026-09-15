@@ -113,25 +113,25 @@ const screens: Record<string, React.ReactNode> = {
         activeTab="presenca"
         groups={previewGroups}
         onNavigate={noop}
+        onOpenModules={noop}
       />
       <main style={{ flex: 1, background: '#fff' }} />
     </div>
   ),
   topbar: (
     <div className="erp-shell" style={{ height: '100dvh' }}>
-      <DesktopSidebar activeTab="dashboard" groups={previewGroups} onNavigate={noop} />
+      <DesktopSidebar activeTab="dashboard" groups={previewGroups} onNavigate={noop} onOpenModules={noop} />
       <main className="erp-workspace">
         <DesktopTopBar
           activeTab="dashboard"
-          groups={previewGroups}
-          menuSearch=""
           currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
           isNotificationOpen={false}
           notifications={previewNotifications}
           unreadCount={1}
           isCloudConnected
           lastCloudSync="04/09/2026 21:40"
-          onMenuSearchChange={noop}
+          onOpenGlobalSearch={noop}
+          onOpenProjectContext={noop}
           onNavigate={noop}
           onToggleNotifications={noop}
           onCloseNotifications={noop}

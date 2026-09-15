@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronDown, ChevronsLeft, ChevronsRight, LayoutGrid } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
 import reneaLogo from '../../assets/images/logo-renea-branco.png';
 import { APP_VERSION_LABEL } from '../version';
@@ -8,6 +8,7 @@ interface DesktopSidebarProps {
   activeTab: string;
   groups: NavigationGroupView[];
   onNavigate: (tab: string) => void;
+  onOpenModules: () => void;
 }
 
 const COLLAPSE_KEY = 'renea_sidebar_recolhido';
@@ -32,7 +33,7 @@ const readClosedGroups = (): string[] => {
   }
 };
 
-export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebarProps) {
+export function DesktopSidebar({ activeTab, groups, onNavigate, onOpenModules }: DesktopSidebarProps) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [closedGroups, setClosedGroups] = useState<string[]>(readClosedGroups);
 
@@ -150,6 +151,17 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
           <p className="px-3 text-xs text-[#8dc4ad]">Nenhum módulo encontrado.</p>
         )}
       </nav>
+      <div className={`border-t border-white/10 p-3 ${collapsed ? 'px-2' : ''}`}>
+        <button
+          type="button"
+          onClick={onOpenModules}
+          title="Todos os módulos"
+          className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold text-[#bcded0] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60 ${collapsed ? 'justify-center px-0' : ''}`}
+        >
+          <LayoutGrid className="h-[1.05rem] w-[1.05rem] shrink-0 text-[#8fb6a8]" strokeWidth={ICON_STROKE} aria-hidden="true" />
+          {!collapsed && <span>Todos os módulos</span>}
+        </button>
+      </div>
     </aside>
   );
 }
