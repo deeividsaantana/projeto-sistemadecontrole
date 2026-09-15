@@ -14,6 +14,7 @@ import {
   posicaoDeHoje,
 } from '../utils/cronograma';
 import { Badge, EmptyState, PageHeader, isoDay } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import { formatarData } from '../utils/formato';
 
 interface CronogramaTabProps {
@@ -36,8 +37,10 @@ export default function CronogramaTab({ planos, producao, frentes }: CronogramaT
   const marcaHoje = posicaoDeHoje(janela, hoje);
   const atrasadas = barras.filter(item => item.atrasado).length;
 
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+
   return (
-    <div id="cronograma-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="cronograma-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Cronograma"
         description="Planos de produção e frentes com data prevista, na mesma linha do tempo."
@@ -50,7 +53,7 @@ export default function CronogramaTab({ planos, producao, frentes }: CronogramaT
           { label: 'Início', valor: formatarData(janela.inicio) },
           { label: 'Fim', valor: formatarData(janela.fim) },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+          <div key={item.label} data-linha-lista className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
             <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
@@ -79,7 +82,9 @@ export default function CronogramaTab({ planos, producao, frentes }: CronogramaT
             <ul className="min-w-[720px] divide-y divide-slate-100">
               {barras.map(barra => {
                 const posicao = posicaoDaBarra(barra, janela);
-                return (
+                const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+
+  return (
                   <li key={barra.id} className="grid grid-cols-[minmax(10rem,16rem)_1fr] items-center gap-3 p-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-slate-800">{barra.titulo}</p>

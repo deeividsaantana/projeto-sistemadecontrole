@@ -29,6 +29,7 @@ import {
   TableShell,
   isoDay,
 } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 interface InspecoesTabProps {
   inspecoes: Inspecao[];
@@ -63,6 +64,7 @@ export default function InspecoesTab({
 }: InspecoesTabProps) {
   const hoje = isoDay(new Date());
   const [busca, setBusca] = useState('');
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
   const [filtro, setFiltro] = useState<'abertas' | 'atrasadas' | 'todas'>('abertas');
   const [erro, setErro] = useState('');
   const [aberto, setAberto] = useState(false);
@@ -170,7 +172,7 @@ export default function InspecoesTab({
   };
 
   return (
-    <div id="inspecoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="inspecoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Inspeções"
         description="Segurança, meio ambiente e qualidade de campo, com prazo e responsável pela correção."
@@ -252,7 +254,7 @@ export default function InspecoesTab({
                 const atrasada = estaAtrasada(item, hoje);
                 const dias = diasParaPrazo(item, hoje);
                 return (
-                  <tr key={item.id} className={`transition-colors hover:bg-slate-50 ${atrasada ? 'bg-rose-50/50' : ''}`}>
+                  <tr key={item.id} data-linha-lista className={`transition-colors hover:bg-slate-50 ${atrasada ? 'bg-rose-50/50' : ''}`}>
                     <td className="p-3 font-mono text-slate-600">{item.numero}</td>
                     <td className="p-3 text-slate-600">{formatarData(item.data)}</td>
                     <td className="p-3 text-slate-600">{item.tipo}</td>

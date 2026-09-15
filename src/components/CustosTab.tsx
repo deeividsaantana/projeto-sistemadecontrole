@@ -42,6 +42,7 @@ import {
   isoDay,
   type PeriodValue,
 } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 interface CustosTabProps {
   lancamentos: LancamentoCusto[];
@@ -73,6 +74,7 @@ export default function CustosTab({
 }: CustosTabProps) {
   const hoje = isoDay(new Date());
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
   const [busca, setBusca] = useState('');
   const [erro, setErro] = useState('');
   const [aberto, setAberto] = useState(false);
@@ -164,7 +166,7 @@ export default function CustosTab({
   };
 
   return (
-    <div id="custos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="custos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Custos"
         description="Consolidado do período: combustível e manutenção vêm dos registros; locação e terceiros são lançados aqui."
@@ -264,7 +266,7 @@ export default function CustosTab({
               {paginacao.visiveis.map(item => {
                 const manual = item.origem === 'Lançamento';
                 return (
-                  <tr key={item.id} className="transition-colors hover:bg-slate-50">
+                  <tr key={item.id} data-linha-lista className="transition-colors hover:bg-slate-50">
                     <td className="p-3 text-slate-600">{formatarData(item.data)}</td>
                     <td className="p-3 text-slate-600">{item.categoria}</td>
                     <td className="max-w-80 truncate p-3 font-bold text-slate-800" title={item.descricao}>{item.descricao}</td>

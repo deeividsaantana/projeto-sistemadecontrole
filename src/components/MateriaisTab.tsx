@@ -19,6 +19,7 @@ import {
   TableShell,
   isoDay,
 } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 interface MateriaisTabProps {
   materiais: Material[];
@@ -46,6 +47,7 @@ export default function MateriaisTab({
   const hoje = isoDay(new Date());
   const [aba, setAba] = useState<'estoque' | 'movimentos' | 'cadastro'>('estoque');
   const [busca, setBusca] = useState('');
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca]);
   const [erro, setErro] = useState('');
   const [formMaterial, setFormMaterial] = useState<Material | null>(null);
   const [materialAberto, setMaterialAberto] = useState(false);
@@ -165,7 +167,7 @@ export default function MateriaisTab({
   const saldoAtualDoForm = movimento.materialId ? saldoDoMaterial(movimentos, movimento.materialId) : 0;
 
   return (
-    <div id="materiais-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="materiais-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Materiais"
         description="Cadastro, movimentação e estoque. O saldo vem da soma dos movimentos."
@@ -206,7 +208,7 @@ export default function MateriaisTab({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pendencias.map(item => (
-                  <tr key={item.movimentoId}>
+                  <tr key={item.movimentoId} data-linha-lista>
                     <td className="p-3">
                       <strong className="block font-bold text-slate-900">{item.material}</strong>
                       <span className="text-[11px] text-slate-500">{item.data.split('-').reverse().join('/')}</span>
@@ -298,7 +300,7 @@ export default function MateriaisTab({
               </TableHead>
               <TableBody>
                 {movimentosFiltrados.map(item => (
-                  <tr key={item.id} className="transition-colors hover:bg-slate-50">
+                  <tr key={item.id} data-linha-lista className="transition-colors hover:bg-slate-50">
                     <td className="p-3 text-slate-600">{formatarData(item.data)}</td>
                     <td className="p-3">
                       <Badge tone={item.tipo === 'Entrada' ? 'success' : item.tipo === 'Saída' ? 'danger' : 'neutral'}>{item.tipo}</Badge>

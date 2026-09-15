@@ -26,6 +26,7 @@ import {
   TableShell,
   isoDay,
 } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 interface MedicoesTabProps {
   medicoes: Medicao[];
@@ -60,6 +61,7 @@ export default function MedicoesTab({
 }: MedicoesTabProps) {
   const hoje = isoDay(new Date());
   const [busca, setBusca] = useState('');
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
   const [erro, setErro] = useState('');
   const [aberto, setAberto] = useState(false);
   const [editada, setEditada] = useState<Medicao | null>(null);
@@ -151,7 +153,7 @@ export default function MedicoesTab({
   const total = totalMedicao(itens);
 
   return (
-    <div id="medicoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="medicoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Medições"
         description="Boletim por período com quantidades sugeridas pela produção e confirmadas por quem mede."
@@ -205,7 +207,7 @@ export default function MedicoesTab({
             </TableHead>
             <TableBody>
               {listadas.map(item => (
-                <tr key={item.id} className="transition-colors hover:bg-slate-50">
+                <tr key={item.id} data-linha-lista className="transition-colors hover:bg-slate-50">
                   <td className="p-3 font-mono text-slate-600">{item.numero}</td>
                   <td className="p-3 text-slate-600">{formatarData(item.periodoInicio)} → {formatarData(item.periodoFim)}</td>
                   <td className="p-3 text-slate-600">{item.itens.length}</td>

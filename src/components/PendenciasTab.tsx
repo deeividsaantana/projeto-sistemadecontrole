@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { ArrowUpRight, CheckCircle2, ChevronRight, ListChecks } from 'lucide-react';
 import { listarPendencias, resumoPendencias, type ContextoPendencias, type GravidadePendencia } from '../utils/pendencias';
 import { Badge, EmptyState, PageHeader, PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 interface PendenciasTabProps {
   dados: Omit<ContextoPendencias, 'hoje' | 'inicio' | 'fim'>;
@@ -43,8 +44,10 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
   }, [pendencias]);
   const selecionada = pendencias.find(item => item.id === selectedId) || pendencias[0];
 
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+
   return (
-    <div id="pendencias-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="pendencias-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Pendências"
         description="Tudo que está em aberto no sistema, derivado dos registros — cada linha leva para onde se resolve."
@@ -58,7 +61,7 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
           { label: 'Gravidade alta', valor: String(resumo.altas) },
           { label: 'Áreas afetadas', valor: String(resumo.categorias) },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+          <div key={item.label} data-linha-lista className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
             <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
@@ -83,7 +86,9 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
                 <ul className="divide-y divide-slate-100">
                   {itens.map(item => {
                     const active = selecionada?.id === item.id;
-                    return (
+                    const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+
+  return (
                       <li key={item.id}>
                         <button
                           type="button"

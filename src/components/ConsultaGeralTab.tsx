@@ -3,6 +3,7 @@ import { Building2, Eye, Fuel, HardHat, Search, TicketCheck, Truck, Users } from
 import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { CountUp, PageHeader, Pagination, statusTone } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 type GeneralRow = {
   id: string;
@@ -116,8 +117,10 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
     ['Colaboradores', funcionarios.length, Users], ['Combustível', abastecimentos.length, Fuel], ['Tickets', tickets.length, TicketCheck],
   ] as const;
 
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+
   return (
-    <div className="space-y-5" id="consulta-geral-tab">
+    <div ref={escopoMotion} className="space-y-5" id="consulta-geral-tab">
       <PageHeader title="Consulta Geral" description="Localize cadastros e movimentos de todo o sistema sem abrir cada módulo." />
       <section className="rounded-lg border border-slate-200 bg-white p-5 md:p-6">
         <div className="grid gap-3 md:grid-cols-[1fr_220px_220px]">
@@ -179,7 +182,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pagedRows.map(row => (
-                  <tr key={row.id} className="transition hover:bg-emerald-50/40">
+                  <tr key={row.id} data-linha-lista className="transition hover:bg-emerald-50/40">
                     <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-slate-600">{row.date ? row.date.split('-').reverse().join('/') : '—'}</td>
                     <td className="max-w-[220px] truncate px-4 py-3 font-bold text-slate-900" title={row.prefix || row.title}>{row.prefix || row.title}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-600">{row.module}</td>

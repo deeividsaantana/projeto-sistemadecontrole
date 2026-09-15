@@ -34,6 +34,7 @@ import {
   TableShell,
   isoDay,
 } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 interface FvsTabProps {
   fichas: FichaVerificacaoServico[];
@@ -73,6 +74,7 @@ export default function FvsTab({
 }: FvsTabProps) {
   const hoje = isoDay(new Date());
   const [aba, setAba] = useState<'fichas' | 'modelos'>('fichas');
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
   const [busca, setBusca] = useState('');
   const [erro, setErro] = useState('');
   const [fichaAberta, setFichaAberta] = useState(false);
@@ -212,7 +214,7 @@ export default function FvsTab({
   const sugerida = situacaoSugerida(itens);
 
   return (
-    <div id="fvs-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="fvs-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="FVS"
         description="Ficha de Verificação de Serviço. Item obrigatório não conforme não é aprovado."
@@ -281,7 +283,7 @@ export default function FvsTab({
             </TableHead>
             <TableBody>
               {modelosDisponiveis.map(modelo => (
-                <tr key={modelo.id} className="transition-colors hover:bg-slate-50">
+                <tr key={modelo.id} data-linha-lista className="transition-colors hover:bg-slate-50">
                   <td className="p-3 font-bold text-slate-800">{modelo.nome}</td>
                   <td className="p-3 text-slate-600">{servicos.find(item => item.id === modelo.servicoId)?.descricao || 'Todos'}</td>
                   <td className="p-3 text-slate-600">{modelo.itens.length}</td>
@@ -315,7 +317,7 @@ export default function FvsTab({
               {filtradas.map(ficha => {
                 const linha = resumoFvs(ficha.itens);
                 return (
-                  <tr key={ficha.id} className="transition-colors hover:bg-slate-50">
+                  <tr key={ficha.id} data-linha-lista className="transition-colors hover:bg-slate-50">
                     <td className="p-3 font-mono text-slate-600">{ficha.numero}</td>
                     <td className="p-3 text-slate-600">{formatarData(ficha.data)}</td>
                     <td className="p-3 font-bold text-slate-800">{ficha.local}</td>

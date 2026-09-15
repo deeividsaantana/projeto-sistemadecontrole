@@ -19,6 +19,7 @@ import type {
 } from '../types';
 import { comprimirImagem, validarFoto } from '../utils/imagem';
 import { Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import { formatarData } from '../utils/formato';
 
 interface DiarioObraTabProps {
@@ -54,6 +55,7 @@ export default function DiarioObraTab({
   const [dia, setDia] = useState(hoje);
   const [obraId, setObraId] = useState('');
   const inputFoto = useRef<HTMLInputElement>(null);
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>([dia, obraId]);
   const [erro, setErro] = useState('');
 
   // Soft delete: diário inativado sai da tela sem sumir do histórico.
@@ -132,7 +134,7 @@ export default function DiarioObraTab({
   };
 
   return (
-    <div id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Diário de Obra"
         description="O dia consolidado. Clima, visitas e fotos são registrados aqui; o resto vem dos módulos."
@@ -154,7 +156,7 @@ export default function DiarioObraTab({
           { label: 'Frota informada', valor: String(resumo.frota.length) },
           { label: 'Horas apontadas', valor: `${resumo.horasApontadas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` },
         ].map(item => (
-          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+          <div key={item.label} data-linha-lista className="rounded-lg border border-slate-200 bg-white p-4">
             <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>

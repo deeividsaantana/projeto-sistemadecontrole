@@ -35,6 +35,7 @@ import {
   TableShell,
   isoDay,
 } from '../shared/ui';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 interface NaoConformidadesTabProps {
   registros: NaoConformidade[];
@@ -70,6 +71,7 @@ export default function NaoConformidadesTab({
 }: NaoConformidadesTabProps) {
   const hoje = isoDay(new Date());
   const [busca, setBusca] = useState('');
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
   const [filtro, setFiltro] = useState<'abertas' | 'todas'>('abertas');
   const [erro, setErro] = useState('');
   const [aberto, setAberto] = useState(false);
@@ -186,7 +188,7 @@ export default function NaoConformidadesTab({
   };
 
   return (
-    <div id="nao-conformidades-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="nao-conformidades-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Não Conformidades"
         description="Causa raiz, ação corretiva e verificação de eficácia, ligadas à FVS e à inspeção de origem."
@@ -277,7 +279,7 @@ export default function NaoConformidadesTab({
               {paginacao.visiveis.map(item => {
                 const atrasada = estaAtrasada(item, hoje);
                 return (
-                  <tr key={item.id} className={`transition-colors hover:bg-slate-50 ${atrasada ? 'bg-rose-50/50' : ''}`}>
+                  <tr key={item.id} data-linha-lista className={`transition-colors hover:bg-slate-50 ${atrasada ? 'bg-rose-50/50' : ''}`}>
                     <td className="p-3 font-mono text-slate-600">{item.numero}</td>
                     <td className="p-3 text-slate-600">{formatarData(item.data)}</td>
                     <td className="p-3 text-slate-600">{item.origemNumero ? `${item.origem} ${item.origemNumero}` : item.origem}</td>
