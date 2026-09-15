@@ -38,6 +38,8 @@ import CombustivelOperacionalTab from './CombustivelOperacionalTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
 
 interface LancamentosTabProps {
@@ -121,6 +123,7 @@ export default function LancamentosTab({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const equipamentoFieldRef = useRef<HTMLSelectElement>(null);
+  const moduleRef = useRef<HTMLDivElement>(null);
 
   // Foco automático no campo de Frota/Equipamento ao abrir o formulário: data e
   // hora já vêm preenchidas por padrão, então é o próximo campo que o usuário
@@ -1088,9 +1091,24 @@ export default function LancamentosTab({
     return lub.data.includes(q) || lub.compartimento.toLowerCase().includes(q) || (eq && eq.prefixo.toLowerCase().includes(q));
   }).sort((a,b) => b.data.localeCompare(a.data));
 
+  // Cascata curta nas linhas das tabelas operacionais. O hook fica antes do
+  // primeiro retorno condicional para manter a ordem dos hooks estável entre
+  // os dois modos da aba.
+  useGSAP(() => {
+    const root = moduleRef.current;
+    if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const rows = root.querySelectorAll('[data-launch-row]');
+    if (!rows.length) return;
+    gsap.fromTo(
+      rows,
+      { autoAlpha: 0, y: 8 },
+      { autoAlpha: 1, y: 0, duration: 0.32, stagger: 0.022, ease: 'power2.out', clearProps: 'transform,opacity,visibility' },
+    );
+  }, { scope: moduleRef, dependencies: [mode, filteredAbastecimentos.length, filteredLubrificacoes.length] });
+
   if (String(mode) === 'abastecimentos') {
     return (
-      <>
+      <div ref={moduleRef}>
         {validationError && (
           <div className="mb-4 flex items-start gap-3 border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-700">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -1160,12 +1178,12 @@ export default function LancamentosTab({
           onCancel={handleCancelImport}
           onConfirm={handleConfirmImport}
         />
-      </>
+      </div>
     );
   }
 
   return (
-    <div className="erp-module erp-module--lancamentos space-y-5" id="lancamentos-tab">
+    <div ref={moduleRef} className="erp-module erp-module--lancamentos space-y-5" id="lancamentos-tab">
       
       {/* Tab Header bar */}
       <PageHeader
@@ -1679,7 +1697,7 @@ export default function LancamentosTab({
                     };
 
                     return (
-                      <tr key={ab.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={ab.id} data-launch-row className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-5"><input type="checkbox" checked={selectedAbastecimentoIds.includes(ab.id)} onChange={event => setSelectedAbastecimentoIds(current => event.target.checked ? [...current, ab.id] : current.filter(id => id !== ab.id))} /></td>
                         <td className="py-4 px-5">
                           <span className="font-bold text-slate-700 block">{ab.data.split('-').reverse().join('/')}</span>
@@ -1757,7 +1775,7 @@ export default function LancamentosTab({
                     const prod = lubrificantes.find(p => p.id === lub.produtoLubrificacaoId);
 
                     return (
-                      <tr key={lub.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={lub.id} data-launch-row className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-5">
                           <span className="font-bold text-slate-700 block">{lub.data.split('-').reverse().join('/')}</span>
                           <span className="text-[10px] text-slate-500 font-mono">{lub.hora}</span>
