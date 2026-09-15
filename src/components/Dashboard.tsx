@@ -20,6 +20,7 @@ import { OBRA } from '../config/obra';
 import { FLEET_STATUS_DEFINITIONS } from '../fleet/status';
 import { FLEET_OPERATIONAL_STATUS } from '../fleet/domain';
 import { CountUp } from '../shared/ui';
+import { dashboardPresenceMetrics } from '../utils/dashboardPresenceMetrics';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -326,19 +327,7 @@ export default function Dashboard({
     return dates.at(-1) || latest.date || new Date().toISOString().slice(0, 10);
   }, [abastecimentos, controlesEquipamentos, latest.date, listasPresenca, movimentosMaterial, presencasLink, producao]);
 
-  const activeEmployees = funcionarios.filter(item => item.ativo && !['INATIVO', 'DESMOBILIZADO'].includes(item.status || 'ATIVO'));
-  const linkedExpected = new Set(gruposEquipe
-    .filter(item => item.status === 'ativo')
-    .flatMap(item => item.funcionarioIds || []));
-  const publicPresenceToday = presencasLink.filter(item => !item.inativoEm && item.data === referenceDate);
-  const publicPresentIds = new Set(publicPresenceToday
-    .filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status))
-    .map(item => item.funcionarioId));
-  const legacyListsToday = listasPresenca.filter(item => item.data === referenceDate);
-  const legacyPresentIds = new Set(legacyListsToday.flatMap(item => item.funcionarios.filter(person => person.presente).map(person => person.funcionarioId)));
-  const presentCount = publicPresenceToday.length ? publicPresentIds.size : legacyPresentIds.size;
-  const expectedCount = linkedExpected.size || activeEmployees.length;
-  const presencePercent = expectedCount ? Math.min(100, (presentCount / expectedCount) * 100) : undefined;
+  const presenceMetrics = dashboardPresenceMetrics(funcionarios, presencasLink, listasPresenca, referenceDate);
 
   const productionToday = producao.filter(item => item.ativo && item.data === referenceDate);
   const productionServices = new Set(productionToday.map(item => item.servicoId || item.servicoDescricao));
@@ -540,7 +529,7 @@ export default function Dashboard({
             <span className="text-[10px] font-semibold tabular-nums text-[#718087]">Posição de {formatDate(referenceDate)}</span>
           </header>
           <div className="dashboard-integrated-grid grid">
-            <IntegratedMetric icon={Users} eyebrow="Pessoas em campo" value={String(presentCount)} detail={expectedCount ? `${presentCount} de ${expectedCount} previstos` : 'Sem efetivo previsto cadastrado'} progress={presencePercent} onClick={() => onNavigate('presenca')} />
+            <IntegratedMetric icon={Users} eyebrow="Pessoas em campo" value={String(presenceMetrics.confirmed)} detail={presenceMetrics.officialActive ? `${presenceMetrics.confirmed} confirmados de ${presenceMetrics.officialActive} no efetivo · ${presenceMetrics.pending} pendente(s) · ${presenceMetrics.absent} ausente(s)` : 'Sem efetivo oficial cadastrado'} progress={presenceMetrics.percentage} onClick={() => onNavigate('presenca')} />
             <IntegratedMetric icon={BarChart3} eyebrow="Produção do dia" value={productionValue} detail={`${productionServices.size} serviço(s) apontado(s)`} onClick={() => onNavigate('producao')} />
             <IntegratedMetric icon={Fuel} eyebrow="Combustível" value={`${fuelLiters.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L`} detail={fuelPending ? `${fuelPending} lançamento(s) pedem conferência` : `${fuelOnReferenceDate.length} abastecimento(s) conferidos`} onClick={() => onNavigate('lancamentos')} />
             <IntegratedMetric icon={HardHat} eyebrow="Frentes ativas" value={String(executingFronts.length)} detail={`${plannedFronts.length} planejada(s) para iniciar`} onClick={() => onNavigate('frentes')} />

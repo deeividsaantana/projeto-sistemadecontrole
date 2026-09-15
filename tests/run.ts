@@ -26,6 +26,7 @@ import './presencaManual.test';
 import './mapaChuva.test';
 import './recebimentoMaterial.test';
 import './painelPresenca.test';
+import './dashboardPresenceMetrics.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';
