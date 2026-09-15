@@ -31,11 +31,10 @@ npm run build
 
 ## Publicação
 
-O frontend e as funções estão preparados para Netlify. A leitura de documentos de combustível funciona localmente e exige revisão humana antes da gravação.
+O deploy de produção roda no Render (`server/index.js` serve o build do frontend e as mesmas funções em `netlify/functions/`, adaptadas para Express). A leitura de documentos de combustível funciona localmente e exige revisão humana antes da gravação.
 
 Consulte:
 
-- `INSTRUCOES_PUBLICACAO_NETLIFY.md`
 - `INSTRUCOES_CONTAS_FIREBASE.md`
 - `LEGADO_SGE_CONVERSAO.md`
 - `VALIDACAO_V7.md`
