@@ -1474,8 +1474,9 @@ export default function App() {
     action: HistoryLog['acao'],
     description: string,
     newHistoryList: HistoryLog[],
-    stateUpdateFn: () => void,
     audit?: Pick<HistoryLog, 'registroId' | 'valorAnterior' | 'valorNovo' | 'tipoOperacao'>,
+    stateUpdateFn: any,
+    onError?: any,
   ) => {
     stateUpdateFn();
     const changeLog: HistoryLog = {
@@ -1522,6 +1523,10 @@ export default function App() {
         'error',
         'Sistema Local',
       );
+      // Invoke error callback to notify parent component
+      if (onError) {
+        onError(new Error(res.message));
+      }
     });
   };
 
@@ -1566,7 +1571,7 @@ export default function App() {
   };
 
   // CRUD State Handlers
-  const handleSaveEmpresa = (item: Empresa, isNew: boolean) => {
+  const handleSaveEmpresa = (item: Empresa, isNew: boolean, onError?: (error: Error) => void) => {
     const now = new Date().toISOString();
     const previous = empresas.find(x => x.id === item.id);
     const normalizedItem: Empresa = {
@@ -1588,15 +1593,16 @@ export default function App() {
       updated = empresas.map(x => x.id === item.id ? normalizedItem : x);
     }
     saveAndLog(
-      'Empresas', 
-      isNew ? 'Criou' : 'Editou', 
+      'Empresas',
+      isNew ? 'Criou' : 'Editou',
       `${isNew ? 'Cadastrou' : 'Editou'} a empresa/fornecedor "${normalizedItem.nome}"${normalizedItem.cnpj ? ` com CNPJ ${normalizedItem.cnpj}` : ''}.`,
       historyLogs,
+      { registroId: normalizedItem.id, valorAnterior: previous, valorNovo: normalizedItem, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
       () => {
         setEmpresas(updated);
         writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(updated));
       },
-      { registroId: normalizedItem.id, valorAnterior: previous, valorNovo: normalizedItem, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
+      onError,
     );
   };
 
@@ -1605,15 +1611,15 @@ export default function App() {
     if (!item) return;
     const updated = empresas.filter(x => x.id !== id);
     saveAndLog(
-      'Empresas', 
+      'Empresas',
       'Excluiu',
       `Excluiu permanentemente a empresa/fornecedor "${item.nome}".`,
       historyLogs,
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
       () => {
         setEmpresas(updated);
         writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -1631,15 +1637,15 @@ export default function App() {
       updated = obras.map(x => x.id === item.id ? item : x);
     }
     saveAndLog(
-      'Obras/Locais', 
-      isNew ? 'Criou' : 'Editou', 
+      'Obras/Locais',
+      isNew ? 'Criou' : 'Editou',
       `${isNew ? 'Cadastrou' : 'Editou'} a obra "${item.nome}" em ${item.endereco}.`,
       historyLogs,
+      { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
       () => {
         setObras(updated);
         writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
       },
-      { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
     );
   };
 
@@ -1648,15 +1654,15 @@ export default function App() {
     if (!item) return;
     const updated = obras.filter(x => x.id !== id);
     saveAndLog(
-      'Obras/Locais', 
+      'Obras/Locais',
       'Excluiu',
       `Excluiu permanentemente a obra/local "${item.nome}".`,
       historyLogs,
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
       () => {
         setObras(updated);
         writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 

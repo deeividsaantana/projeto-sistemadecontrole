@@ -135,6 +135,7 @@ export default function CadastrosTab({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const importFileInputRef = useRef<HTMLInputElement>(null);
+  const saveErrorRef = useRef(false);
   const [importFeedback, setImportFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [pendingImport, setPendingImport] = useState<{ fileName: string; rows: Record<string, string>[] } | null>(null);
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
@@ -272,6 +273,7 @@ export default function CadastrosTab({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError('');
+    saveErrorRef.current = false;
 
     const isNew = editingId === null;
     const currentId = isNew
@@ -288,13 +290,19 @@ export default function CadastrosTab({
                 : `${subTab.substring(0, 3).toUpperCase()}-${Date.now()}`
       : editingId!;
 
+    // Error callback to show validation errors if cloud save fails
+    const onError = (err: Error) => {
+      saveErrorRef.current = true;
+      setValidationError(err.message);
+    };
+
     if (subTab === 'empresas' || subTab === 'fornecedores') {
       if (!empNome.trim()) {
         setValidationError('Nome da empresa/fornecedor é obrigatório!');
         return;
       }
       const previous = empresas.find(item => item.id === currentId);
-      onSaveEmpresa({
+      onSaveEmpresa({ // error callback parameter to handle cloud save failures
         id: currentId,
         nome: empNome.trim(),
         cnpj: empCnpj.trim(),
@@ -303,7 +311,7 @@ export default function CadastrosTab({
         tipos: Array.from(new Set([...(previous?.tipos || []), subTab === 'fornecedores' ? 'FORNECEDOR' as const : 'EMPRESA' as const])),
         status: previous?.status || 'ATIVO',
         criadoEm: previous?.criadoEm,
-      }, isNew);
+      }, isNew, onError);
 
     } else if (subTab === 'obras') {
       if (!obrNome.trim() || !obrEndereco.trim()) {
@@ -421,9 +429,13 @@ export default function CadastrosTab({
       onSaveEtapaServico({ id: currentId, nome: simpleName.trim() }, isNew);
     }
 
-    // Success close
-    setIsFormOpen(false);
-    resetFormState();
+    // Close modal only if no error occurred (check after brief delay to let error callback execute)
+    setTimeout(() => {
+      if (!saveErrorRef.current) {
+        setIsFormOpen(false);
+        resetFormState();
+      }
+    }, 50);
   };
 
   // 4. Delete Handler with safe prompt confirmation
