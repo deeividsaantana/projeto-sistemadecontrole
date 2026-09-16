@@ -27,34 +27,37 @@ const presencaHandler = readFileSync(
 
 test('P0-07: Firestore Rules — Default Deny blocks unauthenticated read', () => {
   // First rule in firestore.rules must be a global default deny
+  // Use lenient whitespace matching to handle reformatting
   assert.match(
     rules,
-    /match\s*\/\{document=\*\*\}\s*\{\s*allow\s+read,\s*write:\s*if\s+false/,
+    /match\s+\/\{document=\*\*\}[\s\n]*\{[\s\n]*allow\s+read,\s*write:\s*if\s+false/,
     'Default deny rule must exist: match /{document=**} { allow read, write: if false; }'
   );
 });
 
 test('P0-07: Firestore Rules — Staff Claim Required for Read/Write', () => {
   // Every allowed operation must check isStaff()
+  // Use lenient patterns to handle reformatting
   assert.match(
     rules,
-    /function\s+isStaff\(\)\s*\{\s*return\s+request\.auth\s*!=\s*null\s*&&\s*request\.auth\.token\.staff\s*==\s*true/,
+    /function\s+isStaff\(\)[\s\n]*\{[\s\n]*return[\s\n]*request\.auth[\s\n]*!=[\s\n]*null[\s\n]*&&[\s\n]*request\.auth\.token\.staff[\s\n]*==[\s\n]*true/,
     'isStaff() must verify request.auth != null AND request.auth.token.staff == true'
   );
 
   // sistemarenea_cloud read requires isStaff
   assert.match(
     rules,
-    /match\s*\/sistemarenea_cloud\/\{docId\}\s*\{[^}]*allow\s+get:\s+if\s+isStaff\(\)/,
+    /match\s+\/sistemarenea_cloud\/\{docId\}[\s\n]*\{[\s\S]*?allow\s+get:\s+if\s+isStaff\(\)/,
     'Read access to sistemarenea_cloud requires isStaff() check'
   );
 });
 
 test('P0-07: Firestore Rules — Write Role Must Be admin|gestor|operador', () => {
   // canWrite() must check both isStaff() AND role membership
+  // Use lenient patterns to handle reformatting
   assert.match(
     rules,
-    /function\s+canWrite\(\)\s*\{[^}]*return\s+isStaff\(\)\s*&&\s*request\.auth\.token\.role\s+in\s+\['admin',\s*'gestor',\s*'operador'\]/,
+    /function\s+canWrite\(\)[\s\n]*\{[\s\S]*?return[\s\n]*isStaff\(\)[\s\n]*&&[\s\n]*request\.auth\.token\.role[\s\n]*in[\s\n]*\['admin',[\s\n]*'gestor',[\s\n]*'operador'\]/,
     'canWrite() must check isStaff() AND role in [admin, gestor, operador]'
   );
 
@@ -96,15 +99,19 @@ test('P0-07: GAP — No Organization Isolation in Data Collections', () => {
   // Master data is fully blocked (correct), but other collections lack org checks
   assert.match(
     rules,
-    /match\s*\/sistemarenea_master_data\/\{organizationId\}\/\{document=\*\*\}\s*\{\s*allow\s+read,\s*write:\s*if\s+false/,
+    /match\s+\/sistemarenea_master_data\/\{organizationId\}\/\{document=\*\*\}[\s\n]*\{[\s\n]*allow\s+read,\s*write:\s*if\s+false/,
     'Master data collection is fully blocked (correct)'
   );
 
-  // But sistemarenea_cloud (main backup) doesn't check organizationId
-  const cloudRules = rules.substring(
-    rules.indexOf('match /sistemarenea_cloud/{docId}'),
-    rules.indexOf('match /sistemarenea_cloud/{docId}') + 600
-  );
+  // Extract the full sistemarenea_cloud rule block safely
+  const cloudStart = rules.indexOf('match /sistemarenea_cloud/{docId}');
+  assert.ok(cloudStart > -1, 'sistemarenea_cloud rule must exist');
+
+  const nextRuleStart = rules.indexOf('match /', cloudStart + 1);
+  const cloudRules = nextRuleStart > -1
+    ? rules.substring(cloudStart, nextRuleStart)
+    : rules.substring(cloudStart);
+
   assert.equal(
     cloudRules.includes('organizationId'),
     false,

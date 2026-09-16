@@ -2565,7 +2565,8 @@ export default function App() {
   };
 
   const retryPendingOfflineCommands = async () => {
-    if (!navigator.onLine || isRetryingOfflineCommands) return;
+    // Require both network connectivity AND Firebase connection
+    if (!navigator.onLine || !isFirebaseConnected || isRetryingOfflineCommands) return;
     setIsRetryingOfflineCommands(true);
     try {
       const result = await retryOfflineCommands({
@@ -2582,6 +2583,14 @@ export default function App() {
           'Sistema Local',
         );
       }
+    } catch (error) {
+      // Notify user of retry failure
+      addNotification(
+        'Erro ao sincronizar',
+        `Falha ao sincronizar pendências: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+        'error',
+        'Sistema Local',
+      );
     } finally {
       await refreshOfflineCommandCount();
       setIsRetryingOfflineCommands(false);
