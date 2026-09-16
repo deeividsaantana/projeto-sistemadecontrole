@@ -380,8 +380,17 @@ const loadGroupHistory = async (database, grupoId) => {
     return indexGroupHistory(snapshot.docs);
   } catch (error) {
     if (error?.code !== 9 && !String(error?.message || '').includes('index')) throw error;
+    // Fallback: fetch without ordering, then sort in memory to maintain sort order
+    // and limit processing to a reasonable batch size.
     const snapshot = await base.get();
-    return indexGroupHistory(snapshot.docs);
+    const sortedDocs = snapshot.docs
+      .sort((a, b) => {
+        const dateA = a.data().payload?.data || '';
+        const dateB = b.data().payload?.data || '';
+        return dateB.localeCompare(dateA); // descending order
+      })
+      .slice(0, HISTORY_DOCS_LIMIT);
+    return indexGroupHistory(sortedDocs);
   }
 };
 

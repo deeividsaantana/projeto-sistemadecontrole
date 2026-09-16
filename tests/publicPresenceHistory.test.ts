@@ -61,3 +61,17 @@ test('a interface bloqueia edicao ao consultar um dia anterior', () => {
   assert.match(source, /if \(!group \|\| viewingPastDay\) return;/);
   assert.match(source, /Dia anterior: consulta apenas/);
 });
+
+test('fallback ordena documentos em memoria quando indice composto nao existe', () => {
+  // Simula documentos desordenados (como viriam de base.get() sem orderBy)
+  const unsortedDocs = [
+    { data: () => submission('2026-09-01', [{ funcionarioId: 'emp-1', status: 'Presente' }]) },
+    { data: () => submission('2026-09-05', [{ funcionarioId: 'emp-1', status: 'Ausente' }]) },
+    { data: () => submission('2026-09-02', [{ funcionarioId: 'emp-1', status: 'Atestado' }]) },
+    { data: () => submission('2026-09-10', [{ funcionarioId: 'emp-1', status: 'Férias' }]) },
+  ];
+
+  const { datas } = __testing.indexGroupHistory(unsortedDocs);
+  // Verifica que mesmo com docs desordenados, o resultado está em ordem decrescente
+  assert.deepEqual(datas, ['2026-09-10', '2026-09-05', '2026-09-02', '2026-09-01']);
+});
