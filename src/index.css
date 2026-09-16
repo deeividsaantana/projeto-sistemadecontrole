@@ -1824,6 +1824,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-integrated-metric { min-width: 0; min-height: 9.75rem; padding: 1rem; border-top: 1px solid #dfe5e1 !important; }
 }
 
+.fuel-field-error { color: #b64223; font-size: .72rem; font-weight: 650; }
+.fuel-entry-form [aria-invalid="true"] { border-color: #c95332; box-shadow: 0 0 0 2px rgb(201 83 50 / .1); }
+
 /* Reports are a working surface, not a static export menu. */
 .reports-workspace {
   max-width: 1580px;

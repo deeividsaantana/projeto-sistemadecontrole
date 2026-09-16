@@ -32,6 +32,9 @@ export default function CombustivelOperacionalTab({
   const [search, setSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ data: today(), hora: now(), equipamentoId: '', tipoCombustivelId: '', comboioId: '', quantidadeLitros: '', leitura: '', responsavel: '', local: '', observacao: '' });
   const activeRecords = useMemo(() => abastecimentos.filter(item => !item.inativoEm && item.status !== 'Cancelado').sort((a, b) => `${b.data}${b.hora}`.localeCompare(`${a.data}${a.hora}`)), [abastecimentos]);
   const matched = useMemo(() => {
@@ -47,28 +50,51 @@ export default function CombustivelOperacionalTab({
   const litersToday = activeRecords.filter(item => item.data === today()).reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0);
   const pending = activeRecords.filter(item => item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || item.alertas?.some(alert => alert.severidade !== 'info')).length;
   const uniqueFleet = new Set(activeRecords.filter(item => item.data === today()).map(item => item.equipamentoId)).size;
-  const setField = (field: keyof typeof form, value: string) => setForm(current => ({ ...current, [field]: value }));
+  const setField = (field: keyof typeof form, value: string) => {
+    setForm(current => ({ ...current, [field]: value }));
+    setFieldErrors(current => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+    setSuccess('');
+  };
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const quantity = Number(form.quantidadeLitros.replace(',', '.'));
-    if (!form.equipamentoId || !form.tipoCombustivelId || !Number.isFinite(quantity) || quantity <= 0) {
-      setError('Informe frota, combustível e uma quantidade válida.');
+    const nextErrors: Record<string, string> = {};
+    if (!form.equipamentoId) nextErrors.equipamentoId = 'Selecione a frota abastecida.';
+    if (!form.tipoCombustivelId) nextErrors.tipoCombustivelId = 'Selecione o tipo de combustível.';
+    if (!Number.isFinite(quantity) || quantity <= 0) nextErrors.quantidadeLitros = 'Informe uma quantidade maior que zero.';
+    if (Object.keys(nextErrors).length) {
+      setFieldErrors(nextErrors);
+      setError('Revise os campos destacados antes de salvar.');
       return;
     }
+    setIsSaving(true);
     const reading = Number(form.leitura.replace(',', '.')) || 0;
     const selectedEquipment = equipamentos.find(item => item.id === form.equipamentoId);
-    onSaveAbastecimento({
-      id: crypto.randomUUID(), data: form.data, hora: form.hora, equipamentoId: form.equipamentoId,
-      horimetroInicial: reading, kmInicial: reading, bombaInicial: 0, bombaFinal: quantity,
-      quantidadeLitros: quantity, tipoCombustivelId: form.tipoCombustivelId, comboioId: form.comboioId,
-      responsavel: form.responsavel.trim() || 'Não informado', operadorNome: selectedEquipment?.operadorResponsavelNome,
-      localAbastecimento: form.local.trim(), observacao: form.observacao.trim(), status: 'OK', origem: 'Manual',
-      competencia: form.data.slice(0, 7), criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
-    }, true);
-    setForm({ data: today(), hora: now(), equipamentoId: '', tipoCombustivelId: '', comboioId: '', quantidadeLitros: '', leitura: '', responsavel: '', local: '', observacao: '' });
-    setError('');
-    setView('historico');
+    try {
+      onSaveAbastecimento({
+        id: crypto.randomUUID(), data: form.data, hora: form.hora, equipamentoId: form.equipamentoId,
+        horimetroInicial: reading, kmInicial: reading, bombaInicial: 0, bombaFinal: quantity,
+        quantidadeLitros: quantity, tipoCombustivelId: form.tipoCombustivelId, comboioId: form.comboioId,
+        responsavel: form.responsavel.trim() || 'Não informado', operadorNome: selectedEquipment?.operadorResponsavelNome,
+        localAbastecimento: form.local.trim(), observacao: form.observacao.trim(), status: 'OK', origem: 'Manual',
+        competencia: form.data.slice(0, 7), criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
+      }, true);
+      setForm({ data: today(), hora: now(), equipamentoId: '', tipoCombustivelId: '', comboioId: '', quantidadeLitros: '', leitura: '', responsavel: '', local: '', observacao: '' });
+      setFieldErrors({});
+      setError('');
+      setSuccess('Abastecimento registrado. O lançamento será sincronizado com a nuvem.');
+      setView('historico');
+    } catch {
+      setError('Não foi possível registrar o abastecimento. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -105,23 +131,24 @@ export default function CombustivelOperacionalTab({
 
       {view === 'novo' && <form className="fuel-entry-form" onSubmit={submit}>
         <div className="fuel-entry-form__title"><div><p>Novo lançamento</p><h2>Abastecimento de frota</h2></div><span>Campos com * são obrigatórios</span></div>
-        {error && <p className="fuel-entry-form__error">{error}</p>}
+        {error && <p className="fuel-entry-form__error" role="alert">{error}</p>}
         <div className="fuel-entry-form__grid">
           <label>Data<input type="date" value={form.data} onChange={e => setField('data', e.target.value)} required /></label>
           <label>Hora<input type="time" value={form.hora} onChange={e => setField('hora', e.target.value)} required /></label>
-          <label className="span-2">Frota *<select value={form.equipamentoId} onChange={e => setField('equipamentoId', e.target.value)} required><option value="">Selecione o equipamento</option>{equipamentos.filter(item => item.status !== 'Desmobilizado').map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select></label>
-          <label>Combustível *<select value={form.tipoCombustivelId} onChange={e => setField('tipoCombustivelId', e.target.value)} required><option value="">Selecionar</option>{combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+          <label className="span-2">Frota *<select value={form.equipamentoId} onChange={e => setField('equipamentoId', e.target.value)} aria-invalid={Boolean(fieldErrors.equipamentoId)} required><option value="">Selecione o equipamento</option>{equipamentos.filter(item => item.status !== 'Desmobilizado').map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select>{fieldErrors.equipamentoId && <small className="fuel-field-error">{fieldErrors.equipamentoId}</small>}</label>
+          <label>Combustível *<select value={form.tipoCombustivelId} onChange={e => setField('tipoCombustivelId', e.target.value)} aria-invalid={Boolean(fieldErrors.tipoCombustivelId)} required><option value="">Selecionar</option>{combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>{fieldErrors.tipoCombustivelId && <small className="fuel-field-error">{fieldErrors.tipoCombustivelId}</small>}</label>
           <label>Comboio<select value={form.comboioId} onChange={e => setField('comboioId', e.target.value)}><option value="">Não informado</option>{comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-          <label>Quantidade (L) *<input inputMode="decimal" value={form.quantidadeLitros} onChange={e => setField('quantidadeLitros', e.target.value)} placeholder="0,0" required /></label>
+          <label>Quantidade (L) *<input inputMode="decimal" value={form.quantidadeLitros} onChange={e => setField('quantidadeLitros', e.target.value)} aria-invalid={Boolean(fieldErrors.quantidadeLitros)} placeholder="0,0" required />{fieldErrors.quantidadeLitros && <small className="fuel-field-error">{fieldErrors.quantidadeLitros}</small>}</label>
           <label>Horímetro / KM<input inputMode="decimal" value={form.leitura} onChange={e => setField('leitura', e.target.value)} placeholder="Opcional" /></label>
           <label>Responsável<input value={form.responsavel} onChange={e => setField('responsavel', e.target.value)} placeholder="Nome de quem lançou" /></label>
           <label>Local<input value={form.local} onChange={e => setField('local', e.target.value)} placeholder="Frente, pátio ou apoio" /></label>
           <label className="span-2">Observação<textarea rows={3} value={form.observacao} onChange={e => setField('observacao', e.target.value)} placeholder="Informação relevante para conferência" /></label>
         </div>
-        <footer><button type="button" onClick={() => setView('resumo')}>Cancelar</button><button type="submit"><Plus className="size-4" />Salvar abastecimento</button></footer>
+        <footer><button type="button" onClick={() => setView('resumo')} disabled={isSaving}>Cancelar</button><button type="submit" disabled={isSaving}><Plus className="size-4" />{isSaving ? 'Salvando...' : 'Salvar abastecimento'}</button></footer>
       </form>}
 
       {view === 'historico' && <section className="fuel-history"><header><div><p>Conferência</p><h2>Histórico de abastecimentos</h2></div><label><Search className="size-4" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar frota, combustível ou responsável" /></label></header><div className="fuel-history__table"><table><thead><tr><th>Data</th><th>Frota</th><th>Combustível</th><th>Litros</th><th>Responsável</th><th></th></tr></thead><tbody>{matched.map(item => { const equipment = equipamentos.find(e => e.id === item.equipamentoId); const fuel = combustiveis.find(f => f.id === item.tipoCombustivelId); return <tr key={item.id}><td>{formatDate(item.data)}<small>{item.hora}</small></td><td><strong>{equipment?.prefixo || 'Não informado'}</strong><small>{equipment?.nome || 'Frota sem cadastro'}</small></td><td>{fuel?.nome || 'Não informado'}</td><td className="is-number">{formatNumber(Number(item.quantidadeLitros || 0))} L</td><td>{item.responsavel}</td><td><button type="button" onClick={() => setDeletingId(item.id)} aria-label="Excluir lançamento"><Trash2 className="size-4" /></button></td></tr>; })}{!matched.length && <tr><td colSpan={6} className="fuel-history__empty">Nenhum abastecimento encontrado.</td></tr>}</tbody></table></div></section>}
+      {success && view === 'historico' && <p className="mt-3 border-l-2 border-emerald-700 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800" role="status">{success}</p>}
       {deletingId && <div className="fuel-delete-confirm" role="dialog" aria-modal="true"><div><p>Excluir lançamento permanentemente?</p><span>O registro será apagado da base e não voltará pela sincronização.</span><footer><button type="button" onClick={() => setDeletingId(null)}>Cancelar</button><button type="button" onClick={() => { onDeleteAbastecimento(deletingId); setDeletingId(null); }}>Excluir</button></footer></div></div>}
     </section>
   );
