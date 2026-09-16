@@ -1,7 +1,6 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import ScrollTrigger from 'gsap/ScrollTrigger';
 import {
   Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2, ClipboardPenLine,
   Clock3, Fuel, HardHat, PackageSearch, PauseCircle, Plus, ShieldCheck,
@@ -39,8 +38,15 @@ interface DashboardProps {
 }
 
 type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar' | 'À disposição';
+type DashboardRange = 'today' | 'week' | 'month';
 
 const PROJECT_NAME = OBRA.nome;
+const DASHBOARD_RANGE_KEY = 'renea_dashboard_range';
+const RANGE_OPTIONS: Array<{ id: DashboardRange; label: string; days: 1 | 7 | 30 }> = [
+  { id: 'today', label: 'Hoje', days: 1 },
+  { id: 'week', label: 'Semana', days: 7 },
+  { id: 'month', label: 'Mês', days: 30 },
+];
 const PROJECT_WORKSPACE_TABS = [
   { label: 'Geral', tab: 'dashboard', icon: Activity },
   { label: 'Cronograma', tab: 'cronograma', icon: CalendarDays },
@@ -64,6 +70,14 @@ const formatDate = (value: string) => {
 const shortDate = (value: string) => {
   const [, month, day] = value.split('-');
   return [day, month].filter(Boolean).join('/');
+};
+const readDashboardRange = (): DashboardRange => {
+  try {
+    const saved = localStorage.getItem(DASHBOARD_RANGE_KEY);
+    return saved === 'today' || saved === 'week' || saved === 'month' ? saved : 'week';
+  } catch {
+    return 'week';
+  }
 };
 const recordKey = (item: ControleEquipamentoDiario) => item.equipamentoId || item.prefixo || item.id;
 const normalizeFleetStatus = (status: string): Exclude<FleetFilter, 'Todos'> | 'À disposição' => {
@@ -242,9 +256,18 @@ export default function Dashboard({
   frentes = [], onNavigate,
 }: DashboardProps) {
   const dashboardRef = useRef<HTMLElement>(null);
-  const [periodDays, setPeriodDays] = useState<7 | 14 | 30>(7);
+  const [dashboardRange, setDashboardRange] = useState<DashboardRange>(readDashboardRange);
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('Todos');
   const [selectedDate, setSelectedDate] = useState('');
+  const periodDays = RANGE_OPTIONS.find(option => option.id === dashboardRange)?.days || 7;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DASHBOARD_RANGE_KEY, dashboardRange);
+    } catch {
+      // A preferência é local e nunca pode impedir a leitura operacional.
+    }
+  }, [dashboardRange]);
 
   /**
    * Janela de calendário, não "os últimos N dias que têm lançamento". Com a
@@ -376,11 +399,8 @@ export default function Dashboard({
     const root = dashboardRef.current;
     if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    gsap.registerPlugin(ScrollTrigger);
     const hero = root.querySelector<HTMLElement>('[data-dashboard-hero]');
-    const visual = root.querySelector<HTMLElement>('[data-dashboard-visual]');
     const metrics = root.querySelectorAll<HTMLElement>('[data-dashboard-metric]');
-    const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-dashboard-section]'));
 
     const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
     timeline.fromTo(
@@ -388,10 +408,7 @@ export default function Dashboard({
       { autoAlpha: 0, y: 20 },
       { autoAlpha: 1, y: 0, duration: .72, stagger: .09, clearProps: 'transform,opacity,visibility' },
     );
-    if (visual) {
-      timeline.fromTo(visual, { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 1.1, clearProps: 'transform,opacity,visibility' }, .05);
-    }
-    timeline.fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, visual ? .18 : .1);
+    timeline.fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, .1);
 
     // Profundidade sutil ao apontar um KPI. quickTo evita criar uma tween nova
     // a cada evento e translateY não desloca o texto o bastante para atrapalhar
@@ -414,59 +431,8 @@ export default function Dashboard({
       });
     });
 
-    sections.forEach((section, index) => {
-      gsap.fromTo(section, { autoAlpha: 0, y: 22 }, {
-        autoAlpha: 1,
-        y: 0,
-        duration: .65,
-        ease: 'power3.out',
-        clearProps: 'transform,opacity,visibility',
-        scrollTrigger: { trigger: section, start: `top ${index < 2 ? '92%' : '88%'}`, once: true },
-      });
-    });
-
-    // A tabela de destaque é a leitura final do painel: as linhas entram em
-    // cascata curta para o olho acompanhar a ordem, sem atrasar a operação.
-    const tableRows = root.querySelectorAll<HTMLElement>('[data-dashboard-row]');
-    if (tableRows.length) {
-      gsap.fromTo(tableRows, { autoAlpha: 0, y: 10 }, {
-        autoAlpha: 1,
-        y: 0,
-        duration: .38,
-        stagger: .035,
-        ease: 'power2.out',
-        clearProps: 'transform,opacity,visibility',
-        scrollTrigger: { trigger: tableRows[0], start: 'top 95%', once: true },
-      });
-    }
-
-    if (visual && window.matchMedia('(min-width: 1024px)').matches) {
-      const image = visual.querySelector('img');
-      if (image) {
-        gsap.to(image, {
-          yPercent: 10,
-          ease: 'none',
-          scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: .55 },
-        });
-        const moveX = gsap.quickTo(image, 'xPercent', { duration: .7, ease: 'power3.out' });
-        const moveY = gsap.quickTo(image, 'yPercent', { duration: .7, ease: 'power3.out' });
-        const onMove = (event: PointerEvent) => {
-          const rect = visual.getBoundingClientRect();
-          moveX(((event.clientX - rect.left) / rect.width - .5) * 2.5);
-          moveY(10 + ((event.clientY - rect.top) / rect.height - .5) * 2.5);
-        };
-        const onLeave = () => { moveX(0); moveY(10); };
-        visual.addEventListener('pointermove', onMove);
-        visual.addEventListener('pointerleave', onLeave);
-        liftCleanups.push(() => {
-          visual.removeEventListener('pointermove', onMove);
-          visual.removeEventListener('pointerleave', onLeave);
-        });
-      }
-    }
-
     return () => liftCleanups.forEach(cleanup => cleanup());
-  }, { scope: dashboardRef, dependencies: [periodDays, fleetFilter, referenceDate] });
+  }, { scope: dashboardRef, dependencies: [dashboardRange, fleetFilter, referenceDate] });
 
   return (
     <main ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full bg-[#f7f8f6] pb-14 text-[#172329]">
@@ -489,6 +455,13 @@ export default function Dashboard({
               <SlidersHorizontal className="size-4" aria-hidden="true" />Linha do tempo
             </button>
           </nav>
+          <div className="dashboard-command-header__range" role="group" aria-label="Período da Central de Comando">
+            {RANGE_OPTIONS.map(option => (
+              <button key={option.id} type="button" onClick={() => setDashboardRange(option.id)} aria-pressed={dashboardRange === option.id}>
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -559,7 +532,7 @@ export default function Dashboard({
         </section>
 
         <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.72fr)_minmax(21rem,.78fr)]">
-          <Panel title="Disponibilidade da frota" action={<div className="flex items-center gap-3"><span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#748187]">Últimos {periodDays} dias</span><div className="inline-flex border border-[#d7dfda] bg-white" aria-label="Período do painel">{([7, 14, 30] as const).map(days => <button key={days} type="button" onClick={() => setPeriodDays(days)} aria-pressed={periodDays === days} className={'min-h-8 px-2 text-[10px] font-bold ' + (periodDays === days ? 'bg-[#123d31] text-[#ffffff]' : 'text-[#617078] hover:bg-[#f0f3f0]')}>{days}d</button>)}</div></div>}>
+          <Panel title="Disponibilidade da frota" action={<span className="text-xs font-semibold text-[#718087]">{dashboardRange === 'today' ? 'Posição do dia' : `Últimos ${periodDays} dias`}</span>}>
             <div className="px-4 pb-5 sm:px-5">
               <div className="flex items-end gap-3">
                 <strong className="text-4xl font-semibold tracking-[-0.05em] tabular-nums">{activePoint.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</strong>

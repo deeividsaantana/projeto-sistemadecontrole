@@ -1722,6 +1722,29 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .dashboard-command-header__actions button:first-child { border-color: #07513c; background: #07513c; color: #fff; }
 .dashboard-command-header__actions button:hover { border-color: #0b815d; background: #eaf5ef; color: #07513c; }
 .dashboard-command-header__actions button:first-child:hover { background: #0b654a; color: #fff; }
+.dashboard-command-header__range {
+  display: inline-flex;
+  width: fit-content;
+  overflow: hidden;
+  border: 1px solid #d3e1d8;
+  border-radius: 6px;
+  background: #fff;
+}
+.dashboard-command-header__range button {
+  min-height: 2.5rem;
+  padding: 0 .85rem;
+  border: 0;
+  border-left: 1px solid #d3e1d8;
+  background: #fff;
+  color: #5e7067;
+  font-family: Geist, sans-serif;
+  font-size: .75rem;
+  font-weight: 700;
+  transition: background-color .18s ease, color .18s ease;
+}
+.dashboard-command-header__range button:first-child { border-left: 0; }
+.dashboard-command-header__range button[aria-pressed="true"] { background: #07513c; color: #fff; }
+.dashboard-command-header__range button:not([aria-pressed="true"]):hover { background: #edf6f1; color: #07513c; }
 .erp-dashboard > div { padding-top: .3rem; }
 .project-workspace-tabs {
   margin: 0 -.1rem;
@@ -1772,6 +1795,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-command-header--command { grid-template-columns: minmax(0, 1fr); align-items: start; }
   .dashboard-command-header__tools { grid-template-columns: 1fr auto; width: 100%; min-width: 0; }
   .dashboard-command-header__actions { width: auto; }
+  .dashboard-command-header__range { grid-column: 1 / -1; }
   .dashboard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-integrated-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -1789,6 +1813,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
     width: 100%;
   }
   .dashboard-command-header__actions button { min-height: 2.8rem; font-size: .7rem; }
+  .dashboard-command-header__range { width: 100%; }
+  .dashboard-command-header__range button { flex: 1; min-height: 2.75rem; }
   .dashboard-metrics { grid-template-columns: 1fr 1fr; gap: .55rem; }
   .dashboard-metric { min-height: 8.8rem; padding: .9rem; }
   .dashboard-metric strong { font-size: 2.2rem; }
