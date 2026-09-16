@@ -78,6 +78,8 @@ import './cloudConcurrency.test';
 import './masterDataGateway.test';
 import './storageRules.test';
 import './firestoreRules.test';
+import './p0-06-offline-recovery.test';
+import './authorization-boundary.test';
 import './operationalAttachments.test';
 import './loginRecovery.test';
 import './sessionTimeout.test';
