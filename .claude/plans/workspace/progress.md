@@ -84,3 +84,27 @@ Findings:
 - IMPORTANT: 50ms setTimeout pattern is fragile
 
 Resuming implementer with findings list.
+
+Task P0-02: complete (commits 1cc5544..3bd8cb7, all findings addressed after fix round 1)
+
+---
+
+## SPRINT 1 PROGRESS
+
+- ✅ P0-01: Characterization tests (COMPLETE, review clean)
+- ✅ P0-02: Error callback fix (COMPLETE, 1 fix round, all findings resolved)
+- ⏳ P0-03: Unsubscribe leak fix (DISPATCHING)
+- ⏳ P0-04: Presence history index (pending)
+- ⏳ P0-05: Dual-presence sync E2E (pending)
+- ⏳ P0-06: Offline queue recovery (pending)
+- ⏳ P0-07: Authorization tests (pending)
+- ⏳ P0-08: Performance baseline (pending)
+- ⏳ P0-09: Critical-path regression suite (pending)
+
+Total: 2/9 COMPLETE | 1/9 IN PROGRESS
+
+---
+
+Task P0-03: Unsubscribe Leak Fix
+
+**Status:** DISPATCHING

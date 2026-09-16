@@ -1364,14 +1364,21 @@ export default function App() {
     // O manifesto dispara a atualização imediatamente quando outro cliente
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.
-    const unsubscribeManifest = cloudProvider === 'supabase'
-      ? () => undefined
-      : onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
+    let unsubscribeManifest: (() => void) | undefined = () => undefined;
+    try {
+      if (cloudProvider !== 'supabase') {
+        unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
           const updatedAt = String(snapshot.data()?.updatedAt || '');
           if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
         }, error => {
           console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
         });
+      }
+    } catch (error) {
+      console.error('Erro ao configurar listener do manifesto:', error);
+      // Listener setup failed, unsubscribeManifest remains as no-op
+      // This ensures cleanup in useEffect return won't crash
+    }
     const interval = window.setInterval(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS);
     // O canal em tempo real do Firestore pode cair sem avisar quando o
     // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
