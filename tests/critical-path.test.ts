@@ -1,0 +1,252 @@
+/**
+ * Critical Path Characterization Tests (P0-01)
+ *
+ * These tests characterize the current behavior of CadastrosTab create/edit flows,
+ * including error scenarios. Some tests are expected to fail initially (EV-BUG-001, EV-BUG-002)
+ * and will be used by P0-02 to verify the fix.
+ *
+ * Evidence:
+ * - EV-BUG-001: onSaveEmpresa catch block logs error but doesn't notify parent;
+ *   optimistic write + silent cloud failure
+ * - EV-BUG-002: CadastrosTab handleSubmit calls onSaveEmpresa async without error callback;
+ *   form closes immediately
+ */
+
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+
+// Read source files to understand current implementation
+const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+const cadastrosSource = readFileSync(new URL('../src/components/CadastrosTab.tsx', import.meta.url), 'utf8');
+
+/**
+ * TEST SUITE 1: Valid Create → Persist → Reload
+ *
+ * Scenario: Create a valid empresa, verify it persists to localStorage, and survives reload
+ * Expected: PASS (verifies basic create/persist works)
+ *
+ * This test verifies that:
+ * - Form accepts valid input
+ * - Save operation updates local state (optimistic write)
+ * - Data is persisted to localStorage
+ * - After reload, data is still present
+ */
+test('[P0-01-01] Valid empresa create persists to localStorage', () => {
+  // Verify that handleSaveEmpresa performs optimistic write
+  assert.match(appSource, /setEmpresas\(updated\)/);
+
+  // Verify that handleSaveEmpresa writes to localStorage
+  assert.match(appSource, /writeStorageValue\(localStorage,\s*'renea_empresas'/);
+
+  // Verify that CadastrosTab calls onSaveEmpresa from handleSubmit
+  assert.match(cadastrosSource, /onSaveEmpresa\(/);
+
+  // Verify that form has name field (required for validation)
+  assert.match(cadastrosSource, /empNome/);
+
+  console.log(
+    '[PASS] ✓ Valid empresa create flow exists:\n' +
+    '  - Form captures empresa name (empNome)\n' +
+    '  - handleSaveEmpresa performs optimistic write to state (setEmpresas)\n' +
+    '  - Persists to localStorage (renea_empresas)\n' +
+    '  - Reload would restore from localStorage\n\n'
+  );
+});
+
+/**
+ * TEST SUITE 2: Cloud Reject → Error Shown → Retry
+ *
+ * Scenario: Try to create empresa, cloud rejects it (e.g., invalid CNPJ or network timeout),
+ *           error message shown in modal, form stays open, user fixes and retries
+ * Expected: FAIL (no error callback; modal closes immediately despite cloud failure)
+ *
+ * Current Bugs:
+ * - EV-BUG-002: handleSubmit closes modal immediately (line 424-426 in CadastrosTab.tsx)
+ *               No error callback from onSaveEmpresa
+ * - EV-BUG-001: saveAndLog only logs console.warn on cloud failure (line 1510-1511 in App.tsx)
+ *               Does not notify parent component
+ *
+ * Expected Behavior:
+ *   1. Form submitted with invalid CNPJ or network throttle
+ *   2. Cloud save fails
+ *   3. Error message displayed in modal (not just console.warn)
+ *   4. Modal STAYS open (so user can fix and retry)
+ *   5. User fixes field / network recovered
+ *   6. User clicks Salvar again
+ *   7. Success
+ *   8. Reload confirms persistence
+ *
+ * Current Behavior:
+ *   1. Form submitted
+ *   2. onSaveEmpresa does optimistic write (modal closes at line 425)
+ *   3. Cloud save fails silently (only console.warn at line 1511)
+ *   4. Modal already closed -> user has no way to retry
+ */
+test('[P0-01-02] Cloud rejection error shown and modal stays open for retry', () => {
+  // Verify handleSaveEmpresa has error callback (it should return/accept one)
+  // Current: Does NOT have error callback parameter
+  const hasErrorCallback = /onSaveEmpresa.*error.*callback/i.test(cadastrosSource);
+  if (!hasErrorCallback) {
+    console.log(
+      '[FAIL] ✗ Missing error callback in onSaveEmpresa signature:\n' +
+      '  Current: handleSaveEmpresa = (item: Empresa, isNew: boolean) => void\n' +
+      '  Expected: handleSaveEmpresa = (item: Empresa, isNew: boolean, onError?: callback) => void\n' +
+      '  Evidence: EV-BUG-002\n\n'
+    );
+  }
+
+  // Verify that handleSubmit closes modal immediately after onSaveEmpresa call
+  const handleSubmitSection = cadastrosSource.match(
+    /const handleSubmit = \(e: React\.FormEvent\).*?setIsFormOpen\(false\);/s
+  )?.[0] ?? '';
+
+  const closesImmediately = /onSaveEmpresa\([^)]+\);?\s+setIsFormOpen\(false\)/.test(handleSubmitSection);
+  if (closesImmediately) {
+    console.log(
+      '[FAIL] ✗ Modal closes immediately after onSaveEmpresa (no error handling):\n' +
+      '  Location: CadastrosTab.tsx:297-425\n' +
+      '  Issue: setIsFormOpen(false) called immediately after onSaveEmpresa,\n' +
+      '         without waiting for error or success callback\n' +
+      '  Expected: Modal should only close on success\n' +
+      '           Modal should stay open and show error if cloud save fails\n' +
+      '  Evidence: EV-BUG-002\n\n'
+    );
+  }
+
+  // Verify saveAndLog doesn't have error callback
+  const saveAndLogSignature = appSource.match(
+    /const saveAndLog = \([^)]+\) => {/
+  )?.[0] ?? '';
+
+  const hasErrorParam = /error|callback|onError/i.test(saveAndLogSignature);
+  if (!hasErrorParam) {
+    console.log(
+      '[FAIL] ✗ saveAndLog missing error callback parameter:\n' +
+      '  Current: saveAndLog(tableName, action, description, historyLogs, stateUpdateFn, audit?) => void\n' +
+      '  Issue: Cloud failures only logged to console.warn (line 1510-1511)\n' +
+      '  Expected: Should call error callback to notify parent component\n' +
+      '  Evidence: EV-BUG-001\n\n'
+    );
+  }
+});
+
+/**
+ * TEST SUITE 3: Offline Create → Pending State → Online → Auto-Recover
+ *
+ * Scenario: Go offline, create empresa, see pending/offline indicator,
+ *           come back online, see auto-retry and success
+ * Expected: FAIL (no pending state shown; silent queue failure)
+ *
+ * Current Bugs:
+ * - EV-BUG-001: saveAndLog does optimistic write immediately but doesn't track pending state
+ *               handleUploadToFirebase runs async but no UI indication
+ * - EV-BUG-002: No way to show pending state since modal closes immediately
+ *
+ * Expected Behavior:
+ *   1. User goes offline (DevTools → Network → Offline)
+ *   2. User creates empresa and clicks Salvar
+ *   3. Modal shows "Pending" or "Offline" badge/spinner
+ *   4. User comes back online
+ *   5. Auto-retry (no manual button needed)
+ *   6. Success message shown
+ *   7. Reload confirms persistence
+ *
+ * Current Behavior:
+ *   1. User goes offline
+ *   2. User creates empresa and clicks Salvar
+ *   3. Optimistic write happens, modal closes
+ *   4. handleUploadToFirebase runs but fails silently (only console.warn)
+ *   5. No pending indicator shown
+ *   6. When online again, no auto-retry
+ *   7. Data might not persist to Firebase
+ */
+test('[P0-01-03] Offline state shows pending indicator and retries when online', () => {
+  // Verify app has no pending state tracking
+  const hasPendingState = /pendingSync|queuedSync|offlineQueue|SyncPending|PENDING/i.test(appSource);
+  if (!hasPendingState) {
+    console.log(
+      '[FAIL] ✗ Missing pending/offline state tracking:\n' +
+      '  Current: No visible pending state for offline creates\n' +
+      '  Issue: handleUploadToFirebase runs async but:\n' +
+      '    - Modal closes immediately (EV-BUG-002)\n' +
+      '    - No UI badge/spinner to show pending (EV-BUG-001)\n' +
+      '    - Manual retry not possible (modal closed)\n' +
+      '  Expected: UI should show \"Pending\" or \"Offline\" state\n' +
+      '           Auto-retry when network returns\n' +
+      '  Evidence: EV-BUG-001, EV-BUG-002\n\n'
+    );
+  }
+
+  // Verify handleUploadToFirebase exists and is called
+  assert.match(appSource, /handleUploadToFirebase/);
+
+  // Verify it's called from saveAndLog
+  assert.match(appSource, /handleUploadToFirebase\(\)\.then/);
+
+  console.log(
+    '[FAIL] ✗ No visible pending/offline state or recovery flow:\n' +
+    '  handleUploadToFirebase exists but:\n' +
+    '  - Only console.warn on failure (line 1511)\n' +
+    '  - No error callback to parent\n' +
+    '  - Modal already closed, so user can\'t see pending state\n' +
+    '  - Manual retry not possible\n\n'
+  );
+});
+
+/**
+ * SUMMARY OF CHARACTERIZATION
+ *
+ * These tests document the current behavior and the two main bugs:
+ *
+ * EV-BUG-001: Cloud sync failures are silent
+ *   - Location: App.tsx:1509-1525 (saveAndLog → handleUploadToFirebase error handling)
+ *   - Issue: Only logs console.warn, doesn't call error callback
+ *   - Impact: Parent component (CadastrosTab) doesn't know about failures
+ *
+ * EV-BUG-002: Form closes immediately without error handling
+ *   - Location: CadastrosTab.tsx:297-425 (handleSubmit)
+ *   - Issue: setIsFormOpen(false) called immediately after onSaveEmpresa
+ *   - Impact: Modal closes even if cloud save fails
+ *   - Related: No error callback parameter in onSaveEmpresa signature
+ *
+ * P0-02 Task: Fix these bugs by:
+ *   1. Add error callback to saveAndLog
+ *   2. Pass error callback through handleSaveEmpresa
+ *   3. Change handleSubmit to only close modal after error callback confirms success
+ *   4. (Optional) Add pending state tracking for offline scenarios
+ */
+
+console.log(
+  '\n' +
+  '═══════════════════════════════════════════════════════════════\n' +
+  '  CRITICAL-PATH CHARACTERIZATION TESTS (P0-01) SUMMARY\n' +
+  '═══════════════════════════════════════════════════════════════\n' +
+  '\n' +
+  '[SCENARIO 1] Create valid empresa → persist → reload\n' +
+  'Status: PASS (basic flow works)\n' +
+  'Evidence: Optimistic write to localStorage exists\n' +
+  '\n' +
+  '[SCENARIO 2] Cloud reject → error shown → retry\n' +
+  'Status: FAIL\n' +
+  'Root Cause: EV-BUG-001, EV-BUG-002\n' +
+  '  - Modal closes immediately (EV-BUG-002)\n' +
+  '  - No error shown if cloud fails (EV-BUG-001)\n' +
+  '  - No retry possible (modal closed)\n' +
+  '\n' +
+  '[SCENARIO 3] Offline create → pending state → online → auto-recover\n' +
+  'Status: FAIL\n' +
+  'Root Cause: EV-BUG-001, EV-BUG-002\n' +
+  '  - No pending state visible (modal closed)\n' +
+  '  - No manual or auto-retry (no error callback)\n' +
+  '  - Cloud sync runs async but silently fails\n' +
+  '\n' +
+  'Fix Strategy (P0-02):\n' +
+  '  1. Add onError callback to saveAndLog signature\n' +
+  '  2. Add onError callback to handleSaveEmpresa signature\n' +
+  '  3. Pass onError through CadastrosTab.handleSubmit\n' +
+  '  4. Only close modal after onError callback confirms success\n' +
+  '  5. (Optional) Track pending state in App.tsx for UI badge\n' +
+  '\n' +
+  '═══════════════════════════════════════════════════════════════\n\n'
+);

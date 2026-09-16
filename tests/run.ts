@@ -1,3 +1,4 @@
+import './critical-path.test';
 import './fuelPumpSequence.test';
 import './fuelOperations.test';
 import './ticketNumberSequence.test';
