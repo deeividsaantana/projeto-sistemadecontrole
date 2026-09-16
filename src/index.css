@@ -319,6 +319,10 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__searchbox { min-width: 10rem; flex: 1 1 20rem; }
 .erp-topbar__status { display: flex; align-items: center; gap: .4rem; color: #496178; font-size: .7rem; font-weight: 650; }
 .erp-topbar__status span { width: .42rem; height: .42rem; border-radius: 50%; background: #0a9867; }
+.erp-topbar__pending { display: flex; align-items: center; gap: .45rem; padding: .28rem .42rem .28rem .6rem; border: 1px solid #f3c96b; border-radius: 999px; background: #fffbeb; color: #92400e; font-size: .65rem; font-weight: 700; white-space: nowrap; }
+.erp-topbar__pending button { border: 0; border-radius: 999px; background: #f59e0b; color: #fff; font: inherit; font-weight: 750; padding: .22rem .48rem; cursor: pointer; }
+.erp-topbar__pending button:hover:not(:disabled) { background: #d97706; }
+.erp-topbar__pending button:disabled { cursor: wait; opacity: .65; }
 .erp-topbar__date { display: grid; gap: .13rem; padding: 0 .9rem; border-left: 1px solid #e0e5df; color: #708098; font-size: .6rem; text-align: right; }
 .erp-topbar__date strong { color: #243955; font-size: .72rem; font-weight: 720; }
 .erp-topbar__user { display: flex; align-items: center; gap: .5rem; padding-left: .8rem; border-left: 1px solid #e0e5df; }

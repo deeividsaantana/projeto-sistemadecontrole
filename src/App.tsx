@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
+import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
 import { RouteMotion } from './shared/ui';
 import { 
@@ -78,6 +78,7 @@ import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEqu
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
 import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
+import { useOfflineQueueCount } from './hooks/useOfflineQueue';
 import {
   inferFleetCategory,
   normalizeAvailabilityTarget,
@@ -2574,6 +2575,32 @@ export default function App() {
     historyLogs: [],
   });
 
+  // P0-06: contagem reativa da fila offline + retry manual pelo topbar.
+  // A drenagem automatica no 'online' (efeito abaixo) continua existindo;
+  // o retry manual reutiliza o mesmo caminho de envio.
+  const pendingCount = useOfflineQueueCount();
+  const [isRetryingPending, setIsRetryingPending] = useState(false);
+  const handleRetryPending = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    if (isRetryingPending) return;
+    setIsRetryingPending(true);
+    try {
+      const result = await flushOfflineCommands({
+        'firebase-backup': async () => {
+          const uploadResult = await uploadLocalSnapshotToFirebase();
+          if (!uploadResult.success) throw new Error(uploadResult.message);
+        },
+      });
+      if (result.processed > 0) {
+        addNotification('Fila offline', `${result.processed} pendência(s) enviada(s).`, 'success', 'Sistema Local');
+      } else if (result.failed > 0) {
+        addNotification('Fila offline', `${result.failed} pendência(s) falharam; tente de novo.`, 'warning', 'Sistema Local');
+      }
+    } finally {
+      setIsRetryingPending(false);
+    }
+  }, [isRetryingPending, uploadLocalSnapshotToFirebase, addNotification]);
+
 
   // Reconstrói o histórico de presença a partir da fila pública original
   // (sistemarenea_public_submissions), que nunca é apagada nem sobrescrita
@@ -4340,6 +4367,15 @@ export default function App() {
           <span className={`w-2 h-2 rounded-full shrink-0 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
           <span>{isCloudConnected ? 'Nuvem OK' : 'Sem nuvem'}</span>
         </div>
+        {pendingCount > 0 && (
+          <span
+            className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"
+            title={`${pendingCount} pendência(s) offline aguardando envio`}
+            aria-live="polite"
+          >
+            Pendente: {pendingCount}
+          </span>
+        )}
 
         <div className="flex items-center gap-1">
           <button
@@ -4423,6 +4459,9 @@ export default function App() {
           alertas={alertasDoSino}
           isCloudConnected={isCloudConnected}
           lastCloudSync={lastCloudSync}
+          pendingCount={pendingCount}
+          isRetryingPending={isRetryingPending}
+          onRetryPending={() => void handleRetryPending()}
           onNavigate={tab => navigateTo(tab)}
           onToggleNotifications={() => setIsNotifDropdownOpen(value => !value)}
           onCloseNotifications={() => setIsNotifDropdownOpen(false)}

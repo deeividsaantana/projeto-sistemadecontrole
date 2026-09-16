@@ -24,6 +24,9 @@ interface DesktopTopBarProps {
   alertas?: Alerta[];
   isCloudConnected: boolean;
   lastCloudSync: string;
+  pendingCount?: number;
+  isRetryingPending?: boolean;
+  onRetryPending?: () => void;
   onMenuSearchChange: (value: string) => void;
   onNavigate: (tab: string) => void;
   onToggleNotifications: () => void;
@@ -45,6 +48,9 @@ export function DesktopTopBar({
   alertas,
   isCloudConnected,
   lastCloudSync,
+  pendingCount,
+  isRetryingPending,
+  onRetryPending,
   onMenuSearchChange,
   onNavigate,
   onToggleNotifications,
@@ -172,6 +178,24 @@ export function DesktopTopBar({
           <span />
           {isCloudConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}
         </div>
+        {typeof pendingCount === 'number' && pendingCount > 0 && (
+          <div
+            className="erp-topbar__pending"
+            title={`${pendingCount} pendência(s) offline aguardando envio`}
+          >
+            <span aria-live="polite">Pendente: {pendingCount}</span>
+            {onRetryPending && (
+              <button
+                type="button"
+                onClick={onRetryPending}
+                disabled={isRetryingPending}
+                aria-label="Tentar enviar pendências agora"
+              >
+                {isRetryingPending ? 'Enviando…' : 'Tentar agora'}
+              </button>
+            )}
+          </div>
+        )}
         <NotificationCenter
           isOpen={isNotificationOpen}
           notifications={notifications}
