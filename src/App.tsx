@@ -1474,9 +1474,9 @@ export default function App() {
     action: HistoryLog['acao'],
     description: string,
     newHistoryList: HistoryLog[],
+    stateUpdateFn: () => void,
     audit?: Pick<HistoryLog, 'registroId' | 'valorAnterior' | 'valorNovo' | 'tipoOperacao'>,
-    stateUpdateFn: any,
-    onError?: any,
+    onError?: (error: Error) => void,
   ) => {
     stateUpdateFn();
     const changeLog: HistoryLog = {
@@ -1597,11 +1597,11 @@ export default function App() {
       isNew ? 'Criou' : 'Editou',
       `${isNew ? 'Cadastrou' : 'Editou'} a empresa/fornecedor "${normalizedItem.nome}"${normalizedItem.cnpj ? ` com CNPJ ${normalizedItem.cnpj}` : ''}.`,
       historyLogs,
-      { registroId: normalizedItem.id, valorAnterior: previous, valorNovo: normalizedItem, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
       () => {
         setEmpresas(updated);
         writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(updated));
       },
+      { registroId: normalizedItem.id, valorAnterior: previous, valorNovo: normalizedItem, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
       onError,
     );
   };
@@ -1615,11 +1615,11 @@ export default function App() {
       'Excluiu',
       `Excluiu permanentemente a empresa/fornecedor "${item.nome}".`,
       historyLogs,
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
       () => {
         setEmpresas(updated);
         writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(updated));
       },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 
@@ -1641,11 +1641,11 @@ export default function App() {
       isNew ? 'Criou' : 'Editou',
       `${isNew ? 'Cadastrou' : 'Editou'} a obra "${item.nome}" em ${item.endereco}.`,
       historyLogs,
-      { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
       () => {
         setObras(updated);
         writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
       },
+      { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
     );
   };
 
@@ -1658,11 +1658,11 @@ export default function App() {
       'Excluiu',
       `Excluiu permanentemente a obra/local "${item.nome}".`,
       historyLogs,
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
       () => {
         setObras(updated);
         writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
       },
+      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
   };
 

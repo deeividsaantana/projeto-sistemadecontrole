@@ -72,3 +72,15 @@ Task P0-01: complete (commits 1a813fb, review clean)
 **Implementer:** [pending]
 
 **Focus:** Add error callback mechanism from App.tsx → CadastrosTab to fix EV-BUG-001 and EV-BUG-002
+
+Task P0-02: fix round 1/5 (63 TypeScript errors, incomplete saveAndLog updates, CadastrosTabProps not updated; commits 1cc5544)
+
+Findings:
+- CRITICAL: npm run lint fails with 63 errors (blocker)
+- CRITICAL: Parameter ordering violates TS1016 (required after optional)
+- CRITICAL: 62 of 66 saveAndLog call sites not updated
+- CRITICAL: CadastrosTabProps interface not updated for 3rd parameter
+- IMPORTANT: Using `any` types to hide errors
+- IMPORTANT: 50ms setTimeout pattern is fragile
+
+Resuming implementer with findings list.

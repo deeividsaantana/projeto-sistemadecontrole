@@ -62,7 +62,7 @@ interface CadastrosTabProps {
   etapas: EtapaServico[];
   ordensServico: OrdemServico[];
 
-  onSaveEmpresa: (item: Empresa, isNew: boolean) => void;
+  onSaveEmpresa: (item: Empresa, isNew: boolean, onError?: (error: Error) => void) => void;
   onDeleteEmpresa: (id: string) => void;
   onSaveObra: (item: ObraLocal, isNew: boolean) => void;
   onDeleteObra: (id: string) => void;
