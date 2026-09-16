@@ -66,6 +66,8 @@ export const listOfflineCommands = async (): Promise<OfflineCommand[]> => {
   }
 };
 
+export const getOfflineCommandCount = async () => (await listOfflineCommands()).length;
+
 export const enqueueOfflineCommand = async <T>(kind: string, payload: T) => {
   const existing = (await listOfflineCommands()).find(item => item.kind === kind);
   if (existing) return existing as OfflineCommand<T>;
@@ -125,3 +127,5 @@ export const flushOfflineCommands = async (
   }
   return result;
 };
+
+export const retryOfflineCommands = flushOfflineCommands;

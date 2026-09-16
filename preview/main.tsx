@@ -131,6 +131,8 @@ const screens: Record<string, React.ReactNode> = {
           unreadCount={1}
           isFirebaseConnected
           lastCloudSync="04/09/2026 21:40"
+          pendingOfflineCommands={2}
+          isRetryingOfflineCommands={false}
           onMenuSearchChange={noop}
           onNavigate={noop}
           onToggleNotifications={noop}
@@ -138,6 +140,7 @@ const screens: Record<string, React.ReactNode> = {
           onMarkAllNotificationsAsRead={noop}
           onClearNotifications={noop}
           onMarkNotificationAsRead={noop}
+          onRetryOfflineCommands={noop}
           onLogout={noop}
         />
       </main>

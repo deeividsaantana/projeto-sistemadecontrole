@@ -319,6 +319,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__searchbox { min-width: 10rem; flex: 1 1 20rem; }
 .erp-topbar__status { display: flex; align-items: center; gap: .4rem; color: #496178; font-size: .7rem; font-weight: 650; }
 .erp-topbar__status span { width: .42rem; height: .42rem; border-radius: 50%; background: #0a9867; }
+.erp-topbar__offline-retry { border: 1px solid #f2c66d; border-radius: 999px; background: #fffbeb; color: #92400e; padding: .35rem .6rem; font: inherit; font-size: .68rem; font-weight: 700; cursor: pointer; }
+.erp-topbar__offline-retry:hover:not(:disabled) { border-color: #d97706; background: #fef3c7; }
+.erp-topbar__offline-retry:disabled { cursor: not-allowed; opacity: .7; }
 .erp-topbar__date { display: grid; gap: .13rem; padding: 0 .9rem; border-left: 1px solid #e0e5df; color: #708098; font-size: .6rem; text-align: right; }
 .erp-topbar__date strong { color: #243955; font-size: .72rem; font-weight: 720; }
 .erp-topbar__user { display: flex; align-items: center; gap: .5rem; padding-left: .8rem; border-left: 1px solid #e0e5df; }

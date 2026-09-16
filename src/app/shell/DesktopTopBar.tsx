@@ -22,6 +22,9 @@ interface DesktopTopBarProps {
   alertas?: Alerta[];
   isFirebaseConnected: boolean;
   lastCloudSync: string;
+  pendingOfflineCommands: number;
+  isRetryingOfflineCommands: boolean;
+  onRetryOfflineCommands: () => void;
   onMenuSearchChange: (value: string) => void;
   onNavigate: (tab: string) => void;
   onToggleNotifications: () => void;
@@ -43,6 +46,9 @@ export function DesktopTopBar({
   alertas,
   isFirebaseConnected,
   lastCloudSync,
+  pendingOfflineCommands,
+  isRetryingOfflineCommands,
+  onRetryOfflineCommands,
   onMenuSearchChange,
   onNavigate,
   onToggleNotifications,
@@ -143,6 +149,19 @@ export function DesktopTopBar({
           <span />
           {isFirebaseConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}
         </div>
+        {pendingOfflineCommands > 0 && (
+          <button
+            type="button"
+            className="erp-topbar__offline-retry"
+            onClick={onRetryOfflineCommands}
+            disabled={isRetryingOfflineCommands || !isFirebaseConnected}
+            title={isFirebaseConnected
+              ? `Tentar sincronizar ${pendingOfflineCommands} pendência(s) agora`
+              : 'Conecte-se à internet para sincronizar as pendências'}
+          >
+            {isRetryingOfflineCommands ? 'Sincronizando...' : `${pendingOfflineCommands} pendência(s)`}
+          </button>
+        )}
         <NotificationCenter
           isOpen={isNotificationOpen}
           notifications={notifications}

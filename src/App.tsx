@@ -77,7 +77,11 @@ import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
 import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
-import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
+import {
+  enqueueOfflineCommand,
+  getOfflineCommandCount,
+  retryOfflineCommands,
+} from './utils/offlineQueue';
 import {
   inferFleetCategory,
   normalizeAvailabilityTarget,
@@ -458,6 +462,8 @@ export default function App() {
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   const [cloudRecoveryPending, setCloudRecoveryPending] = useState(false);
+  const [pendingOfflineCommands, setPendingOfflineCommands] = useState(0);
+  const [isRetryingOfflineCommands, setIsRetryingOfflineCommands] = useState(false);
   currentUserRoleRef.current = currentUserRole;
   // Quantos envios do link público de presença já estão no Firebase, pendentes
   // de entrar neste retrato local. Serve só de diagnóstico visível: se ficar
@@ -2554,6 +2560,39 @@ export default function App() {
     historyLogs: [],
   });
 
+  const refreshOfflineCommandCount = async () => {
+    setPendingOfflineCommands(await getOfflineCommandCount());
+  };
+
+  const retryPendingOfflineCommands = async () => {
+    if (!navigator.onLine || isRetryingOfflineCommands) return;
+    setIsRetryingOfflineCommands(true);
+    try {
+      const result = await retryOfflineCommands({
+        'firebase-backup': async () => {
+          const uploadResult = await uploadLocalSnapshotToFirebase();
+          if (!uploadResult.success) throw new Error(uploadResult.message);
+        },
+      });
+      if (result.processed > 0) {
+        addNotification(
+          'Pendências sincronizadas',
+          `${result.processed} operação(ões) pendente(s) foram sincronizadas com a nuvem.`,
+          'success',
+          'Sistema Local',
+        );
+      }
+    } finally {
+      await refreshOfflineCommandCount();
+      setIsRetryingOfflineCommands(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshOfflineCommandCount();
+    window.addEventListener('renea-offline-queue-change', refreshOfflineCommandCount);
+    return () => window.removeEventListener('renea-offline-queue-change', refreshOfflineCommandCount);
+  }, []);
 
   // Reconstrói o histórico de presença a partir da fila pública original
   // (sistemarenea_public_submissions), que nunca é apagada nem sobrescrita
@@ -2633,12 +2672,7 @@ export default function App() {
     if (!isLoggedIn || externalTicketLink || externalPresenceToken) return;
     const flush = () => {
       if (!navigator.onLine) return;
-      void flushOfflineCommands({
-        'firebase-backup': async () => {
-          const result = await uploadLocalSnapshotToFirebase();
-          if (!result.success) throw new Error(result.message);
-        },
-      });
+      void retryPendingOfflineCommands();
     };
     window.addEventListener('online', flush);
     flush();
@@ -4336,6 +4370,9 @@ export default function App() {
           alertas={alertasDoSino}
           isFirebaseConnected={isFirebaseConnected}
           lastCloudSync={lastCloudSync}
+          pendingOfflineCommands={pendingOfflineCommands}
+          isRetryingOfflineCommands={isRetryingOfflineCommands}
+          onRetryOfflineCommands={retryPendingOfflineCommands}
           onNavigate={tab => navigateTo(tab)}
           onToggleNotifications={() => setIsNotifDropdownOpen(value => !value)}
           onCloseNotifications={() => setIsNotifDropdownOpen(false)}
