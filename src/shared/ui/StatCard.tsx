@@ -19,18 +19,18 @@ interface StatCardProps {
 
 const toneClass: Record<StatTone, string> = {
   neutral: 'text-slate-900',
-  success: 'text-emerald-700',
-  warning: 'text-amber-700',
+  success: 'text-[#16865b]', // Renea green
+  warning: 'text-[#ed5d24]', // Renea orange
   danger: 'text-rose-700',
   info: 'text-sky-700',
 };
 
 const iconToneClass: Record<StatTone, string> = {
-  neutral: 'border-slate-300 text-slate-600',
-  success: 'border-emerald-300 text-emerald-700',
-  warning: 'border-amber-300 text-amber-700',
-  danger: 'border-rose-300 text-rose-700',
-  info: 'border-sky-300 text-sky-700',
+  neutral: 'border-slate-300 bg-slate-50 text-slate-600',
+  success: 'border-[#16865b]/30 bg-[#16865b]/5 text-[#16865b]', // Renea green
+  warning: 'border-[#ed5d24]/30 bg-[#ed5d24]/5 text-[#ed5d24]', // Renea orange
+  danger: 'border-rose-300/30 bg-rose-50 text-rose-700',
+  info: 'border-sky-300/30 bg-sky-50 text-sky-700',
 };
 
 export function StatCard({ label, value, icon: Icon, trend, tone = 'neutral', onClick, className }: StatCardProps) {
@@ -60,8 +60,8 @@ export function StatCard({ label, value, icon: Icon, trend, tone = 'neutral', on
     <Root
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={cn(
-        'renea-stat group relative overflow-hidden rounded-[3px] border border-[#cfd8d3] bg-white p-4 text-left transition-colors duration-200 hover:border-[#85978e] hover:bg-[#fbfcfa] sm:p-5',
-        onClick && 'w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
+        'renea-stat group relative overflow-hidden rounded-lg border border-[#e2e8e4] bg-white p-5 sm:p-6 text-left transition-all duration-200 hover:border-[#16865b]/30 hover:bg-[#f8faf7] hover:shadow-sm sm:rounded-lg',
+        onClick && 'w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16865b]/30',
         className,
       )}
     >

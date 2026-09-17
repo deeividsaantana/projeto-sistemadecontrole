@@ -112,19 +112,19 @@ function Metric({ icon: Icon, label, value, detail, tone, active, onClick }: {
   tone: 'graphite' | 'green' | 'orange' | 'amber'; active?: boolean; onClick: () => void;
 }) {
   const tones = {
-    graphite: 'border-[#213038] text-[#213038]',
-    green: 'border-[#24965f] text-[#176b4d]',
-    orange: 'border-[#f26a2e] text-[#c94f1c]',
-    amber: 'border-[#e4a227] text-[#a76b08]',
+    graphite: 'border-[#d8dfd9] bg-white text-[#172329] hover:border-[#cdd6d1] hover:bg-[#fbfcfa]',
+    green: 'border-[#16865b]/20 bg-[#f0f9f7] text-[#16865b] hover:border-[#16865b]/40 hover:bg-[#e8f5f2]',
+    orange: 'border-[#ed5d24]/20 bg-[#fef5f1] text-[#ed5d24] hover:border-[#ed5d24]/40 hover:bg-[#fce8df]',
+    amber: 'border-[#e4a227]/20 bg-[#fffaf0] text-[#a76b08] hover:border-[#e4a227]/40 hover:bg-[#fff7e6]',
   };
   return (
     <button type="button" onClick={onClick}
-      className={'dashboard-metric group min-w-0 border-l bg-transparent px-5 py-5 text-left transition-colors duration-200 hover:bg-white/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#f26a2e]/60 ' + tones[tone] + (active ? ' is-active' : '')}>
-      <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] text-[#47555c]">
-        <Icon className="size-4 text-current" strokeWidth={1.8} aria-hidden="true" />{label}
+      className={'dashboard-metric group min-w-0 rounded-lg border px-5 py-6 sm:px-6 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#ed5d24]/30 ' + tones[tone] + (active ? ' ring-2 ring-current/40' : '')}>
+      <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.1em] opacity-65">
+        <Icon className="size-4" strokeWidth={2} aria-hidden="true" />{label}
       </span>
-      <strong className="mt-3 block text-[clamp(2.6rem,4.5vw,5.2rem)] font-black leading-[0.82] tracking-[-0.07em] tabular-nums text-[#101c18]">{value}</strong>
-      <span className="mt-2 block text-[11px] leading-snug text-[#718087]">{detail}</span>
+      <strong className="mt-3 block text-[clamp(2.2rem,4vw,4.5rem)] font-black leading-[0.85] tracking-[-0.06em] tabular-nums">{value}</strong>
+      <span className="mt-2 block text-[10px] leading-snug opacity-70">{detail}</span>
     </button>
   );
 }
@@ -480,17 +480,11 @@ export default function Dashboard({
             </button>
           ))}
         </nav>
-        <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-white" data-dashboard-section aria-label="Indicadores da frota">
+        <section className="dashboard-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 border-0 bg-transparent" data-dashboard-section aria-label="Indicadores da frota">
           <span data-dashboard-metric><Metric icon={Activity} label="Frota ativa" value={<CountUp value={latest.operating} />} detail={(latest.records.length ? (latest.operating / latest.records.length) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% dos informados'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} /></span>
           <span data-dashboard-metric><Metric icon={Wrench} label="Em manutenção" value={<CountUp value={latest.maintenance} />} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} /></span>
           <span data-dashboard-metric><Metric icon={Clock3} label="A confirmar" value={<CountUp value={latest.confirm} />} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} /></span>
           <span data-dashboard-metric><Metric icon={Truck} label="Disponibilidade" value={latest.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'} detail={latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento no período'} tone="green" active={fleetFilter === 'Todos'} onClick={() => chooseFilter('Todos')} /></span>
-          <div className="dashboard-metric-cta grid place-items-center px-5 py-6">
-            <button type="button" onClick={() => onNavigate('controle-equipamentos')}
-              className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-[2px] bg-[#083c2f] px-5 text-sm font-black text-[#ffffff] transition hover:bg-[#07513c] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/50">
-              <Plus className="size-5" aria-hidden="true" />Novo lançamento
-            </button>
-          </div>
         </section>
 
         <section className="dashboard-integrated mt-4 overflow-hidden border border-[#d5ddd8] bg-white" data-dashboard-section aria-labelledby="integrated-operation-title">

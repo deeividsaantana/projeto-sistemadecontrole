@@ -17,5 +17,6 @@ export { PageHeader } from './PageHeader';
 export { RouteMotion } from './RouteMotion';
 export { Pagination } from './Pagination';
 export { StatCard } from './StatCard';
+export { MetricGrid } from './MetricGrid';
 export { TableBody, TableHead, TableShell } from './TableShell';
 export { cn, statusTone } from './styles';
