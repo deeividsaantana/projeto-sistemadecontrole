@@ -83,3 +83,13 @@ test('material sem mínimo definido nunca fica abaixo do mínimo', () => {
   const [posicao] = posicaoEstoque([material({})], []);
   assert.equal(posicao.abaixoDoMinimo, false);
 });
+
+test('posição tolera cadastros legados sem descrição', () => {
+  const resultado = posicaoEstoque([
+    material({ id: 'brita', descricao: 'Brita' }),
+    material({ id: 'sem-descricao', descricao: undefined as unknown as string }),
+  ], []);
+
+  assert.equal(resultado.length, 2);
+  assert.equal(resultado[0].material.id, 'sem-descricao');
+});

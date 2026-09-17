@@ -46,7 +46,7 @@ export const posicaoEstoque = (materiais: Material[], movimentos: MovimentoMater
       abaixoDoMinimo: minimo > 0 && saldo < minimo,
       ultimoMovimento: doMaterial.map(item => item.data).sort().at(-1),
     };
-  }).sort((a, b) => a.material.descricao.localeCompare(b.material.descricao, 'pt-BR'));
+  }).sort((a, b) => String(a.material.descricao || '').localeCompare(String(b.material.descricao || ''), 'pt-BR'));
 
 /** Recusa a saída que deixaria o saldo negativo, sem travar entrada e ajuste. */
 export const validarMovimento = (
