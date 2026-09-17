@@ -115,6 +115,20 @@ test('painel: 7d, 14d e 30d mudam de verdade a régua do gráfico', async ({ pag
   expect(await eixo(), 'voltar para 7 dias devolve a régua original').toEqual(sete);
 });
 
+test('painel não duplica a navegação principal dentro do conteúdo', async ({ page }) => {
+  await page.goto('/?screen=painel');
+  await expect(page.getByRole('navigation', { name: 'Módulos da obra' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Registrar operação' })).toBeVisible();
+});
+
+test('painel central expõe os controles de tickets, medições, estacas e qualidade', async ({ page }) => {
+  await page.goto('/?screen=painel');
+  await expect(page.getByRole('heading', { name: 'Controle central da obra' })).toBeVisible();
+  for (const label of ['Tickets de jazida', 'Medições', 'Estacas', 'Qualidade']) {
+    await expect(page.getByRole('button', { name: new RegExp(label) })).toBeVisible();
+  }
+});
+
 test('frota: a relação do dia abre e fecha o restante do grupo sem perder itens', async ({ page }) => {
   await page.goto('/?screen=frotas');
   const chips = page.locator('#fleet-reference-title').locator('xpath=ancestor::section[1]').locator('ul li');
