@@ -2603,6 +2603,21 @@ export default function App() {
     return () => window.removeEventListener('renea-offline-queue-change', refreshOfflineCommandCount);
   }, []);
 
+  // P0-06: Tenta sincronizar automaticamente quando volta a ter conexão
+  // e Firebase reconecta. Monitora ambos os sinais para evitar tentar
+  // sincronizar sem rede ou sem acesso ao Firestore.
+  useEffect(() => {
+    if (!isLoggedIn || !navigator.onLine || !isFirebaseConnected) return;
+    if (pendingOfflineCommands === 0) return;
+
+    // Aguarda um pouco antes de tentar, dando tempo para a conexão se estabilizar
+    const timer = window.setTimeout(() => {
+      void retryPendingOfflineCommands();
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [isLoggedIn, isFirebaseConnected, pendingOfflineCommands]);
+
   // Reconstrói o histórico de presença a partir da fila pública original
   // (sistemarenea_public_submissions), que nunca é apagada nem sobrescrita
   // pelo navegador. Existe porque um retrato consolidado corrompido em algum
