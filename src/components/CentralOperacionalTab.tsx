@@ -17,6 +17,17 @@ import type {
 import type { FleetPersistedRecord } from '../fleet/domain';
 import { isOrdemEncerrada } from '../utils/manutencao';
 import { Badge, Card, EmptyState, ModuleShortcutBar, PageHeader, isoDay, statusTone } from '../shared/ui';
+import FrentesTab from './FrentesTab';
+import ProducaoTab from './ProducaoTab';
+import CronogramaTab from './CronogramaTab';
+import FvsTab from './FvsTab';
+import InspecoesTab from './InspecoesTab';
+import NaoConformidadesTab from './NaoConformidadesTab';
+import MedicoesTab from './MedicoesTab';
+import DocumentosTab from './DocumentosTab';
+import OcorrenciasTab from './OcorrenciasTab';
+import TicketsJazidaTab from './TicketsJazidaTab';
+import EstacasTab from './EstacasTab';
 
 interface CentralOperacionalTabProps {
   equipamentos: Equipamento[];
