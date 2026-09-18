@@ -132,14 +132,18 @@ export const NAVIGATION_GROUPS = [
  * Navegação diária enxuta. Os outros módulos permanecem registrados abaixo,
  * com permissões, rotas, dados, busca global e atalhos internos preservados.
  */
-const SIDEBAR_MODULE_IDS = new Set([
+export const PRIMARY_MODULE_IDS = [
   'dashboard',
-  'modo-campo', 'central-operacional', 'diario-obra', 'planejamento',
+  'modo-campo', 'central-operacional', 'planejamento', 'diario-obra',
   'controle-equipamentos', 'manutencao', 'lancamentos',
-  'presenca', 'colaboradores',
+  'colaboradores', 'presenca',
   'materiais',
   'relatorios', 'administracao',
-]);
+] as const;
+
+const SIDEBAR_MODULE_IDS = new Set<string>(PRIMARY_MODULE_IDS);
+
+export const isPrimaryModule = (id: string) => SIDEBAR_MODULE_IDS.has(id);
 
 const SIDEBAR_GROUP_LABELS: Record<string, string> = {
   Equipamentos: 'Frota',

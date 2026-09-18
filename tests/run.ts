@@ -105,6 +105,7 @@ import './fleetExcelExport.test';
 import './operationalDrivers.test';
 import './weeklyFleetReport.test';
 import './operationalFleetReference.test';
+import './sidebarNavigation.test';
 import './presencaFrente.test';
 import './origemCombustivel.test';
 import './efetivoEquipes.test';
