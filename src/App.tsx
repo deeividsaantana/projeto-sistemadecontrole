@@ -312,7 +312,13 @@ const mergeSeedRecords = <T,>(current: T[], seed: T[], getKey: (item: T) => stri
 
 const mergeSeedRecordsPreferSeed = <T,>(current: T[], seed: T[], getKey: (item: T) => string) => {
   const seedByKey = new Map(seed.map(item => [getKey(item), item]));
-  const next = current.map(item => seedByKey.get(getKey(item)) ?? item);
+  const next = current.map(item => {
+    const seedItem = seedByKey.get(getKey(item));
+    if (seedItem && getKey(item).startsWith('CA')) {
+      return item;
+    }
+    return seedItem ?? item;
+  });
   const currentKeys = new Set(current.map(getKey));
   seed.forEach(item => {
     if (!currentKeys.has(getKey(item))) next.push(item);

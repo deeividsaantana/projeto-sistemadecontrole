@@ -921,7 +921,7 @@ export default function CadastrosTab({
 
       {/* Inline Form Panel (Expandable above list) */}
       {isFormOpen && (
-        <div className="bg-white border border-emerald-500/30 p-6 rounded-lg  relative" id="inline-form-card">
+        <div className="bg-white border border-emerald-500/30 p-4 rounded-lg  relative" id="inline-form-card">
           <button 
             onClick={() => { setIsFormOpen(false); resetFormState(); }}
             className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-lg cursor-pointer"
@@ -1527,7 +1527,7 @@ export default function CadastrosTab({
             activeId={activeFuncionarioId}
             onActiveIdChange={setActiveFuncionarioId}
           />
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" id="funcionarios-table-container">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
@@ -1545,7 +1545,7 @@ export default function CadastrosTab({
                     <td colSpan={6} className="py-10 text-center text-slate-500 italic">Nenhum funcionário encontrado.</td>
                   </tr>
                 ) : (
-                  filteredFuncionarios.map(item => {
+                  filteredFuncionarios.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
                     const emp = empresas.find(e => e.id === item.empresaId);
                     return (
                       <tr
@@ -1580,6 +1580,29 @@ export default function CadastrosTab({
                 )}
               </tbody>
             </table>
+            <div className="mt-4 flex items-center justify-between px-2 py-3 bg-white border-t border-slate-200">
+              <span className="text-xs text-slate-500">
+                Página {currentPage} de {Math.max(1, Math.ceil(filteredFuncionarios.length / itemsPerPage))} ({filteredFuncionarios.length} registros)
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredFuncionarios.length / itemsPerPage), p + 1))}
+                  disabled={currentPage >= Math.ceil(filteredFuncionarios.length / itemsPerPage)}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
           </div>
           </>
         )}
