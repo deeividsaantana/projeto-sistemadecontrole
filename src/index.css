@@ -541,6 +541,18 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   color: var(--renea-v3-ink);
   background-color: var(--renea-v3-paper);
 }
+
+/* O viewport já aplica o respiro da área de trabalho (p-3/p-4/p-5 no App).
+   Cada tela repetia esse espaço com `pt-6` no próprio container, e a soma
+   abria uma faixa vazia entre a barra de sincronização e o primeiro dado.
+   Zerar aqui, num lugar só, evita caçar a classe tela por tela. */
+#main-tab-viewport > :not(.erp-dashboard) > [id$="-tab"],
+#main-tab-viewport > :not(.erp-dashboard)[id$="-tab"],
+#main-tab-viewport > .renea-route-motion > [id$="-tab"],
+#main-tab-viewport > .renea-route-motion > main,
+#main-tab-viewport > .renea-route-motion > div > [id$="-tab"] {
+  padding-top: 0;
+}
 #main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
   min-height: 2.75rem;
   border-radius: 3px;
