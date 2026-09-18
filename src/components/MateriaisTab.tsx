@@ -55,6 +55,7 @@ export default function MateriaisTab({
   const [formMaterial, setFormMaterial] = useState<Material | null>(null);
   const [materialAberto, setMaterialAberto] = useState(false);
   const [movimentoAberto, setMovimentoAberto] = useState(false);
+  const [loteAberto, setLoteAberto] = useState(false);
   const [cadastro, setCadastro] = useState({ codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '' });
   const [movimento, setMovimento] = useState({
     data: hoje,
@@ -180,6 +181,13 @@ export default function MateriaisTab({
             <button type="button" onClick={() => { setErro(''); setMovimentoAberto(true); }} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
               <Plus className="h-4 w-4" /> Movimentar
             </button>
+            <button
+              type="button"
+              onClick={() => setLoteAberto(true)}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
+            >
+              <Plus className="h-4 w-4" /> Lote
+            </button>
           </div>
         ) : undefined}
       />
@@ -259,18 +267,29 @@ export default function MateriaisTab({
         ))}
       </section>
 
-      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
-        {([['estoque', 'Estoque'], ['movimentos', 'Movimentos'], ['cadastro', 'Cadastro']] as const).map(([id, rotulo]) => (
+      <div className="mt-4 flex flex-col gap-2">
+        <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+          {([['estoque', 'Estoque'], ['movimentos', 'Movimentos'], ['cadastro', 'Cadastro']] as const).map(([id, rotulo]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setAba(id)}
+              aria-pressed={aba === id}
+              className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+        {podeEditar && aba === 'movimentos' && (
           <button
-            key={id}
             type="button"
-            onClick={() => setAba(id)}
-            aria-pressed={aba === id}
-            className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            onClick={() => setLoteAberto(true)}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
           >
-            {rotulo}
+            <Plus className="h-4 w-4" /> Lançamento em lote
           </button>
-        ))}
+        )}
       </div>
 
       <label className="relative mt-3 block">
