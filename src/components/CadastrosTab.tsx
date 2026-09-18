@@ -118,6 +118,10 @@ export default function CadastrosTab({
   // Search State
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
   // Advanced filters (contextuais por sub-aba)
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [filterEmpresaId, setFilterEmpresaId] = useState<string>('todos');
