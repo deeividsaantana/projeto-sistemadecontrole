@@ -134,11 +134,14 @@ export const NAVIGATION_GROUPS = [
  */
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
-  'modo-campo', 'central-operacional', 'planejamento', 'diario-obra',
-  'controle-equipamentos', 'manutencao', 'lancamentos',
-  'colaboradores', 'presenca',
+  'central-operacional',
+  'controle-equipamentos',
+  'manutencao',
+  'colaboradores',
+  'presenca',
   'materiais',
-  'relatorios', 'administracao',
+  'relatorios',
+  'administracao',
 ] as const;
 
 const SIDEBAR_MODULE_IDS = new Set<string>(PRIMARY_MODULE_IDS);
