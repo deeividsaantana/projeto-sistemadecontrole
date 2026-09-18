@@ -13,6 +13,23 @@ import type {
   PresencaApontamento,
   StatusControleEquipamentoDiario,
   TicketJazida,
+  FrenteServico,
+  ApontamentoOperacional,
+  MovimentoMaterial,
+  ServicoObra,
+  RegistroProducao,
+  Ocorrencia,
+  Funcionario,
+  PlanejamentoItem,
+  ModeloFvs,
+  FichaVerificacaoServico,
+  Inspecao,
+  NaoConformidade,
+  Medicao,
+  DocumentoArquivo,
+  ModeloChecklist,
+  PeriodoArquivado,
+  ControleEstacas,
 } from '../types';
 import type { FleetPersistedRecord } from '../fleet/domain';
 import { isOrdemEncerrada } from '../utils/manutencao';
@@ -37,12 +54,43 @@ interface CentralOperacionalTabProps {
   ordensServico: OrdemServico[];
   ticketsJazida: TicketJazida[];
   obras: ObraLocal[];
+  // Dados auxiliares para sub-abas inline
+  frentes?: FrenteServico[];
+  apontamentos?: ApontamentoOperacional[];
+  movimentosMaterial?: MovimentoMaterial[];
+  servicos?: ServicoObra[];
+  producao?: RegistroProducao[];
+  ocorrencias?: Ocorrencia[];
+  funcionarios?: Funcionario[];
+  planejamento?: PlanejamentoItem[];
+  modelosFvs?: ModeloFvs[];
+  fichasFvs?: FichaVerificacaoServico[];
+  inspecoes?: Inspecao[];
+  naoConformidades?: NaoConformidade[];
+  medicoes?: Medicao[];
+  documentos?: DocumentoArquivo[];
+  modelosChecklist?: ModeloChecklist[];
+  periodosArquivados?: PeriodoArquivado[];
+  estacas?: ControleEstacas;
   /** Somente perfis operacionais alteram status daqui. */
   podeAtualizar: boolean;
   /** Quem está informando: fica gravado no histórico do registro. */
   responsavel: string;
   onSaveControleEquipamento: (registro: ControleEquipamentoDiario, isNew: boolean) => void;
   onNavigate: (tab: string) => void;
+  // Handlers para sub-abas
+  onSaveFrente?: (frente: FrenteServico, isNew: boolean) => void;
+  onSaveServico?: (servico: ServicoObra, isNew: boolean) => void;
+  onSaveProducao?: (registro: RegistroProducao, isNew: boolean) => void;
+  onSaveOcorrencia?: (ocorrencia: Ocorrencia, isNew: boolean) => void;
+  onSavePlanejamento?: (item: PlanejamentoItem, isNew: boolean) => void;
+  onSaveFvs?: (ficha: FichaVerificacaoServico, isNew: boolean) => void;
+  onSaveInspecao?: (inspecao: Inspecao, isNew: boolean) => void;
+  onSaveNaoConformidade?: (nc: NaoConformidade, isNew: boolean) => void;
+  onSaveMedicao?: (medicao: Medicao, isNew: boolean) => void;
+  onSaveDocumento?: (documento: DocumentoArquivo, isNew: boolean) => void;
+  onSaveEstacas?: (estacas: ControleEstacas) => void;
+  onDeleteRegistro?: (id: string, tab: string) => void;
 }
 
 /** Status oferecidos na troca rápida. A tela completa cobre o resto do fluxo. */
@@ -73,6 +121,7 @@ export default function CentralOperacionalTab({
   const hoje = isoDay(new Date());
   const [dia, setDia] = useState(hoje);
   const [salvando, setSalvando] = useState<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
 
   const registrosDoDia = useMemo(
     () => controlesEquipamentos.filter(item => item.data === dia),
@@ -200,7 +249,7 @@ export default function CentralOperacionalTab({
           </div>
         )}
       />
-      <ModuleShortcutBar onNavigate={onNavigate} items={[
+      <ModuleShortcutBar onNavigate={setActiveSubTab} items={[
         { id: 'frentes', label: 'Frentes', icon: MapPin },
         { id: 'producao', label: 'Produção', icon: BarChart3 },
         { id: 'cronograma', label: 'Cronograma', icon: CalendarClock },
@@ -212,6 +261,61 @@ export default function CentralOperacionalTab({
         { id: 'tickets-jazida', label: 'Tickets', icon: Truck },
         { id: 'estacas', label: 'Estacas', icon: Hammer },
       ]} />
+
+      {activeSubTab && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-50/50 px-4 py-2 text-xs font-bold text-emerald-800">
+          <span>Visualizando subtela: {activeSubTab.toUpperCase()}</span>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab(null)}
+            className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Voltar à Central
+          </button>
+        </div>
+      )}
+
+      {activeSubTab === 'frentes' && (
+        <FrentesTab
+          frentes={frentes || []}
+          obras={obras}
+          gruposEquipe={gruposEquipe}
+          presencasLink={presencasLink}
+          controlesEquipamentos={controlesEquipamentos}
+          apontamentos={apontamentos || []}
+          movimentosMaterial={movimentosMaterial || []}
+          ticketsJazida={ticketsJazida}
+          podeEditar={podeAtualizar}
+          onSave={onSaveFrente || (() => undefined)}
+        />
+      )}
+
+      {activeSubTab === 'producao' && (
+        <ProducaoTab
+          servicos={servicos || []}
+          registros={producao || []}
+          obras={obras}
+          frentes={frentes || []}
+          gruposEquipe={gruposEquipe}
+          responsavel={responsavel}
+          podeEditar={podeAtualizar}
+          onSaveServico={onSaveServico || (() => undefined)}
+          onSaveRegistro={onSaveProducao || (() => undefined)}
+        />
+      )}
+
+      {activeSubTab === 'ocorrencias' && (
+        <OcorrenciasTab
+          ocorrencias={ocorrencias || []}
+          obras={obras}
+          frentes={frentes || []}
+          equipamentos={equipamentos}
+          funcionarios={funcionarios || []}
+          responsavel={responsavel}
+          podeEditar={podeAtualizar}
+          onSave={onSaveOcorrencia || (() => undefined)}
+        />
+      )}
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
         {resumo.map(item => (

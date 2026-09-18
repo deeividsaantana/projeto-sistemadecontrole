@@ -4629,9 +4629,20 @@ export default function App() {
                 ordensServico={ordensServico}
                 ticketsJazida={ticketsJazidaAtivos}
                 obras={obras}
+                frentes={frentesServico}
+                apontamentos={apontamentosOperacionais}
+                movimentosMaterial={materiaisMovimentos}
+                servicos={servicosObra}
+                producao={producaoRegistros}
+                ocorrencias={ocorrencias}
+                funcionarios={funcionarios}
                 podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
                 responsavel={activeUserName}
                 onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
+                onSaveFrente={handleSaveFrente}
+                onSaveServico={handleSaveServicoObra}
+                onSaveProducao={handleSaveProducao}
+                onSaveOcorrencia={handleSaveOcorrencia}
                 onNavigate={navigateTo}
               />
             )}

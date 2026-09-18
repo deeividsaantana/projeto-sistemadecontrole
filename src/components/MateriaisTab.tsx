@@ -3,12 +3,15 @@
  * movimentos — não existe contador guardado para divergir do histórico.
  */
 import { useMemo, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Package, PackageX, Plus, Search } from 'lucide-react';
 import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
 import { pendenciasDeRecebimento, resumoDeRecebimento } from '../utils/recebimentoMaterial';
 import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/estoque';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
+import { MaterialCard } from './MaterialCard';
 import {
   Badge,
   EmptyState,
