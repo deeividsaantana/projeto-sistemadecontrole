@@ -3,8 +3,9 @@
  * As horas paradas saem da própria ordem — abertura até liberação.
  */
 import { useMemo, useState } from 'react';
-import { Clock3, FileSpreadsheet, Gauge, Plus, Search, TriangleAlert, Wrench } from 'lucide-react';
-import type { Equipamento, OrdemServico } from '../types';
+import { Clock3, FileSpreadsheet, Gauge, History, Plus, Search, TriangleAlert, Wrench } from 'lucide-react';
+import type { Equipamento, HistoryLog, OrdemServico } from '../types';
+import { historicoDaManutencao } from '../utils/manutencaoHistorico';
 import {
   FLUXO_MANUTENCAO,
   calcularHorasParadas,
@@ -43,6 +44,8 @@ interface ManutencaoTabProps {
   /** Quem está operando: entra como responsável e no log da alteração. */
   responsavel: string;
   podeEditar: boolean;
+  /** Histórico geral do sistema; a tela filtra o que é de manutenção. */
+  historyLogs?: HistoryLog[];
   onSave: (ordem: OrdemServico, isNew: boolean) => void;
   onDelete: (id: string) => void;
 }
@@ -83,6 +86,7 @@ export default function ManutencaoTab({
   equipamentos,
   responsavel,
   podeEditar,
+  historyLogs = [],
   onSave,
   onDelete,
 }: ManutencaoTabProps) {
@@ -101,6 +105,10 @@ export default function ManutencaoTab({
   const [exclusao, setExclusao] = useState<OrdemServico | null>(null);
   const [exportando, setExportando] = useState(false);
   const [avisoExport, setAvisoExport] = useState('');
+  const [historicoAberto, setHistoricoAberto] = useState(false);
+
+  /** O que já aconteceu com as ordens — abertura, edição e liberação. */
+  const historico = useMemo(() => historicoDaManutencao(historyLogs), [historyLogs]);
 
   const equipamentoPorId = useMemo(
     () => new Map(equipamentos.map(item => [item.id, item])),
@@ -343,6 +351,23 @@ export default function ManutencaoTab({
         title="Manutenção"
         description="Ordens de serviço da frota, do chamado até a liberação."
         actions={<>
+          <button
+            type="button"
+            onClick={() => setHistoricoAberto(atual => !atual)}
+            aria-expanded={historicoAberto}
+            className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${
+              historicoAberto
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-slate-300 bg-white text-slate-700 hover:border-emerald-500 hover:text-emerald-700'
+            }`}
+          >
+            <History className="h-4 w-4" /> Histórico
+            {historico.length > 0 && (
+              <span className="rounded-full bg-slate-100 px-1.5 text-[10px] font-black text-slate-600">
+                {historico.length}
+              </span>
+            )}
+          </button>
           <button
             type="button"
             onClick={() => void exportarExcel()}
@@ -627,6 +652,58 @@ export default function ManutencaoTab({
           </TableShell>
         )}
       </section>
+
+      {/* Histórico: o que já aconteceu com as ordens, incluindo as abertas
+          automaticamente pelo controle diário da frota. */}
+      {historicoAberto && (
+        <section className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <div>
+              <h2 className="text-sm font-black text-slate-900">Histórico de manutenção</h2>
+              <p className="text-[11px] text-slate-500">
+                Aberturas, edições e liberações — inclusive as OS abertas pelo Controle de Frotas.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHistoricoAberto(false)}
+              className="text-[11px] font-bold text-slate-500 hover:text-emerald-700"
+            >
+              Fechar
+            </button>
+          </header>
+
+          {historico.length === 0 ? (
+            <EmptyState
+              icon={History}
+              title="Nenhum registro ainda"
+              description="Assim que uma ordem for aberta, editada ou liberada, o movimento aparece aqui."
+            />
+          ) : (
+            <ul className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
+              {historico.slice(0, 200).map(item => (
+                <li key={item.id} className="flex items-start gap-3 px-4 py-3">
+                  <Badge tone={item.acao === 'Excluiu' ? 'danger' : item.acao === 'Criou' ? 'success' : 'info'}>
+                    {item.acao}
+                  </Badge>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-slate-700">{item.descricao}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">
+                      {item.timestamp} · {item.usuario} · {item.tela}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {historico.length > 200 && (
+            <p className="border-t border-slate-100 px-4 py-2 text-[10px] text-slate-400">
+              Mostrando os 200 movimentos mais recentes de {historico.length}.
+            </p>
+          )}
+        </section>
+      )}
 
       <Modal
         open={formAberto}

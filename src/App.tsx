@@ -5079,6 +5079,7 @@ export default function App() {
                 equipamentos={equipamentos}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'manutencao', 'editar')}
+                historyLogs={historyLogs}
                 onSave={handleSaveOrdemServico}
                 onDelete={handleDeleteOrdemServico}
               />
