@@ -1547,20 +1547,6 @@ export const IMPORTED_SEED_EQUIPAMENTOS: Equipamento[] = [
     "observacao": "Importado das planilhas de combustível/tickets."
   },
   {
-    "id": "eq-eqi8876",
-    "prefixo": "EQI8876",
-    "nome": "Genivaldo",
-    "tipo": "Outros",
-    "marca": "",
-    "modelo": "",
-    "seriePlaca": "220",
-    "placa": "220",
-    "empresaId": "emp-1",
-    "status": "Ativo",
-    "localAtualId": "obr-1",
-    "observacao": "Importado das planilhas de combustível/tickets."
-  },
-  {
     "id": "eq-eqt8876",
     "prefixo": "EQT8876",
     "nome": "Equipamento / Veículo",
@@ -2907,7 +2893,7 @@ export const IMPORTED_SEED_EQUIPAMENTOS: Equipamento[] = [
   {
     "id": "eq-nrl0847",
     "prefixo": "NRL0847",
-    "nome": "Cesar",
+    "nome": "Equipamento NRL0847",
     "tipo": "Outros",
     "marca": "",
     "modelo": "",

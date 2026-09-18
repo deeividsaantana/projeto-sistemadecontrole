@@ -105,6 +105,38 @@ export const deriveWorkOrderMetrics = (
   };
 };
 
+/**
+ * Palavras que toda descrição de equipamento real carrega. A planilha de
+ * combustível traz a coluna do operador ao lado do prefixo, e quando alguém
+ * importa a coluna errada o nome da pessoa entra como se fosse a máquina —
+ * foi assim que "Genivaldo" e "Cesar" viraram equipamentos ativos na frota.
+ */
+const EQUIPMENT_DESCRIPTION_TERMS = [
+  'caminhao', 'caminhonete', 'carreta', 'cavalo', 'onibus', 'van', 'pickup', 'utilitario',
+  'escavadeira', 'retroescavadeira', 'pa carregadeira', 'carregadeira', 'trator', 'esteira',
+  'motoniveladora', 'patrol', 'rolo', 'compactador', 'perfuratriz', 'guindaste', 'munck',
+  'betoneira', 'bomba', 'gerador', 'compressor', 'martelo', 'rompedor', 'placa',
+  'basculante', 'prancha', 'pipa', 'comboio', 'tanque', 'implemento', 'reboque',
+  'equipamento', 'veiculo', 'maquina', 'trailer', 'container', 'usina', 'britador',
+  'empilhadeira', 'plataforma', 'torre', 'silo', 'misturador', 'vibroacabadora',
+];
+
+/**
+ * Nome que parece de gente: só palavras alfabéticas, nenhum termo de
+ * equipamento e nenhum número ou código. Duas palavras ou menos porque
+ * descrições reais de frota quase sempre passam disso ("Caminhão basculante
+ * 6x4"), enquanto "Genivaldo" e "Cesar" não passam.
+ */
+export const looksLikePersonName = (value: unknown): boolean => {
+  const text = normalizeSearchText(value);
+  if (!text) return false;
+  if (/\d/.test(text)) return false;
+  if (EQUIPMENT_DESCRIPTION_TERMS.some(term => text.includes(term))) return false;
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length === 0 || words.length > 2) return false;
+  return words.every(word => /^[a-zà-ú]{2,}$/.test(word));
+};
+
 export const validateEquipmentMasterRecord = (
   equipment: Equipamento,
 ): EquipmentValidationResult => {
@@ -113,6 +145,12 @@ export const validateEquipmentMasterRecord = (
   if (!equipment.prefixo.trim()) errors.push('Prefixo não informado.');
   if (!equipment.nome.trim()) errors.push('Descrição do equipamento não informada.');
   if (!equipment.empresaId) errors.push('Empresa proprietária não informada.');
+  if (looksLikePersonName(equipment.nome)) {
+    errors.push(
+      `"${equipment.nome.trim()}" parece nome de pessoa, não descrição de equipamento. `
+      + 'Confira se a coluna do operador foi importada no lugar da descrição da máquina.',
+    );
+  }
   if (
     equipment.capacidadeTanqueLitros !== undefined
     && (!Number.isFinite(equipment.capacidadeTanqueLitros) || equipment.capacidadeTanqueLitros <= 0)

@@ -93,8 +93,11 @@ export const registrySummary = ({
 }) => ({
   colaboradoresAtivos: funcionarios.filter(isActiveCollaborator).length,
   colaboradoresDesmobilizados: funcionarios.filter(item => item.status === 'DESMOBILIZADO').length,
-  equipamentosAtivos: equipamentos.filter(item => item.categoriaFrota !== 'Veículo' && item.status === 'Ativo').length,
-  veiculos: equipamentos.filter(isVehicle).length,
+  // Equipamentos e veículos são contados separadamente, mas os dois cartões
+  // precisam usar o mesmo critério de atividade — antes "Veículos" somava
+  // inclusive os inativos e desmobilizados, inflando o total da frota.
+  equipamentosAtivos: equipamentos.filter(item => !isVehicle(item) && item.status === 'Ativo').length,
+  veiculos: equipamentos.filter(item => isVehicle(item) && item.status === 'Ativo').length,
   fornecedores: empresas.filter(isSupplier).length,
   locais: obras.length,
   inconsistencias: funcionarios.filter(item => !item.matricula || !item.nome || !item.cargo).length

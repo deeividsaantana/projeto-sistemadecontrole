@@ -91,6 +91,7 @@ import './maintenanceOperations.test';
 import './materializeMasterData.test';
 import './erpV30.test';
 import './centralRegistry.test';
+import './equipmentPersonGuard.test';
 import './centralWorkbookExport.test';
 import './fuelImportIdentity.test';
 import './august2026OperationalSeed.test';

@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import ScrollTrigger from 'gsap/ScrollTrigger';
 import {
   Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2,
   Clock3, Fuel, HardHat, PackageSearch, PauseCircle, Plus, ShieldCheck,
@@ -330,7 +329,10 @@ export default function Dashboard({
     .map(item => item.funcionarioId));
   const legacyListsToday = listasPresenca.filter(item => item.data === referenceDate);
   const legacyPresentIds = new Set(legacyListsToday.flatMap(item => item.funcionarios.filter(person => person.presente).map(person => person.funcionarioId)));
-  const presentCount = publicPresenceToday.length ? publicPresentIds.size : legacyPresentIds.size;
+  // Conta quem está presente de fato. Antes bastava existir qualquer registro
+  // do link público no dia para o total legado ser descartado — mesmo quando
+  // ninguém tinha marcado presença ainda, o painel mostrava zero pessoas.
+  const presentCount = publicPresentIds.size || legacyPresentIds.size;
   const expectedCount = linkedExpected.size || activeEmployees.length;
   const presencePercent = expectedCount ? Math.min(100, (presentCount / expectedCount) * 100) : undefined;
 
@@ -376,73 +378,32 @@ export default function Dashboard({
     { filter: 'À disposição', label: 'À disposição', icon: PauseCircle, color: statusColor(FLEET_OPERATIONAL_STATUS.available), value: latest.available },
   ];
 
+  /**
+   * Entrada do painel — roda uma vez, na montagem.
+   *
+   * Antes esta animação inteira (hero + métricas + cartões + um ScrollTrigger
+   * por seção + quatro listeners por KPI + cascata das linhas da tabela) era
+   * refeita a cada troca de período, filtro de frota ou data de referência.
+   * Clicar num KPI remontava tudo e o painel piscava antes de responder. E
+   * como as tweens partiam de `autoAlpha: 0`, os dados sumiam da tela nesse
+   * intervalo. O realce de ponteiro virou CSS (`index.css`), que não custa
+   * listener por elemento.
+   */
   useGSAP(() => {
     const root = dashboardRef.current;
     if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    gsap.registerPlugin(ScrollTrigger);
     const hero = root.querySelector<HTMLElement>('[data-dashboard-hero]');
     const metrics = root.querySelectorAll<HTMLElement>('[data-dashboard-metric]');
-    const centralCards = root.querySelectorAll<HTMLElement>('[data-dashboard-motion-card]');
-    const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-dashboard-section]'));
 
-    const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    const timeline = gsap.timeline({ defaults: { ease: 'power2.out' } });
     timeline.fromTo(
       hero?.querySelectorAll('[data-dashboard-hero-copy]') || [],
-      { autoAlpha: 0, y: 20 },
-      { autoAlpha: 1, y: 0, duration: .72, stagger: .09, clearProps: 'transform,opacity,visibility' },
+      { y: 14 },
+      { y: 0, duration: .34, stagger: .05, clearProps: 'transform' },
     );
-    timeline.fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, .1);
-    timeline.fromTo(centralCards, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: .45, stagger: .06, clearProps: 'transform,opacity,visibility' }, .24);
-
-    // Profundidade sutil ao apontar um KPI. quickTo evita criar uma tween nova
-    // a cada evento e translateY não desloca o texto o bastante para atrapalhar
-    // a leitura de quem usa o painel o dia inteiro.
-    const liftTargets = root.querySelectorAll<HTMLElement>('.dashboard-metric, .dashboard-integrated-metric');
-    const liftCleanups: Array<() => void> = [];
-    liftTargets.forEach(target => {
-      const lift = gsap.quickTo(target, 'y', { duration: .28, ease: 'power3.out' });
-      const enter = () => lift(-3);
-      const leave = () => lift(0);
-      target.addEventListener('pointerenter', enter);
-      target.addEventListener('pointerleave', leave);
-      target.addEventListener('focusin', enter);
-      target.addEventListener('focusout', leave);
-      liftCleanups.push(() => {
-        target.removeEventListener('pointerenter', enter);
-        target.removeEventListener('pointerleave', leave);
-        target.removeEventListener('focusin', enter);
-        target.removeEventListener('focusout', leave);
-      });
-    });
-
-    sections.forEach((section, index) => {
-      gsap.fromTo(section, { y: 22 }, {
-        y: 0,
-        duration: .65,
-        ease: 'power3.out',
-        clearProps: 'transform',
-        scrollTrigger: { trigger: section, start: `top ${index < 2 ? '92%' : '88%'}`, once: true },
-      });
-    });
-
-    // A tabela de destaque é a leitura final do painel: as linhas entram em
-    // cascata curta para o olho acompanhar a ordem, sem atrasar a operação.
-    const tableRows = root.querySelectorAll<HTMLElement>('[data-dashboard-row]');
-    if (tableRows.length) {
-      gsap.fromTo(tableRows, { autoAlpha: 0, y: 10 }, {
-        autoAlpha: 1,
-        y: 0,
-        duration: .38,
-        stagger: .035,
-        ease: 'power2.out',
-        clearProps: 'transform,opacity,visibility',
-        scrollTrigger: { trigger: tableRows[0], start: 'top 95%', once: true },
-      });
-    }
-
-    return () => liftCleanups.forEach(cleanup => cleanup());
-  }, { scope: dashboardRef, dependencies: [periodDays, fleetFilter, referenceDate] });
+    timeline.fromTo(metrics, { y: 12 }, { y: 0, duration: .3, stagger: .035, clearProps: 'transform' }, .08);
+  }, { scope: dashboardRef });
 
   return (
     <main ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full bg-white pb-14 text-[#172329]">

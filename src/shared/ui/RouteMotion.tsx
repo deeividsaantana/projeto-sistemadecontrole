@@ -2,14 +2,19 @@ import type { PropsWithChildren } from 'react';
 import { useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-// Importação padrão em vez de nomeada: o bundler resolve o build ESM do plugin,
-// mas o tsx dos testes resolve o build CommonJS, onde o nome não existe — e a
-// suíte inteira quebrava ao carregar este arquivo.
-import ScrollTrigger from 'gsap/ScrollTrigger';
 
 /**
- * Motion orchestration shared by every authenticated ERP route. It animates
- * only large semantic regions so fields and operational actions stay stable.
+ * Entrada das rotas autenticadas do ERP.
+ *
+ * A versão anterior custava caro em toda troca de aba: animava com
+ * `autoAlpha: 0` (a tela ficava em branco até a tween rodar), criava um
+ * ScrollTrigger por seção fora da primeira dobra e registrava três listeners
+ * de ponteiro em cada cartão — em telas com centenas de linhas isso somava
+ * milhares de handlers e segurava a abertura do módulo.
+ *
+ * Agora o conteúdo já nasce visível e só desliza alguns pixels. Sem
+ * ScrollTrigger, sem listeners por elemento: o realce de hover passou a ser
+ * CSS puro (`transform` em `:hover`), que o compositor resolve sozinho.
  */
 export function RouteMotion({ children }: PropsWithChildren) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -17,48 +22,20 @@ export function RouteMotion({ children }: PropsWithChildren) {
   useGSAP(() => {
     const root = rootRef.current;
     if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    // O registro fica aqui, e não no topo do módulo: os testes carregam este
-    // arquivo no Node, onde `gsap` chega como namespace CommonJS e não tem
-    // registerPlugin. Dentro do efeito só roda no navegador.
-    gsap.registerPlugin(ScrollTrigger);
 
     const candidates = Array.from(root.querySelectorAll<HTMLElement>(
       ':scope > header, :scope > section, :scope > article, :scope > main > header, :scope > main > section, :scope > main > article, :scope > div > header, :scope > div > section, :scope > div > article',
     )).filter((item, index, all) => all.indexOf(item) === index && !item.classList.contains('renea-page-header'));
 
-    const aboveFold = candidates.slice(0, 5);
+    // Só a primeira dobra anima. O resto já está no lugar quando a pessoa
+    // rola até lá, e não precisa de gatilho nenhum para aparecer.
+    const aboveFold = candidates.slice(0, 3);
+    if (aboveFold.length === 0) return;
+
     gsap.fromTo(aboveFold,
-      { autoAlpha: 0, y: 20 },
-      { autoAlpha: 1, y: 0, duration: 0.62, stagger: 0.075, ease: 'power3.out', clearProps: 'transform,opacity,visibility' },
+      { y: 12 },
+      { y: 0, duration: 0.32, stagger: 0.04, ease: 'power2.out', clearProps: 'transform' },
     );
-
-    candidates.slice(5).forEach(item => {
-      gsap.fromTo(item,
-        { autoAlpha: 0, y: 24 },
-        {
-          autoAlpha: 1,
-          y: 0,
-          duration: 0.7,
-          ease: 'power3.out',
-          clearProps: 'transform,opacity,visibility',
-          scrollTrigger: { trigger: item, start: 'top 92%', once: true },
-        },
-      );
-    });
-
-    const interactive = root.querySelectorAll<HTMLElement>('.renea-card, .renea-stat, [data-fleet-enter], .dashboard-metric');
-    interactive.forEach(item => {
-      const moveY = gsap.quickTo(item, 'y', { duration: 0.28, ease: 'power2.out' });
-      const onEnter = () => moveY(-3);
-      const onLeave = () => moveY(0);
-      item.addEventListener('pointerenter', onEnter);
-      item.addEventListener('pointerleave', onLeave);
-      item.addEventListener('pointercancel', onLeave);
-    });
-
-    return () => ScrollTrigger.getAll().forEach(trigger => {
-      if (trigger.trigger && root.contains(trigger.trigger as Node)) trigger.kill();
-    });
   }, { scope: rootRef });
 
   return <div ref={rootRef} className="renea-route-motion h-full w-full">{children}</div>;

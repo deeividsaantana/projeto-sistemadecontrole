@@ -622,12 +622,33 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .dashboard-metric:nth-child(4) { animation-delay: 165ms; }
 .dashboard-metric-cta { animation: renea-v3-enter .45s 220ms cubic-bezier(.2,.8,.2,1) both; }
 
-/* Shared motion and hierarchy across all route modules. */
-#main-tab-viewport > :not(.erp-dashboard) > .renea-page-header { animation: renea-v3-enter .38s cubic-bezier(.2,.8,.2,1) both; }
-#main-tab-viewport > :not(.erp-dashboard) > :is(section, article, .renea-card, [role="region"]) { animation: renea-v3-enter .42s .07s cubic-bezier(.2,.8,.2,1) both; }
+/* Shared motion and hierarchy across all route modules.
+   `animation: … both` mantém o estado inicial aplicado até a tween começar:
+   com `renea-v3-enter` partindo de opacity 0, cada section/card da tela
+   nascia invisível. Em módulos com dezenas de blocos isso somava dezenas de
+   animações simultâneas e a aba parecia travada ao abrir. Agora só os três
+   primeiros blocos animam, e partindo de conteúdo já visível. */
+#main-tab-viewport > :not(.erp-dashboard) > :is(section, article, .renea-card, [role="region"]):nth-of-type(-n+3) {
+  animation: renea-v3-slide .3s cubic-bezier(.2,.8,.2,1) both;
+}
 #main-tab-viewport .renea-card :is(button, tr),
 #main-tab-viewport .renea-table tr { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
 #main-tab-viewport .renea-card button:hover { transform: translateX(2px); }
+
+/* Realce de ponteiro que antes vinha de gsap.quickTo com três listeners por
+   cartão (RouteMotion). Em CSS o compositor resolve sozinho, sem custo de JS
+   por elemento. */
+#main-tab-viewport :is(.renea-card, .renea-stat, [data-fleet-enter], .dashboard-metric) {
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+#main-tab-viewport :is(.renea-card, .renea-stat, [data-fleet-enter], .dashboard-metric):hover {
+  transform: translateY(-3px);
+}
+
+@keyframes renea-v3-slide {
+  from { transform: translateY(12px); }
+  to { transform: none; }
+}
 
 /* Portalled entry form shares the system language outside #app-root. */
 .fleet-entry-dialog form > div > div > section {
