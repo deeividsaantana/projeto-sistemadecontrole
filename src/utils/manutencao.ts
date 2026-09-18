@@ -28,7 +28,9 @@ interface OrdemAutomaticaDaFrota {
 }
 
 /**
- * Faz a ponte entre o fechamento operacional dos basculantes e a oficina.
+ * Faz a ponte entre o fechamento operacional da frota e a oficina. Vale para
+ * qualquer equipamento — escavadeira, gerador, torre, basculante: se o controle
+ * diário marca entrada em manutenção, a oficina precisa da ordem aberta.
  * Uma OS aberta existente sempre vence, evitando que lançamentos diários
  * multipliquem ordens para o mesmo equipamento.
  */
@@ -37,10 +39,7 @@ export const garantirOrdemAutomaticaDaFrota = (
   ordens: OrdemServico[],
   responsavel: string,
 ): OrdemAutomaticaDaFrota => {
-  const ehBasculante = registro.familia === 'Basculantes'
-    || registro.tipoEquipamento?.toLocaleLowerCase('pt-BR').includes('basculante')
-    || /^CB\s*-?\s*\d+/i.test(registro.prefixo);
-  if (!ehBasculante || !['Em manutenção', 'Aguardando manutenção'].includes(registro.status)) {
+  if (!['Em manutenção', 'Aguardando manutenção'].includes(registro.status)) {
     return { registro, ordens, criada: false };
   }
 
@@ -65,7 +64,7 @@ export const garantirOrdemAutomaticaDaFrota = (
     dataAbertura: registro.data,
     horaAbertura: registro.horaEntradaManutencao || undefined,
     responsavel,
-    observacao: 'OS criada automaticamente pelo Controle de Basculantes.',
+    observacao: 'OS criada automaticamente pelo Controle Operacional de Frotas.',
     motivo: registro.motivoManutencao?.trim() || '',
   };
   return {

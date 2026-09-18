@@ -94,9 +94,36 @@ test('basculante em manutenção cria OS aberta e vincula o lançamento', () => 
     dataAbertura: '2026-09-18',
     horaAbertura: '08:15',
     responsavel: 'Encarregado da frota',
-    observacao: 'OS criada automaticamente pelo Controle de Basculantes.',
+    observacao: 'OS criada automaticamente pelo Controle Operacional de Frotas.',
     motivo: 'Falha no sistema hidráulico',
   });
+});
+
+test('equipamento não basculante em manutenção também abre OS', () => {
+  // A oficina precisa da ordem aberta para qualquer máquina parada, não só
+  // para os basculantes: escavadeira, gerador e torre paravam sem registro.
+  const escavadeira = registroBasculante({
+    id: 'controle-es-101',
+    equipamentoId: 'equipamento-es-101',
+    prefixo: 'ES101',
+    familia: 'Escavadeiras',
+    tipoEquipamento: 'Escavadeira Hidráulica',
+    motivoManutencao: 'Vazamento na lança',
+  });
+  const result = garantirOrdemAutomaticaDaFrota(escavadeira, [], 'Encarregado da frota');
+
+  assert.equal(result.criada, true);
+  assert.equal(result.ordens.length, 1);
+  assert.equal(result.ordens[0].equipamentoId, 'equipamento-es-101');
+  assert.equal(result.registro.ordemServicoId, result.ordens[0].id);
+});
+
+test('equipamento fora de manutenção não abre OS', () => {
+  const operando = registroBasculante({ status: 'Em operação' });
+  const result = garantirOrdemAutomaticaDaFrota(operando, [], 'Encarregado da frota');
+
+  assert.equal(result.criada, false);
+  assert.deepEqual(result.ordens, []);
 });
 
 test('basculante em manutenção reutiliza OS aberta sem duplicar', () => {
