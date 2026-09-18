@@ -3,7 +3,7 @@
  * As horas paradas saem da própria ordem — abertura até liberação.
  */
 import { useMemo, useState } from 'react';
-import { Clock3, Construction, Gauge, Plus, Search, Tractor, TriangleAlert, Truck, Wrench } from 'lucide-react';
+import { Clock3, Gauge, Plus, Search, TriangleAlert, Wrench } from 'lucide-react';
 import type { Equipamento, OrdemServico } from '../types';
 import {
   FLUXO_MANUTENCAO,
@@ -37,15 +37,6 @@ const prioridadeTone = (prioridade: OrdemServico['prioridade']) => {
 };
 
 const formatarData = (valor?: string) => (valor ? valor.slice(0, 10).split('-').reverse().join('/') : '—');
-
-const apresentacaoEquipamento = (equipamento?: Equipamento) => {
-  const descricao = `${equipamento?.prefixo || ''} ${equipamento?.familia || ''} ${equipamento?.tipo || ''} ${equipamento?.nome || ''}`.toLocaleLowerCase('pt-BR');
-  if (descricao.includes('basculante') || /^cb\s*-?\s*\d+/.test(descricao)) return { Icon: Truck, label: 'Caminhão basculante' };
-  if (descricao.includes('escavadeira')) return { Icon: Construction, label: 'Escavadeira' };
-  if (descricao.includes('trator') || descricao.includes('motoniveladora') || descricao.includes('rolo')) return { Icon: Tractor, label: 'Máquina pesada' };
-  if (descricao.includes('pipa') || descricao.includes('comboio')) return { Icon: Truck, label: equipamento?.tipo || 'Caminhão de apoio' };
-  return { Icon: Wrench, label: equipamento?.tipo || equipamento?.nome || 'Equipamento' };
-};
 
 const formularioVazio = (equipamentoId = '') => ({
   equipamentoId,
@@ -192,7 +183,7 @@ export default function ManutencaoTab({
   };
 
   return (
-    <div id="manutencao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="manutencao-tab" className="min-h-full w-full bg-white px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Manutenção"
         description="Ordens de serviço da frota, do chamado até a liberação."
@@ -207,60 +198,64 @@ export default function ManutencaoTab({
         ) : undefined}
       />
 
-      <section className="mt-5 overflow-hidden rounded-xl border border-[#d8e3dc] bg-white shadow-[0_24px_55px_-45px_rgba(8,60,47,.65)]">
-        <div className="grid lg:grid-cols-[1.15fr_1.85fr]">
-          <div className="bg-[#0b4938] px-5 py-6 text-white sm:px-7">
-            <p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-200">Oficina e frota conectadas</p>
-            <h2 className="mt-3 text-2xl font-black tracking-[-.045em] sm:text-3xl">Centro de manutenção</h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-emerald-50/75">OS automáticas dos basculantes e atendimentos manuais no mesmo fluxo, da entrada até a liberação.</p>
-            <div className="mt-5 flex items-center gap-3 text-xs text-emerald-50/80"><Gauge className="size-5 text-emerald-300" aria-hidden="true" /><span><strong className="block text-base text-white">{resumo.horasAbertas.toLocaleString('pt-BR')} h</strong>paradas nas OS em aberto</span></div>
-          </div>
-          <div className="grid grid-cols-2 divide-x divide-y divide-[#e2e9e5] sm:grid-cols-4 sm:divide-y-0">
-            {[
-              { icon: Wrench, label: 'OS em aberto', valor: resumo.abertas, tone: 'text-[#16805a]' },
-              { icon: TriangleAlert, label: 'Alta ou urgente', valor: resumo.criticas, tone: 'text-[#c95725]' },
-              { icon: Clock3, label: 'Aguardando peça', valor: resumo.aguardandoPeca, tone: 'text-[#9b6a12]' },
-              { icon: Gauge, label: 'Concluídas', valor: resumo.concluidas, tone: 'text-[#315245]' },
-            ].map(item => <div key={item.label} className="min-h-32 p-4 sm:p-5"><item.icon className={`size-5 ${item.tone}`} strokeWidth={1.7} aria-hidden="true" /><strong className="mt-5 block text-3xl font-black tracking-[-.06em] tabular-nums text-[#12231c]">{item.valor}</strong><span className="mt-1 block text-[10px] font-bold uppercase tracking-[.08em] text-[#718078]">{item.label}</span></div>)}
-          </div>
-        </div>
-
-        <div className="border-t border-[#e2e9e5] px-5 py-4 sm:px-7">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#16805a]">Fluxo das ordens</p><p className="mt-1 text-xs text-[#718078]">Distribuição atual dos atendimentos</p></div>
-            <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-5 xl:max-w-3xl">
-              {FLUXO_MANUTENCAO.map(status => <button key={status} type="button" onClick={() => setFiltroStatus(status)} className={`border-l-2 px-3 py-1.5 text-left transition hover:bg-[#f2f7f4] ${filtroStatus === status ? 'border-[#16805a] bg-[#eef6f1]' : 'border-[#dce5df]'}`}><strong className="block text-lg font-black tabular-nums text-[#172329]">{ordensServico.filter(ordem => ordem.status === status).length}</strong><span className="text-[9px] font-bold uppercase tracking-[.06em] text-[#718078]">{status}</span></button>)}
+      {/* KPIs Compactos */}
+      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        {[
+          { icon: Wrench, label: 'OS em aberto', valor: resumo.abertas },
+          { icon: TriangleAlert, label: 'Alta ou urgente', valor: resumo.criticas },
+          { icon: Clock3, label: 'Aguardando peça', valor: resumo.aguardandoPeca },
+          { icon: Gauge, label: 'Concluídas', valor: resumo.concluidas },
+        ].map(item => (
+          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-start gap-3">
+              <item.icon className="size-5 text-slate-400 shrink-0 mt-0.5" strokeWidth={1.5} aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+                <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
+              </div>
             </div>
           </div>
-        </div>
+        ))}
       </section>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      {/* Horas Paradas em Aberto */}
+      {resumo.horasAbertas > 0 && (
+        <div className="mt-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <Clock3 className="size-5 text-amber-600 shrink-0" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Horas paradas</p>
+            <strong className="block text-lg font-black text-amber-900">{resumo.horasAbertas.toLocaleString('pt-BR')} h</strong>
+          </div>
+        </div>
+      )}
+
+      {/* Filtros e Busca */}
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Buscar ordem de serviço</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             value={busca}
             onChange={event => setBusca(event.target.value)}
-            placeholder="Número, prefixo, problema, responsável ou oficina"
-            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+            placeholder="Número, prefixo, problema, responsável..."
+            className="min-h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
           />
         </label>
         <select
           value={filtroStatus}
           onChange={event => setFiltroStatus(event.target.value as (typeof STATUS_FILTRO)[number])}
           aria-label="Filtrar por situação"
-          className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
+          className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
         >
           {STATUS_FILTRO.map(item => <option key={item}>{item}</option>)}
         </select>
       </div>
 
-      <section className="mt-4 overflow-hidden rounded-xl border border-[#d8e3dc] bg-white">
-        <header className="flex items-end justify-between gap-4 border-b border-[#e2e9e5] px-4 py-4 sm:px-5">
-          <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#16805a]">Carteira da oficina</p><h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#172329]">Ordens em acompanhamento</h2></div>
-          <span className="text-xs font-bold tabular-nums text-[#718078]">{lista.length} registro(s)</span>
-        </header>
+      {/* Tabela de Ordens */}
+      <section className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-5">
+          <span className="text-xs font-bold text-slate-600">{lista.length} Ordem(ns) de Serviço</span>
+        </div>
         {lista.length === 0 ? (
           <EmptyState icon={Wrench} title="Nenhuma ordem de serviço" description="Abra uma OS quando um equipamento precisar de atendimento." />
         ) : (
@@ -280,16 +275,11 @@ export default function ManutencaoTab({
               {lista.map(ordem => {
                 const horas = calcularHorasParadas(ordem);
                 const proximo = proximoStatusManutencao(ordem.status);
-                const equipamento = equipamentos.find(item => item.id === ordem.equipamentoId);
-                const { Icon: EquipmentIcon, label: equipmentLabel } = apresentacaoEquipamento(equipamento);
                 return (
-                  <tr key={ordem.id} className="transition-colors hover:bg-[#f4f8f5]">
+                  <tr key={ordem.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
+                    <td className="p-3 text-xs font-mono font-bold text-slate-900">{ordem.numero}</td>
                     <td className="p-3">
-                      <strong className="font-mono text-xs font-black text-slate-900">{ordem.numero}</strong>
-                      <span className="mt-0.5 block text-[10px] text-slate-400">{ordem.tipo}</span>
-                    </td>
-                    <td className="p-3">
-                      <span className="flex items-center gap-2.5"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-[#eaf3ee] text-[#126b4d]" aria-label={equipmentLabel}><EquipmentIcon className="size-5" strokeWidth={1.7} /></span><span><strong className="block font-black text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong><small className="mt-0.5 block text-[9px] uppercase tracking-wide text-slate-400">{equipmentLabel}</small></span></span>
+                      <strong className="text-sm text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
                     </td>
                     <td className="max-w-[260px] p-3">
                       <span className="block truncate text-slate-700" title={ordem.descricao}>{ordem.descricao || ordem.motivo || '—'}</span>
