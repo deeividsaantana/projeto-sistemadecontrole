@@ -10,22 +10,16 @@ interface PageHeaderProps {
   eyebrow?: string;
 }
 
-/**
- * Cabeçalho de módulo, denso. A versão anterior era editorial — foto de obra
- * ocupando metade da faixa, título de até 4,6 rem, 12,75 rem de altura mínima —
- * e comia um terço da primeira dobra antes de qualquer dado aparecer. Num ERP
- * operacional a primeira dobra pertence ao dado, não à capa: aqui o título, o
- * contexto e as ações cabem em uma faixa de ~64 px, com uma linha fina embaixo.
- */
+/** Mantém a hierarquia semântica da tela sem repetir um título visual no shell. */
 export function PageHeader({ title, description, actions, className, eyebrow }: PageHeaderProps) {
   return (
     <header className={cn('renea-page-header', className)}>
-      <div className="renea-page-header__copy">
-        {eyebrow && <span className="renea-page-header__eyebrow">{eyebrow}</span>}
+      <div className="renea-page-header__copy sr-only">
+        {eyebrow && <span>{eyebrow}</span>}
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>
-      {actions && <div className="renea-page-actions">{actions}</div>}
+      {actions && <div className="renea-page-toolbar renea-page-actions">{actions}</div>}
     </header>
   );
 }

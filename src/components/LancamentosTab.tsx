@@ -1676,8 +1676,20 @@ export default function LancamentosTab({
               <tbody className="divide-y divide-slate-850">
                 {filteredAbastecimentos.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-10 text-center text-slate-500 italic">
-                      {hasFiltrosAtivos ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Nenhum abastecimento encontrado.'}
+                    <td colSpan={10} className="px-5 py-12 text-center text-slate-500">
+                      {hasFiltrosAtivos ? (
+                        <p className="text-sm">Nenhum registro encontrado para os filtros selecionados.</p>
+                      ) : (
+                        <div className="mx-auto flex max-w-md flex-col items-center">
+                          <span className="grid size-11 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Fuel className="size-5" /></span>
+                          <strong className="mt-3 text-sm text-slate-800">Nenhum abastecimento local</strong>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">Comece um novo lançamento ou importe a planilha conferida da operação.</p>
+                          <div className="mt-4 flex flex-wrap justify-center gap-2">
+                            <button type="button" onClick={handleOpenCreate} className="inline-flex min-h-9 items-center gap-2 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white hover:bg-emerald-800"><Plus className="size-4" />Novo abastecimento</button>
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:border-emerald-500"><Upload className="size-4" />Importar planilha</button>
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ) : (

@@ -56,7 +56,7 @@ for (const { screen, titulo } of TELAS) {
     page.on('pageerror', erro => erros.push(erro.message));
 
     await page.goto(`/?screen=${screen}`);
-    await expect(page.getByRole('heading', { name: titulo, level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: titulo, level: 1 })).toBeAttached();
 
     const estouro = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -65,6 +65,52 @@ for (const { screen, titulo } of TELAS) {
     expect(erros, 'nenhum erro de página').toEqual([]);
   });
 }
+
+test('painel mostra cada indicador executivo uma única vez', async ({ page }) => {
+  await page.goto('/?screen=painel');
+
+  const painel = page.locator('#dashboard-tab');
+  await expect(painel.getByText('Fechamento operacional', { exact: true })).toBeHidden();
+  await expect(painel.getByText('Pulso do dia', { exact: true })).toBeHidden();
+  await expect(painel.getByText('Combustível', { exact: true })).toHaveCount(1);
+  await expect(painel.getByText('Pessoas em campo', { exact: true })).toHaveCount(1);
+  await expect(painel.locator('[data-dashboard-hero]')).toHaveCount(0);
+});
+
+test('manutenção apresenta central operacional e fluxo das OS', async ({ page }) => {
+  await page.goto('/?screen=manutencao');
+
+  await expect(page.getByRole('heading', { name: 'Manutenção', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Centro de manutenção', level: 2 })).toBeVisible();
+  await expect(page.getByText('Fluxo das ordens')).toBeVisible();
+  await expect(page.getByText('Ordens em acompanhamento')).toBeVisible();
+});
+
+test('manutenção identifica a categoria do equipamento', async ({ page }) => {
+  await page.goto('/?screen=manutencao');
+
+  await expect(page.locator('[aria-label="Caminhão basculante"]').first()).toBeVisible();
+});
+
+test('módulo preserva h1 e remove o cabeçalho visual', async ({ page }) => {
+  await page.goto('/?screen=producao');
+
+  await expect(page.locator('h1')).toHaveCount(1);
+  await expect(page.locator('.renea-page-header__copy')).toHaveClass(/sr-only/);
+  const semanticCopy = await page.locator('.renea-page-header__copy').boundingBox();
+  expect(semanticCopy?.width).toBeLessThanOrEqual(1);
+  expect(semanticCopy?.height).toBeLessThanOrEqual(1);
+  await expect(page.locator('.renea-page-header')).toHaveCSS('min-height', '0px');
+});
+
+test('controle de frotas remove o lançamento rápido e leva as visões ao topo', async ({ page }) => {
+  await page.goto('/?screen=frotas');
+
+  await expect(page.getByText('Lançamento rápido')).toHaveCount(0);
+  const topViews = page.locator('.renea-page-header').getByRole('navigation', { name: 'Visões do controle de frotas' });
+  await expect(topViews).toBeVisible();
+  await expect(topViews.getByRole('button', { name: 'Situação do dia' })).toBeVisible();
+});
 
 test('checklist bloqueia salvar não conformidade sem justificativa', async ({ page }) => {
   await page.goto('/?screen=checklist');
@@ -118,15 +164,8 @@ test('painel: 7d, 14d e 30d mudam de verdade a régua do gráfico', async ({ pag
 test('painel não duplica a navegação principal dentro do conteúdo', async ({ page }) => {
   await page.goto('/?screen=painel');
   await expect(page.getByRole('navigation', { name: 'Módulos da obra' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Registrar operação' })).toBeVisible();
-});
-
-test('painel central expõe os controles de tickets, medições, estacas e qualidade', async ({ page }) => {
-  await page.goto('/?screen=painel');
-  await expect(page.getByRole('heading', { name: 'Controle central da obra' })).toBeVisible();
-  for (const label of ['Tickets de jazida', 'Medições', 'Estacas', 'Qualidade']) {
-    await expect(page.getByRole('button', { name: new RegExp(label) })).toBeVisible();
-  }
+  await expect(page.getByRole('button', { name: 'Registrar operação' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Novo lançamento' })).toHaveCount(0);
 });
 
 test('frota: a relação do dia abre e fecha o restante do grupo sem perder itens', async ({ page }) => {

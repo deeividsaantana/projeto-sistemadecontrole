@@ -3,7 +3,7 @@
  * operação já preenche e permite corrigir o status da frota sem sair daqui.
  */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ChevronRight, ClipboardList, MapPin, Truck, Users, Wrench } from 'lucide-react';
+import { AlertTriangle, BarChart3, CalendarClock, ChevronRight, ClipboardCheck, ClipboardList, FileText, Hammer, MapPin, Megaphone, ShieldAlert, Truck, Users, Wrench } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
   Equipamento,
@@ -16,7 +16,7 @@ import type {
 } from '../types';
 import type { FleetPersistedRecord } from '../fleet/domain';
 import { isOrdemEncerrada } from '../utils/manutencao';
-import { Badge, Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
+import { Badge, Card, EmptyState, ModuleShortcutBar, PageHeader, isoDay, statusTone } from '../shared/ui';
 
 interface CentralOperacionalTabProps {
   equipamentos: Equipamento[];
@@ -189,6 +189,18 @@ export default function CentralOperacionalTab({
           </div>
         )}
       />
+      <ModuleShortcutBar onNavigate={onNavigate} items={[
+        { id: 'frentes', label: 'Frentes', icon: MapPin },
+        { id: 'producao', label: 'Produção', icon: BarChart3 },
+        { id: 'cronograma', label: 'Cronograma', icon: CalendarClock },
+        { id: 'fvs', label: 'FVS', icon: ClipboardCheck },
+        { id: 'inspecoes', label: 'Inspeções', icon: ShieldAlert },
+        { id: 'medicoes', label: 'Medições', icon: ClipboardList },
+        { id: 'documentos', label: 'Documentos', icon: FileText },
+        { id: 'ocorrencias', label: 'Ocorrências', icon: Megaphone },
+        { id: 'tickets-jazida', label: 'Tickets', icon: Truck },
+        { id: 'estacas', label: 'Estacas', icon: Hammer },
+      ]} />
 
       <section className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
         {resumo.map(item => (

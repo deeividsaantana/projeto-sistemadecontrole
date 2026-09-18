@@ -1,4 +1,4 @@
-import type { OrdemServico } from '../types';
+import type { ControleEquipamentoDiario, OrdemServico } from '../types';
 
 /** Fluxo oficial da ordem de serviço. Cancelada sai do fluxo a qualquer momento. */
 export const FLUXO_MANUTENCAO: OrdemServico['status'][] = [
@@ -12,6 +12,68 @@ export const FLUXO_MANUTENCAO: OrdemServico['status'][] = [
 export const STATUS_ENCERRADOS: OrdemServico['status'][] = ['Concluída', 'Cancelada'];
 
 export const isOrdemEncerrada = (status: OrdemServico['status']) => STATUS_ENCERRADOS.includes(status);
+
+export const proximoNumeroOrdemServico = (ordens: OrdemServico[]) => {
+  const maior = ordens.reduce((maximo, ordem) => {
+    const numero = Number(String(ordem.numero).replace(/\D/g, ''));
+    return Number.isFinite(numero) && numero > maximo ? numero : maximo;
+  }, 0);
+  return `OS-${String(maior + 1).padStart(4, '0')}`;
+};
+
+interface OrdemAutomaticaDaFrota {
+  registro: ControleEquipamentoDiario;
+  ordens: OrdemServico[];
+  criada: boolean;
+}
+
+/**
+ * Faz a ponte entre o fechamento operacional dos basculantes e a oficina.
+ * Uma OS aberta existente sempre vence, evitando que lançamentos diários
+ * multipliquem ordens para o mesmo equipamento.
+ */
+export const garantirOrdemAutomaticaDaFrota = (
+  registro: ControleEquipamentoDiario,
+  ordens: OrdemServico[],
+  responsavel: string,
+): OrdemAutomaticaDaFrota => {
+  const ehBasculante = registro.familia === 'Basculantes'
+    || registro.tipoEquipamento?.toLocaleLowerCase('pt-BR').includes('basculante')
+    || /^CB\s*-?\s*\d+/i.test(registro.prefixo);
+  if (!ehBasculante || !['Em manutenção', 'Aguardando manutenção'].includes(registro.status)) {
+    return { registro, ordens, criada: false };
+  }
+
+  const aberta = ordens.find(ordem =>
+    ordem.equipamentoId === registro.equipamentoId && !isOrdemEncerrada(ordem.status));
+  if (aberta) {
+    return {
+      registro: { ...registro, ordemServicoId: aberta.id },
+      ordens,
+      criada: false,
+    };
+  }
+
+  const ordem: OrdemServico = {
+    id: `os-frota-${registro.id}`,
+    numero: proximoNumeroOrdemServico(ordens),
+    equipamentoId: registro.equipamentoId,
+    tipo: 'Corretiva',
+    prioridade: 'Média',
+    descricao: `Entrada em manutenção registrada no controle operacional do ${registro.prefixo}.`,
+    status: 'Aberta',
+    dataAbertura: registro.data,
+    horaAbertura: registro.horaEntradaManutencao || undefined,
+    responsavel,
+    observacao: 'OS criada automaticamente pelo Controle de Basculantes.',
+    motivo: registro.motivoManutencao?.trim() || '',
+  };
+  return {
+    registro: { ...registro, ordemServicoId: ordem.id },
+    ordens: [ordem, ...ordens],
+    criada: true,
+  };
+};
 
 /** Próxima etapa do fluxo, ou undefined quando a OS já está encerrada. */
 export const proximoStatusManutencao = (status: OrdemServico['status']): OrdemServico['status'] | undefined => {

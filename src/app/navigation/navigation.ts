@@ -145,6 +145,38 @@ const SIDEBAR_MODULE_IDS = new Set<string>(PRIMARY_MODULE_IDS);
 
 export const isPrimaryModule = (id: string) => SIDEBAR_MODULE_IDS.has(id);
 
+export const AUXILIARY_MODULE_DESTINATIONS: Readonly<Record<string, string>> = {
+  'consulta-geral': 'dashboard',
+  periodo: 'relatorios',
+  pendencias: 'dashboard',
+  notificacoes: 'dashboard',
+  assistente: 'dashboard',
+  frentes: 'central-operacional',
+  producao: 'central-operacional',
+  cronograma: 'central-operacional',
+  fvs: 'central-operacional',
+  inspecoes: 'central-operacional',
+  'nao-conformidades': 'central-operacional',
+  medicoes: 'central-operacional',
+  documentos: 'central-operacional',
+  ocorrencias: 'central-operacional',
+  'tickets-jazida': 'central-operacional',
+  estacas: 'central-operacional',
+  frota: 'controle-equipamentos',
+  'horas-paradas': 'controle-equipamentos',
+  checklist: 'controle-equipamentos',
+  equipes: 'colaboradores',
+  apontamentos: 'presenca',
+  'dds-treinamentos': 'colaboradores',
+  indicadores: 'dashboard',
+  timeline: 'dashboard',
+  custos: 'relatorios',
+  orcamento: 'relatorios',
+  cadastros: 'administracao',
+  auditoria: 'administracao',
+  permissoes: 'administracao',
+};
+
 const SIDEBAR_GROUP_LABELS: Record<string, string> = {
   Equipamentos: 'Frota',
   Análise: 'Gestão',

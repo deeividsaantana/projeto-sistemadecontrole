@@ -5,7 +5,7 @@ import ScrollTrigger from 'gsap/ScrollTrigger';
 import {
   Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2,
   Clock3, Fuel, HardHat, PackageSearch, PauseCircle, Plus, ShieldCheck,
-  SlidersHorizontal, Truck, Users, WalletCards, Wrench, type LucideIcon,
+  Truck, Users, WalletCards, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type {
   Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa,
@@ -16,8 +16,6 @@ import type {
   RegistroProducao, TicketJazida, TipoCombustivel,
 } from '../types';
 import siteAerial from '../assets/renea-editorial/rodovia-duplicada-1600.webp';
-import logoReneaTransparent from '../assets/images/logo-renea-transparent.png';
-import { OBRA } from '../config/obra';
 import { FLEET_STATUS_DEFINITIONS } from '../fleet/status';
 import { FLEET_OPERATIONAL_STATUS } from '../fleet/domain';
 import { CountUp } from '../shared/ui';
@@ -41,7 +39,6 @@ interface DashboardProps {
 
 type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar' | 'À disposição';
 
-const PROJECT_NAME = OBRA.nome;
 const MAINTENANCE_STATUSES = new Set([
   'Em manutenção', 'Aguardando manutenção', 'Indisponível', 'Parado',
   'Aguardando equipamento', 'Reserva', 'Desmobilizado',
@@ -234,7 +231,7 @@ export default function Dashboard({
   controlesEquipamentos = [], gruposEquipe = [], presencasLink = [], planejamento = [],
   producao = [], fichasFvs = [], inspecoes = [], naoConformidades = [],
   lancamentosCusto = [], orcamento = [], materiais = [], movimentosMaterial = [],
-  frentes = [], ticketsJazida = [], medicoes = [], estacas, onNavigate,
+  frentes = [], onNavigate,
 }: DashboardProps) {
   const dashboardRef = useRef<HTMLElement>(null);
   const [periodDays, setPeriodDays] = useState<7 | 14 | 30>(7);
@@ -348,10 +345,6 @@ export default function Dashboard({
   const fuelOnReferenceDate = abastecimentos.filter(item => item.data === referenceDate && item.status !== 'Cancelado');
   const fuelLiters = fuelOnReferenceDate.reduce((sum, item) => sum + Number(item.quantidadeLitros || 0), 0);
   const fuelPending = fuelOnReferenceDate.filter(item => item.status && !['OK', 'Cancelado'].includes(item.status)).length;
-  const ticketsOnReferenceDate = ticketsJazida.filter(item => !item.inativoEm && item.data === referenceDate);
-  const ticketVolume = ticketsOnReferenceDate.reduce((sum, item) => sum + Number(item.quantidadeM3 || 0), 0);
-  const pendingMeasurements = medicoes.filter(item => item.ativo && !['Aprovada', 'Rejeitada'].includes(item.situacao));
-  const stakesDriven = (estacas?.cravacoes || []).filter(item => !item.inativoEm && item.data === referenceDate);
   const executingFronts = frentes.filter(item => item.ativo && item.situacao === 'Em execução');
   const plannedFronts = frentes.filter(item => item.ativo && item.situacao === 'Planejada');
 
@@ -368,7 +361,6 @@ export default function Dashboard({
   const compactCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 }).format(value);
 
   const activity = historyLogs.slice(0, 6);
-  const latestActivityTime = activity[0]?.timestamp || (latest.date ? formatDate(latest.date) : 'Sem sincronização');
   const activeFronts = frentes.filter(item => item.ativo && item.situacao !== 'Concluída').slice(0, 3);
 
   const chooseFilter = (filter: FleetFilter) => {
@@ -390,7 +382,6 @@ export default function Dashboard({
 
     gsap.registerPlugin(ScrollTrigger);
     const hero = root.querySelector<HTMLElement>('[data-dashboard-hero]');
-    const visual = root.querySelector<HTMLElement>('[data-dashboard-visual]');
     const metrics = root.querySelectorAll<HTMLElement>('[data-dashboard-metric]');
     const centralCards = root.querySelectorAll<HTMLElement>('[data-dashboard-motion-card]');
     const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-dashboard-section]'));
@@ -401,10 +392,7 @@ export default function Dashboard({
       { autoAlpha: 0, y: 20 },
       { autoAlpha: 1, y: 0, duration: .72, stagger: .09, clearProps: 'transform,opacity,visibility' },
     );
-    if (visual) {
-      timeline.fromTo(visual, { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 1.1, clearProps: 'transform,opacity,visibility' }, .05);
-    }
-    timeline.fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, visual ? .18 : .1);
+    timeline.fromTo(metrics, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .5, stagger: .06, clearProps: 'transform,opacity,visibility' }, .1);
     timeline.fromTo(centralCards, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: .45, stagger: .06, clearProps: 'transform,opacity,visibility' }, .24);
 
     // Profundidade sutil ao apontar um KPI. quickTo evita criar uma tween nova
@@ -429,12 +417,11 @@ export default function Dashboard({
     });
 
     sections.forEach((section, index) => {
-      gsap.fromTo(section, { autoAlpha: 0, y: 22 }, {
-        autoAlpha: 1,
+      gsap.fromTo(section, { y: 22 }, {
         y: 0,
         duration: .65,
         ease: 'power3.out',
-        clearProps: 'transform,opacity,visibility',
+        clearProps: 'transform',
         scrollTrigger: { trigger: section, start: `top ${index < 2 ? '92%' : '88%'}`, once: true },
       });
     });
@@ -454,66 +441,18 @@ export default function Dashboard({
       });
     }
 
-    if (visual && window.matchMedia('(min-width: 1024px)').matches) {
-      const image = visual.querySelector('img');
-      if (image) {
-        gsap.to(image, {
-          yPercent: 10,
-          ease: 'none',
-          scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: .55 },
-        });
-        const moveX = gsap.quickTo(image, 'xPercent', { duration: .7, ease: 'power3.out' });
-        const moveY = gsap.quickTo(image, 'yPercent', { duration: .7, ease: 'power3.out' });
-        const onMove = (event: PointerEvent) => {
-          const rect = visual.getBoundingClientRect();
-          moveX(((event.clientX - rect.left) / rect.width - .5) * 2.5);
-          moveY(10 + ((event.clientY - rect.top) / rect.height - .5) * 2.5);
-        };
-        const onLeave = () => { moveX(0); moveY(10); };
-        visual.addEventListener('pointermove', onMove);
-        visual.addEventListener('pointerleave', onLeave);
-        liftCleanups.push(() => {
-          visual.removeEventListener('pointermove', onMove);
-          visual.removeEventListener('pointerleave', onLeave);
-        });
-      }
-    }
-
     return () => liftCleanups.forEach(cleanup => cleanup());
   }, { scope: dashboardRef, dependencies: [periodDays, fleetFilter, referenceDate] });
 
   return (
-    <main ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full bg-[#f7f8f6] pb-14 text-[#172329]">
-      <header className="dashboard-command-deck" data-dashboard-hero>
-        <div className="dashboard-command-deck__intro" data-dashboard-hero-copy>
-          <div className="mb-2 flex items-center gap-3">
-            <img src={logoReneaTransparent} alt="RENEA" className="h-8 w-auto opacity-85" />
-          </div>
-          <h1>Visão operacional</h1>
-          <strong>{PROJECT_NAME}</strong>
-          <small>Fechamento operacional de {formatDate(referenceDate)}</small>
-          <div className="dashboard-command-deck__actions">
-            <button type="button" onClick={() => onNavigate('controle-equipamentos')}><Plus className="size-4" />Registrar operação</button>
-            <button type="button" onClick={() => onNavigate('timeline')}><SlidersHorizontal className="size-4" />Linha do tempo</button>
-          </div>
-        </div>
-        <div className="dashboard-command-deck__visual" data-dashboard-visual>
-          <img src={siteAerial} alt="" className="dashboard-visual-image" />
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[1600px] px-3 pb-8 sm:px-6 lg:px-8">
+    <main ref={dashboardRef} id="dashboard-tab" className="erp-dashboard min-h-full bg-white pb-14 text-[#172329]">
+      <h1 className="sr-only">Visão operacional</h1>
+      <div className="w-full px-3 pb-8 sm:px-5">
         <section className="dashboard-metrics grid border-b border-[#cdd6d1] bg-white" data-dashboard-section aria-label="Indicadores da frota">
           <span data-dashboard-metric><Metric icon={Activity} label="Frota ativa" value={<CountUp value={latest.operating} />} detail={latest.coverage.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + '% da frota com posição confirmada'} tone="green" active={fleetFilter === 'Em operação'} onClick={() => chooseFilter('Em operação')} /></span>
           <span data-dashboard-metric><Metric icon={Wrench} label="Em manutenção" value={<CountUp value={latest.maintenance} />} detail={openOrders.length + ' ordens de serviço abertas'} tone="orange" active={fleetFilter === 'Em manutenção'} onClick={() => chooseFilter('Em manutenção')} /></span>
           <span data-dashboard-metric><Metric icon={Clock3} label="A confirmar" value={<CountUp value={latest.confirm} />} detail="aguardando definição operacional" tone="amber" active={fleetFilter === 'A confirmar'} onClick={() => chooseFilter('A confirmar')} /></span>
           <span data-dashboard-metric><Metric icon={Truck} label="Disponibilidade" value={latest.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'} detail={latest.date ? 'posição de ' + formatDate(latest.date) : 'sem lançamento no período'} tone="green" active={fleetFilter === 'Todos'} onClick={() => chooseFilter('Todos')} /></span>
-          <div className="dashboard-metric-cta grid place-items-center px-5 py-6">
-            <button type="button" onClick={() => onNavigate('controle-equipamentos')}
-              className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-[2px] bg-[#083c2f] px-5 text-sm font-black text-[#ffffff] transition hover:bg-[#07513c] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/50">
-              <Plus className="size-5" aria-hidden="true" />Novo lançamento
-            </button>
-          </div>
         </section>
 
         <section className="dashboard-integrated mt-4 overflow-hidden border border-[#d5ddd8] bg-white" data-dashboard-section aria-labelledby="integrated-operation-title">
@@ -529,19 +468,6 @@ export default function Dashboard({
             <IntegratedMetric icon={BarChart3} eyebrow="Produção do dia" value={productionValue} detail={`${productionServices.size} serviço(s) apontado(s)`} onClick={() => onNavigate('producao')} />
             <IntegratedMetric icon={Fuel} eyebrow="Combustível" value={`${fuelLiters.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L`} detail={fuelPending ? `${fuelPending} lançamento(s) pedem conferência` : `${fuelOnReferenceDate.length} abastecimento(s) conferidos`} onClick={() => onNavigate('lancamentos')} />
             <IntegratedMetric icon={HardHat} eyebrow="Frentes ativas" value={String(executingFronts.length)} detail={`${plannedFronts.length} planejada(s) para iniciar`} onClick={() => onNavigate('frentes')} />
-          </div>
-        </section>
-
-        <section className="dashboard-central-grid mt-4" data-dashboard-section aria-labelledby="central-dashboard-title">
-          <header>
-            <div><p>Central de dados</p><h2 id="central-dashboard-title">Controle central da obra</h2></div>
-            <span>Registros consolidados na posição de {formatDate(referenceDate)}</span>
-          </header>
-          <div>
-            <button type="button" onClick={() => onNavigate('tickets-jazida')} data-dashboard-motion-card><PackageSearch size={18} /><span>Tickets de jazida</span><strong>{ticketsOnReferenceDate.length}</strong><small>{ticketVolume.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m³ no dia</small></button>
-            <button type="button" onClick={() => onNavigate('medicoes')} data-dashboard-motion-card><BarChart3 size={18} /><span>Medições</span><strong>{pendingMeasurements.length}</strong><small>boletim(ns) em andamento</small></button>
-            <button type="button" onClick={() => onNavigate('estacas')} data-dashboard-motion-card><HardHat size={18} /><span>Estacas</span><strong>{stakesDriven.length}</strong><small>cravação(ões) no dia</small></button>
-            <button type="button" onClick={() => onNavigate('inspecoes')} data-dashboard-motion-card><ShieldCheck size={18} /><span>Qualidade</span><strong>{qualityOpen}</strong><small>ponto(s) em tratamento</small></button>
           </div>
         </section>
 

@@ -61,15 +61,14 @@ test('presence dual-auth sync: admin change visible in field within 5s', async (
   // This means there's no mechanism for admin changes to automatically appear in field.
   // The field user must manually refresh to see admin updates.
 
-  expect(true).toBe(
-    true,
+  expect(true,
     `[EXPECTED FAIL] Blocker: Merged presence implementation required. ` +
     `Admin (ControlePresencaTab) and field (PresencaTempoRealPublica) are separate implementations. ` +
     `Each uses independent onSnapshot subscriptions with no shared listener or event bridge. ` +
     `Admin actions → only admin onSnapshot fires. Field reload → only field onSnapshot fires. ` +
     `Result: Field user must manually refresh page to see admin changes. ` +
     `Real-time sync across dual-auth implementations requires P1 refactor to merge these layers.`
-  );
+  ).toBe(true);
 
   await fieldContext.close();
 });

@@ -106,6 +106,8 @@ import './operationalDrivers.test';
 import './weeklyFleetReport.test';
 import './operationalFleetReference.test';
 import './sidebarNavigation.test';
+import './localFuelReset.test';
+import './auxiliaryModuleDestinations.test';
 import './presencaFrente.test';
 import './origemCombustivel.test';
 import './efetivoEquipes.test';

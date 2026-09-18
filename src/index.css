@@ -355,7 +355,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-tab-viewport { max-width: none; }
 
 @media (max-width: 1180px) {
-  .erp-sidebar { width: 15.25rem; min-width: 15.25rem; }
+  .erp-sidebar { width: 12.5rem; min-width: 12.5rem; }
   .erp-topbar { padding-inline: 1.1rem; }
   .erp-topbar__command { display: none; }
   .erp-topbar__status { display: none; }
@@ -382,16 +382,15 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
 .erp-shell { background: #fff; }
+.erp-shell #main-tab-viewport,
+.erp-shell #main-tab-viewport > div,
+.erp-shell #main-tab-viewport > div > :is(main, section, div)[id$="-tab"] {
+  background-color: #fff !important;
+}
 .erp-sidebar {
-  width: 17rem;
-  min-width: 17rem;
-  background-color: #0c3d2f;
-  background-image:
-    linear-gradient(180deg, rgb(6 40 30 / .82) 0%, rgb(4 26 20 / .93) 55%, rgb(3 20 15 / .97) 100%),
-    url("./assets/renea-editorial/rodovia-duplicada-1600.webp");
-  background-position: center, 30% 14%;
-  background-size: cover, cover;
-  background-repeat: no-repeat, no-repeat;
+  width: 12.5rem;
+  min-width: 12.5rem;
+  background: #0b4434;
   border-right: 1px solid #123f31;
   /* A navegação fica estática: animação contínua não ajuda a operação e
      desperdiça GPU em uma área sempre visível. */
@@ -475,7 +474,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 /* Largura do menu recolhido precisa morar aqui: a regra base .erp-sidebar
    fixa width/min-width e venceria a classe utilitaria por ordem no arquivo. */
-#app-root .erp-sidebar.erp-sidebar--recolhido { width: 5.25rem; min-width: 5.25rem; }
+#app-root .erp-sidebar.erp-sidebar--recolhido { width: 4.5rem; min-width: 4.5rem; }
 
 /* RENEA engineering editorial v3 — approved operational language.
    This layer intentionally leaves DesktopSidebar markup and the original logo
@@ -911,9 +910,27 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 #main-tab-viewport > :not(.erp-dashboard) {
   width: 100%;
-  max-width: 1600px;
-  margin-inline: auto;
-  padding: 1.25rem clamp(1rem, 2vw, 2rem) 3rem;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0 0 2rem;
+}
+
+/* O shell já informa o módulo ativo. O PageHeader preserva somente o h1 para
+   leitores de tela e transforma suas ações em uma barra operacional compacta. */
+#main-tab-viewport .renea-page-header {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  justify-content: flex-end;
+}
+
+#main-tab-viewport .renea-page-header:has(.renea-page-toolbar) {
+  padding-block: 0 0.75rem;
+}
+
+#main-tab-viewport .renea-page-toolbar {
+  width: auto;
+  margin-left: auto;
 }
 
 .erp-module {
@@ -921,9 +938,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 }
 
 .renea-page-header {
-  min-height: 5.25rem;
-  padding: .6rem 0 1rem;
-  border-bottom-color: var(--erp-line);
+  min-height: 0;
+  padding: 0;
+  border-bottom: 0;
 }
 
 .renea-page-header__eyebrow,
@@ -1321,8 +1338,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   }
 
   .renea-page-header {
-    min-height: auto;
-    padding-bottom: .85rem;
+    min-height: 0;
+    padding-bottom: 0;
   }
 
   .renea-page-header .renea-page-actions {
@@ -1809,7 +1826,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .dashboard-command-header__actions button:first-child:hover { background: #0b654a; color: #fff; }
 .dashboard-command-deck {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(18rem, .9fr);
+  grid-template-columns: 1fr;
   min-height: 10.5rem;
   overflow: hidden;
   border-bottom: 1px solid #cbd8d0;
@@ -1823,25 +1840,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   justify-content: center;
   padding: 1.2rem clamp(1.5rem, 3vw, 4rem);
   color: #f5fbf7;
-}
-.dashboard-command-deck__visual {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  overflow: hidden;
-  padding: 1rem 1.5rem 0.8rem;
-  background: linear-gradient(135deg, rgba(15, 60, 48, 0.4) 0%, rgba(11, 48, 38, 0.6) 100%);
-}
-.dashboard-visual-image {
-  position: absolute;
-  right: -2rem;
-  bottom: -1rem;
-  height: 120%;
-  width: auto;
-  object-fit: contain;
-  opacity: 0.35;
-  mix-blend-mode: overlay;
 }
 .dashboard-command-deck__intro > p {
   display: flex;
@@ -1883,7 +1881,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
    única fonte visual desses números. Light mode adjustments mantém o grid layout. */
 .dashboard-command-deck { border-bottom: 1px solid #dce5df; background: #fff; }
 .dashboard-command-deck__intro { color: #172b23; }
-.dashboard-command-deck__visual { background: linear-gradient(135deg, rgba(216, 235, 226, 0.4) 0%, rgba(212, 226, 220, 0.6) 100%); }
 .dashboard-command-deck h1 { margin: 0; color: #10251d; font-size: clamp(1.85rem, 2.8vw, 2.4rem); }
 .dashboard-command-deck__intro > strong { display: block; margin-top: .35rem; color: #315245; font-size: .85rem; }
 .dashboard-command-deck__intro > small { display: block; color: #71857b; font-size: .75rem; }
@@ -1940,7 +1937,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: .75rem;
   overflow: visible;
-  margin-top: 1.3rem;
+  margin-top: 0;
   border: 0;
   background: transparent;
 }

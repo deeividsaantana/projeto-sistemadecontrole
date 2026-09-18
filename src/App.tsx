@@ -85,6 +85,12 @@ import {
 } from './utils/equipmentOperations';
 import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 import { mergeImportedRecords } from './utils/importMerge';
+import { garantirOrdemAutomaticaDaFrota } from './utils/manutencao';
+import {
+  LOCAL_FUEL_RESET_STORAGE_KEY,
+  LOCAL_FUEL_RESET_VERSION,
+  shouldResetLocalFuel,
+} from './utils/localFuelReset';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -651,7 +657,8 @@ export default function App() {
       const savedCombustiveis = localStorage.getItem('renea_combustiveis');
       const savedLubrificantes = localStorage.getItem('renea_lubrificantes');
       const savedEtapas = localStorage.getItem('renea_etapas');
-      const savedAbastecimentos = localStorage.getItem('renea_abastecimentos');
+      const resetLocalFuel = shouldResetLocalFuel(localStorage.getItem(LOCAL_FUEL_RESET_STORAGE_KEY));
+      const savedAbastecimentos = resetLocalFuel ? '[]' : localStorage.getItem('renea_abastecimentos');
       const savedLubrificacoes = localStorage.getItem('renea_lubrificacoes');
       const savedTicketsJazida = localStorage.getItem('renea_tickets_jazida');
       const savedListasPresenca = localStorage.getItem('renea_listas_presenca');
@@ -703,7 +710,7 @@ export default function App() {
       const loadedComboios = shouldMigrateSpreadsheetSeed
         ? mergeSeedRecords(parsedComboios, INITIAL_COMBOIOS, item => item.placa.trim().toLowerCase())
         : parsedComboios;
-      const loadedAbastecimentos = shouldMigrateSpreadsheetSeed
+      const loadedAbastecimentos = resetLocalFuel ? [] : shouldMigrateSpreadsheetSeed
         ? mergeSeedRecords(parsedAbastecimentos, INITIAL_ABASTECIMENTOS, item => `${item.data}|${item.equipamentoId}|${item.hora}|${item.quantidadeLitros}|${item.bombaInicial}`)
         : parsedAbastecimentos;
       const loadedTicketsJazida = shouldMigrateSpreadsheetSeed
@@ -820,6 +827,12 @@ export default function App() {
       }
       if (!savedPeriodosArquivados) {
         writeStorageValue(localStorage, 'renea_periodos_arquivados', JSON.stringify([]));
+      }
+      if (resetLocalFuel) {
+        commitStorageBatch(localStorage, [
+          { key: 'renea_abastecimentos', value: '[]' },
+          { key: LOCAL_FUEL_RESET_STORAGE_KEY, value: LOCAL_FUEL_RESET_VERSION },
+        ]);
       }
       if (shouldMigrateSpreadsheetSeed) {
         writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(loadedEmpresas));
@@ -3500,17 +3513,23 @@ export default function App() {
   };
 
   const handleSaveControleEquipamentoDiario = (registro: ControleEquipamentoDiario, isNew: boolean) => {
+    const maintenance = garantirOrdemAutomaticaDaFrota(registro, ordensServico, activeUserName);
+    const registroVinculado = maintenance.registro;
     const updated = isNew
-      ? [registro, ...controleEquipamentosDiario]
-      : controleEquipamentosDiario.map(item => item.id === registro.id ? registro : item);
+      ? [registroVinculado, ...controleEquipamentosDiario]
+      : controleEquipamentosDiario.map(item => item.id === registroVinculado.id ? registroVinculado : item);
     saveAndLog(
       'Controle Diário de Equipamentos',
       isNew ? 'Criou' : 'Editou',
-      `${isNew ? 'Criou' : 'Editou'} o controle de ${registro.prefixo} em ${registro.data}.`,
+      `${isNew ? 'Criou' : 'Editou'} o controle de ${registroVinculado.prefixo} em ${registroVinculado.data}.${maintenance.criada ? ` Abriu automaticamente a ${maintenance.ordens[0].numero}.` : ''}`,
       historyLogs,
       () => {
         setControleEquipamentosDiario(updated);
         writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
+        if (maintenance.ordens !== ordensServico) {
+          setOrdensServico(maintenance.ordens);
+          writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(maintenance.ordens));
+        }
       },
     );
   };
@@ -4471,7 +4490,7 @@ export default function App() {
           onLogout={() => void handleLogout()}
         />
         {/* Dynamic Inner Tab Viewport */}
-        <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full mx-auto print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3.5 sm:p-4 md:p-7 2xl:p-10 max-w-[1440px]'}`}>
+        <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (

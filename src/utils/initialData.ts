@@ -69,7 +69,9 @@ export const hydrateInitialOperationalSeedData = async (): Promise<void> => {
     item => item.prefixo.trim().toLowerCase()
   );
   INITIAL_COMBOIOS = mergeByKey(BASE_INITIAL_COMBOIOS, augustSeed.IMPORTED_AUG2026_COMBOIOS, item => item.placa.trim().toLowerCase());
-  INITIAL_ABASTECIMENTOS = augustSeed.IMPORTED_AUG2026_ABASTECIMENTOS;
+  // Combustível inicia vazio neste checkout. A base importada continua
+  // disponível no arquivo histórico, mas não é injetada na operação local.
+  INITIAL_ABASTECIMENTOS = [];
   INITIAL_TICKETS_JAZIDA = mergeByKey(
     spreadsheetSeed.IMPORTED_SEED_TICKETS_JAZIDA,
     augustSeed.IMPORTED_AUG2026_TICKETS_JAZIDA,
@@ -492,7 +494,7 @@ export const INITIAL_ETAPAS_SERVICO: EtapaServico[] = [
   { id: 'et-5', nome: 'Sinalização e Obras de Arte Correntes' }
 ];
 
-const BASE_INITIAL_ABASTECIMENTOS: Abastecimento[] = [
+export const LEGACY_INITIAL_ABASTECIMENTOS: Abastecimento[] = [
   { id: 'ab-1', data: '2026-06-21', hora: '07:00', equipamentoId: 'eq-cb765', horimetroInicial: 705, kmInicial: 174980, bombaInicial: 87331, quantidadeLitros: 200, bombaFinal: 87531, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
   { id: 'ab-2', data: '2026-06-21', hora: '07:20', equipamentoId: 'eq-cb754', horimetroInicial: 14811, kmInicial: 737545, bombaInicial: 87531, quantidadeLitros: 98, bombaFinal: 87629, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
   { id: 'ab-3', data: '2026-06-21', hora: '07:30', equipamentoId: 'eq-cb789', horimetroInicial: 12824, kmInicial: 165714, bombaInicial: 87629, quantidadeLitros: 70, bombaFinal: 87699, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
@@ -568,7 +570,7 @@ const BASE_INITIAL_ABASTECIMENTOS: Abastecimento[] = [
   { id: 'ab-73', data: '2026-06-23', hora: '12:55', equipamentoId: 'eq-ec063', horimetroInicial: 0, kmInicial: 0, bombaInicial: 93942, quantidadeLitros: 181, bombaFinal: 94123, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
 ];
 
-export let INITIAL_ABASTECIMENTOS: Abastecimento[] = BASE_INITIAL_ABASTECIMENTOS;
+export let INITIAL_ABASTECIMENTOS: Abastecimento[] = [];
 
 export let INITIAL_TICKETS_JAZIDA: TicketJazida[] = [];
 
