@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { Building2, LogOut, Search, X } from 'lucide-react';
@@ -24,6 +24,12 @@ interface DesktopTopBarProps {
   alertas?: Alerta[];
   isCloudConnected: boolean;
   lastCloudSync: string;
+  /**
+   * Controle da tela ativa exibido junto ao indicador de nuvem — hoje o
+   * filtro de período do painel. Fica na barra, e não dentro do módulo,
+   * para o recorte ficar visível sem rolar a página.
+   */
+  filtroDaTela?: ReactNode;
   pendingCount?: number;
   isRetryingPending?: boolean;
   onRetryPending?: () => void;
@@ -48,6 +54,7 @@ export function DesktopTopBar({
   alertas,
   isCloudConnected,
   lastCloudSync,
+  filtroDaTela,
   pendingCount,
   isRetryingPending,
   onRetryPending,
@@ -170,6 +177,7 @@ export function DesktopTopBar({
       </div>
 
       <div className="erp-topbar__actions">
+        {filtroDaTela && <div className="erp-topbar__filter">{filtroDaTela}</div>}
         <div
           className="erp-topbar__status"
           data-offline={!isCloudConnected || undefined}

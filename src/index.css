@@ -318,6 +318,13 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__actions { display: flex; align-items: center; gap: .9rem; }
 .erp-topbar__searchbox { min-width: 10rem; flex: 1 1 20rem; }
 .erp-topbar__status { display: flex; align-items: center; gap: .4rem; color: #496178; font-size: .7rem; font-weight: 650; }
+
+/* Filtro da tela ativa (hoje o período do painel), à esquerda do estado da
+   nuvem. Some antes do indicador em telas estreitas: sem espaço, o recorte
+   ainda pode ser ajustado dentro do próprio módulo. */
+.erp-topbar__filter { display: flex; align-items: center; }
+.erp-topbar__filter > * { margin: 0; }
+@media (max-width: 1100px) { .erp-topbar__filter { display: none; } }
 .erp-topbar__status span { width: .42rem; height: .42rem; border-radius: 50%; background: #0a9867; }
 .erp-topbar__pending { display: flex; align-items: center; gap: .45rem; padding: .28rem .42rem .28rem .6rem; border: 1px solid #f3c96b; border-radius: 999px; background: #fffbeb; color: #92400e; font-size: .65rem; font-weight: 700; white-space: nowrap; }
 .erp-topbar__pending button { border: 0; border-radius: 999px; background: #f59e0b; color: #fff; font: inherit; font-weight: 750; padding: .22rem .48rem; cursor: pointer; }

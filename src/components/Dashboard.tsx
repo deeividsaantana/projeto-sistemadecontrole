@@ -34,6 +34,12 @@ interface DashboardProps {
   inspecoes?: Inspecao[]; naoConformidades?: NaoConformidade[];
   lancamentosCusto?: LancamentoCusto[]; orcamento?: OrcamentoItem[];
   frentes?: FrenteServico[]; onNavigate: (tab: string) => void;
+  /**
+   * Recorte escolhido na barra superior. O painel deriva daqui a janela da
+   * série de disponibilidade e a data de referência dos indicadores do dia,
+   * em vez de manter um seletor próprio que divergia do resto da tela.
+   */
+  periodo?: { from: string; to: string };
 }
 
 type FleetFilter = 'Todos' | 'Em operação' | 'Em manutenção' | 'A confirmar' | 'À disposição';
@@ -230,12 +236,23 @@ export default function Dashboard({
   controlesEquipamentos = [], gruposEquipe = [], presencasLink = [], planejamento = [],
   producao = [], fichasFvs = [], inspecoes = [], naoConformidades = [],
   lancamentosCusto = [], orcamento = [], materiais = [], movimentosMaterial = [],
-  frentes = [], onNavigate,
+  frentes = [], onNavigate, periodo,
 }: DashboardProps) {
   const dashboardRef = useRef<HTMLElement>(null);
-  const [periodDays, setPeriodDays] = useState<7 | 14 | 30>(7);
   const [fleetFilter, setFleetFilter] = useState<FleetFilter>('Todos');
   const [selectedDate, setSelectedDate] = useState('');
+
+  /**
+   * Quantos dias o recorte da barra cobre. O gráfico de frota trabalha em
+   * dias corridos, então o intervalo escolhido vira um comprimento de série.
+   */
+  const periodDays = useMemo(() => {
+    if (!periodo?.from || !periodo?.to) return 7;
+    const inicio = new Date(`${periodo.from}T12:00:00`).getTime();
+    const fim = new Date(`${periodo.to}T12:00:00`).getTime();
+    if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim < inicio) return 7;
+    return Math.min(180, Math.max(1, Math.round((fim - inicio) / 86_400_000) + 1));
+  }, [periodo?.from, periodo?.to]);
 
   /**
    * Janela de calendário, não "os últimos N dias que têm lançamento". Com a
@@ -247,7 +264,10 @@ export default function Dashboard({
    */
   const fleetSeries = useMemo(() => {
     const comLancamento = Array.from(new Set(controlesEquipamentos.map(item => item.data).filter(Boolean))).sort();
-    const fim = comLancamento.at(-1) || localToday();
+    // O fim da série é o fim do recorte, limitado ao último dia lançado: não
+    // adianta esticar o eixo por semanas futuras sem apontamento nenhum.
+    const ultimoLancado = comLancamento.at(-1) || localToday();
+    const fim = periodo?.to && periodo.to < ultimoLancado ? periodo.to : ultimoLancado;
     const base = new Date(`${fim}T12:00:00`);
     const dates = Array.from({ length: periodDays }, (_, index) => {
       const dia = new Date(base);
@@ -307,6 +327,11 @@ export default function Dashboard({
   }, [movimentosMaterial]);
   const criticalMaterials = materiais.filter(item => item.ativo && Number(item.estoqueMinimo || 0) > (stock.get(item.id) || 0));
 
+  /**
+   * O dia que os indicadores retratam: o lançamento mais recente dentro do
+   * recorte escolhido. Sem o filtro, é o último dia com qualquer movimento —
+   * a obra nem sempre lança no mesmo dia em que alguém abre o painel.
+   */
   const referenceDate = useMemo(() => {
     const dates = [
       ...controlesEquipamentos.map(item => item.data),
@@ -316,8 +341,13 @@ export default function Dashboard({
       ...producao.filter(item => item.ativo).map(item => item.data),
       ...movimentosMaterial.map(item => item.data),
     ].filter(Boolean).sort();
-    return dates.at(-1) || latest.date || new Date().toISOString().slice(0, 10);
-  }, [abastecimentos, controlesEquipamentos, latest.date, listasPresenca, movimentosMaterial, presencasLink, producao]);
+    const noRecorte = periodo?.from && periodo?.to
+      ? dates.filter(date => date >= periodo.from && date <= periodo.to)
+      : dates;
+    // Recorte sem nenhum lançamento cai no fim do próprio período: os painéis
+    // mostram vazio, que é a verdade, em vez de dados de outra semana.
+    return noRecorte.at(-1) || periodo?.to || dates.at(-1) || latest.date || new Date().toISOString().slice(0, 10);
+  }, [abastecimentos, controlesEquipamentos, latest.date, listasPresenca, movimentosMaterial, presencasLink, producao, periodo?.from, periodo?.to]);
 
   const activeEmployees = funcionarios.filter(item => item.ativo && !['INATIVO', 'DESMOBILIZADO'].includes(item.status || 'ATIVO'));
   const linkedExpected = new Set(gruposEquipe
@@ -455,7 +485,7 @@ export default function Dashboard({
         </section>
 
         <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.72fr)_minmax(21rem,.78fr)]">
-          <Panel title="Disponibilidade da frota" action={<div className="flex items-center gap-3"><span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#748187]">Últimos {periodDays} dias</span><div className="inline-flex border border-[#d7dfda] bg-white" aria-label="Período do painel">{([7, 14, 30] as const).map(days => <button key={days} type="button" onClick={() => setPeriodDays(days)} aria-pressed={periodDays === days} className={'min-h-8 px-2 text-[10px] font-bold ' + (periodDays === days ? 'bg-[#123d31] text-[#ffffff]' : 'text-[#617078] hover:bg-[#f0f3f0]')}>{days}d</button>)}</div></div>}>
+          <Panel title="Disponibilidade da frota" action={<span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#748187]">{periodDays} {periodDays === 1 ? 'dia' : 'dias'}</span>}>
             <div className="px-4 pb-5 sm:px-5">
               <div className="flex items-end gap-3">
                 <strong className="text-4xl font-semibold tracking-[-0.05em] tabular-nums">{activePoint.availability.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</strong>
