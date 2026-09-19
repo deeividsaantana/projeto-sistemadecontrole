@@ -35,15 +35,24 @@ export default function EquipesTab({
   onSaveGrupoEquipe,
   onNavigate,
 }: EquipesTabProps) {
+  const [busca, setBusca] = useState('');
+  const [filtroObra, setFiltroObra] = useState<string | null>(null);
+  const [filtroFrente, setFiltroFrente] = useState<string | null>(null);
+  const [filtroStatus, setFiltroStatus] = useState<'ativas' | 'todas'>('ativas');
   const hoje = isoDay(new Date());
   const [dia, setDia] = useState(hoje);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [realocacao, setRealocacao] = useState<{ funcionario: Funcionario; destinoId: string } | null>(null);
 
-  const ativas = useMemo(
-    () => gruposEquipe.filter(item => item.status !== 'inativo').sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
-    [gruposEquipe],
-  );
+  const lista = useMemo(() => {
+    const termo = normalizeComparable(busca).trim();
+    return gruposEquipe
+      .filter(item => filtroStatus === 'todas' || item.status !== 'inativo')
+      .filter(item => !filtroObra || item.obraId === filtroObra)
+      .filter(item => !filtroFrente || (item.frenteServico || '').trim() === filtroFrente)
+      .filter(item => !termo || normalizeComparable(`${item.nome} ${item.frenteServico || ''}`).includes(termo))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [gruposEquipe, filtroStatus, filtroObra, filtroFrente, busca]);
 
   const resumoDaEquipe = (grupo: GrupoEquipe) => {
     const apontamentos = presencasLink.filter(item => item.grupoId === grupo.id && item.data === dia);
@@ -56,11 +65,11 @@ export default function EquipesTab({
     };
   };
 
-  const selecionada = selecionadoId ? ativas.find(item => item.id === selecionadoId) : undefined;
+  const selecionada = selecionadoId ? lista.find(item => item.id === selecionadoId) : undefined;
 
   const realocar = () => {
     if (!realocacao || !selecionada) return;
-    const destino = ativas.find(item => item.id === realocacao.destinoId);
+    const destino = lista.find(item => item.id === realocacao.destinoId);
     if (!destino) return;
     const agora = new Date().toISOString();
     // Duas gravações: sai de uma equipe e entra na outra. Cada uma passa pelo
@@ -169,7 +178,7 @@ export default function EquipesTab({
                         <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${apontamento ? statusTone(apontamento.status) : 'bg-slate-100 text-slate-500'}`}>
                           {apontamento?.status || 'Sem apontamento'}
                         </span>
-                        {podeRealocar && ativas.length > 1 && (
+                        {podeRealocar && lista.length > 1 && (
                           <select
                             value=""
                             onChange={event => event.target.value && setRealocacao({ funcionario: membro, destinoId: event.target.value })}
@@ -177,7 +186,7 @@ export default function EquipesTab({
                             className="min-h-9 rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-bold text-slate-600 outline-none focus:border-emerald-500"
                           >
                             <option value="">Realocar…</option>
-                            {ativas.filter(item => item.id !== selecionada.id).map(item => (
+                            {lista.filter(item => item.id !== selecionada.id).map(item => (
                               <option key={item.id} value={item.id}>{item.nome}</option>
                             ))}
                           </select>
@@ -219,7 +228,7 @@ export default function EquipesTab({
           open={Boolean(realocacao)}
           tone="warning"
           title={`Realocar ${realocacao?.funcionario.nome}?`}
-          description={`Sai de ${selecionada.nome} e entra em ${ativas.find(item => item.id === realocacao?.destinoId)?.nome || 'outra equipe'}. As duas equipes ficam registradas no histórico do sistema.`}
+          description={`Sai de ${selecionada.nome} e entra em ${lista.find(item => item.id === realocacao?.destinoId)?.nome || 'outra equipe'}. As duas equipes ficam registradas no histórico do sistema.`}
           confirmLabel="Realocar"
           onCancel={() => setRealocacao(null)}
           onConfirm={realocar}
@@ -247,13 +256,13 @@ export default function EquipesTab({
         )}
       />
 
-      {ativas.length === 0 ? (
+      {lista.length === 0 ? (
         <div className="mt-4 rounded-lg border border-slate-200 bg-white">
           <EmptyState icon={HardHat} title="Nenhuma equipe ativa" description="Monte a equipe na tela de Presença e Controle." />
         </div>
       ) : (
         <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {ativas.map(grupo => {
+          {lista.map(grupo => {
             const resumo = resumoDaEquipe(grupo);
             return (
               <li key={grupo.id}>
