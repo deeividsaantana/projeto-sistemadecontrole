@@ -3562,7 +3562,17 @@ export default function App() {
 
   const handleImportControleEquipamentosDiario = (registros: ControleEquipamentoDiario[]) => {
     if (!registros.length) return;
-    const result = mergeImportedRecords(controleEquipamentosDiario, registros, item => normalizeImportText(item.chave || `${item.data}|${item.codigoFuncionario}`));
+    let currentOrdens = [...ordensServico];
+    const registrosProcessados = registros.map(reg => {
+      if (['Em manutenção', 'Aguardando manutenção'].includes(reg.status)) {
+        const maintenance = garantirOrdemAutomaticaDaFrota(reg, currentOrdens, activeUserName);
+        currentOrdens = maintenance.ordens;
+        return maintenance.registro;
+      }
+      return reg;
+    });
+
+    const result = mergeImportedRecords(controleEquipamentosDiario, registrosProcessados, item => normalizeImportText(item.chave || `${item.data}|${item.codigoFuncionario}`));
     saveAndLog(
       'Controle Diário de Equipamentos',
       'Criou',
@@ -3571,6 +3581,10 @@ export default function App() {
       () => {
         setControleEquipamentosDiario(result.next);
         writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(result.next));
+        if (currentOrdens !== ordensServico) {
+          setOrdensServico(currentOrdens);
+          writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(currentOrdens));
+        }
       },
     );
   };
