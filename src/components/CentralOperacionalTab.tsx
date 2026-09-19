@@ -113,10 +113,21 @@ export default function CentralOperacionalTab({
   ordensServico,
   ticketsJazida,
   obras,
+  frentes: frentesServico,
+  apontamentos,
+  movimentosMaterial,
+  servicos,
+  producao,
+  ocorrencias,
+  funcionarios,
   podeAtualizar,
   responsavel,
   onSaveControleEquipamento,
   onNavigate,
+  onSaveFrente,
+  onSaveServico,
+  onSaveProducao,
+  onSaveOcorrencia,
 }: CentralOperacionalTabProps) {
   const hoje = isoDay(new Date());
   const [dia, setDia] = useState(hoje);
@@ -168,18 +179,27 @@ export default function CentralOperacionalTab({
   // Frentes ainda vêm do campo de texto que equipes e apontamentos já usam.
   // A entidade própria de Frente de Serviço entra em versão posterior.
   const frentes = useMemo(() => {
-    const mapa = new Map<string, { equipes: Set<string>; pessoas: number; presentes: number }>();
+    const mapa = new Map<string, { equipes: Set<string>; pessoas: number; presentes: number; obraId: string | undefined }>();
     equipes.forEach(item => {
       const nome = item.grupo.frenteServico?.trim() || 'Sem frente informada';
-      const atual = mapa.get(nome) || { equipes: new Set<string>(), pessoas: 0, presentes: 0 };
+      const atual = mapa.get(nome) || { equipes: new Set<string>(), pessoas: 0, presentes: 0, obraId: item.obra };
       atual.equipes.add(item.grupo.id);
       atual.pessoas += item.total;
       atual.presentes += item.presentes;
       mapa.set(nome, atual);
     });
     return Array.from(mapa.entries())
-      .map(([nome, dados]) => ({ nome, equipes: dados.equipes.size, pessoas: dados.pessoas, presentes: dados.presentes }))
-      .sort((a, b) => b.presentes - a.presentes || a.nome.localeCompare(b.nome, 'pt-BR'));
+      .map(([nome, dados]) => ({
+        id: `frente_${Date.now()}_${nome.replace(/[^a-z0-9]/gi, '_')}`,
+        nome,
+        obraId: dados.obraId,
+                situacao: 'Em execução' as const,
+        ativo: true,
+        criadoEm: new Date().toISOString(),
+        atualizadoEm: new Date().toISOString(),
+        equipamentoIds: Array.from(dados.equipes),
+      }))
+      .sort((a, b) => b.equipamentoIds?.length || 0 - (a.equipamentoIds?.length || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [equipes]);
 
   const manutencao = useMemo(
@@ -432,14 +452,14 @@ export default function CentralOperacionalTab({
               <EmptyState icon={MapPin} title="Nenhuma frente informada" compact />
             ) : (
               <ul className="divide-y divide-slate-100">
-                {frentes.map(frente => (
+                {frentes.map((frente, index) => (
                   <li key={frente.nome} className="flex items-center justify-between gap-3 px-5 py-3">
                     <div className="min-w-0">
                       <strong className="block truncate text-sm font-bold text-slate-800">{frente.nome}</strong>
-                      <p className="text-xs text-slate-500">{frente.equipes} equipe(s)</p>
+                      <p className="text-xs text-slate-500">{frente.equipamentoIds?.length || 0} equipe(s)</p>
                     </div>
                     <span className="shrink-0 text-right">
-                      <strong className="block text-sm font-black tabular-nums text-slate-900">{frente.presentes}</strong>
+                      <strong className="block text-sm font-black tabular-nums text-slate-900">{frente.equipamentoIds?.length || 0}</strong>
                       <span className="text-[10px] font-bold uppercase text-slate-400">presentes</span>
                     </span>
                   </li>
