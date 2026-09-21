@@ -320,7 +320,10 @@ sheet.addRow(['06/01/2026', 'Tubo concreto 600mm', '12346', 5]);
 // aplicar apenas estilo (sem value) não pode contar como "linha usada".
 sheet.getRow(1_048_576).font = { bold: false };
 
-const bytes = await workbook.xlsx.writeBuffer();
+// workbook.xlsx.writeBuffer() resolves to ExcelJS's Buffer type, which does
+// not satisfy node:buffer's File constructor typing directly — wrap it in a
+// plain Uint8Array first (same pattern as tests/excelCorporateImport.test.ts).
+const bytes = new Uint8Array(await workbook.xlsx.writeBuffer());
 const file = new File([bytes], 'CONTROLE DE RECEBIMENTO.xlsx') as unknown as Parameters<typeof readWorkbookFile>[0];
 
 const result = await readWorkbookFile(file);
@@ -1726,7 +1729,9 @@ const sheet = workbook.addWorksheet('Tubos de concreto');
 sheet.addRow(['Data', 'Material', 'NF', 'Quantidade Recebida', 'Unidade']);
 sheet.addRow(['05/01/2026', 'Tubo concreto 400mm', '12345', 10, 'UN']);
 sheet.addRow(['06/01/2026', 'Tubo concreto 600mm', '', 4, 'UN']);
-const bytes = await workbook.xlsx.writeBuffer();
+// Wrap in Uint8Array: ExcelJS's Buffer return type doesn't satisfy
+// node:buffer's File constructor typing directly.
+const bytes = new Uint8Array(await workbook.xlsx.writeBuffer());
 
 const fileFirstRead = new File([bytes], 'CONTROLE DE RECEBIMENTO.xlsx') as unknown as Parameters<typeof readWorkbookFile>[0];
 const fileSecondRead = new File([bytes], 'CONTROLE DE RECEBIMENTO.xlsx') as unknown as Parameters<typeof readWorkbookFile>[0];
