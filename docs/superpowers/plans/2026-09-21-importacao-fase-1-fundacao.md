@@ -1081,18 +1081,23 @@ const context: ImportParseContext = {
   rows: [
     { Data: '05/01/2026', Movimento: 'Entrada', Origem: 'Jazida', Destino: 'Frente 3', Quantidade: 40, Unidade: 'M3', Placa: 'ABC1D23' },
     { Data: '', Movimento: 'Saída', Destino: '', Quantidade: '', Unidade: '', Placa: '' },
+    // Repete a chave operacional da linha 1 (mesma data, origem, destino, quantidade e placa).
+    { Data: '05/01/2026', Movimento: 'Entrada', Origem: 'Jazida', Destino: 'Frente 3', Quantidade: 40, Unidade: 'M3', Placa: 'ABC1D23' },
   ],
 };
 
 const parsed = materialsAdapter.parse(context);
+assert.equal(parsed.length, 3);
 assert.equal(parsed[0].lineage.validationStatus, 'ready');
 assert.ok(parsed[0].operationalKey);
 assert.equal(parsed[1].lineage.validationStatus, 'review');
 assert.equal(parsed[1].operationalKey, undefined);
+assert.equal(parsed[2].operationalKey, parsed[0].operationalKey, 'mesma chave operacional da linha 1');
 
 const preview = materialsAdapter.reconcile(parsed, [] as MovimentoMaterial[]);
 assert.equal(preview.counts.new, 1);
 assert.equal(preview.counts.review, 1);
+assert.equal(preview.counts['duplicate-in-file'], 1, 'segunda ocorrência da mesma chave no arquivo é duplicate-in-file, nunca descartada');
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1279,18 +1284,23 @@ const context: ImportParseContext = {
   rows: [
     { Data: '05/01/2026', Item: 'Perfil PS-27', 'NF/Lote': 'LOTE-9' },
     { Data: '', Item: '', 'NF/Lote': '' },
+    // Repete a chave operacional da linha 1 (mesmo NF/lote, item e data).
+    { Data: '05/01/2026', Item: 'Perfil PS-27', 'NF/Lote': 'LOTE-9' },
   ],
 };
 
 const parsed = stakesAdapter.parse(context);
+assert.equal(parsed.length, 3);
 assert.equal(parsed[0].lineage.validationStatus, 'ready');
 assert.ok(parsed[0].operationalKey);
 assert.equal(parsed[1].lineage.validationStatus, 'review');
 assert.equal(parsed[1].operationalKey, undefined);
+assert.equal(parsed[2].operationalKey, parsed[0].operationalKey, 'mesma chave operacional da linha 1');
 
 const preview = stakesAdapter.reconcile(parsed, undefined);
 assert.equal(preview.counts.new, 1);
 assert.equal(preview.counts.review, 1);
+assert.equal(preview.counts['duplicate-in-file'], 1, 'segunda ocorrência da mesma chave no arquivo é duplicate-in-file, nunca descartada');
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1463,19 +1473,24 @@ const context: ImportParseContext = {
   rows: [
     { Ticket: '000123', Prefixo: 'CB-770', Material: 'Solo', Quantidade: 12, Destino: 'Marginal', Horário: '08:15' },
     { Ticket: '', Prefixo: '', Material: '', Quantidade: '', Destino: '', Horário: '' },
+    // Repete o mesmo ticket na mesma via (LIBERAÇÃO) — mesma chave operacional da linha 1.
+    { Ticket: '000123', Prefixo: 'CB-770', Material: 'Solo', Quantidade: 12, Destino: 'Marginal', Horário: '08:20' },
   ],
 };
 
 const parsed = travelsAdapter.parse(context);
+assert.equal(parsed.length, 3);
 assert.equal(parsed[0].value.via, 'liberacao');
 assert.equal(parsed[0].lineage.validationStatus, 'ready');
 assert.ok(parsed[0].operationalKey);
 assert.equal(parsed[1].lineage.validationStatus, 'review');
 assert.equal(parsed[1].operationalKey, undefined);
+assert.equal(parsed[2].operationalKey, parsed[0].operationalKey, 'mesmo ticket e via da linha 1');
 
 const preview = travelsAdapter.reconcile(parsed, undefined);
 assert.equal(preview.counts.new, 1);
 assert.equal(preview.counts.review, 1);
+assert.equal(preview.counts['duplicate-in-file'], 1, 'segunda ocorrência do mesmo ticket/via no arquivo é duplicate-in-file, nunca descartada');
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
