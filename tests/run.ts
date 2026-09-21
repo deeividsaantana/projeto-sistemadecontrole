@@ -108,6 +108,7 @@ import './importPreview.test';
 import './importApply.test';
 import './importReceiptsAdapter.test';
 import './importMaterialsAdapter.test';
+import './importStakesAdapter.test';
 import './fleetStatusAndTime.test';
 import './fleetReconciliation.test';
 import './fleetReportService.test';
