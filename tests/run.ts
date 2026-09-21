@@ -118,4 +118,6 @@ import './efetivoEquipes.test';
 import './migracaoEfetivoObra3.test';
 import './historicoNaoSomeDaNuvem.test';
 import './dashboardOperational.test';
-import './localFuelReset.test';
+import './noVisualBlur.test';
+import './materialsDashboard.test';
+import './modalViewport.test';

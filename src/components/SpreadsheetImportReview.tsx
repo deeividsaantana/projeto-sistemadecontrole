@@ -59,7 +59,7 @@ export default function SpreadsheetImportReview({
     <>
       {open && (
         <div
-          className="renea-enter fixed inset-0 z-[120] flex items-center justify-center bg-white p-3 backdrop-blur-sm sm:p-6"
+          className="renea-enter fixed inset-0 z-[120] flex items-center justify-center bg-white p-3 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby="spreadsheet-import-title"

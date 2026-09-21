@@ -133,7 +133,7 @@ export function DesktopTopBar({
   return (
     <header
       ref={headerRef}
-      className="erp-topbar hidden lg:flex backdrop-blur-sm"
+      className="erp-topbar hidden lg:flex"
       style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}
       aria-label="Barra de contexto do sistema"
     >
@@ -148,7 +148,7 @@ export function DesktopTopBar({
           onChange={event => onMenuSearchChange(event.target.value)}
           onKeyDown={abrirPrimeiroResultado}
           placeholder="Buscar no sistema..."
-          className="h-10 w-full rounded-full border border-slate-200/50 bg-white/60 pl-10 pr-16 text-xs text-slate-700 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/15 backdrop-blur-sm"
+          className="h-10 w-full rounded-full border border-slate-200/50 bg-white/60 pl-10 pr-16 text-xs text-slate-700 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/15"
         />
         {menuSearch
           ? (
@@ -161,7 +161,7 @@ export function DesktopTopBar({
               <X className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} />
             </button>
           )
-          : <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200/50 bg-white/40 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 backdrop-blur-sm">⌘K</kbd>}
+          : <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200/50 bg-white/40 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">⌘K</kbd>}
       </label>
 
       <div

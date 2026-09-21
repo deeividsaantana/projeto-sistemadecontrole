@@ -114,7 +114,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #app-root tbody tr:hover { background-color: #edf2ed; }
 
 #mobile-header { background: #fff; border-bottom: 1px solid var(--renea-line); box-shadow: none; }
-#mobile-drawer { background: rgb(2 43 36 / .46) !important; backdrop-filter: blur(10px); }
+#mobile-drawer { background: rgb(2 43 36 / .46) !important; }
 #mobile-drawer > .mobile-sidebar-panel {
   border-color: #185443;
   background: #0a4636 !important;
@@ -750,7 +750,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   background: rgb(255 255 255 / .96);
   color: #10211c;
   box-shadow: 0 1px 0 rgb(10 47 37 / .04);
-  backdrop-filter: blur(14px);
 }
 .erp-topbar__breadcrumb,
 .erp-topbar__breadcrumb strong,
@@ -889,7 +888,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 /* Motion is deliberately visible but keeps operational controls steady. */
 @keyframes renea-white-reveal {
   from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes renea-white-sweep {
   from { transform: scaleX(0); }

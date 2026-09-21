@@ -1684,7 +1684,7 @@ export default function CadastrosTab({
 
       {/* Safe inline Prompt Deletion Confirmation Dialog overlay */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-white backdrop-blur-xs flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="cadastro-delete-title">
+        <div className="fixed inset-0 bg-white flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="cadastro-delete-title">
           <div className="w-full max-w-md bg-white border border-rose-500/30 rounded-lg p-6  space-y-4">
             <div className="p-3 bg-rose-500/10 text-rose-700 rounded-lg w-fit">
               <AlertTriangle className="w-6 h-6" />

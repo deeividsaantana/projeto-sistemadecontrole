@@ -1824,7 +1824,7 @@ export default function LancamentosTab({
 
       {/* Deletion safe prompt confirm */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="w-full max-w-sm bg-white border border-rose-500/30 rounded-lg p-6 space-y-4">
             <div className="p-3 bg-rose-500/10 text-rose-700 rounded-lg w-fit">
               <AlertTriangle className="w-6 h-6" />

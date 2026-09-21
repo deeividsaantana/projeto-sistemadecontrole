@@ -322,10 +322,11 @@ export default function ManutencaoTab({
   };
 
   return (
-    <div id="manutencao-tab" className="min-h-full w-full space-y-4 bg-white pb-12">
+    <div id="manutencao-tab" className="min-h-full w-full space-y-3 bg-white px-3 pb-12 sm:px-4">
       <PageHeader
         title="Manutenção"
         description="Ordens de serviço da frota, do chamado até a liberação."
+        className="-mt-3 sm:-mt-4"
         actions={<>
           <button
             type="button"

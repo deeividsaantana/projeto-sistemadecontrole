@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from './styles';
 
@@ -103,7 +104,7 @@ export function Modal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-900/10 sm:items-center sm:p-4"
       role="presentation"
@@ -142,6 +143,7 @@ export function Modal({
         {children && <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>}
         {footer && <footer className="border-t border-slate-100 px-5 py-4">{footer}</footer>}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

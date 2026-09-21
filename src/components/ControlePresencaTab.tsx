@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import {
@@ -1440,7 +1441,7 @@ export default function ControlePresencaTab({
         </div>
       )}
 
-      {syncPlan && (
+      {syncPlan && createPortal(
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label="Conferir sincronização das equipes">
           <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white">
             <header className="flex items-start justify-between gap-4 border-b border-[#ebe7dc] p-5">
@@ -1517,11 +1518,12 @@ export default function ControlePresencaTab({
               <button type="button" onClick={() => void confirmarSincronizacao()} disabled={syncBusy} className={PRIMARY_BUTTON}>{syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {syncBusy ? 'Gravando no Firebase' : 'Gravar sincronização'}</button>
             </footer>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {isGroupEditorOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101a22]/55 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label={editingGroupId ? 'Editar equipe' : 'Nova equipe'}>
+      {isGroupEditorOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101a22]/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label={editingGroupId ? 'Editar equipe' : 'Nova equipe'}>
           <div ref={groupEditorScrollRef} className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-[1.75rem] bg-[#fffefa] p-5  sm:rounded-[1.75rem] sm:p-7">
             <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Controle ao vivo</p><h2 className="mt-1 text-2xl font-black tracking-tight text-[#101a22]">{editingGroupId ? 'Editar equipe' : 'Nova equipe'}</h2></div><button type="button" onClick={() => setIsGroupEditorOpen(false)} className="rounded-xl border border-[#ddd9cd] p-2.5 text-[#65716b] hover:text-[#101a22]"><X className="h-5 w-5" /></button></div>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -1538,20 +1540,22 @@ export default function ControlePresencaTab({
             {feedback && <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{feedback}</p>}
             <div className="sticky bottom-0 mt-6 flex gap-3 border-t border-[#e4e0d6] bg-[#fffefa] pt-4"><button type="button" onClick={() => setIsGroupEditorOpen(false)} className={`${SECONDARY_BUTTON} flex-1`}>Cancelar</button><button type="button" onClick={saveGroup} className={`${PRIMARY_BUTTON} flex-1`}><CheckCircle2 className="h-4 w-4" /> Salvar equipe</button></div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {editingRecord && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101a22]/55 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label="Atualizar presença">
+      {editingRecord && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101a22]/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label="Atualizar presença">
           <div className="w-full max-w-lg rounded-t-[1.75rem] bg-[#fffefa] p-5  sm:rounded-[1.75rem] sm:p-7">
             <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Registro auditável</p><h2 className="mt-1 text-2xl font-black text-[#101a22]">Atualizar presença</h2><p className="mt-1 text-sm text-[#65716b]">{editingRecord.funcionarioNome} · {editingRecord.grupoNome}</p></div><button type="button" onClick={() => setEditingRecord(null)} className="rounded-xl border border-[#ddd9cd] p-2.5 text-[#65716b]"><X className="h-5 w-5" /></button></div>
             <div className="mt-6 space-y-4"><label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Status</span><select value={editStatus} onChange={event => setEditStatus(event.target.value as PresencaStatus)} className={FIELD}>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label><label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Observação</span><textarea value={editObservation} onChange={event => setEditObservation(event.target.value)} rows={3} className={`${FIELD} py-3`} /></label><label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Motivo obrigatório</span><textarea value={editReason} onChange={event => setEditReason(event.target.value)} rows={3} className={`${FIELD} py-3`} /></label></div>
             <div className="mt-6 flex gap-3"><button type="button" onClick={() => setEditingRecord(null)} className={`${SECONDARY_BUTTON} flex-1`}>Cancelar</button><button type="button" onClick={saveRecordEdit} disabled={!editReason.trim()} className={`${PRIMARY_BUTTON} flex-1`}><CheckCircle2 className="h-4 w-4" /> Salvar</button></div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      <div className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-30 grid grid-cols-4 gap-1 rounded-lg border border-[#d8d4c8] bg-[#fffefa]/95 p-1.5  backdrop-blur lg:hidden">
+      <div className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-30 grid grid-cols-4 gap-1 rounded-lg border border-[#d8d4c8] bg-[#fffefa]/95 p-1.5 lg:hidden">
         {navItems.map(item => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} type="button" onClick={() => setView(item.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold ${active ? 'bg-[#14231e] text-white' : 'text-[#65716b]'}`}><Icon className="h-4 w-4" />{item.label}</button>; })}
       </div>
 

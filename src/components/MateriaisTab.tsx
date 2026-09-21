@@ -9,6 +9,7 @@ import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Boxes, Package, Packag
 import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
 import { pendenciasDeRecebimento, resumoDeRecebimento } from '../utils/recebimentoMaterial';
 import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/estoque';
+import { buildMaterialsFlow, summarizeMaterialsStock } from '../utils/materialsDashboard';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
 import { MaterialCard } from './MaterialCard';
@@ -78,6 +79,9 @@ export default function MateriaisTab({
   // Carga que a nota prometeu e não chegou é dinheiro parado: fica em cima.
   const pendencias = useMemo(() => pendenciasDeRecebimento(movimentos), [movimentos]);
   const recebimento = useMemo(() => resumoDeRecebimento(movimentos), [movimentos]);
+  const estoqueResumo = useMemo(() => summarizeMaterialsStock(posicoes), [posicoes]);
+  const fluxoSemanal = useMemo(() => buildMaterialsFlow(movimentos, hoje), [movimentos, hoje]);
+  const maiorFluxo = Math.max(1, ...fluxoSemanal.flatMap(item => [item.entradas, item.saidas, item.transferencias]));
 
   const termo = normalizeComparable(busca).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
@@ -171,10 +175,11 @@ export default function MateriaisTab({
   const saldoAtualDoForm = movimento.materialId ? saldoDoMaterial(movimentos, movimento.materialId) : 0;
 
   return (
-    <div ref={escopoMotion} id="materiais-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopoMotion} id="materiais-tab" className="min-h-full w-full bg-white px-3 pb-12 pt-0 sm:px-4">
       <PageHeader
         title="Materiais"
         description="Cadastro, movimentação e estoque. O saldo vem da soma dos movimentos."
+        className="-mt-3 sm:-mt-4"
         actions={podeEditar ? (
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => abrirCadastro()} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Novo material</button>
@@ -191,6 +196,85 @@ export default function MateriaisTab({
           </div>
         ) : undefined}
       />
+
+      <section id="materials-dashboard" aria-label="Painel de materiais" className="mt-2 grid gap-3 lg:grid-cols-12">
+        <div className="grid grid-cols-2 gap-2 lg:col-span-12 lg:grid-cols-4">
+          {[
+            { label: 'Materiais ativos', valor: String(estoqueResumo.total), detalhe: 'itens no cadastro operacional' },
+            { label: 'Movimentos', valor: String(movimentos.length), detalhe: 'registros no histórico' },
+            { label: 'Abaixo do mínimo', valor: String(estoqueResumo.abaixoDoMinimo), detalhe: 'pedem reposição' },
+            { label: 'Sem saldo', valor: String(estoqueResumo.semSaldo), detalhe: 'sem disponibilidade' },
+          ].map((item, index) => (
+            <article key={item.label} className="renea-card rounded-lg border border-slate-200 bg-white p-3.5 sm:p-4" data-linha-lista data-card-index={index}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">{item.label}</p>
+              <strong className="mt-1 block text-2xl font-black tabular-nums text-slate-950">{item.valor}</strong>
+              <span className="mt-1 block text-[11px] leading-4 text-slate-500">{item.detalhe}</span>
+            </article>
+          ))}
+        </div>
+
+        <article className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-4" aria-labelledby="stock-coverage-title">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-700">Estoque</p>
+              <h2 id="stock-coverage-title" className="mt-1 text-sm font-black text-slate-950">Cobertura operacional</h2>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">posição atual</span>
+          </div>
+          <div className="mt-3 flex items-center gap-5">
+            <div className="relative size-28 shrink-0" role="img" aria-label={`${estoqueResumo.coberturaPercentual ?? 0}% dos materiais com saldo regular`}>
+              <svg viewBox="0 0 112 112" className="size-28 -rotate-90" aria-hidden="true">
+                <circle cx="56" cy="56" r="43" fill="none" stroke="#edf1ee" strokeWidth="10" />
+                <circle
+                  cx="56"
+                  cy="56"
+                  r="43"
+                  fill="none"
+                  stroke="#008b62"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  pathLength="100"
+                  strokeDasharray={`${estoqueResumo.coberturaPercentual ?? 0} 100`}
+                />
+              </svg>
+              <div className="absolute inset-0 grid place-items-center text-center">
+                <strong className="text-xl font-black tabular-nums text-slate-950">{estoqueResumo.coberturaPercentual == null ? '—' : `${estoqueResumo.coberturaPercentual}%`}</strong>
+              </div>
+            </div>
+            <dl className="min-w-0 flex-1 space-y-2 text-xs">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2"><dt className="text-slate-500">Regular</dt><dd className="font-black tabular-nums text-emerald-700">{estoqueResumo.regulares}</dd></div>
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2"><dt className="text-slate-500">Abaixo do mínimo</dt><dd className="font-black tabular-nums text-amber-700">{estoqueResumo.abaixoDoMinimo}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Sem saldo</dt><dd className="font-black tabular-nums text-rose-700">{estoqueResumo.semSaldo}</dd></div>
+            </dl>
+          </div>
+        </article>
+
+        <article className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-8" aria-labelledby="material-flow-title">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-700">Movimentação</p>
+              <h2 id="material-flow-title" className="mt-1 text-sm font-black text-slate-950">Fluxo dos últimos 7 dias</h2>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wide text-slate-500" aria-label="Legenda do gráfico">
+              <span className="flex items-center gap-1.5"><i className="size-2 rounded-sm bg-emerald-600" /> Entradas</span>
+              <span className="flex items-center gap-1.5"><i className="size-2 rounded-sm bg-amber-500" /> Saídas</span>
+              <span className="flex items-center gap-1.5"><i className="size-2 rounded-sm bg-slate-400" /> Transferências</span>
+            </div>
+          </div>
+          <div className="mt-4 grid h-36 grid-cols-7 items-end gap-2 border-b border-slate-200" role="img" aria-label="Comparação diária entre entradas e saídas de materiais">
+            {fluxoSemanal.map(item => (
+              <div key={item.date} className="flex h-full min-w-0 flex-col justify-end gap-1 text-center">
+                <div className="flex h-[104px] items-end justify-center gap-1">
+                  <span title={`${numero(item.entradas)} em entradas`} className="w-2.5 min-h-0 bg-emerald-600" style={{ height: `${(item.entradas / maiorFluxo) * 100}%` }} />
+                  <span title={`${numero(item.saidas)} em saídas`} className="w-2.5 min-h-0 bg-amber-500" style={{ height: `${(item.saidas / maiorFluxo) * 100}%` }} />
+                  <span title={`${numero(item.transferencias)} em transferências`} className="w-2.5 min-h-0 bg-slate-400" style={{ height: `${(item.transferencias / maiorFluxo) * 100}%` }} />
+                </div>
+                <span className="pb-2 text-[9px] font-bold tabular-nums text-slate-400">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
 
       {/* Carga que a nota prometeu e não chegou é nota paga sem material na
           obra. Fica antes do estoque porque é a conversa mais cara. */}
@@ -252,20 +336,6 @@ export default function MateriaisTab({
           </p>
         </div>
       )}
-
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {[
-          { label: 'Materiais ativos', valor: String(ativos.length) },
-          { label: 'Movimentos', valor: String(movimentos.length) },
-          { label: 'Abaixo do mínimo', valor: String(abaixoDoMinimo.length) },
-          { label: 'Sem saldo', valor: String(posicoes.filter(item => item.saldo <= 0).length) },
-        ].map(item => (
-          <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
-        ))}
-      </section>
 
       <div className="mt-4 flex flex-col gap-2">
         <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1">

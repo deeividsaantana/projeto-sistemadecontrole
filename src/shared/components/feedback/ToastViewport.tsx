@@ -25,7 +25,7 @@ export function ToastViewport({ toasts }: ToastViewportProps) {
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className={`renea-enter-toast pointer-events-auto border p-4 rounded-2xl shadow-2xl flex gap-3 items-start backdrop-blur-md ${getToastColorClass(toast.type)}`}
+            className={`renea-enter-toast pointer-events-auto border p-4 rounded-2xl shadow-2xl flex gap-3 items-start ${getToastColorClass(toast.type)}`}
           >
             <div className="mt-0.5 shrink-0">
               <ToastIcon type={toast.type} />
