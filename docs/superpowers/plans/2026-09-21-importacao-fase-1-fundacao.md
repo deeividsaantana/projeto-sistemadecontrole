@@ -507,6 +507,9 @@ assert.equal(normalizeImportDecimalOrNull('12,5'), 12.5);
 assert.equal(normalizeImportDecimalOrNull('0'), 0, 'zero informado de verdade continua zero');
 assert.equal(normalizeImportDecimalOrNull(''), null, 'quantidade ausente não vira zero');
 assert.equal(normalizeImportDecimalOrNull(null), null);
+assert.equal(normalizeImportDecimalOrNull('N/A'), null, 'texto sem dígito não pode virar zero fabricado');
+assert.equal(normalizeImportDecimalOrNull('-'), null, 'traço sozinho não pode virar zero fabricado');
+assert.equal(normalizeImportDecimalOrNull('abc'), null);
 
 assert.equal(normalizeImportUnitOrNull('m³'), 'M3');
 assert.equal(normalizeImportUnitOrNull('Ton'), 'TON');
@@ -569,6 +572,12 @@ export const normalizeImportTimeOrNull = (value: unknown): string | null => {
 export const normalizeImportDecimalOrNull = (value: unknown): number | null => {
   const text = cleanImportValue(value);
   if (!text) return null;
+  // parseImportNumber apaga tudo que não é dígito/ponto/vírgula/sinal antes de
+  // converter; texto sem nenhum dígito ("N/A", "-", "não informado") sobra
+  // vazio e Number('') vira 0 — um zero fabricado, não um zero real da
+  // planilha. Sem pelo menos um dígito, a linha fica sem valor (null), nunca
+  // com zero inventado.
+  if (!/\d/.test(text)) return null;
   return parseImportNumber(value);
 };
 
