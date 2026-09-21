@@ -2,7 +2,7 @@
  * Manutenção: abertura, acompanhamento e liberação das ordens de serviço.
  * As horas paradas saem da própria ordem — abertura até liberação.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Clock3, FileSpreadsheet, Gauge, History, Plus, Search, TriangleAlert, Wrench } from 'lucide-react';
 import type { Equipamento, HistoryLog, OrdemServico } from '../types';
 import { historicoDaManutencao } from '../utils/manutencaoHistorico';
@@ -106,6 +106,27 @@ export default function ManutencaoTab({
   const [exportando, setExportando] = useState(false);
   const [avisoExport, setAvisoExport] = useState('');
   const [historicoAberto, setHistoricoAberto] = useState(false);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.matches('input, textarea, select, [contenteditable="true"]');
+      if (!formAberto && !isTyping && event.key.toLowerCase() === 'n' && !event.ctrlKey && !event.metaKey && podeEditar) {
+        event.preventDefault();
+        abrirNova();
+      }
+      if (formAberto && event.key === 'Escape') {
+        event.preventDefault();
+        setFormAberto(false);
+      }
+      if (formAberto && event.key === 'Enter' && !event.shiftKey && (event.ctrlKey || !isTyping)) {
+        event.preventDefault();
+        salvar();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  });
 
   /** O que já aconteceu com as ordens — abertura, edição e liberação. */
   const historico = useMemo(() => historicoDaManutencao(historyLogs), [historyLogs]);
@@ -732,8 +753,8 @@ export default function ManutencaoTab({
         onClose={() => setFormAberto(false)}
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
-            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar ordem</button>
+            <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-[10px] text-slate-400">Esc</span></button>
+            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar ordem <span className="ml-1 text-[10px] text-emerald-100">Ctrl + Enter</span></button>
           </div>
         )}
       >
