@@ -107,6 +107,7 @@ import './importNormalizers.test';
 import './importPreview.test';
 import './importApply.test';
 import './importReceiptsAdapter.test';
+import './importMaterialsAdapter.test';
 import './fleetStatusAndTime.test';
 import './fleetReconciliation.test';
 import './fleetReportService.test';
