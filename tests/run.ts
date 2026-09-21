@@ -101,6 +101,7 @@ import './august2026OperationalSeed.test';
 import './canonicalIdentity.test';
 import './controleEquipamentosDiario.test';
 import './importMerge.test';
+import './importProvenance.test';
 import './fleetStatusAndTime.test';
 import './fleetReconciliation.test';
 import './fleetReportService.test';
