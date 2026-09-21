@@ -105,6 +105,7 @@ import './importProvenance.test';
 import './importWorkbookReader.test';
 import './importNormalizers.test';
 import './importPreview.test';
+import './importApply.test';
 import './fleetStatusAndTime.test';
 import './fleetReconciliation.test';
 import './fleetReportService.test';
