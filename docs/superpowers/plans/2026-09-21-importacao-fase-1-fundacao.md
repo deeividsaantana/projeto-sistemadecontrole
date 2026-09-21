@@ -582,7 +582,10 @@ const UNIT_ALIASES: Record<string, string> = {
 export const normalizeImportUnitOrNull = (value: unknown): string | null => {
   const clean = cleanImportValue(value);
   if (!clean) return null;
-  const key = clean.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  // NFKD (compatibility decomposition), not NFD: 'm\u00b3' only decomposes to
+  // 'm3' under NFKD \u2014 NFD (canonical decomposition) leaves the superscript
+  // digit untouched, which would misclassify a real-world m\u00b3 unit.
+  const key = clean.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').trim();
   return UNIT_ALIASES[key] || clean.toUpperCase();
 };
 
