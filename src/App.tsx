@@ -3543,6 +3543,32 @@ export default function App() {
     );
   };
 
+  // Reconcilia lançamentos antigos de manutenção com a oficina ao carregar a base.
+  // Assim, registros históricos não dependem de serem editados novamente para gerar OS.
+  const maintenanceBackfillKey = useRef('');
+  useEffect(() => {
+    if (!controleEquipamentosDiario.length || maintenanceBackfillKey.current === `${controleEquipamentosDiario.length}:${ordensServico.length}`) return;
+    maintenanceBackfillKey.current = `${controleEquipamentosDiario.length}:${ordensServico.length}`;
+    let nextOrders = ordensServico;
+    let nextRecords = controleEquipamentosDiario;
+    for (const registro of controleEquipamentosDiario) {
+      if (!['Em manutenção', 'Aguardando manutenção'].includes(registro.status) || registro.ordemServicoId) continue;
+      const result = garantirOrdemAutomaticaDaFrota(registro, nextOrders, activeUserName);
+      if (result.criada || result.registro.ordemServicoId) {
+        nextOrders = result.ordens;
+        nextRecords = nextRecords.map(item => item.id === registro.id ? result.registro : item);
+      }
+    }
+    if (nextOrders !== ordensServico) {
+      setOrdensServico(nextOrders);
+      writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(nextOrders));
+    }
+    if (nextRecords !== controleEquipamentosDiario) {
+      setControleEquipamentosDiario(nextRecords);
+      writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(nextRecords));
+    }
+  }, [controleEquipamentosDiario, ordensServico, activeUserName]);
+
   const handleApproveControleEquipamentoDiario = (id: string, status: 'APROVADO' | 'REJEITADO') => {
     if (!['admin', 'gestor'].includes(currentUserRole)) return;
     const current = controleEquipamentosDiario.find(item => item.id === id);

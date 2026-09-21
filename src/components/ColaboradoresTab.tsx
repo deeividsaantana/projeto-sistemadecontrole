@@ -14,6 +14,7 @@ import type {
   TicketJazida,
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { displayText } from '../utils/displayText';
 import { Badge, Card, EmptyState, Modal, PageHeader, TextInput, statusTone } from '../shared/ui';
 import {
   SITUACOES_COLABORADOR,
@@ -380,10 +381,10 @@ export default function ColaboradoresTab({
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(situacaoItem)}`}>{situacaoItem}</span>
-                    {equipe && <Badge tone="info">{typeof equipe.nome === 'string' ? equipe.nome : JSON.stringify(equipe.nome)}</Badge>}
+                    {equipe && <Badge tone="info">{displayText(equipe.nome, 'Equipe sem nome')}</Badge>}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-                    <span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{item.liderNome || 'Sem encarregado'}</span>
+                    <span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{displayText(item.liderNome, 'Sem encarregado')}</span>
                     <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{empresas.find(empresa => empresa.id === item.empresaId)?.nome || 'Sem empresa'}</span>
                   </div>
                 </button>

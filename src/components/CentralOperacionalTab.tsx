@@ -113,10 +113,13 @@ export default function CentralOperacionalTab({
   ordensServico,
   ticketsJazida,
   obras,
+  frentes: frentesAux = [], apontamentos = [], movimentosMaterial = [], servicos = [], producao = [], ocorrencias = [], funcionarios = [],
+  planejamento = [], modelosFvs = [], fichasFvs = [], inspecoes = [], naoConformidades = [], medicoes = [], documentos = [], modelosChecklist = [], periodosArquivados = [], estacas,
   podeAtualizar,
   responsavel,
   onSaveControleEquipamento,
   onNavigate,
+  onSaveFrente, onSaveServico, onSaveProducao, onSaveOcorrencia,
 }: CentralOperacionalTabProps) {
   const hoje = isoDay(new Date());
   const [dia, setDia] = useState(hoje);
@@ -277,7 +280,7 @@ export default function CentralOperacionalTab({
 
       {activeSubTab === 'frentes' && (
         <FrentesTab
-          frentes={frentes || []}
+          frentes={frentesAux}
           obras={obras}
           gruposEquipe={gruposEquipe}
           presencasLink={presencasLink}
@@ -295,7 +298,7 @@ export default function CentralOperacionalTab({
           servicos={servicos || []}
           registros={producao || []}
           obras={obras}
-          frentes={frentes || []}
+          frentes={frentesAux}
           gruposEquipe={gruposEquipe}
           responsavel={responsavel}
           podeEditar={podeAtualizar}
@@ -308,7 +311,7 @@ export default function CentralOperacionalTab({
         <OcorrenciasTab
           ocorrencias={ocorrencias || []}
           obras={obras}
-          frentes={frentes || []}
+          frentes={frentesAux}
           equipamentos={equipamentos}
           funcionarios={funcionarios || []}
           responsavel={responsavel}

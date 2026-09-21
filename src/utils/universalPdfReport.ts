@@ -55,13 +55,14 @@ export async function generateUniversalPdfReport(options: UniversalPdfReportOpti
     doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, pageWidth, headerHeight, 'F');
     if (logo) {
-      try { doc.addImage(logo, 'PNG', -5, -9, 76, 42, undefined, 'FAST'); } catch { /* text fallback below */ }
+      try { doc.addImage(logo, 'PNG', margin, 4, 46, 25, undefined, 'FAST'); } catch { /* text fallback below */ }
     }
     if (partnerLogo) { try { doc.addImage(partnerLogo, 'PNG', pageWidth - margin - 53, 5, 53, 11.5, undefined, 'FAST'); } catch { /* optional partner logo */ } }
     if (!logo) { doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(30, 41, 59); doc.text('RENEA', margin, 17); }
-    doc.setTextColor(30, 41, 59); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text(institutional, margin + 42, 11);
-    doc.setFontSize(14); doc.text(options.title.toUpperCase(), margin + 42, 18);
-    if (options.subtitle) { doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(71, 85, 105); doc.text(options.subtitle, margin + 42, 23); }
+    const titleX = margin + 52;
+    doc.setTextColor(30, 41, 59); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text(institutional, titleX, 11);
+    doc.setFontSize(14); doc.text(options.title.toUpperCase(), titleX, 18);
+    if (options.subtitle) { doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(71, 85, 105); doc.text(options.subtitle, titleX, 23); }
     doc.setDrawColor(16, 185, 129); doc.setLineWidth(.6); doc.line(margin, 27, pageWidth - margin, 27);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6.6); doc.setTextColor(71, 85, 105);
     doc.text(`Obra: ${options.work || 'Todas / não informada'}`, margin, 32);

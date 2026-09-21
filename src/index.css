@@ -443,6 +443,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   min-height: 4.55rem;
   border-bottom-color: #dce5df;
   background: #fff;
+  position: relative;
+  z-index: 80;
+  overflow: visible;
 }
 .erp-topbar__breadcrumb { color: #65766d; font-size: .8rem; }
 .erp-topbar__breadcrumb strong { color: #183428; }
@@ -971,7 +974,10 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-tab-viewport .renea-page-toolbar {
   width: auto;
   margin-left: auto;
+  overflow: visible;
 }
+#main-tab-viewport .renea-page-header,
+#main-tab-viewport .renea-page-actions { overflow: visible; }
 
 .erp-module {
   container-type: inline-size;
