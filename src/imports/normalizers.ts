@@ -33,6 +33,12 @@ export const normalizeImportTimeOrNull = (value: unknown): string | null => {
 export const normalizeImportDecimalOrNull = (value: unknown): number | null => {
   const text = cleanImportValue(value);
   if (!text) return null;
+  // parseImportNumber apaga tudo que não é dígito/ponto/vírgula/sinal antes de
+  // converter; texto sem nenhum dígito ("N/A", "-", "não informado") sobra
+  // vazio e Number('') vira 0 — um zero fabricado, não um zero real da
+  // planilha. Sem pelo menos um dígito, a linha fica sem valor (null), nunca
+  // com zero inventado.
+  if (!/\d/.test(text)) return null;
   return parseImportNumber(value);
 };
 

@@ -23,6 +23,9 @@ assert.equal(normalizeImportDecimalOrNull('12,5'), 12.5);
 assert.equal(normalizeImportDecimalOrNull('0'), 0, 'zero informado de verdade continua zero');
 assert.equal(normalizeImportDecimalOrNull(''), null, 'quantidade ausente não vira zero');
 assert.equal(normalizeImportDecimalOrNull(null), null);
+assert.equal(normalizeImportDecimalOrNull('N/A'), null, 'texto sem dígito não pode virar zero fabricado');
+assert.equal(normalizeImportDecimalOrNull('-'), null, 'traço sozinho não pode virar zero fabricado');
+assert.equal(normalizeImportDecimalOrNull('abc'), null);
 
 assert.equal(normalizeImportUnitOrNull('m³'), 'M3');
 assert.equal(normalizeImportUnitOrNull('Ton'), 'TON');
