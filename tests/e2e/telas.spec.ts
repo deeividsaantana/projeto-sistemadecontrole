@@ -88,9 +88,9 @@ test('manutenção apresenta central operacional e fluxo das OS', async ({ page 
   await page.goto('/?screen=manutencao');
 
   await expect(page.getByRole('heading', { name: 'Manutenção', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Centro de manutenção', level: 2 })).toBeVisible();
-  await expect(page.getByText('Fluxo das ordens')).toBeVisible();
-  await expect(page.getByText('Ordens em acompanhamento')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fila de oficina', level: 2 })).toBeVisible();
+  await expect(page.getByText('OS em curso, ordenadas pelo tempo parado do equipamento')).toBeVisible();
+  await expect(page.locator('text=Ordem(ns) de Serviço')).toBeVisible();
 });
 
 test('manutenção identifica a categoria do equipamento', async ({ page }) => {
