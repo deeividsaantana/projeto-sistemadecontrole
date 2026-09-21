@@ -6,10 +6,11 @@ import {
   isPrimaryModule,
 } from '../src/app/navigation/navigation';
 
-test('sidebar expõe somente os 13 módulos primários', () => {
+test('sidebar expõe os 9 módulos primários do ERP', () => {
   const rendered = SIDEBAR_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id));
   assert.deepEqual(rendered, [...PRIMARY_MODULE_IDS]);
-  assert.equal(rendered.length, 13);
+  assert.equal(rendered.length, 9);
   assert.equal(isPrimaryModule('manutencao'), true);
   assert.equal(isPrimaryModule('tickets-jazida'), false);
+  assert.equal(isPrimaryModule('frota'), false);
 });

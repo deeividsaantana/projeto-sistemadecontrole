@@ -413,6 +413,25 @@ export default function ManutencaoTab({
         <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700">{avisoExport}</p>
       )}
 
+      {/* Seção de Manutenções em Destaque (Cards) */}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {lista.filter(o => !isOrdemEncerrada(o.status)).map(ordem => {
+          const equipamento = equipamentoPorId.get(ordem.equipamentoId);
+          const Icon = equipmentFamilyIcon(classifyEquipment(equipamento));
+          return (
+            <div key={ordem.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex gap-3 items-center">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                {Icon ? <Icon size={20} /> : <Wrench size={20} />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase text-slate-500">{equipamento?.prefixo || 'Indefinido'}</p>
+                <strong className="block truncate text-xs font-bold text-slate-900">{ordem.status}</strong>
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
       {/* Filtros */}
       <div className="mt-4 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
