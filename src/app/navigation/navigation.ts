@@ -134,9 +134,13 @@ export const NAVIGATION_GROUPS = [
  */
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
+  'modo-campo',
   'central-operacional',
+  'planejamento',
+  'diario-obra',
   'controle-equipamentos',
   'manutencao',
+  'lancamentos',
   'colaboradores',
   'presenca',
   'materiais',
