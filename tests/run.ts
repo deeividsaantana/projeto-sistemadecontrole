@@ -103,6 +103,7 @@ import './controleEquipamentosDiario.test';
 import './importMerge.test';
 import './importProvenance.test';
 import './importWorkbookReader.test';
+import './importNormalizers.test';
 import './fleetStatusAndTime.test';
 import './fleetReconciliation.test';
 import './fleetReportService.test';
