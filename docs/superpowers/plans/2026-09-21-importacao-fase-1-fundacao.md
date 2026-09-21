@@ -230,7 +230,7 @@ export const computeSourceHash = async (bytes: Uint8Array): Promise<string> => {
 const slugifyFileName = (fileName: string): string => fileName
   .toLowerCase()
   .normalize('NFD')
-  .replace(/[̀-ͯ]/g, '')
+  .replace(/[\u0300-\u036f]/g, '')
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-+|-+$/g, '')
   .slice(0, 40) || 'arquivo';
@@ -579,7 +579,7 @@ const UNIT_ALIASES: Record<string, string> = {
 export const normalizeImportUnitOrNull = (value: unknown): string | null => {
   const clean = cleanImportValue(value);
   if (!clean) return null;
-  const key = clean.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const key = clean.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
   return UNIT_ALIASES[key] || clean.toUpperCase();
 };
 
