@@ -85,7 +85,7 @@ import {
 } from './utils/equipmentOperations';
 import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 import { mergeImportedRecords } from './utils/importMerge';
-import { garantirOrdemAutomaticaDaFrota } from './utils/manutencao';
+import { garantirOrdemAutomaticaDaFrota, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
 import {
   LOCAL_FUEL_RESET_STORAGE_KEY,
   LOCAL_FUEL_RESET_VERSION,
@@ -3549,23 +3549,14 @@ export default function App() {
   useEffect(() => {
     if (!controleEquipamentosDiario.length || maintenanceBackfillKey.current === `${controleEquipamentosDiario.length}:${ordensServico.length}`) return;
     maintenanceBackfillKey.current = `${controleEquipamentosDiario.length}:${ordensServico.length}`;
-    let nextOrders = ordensServico;
-    let nextRecords = controleEquipamentosDiario;
-    for (const registro of controleEquipamentosDiario) {
-      if (!['Em manutenção', 'Aguardando manutenção'].includes(registro.status) || registro.ordemServicoId) continue;
-      const result = garantirOrdemAutomaticaDaFrota(registro, nextOrders, activeUserName);
-      if (result.criada || result.registro.ordemServicoId) {
-        nextOrders = result.ordens;
-        nextRecords = nextRecords.map(item => item.id === registro.id ? result.registro : item);
-      }
+    const result = reconciliarHistoricoManutencaoDaFrota(controleEquipamentosDiario, ordensServico, activeUserName);
+    if (result.ordens !== ordensServico) {
+      setOrdensServico(result.ordens);
+      writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(result.ordens));
     }
-    if (nextOrders !== ordensServico) {
-      setOrdensServico(nextOrders);
-      writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(nextOrders));
-    }
-    if (nextRecords !== controleEquipamentosDiario) {
-      setControleEquipamentosDiario(nextRecords);
-      writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(nextRecords));
+    if (result.registros !== controleEquipamentosDiario) {
+      setControleEquipamentosDiario(result.registros);
+      writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(result.registros));
     }
   }, [controleEquipamentosDiario, ordensServico, activeUserName]);
 
@@ -5128,6 +5119,7 @@ export default function App() {
               <ManutencaoTab
                 ordensServico={ordensServico}
                 equipamentos={equipamentos}
+                controlesEquipamentos={controleEquipamentosDiario}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'manutencao', 'editar')}
                 historyLogs={historyLogs}

@@ -27,6 +27,12 @@ interface OrdemAutomaticaDaFrota {
   criada: boolean;
 }
 
+export interface ReconciliacaoHistoricoManutencaoDaFrota {
+  registros: ControleEquipamentoDiario[];
+  ordens: OrdemServico[];
+  criadas: number;
+}
+
 /**
  * Faz a ponte entre o fechamento operacional da frota e a oficina. Vale para
  * qualquer equipamento — escavadeira, gerador, torre, basculante: se o controle
@@ -72,6 +78,32 @@ export const garantirOrdemAutomaticaDaFrota = (
     ordens: [ordem, ...ordens],
     criada: true,
   };
+};
+
+/**
+ * Reprocessa o histórico importado do Controle de Frotas sem apagar nem
+ * reclassificar lançamentos. Um vínculo só é considerado resolvido quando a
+ * OS ainda existe; ids legados que apontam para uma OS removida voltam para a
+ * fila e recebem uma ordem válida.
+ */
+export const reconciliarHistoricoManutencaoDaFrota = (
+  registros: ControleEquipamentoDiario[],
+  ordens: OrdemServico[],
+  responsavel: string,
+): ReconciliacaoHistoricoManutencaoDaFrota => {
+  let proximasOrdens = ordens;
+  let criadas = 0;
+  const registrosReconciliados = registros.map(registro => {
+    if (!['Em manutenção', 'Aguardando manutenção'].includes(registro.status)) return registro;
+    if (registro.ordemServicoId && proximasOrdens.some(ordem => ordem.id === registro.ordemServicoId)) return registro;
+
+    const resultado = garantirOrdemAutomaticaDaFrota(registro, proximasOrdens, responsavel);
+    proximasOrdens = resultado.ordens;
+    if (resultado.criada) criadas += 1;
+    return resultado.registro;
+  });
+
+  return { registros: registrosReconciliados, ordens: proximasOrdens, criadas };
 };
 
 /** Próxima etapa do fluxo, ou undefined quando a OS já está encerrada. */

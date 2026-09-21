@@ -32,6 +32,7 @@ import './painelPresenca.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';
+import './maintenanceQueue.test';
 import './horasParadas.test';
 import './checklist.test';
 import './consumoCombustivel.test';

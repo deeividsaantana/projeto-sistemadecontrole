@@ -7,6 +7,7 @@ import {
   garantirOrdemAutomaticaDaFrota,
   isOrdemEncerrada,
   proximoStatusManutencao,
+  reconciliarHistoricoManutencaoDaFrota,
 } from '../src/utils/manutencao';
 import type { ControleEquipamentoDiario, OrdemServico } from '../src/types';
 
@@ -137,6 +138,16 @@ test('basculante em manutenção reutiliza OS aberta sem duplicar', () => {
   assert.equal(result.criada, false);
   assert.equal(result.registro.ordemServicoId, 'os-existente');
   assert.deepEqual(result.ordens, [aberta]);
+});
+
+test('histórico de frota com vínculo de OS órfão volta a aparecer na manutenção', () => {
+  const historico = registroBasculante({ ordemServicoId: 'os-removida' });
+
+  const result = reconciliarHistoricoManutencaoDaFrota([historico], [], 'Encarregado da frota');
+
+  assert.equal(result.ordens.length, 1);
+  assert.equal(result.registros[0].ordemServicoId, result.ordens[0].id);
+  assert.equal(result.criadas, 1);
 });
 
 test('a tela de manutenção está ligada aos handlers do App', () => {

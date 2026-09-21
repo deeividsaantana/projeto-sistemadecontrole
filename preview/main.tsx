@@ -559,6 +559,7 @@ const screens: Record<string, React.ReactNode> = {
     <ManutencaoTab
       ordensServico={fx.ordensServico}
       equipamentos={fx.equipamentos}
+      controlesEquipamentos={fx.controlesEquipamentos}
       responsavel="Deivid Santana"
       podeEditar
       onSave={noop}

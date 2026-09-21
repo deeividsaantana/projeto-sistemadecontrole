@@ -2,9 +2,9 @@
  * Manutenção: abertura, acompanhamento e liberação das ordens de serviço.
  * As horas paradas saem da própria ordem — abertura até liberação.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Clock3, FileSpreadsheet, Gauge, History, Plus, Search, TriangleAlert, Wrench } from 'lucide-react';
-import type { Equipamento, HistoryLog, OrdemServico } from '../types';
+import type { ControleEquipamentoDiario, Equipamento, HistoryLog, OrdemServico } from '../types';
 import { historicoDaManutencao } from '../utils/manutencaoHistorico';
 import {
   FLUXO_MANUTENCAO,
@@ -23,6 +23,7 @@ import {
   type EquipmentFamily,
 } from '../utils/equipmentPresentation';
 import { downloadManutencaoWorkbook } from '../utils/manutencaoExport';
+import { buildMaintenanceQueue } from '../utils/maintenanceQueue';
 import {
   Badge,
   ConfirmDialog,
@@ -41,6 +42,7 @@ import {
 interface ManutencaoTabProps {
   ordensServico: OrdemServico[];
   equipamentos: Equipamento[];
+  controlesEquipamentos?: ControleEquipamentoDiario[];
   /** Quem está operando: entra como responsável e no log da alteração. */
   responsavel: string;
   podeEditar: boolean;
@@ -84,6 +86,7 @@ const formularioVazio = (equipamentoId = '') => ({
 export default function ManutencaoTab({
   ordensServico,
   equipamentos,
+  controlesEquipamentos = [],
   responsavel,
   podeEditar,
   historyLogs = [],
@@ -106,6 +109,7 @@ export default function ManutencaoTab({
   const [exportando, setExportando] = useState(false);
   const [avisoExport, setAvisoExport] = useState('');
   const [historicoAberto, setHistoricoAberto] = useState(false);
+  const equipamentoFieldRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -115,18 +119,10 @@ export default function ManutencaoTab({
         event.preventDefault();
         abrirNova();
       }
-      if (formAberto && event.key === 'Escape') {
-        event.preventDefault();
-        setFormAberto(false);
-      }
-      if (formAberto && event.key === 'Enter' && !event.shiftKey && (event.ctrlKey || !isTyping)) {
-        event.preventDefault();
-        salvar();
-      }
     };
-    window.addEventListener('keydown', handleShortcut);
+    if (!formAberto) window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  });
+  }, [formAberto, podeEditar]);
 
   /** O que já aconteceu com as ordens — abertura, edição e liberação. */
   const historico = useMemo(() => historicoDaManutencao(historyLogs), [historyLogs]);
@@ -183,52 +179,11 @@ export default function ManutencaoTab({
     };
   }, [lista]);
 
-  /** Uma linha por equipamento parado: onde a frota está perdendo tempo. */
-  const paradasPorEquipamento = useMemo(() => {
-    const agrupado = new Map<string, {
-      equipamentoId: string;
-      prefixo: string;
-      familia: EquipmentFamily;
-      horas: number;
-      ordens: number;
-      abertas: number;
-      motivoAtual: string;
-      statusAtual: string;
-      desde: string;
-    }>();
-
-    lista.forEach(ordem => {
-      const equipamento = equipamentoPorId.get(ordem.equipamentoId);
-      const chave = ordem.equipamentoId || ordem.numero;
-      const horas = calcularHorasParadas(ordem) || 0;
-      const aberta = !isOrdemEncerrada(ordem.status);
-      const atual = agrupado.get(chave) || {
-        equipamentoId: ordem.equipamentoId,
-        prefixo: equipamento?.prefixo || 'Frota não localizada',
-        familia: classifyEquipment(equipamento),
-        horas: 0,
-        ordens: 0,
-        abertas: 0,
-        motivoAtual: '',
-        statusAtual: '',
-        desde: '',
-      };
-      atual.horas += horas;
-      atual.ordens += 1;
-      if (aberta) {
-        atual.abertas += 1;
-        // A ordem aberta mais antiga é a que explica a parada em curso.
-        if (!atual.desde || ordem.dataAbertura < atual.desde) {
-          atual.desde = ordem.dataAbertura;
-          atual.motivoAtual = (ordem.motivo || ordem.descricao || 'Sem motivo informado').trim();
-          atual.statusAtual = ordem.status;
-        }
-      }
-      agrupado.set(chave, atual);
-    });
-
-    return Array.from(agrupado.values()).sort((a, b) => b.horas - a.horas);
-  }, [lista, equipamentoPorId]);
+  /** Fila de oficina: uma OS ativa por cartão, sem esconder equipamento sem cadastro. */
+  const filaOperacional = useMemo(
+    () => buildMaintenanceQueue(lista, equipamentos, new Date(), controlesEquipamentos),
+    [lista, equipamentos, controlesEquipamentos],
+  );
 
   /** Ranking dos motivos que mais param a frota no recorte atual. */
   const motivosRanking = useMemo(() => {
@@ -434,25 +389,6 @@ export default function ManutencaoTab({
         <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700">{avisoExport}</p>
       )}
 
-      {/* Seção de Manutenções em Destaque (Cards) */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {lista.filter(o => !isOrdemEncerrada(o.status)).map(ordem => {
-          const equipamento = equipamentoPorId.get(ordem.equipamentoId);
-          const Icon = equipmentFamilyIcon(classifyEquipment(equipamento));
-          return (
-            <div key={ordem.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex gap-3 items-center">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                {Icon ? <Icon size={20} /> : <Wrench size={20} />}
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase text-slate-500">{equipamento?.prefixo || 'Indefinido'}</p>
-                <strong className="block truncate text-xs font-bold text-slate-900">{ordem.status}</strong>
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
       {/* Filtros */}
       <div className="mt-4 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -531,44 +467,48 @@ export default function ManutencaoTab({
         </div>
       </div>
 
-      {/* Cards: onde a frota está parada agora */}
-      {paradasPorEquipamento.length > 0 && (
-        <section className="mt-5">
+      {filaOperacional.length > 0 && (
+        <section aria-label="Fila operacional de manutenção" className="mt-5">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-sm font-black text-slate-900">Equipamentos em manutenção</h2>
-              <p className="text-xs text-slate-500">Horas acumuladas no recorte, com o motivo da parada em curso.</p>
+              <h2 className="text-sm font-black text-slate-900">Fila de oficina</h2>
+              <p className="text-xs text-slate-500">OS em curso, ordenadas pelo tempo parado do equipamento.</p>
             </div>
-            <span className="shrink-0 text-xs font-bold tabular-nums text-slate-500">{paradasPorEquipamento.length} equipamento(s)</span>
+            <span className="shrink-0 text-xs font-bold tabular-nums text-slate-500">{filaOperacional.length} em curso</span>
           </div>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-            {paradasPorEquipamento.slice(0, 9).map(item => {
+            {filaOperacional.slice(0, 12).map(item => {
               const Icon = equipmentFamilyIcon(item.familia);
+              const ordem = ordensServico.find(candidate => candidate.id === item.ordemId);
+              const proximo = ordem ? proximoStatusManutencao(ordem.status) : undefined;
               return (
-                <article key={item.equipamentoId || item.prefixo} className="renea-card rounded-lg border border-slate-200 bg-white p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800" aria-hidden="true">
-                      <Icon className="size-5" strokeWidth={1.7} />
+                <article key={item.ordemId} className="group rounded-xl border border-slate-200 bg-white p-3.5 transition duration-200 hover:border-emerald-300 hover:shadow-[0_10px_24px_rgba(6,60,49,0.08)]">
+                  <header className="flex items-start gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800" aria-label={EQUIPMENT_FAMILY_LABELS[item.familia]}>
+                      <Icon className="size-5" strokeWidth={1.7} aria-hidden="true" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <strong className="truncate font-black text-slate-900">{item.prefixo}</strong>
-                        <span className="shrink-0 font-mono text-sm font-black tabular-nums text-slate-900">{formatarHoras(item.horas)}</span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <strong className="block truncate font-mono text-sm font-black text-slate-900">{item.prefixo}</strong>
+                          <span className="block truncate text-[10px] font-bold uppercase tracking-wide text-slate-400">{item.equipamentoNome}</span>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${statusTone(item.status)}`}>{item.status}</span>
                       </div>
-                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">{EQUIPMENT_FAMILY_LABELS[item.familia]}</p>
-                      {item.abertas > 0 ? (
-                        <>
-                          <p className="mt-2 line-clamp-2 text-xs text-slate-600" title={item.motivoAtual}>{item.motivoAtual}</p>
-                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusTone(item.statusAtual)}`}>{item.statusAtual}</span>
-                            <span className="text-[10px] text-slate-400">desde {formatarData(item.desde)}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="mt-2 text-xs text-slate-400">Sem ordem em aberto · {item.ordens} no período</p>
-                      )}
                     </div>
-                  </div>
+                  </header>
+                  <p className="mt-3 line-clamp-2 min-h-9 text-xs font-semibold leading-4 text-slate-700" title={item.motivo}>{item.motivo}</p>
+                  <dl className="mt-3 grid grid-cols-2 gap-x-3 border-y border-slate-100 py-2.5 text-[10px]">
+                    <div><dt className="text-slate-400">Desde</dt><dd className="mt-0.5 font-bold text-slate-700">{formatarData(item.desde)}</dd></div>
+                    <div className="text-right"><dt className="text-slate-400">Tempo parado</dt><dd className="mt-0.5 font-mono font-black tabular-nums text-rose-700">{formatarHoras(item.horasParadas)}</dd></div>
+                  </dl>
+                  <footer className="mt-3 flex items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] font-bold text-slate-400">{item.numero}</span>
+                    <span className="flex gap-1.5">
+                      {podeEditar && proximo && ordem && <button type="button" onClick={() => avancar(ordem)} className="min-h-8 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-[10px] font-bold text-emerald-800 transition hover:border-emerald-500">{proximo}</button>}
+                      {podeEditar && ordem && <button type="button" aria-label={`Editar ${item.numero}`} onClick={() => abrirEdicao(ordem)} className="min-h-8 rounded-md border border-slate-200 px-2.5 text-[10px] font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Editar</button>}
+                    </span>
+                  </footer>
                 </article>
               );
             })}
@@ -751,6 +691,8 @@ export default function ManutencaoTab({
         description={editando ? undefined : 'A OS entra como Aberta e segue o fluxo até a liberação.'}
         size="lg"
         onClose={() => setFormAberto(false)}
+        onSubmit={salvar}
+        initialFocusRef={equipamentoFieldRef}
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-[10px] text-slate-400">Esc</span></button>
@@ -762,6 +704,7 @@ export default function ManutencaoTab({
           <label className="text-xs font-bold text-slate-600">
             Equipamento
             <select
+              ref={equipamentoFieldRef}
               value={form.equipamentoId}
               onChange={event => setForm({ ...form, equipamentoId: event.target.value })}
               className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500"

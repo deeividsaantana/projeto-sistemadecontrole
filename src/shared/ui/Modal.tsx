@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { X } from 'lucide-react';
 import { cn } from './styles';
 
@@ -20,6 +20,8 @@ interface ModalProps {
   onSubmit?: () => void;
   footer?: ReactNode;
   onClose: () => void;
+  /** Campo operacional prioritário quando o diálogo abrir. */
+  initialFocusRef?: RefObject<HTMLElement | null>;
   children?: ReactNode;
   className?: string;
 }
@@ -48,6 +50,7 @@ export function Modal({
   onSubmit,
   footer,
   onClose,
+  initialFocusRef,
   children,
   className,
 }: ModalProps) {
@@ -56,7 +59,7 @@ export function Modal({
   useEffect(() => {
     if (!open) return undefined;
     const panel = panelRef.current;
-    panel?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    (initialFocusRef?.current || panel?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !busy) {
@@ -96,7 +99,7 @@ export function Modal({
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [busy, onClose, onSubmit, open]);
+  }, [busy, initialFocusRef, onClose, onSubmit, open]);
 
   if (!open) return null;
 
