@@ -66,6 +66,13 @@ for (const { screen, titulo } of TELAS) {
   });
 }
 
+test('shell viewport usa largura total sem limite', async ({ page }) => {
+  await page.goto('/?screen=painel');
+  const viewport = page.locator('#main-tab-viewport');
+  await expect(viewport).toBeVisible();
+  await expect(viewport).toHaveCSS('max-width', 'none');
+});
+
 test('painel mostra cada indicador executivo uma única vez', async ({ page }) => {
   await page.goto('/?screen=painel');
 
@@ -159,6 +166,29 @@ test('painel: 7d, 14d e 30d mudam de verdade a régua do gráfico', async ({ pag
   await page.getByRole('button', { name: '7d', exact: true }).click();
   await expect.poll(async () => (await eixo())[0]).toBe(sete[0]);
   expect(await eixo(), 'voltar para 7 dias devolve a régua original').toEqual(sete);
+});
+
+test('manutenção abre OS por N, foca equipamento e valida salvar por CTRL+ENTER', async ({ page }) => {
+  await page.goto('/?screen=manutencao');
+  await expect(page.getByRole('button', { name: 'Abrir OS' })).toBeVisible();
+  await page.keyboard.press('n');
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Equipamento')).toBeFocused();
+
+  await page.keyboard.press('Control+Enter');
+  await expect(dialog.getByText('Selecione o equipamento da ordem.')).toBeVisible();
+});
+
+test('manutenção apresenta uma fila operacional acionável sem cards duplicados', async ({ page }) => {
+  await page.goto('/?screen=manutencao');
+
+  const queue = page.getByRole('region', { name: 'Fila operacional de manutenção' });
+  await expect(queue).toBeVisible();
+  await expect(queue.getByText('CB770')).toBeVisible();
+  await expect(queue.getByRole('button', { name: /Editar OS-0100/ })).toBeVisible();
+  await expect(page.getByText('Manutenções em Destaque')).toHaveCount(0);
 });
 
 test('painel não duplica a navegação principal dentro do conteúdo', async ({ page }) => {
