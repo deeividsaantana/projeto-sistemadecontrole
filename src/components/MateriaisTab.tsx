@@ -13,6 +13,7 @@ import { buildMaterialsFlow, summarizeMaterialsStock } from '../utils/materialsD
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, numero } from '../utils/formato';
 import { MaterialCard } from './MaterialCard';
+import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
 import {
   Badge,
   EmptyState,
@@ -33,6 +34,7 @@ interface MateriaisTabProps {
   podeEditar: boolean;
   onSaveMaterial: (material: Material, isNew: boolean) => void;
   onSaveMovimento: (movimento: MovimentoMaterial) => void;
+  onApplyImport: (materials: Material[], movements: MovimentoMaterial[]) => void;
 }
 
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
@@ -47,9 +49,10 @@ export default function MateriaisTab({
   podeEditar,
   onSaveMaterial,
   onSaveMovimento,
+  onApplyImport,
 }: MateriaisTabProps) {
   const hoje = isoDay(new Date());
-  const [aba, setAba] = useState<'estoque' | 'movimentos' | 'cadastro'>('estoque');
+  const [aba, setAba] = useState<'estoque' | 'movimentos' | 'cadastro' | 'importacoes'>('estoque');
   const [busca, setBusca] = useState('');
   const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca]);
   const [erro, setErro] = useState('');
@@ -339,7 +342,7 @@ export default function MateriaisTab({
 
       <div className="mt-4 flex flex-col gap-2">
         <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          {([['estoque', 'Estoque'], ['movimentos', 'Movimentos'], ['cadastro', 'Cadastro']] as const).map(([id, rotulo]) => (
+          {([['estoque', 'Estoque'], ['movimentos', 'Movimentos'], ['cadastro', 'Cadastro'], ['importacoes', 'Importações']] as const).map(([id, rotulo]) => (
             <button
               key={id}
               type="button"
@@ -362,7 +365,7 @@ export default function MateriaisTab({
         )}
       </div>
 
-      <label className="relative mt-3 block">
+      {aba !== 'importacoes' && <><label className="relative mt-3 block">
         <span className="sr-only">Buscar material</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -465,7 +468,9 @@ export default function MateriaisTab({
             </TableBody>
           </TableShell>
         )}
-      </div>
+      </div></>}
+
+      {aba === 'importacoes' && podeEditar && <MateriaisImportacoesPanel materiais={materiais} movimentos={movimentos} responsavel={responsavel} onApply={onApplyImport} onError={setErro} />}
 
       <Modal
         open={materialAberto}

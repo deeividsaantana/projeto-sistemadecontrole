@@ -16,6 +16,14 @@ export interface ImportRow<T> {
   readonly lineage: ImportLineage;
   readonly value: T;
   readonly operationalKey?: string;
+  /**
+   * Linha bruta (antes de cleanImportValue) para domínios cujo registro final
+   * precisa de um valor que cleanImportValue não preserva com fidelidade —
+   * ex.: Date de horário vira só "AAAA-MM-DD" em lineage.originalData,
+   * perdendo a hora. Opcional: a maioria dos domínios reconstrói o registro
+   * a partir de `value` normalmente.
+   */
+  readonly rawRow?: Readonly<Record<string, unknown>>;
 }
 
 export type ImportDisposition =

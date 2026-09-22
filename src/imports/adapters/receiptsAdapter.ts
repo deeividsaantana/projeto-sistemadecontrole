@@ -13,7 +13,7 @@ import { buildImportPreview } from '../preview';
 import type { MovimentoMaterial } from '../../types';
 
 // "Resumo Geral" é agregado, não linha de origem — fica deferred de propósito.
-const RECOGNIZED_SHEETS = ['tubos de concreto', 'tubos pead/pvc', 'tubos pead', 'madeiras e formas', 'ferramentas e materiais de apoio'];
+const RECOGNIZED_SHEETS = ['tubos de concreto', 'tubos pead/pvc', 'tubos pead - pvc', 'tubos pead', 'madeiras e formas', 'ferramentas e materiais de apoio', 'ferramentas e materiais de apoi'];
 
 const FIELD_ALIASES: Record<string, string[]> = {
   data: ['Data', 'Data Recebimento'],

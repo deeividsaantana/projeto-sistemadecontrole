@@ -138,6 +138,17 @@ export const PRIMARY_MODULE_IDS = [
   'central-operacional',
   'planejamento',
   'diario-obra',
+  // Tickets Jazida e Controle de Estacas não tinham nenhum caminho de
+  // navegação alcançável na versão "enxuta": o atalho deles dentro de
+  // Central Operacional só marca a subtela como ativa, sem render próprio
+  // (CentralOperacionalTab só implementa 'frentes'/'producao'/'ocorrencias'),
+  // e AUXILIARY_MODULE_DESTINATIONS nunca chega a ser lido em nenhum lugar
+  // do app. As duas telas ficavam prontas e com permissão liberada, mas sem
+  // link para abrir. Decisão confirmada com o usuário em 2026-09-22 para
+  // destravar as novas importações com prévia/lote/lineage, que vivem
+  // dentro dessas duas telas.
+  'tickets-jazida',
+  'estacas',
   'controle-equipamentos',
   'manutencao',
   'lancamentos',

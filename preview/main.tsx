@@ -487,6 +487,7 @@ const screens: Record<string, React.ReactNode> = {
       podeEditar
       onSaveMaterial={noop}
       onSaveMovimento={noop}
+      onApplyImport={noop}
     />
   ),
   'dds-treinamentos': (

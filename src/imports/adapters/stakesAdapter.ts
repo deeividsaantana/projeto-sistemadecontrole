@@ -18,6 +18,7 @@ const STAKE_SHEET_KEYWORDS = [
 
 const matchesStakeSheet = (sheetName: string): boolean => {
   const normalized = normalizeComparable(sheetName);
+  if (normalized === 'resumo geral') return false;
   return STAKE_SHEET_KEYWORDS.some(keyword => normalized.includes(keyword));
 };
 
@@ -82,6 +83,7 @@ export const stakesAdapter: SpreadsheetImportAdapter<NormalizedStakeRow, undefin
       }),
       value,
       operationalKey,
+      rawRow: raw,
     } satisfies ImportRow<NormalizedStakeRow>;
   }),
   reconcile: rows => {

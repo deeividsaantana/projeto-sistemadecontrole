@@ -3467,6 +3467,30 @@ export default function App() {
     });
   };
 
+  const handleApplyMaterialImport = (newMaterials: Material[], newMovements: MovimentoMaterial[]) => {
+    if (newMaterials.length === 0 && newMovements.length === 0) return;
+    const materialIds = new Set(materiaisCadastro.map(item => item.id));
+    const movementIds = new Set(materiaisMovimentos.map(item => item.id));
+    const updatedMaterials = [...newMaterials.filter(item => !materialIds.has(item.id)), ...materiaisCadastro];
+    const updatedMovements = [...newMovements.filter(item => !movementIds.has(item.id)), ...materiaisMovimentos];
+    // Mesmo caminho de todo outro lançamento em lote (Controle de Estacas,
+    // Tickets Jazida, Planilha Mestre): saveAndLog grava o histórico de
+    // auditoria e sincroniza com a nuvem, em vez de só atualizar o estado
+    // local sem deixar rastro de quem/quando aplicou a importação.
+    saveAndLog(
+      'Materiais',
+      'Criou',
+      `Importou ${newMaterials.length} material(is) novo(s) e ${newMovements.length} movimento(s) por planilha.`,
+      historyLogs,
+      () => {
+        setMateriaisCadastro(updatedMaterials);
+        setMateriaisMovimentos(updatedMovements);
+        writeStorageValue(localStorage, STORAGE_KEYS.materiaisCadastro, JSON.stringify(updatedMaterials));
+        writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updatedMovements));
+      },
+    );
+  };
+
   const handleSaveDds = (registro: RegistroDDS) => {
     const updated = [registro, ...registrosDds];
     saveAndLog('DDS', 'Criou', `Registrou o DDS "${registro.tema}" com ${registro.participantesIds.length} participante(s).`, historyLogs, () => {
@@ -5036,6 +5060,7 @@ export default function App() {
                 podeEditar={pode(currentUserRole, 'materiais', 'editar')}
                 onSaveMaterial={handleSaveMaterial}
                 onSaveMovimento={handleSaveMovimentoMaterial}
+                onApplyImport={handleApplyMaterialImport}
               />
             )}
 
@@ -5186,11 +5211,12 @@ export default function App() {
             )}
 
             {activeTab === 'tickets-jazida' && (
-              <TicketsJazidaTab 
+              <TicketsJazidaTab
                 tickets={ticketsJazida}
                 equipamentos={equipamentos}
                 controlesEquipamentos={controleEquipamentosDiario}
                 obras={obras}
+                responsavel={activeUserName}
                 onSaveTicket={handleSaveTicketJazida}
                 onDeleteTicket={handleDeleteTicketJazida}
                 onDeleteTickets={handleDeleteTicketsJazida}

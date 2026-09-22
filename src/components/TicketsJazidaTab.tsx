@@ -36,6 +36,7 @@ import type ExcelJS from 'exceljs';
 import { listarMateriais } from '../utils/materiaisJazida';
 import { createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
+import TicketsJazidaImportacoesPanel from './TicketsJazidaImportacoesPanel';
 import { baseTicketNumber, buildTicketNumberSequence, normalizeTicketNumber } from '../utils/ticketNumberSequence';
 import { buildDuplicateTicketKeys, isDuplicateTicket, ticketDuplicateKey } from '../utils/ticketDuplicateDetection';
 import { buildTicketSpreadsheetWorkbook } from '../utils/ticketSpreadsheetExport';
@@ -67,6 +68,8 @@ interface TicketsJazidaTabProps {
   obras: ObraLocal[];
   /** Usado só para sugerir o motorista do prefixo no dia da viagem. */
   controlesEquipamentos?: ControleEquipamentoDiario[];
+  /** Quem fica registrado na importação com prévia/lote/lineage. */
+  responsavel?: string;
   onSaveTicket: (item: TicketJazida, isNew: boolean) => void;
   onDeleteTicket: (id: string) => void;
   onDeleteTickets: (ids: string[]) => void;
@@ -293,6 +296,7 @@ export default function TicketsJazidaTab({
   equipamentos,
   obras,
   controlesEquipamentos = [],
+  responsavel = 'Sistema',
   onSaveTicket,
   onDeleteTicket,
   onDeleteTickets,
@@ -301,6 +305,7 @@ export default function TicketsJazidaTab({
   onReserveTicketNumbers,
 }: TicketsJazidaTabProps) {
 
+  const [showImportacoesAvancadas, setShowImportacoesAvancadas] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -1783,9 +1788,22 @@ export default function TicketsJazidaTab({
             <FilePenLine className="h-4 w-4" />
             {operationsOpen ? 'Ocultar lista e notas' : 'Ver lista e notas'}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowImportacoesAvancadas(value => !value)}
+            title="Importação com prévia (dry-run), lote rastreável e proteção contra reimportação"
+            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-4 text-xs font-black transition-colors ${showImportacoesAvancadas ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700' : 'border-[#e2e8e4] bg-white text-[#26362f] hover:border-emerald-500'}`}
+          >
+            <Upload className="w-4 h-4" />
+            {showImportacoesAvancadas ? 'Ocultar importação com lote' : 'Importação com lote (prévia)'}
+          </button>
           <input ref={importInputRef} type="file" accept=".xlsx,.xlsm" onChange={handleImportTicketsFile} className="hidden" />
         </div>
       </div>
+
+      {showImportacoesAvancadas && (
+        <TicketsJazidaImportacoesPanel tickets={tickets} responsavel={responsavel} onApply={onImportTickets} onError={setValidationError} />
+      )}
 
       {linkMessage && (
         <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-700">

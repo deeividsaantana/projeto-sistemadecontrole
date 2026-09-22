@@ -6,6 +6,7 @@ import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal } from '../
 import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
 import { uploadOperationalAttachment } from '../services/operationalAttachments';
 import StakeDrivingMap from './StakeDrivingMap';
+import EstacasImportacoesPanel from './EstacasImportacoesPanel';
 import { ConfirmDialog, CountUp } from '../shared/ui';
 import { inativar, somenteAtivos } from '../utils/inativacao';
 
@@ -66,7 +67,15 @@ const emptyDriving = (): Omit<CravacaoEstaca, 'id' | 'criadoEm'> => ({
 
 export default function EstacasTab({ controle, obras, onChange, responsavel = 'Sistema' }: Props) {
   const responsavelAcao = responsavel;
-  const [mode, setMode] = useState<'lotes' | 'cravacoes' | 'notas'>('lotes');
+  const [mode, setMode] = useState<'lotes' | 'cravacoes' | 'notas' | 'importacoes'>('lotes');
+  const aplicarImportacao = (novosLotes: LoteEstaca[], novasCravacoes: CravacaoEstaca[]) => {
+    if (novosLotes.length === 0 && novasCravacoes.length === 0) return;
+    onChange(
+      { lotes: [...novosLotes, ...controle.lotes], cravacoes: [...novasCravacoes, ...controle.cravacoes] },
+      `Importou ${novosLotes.length} lote(s) e ${novasCravacoes.length} cravação(ões) por planilha (com prévia e lote rastreável).`,
+    );
+    setMessage(`Importação aplicada: ${novosLotes.length} lote(s) e ${novasCravacoes.length} cravação(ões).`);
+  };
   const [lot, setLot] = useState(emptyLot);
   const [driving, setDriving] = useState(emptyDriving);
   const [lotFiles, setLotFiles] = useState<File[]>([]);
@@ -345,10 +354,14 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
       {message && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-700">{message}</div>}
 
       <div className="flex gap-2 overflow-auto">
-        {([['lotes', 'Recebimentos'], ['cravacoes', 'Cravações'], ['notas', 'Conferência de NF']] as const).map(([id, label]) => (
+        {([['lotes', 'Recebimentos'], ['cravacoes', 'Cravações'], ['notas', 'Conferência de NF'], ['importacoes', 'Importações']] as const).map(([id, label]) => (
           <button key={id} type="button" onClick={() => setMode(id)} className={`rounded-lg px-4 py-2 text-xs font-black ${mode === id ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400'}`}>{label}</button>
         ))}
       </div>
+
+      {mode === 'importacoes' && (
+        <EstacasImportacoesPanel controle={controle} responsavel={responsavelAcao} onApply={aplicarImportacao} onError={setMessage} />
+      )}
 
       {mode === 'lotes' && (
         <>

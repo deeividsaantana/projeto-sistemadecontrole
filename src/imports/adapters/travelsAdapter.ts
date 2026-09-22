@@ -54,7 +54,7 @@ export const travelsAdapter: SpreadsheetImportAdapter<NormalizedTravelRow, undef
   parse: (context: ImportParseContext) => context.rows.map((raw, index) => {
     const sourceRow = index + context.headerRow + 1;
     const value: NormalizedTravelRow = {
-      via: context.sourceSheet,
+      via: normalizeComparable(context.sourceSheet),
       ticket: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.ticket)),
       prefixo: normalizeImportPlateOrNull(getImportValue(raw, FIELD_ALIASES.prefixo)) ||
                 normalizeImportPrefixOrNull(getImportValue(raw, FIELD_ALIASES.prefixo)),
@@ -86,6 +86,7 @@ export const travelsAdapter: SpreadsheetImportAdapter<NormalizedTravelRow, undef
       }),
       value,
       operationalKey,
+      rawRow: raw,
     } satisfies ImportRow<NormalizedTravelRow>;
   }),
   reconcile: rows => {
