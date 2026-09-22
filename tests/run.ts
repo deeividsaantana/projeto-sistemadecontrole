@@ -141,4 +141,5 @@ import './modalViewport.test';
 import './registryTypes.test';
 import './duplicateDetection.test';
 import './useRegistryState.test';
+import './registryScreenUi.test';
 import './pageHeaderVisibility.test';
