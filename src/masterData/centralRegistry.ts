@@ -78,6 +78,10 @@ export const isActiveCollaborator = (item: Funcionario): boolean => (
 );
 
 export const isSupplier = (item: Empresa): boolean => item.tipos?.includes('FORNECEDOR') === true;
+// Terceira contratada presta serviço na obra (Tecnogeo, Rivoli) — diferente
+// de fornecedor de material (Pedraforte, Dovalle). Uma empresa pode ser as
+// duas coisas ao mesmo tempo (tipos aceita mais de um valor).
+export const isThirdPartyContractor = (item: Empresa): boolean => item.tipos?.includes('TERCEIRA') === true;
 export const isVehicle = (item: Equipamento): boolean => item.categoriaFrota === 'Veículo';
 
 export const registrySummary = ({

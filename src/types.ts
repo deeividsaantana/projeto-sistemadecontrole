@@ -9,7 +9,10 @@ export interface Empresa {
   cnpj: string;
   telefone: string;
   responsavel: string;
-  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA'>;
+  // TERCEIRA: empresa contratada que presta serviço na obra (ex.: Tecnogeo,
+  // Rivoli) — diferente de FORNECEDOR (vende material, ex.: Pedraforte,
+  // Dovalle). Uma empresa pode acumular mais de um tipo.
+  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA' | 'TERCEIRA'>;
   status?: 'ATIVO' | 'INATIVO';
   criadoEm?: string;
   atualizadoEm?: string;

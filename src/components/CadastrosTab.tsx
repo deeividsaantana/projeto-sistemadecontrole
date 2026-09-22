@@ -26,30 +26,38 @@ import { validateEquipmentMasterRecord } from '../utils/equipmentOperations';
 import {
   isActiveCollaborator,
   isSupplier,
+  isThirdPartyContractor,
   isVehicle,
   nextMasterId,
 } from '../masterData/centralRegistry';
 
-import { 
-  Building2, 
-  MapPin, 
-  Truck, 
-  Users, 
-  Fuel, 
-  Droplets, 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  AlertTriangle, 
-  X, 
+import {
+  Building2,
+  MapPin,
+  Truck,
+  Users,
+  Fuel,
+  Droplets,
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  AlertTriangle,
+  X,
   CheckCircle,
-  Upload
+  Upload,
+  HardHat
 } from 'lucide-react';
 import { PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
-type SubTab = 'empresas' | 'fornecedores' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
+type SubTab = 'empresas' | 'fornecedores' | 'terceiras' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
+
+// Empresas, Fornecedores e Terceiras compartilham o mesmo cadastro
+// (Empresa) e o mesmo formulário — só filtram por categoria. Centralizado
+// aqui para não repetir a mesma condição em cada trecho do arquivo que
+// precisa saber "isto é uma tela de empresa".
+const isEmpresaSubTab = (tab: SubTab) => tab === 'empresas' || tab === 'fornecedores' || tab === 'terceiras';
 
 interface CadastrosTabProps {
   empresas: Empresa[];
@@ -248,7 +256,7 @@ export default function CadastrosTab({
     setEditingId(item.id);
     setValidationError('');
 
-    if (subTab === 'empresas' || subTab === 'fornecedores') {
+    if (isEmpresaSubTab(subTab)) {
       const x = item as Empresa;
       setEmpNome(x.nome); setEmpCnpj(x.cnpj); setEmpTelefone(x.telefone); setEmpResponsavel(x.responsavel);
     } else if (subTab === 'obras') {
@@ -289,9 +297,11 @@ export default function CadastrosTab({
             ? nextMasterId('VEI', equipamentos.map(item => item.id))
             : subTab === 'fornecedores'
               ? nextMasterId('FOR', empresas.map(item => item.id))
-              : subTab === 'empresas'
-                ? nextMasterId('EMP', empresas.map(item => item.id))
-                : `${subTab.substring(0, 3).toUpperCase()}-${Date.now()}`
+              : subTab === 'terceiras'
+                ? nextMasterId('TER', empresas.map(item => item.id))
+                : subTab === 'empresas'
+                  ? nextMasterId('EMP', empresas.map(item => item.id))
+                  : `${subTab.substring(0, 3).toUpperCase()}-${Date.now()}`
       : editingId!;
 
     // Error callback to show validation errors if cloud save fails
@@ -300,7 +310,7 @@ export default function CadastrosTab({
       setValidationError(err.message);
     };
 
-    if (subTab === 'empresas' || subTab === 'fornecedores') {
+    if (isEmpresaSubTab(subTab)) {
       if (!empNome.trim()) {
         setValidationError('Nome da empresa/fornecedor é obrigatório!');
         return;
@@ -312,7 +322,13 @@ export default function CadastrosTab({
         cnpj: empCnpj.trim(),
         telefone: empTelefone.trim(),
         responsavel: empResponsavel.trim(),
-        tipos: Array.from(new Set([...(previous?.tipos || []), subTab === 'fornecedores' ? 'FORNECEDOR' as const : 'EMPRESA' as const])),
+        // Cada categoria só acrescenta ao conjunto existente, nunca troca —
+        // por isso uma empresa criada como fornecedora e depois editada pela
+        // aba Terceiras acumula os dois tipos, em vez de perder o primeiro.
+        tipos: Array.from(new Set([
+          ...(previous?.tipos || []),
+          subTab === 'fornecedores' ? 'FORNECEDOR' as const : subTab === 'terceiras' ? 'TERCEIRA' as const : 'EMPRESA' as const,
+        ])),
         status: previous?.status || 'ATIVO',
         criadoEm: previous?.criadoEm,
       }, isNew, onError);
@@ -451,7 +467,7 @@ export default function CadastrosTab({
     if (isDeleting) return;
     setIsDeleting(true);
     try {
-      if (subTab === 'empresas' || subTab === 'fornecedores') onDeleteEmpresa(id);
+      if (isEmpresaSubTab(subTab)) onDeleteEmpresa(id);
       else if (subTab === 'obras') onDeleteObra(id);
       else if (subTab === 'equipamentos' || subTab === 'veiculos') onDeleteEquipamento(id);
       else if (subTab === 'funcionarios') onDeleteFuncionario(id);
@@ -471,7 +487,12 @@ export default function CadastrosTab({
 
   const filteredEmpresas = empresas.filter(x => x.nome.toLowerCase().includes(q) || x.cnpj.includes(q) || x.responsavel.toLowerCase().includes(q));
   const filteredFornecedores = filteredEmpresas.filter(isSupplier);
-  const displayedEmpresas = subTab === 'fornecedores' ? filteredFornecedores : filteredEmpresas;
+  const filteredTerceiras = filteredEmpresas.filter(isThirdPartyContractor);
+  const displayedEmpresas = subTab === 'fornecedores'
+    ? filteredFornecedores
+    : subTab === 'terceiras'
+      ? filteredTerceiras
+      : filteredEmpresas;
   const equipamentoTipos = Array.from(new Set(equipamentos.map(x => x.tipo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const funcionarioCargos = Array.from(new Set(funcionarios.map(x => x.cargo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
@@ -506,7 +527,7 @@ export default function CadastrosTab({
   const filteredLubrificantes = lubrificantes.filter(x => x.nome.toLowerCase().includes(q));
   const filteredEtapas = etapas.filter(x => x.nome.toLowerCase().includes(q));
   const deleteTarget = deleteConfirmId
-    ? subTab === 'empresas' || subTab === 'fornecedores'
+    ? isEmpresaSubTab(subTab)
       ? empresas.find(item => item.id === deleteConfirmId)
       : subTab === 'obras'
         ? obras.find(item => item.id === deleteConfirmId)
@@ -545,6 +566,7 @@ export default function CadastrosTab({
 
   const currentFilteredCount = subTab === 'empresas' ? filteredEmpresas.length
     : subTab === 'fornecedores' ? filteredFornecedores.length
+    : subTab === 'terceiras' ? filteredTerceiras.length
     : subTab === 'obras' ? filteredObras.length
     : subTab === 'equipamentos' ? filteredEquipamentos.filter(item => !isVehicle(item)).length
     : subTab === 'veiculos' ? filteredVeiculos.length
@@ -558,6 +580,7 @@ export default function CadastrosTab({
   const getSubTabCount = (tab: SubTab) => {
     if (tab === 'empresas') return empresas.length;
     if (tab === 'fornecedores') return empresas.filter(isSupplier).length;
+    if (tab === 'terceiras') return empresas.filter(isThirdPartyContractor).length;
     if (tab === 'obras') return obras.length;
     if (tab === 'equipamentos') return equipamentos.filter(item => !isVehicle(item)).length;
     if (tab === 'veiculos') return equipamentos.filter(isVehicle).length;
@@ -756,6 +779,7 @@ export default function CadastrosTab({
           { id: 'equipamentos', label: 'Equipamentos', icon: Truck },
           { id: 'veiculos', label: 'Veículos', icon: Truck },
           { id: 'fornecedores', label: 'Fornecedores', icon: Building2 },
+          { id: 'terceiras', label: 'Terceiras', icon: HardHat },
           { id: 'empresas', label: 'Empresas', icon: Building2 },
           { id: 'obras', label: 'Locais', icon: MapPin },
           { id: 'etapas', label: 'Ramos / Trechos', icon: MapPin },
@@ -936,7 +960,7 @@ export default function CadastrosTab({
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Conditional Form Fields based on Subtab */}
-            {(subTab === 'empresas' || subTab === 'fornecedores') && (
+            {(isEmpresaSubTab(subTab)) && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-2 space-y-1">
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Nome Fantasia / Razão Social *</label>
@@ -1326,7 +1350,7 @@ export default function CadastrosTab({
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden" id="database-lists-viewport">
         
         {/* Table View Conditional rendering */}
-        {(subTab === 'empresas' || subTab === 'fornecedores') && (
+        {(isEmpresaSubTab(subTab)) && (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
