@@ -138,3 +138,4 @@ import './dashboardOperational.test';
 import './noVisualBlur.test';
 import './materialsDashboard.test';
 import './modalViewport.test';
+import './registryTypes.test';
