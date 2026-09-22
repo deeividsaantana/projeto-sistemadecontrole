@@ -140,3 +140,4 @@ import './materialsDashboard.test';
 import './modalViewport.test';
 import './registryTypes.test';
 import './duplicateDetection.test';
+import './useRegistryState.test';
