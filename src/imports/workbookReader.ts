@@ -1,5 +1,5 @@
 import type ExcelJS from 'exceljs';
-import { loadValidatedWorkbook } from '../utils/excelCorporate';
+import { loadValidatedWorkbook, stripUnsupportedWorkbookVisuals } from '../utils/excelCorporate';
 import { cleanImportValue } from '../utils/importHelpers';
 import { computeSourceHash } from './provenance';
 
@@ -188,11 +188,16 @@ export const readWorkbookFile = async (file: File): Promise<WorkbookReadResult> 
   // segurança abaixo, para não mudar a identidade/lote de reimportação.
   const sourceHash = await computeSourceHash(originalBytes);
   const { bytes: safeBytes, truncated } = await truncateOversizedSheets(originalBytes);
-  // loadValidatedWorkbook já valida extensão/tamanho e refaz a leitura sem
-  // elementos visuais incompatíveis quando necessário — reaproveitado, não
-  // duplicado (a planilha é lida uma segunda vez pelo próprio helper, o que é
-  // aceitável dado o limite de 25 MB já validado por ele).
-  const safeFile = truncated.length > 0 ? new File([safeBytes], file.name) : file;
+  // Uma Tabela do Excel arrastada até o teto da planilha (o mesmo caso que
+  // truncateOversizedSheets corta) quase sempre carrega um autoFiltro que o
+  // ExcelJS não interpreta (nó dateGroupItem). loadValidatedWorkbook tem um
+  // retry para isso, mas só entra em ação DEPOIS de tentar (e falhar) um
+  // parse completo da planilha inteira — com uma aba de dezenas de MB de XML,
+  // essa primeira tentativa perdida custava sozinha vários segundos de
+  // travamento. Removendo tabelas/desenhos aqui, antes da primeira tentativa,
+  // a importação usa só células mesmo — não perde nada que o adaptador leia.
+  const sanitizedBytes = await stripUnsupportedWorkbookVisuals(safeBytes);
+  const safeFile = new File([sanitizedBytes], file.name);
   const workbook = await loadValidatedWorkbook(safeFile);
   return {
     sourceFile: file.name,
