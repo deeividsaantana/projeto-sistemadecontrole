@@ -1,5 +1,6 @@
 import { Lock } from 'lucide-react';
 import { MODULES } from '../../constants/navigation';
+import { PRODUCT_NAME } from '../../constants/brand';
 
 export const Sidebar = ({
   currentPath,
@@ -16,8 +17,8 @@ export const Sidebar = ({
     }`}
   >
     <div className="flex h-16 items-center gap-2 px-4">
-      <span className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--color-brand-500)] text-sm font-black text-white">R</span>
-      {!collapsed && <span className="truncate text-sm font-black tracking-tight">RENEA ERP</span>}
+      <span className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--color-brand-500)] text-sm font-black text-white">{PRODUCT_NAME.charAt(0)}</span>
+      {!collapsed && <span className="truncate text-sm font-black tracking-tight">{PRODUCT_NAME}</span>}
     </div>
     <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
       {MODULES.map(module => {
