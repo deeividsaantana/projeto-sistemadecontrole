@@ -1306,7 +1306,14 @@ export default function App() {
         pendingRemoteVersionRef.current = '';
         const localCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
 
-        if (localCloudVersion === requestedVersion) {
+        // Um snapshot antigo pode ter sido enfileirado enquanto uma
+        // recuperação/publicação estava em andamento. Nunca baixe uma versão
+        // igual ou anterior à que este aparelho acabou de publicar.
+        if (
+          localCloudVersion
+          && requestedVersion
+          && Date.parse(requestedVersion) <= Date.parse(localCloudVersion)
+        ) {
           if (!cloudBaselineRef.current) {
             cloudBaselineRef.current = captureBaselineFromLocalStorage();
             persistCloudBaseline(cloudBaselineRef.current);
