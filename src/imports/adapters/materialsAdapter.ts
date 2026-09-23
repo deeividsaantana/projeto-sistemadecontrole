@@ -15,17 +15,28 @@ import type { MovimentoMaterial } from '../../types';
 
 // "lançamentos RENEA" também é lançamento de movimento; "resumo geral" é
 // agregado e fica deferred de propósito, igual ao adaptador de recebimentos.
+// Nomes reais de aba trazem parênteses, underscore/hífen e sufixo de razão
+// social ("SPE LTDA") que normalizeComparable sozinho não neutraliza — por
+// isso a comparação usa normalizeSheetKey, que também reduz pontuação a
+// espaço, em vez de comparar direto contra normalizeComparable.
+const normalizeSheetKey = (value: string) => normalizeComparable(value).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+
 const RECOGNIZED_SHEETS = [
   'rachao', 'macadame', 'solo reforcado', 'bica corrida', 'areia industrial', 'bgs', 'brita 02',
-  'bota-fora lara', 'bota fora lara', 'bota-fora itaquareia', 'bota fora itaquareia',
-  'q.e. sao bento', 'qe sao bento', 'faixa', 'lancamentos renea',
+  'bota fora lara', 'bota fora itaquareia',
+  'q e sao bento', 'q e sao bento spe ltda', 'faixa', 'lancamentos renea', 'lanc mat renea',
 ];
 
 const FIELD_ALIASES: Record<string, string[]> = {
   data: ['Data'],
   tipoMovimento: ['Movimento', 'Tipo', 'Tipo Movimento'],
   origem: ['Origem'],
-  destino: ['Destino'],
+  // Ordem importa: getImportValue tenta cada alias em sequência e para no
+  // primeiro que bater. "Local De Descarga" (onde o material foi descarregado
+  // de fato) precisa vir antes de "Local De Carregamento" para a aba
+  // LANÇ_MAT-RENEA, que tem as duas colunas — senão o destino pegaria o
+  // local de carregamento por engano.
+  destino: ['Destino', 'Local De Descarga', 'Local/Destino', 'Local De Carregamento', 'Local'],
   quantidade: ['Quantidade', 'Qtd', 'Qtde'],
   unidade: ['Unidade', 'Un', 'UN'],
   placaOuPrefixo: ['Placa', 'Prefixo', 'Placa/Prefixo'],
@@ -56,7 +67,7 @@ const buildOperationalKey = (row: NormalizedMaterialMovementRow): string | undef
 
 export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMovementRow, readonly MovimentoMaterial[]> = {
   domain: 'materials-movements',
-  supports: sheetName => RECOGNIZED_SHEETS.includes(normalizeComparable(sheetName)),
+  supports: sheetName => RECOGNIZED_SHEETS.includes(normalizeSheetKey(sheetName)),
   describeColumns,
   parse: (context: ImportParseContext) => context.rows.map((raw, index) => {
     const sourceRow = index + context.headerRow + 1;
