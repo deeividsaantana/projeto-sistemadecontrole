@@ -42,11 +42,15 @@ export const normalizeImportDecimalOrNull = (value: unknown): number | null => {
   return parseImportNumber(value);
 };
 
+// Tonelada mapeia para 't' minúsculo — não 'TON' — porque é o código que o
+// resto do app usa (UNIDADES em MateriaisTab.tsx, e a comparação de unidade
+// em materialsAnalytics.ts). Um valor diferente aqui zera silenciosamente o
+// resumo de toneladas de qualquer movimento importado.
 const UNIT_ALIASES: Record<string, string> = {
   un: 'UN', und: 'UN', unid: 'UN', unidade: 'UN',
   pc: 'PC', pca: 'PC', pcs: 'PC', peca: 'PC',
   mt: 'MT', m: 'MT', metro: 'MT', metros: 'MT',
-  m3: 'M3', ton: 'TON', t: 'TON', tonelada: 'TON', toneladas: 'TON',
+  m3: 'M3', ton: 't', t: 't', tonelada: 't', toneladas: 't',
 };
 
 export const normalizeImportUnitOrNull = (value: unknown): string | null => {

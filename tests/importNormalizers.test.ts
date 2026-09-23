@@ -28,7 +28,10 @@ assert.equal(normalizeImportDecimalOrNull('-'), null, 'traço sozinho não pode 
 assert.equal(normalizeImportDecimalOrNull('abc'), null);
 
 assert.equal(normalizeImportUnitOrNull('m³'), 'M3');
-assert.equal(normalizeImportUnitOrNull('Ton'), 'TON');
+// 't' minúsculo, não 'TON' — precisa bater com o código de unidade que o
+// resto do app usa (UNIDADES em MateriaisTab.tsx), senão o resumo de
+// toneladas de um movimento importado zera silenciosamente.
+assert.equal(normalizeImportUnitOrNull('Ton'), 't');
 assert.equal(normalizeImportUnitOrNull('un'), 'UN');
 assert.equal(normalizeImportUnitOrNull(''), null);
 
