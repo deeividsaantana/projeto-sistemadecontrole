@@ -2678,6 +2678,12 @@ export default function App() {
       if (addedCount <= 0) {
         return { success: true, message: 'O histórico local já tinha todos os registros da fila pública.' };
       }
+      if (currentUserRoleRef.current === 'leitura') {
+        return {
+          success: true,
+          message: `${addedCount} registro(s) de presença recuperado(s) neste aparelho.`,
+        };
+      }
       const uploadResult = await uploadLocalSnapshotToFirebase();
       if (!uploadResult.success) {
         return {
@@ -2695,6 +2701,18 @@ export default function App() {
       releasePresenceSync();
     }
   };
+
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
+    let cancelled = false;
+    const automaticPresenceRecovery = async () => {
+      const result = await handleRestorePresenceHistory();
+      if (cancelled || !result.success || result.message.includes('já tinha todos')) return;
+      addNotification('Presença sincronizada', result.message, 'success', 'Sistema Local');
+    };
+    void automaticPresenceRecovery();
+    return () => { cancelled = true; };
+  }, [isLoggedIn, currentUser?.uid, currentUserRole, externalTicketLink, externalPresenceToken]);
 
   useEffect(() => {
     if (!publicLinksRotationPending || !isLoggedIn || externalTicketLink || externalPresenceToken) return;

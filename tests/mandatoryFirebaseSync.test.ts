@@ -56,3 +56,9 @@ test('detalhes tecnicos e controles manuais de sincronizacao nao aparecem nas co
   assert.match(configSource, /Exclusão completa por aba/);
   assert.match(configSource, /EXCLUIR \$\{selectedTab/);
 });
+
+test('recuperacao de presenca roda automaticamente para todo usuario autenticado', () => {
+  assert.match(appSource, /automaticPresenceRecovery/);
+  assert.match(appSource, /handleRestorePresenceHistory\(\)/);
+  assert.match(appSource, /if \(!isLoggedIn \|\| !currentUser \|\| externalTicketLink \|\| externalPresenceToken\)/);
+});
