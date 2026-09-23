@@ -10,11 +10,11 @@ interface PageHeaderProps {
   eyebrow?: string;
 }
 
-/** Mantém a hierarquia semântica da tela sem repetir um título visual no shell. */
+/** Exibe o título (h1) e a descrição do módulo, visíveis para todos os usuários, além de uma barra opcional de ações. */
 export function PageHeader({ title, description, actions, className, eyebrow }: PageHeaderProps) {
   return (
     <header className={cn('renea-page-header', className)}>
-      <div className="renea-page-header__copy sr-only">
+      <div className="renea-page-header__copy">
         {eyebrow && <span>{eyebrow}</span>}
         <h1>{title}</h1>
         {description && <p>{description}</p>}
