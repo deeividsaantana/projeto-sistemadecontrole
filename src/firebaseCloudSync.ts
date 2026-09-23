@@ -507,8 +507,6 @@ const performFirebaseBackupUpload = async (
   };
 };
 
-let uploadQueue: Promise<void> = Promise.resolve();
-
 const CLOUD_CONFLICT_MAX_ATTEMPTS = 4;
 
 const isVersionConflict = (error: unknown) => (
@@ -586,12 +584,61 @@ export const uploadFirebaseBackup = (
   knownCloudVersion = '',
   baseline?: CloudBaseline,
 ): Promise<FirebaseUploadResult> => {
-  const queuedUpload = uploadQueue.then(
-    () => uploadWithConflictMerge(database, data, knownCloudVersion, baseline),
-    () => uploadWithConflictMerge(database, data, knownCloudVersion, baseline),
-  );
-  uploadQueue = queuedUpload.then(() => undefined, () => undefined);
-  return queuedUpload;
+  return new Promise<FirebaseUploadResult>((resolve, reject) => {
+    // Um novo salvamento ja contem os anteriores. Substituir o snapshot ainda
+    // pendente evita uma fila infinita de backups completos.
+    if (uploadQueue.pending) {
+      uploadQueue.pending.request = { database, data, knownCloudVersion, baseline };
+      uploadQueue.pending.waiters.push({ resolve, reject });
+    } else {
+      uploadQueue.pending = {
+        request: { database, data, knownCloudVersion, baseline },
+        waiters: [{ resolve, reject }],
+      };
+    }
+    void drainUploadQueue();
+  });
+};
+
+const uploadQueue: {
+  active: boolean;
+  pending: {
+    request: {
+      database: Firestore;
+      data: FirebaseCloudData;
+      knownCloudVersion: string;
+      baseline?: CloudBaseline;
+    };
+    waiters: Array<{
+      resolve: (result: FirebaseUploadResult) => void;
+      reject: (error: unknown) => void;
+    }>;
+  } | null;
+} = { active: false, pending: null };
+
+const drainUploadQueue = async (): Promise<void> => {
+  if (uploadQueue.active) return;
+  uploadQueue.active = true;
+  try {
+    while (uploadQueue.pending) {
+      const batch = uploadQueue.pending;
+      uploadQueue.pending = null;
+      try {
+        const result = await uploadWithConflictMerge(
+          batch.request.database,
+          batch.request.data,
+          batch.request.knownCloudVersion,
+          batch.request.baseline,
+        );
+        batch.waiters.forEach(waiter => waiter.resolve(result));
+      } catch (error) {
+        batch.waiters.forEach(waiter => waiter.reject(error));
+      }
+    }
+  } finally {
+    uploadQueue.active = false;
+    if (uploadQueue.pending) void drainUploadQueue();
+  }
 };
 
 export const downloadFirebaseBackup = async (
