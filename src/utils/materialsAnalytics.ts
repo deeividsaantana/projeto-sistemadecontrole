@@ -105,7 +105,7 @@ export function buildMaterialsOperationalSummary(
     const quantidade = Math.abs(asNumber(item.quantidade));
     const valorTotal = asNumber(item.valorTotal) || (asNumber(item.valorUnitario) * quantidade);
     const fator = asNumber(item.fatorConversao);
-    const toneladas = normalize(item.unidade) === 'ton' ? quantidade : 0;
+    const toneladas = normalize(item.unidade) === 't' ? quantidade : 0;
     const metrosCubicos = fator > 0 ? quantidade / fator : 0;
 
     addToMap(materials, normalize(item.materialDescricao), () => ({

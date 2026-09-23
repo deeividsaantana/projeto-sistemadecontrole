@@ -13,7 +13,6 @@ import { buildMaterialsOperationalSummary, getDefaultMaterialsPeriod } from '../
 import { buildMaterialsFlow, summarizeMaterialsStock } from '../utils/materialsDashboard';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../utils/formato';
-import { MaterialCard } from './MaterialCard';
 import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
 import {
   Badge,
@@ -82,6 +81,10 @@ export default function MateriaisTab({
   const hoje = isoDay(new Date());
   const periodoInicial = getDefaultMaterialsPeriod(hoje);
   const [aba, setAba] = useState<MateriaisAba>('resumo');
+  // Painel de KPIs e gráficos é contexto operacional (quanto tem, quanto
+  // mexeu). Em Cadastro/Importações a tarefa é outra (mestre de dados), então
+  // o painel só polui: some nessas abas, como numa tela de cadastro de ERP.
+  const painelOperacionalVisivel = aba === 'resumo' || aba === 'estoque' || aba === 'movimentos';
   const [busca, setBusca] = useState('');
   const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca]);
   const [erro, setErro] = useState('');
@@ -398,7 +401,7 @@ export default function MateriaisTab({
         ) : undefined}
       />
 
-      <section id="materials-dashboard" aria-label="Painel de materiais" className="mt-2 grid gap-3 lg:grid-cols-12">
+      {painelOperacionalVisivel && <section id="materials-dashboard" aria-label="Painel de materiais" className="mt-2 grid gap-3 lg:grid-cols-12">
         <div className="grid grid-cols-2 gap-2 lg:col-span-12 lg:grid-cols-4">
           {[
             { label: 'Materiais ativos', valor: String(estoqueResumo.total), detalhe: 'itens no cadastro operacional' },
@@ -475,11 +478,11 @@ export default function MateriaisTab({
             ))}
           </div>
         </article>
-      </section>
+      </section>}
 
       {/* Carga que a nota prometeu e não chegou é nota paga sem material na
           obra. Fica antes do estoque porque é a conversa mais cara. */}
-      {pendencias.length > 0 && (
+      {painelOperacionalVisivel && pendencias.length > 0 && (
         <section id="recebimentos-pendentes" className="mt-4 overflow-hidden rounded-lg border border-rose-200 bg-white">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-200 bg-rose-50 px-4 py-3">
             <p className="flex items-center gap-2 text-xs font-bold text-rose-900">
@@ -526,7 +529,7 @@ export default function MateriaisTab({
         </section>
       )}
 
-      {abaixoDoMinimo.length > 0 && (
+      {painelOperacionalVisivel && abaixoDoMinimo.length > 0 && (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="flex items-center gap-2 text-xs font-bold text-amber-900">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
@@ -538,15 +541,28 @@ export default function MateriaisTab({
         </div>
       )}
 
-      <div className="mt-4 flex flex-col gap-2">
-        <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          {([['resumo', 'Resumo atual'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos'], ['cadastro', 'Cadastro'], ['importacoes', 'Importações']] as const).map(([id, rotulo]) => (
+      <div className="mt-4 flex flex-wrap items-stretch gap-2">
+        <div className="flex flex-1 gap-1 rounded-lg border border-slate-200 bg-white p-1">
+          {([['resumo', 'Resumo atual'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos']] as const).map(([id, rotulo]) => (
             <button
               key={id}
               type="button"
               onClick={() => setAba(id)}
               aria-pressed={aba === id}
               className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+          {([['cadastro', 'Cadastro'], ['importacoes', 'Importações']] as const).map(([id, rotulo]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setAba(id)}
+              aria-pressed={aba === id}
+              className={`min-h-10 rounded-md px-4 text-xs font-bold transition-colors ${aba === id ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-200'}`}
             >
               {rotulo}
             </button>
@@ -638,6 +654,15 @@ export default function MateriaisTab({
                         </span>
                       </span>
                       <strong className="mt-1 block text-xl font-black tabular-nums text-slate-950">{numero(item.quantidade)} {item.unidade}</strong>
+                      {(item.toneladas > 0 || item.metrosCubicos > 0) && (
+                        <span className="mt-1 block text-[11px] font-bold text-emerald-700">
+                          {[
+                            item.toneladas > 0 ? `${numero(item.toneladas)} t` : null,
+                            item.metrosCubicos > 0 ? `${numero(item.metrosCubicos)} m³` : null,
+                            item.densidadeMedia ? `dens. ${item.densidadeMedia.toFixed(2)}` : null,
+                          ].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
                       <span className="mt-1 block text-[11px] font-bold text-slate-500">
                         {item.viagens} viagem(ns) · {item.custoMedio ? `${moeda(item.custoMedio)}/un` : 'sem custo'}
                       </span>
@@ -954,20 +979,18 @@ export default function MateriaisTab({
                 Nota fiscal
                 <input value={movimento.notaFiscal} onChange={event => setMovimento({ ...movimento, notaFiscal: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
               </label>
-              {movimento.tipo === 'Entrada' && (
-                <label className="text-xs font-bold text-slate-600">
-                  Quantidade na nota
-                  <input
-                    type="number" min="0" step="0.01" inputMode="decimal"
-                    value={movimento.quantidadeNota || ''}
-                    onChange={event => setMovimento({ ...movimento, quantidadeNota: Number(event.target.value) })}
-                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
-                  />
-                  <span className="mt-1 block text-[11px] font-medium text-slate-400">
-                    O que a nota promete. A quantidade acima é o que de fato chegou — a diferença vira pendência.
-                  </span>
-                </label>
-              )}
+              <label className="text-xs font-bold text-slate-600">
+                Quantidade na nota
+                <input
+                  type="number" min="0" step="0.01" inputMode="decimal"
+                  value={movimento.quantidadeNota || ''}
+                  onChange={event => setMovimento({ ...movimento, quantidadeNota: Number(event.target.value) })}
+                  className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+                />
+                <span className="mt-1 block text-[11px] font-medium text-slate-400">
+                  O que a nota promete. A quantidade acima é o que de fato chegou — a diferença vira pendência.
+                </span>
+              </label>
               <label className="text-xs font-bold text-slate-600">
                 Solicitação de compra
                 <input value={movimento.solicitacaoCompra} onChange={event => setMovimento({ ...movimento, solicitacaoCompra: event.target.value })} placeholder="SC 93011249" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
