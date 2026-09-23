@@ -202,7 +202,7 @@ export const resolvePublishPayload = ({
  * sumiam. Aqui essas tabelas só ganham linhas: quem quiser apagar auditoria
  * faz pelo backend, não por um corte de armazenamento do navegador.
  */
-const TABELAS_SOMENTE_ACRESCIMO = new Set(['historyLogs']);
+const TABELAS_SOMENTE_ACRESCIMO = new Set(['historyLogs', 'presencasLink']);
 
 export const mergeCloudSnapshotsWithBaseline = (
   remote: CloudSnapshot | null | undefined,

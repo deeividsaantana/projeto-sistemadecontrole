@@ -1096,6 +1096,18 @@ export default function App() {
         // token herdado para este trocar e republicar, e o link mudava sozinho
         // em looping. Token fraco é tratado uma vez, na carga local.
         const data: CloudData = { ...downloadedData };
+        const remotePresence = Array.isArray(data.presencasLink) ? data.presencasLink : [];
+        const localPresence = parseStoredJson<PresencaApontamento[]>(
+          localStorage.getItem('renea_presencas_link'),
+          'renea_presencas_link',
+          [],
+        );
+        // O manifesto pode estar atrasado em relação ao histórico público já
+        // recuperado neste aparelho. Nunca deixe um download menor apagar
+        // presenças locais que ainda não chegaram a esse manifesto.
+        if (localPresence.length > remotePresence.length) {
+          data.presencasLink = mergePresenceRecords(remotePresence, localPresence);
+        }
         const downloadedBaseline = captureCloudBaseline(data);
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
