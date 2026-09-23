@@ -474,6 +474,7 @@ export default function App() {
   // enquanto a causa não muda (ex.: ficar sem internet por vários lançamentos).
   const lastSyncFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
   const presenceIngestFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
+  const presenceSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
   // Conta envios ao Firebase em andamento. Um download que caia bem no meio
   // desse intervalo (por exemplo, ao voltar o foco na aba logo depois de
   // salvar algo) leria a nuvem antes do envio terminar de publicá-la, e
@@ -497,6 +498,14 @@ export default function App() {
   // de entrar neste retrato local. Serve só de diagnóstico visível: se ficar
   // preso em um número maior que zero, o processamento em tempo real travou.
   const [pendingPublicSubmissionsCount, setPendingPublicSubmissionsCount] = useState(0);
+
+  const acquirePresenceSync = async (): Promise<() => void> => {
+    const previous = presenceSyncQueueRef.current;
+    let release = () => undefined;
+    presenceSyncQueueRef.current = new Promise<void>(resolve => { release = resolve; });
+    await previous;
+    return release;
+  };
 
   // Database States
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -2632,6 +2641,7 @@ export default function App() {
   // intactos e servem de fonte para trazer de volta o que sumiu, sem apagar
   // nada que já esteja presente.
   const handleRestorePresenceHistory = async (): Promise<{ success: boolean; message: string }> => {
+    const releasePresenceSync = await acquirePresenceSync();
     try {
       const submissions = await fetchAllPresenceSubmissions(db);
       const recoveredRecords = submissions.flatMap(item => item.payload.records || []);
@@ -2662,6 +2672,8 @@ export default function App() {
       };
     } catch (error) {
       return { success: false, message: formatCloudSyncError(error) };
+    } finally {
+      releasePresenceSync();
     }
   };
 
@@ -2727,6 +2739,7 @@ export default function App() {
         return;
       }
       running = true;
+      const releasePresenceSync = await acquirePresenceSync();
       try {
         const incomingPresence = submissions.flatMap(item => item.kind === 'presence' ? (item.payload.records || []) : []);
         const presenceResets = submissions.filter(item => item.kind === 'presence-reset' && item.payload.grupoId && item.payload.data);
@@ -2858,6 +2871,7 @@ export default function App() {
           }
         }
       } finally {
+        releasePresenceSync();
         running = false;
         if (!cancelled && queuedSubmissions) {
           const nextQueue = queuedSubmissions;
