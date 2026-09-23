@@ -37,6 +37,7 @@ import {
   FileSpreadsheet,
   FileText,
   BarChart3,
+  PackageCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -105,6 +106,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Materiais',
     items: [
       { id: 'materiais', label: 'Materiais e Estoque', icon: Package },
+      { id: 'apontamento-materiais', label: 'Utilização de Materiais', icon: PackageCheck },
     ],
   },
   {
@@ -155,6 +157,7 @@ export const PRIMARY_MODULE_IDS = [
   'colaboradores',
   'presenca',
   'materiais',
+  'apontamento-materiais',
   'relatorios',
   'administracao',
 ] as const;
@@ -246,6 +249,7 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
     'apontamentos',
     'dds-treinamentos',
     'materiais',
+    'apontamento-materiais',
   ],
   leitura: ['dashboard', 'consulta-geral', 'periodo'],
 };

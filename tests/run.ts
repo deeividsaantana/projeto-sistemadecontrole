@@ -143,3 +143,4 @@ import './duplicateDetection.test';
 import './useRegistryState.test';
 import './registryScreenUi.test';
 import './pageHeaderVisibility.test';
+import './materialUtilization.test';

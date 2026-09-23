@@ -546,6 +546,10 @@ export interface Material {
   ativo: boolean;
   criadoEm: string;
   atualizadoEm: string;
+  /** Diâmetro nominal, em mm — usado por materiais tubulares (ex: Ø800). */
+  diametroMm?: number;
+  /** Comprimento da peça, em metros — usado por materiais em barra/tubo. */
+  comprimentoM?: number;
 }
 
 export type TipoMovimentoMaterial = 'Entrada' | 'Saída' | 'Transferência' | 'Ajuste';
@@ -583,6 +587,10 @@ export interface MovimentoMaterial {
   destino?: string;
   origem?: string;
   servico?: string;
+  /** Ramo/trecho da obra ao qual este material foi destinado — mesmo
+   *  cadastro de EtapaServico exibido como "Ramos / Trechos" em Cadastros
+   *  Auxiliares. Liga o material a uma utilização acompanhável por ramo. */
+  ramoId?: string;
   responsavel: string;
   observacao?: string;
   criadoEm: string;

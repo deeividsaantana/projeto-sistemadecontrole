@@ -113,6 +113,7 @@ const EquipesTab = lazy(() => import('./components/EquipesTab'));
 const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
 const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
+const ApontamentoUtilizacaoMateriaisTab = lazy(() => import('./components/ApontamentoUtilizacaoMateriaisTab'));
 const FrentesTab = lazy(() => import('./components/FrentesTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
@@ -5107,11 +5108,21 @@ export default function App() {
                 materiais={materiaisCadastro}
                 movimentos={materiaisMovimentos}
                 empresas={empresas}
+                ramos={etapas}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'materiais', 'editar')}
                 onSaveMaterial={handleSaveMaterial}
                 onSaveMovimento={handleSaveMovimentoMaterial}
                 onApplyImport={handleApplyMaterialImport}
+              />
+            )}
+
+            {activeTab === 'apontamento-materiais' && (
+              <ApontamentoUtilizacaoMateriaisTab
+                materiais={materiaisCadastro}
+                ramos={etapas}
+                responsavel={activeUserName}
+                onSaveMovimento={handleSaveMovimentoMaterial}
               />
             )}
 

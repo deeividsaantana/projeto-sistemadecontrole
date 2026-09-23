@@ -6,10 +6,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BarChart3, Boxes, Construction, FileSpreadsheet, Layers3, Mountain, Package, PackageX, Plus, Search, Trash2, Truck, X } from 'lucide-react';
-import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
+import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
 import { pendenciasDeRecebimento, resumoDeRecebimento } from '../utils/recebimentoMaterial';
 import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/estoque';
 import { buildMaterialsOperationalSummary, getDefaultMaterialsPeriod } from '../utils/materialsAnalytics';
+import { buildUtilizacaoPorRamo } from '../utils/materialUtilization';
 import { buildMaterialsFlow, summarizeMaterialsStock } from '../utils/materialsDashboard';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../utils/formato';
@@ -30,6 +31,10 @@ interface MateriaisTabProps {
   materiais: Material[];
   movimentos: MovimentoMaterial[];
   empresas: Empresa[];
+  /** Ramos/trechos — mesmo cadastro que aparece como "Ramos / Trechos" em
+   *  Cadastros Auxiliares. Opcional: telas que ainda não passam esse dado
+   *  simplesmente não mostram a aba de Utilização por Ramo. */
+  ramos?: EtapaServico[];
   responsavel: string;
   podeEditar: boolean;
   onSaveMaterial: (material: Material, isNew: boolean) => void;
@@ -40,7 +45,7 @@ interface MateriaisTabProps {
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
 const UNIDADES = ['m³', 't', 'kg', 'un', 'm', 'm²', 'L', 'sc'];
 
-type MateriaisAba = 'resumo' | 'estoque' | 'movimentos' | 'cadastro' | 'importacoes';
+type MateriaisAba = 'resumo' | 'estoque' | 'movimentos' | 'utilizacao' | 'cadastro' | 'importacoes';
 
 interface MaterialBatchRow {
   data: string;
@@ -72,6 +77,7 @@ export default function MateriaisTab({
   materiais,
   movimentos,
   empresas,
+  ramos = [],
   responsavel,
   podeEditar,
   onSaveMaterial,
@@ -94,7 +100,7 @@ export default function MateriaisTab({
   const [materialAberto, setMaterialAberto] = useState(false);
   const [movimentoAberto, setMovimentoAberto] = useState(false);
   const [loteAberto, setLoteAberto] = useState(false);
-  const [cadastro, setCadastro] = useState({ codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '' });
+  const [cadastro, setCadastro] = useState({ codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '', diametroMm: '', comprimentoM: '' });
   const [movimento, setMovimento] = useState({
     data: hoje,
     tipo: 'Entrada' as TipoMovimentoMaterial,
@@ -153,6 +159,7 @@ export default function MateriaisTab({
     .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
   const locaisResumo = useMemo(() => [...new Set(movimentos.flatMap(item => [item.destino, item.origem]).filter(Boolean) as string[])]
     .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
+  const utilizacaoPorRamo = useMemo(() => buildUtilizacaoPorRamo(materiais, movimentos, ramos), [materiais, movimentos, ramos]);
 
   const termo = normalizeComparable(busca).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
@@ -172,8 +179,10 @@ export default function MateriaisTab({
         estoqueMinimo: material.estoqueMinimo || 0,
         fornecedorPadraoId: material.fornecedorPadraoId || '',
         observacao: material.observacao || '',
+        diametroMm: material.diametroMm ? String(material.diametroMm) : '',
+        comprimentoM: material.comprimentoM ? String(material.comprimentoM) : '',
       }
-      : { codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '' });
+      : { codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '', diametroMm: '', comprimentoM: '' });
     setErro('');
     setMaterialAberto(true);
   };
@@ -240,6 +249,8 @@ export default function MateriaisTab({
       estoqueMinimo: Number(cadastro.estoqueMinimo) || undefined,
       fornecedorPadraoId: cadastro.fornecedorPadraoId || undefined,
       observacao: cadastro.observacao.trim() || undefined,
+      diametroMm: Number(cadastro.diametroMm.replace(',', '.')) || undefined,
+      comprimentoM: Number(cadastro.comprimentoM.replace(',', '.')) || undefined,
       ativo: formMaterial?.ativo ?? true,
       criadoEm: formMaterial?.criadoEm || agora,
       atualizadoEm: agora,
@@ -543,7 +554,7 @@ export default function MateriaisTab({
 
       <div className="mt-4 flex flex-wrap items-stretch gap-2">
         <div className="flex flex-1 gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          {([['resumo', 'Resumo atual'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos']] as const).map(([id, rotulo]) => (
+          {([['resumo', 'Resumo atual'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos'], ['utilizacao', 'Utilização por Ramo']] as const).map(([id, rotulo]) => (
             <button
               key={id}
               type="button"
@@ -757,6 +768,49 @@ export default function MateriaisTab({
             </article>
           </div>
         </section>
+      ) : aba === 'utilizacao' ? (
+        <section className="mt-3 space-y-3" aria-label="Utilização de materiais por ramo">
+          {utilizacaoPorRamo.length === 0 ? (
+            <EmptyState
+              icon={Boxes}
+              title="Nenhum lançamento por ramo ainda"
+              description="Assim que um recebimento ou uso for lançado com um ramo/trecho (pela tela de Utilização de Materiais em Modo Campo, por exemplo), o comparativo aparece aqui."
+            />
+          ) : (
+            <TableShell minWidth={860}>
+              <TableHead>
+                <tr>
+                  <th className="p-3">Material</th>
+                  <th className="p-3">Ramo / Trecho</th>
+                  <th className="p-3 text-right">Recebido</th>
+                  <th className="p-3 text-right">Utilizado</th>
+                  <th className="p-3 text-right">Saldo</th>
+                  <th className="p-3 text-right">Utilização</th>
+                </tr>
+              </TableHead>
+              <TableBody>
+                {utilizacaoPorRamo.map(item => (
+                  <tr key={`${item.materialId}|${item.ramoId}`} className="hover:bg-slate-50">
+                    <td className="p-3 font-bold text-slate-800">{item.materialDescricao}</td>
+                    <td className="p-3 text-slate-600">{item.ramoNome}</td>
+                    <td className="p-3 text-right font-mono text-slate-900">{numero(item.recebido)} {item.unidade}</td>
+                    <td className="p-3 text-right font-mono text-slate-900">{numero(item.utilizado)} {item.unidade}</td>
+                    <td className={`p-3 text-right font-mono font-bold ${item.saldo < 0 ? 'text-rose-700' : 'text-slate-900'}`}>{numero(item.saldo)} {item.unidade}</td>
+                    <td className="p-3 text-right">
+                      {item.percentualUtilizacao === null ? (
+                        <span className="text-slate-400">—</span>
+                      ) : (
+                        <Badge tone={item.percentualUtilizacao >= 100 ? 'danger' : item.percentualUtilizacao >= 80 ? 'warning' : 'success'}>
+                          {item.percentualUtilizacao.toFixed(1).replace('.', ',')}%
+                        </Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </TableBody>
+            </TableShell>
+          )}
+        </section>
       ) : aba !== 'importacoes' && <><label className="relative mt-3 block">
         <span className="sr-only">Buscar material</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -902,6 +956,14 @@ export default function MateriaisTab({
           <label className="text-xs font-bold text-slate-600">
             Estoque mínimo
             <input type="number" min="0" step="0.001" value={cadastro.estoqueMinimo} onChange={event => setCadastro({ ...cadastro, estoqueMinimo: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+          </label>
+          <label className="text-xs font-bold text-slate-600">
+            Diâmetro (mm)
+            <input inputMode="decimal" placeholder="Ex: 800" value={cadastro.diametroMm} onChange={event => setCadastro({ ...cadastro, diametroMm: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+          </label>
+          <label className="text-xs font-bold text-slate-600">
+            Comprimento (m)
+            <input inputMode="decimal" placeholder="Ex: 1,50" value={cadastro.comprimentoM} onChange={event => setCadastro({ ...cadastro, comprimentoM: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Fornecedor padrão
