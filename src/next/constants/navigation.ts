@@ -38,5 +38,5 @@ export const MODULES: ModuleDefinition[] = [
   { id: 'presenca', label: 'Presença e Colaboradores', path: '/presenca', icon: Users, ready: false },
   { id: 'apontamentos', label: 'Apontamentos', path: '/apontamentos', icon: ClipboardList, ready: false },
   { id: 'relatorios', label: 'Relatórios', path: '/relatorios', icon: FileBarChart, ready: false },
-  { id: 'administracao', label: 'Administração', path: '/administracao', icon: Database, ready: false },
+  { id: 'administracao', label: 'Administração', path: '/administracao', icon: Database, ready: true },
 ];

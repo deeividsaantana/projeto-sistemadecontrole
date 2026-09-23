@@ -13,6 +13,10 @@ export interface Empresa {
   // Rivoli) — diferente de FORNECEDOR (vende material, ex.: Pedraforte,
   // Dovalle). Uma empresa pode acumular mais de um tipo.
   tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA' | 'TERCEIRA'>;
+  /** Só se aplica quando 'FORNECEDOR' está em `tipos` — separa fornecedor de
+   *  locação de equipamentos de fornecedor de materiais. Sem valor = ainda
+   *  não classificado, não vira "materiais" por omissão. */
+  categoriaFornecedor?: 'Locação de equipamentos' | 'Materiais';
   status?: 'ATIVO' | 'INATIVO';
   criadoEm?: string;
   atualizadoEm?: string;

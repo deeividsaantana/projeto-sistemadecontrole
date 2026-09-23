@@ -169,6 +169,7 @@ export default function CadastrosTab({
   const [empCnpj, setEmpCnpj] = useState('');
   const [empTelefone, setEmpTelefone] = useState('');
   const [empResponsavel, setEmpResponsavel] = useState('');
+  const [empCategoriaFornecedor, setEmpCategoriaFornecedor] = useState<'' | 'Locação de equipamentos' | 'Materiais'>('');
 
   // Obra Fields
   const [obrNome, setObrNome] = useState('');
@@ -235,7 +236,7 @@ export default function CadastrosTab({
   const resetFormState = () => {
     setEditingId(null);
     setValidationError('');
-    setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel('');
+    setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel(''); setEmpCategoriaFornecedor('');
     setObrNome(''); setObrEndereco(''); setObrResponsavel(''); setObrStatus('Ativa');
     setEqPrefixo(''); setEqNome(''); setEqTipo(''); setEqMarca(''); setEqModelo(''); setEqAno(''); setEqSeriePlaca(''); setEqPlaca(''); setEqEmpresaId(''); setEqStatus('Ativo'); setEqLocalId(''); setEqObservacao(''); setEqFoto(''); setEqHorasDisponiveis(0); setEqHorasIndisponiveis(0);
     setEqCategoriaFrota('Equipamento'); setEqCodigoSge(''); setEqFamilia(''); setEqMobilizado(false); setEqMetaDisponibilidade(80); setEqDataMobilizacao(''); setEqDataDesmobilizacao(''); setEqOperadorResponsavelId(''); setEqCombustivelId(''); setEqCapacidadeTanque(0); setEqEquipamentoVinculadoId('');
@@ -266,7 +267,7 @@ export default function CadastrosTab({
 
     if (isEmpresaSubTab(subTab)) {
       const x = item as Empresa;
-      setEmpNome(x.nome); setEmpCnpj(x.cnpj); setEmpTelefone(x.telefone); setEmpResponsavel(x.responsavel);
+      setEmpNome(x.nome); setEmpCnpj(x.cnpj); setEmpTelefone(x.telefone); setEmpResponsavel(x.responsavel); setEmpCategoriaFornecedor(x.categoriaFornecedor || '');
     } else if (subTab === 'obras') {
       const x = item as ObraLocal;
       setObrNome(x.nome); setObrEndereco(x.endereco); setObrResponsavel(x.responsavel); setObrStatus(x.status);
@@ -337,6 +338,7 @@ export default function CadastrosTab({
           ...(previous?.tipos || []),
           subTab === 'fornecedores' ? 'FORNECEDOR' as const : subTab === 'terceiras' ? 'TERCEIRA' as const : 'EMPRESA' as const,
         ])),
+        categoriaFornecedor: subTab === 'fornecedores' ? (empCategoriaFornecedor || undefined) : previous?.categoriaFornecedor,
         status: previous?.status || 'ATIVO',
         criadoEm: previous?.criadoEm,
       }, isNew, onError);
@@ -1015,6 +1017,16 @@ export default function CadastrosTab({
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Engenheiro ou Gestor Responsável</label>
                   <input type="text" value={empResponsavel} onChange={e => setEmpResponsavel(e.target.value)} placeholder="Ex: Eng. Roberto Santos" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                 </div>
+                {subTab === 'fornecedores' && (
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Categoria do fornecedor</label>
+                    <select value={empCategoriaFornecedor} onChange={e => setEmpCategoriaFornecedor(e.target.value as typeof empCategoriaFornecedor)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500">
+                      <option value="">Não classificado</option>
+                      <option value="Locação de equipamentos">Locação de equipamentos</option>
+                      <option value="Materiais">Materiais</option>
+                    </select>
+                  </div>
+                )}
               </div>
             )}
 
