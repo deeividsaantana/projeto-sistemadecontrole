@@ -562,6 +562,14 @@ export interface MovimentoMaterial {
   fornecedorId?: string;
   fornecedorNome?: string;
   notaFiscal?: string;
+  /** Placa do veículo que trouxe ou retirou o material. */
+  placa?: string;
+  /** Ticket, vale ou autorização operacional da viagem. */
+  ticket?: string;
+  /** Fator usado para converter a quantidade principal em outra leitura operacional. */
+  fatorConversao?: number;
+  valorUnitario?: number;
+  valorTotal?: number;
   /** Solicitação de compra que originou a entrega (SC). */
   solicitacaoCompra?: string;
   /**
