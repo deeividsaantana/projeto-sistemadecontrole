@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { 
@@ -137,6 +137,14 @@ export default function CadastrosTab({
   const [filterAtivo, setFilterAtivo] = useState<string>('todos');
   const [filterTipoEquipamento, setFilterTipoEquipamento] = useState<string>('todos');
   const [filterCargo, setFilterCargo] = useState<string>('todos');
+
+  // Toda lista paginada aqui usa a mesma currentPage. Trocar de aba, buscar
+  // ou filtrar muda o total de páginas — sem isso a pessoa ficava presa numa
+  // página que não existe mais na lista nova (ex: página 3 de uma busca que
+  // só tem 1 página).
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [subTab, searchQuery, filterStatus, filterEmpresaId, filterObraId, filterAtivo, filterTipoEquipamento, filterCargo]);
   const [activeFuncionarioId, setActiveFuncionarioId] = useState<string | null>(null);
 
   // Form togglers & editing identifiers
@@ -711,6 +719,35 @@ export default function CadastrosTab({
     setPendingImport(null);
     setIsConfirmingImport(false);
   };
+
+  // Rodapé de paginação compartilhado por todas as sub-abas — antes só
+  // Colaboradores tinha, as outras 10 renderizavam a lista inteira de uma vez.
+  const totalPages = Math.max(1, Math.ceil(currentFilteredCount / itemsPerPage));
+  const PaginationFooter = () => (
+    <div className="mt-4 flex items-center justify-between px-2 py-3 bg-white border-t border-slate-200">
+      <span className="text-xs text-slate-500">
+        Página {currentPage} de {totalPages} ({currentFilteredCount} registros)
+      </span>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          Anterior
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage >= totalPages}
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          Próxima
+        </button>
+      </div>
+    </div>
+  );
 
   const escopoMotion = useEntradaDeLista<HTMLDivElement>();
 
@@ -1368,7 +1405,7 @@ export default function CadastrosTab({
                     <td colSpan={5} className="py-10 text-center text-slate-500 italic">Nenhuma empresa encontrada com os termos de busca.</td>
                   </tr>
                 ) : (
-                  displayedEmpresas.map(item => (
+                  displayedEmpresas.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => (
                     <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
                       <td className="py-4 px-5 font-black text-slate-700">{item.nome}</td>
                       <td className="py-4 px-5 font-mono text-slate-700">{item.cnpj}</td>
@@ -1385,6 +1422,7 @@ export default function CadastrosTab({
                 )}
               </tbody>
             </table>
+            {displayedEmpresas.length > 0 && <PaginationFooter />}
           </div>
         )}
 
@@ -1406,7 +1444,7 @@ export default function CadastrosTab({
                     <td colSpan={5} className="py-10 text-center text-slate-500 italic">Nenhuma obra cadastrada.</td>
                   </tr>
                 ) : (
-                  filteredObras.map(item => {
+                  filteredObras.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
                     const statusColor = item.status === 'Ativa' 
                       ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
                       : item.status === 'Concluída' 
@@ -1435,6 +1473,7 @@ export default function CadastrosTab({
                 )}
               </tbody>
             </table>
+            {filteredObras.length > 0 && <PaginationFooter />}
           </div>
         )}
 
@@ -1463,7 +1502,7 @@ export default function CadastrosTab({
                     <td colSpan={7} className="py-10 text-center text-slate-500 italic">Nenhum equipamento correspondente encontrado.</td>
                   </tr>
                 ) : (
-                  displayedEquipamentos.map(item => {
+                  displayedEquipamentos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
                     const emp = empresas.find(e => e.id === item.empresaId);
                     const local = obras.find(o => o.id === item.localAtualId);
                     
@@ -1539,6 +1578,7 @@ export default function CadastrosTab({
                 )}
               </tbody>
             </table>
+            {displayedEquipamentos.length > 0 && <PaginationFooter />}
           </div>
           </>
         )}
@@ -1604,29 +1644,7 @@ export default function CadastrosTab({
                 )}
               </tbody>
             </table>
-            <div className="mt-4 flex items-center justify-between px-2 py-3 bg-white border-t border-slate-200">
-              <span className="text-xs text-slate-500">
-                Página {currentPage} de {Math.max(1, Math.ceil(filteredFuncionarios.length / itemsPerPage))} ({filteredFuncionarios.length} registros)
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Anterior
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredFuncionarios.length / itemsPerPage), p + 1))}
-                  disabled={currentPage >= Math.ceil(filteredFuncionarios.length / itemsPerPage)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Próxima
-                </button>
-              </div>
-            </div>
+            {filteredFuncionarios.length > 0 && <PaginationFooter />}
           </div>
           </>
         )}
@@ -1649,7 +1667,7 @@ export default function CadastrosTab({
                     <td colSpan={5} className="py-10 text-center text-slate-500 italic">Nenhum comboio cadastrado.</td>
                   </tr>
                 ) : (
-                  filteredComboios.map(item => (
+                  filteredComboios.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => (
                     <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
                       <td className="py-4 px-5 font-black text-slate-700">{item.nome}</td>
                       <td className="py-4 px-5 font-mono text-emerald-700">{item.placa}</td>
@@ -1666,11 +1684,14 @@ export default function CadastrosTab({
                 )}
               </tbody>
             </table>
+            {filteredComboios.length > 0 && <PaginationFooter />}
           </div>
         )}
 
         {/* Simple Item list render for Combustiveis, Lubrificantes, Etapas */}
-        {(subTab === 'combustiveis' || subTab === 'lubrificantes' || subTab === 'etapas') && (
+        {(subTab === 'combustiveis' || subTab === 'lubrificantes' || subTab === 'etapas') && (() => {
+          const simpleList = subTab === 'combustiveis' ? filteredCombustiveis : subTab === 'lubrificantes' ? filteredLubrificantes : filteredEtapas;
+          return (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -1681,12 +1702,12 @@ export default function CadastrosTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850">
-                {((subTab === 'combustiveis' ? filteredCombustiveis : subTab === 'lubrificantes' ? filteredLubrificantes : filteredEtapas)).length === 0 ? (
+                {simpleList.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="py-10 text-center text-slate-500 italic">Nenhum item cadastrado nesta categoria.</td>
                   </tr>
                 ) : (
-                  (subTab === 'combustiveis' ? filteredCombustiveis : subTab === 'lubrificantes' ? filteredLubrificantes : filteredEtapas).map(item => (
+                  simpleList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => (
                     <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
                       <td className="py-4 px-5 font-mono text-slate-500 text-xxs">{item.id}</td>
                       <td className="py-4 px-5 font-black text-slate-700 text-xs">{item.nome}</td>
@@ -1701,8 +1722,10 @@ export default function CadastrosTab({
                 )}
               </tbody>
             </table>
+            {simpleList.length > 0 && <PaginationFooter />}
           </div>
-        )}
+          );
+        })()}
 
       </div>
 
