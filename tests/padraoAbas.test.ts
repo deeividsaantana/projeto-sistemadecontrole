@@ -26,6 +26,7 @@ const PENDENCIAS: Record<string, readonly Regra[]> = {
   ApontamentosTab: ['gsap', 'movimentoReduzido'],
   AssistenteTab: ['gsap', 'movimentoReduzido'],
   AuditoriaTab: ['gsap', 'movimentoReduzido'],
+  CadastrosTab: ['corForaDaPaleta'],
   CentralOperacionalTab: ['gsap', 'movimentoReduzido'],
   ChecklistTab: ['gsap', 'movimentoReduzido'],
   ColaboradoresTab: ['gsap', 'movimentoReduzido'],

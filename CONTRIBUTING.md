@@ -66,7 +66,8 @@ prints, tokens ou `.env`. O `.gitignore` já barra esses itens, e o teste
 
 - [ ] **Pergunta obrigatória:** uma pessoa cansada e sem facilidade com aplicativos consegue cadastrar, lançar e consultar nesta tela sem travar?
 - [ ] O visual bate com o Painel de Controle: `PageHeader` com a ação principal no topo, cartões `rounded-2xl border-slate-200`, paleta `#176b4d`, `#f26a2e` e `#718087`, e foco `ring-[#f26a2e]/60`.
-- [ ] Entrada com GSAP, respeitando `prefers-reduced-motion`.
+- [ ] Entrada com GSAP pelos helpers comuns (`RouteMotion`, `useEntradaDeLista`), respeitando `prefers-reduced-motion`.
+- [ ] A tela não pesa: biblioteca grande só carrega quando a ação pede (`import()` sob demanda).
 - [ ] Funciona em 375 px, 768 px e 1440 px, sem rolagem horizontal, com botões de pelo menos 44 px.
 - [ ] Estados de carregando, vazio e erro com mensagem clara, sem jargão técnico.
 - [ ] As abas ocultas (fora do menu, em `AUXILIARY_MODULE_DESTINATIONS`) que usam a mesma tela ou componente também foram conferidas.
@@ -100,6 +101,7 @@ Parte das regras acima é conferida pela máquina, e o PR não fica verde sem el
 | `tests/padraoAbas.test.ts` | `npm run verify` e CI | Aba sem `PageHeader`, sem GSAP, sem `prefers-reduced-motion` ou com cor hex fora da paleta; aba do menu sem tela no `App.tsx`; aba principal sem permissão; tela `*Tab.tsx` que nenhum arquivo abre. |
 | `tests/repoHygiene.test.ts` | `npm run verify` e CI | Zip, log, `tmp/`, `artifacts/`, `netlify/` ou `.env` versionados; teste fora de `tests/run.ts`. |
 | `scripts/check-pr-checklist.mjs` | CI (`Checklist do PR`) | PR sem a seção `## Checklist` toda marcada; PR que cria ou altera tela sem a seção `### Se mexeu em tela` toda marcada. |
+| `scripts/check-bundle-size.mjs` | `npm run verify` e CI | Carregamento inicial acima de 600 kB; Excel, PDF, canvas, Storage ou cargas de planilha no carregamento inicial; pedaço de uma aba acima de 300 kB. |
 | Hook de pre-push | Máquina de quem envia | Push com `npm run verify` falhando. |
 
 As abas antigas que ainda não cumprem o padrão estão listadas em `PENDENCIAS`, no

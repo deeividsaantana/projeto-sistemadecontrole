@@ -86,6 +86,7 @@ import './serviceWorkerSecurity.test';
 import './apiRoutes.test';
 import './repoHygiene.test';
 import './padraoAbas.test';
+import './navigationSubtabs.test';
 import './dashboardGeneral.test';
 import './dashboardKpiCalculations.test';
 import './dashboardUsability.test';
