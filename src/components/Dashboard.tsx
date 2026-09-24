@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { Activity, ClipboardList, Truck, Users } from 'lucide-react';
 import type {
   Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa,
   Equipamento, FichaVerificacaoServico, FrenteServico, Funcionario, GrupoEquipe,
@@ -8,8 +10,10 @@ import type {
   OrdemServico, PlanejamentoItem, PresencaApontamento, ProdutoLubrificacao,
   RegistroProducao, TicketJazida, TipoCombustivel,
 } from '../types';
-import { PageHeader, PeriodFilter, DataTable, type PeriodValue, type DataTableColumn } from '../shared/ui';
-import { calculateDashboardKpis } from '../utils/dashboardOperational';
+import { PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
+import { buildDashboardGeneralViewModel } from '../utils/dashboardGeneral';
+import { AvailabilityTrend, FleetDonut } from './dashboard/OperationalVisuals';
+import { TeamActivity } from './dashboard/TeamActivity';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -28,124 +32,55 @@ interface DashboardProps {
   periodo?: { from: string; to: string };
 }
 
-/** KPI card component for displaying individual metrics */
-function KPICard({ label, value, unit }: { label: string; value: number; unit: string }) {
-  return (
-    <div
-      className="rounded-lg border border-[#dce3df] bg-white p-4 sm:p-5"
-      data-testid="kpi-card"
-    >
-      <span className="block text-sm font-semibold text-[#718087]">{label}</span>
-      <strong className="mt-2 block text-3xl font-bold text-[#101c18] tabular-nums" data-testid="kpi-value">
-        {value}
-      </strong>
-      <span className="text-xs text-[#8a969b]">{unit}</span>
-    </div>
-  );
+function ExecutiveCard({ label, value, detail, tone, icon: Icon, onClick }: { label: string; value: string | number; detail: string; tone: 'green' | 'blue' | 'orange' | 'slate'; icon: typeof Activity; onClick?: () => void }) {
+  const colors = { green: 'border-emerald-200 bg-emerald-950 text-white', blue: 'border-blue-200 bg-blue-900 text-white', orange: 'border-orange-200 bg-orange-700 text-white', slate: 'border-slate-200 bg-white text-slate-950' };
+  return <button type="button" onClick={onClick} data-dashboard-reveal className={`dashboard-kpi group min-h-32 min-w-0 rounded-2xl border p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${colors[tone]}`}>
+    <div className="flex items-start justify-between gap-3"><span className="text-sm font-bold opacity-80">{label}</span><span className="rounded-xl bg-white/15 p-2"><Icon className="size-5" /></span></div>
+    <strong className="mt-3 block break-words text-3xl font-black tabular-nums sm:text-4xl">{value}</strong><span className="mt-1 block text-xs font-semibold opacity-75">{detail}</span>
+  </button>;
 }
 
 export default function Dashboard(props: DashboardProps) {
   // Period state with default to current month
-  const [periodo, setPeriodo] = useState<PeriodValue>({
-    preset: 'mes',
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-      .toISOString()
-      .slice(0, 10),
-    to: new Date().toISOString().slice(0, 10),
-  });
+  const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('mes'));
+  const [obraId, setObraId] = useState('');
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const view = useMemo(() => buildDashboardGeneralViewModel({ obraId, from: periodo.from, to: periodo.to }, props),
+    [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.ordensServico]);
+  const display = (value: number | null, unit = '') => value === null ? 'Sem registro' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)}${unit ? ` ${unit}` : ''}`;
 
-  // Calculate KPIs using the utility function from Task 1
-  const kpis = useMemo(() => {
-    return calculateDashboardKpis(
-      props.obras || [],
-      props.equipamentos || [],
-      props.producao || [],
-      {
-        inicio: periodo.from,
-        fim: periodo.to,
-      },
-    );
-  }, [props.obras, props.equipamentos, props.producao, periodo]);
-
-  // Filter obras ativas for table (using 'Ativa' status from ObraLocal)
-  const obrasAtivas = useMemo(
-    () => (props.obras || []).filter(o => o.status === 'Ativa'),
-    [props.obras],
-  );
-
-  // DataTable columns for obras
-  const obraColumns: readonly DataTableColumn<ObraLocal>[] = [
-    {
-      id: 'nome',
-      label: 'Obra',
-      cell: (row) => <span className="truncate font-medium">{row.nome}</span>,
-      sortValue: (row) => row.nome,
-    },
-    {
-      id: 'responsavel',
-      label: 'Responsável',
-      cell: (row) => <span className="truncate">{row.responsavel || '—'}</span>,
-      sortValue: (row) => row.responsavel,
-    },
-    {
-      id: 'endereco',
-      label: 'Endereço',
-      cell: (row) => <span className="truncate text-sm text-[#718087]">{row.endereco || '—'}</span>,
-      sortValue: (row) => row.endereco,
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      cell: (row) => (
-        <span className="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
-          {row.status}
-        </span>
-      ),
-    },
-  ];
+  useGSAP(() => {
+    if (!dashboardRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(dashboardRef.current.querySelectorAll('[data-dashboard-reveal]'), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .72, stagger: .065, ease: 'power3.out', clearProps: 'transform' });
+  }, { scope: dashboardRef, dependencies: [obraId, periodo.from, periodo.to] });
 
   return (
-    <div id="dashboard-tab" className="flex flex-col gap-6 p-4 sm:p-6">
-      {/* PageHeader with primary action */}
-      <PageHeader
-        eyebrow="Painel de Controle"
-        title="Dashboard"
-        description={`Período: ${periodo.from} a ${periodo.to}`}
-        actions={
-          <button
-            type="button"
-            onClick={() => props.onNavigate('Lançamentos')}
-            data-testid="dashboard-launch-button"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#176b4d] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0b4935] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
-          >
-            <Plus className="size-4" />
-            Lançar Produção
-          </button>
-        }
-      />
-
-      {/* Period Filter */}
-      <div data-testid="period-filter">
+    <div ref={dashboardRef} id="dashboard-tab" className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">
+      <h1 className="sr-only">Painel Geral da operação</h1>
+      <div data-testid="period-filter" className="flex flex-wrap items-center gap-3">
+        <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">Obra
+          <select value={obraId} onChange={event => setObraId(event.target.value)} className="max-w-48 bg-transparent py-2 text-sm text-slate-900" aria-label="Filtrar por obra">
+            <option value="">Todas as obras</option>
+            {props.obras.map(obra => <option key={obra.id} value={obra.id}>{obra.nome}</option>)}
+          </select>
+        </label>
         <PeriodFilter value={periodo} onChange={setPeriodo} />
       </div>
 
-      {/* KPIs Grid - responsive: 1 col mobile, 2 col tablet, 3 col desktop */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KPICard label="Obras Abertas" value={kpis.obrasAbertas} unit="unid" />
-        <KPICard label="Equipamentos Ativos" value={kpis.equipamentosAtivos} unit="unid" />
-        <KPICard label="Equipamentos Parados" value={kpis.equipamentosParados} unit="unid" />
-        <KPICard label="Produção do Período" value={Math.round(kpis.producaoMes)} unit="m³" />
-        <KPICard label="Eficiência Média" value={kpis.eficienciaMedia} unit="m³/eq" />
+      <div className="grid min-w-0 grid-flow-dense gap-4 xl:grid-cols-2" aria-label="Visualização da operação">
+        <FleetDonut fleet={view.fleet} onNavigate={() => props.onNavigate('Controle Operacional de Equipamentos')} />
+        <AvailabilityTrend measure={view.availability} onNavigate={() => props.onNavigate('Controle Operacional de Equipamentos')} />
       </div>
 
-      {/* Obras Ativas Table */}
-      <DataTable
-        caption="Obras ativas"
-        rows={obrasAtivas}
-        columns={obraColumns}
-        getRowId={(row) => row.id}
-        emptyMessage="Nenhuma obra ativa no período"
-      />
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Indicadores principais">
+        <ExecutiveCard label="Frota em operação" value={view.fleet.confirmed ? view.fleet.operating : 'Sem posição'} detail={`${view.fleet.confirmed} posições confirmadas`} tone="green" icon={Truck} onClick={() => props.onNavigate('Controle Operacional de Equipamentos')} />
+        <ExecutiveCard label="Disponibilidade" value={view.fleet.availability === null ? 'Sem posição' : `${display(view.fleet.availability)}%`} detail="sobre posições confirmadas" tone="blue" icon={Activity} onClick={() => props.onNavigate('Controle Operacional de Equipamentos')} />
+        <ExecutiveCard label="Produção" value={display(view.production.value, view.production.unit)} detail="lançamentos em m³" tone="slate" icon={Activity} onClick={() => props.onNavigate('Produção')} />
+        <ExecutiveCard label="Presenças" value={display(view.presence.value)} detail="presenças registradas" tone="slate" icon={Users} onClick={() => props.onNavigate('Presença')} />
+        <ExecutiveCard label="OS abertas" value={display(view.maintenance.value)} detail="pendências da frota" tone="orange" icon={ClipboardList} onClick={() => props.onNavigate('Manutenção')} />
+      </section>
+
+      <TeamActivity view={view} onNavigate={props.onNavigate} />
     </div>
   );
 }
