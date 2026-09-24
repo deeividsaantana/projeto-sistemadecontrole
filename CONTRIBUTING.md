@@ -124,6 +124,11 @@ revisão, com o checklist marcado pela pessoa que abriu o PR.
 
 ## 6. Auditoria periódica
 
+Pendências conhecidas:
+
+- `src/components/ConfiguracoesTab.tsx` (backup, arquivamento e exclusão por aba) só aparece no `preview/`. Nenhuma função do app está ligada a ela, e ela precisa de decisão: religar ou remover.
+- `tests/materialsAnalytics.test.ts` falha porque a unidade `TON` não conta como tonelada. A correção é da frente de Materiais.
+
 - Rodar `npx knip` para achar arquivos, exports e dependências sem uso. Toda remoção é conferida com busca por referências antes de apagar.
 - Revisar as abas ocultas e decidir: voltam ao menu, viram atalho de outra aba, ou saem.
 - Documentação que deixou de valer vai para `docs/historico/`.
