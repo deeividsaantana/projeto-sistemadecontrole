@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import type { Unsubscribe } from 'firebase/firestore';
 import type { PresencaApontamento } from './types';
+import type { MaterialUseSubmission } from './modules/materials/materialFieldUse';
 
 export const SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
 
@@ -67,3 +68,22 @@ export const markPublicSubmissionsProcessed = async (
     await batch.commit();
   }
 };
+
+/**
+ * Uso de material apontado pelo link do apontador. Fica numa escuta separada
+ * da presença: o formato é outro e uma falha aqui não pode travar a fila de
+ * presença (nem o contrário).
+ */
+export const subscribePendingMaterialUses = (
+  database: Firestore,
+  onChange: (submissions: MaterialUseSubmission[]) => void,
+  onError: (error: Error) => void,
+): Unsubscribe => onSnapshot(
+  query(collection(database, SUBMISSIONS_COLLECTION), where('status', '==', 'pending'), where('kind', '==', 'material-uso')),
+  snapshot => onChange(snapshot.docs
+    .map(item => ({ id: item.id, ...item.data() }) as MaterialUseSubmission & { kind?: string })
+    .filter(item => item.kind === 'material-uso' && item.payload && typeof item.payload.data === 'string'
+      && typeof item.payload.etapaServicoId === 'string' && Array.isArray(item.payload.itens))
+    .sort((a, b) => String(a.createdAtIso || '').localeCompare(String(b.createdAtIso || '')))),
+  error => onError(error),
+);

@@ -9,8 +9,10 @@ import type {
   TicketJazida,
 } from './types';
 import {
+  getMaterialAccessTokenFromUrl,
   getPresenceTokenFromUrl,
   getTicketAccessTokenFromUrl,
+  isMaterialLinkUrl,
   isTicketLinkUrl,
 } from './app/routing/publicRoutes';
 import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
@@ -18,10 +20,12 @@ import {
   addPublicPresenceMember,
   removePublicPresenceMember,
   updatePublicPresenceDayNote,
+  loadPublicMaterialView,
   loadPublicPresenceConfig,
   reservePublicTicketNumberViaApi,
   savePublicTicketViaApi,
   searchPendingPublicTickets,
+  submitPublicMaterialUse,
   submitPublicPresence,
   updatePublicPresenceRecord,
   validatePublicTicketAccess,
@@ -29,6 +33,7 @@ import {
 
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
+const MaterialLinkApontador = lazy(() => import('./components/MaterialLinkApontador'));
 
 const emptyTickets: TicketJazida[] = [];
 
@@ -36,6 +41,11 @@ export default function PublicLinksApp() {
   const presenceToken = getPresenceTokenFromUrl();
   const ticketAccessToken = getTicketAccessTokenFromUrl();
   const ticketLink = isTicketLinkUrl();
+  const materialLink = isMaterialLinkUrl();
+  const materialAccessToken = getMaterialAccessTokenFromUrl();
+  const loadMaterialView = useCallback(() => loadPublicMaterialView(materialAccessToken), [materialAccessToken]);
+  const submitMaterialUse = useCallback((input: Parameters<typeof submitPublicMaterialUse>[1]) =>
+    submitPublicMaterialUse(materialAccessToken, input), [materialAccessToken]);
 
   const [gruposEquipe, setGruposEquipe] = useState<GrupoEquipe[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -200,6 +210,14 @@ export default function PublicLinksApp() {
       cancelled = true;
     };
   }, [ticketAccessToken, ticketLink]);
+
+  if (materialLink) {
+    return (
+      <Suspense fallback={<ScreenLoadingFallback label="Abrindo materiais..." />}>
+        <MaterialLinkApontador loadView={loadMaterialView} submitUse={submitMaterialUse} />
+      </Suspense>
+    );
+  }
 
   if (ticketLink) {
     return (

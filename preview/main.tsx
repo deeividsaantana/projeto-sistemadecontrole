@@ -23,6 +23,9 @@ import EquipesTab from '../src/components/EquipesTab';
 import ApontamentosTab from '../src/components/ApontamentosTab';
 import DdsTreinamentosTab from '../src/components/DdsTreinamentosTab';
 import MateriaisTab from '../src/components/MateriaisTab';
+import MateriaisUtilizacaoPanel from '../src/components/MateriaisUtilizacaoPanel';
+import MaterialLinkApontador from '../src/components/MaterialLinkApontador';
+import { buildFieldView } from '../netlify/functions/_shared/material-usage.js';
 import FrentesTab from '../src/components/FrentesTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
 import ProducaoTab from '../src/components/ProducaoTab';
@@ -106,6 +109,15 @@ function PresencaFluxoCompleto() {
     />
   );
 }
+
+// O link do apontador lê o mesmo cálculo do servidor, sobre os dados da prévia.
+const materialLinkView = buildFieldView({
+  etapas: fx.etapasRamos,
+  materiais: fx.materiaisUtilizacao,
+  movimentos: fx.movimentosUtilizacao,
+  pendentes: [],
+  today: '2026-09-24',
+});
 
 const screens: Record<string, React.ReactNode> = {
   sidebar: (
@@ -489,7 +501,26 @@ const screens: Record<string, React.ReactNode> = {
       podeEditar
       onSaveMaterial={noop}
       onSaveMovimento={noop}
+      onSaveMovimentos={noop}
+      onUpdateMovimentos={noop}
       onApplyImport={noop}
+    />
+  ),
+  'materiais-utilizacao': (
+    <MateriaisUtilizacaoPanel
+      materiais={fx.materiaisUtilizacao}
+      movimentos={fx.movimentosUtilizacao}
+      etapas={fx.etapasRamos}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSaveMovimentos={noop}
+      onUpdateMovimentos={noop}
+    />
+  ),
+  'material-link': (
+    <MaterialLinkApontador
+      loadView={async () => materialLinkView}
+      submitUse={async () => ({ message: 'Uso salvo.' })}
     />
   ),
   'dds-treinamentos': (
@@ -674,9 +705,13 @@ const screens: Record<string, React.ReactNode> = {
 const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
 const previewQueryClient = new QueryClient();
 
+// Os links públicos rodam fora do ERP (PublicLinksApp), sem o
+// #main-tab-viewport e os estilos de formulário dele.
+const isPublicScreen = key === 'material-link';
+
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
-    <div
+    {isPublicScreen ? (screens[key] ?? null) : <div
       id="main-tab-viewport"
       /* Mesmas medidas do App.tsx: o painel roda sem recuo (dashboard-viewport)
          e as demais telas dentro do padding responsivo. Com um `padding: 28`
@@ -688,6 +723,6 @@ createRoot(document.getElementById('app-root')!).render(
       style={{ background: '#fff', minHeight: '100vh' }}
     >
       {screens[key] ?? <p>Tela desconhecida: {key}</p>}
-    </div>
+    </div>}
   </QueryClientProvider>,
 );

@@ -224,3 +224,56 @@ export const movimentosMateriaisObra: MovimentoMaterial[] = [
   { id: 'mv-2', data: '2026-07-02', tipo: 'Entrada', materialId: 'mt-2', materialDescricao: 'CHAPA PLASTIFICADO 18MM', quantidade: 50, quantidadeNota: 450, unidade: 'UN', notaFiscal: '4789', solicitacaoCompra: 'SC 92998795', destino: 'Ramo 1400', responsavel: 'Deivid', criadoEm: '' },
   { id: 'mv-3', data: '2026-08-17', tipo: 'Entrada', materialId: 'mt-3', materialDescricao: 'TUBO DE CONCRETO PA3 DN1000', quantidade: 6, quantidadeNota: 6, unidade: 'MT', notaFiscal: '132636', solicitacaoCompra: 'SC 93011249', destino: 'Ramo 1300', responsavel: 'Deivid', criadoEm: '' },
 ] as MovimentoMaterial[];
+
+// Utilização por ramo: recebimentos reais da planilha de recebimento (tubos
+// dos ramos 1300 e 1400, em metros, peça de 1,50 m). Os usos são exemplo.
+export const etapasRamos = [
+  { id: 'etapa-ramo-1300', nome: 'Ramo 1300' },
+  { id: 'etapa-ramo-1400', nome: 'Ramo 1400' },
+];
+
+const tubo = (id: string, diametro: number, classe: string): Material => ({
+  id, codigo: '', descricao: `TUBO DE CONCRETO Ø${diametro} ${classe} 1,50 m`, categoria: 'Tubos de concreto', unidade: 'MT',
+  diametroMm: diametro, classe, comprimentoPecaM: 1.5, ativo: true, criadoEm: '', atualizadoEm: '',
+} as Material);
+
+export const materiaisUtilizacao: Material[] = [
+  tubo('tb-800-pa3', 800, 'PA3'), tubo('tb-800-pa4', 800, 'PA4'), tubo('tb-1000-pa2', 1000, 'PA2'),
+  tubo('tb-1200-pa3', 1200, 'PA3'), tubo('tb-600-pa2', 600, 'PA2'), tubo('tb-1500-pa3', 1500, 'PA3'),
+  { id: 'pead-100', codigo: '', descricao: 'TUBO PEAD KANANET DN 100', categoria: 'Tubos PEAD - PVC', unidade: 'MT', ativo: true, criadoEm: '', atualizadoEm: '' } as Material,
+  { id: 'chapa-18', codigo: '766', descricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', categoria: 'Madeiras e Formas', unidade: 'UN', ativo: true, criadoEm: '', atualizadoEm: '' } as Material,
+];
+
+const ramo = (id: string) => etapasRamos.find(item => item.id === id)!;
+const entrada = (id: string, materialId: string, quantidade: number, etapaId: string, nota: string, data: string): MovimentoMaterial => ({
+  id, data, tipo: 'Entrada', materialId, materialDescricao: materiaisUtilizacao.find(item => item.id === materialId)!.descricao,
+  quantidade, quantidadeNota: quantidade, unidade: 'MT', notaFiscal: nota, destino: ramo(etapaId).nome,
+  etapaServicoId: etapaId, etapaServicoNome: ramo(etapaId).nome, responsavel: 'Importação', criadoEm: `${data}T08:00:00.000Z`,
+} as MovimentoMaterial);
+const uso = (id: string, materialId: string, metros: number, etapaId: string, data: string, apontador: string, link = true): MovimentoMaterial => ({
+  id, data, tipo: 'Saída', finalidade: 'Consumo', materialId, materialDescricao: materiaisUtilizacao.find(item => item.id === materialId)!.descricao,
+  quantidade: metros, unidade: 'MT', destino: ramo(etapaId).nome, etapaServicoId: etapaId, etapaServicoNome: ramo(etapaId).nome,
+  apontadoPor: apontador, responsavel: apontador, origemApontamentoId: link ? `material_uso_${id}` : undefined, criadoEm: `${data}T15:10:00.000Z`,
+} as MovimentoMaterial);
+
+export const movimentosUtilizacao: MovimentoMaterial[] = [
+  entrada('r1', 'tb-800-pa3', 21, 'etapa-ramo-1400', '132683', '2026-08-18'),
+  entrada('r2', 'tb-800-pa4', 42, 'etapa-ramo-1400', '132680', '2026-08-18'),
+  entrada('r3', 'tb-1000-pa2', 33, 'etapa-ramo-1400', '132790', '2026-08-21'),
+  entrada('r4', 'tb-1200-pa3', 27, 'etapa-ramo-1400', '132795', '2026-08-21'),
+  entrada('r5', 'pead-100', 750, 'etapa-ramo-1400', '45959', '2026-08-24'),
+  entrada('r6', 'tb-600-pa2', 40.5, 'etapa-ramo-1300', '132640', '2026-08-17'),
+  entrada('r7', 'tb-800-pa4', 99, 'etapa-ramo-1300', '132650', '2026-08-17'),
+  entrada('r8', 'tb-1200-pa3', 61.5, 'etapa-ramo-1300', '132636', '2026-08-17'),
+  entrada('r9', 'tb-1500-pa3', 37.5, 'etapa-ramo-1300', '132769', '2026-08-20'),
+  uso('u1', 'tb-800-pa3', 21, 'etapa-ramo-1400', '2026-09-10', 'Carlos Menezes'),
+  uso('u2', 'tb-800-pa4', 24, 'etapa-ramo-1400', '2026-09-22', 'Carlos Menezes'),
+  uso('u3', 'tb-800-pa4', 12, 'etapa-ramo-1400', '2026-09-24', 'Renilson Araújo'),
+  uso('u4', 'tb-1000-pa2', 12, 'etapa-ramo-1400', '2026-09-23', 'Renilson Araújo'),
+  uso('u5', 'pead-100', 320, 'etapa-ramo-1400', '2026-09-19', 'Carlos Menezes'),
+  uso('u6', 'tb-600-pa2', 43.5, 'etapa-ramo-1300', '2026-09-15', 'Deivid Santana', false),
+  uso('u7', 'tb-800-pa4', 81, 'etapa-ramo-1300', '2026-09-23', 'Josué Paiva'),
+  uso('u8', 'tb-1200-pa3', 30, 'etapa-ramo-1300', '2026-09-20', 'Josué Paiva'),
+  { id: 'm1', data: '2026-08-26', tipo: 'Entrada', materialId: 'chapa-18', materialDescricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', quantidade: 50, unidade: 'UN', notaFiscal: '5453', destino: 'Drenagem Ramo 1400 / 1300', responsavel: 'Importação', criadoEm: '2026-08-26T08:00:00.000Z' } as MovimentoMaterial,
+  { id: 'm2', data: '2026-07-02', tipo: 'Entrada', materialId: 'chapa-18', materialDescricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', quantidade: 400, unidade: 'UN', notaFiscal: '4789', destino: 'Ramo 1400', responsavel: 'Importação', criadoEm: '2026-07-02T08:00:00.000Z' } as MovimentoMaterial,
+];

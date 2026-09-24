@@ -10,6 +10,7 @@ import { toExpressHandler } from './netlifyAdapter.js';
 
 import { handler as publicPresenca } from '../netlify/functions/public-presenca.js';
 import { handler as publicTickets } from '../netlify/functions/public-tickets.js';
+import { handler as publicMateriais } from '../netlify/functions/public-materiais.js';
 import { handler as masterData } from '../netlify/functions/master-data.js';
 import { handler as usageTelemetry } from '../netlify/functions/usage-telemetry.js';
 import { handler as cleanupCloudData } from '../netlify/functions/cleanup-cloud-data.js';
@@ -38,6 +39,9 @@ app.delete('/.netlify/functions/public-presenca', toExpressHandler(publicPresenc
 
 app.get('/.netlify/functions/public-tickets', toExpressHandler(publicTickets));
 app.post('/.netlify/functions/public-tickets', toExpressHandler(publicTickets));
+
+app.get('/.netlify/functions/public-materiais', toExpressHandler(publicMateriais));
+app.post('/.netlify/functions/public-materiais', toExpressHandler(publicMateriais));
 
 app.all('/.netlify/functions/master-data', toExpressHandler(masterData));
 app.all('/.netlify/functions/usage-telemetry', toExpressHandler(usageTelemetry));

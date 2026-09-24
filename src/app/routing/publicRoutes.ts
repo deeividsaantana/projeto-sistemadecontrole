@@ -25,12 +25,27 @@ export const isTicketLinkUrl = (location?: PublicLocation) => {
     || new URLSearchParams(resolvedLocation.search).has('tickets');
 };
 
+/** Link do apontador de materiais: /material-link/<token>. */
+export const getMaterialAccessTokenFromUrl = (location?: PublicLocation) => {
+  const resolvedLocation = getLocation(location);
+  if (!resolvedLocation) return '';
+  const match = resolvedLocation.pathname.match(/\/material-link\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+};
+
+export const isMaterialLinkUrl = (location?: PublicLocation) => {
+  const resolvedLocation = getLocation(location);
+  if (!resolvedLocation) return false;
+  return resolvedLocation.pathname.startsWith('/material-link');
+};
+
 export const isPublicLinkUrl = (location?: PublicLocation) => {
   const resolvedLocation = getLocation(location);
   if (!resolvedLocation) return false;
   return Boolean(
     getPresenceTokenFromUrl(resolvedLocation)
-    || isTicketLinkUrl(resolvedLocation),
+    || isTicketLinkUrl(resolvedLocation)
+    || isMaterialLinkUrl(resolvedLocation),
   );
 };
 
