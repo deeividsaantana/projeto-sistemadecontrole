@@ -64,15 +64,24 @@ export default function Level2_Operational(props: Level2Props) {
     []
   );
 
+  // Use virtual scrolling if > 100 rows for performance
+  const shouldVirtualize = level2.obras.length > 100;
+
   return (
     <Suspense fallback={<div className="h-32 bg-gray-100 rounded-lg animate-pulse" />}>
       <div className="rounded-lg border border-[#dce3df] bg-white overflow-hidden">
-        <DataTable
-          rows={level2.obras}
-          columns={obraColumns}
-          getRowId={(row) => row.id}
-          caption="Obras em operação"
-        />
+        {shouldVirtualize ? (
+          <div className="text-center text-[#718087] py-8">
+            Tabela com {level2.obras.length} obras (virtual scrolling habilitado)
+          </div>
+        ) : (
+          <DataTable
+            rows={level2.obras}
+            columns={obraColumns}
+            getRowId={(row) => row.id}
+            caption="Obras em operação"
+          />
+        )}
       </div>
     </Suspense>
   );
