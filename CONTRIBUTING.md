@@ -71,6 +71,25 @@ prints, tokens ou `.env`. O `.gitignore` já barra esses itens, e o teste
 - [ ] Estados de carregando, vazio e erro com mensagem clara, sem jargão técnico.
 - [ ] As abas ocultas (fora do menu, em `AUXILIARY_MODULE_DESTINATIONS`) que usam a mesma tela ou componente também foram conferidas.
 - [ ] Se o visual não bate com as outras abas, a tela não entra.
+- [ ] As skills de design do projeto (seção 7) foram usadas no trabalho da tela.
+
+## 7. Skills de design em toda tela
+
+Todo trabalho de tela passa pelas skills de design em `.claude/skills/`:
+
+| Etapa | Skills |
+| --- | --- |
+| Auditar a tela atual | `redesign-skill` |
+| Definir direção e acabamento | `taste-skill`, `soft-skill`, `minimalist-skill`, `stitch-skill` |
+| Animação GSAP | `gpt-tasteskill` |
+| Referência visual antes do código | `imagegen-frontend-web`, `imagegen-frontend-mobile`, `image-to-code-skill` |
+| Identidade e logo | `brandkit` |
+| Painéis densos de dados | `brutalist-skill`, só como referência de grade e hierarquia |
+| Conferir no navegador | `playwright-cli` |
+
+Quando duas skills discordam, vale o padrão RENEA do Painel de Controle
+(seção 4). Nenhuma skill autoriza trocar a paleta, o `PageHeader` ou os
+cartões por outro estilo.
 
 ## 5. Revisão
 

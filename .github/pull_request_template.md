@@ -16,4 +16,5 @@ Como:
 - [ ] Uma pessoa cansada e sem facilidade com aplicativos consegue usar sem travar
 - [ ] O visual bate com o Painel de Controle (PageHeader, cartões, paleta, foco, GSAP)
 - [ ] Abas ocultas que usam a mesma tela foram conferidas
+- [ ] Skills de design usadas (CONTRIBUTING.md, seção 7)
 - [ ] Prints no celular (390 px) e no computador anexados
