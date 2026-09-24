@@ -47,7 +47,8 @@ export default function CadastroCategoryPicker({ value, getCount, onSelect }: Pr
       {CADASTRO_GRUPOS.map(grupo => (
         <section key={grupo.id} data-cadastros-reveal aria-labelledby={`cadastro-grupo-${grupo.id}`} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <h2 id={`cadastro-grupo-${grupo.id}`} className="px-1 pb-2 text-xs font-black uppercase tracking-wide text-[#718087]">{grupo.label}</h2>
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-1">
+          {/* No celular, grupos com nome comprido ficam em uma coluna para não cortar o texto. */}
+          <div className={`grid gap-1.5 sm:grid-cols-1 ${categoriasDoGrupo(grupo.id).some(item => item.label.length > 12) ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {categoriasDoGrupo(grupo.id).map(categoria => {
               const Icone = ICONES[categoria.id];
               const ativo = value === categoria.id;
