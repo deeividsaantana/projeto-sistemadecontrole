@@ -4503,8 +4503,35 @@ export default function App() {
     }))
     .filter(group => group.items.length > 0);
 
+  // Mapping of sub-tab IDs to their parent primary modules
+  const SUB_TAB_MAPPING: Record<string, string> = {
+    // Central Operacional sub-tabs
+    'frentes': 'central-operacional',
+    'producao': 'central-operacional',
+    'cronograma': 'central-operacional',
+    'fvs': 'central-operacional',
+    'inspecoes': 'central-operacional',
+    'nao-conformidades': 'central-operacional',
+    'medicoes': 'central-operacional',
+    'documentos': 'central-operacional',
+    'ocorrencias': 'central-operacional',
+  };
+
   const navigateTo = (tab: string, closeMobile = false) => {
-    setActiveTab(allowedTabs.includes(tab) ? tab : 'dashboard');
+    // Check if it's a primary module (top-level tab)
+    let targetTab = tab;
+    if (!allowedTabs.includes(tab)) {
+      // Check if it's a sub-tab that should route to a parent module
+      const parentTab = SUB_TAB_MAPPING[tab];
+      if (parentTab && allowedTabs.includes(parentTab)) {
+        // Route to parent tab instead of defaulting to dashboard
+        targetTab = parentTab;
+      } else {
+        // Unknown tab - default to dashboard
+        targetTab = 'dashboard';
+      }
+    }
+    setActiveTab(targetTab);
     if (closeMobile) setIsMobileMenuOpen(false);
     window.requestAnimationFrame(() => {
       document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
