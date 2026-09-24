@@ -142,17 +142,17 @@ export function calculateDashboardKpis(
   producao: RegistroProducao[],
   periodo: Periodo
 ): DashboardKpis {
-  // Obras abertas
-  const obrasAbertas = obras.filter(o => o.status === 'em-andamento').length;
+  // Obras ativas (status: 'Ativa')
+  const obrasAbertas = obras.filter(o => o.status === 'Ativa').length;
 
-  // Equipamentos ativos
-  const equipamentosAtivos = equipamentos.filter(e => e.status === 'operacional').length;
-  const equipamentosParados = equipamentos.filter(e => e.status === 'parado').length;
+  // Equipamentos ativos (status: 'Ativo')
+  const equipamentosAtivos = equipamentos.filter(e => e.status === 'Ativo').length;
+  const equipamentosParados = equipamentos.filter(e => e.status === 'Parado').length;
 
-  // Produção no período
+  // Produção no período (soma quantidade)
   const producaoMes = producao
     .filter(p => p.data >= periodo.inicio && p.data <= periodo.fim)
-    .reduce((sum, p) => sum + (p.valor || 0), 0);
+    .reduce((sum, p) => sum + (p.quantidade || 0), 0);
 
   // Eficiência: produção / equipamentos ativos
   const eficienciaMedia = equipamentosAtivos > 0 ? Math.round((producaoMes / equipamentosAtivos) * 100) / 100 : 0;
