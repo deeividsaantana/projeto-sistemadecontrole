@@ -75,6 +75,7 @@ import './notificationService.test';
 import './sharedUi.test';
 import './masterDataReviewCenterUi.test';
 import './cadastrosTabUi.test';
+import './cadastrosCategorias.test';
 import './equipmentAssetPerformance.test';
 import './firebaseClientConfig.test';
 import './mandatoryFirebaseSync.test';

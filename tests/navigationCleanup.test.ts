@@ -37,8 +37,8 @@ test('ROLE_ACCESS cleanup', async (suite) => {
 });
 
 test('ALL_NAVIGATION_ITEMS cleanup', async (suite) => {
-  await suite.test('should contain exactly 15 items from PRIMARY_MODULE_IDS', () => {
-    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 15, `Expected 15 items, got ${ALL_NAVIGATION_ITEMS.length}`);
+  await suite.test('should contain exactly 16 items from PRIMARY_MODULE_IDS', () => {
+    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 16, `Expected 16 items, got ${ALL_NAVIGATION_ITEMS.length}`);
   });
 
   await suite.test('should contain only primary module IDs', () => {

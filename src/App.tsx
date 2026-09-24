@@ -210,6 +210,7 @@ import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
 import { obraDependencies, registryDependencies } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
+import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from './utils/cadastrosCategorias';
 import { appendMovement, applyMaterialImport, saveMaterial } from './modules/materials/materialCommands';
 import { recordTabUsage } from './usageTelemetry';
 import {
@@ -274,7 +275,7 @@ import {
 
 import { AppNotification } from './types';
 
-type CadastroImportTarget = 'empresas' | 'fornecedores' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
+type CadastroImportTarget = CadastroCategoriaId;
 type CadastroImportRow = Record<string, string>;
 
 const normalizeImportText = (value: string = '') =>
@@ -2120,7 +2121,10 @@ export default function App() {
       return { success: true, message };
     };
 
-    if (target === 'empresas' || target === 'fornecedores') {
+    // Toda aba de empresa (inclusive Terceiras e as subáreas de fornecedor)
+    // importa como empresa com as classes do tipo escolhido. Antes, importar
+    // em Terceiras caía no fim desta função e gravava as linhas como Ramos.
+    if (isCategoriaEmpresa(target)) {
       const incoming = validRows.map((row, index): Empresa | null => {
         const cnpj = getImportValue(row, ['cnpj', 'documento']);
         const nome = getImportValue(row, ['nome', 'empresa', 'nome fantasia', 'razao social', 'razão social']) || cnpj || `Empresa ${index + 1}`;
@@ -2130,7 +2134,7 @@ export default function App() {
           cnpj,
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'gestor']),
-          tipos: [target === 'fornecedores' ? 'FORNECEDOR' : 'EMPRESA'],
+          tipos: [...TIPOS_POR_CATEGORIA_EMPRESA[target]],
           status: normalizeImportText(getImportValue(row, ['status', 'situacao', 'situação'])).includes('inativo') ? 'INATIVO' : 'ATIVO',
           criadoEm: new Date().toISOString(),
           atualizadoEm: new Date().toISOString(),
@@ -2142,7 +2146,7 @@ export default function App() {
         empresas, incoming, item => normalizeImportText(item.cnpj || item.nome),
         (saved, sheet) => mergeEmpresaImport(saved, sheet, statusProvided.has(sheet.id)),
       );
-      return persistImport(target === 'fornecedores' ? 'Fornecedores' : 'Empresas', 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
+      return persistImport(categoriaCadastro(target).label, 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'obras') {

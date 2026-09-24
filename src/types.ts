@@ -12,7 +12,11 @@ export interface Empresa {
   // TERCEIRA: empresa contratada que presta serviço na obra (ex.: Tecnogeo,
   // Rivoli) — diferente de FORNECEDOR (vende material, ex.: Pedraforte,
   // Dovalle). Uma empresa pode acumular mais de um tipo.
-  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA' | 'TERCEIRA'>;
+  // Subáreas de fornecedor: LOCACAO_EQUIPAMENTOS (locadora de máquinas),
+  // MATERIAIS (vende insumo) e SUBFORNECEDOR (atende por meio de outro
+  // fornecedor, apontado em fornecedorPrincipalId).
+  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA' | 'TERCEIRA' | 'LOCACAO_EQUIPAMENTOS' | 'MATERIAIS' | 'SUBFORNECEDOR'>;
+  fornecedorPrincipalId?: string;
   status?: 'ATIVO' | 'INATIVO';
   criadoEm?: string;
   atualizadoEm?: string;

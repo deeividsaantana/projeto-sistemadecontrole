@@ -6,10 +6,10 @@ import {
   isPrimaryModule,
 } from '../src/app/navigation/navigation';
 
-test('sidebar expõe os 15 módulos primários do ERP', () => {
+test('sidebar expõe os 16 módulos primários do ERP', () => {
   const rendered = SIDEBAR_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id));
   assert.deepEqual(rendered, [...PRIMARY_MODULE_IDS]);
-  assert.equal(rendered.length, 15);
+  assert.equal(rendered.length, 16);
   assert.equal(isPrimaryModule('manutencao'), true);
   // Tickets Jazida e Controle de Estacas voltaram à navegação principal em
   // 2026-09-22: eram tecnicamente inalcançáveis (nenhum link renderizado
@@ -22,4 +22,7 @@ test('sidebar expõe os 15 módulos primários do ERP', () => {
   assert.equal(isPrimaryModule('planejamento'), true);
   assert.equal(isPrimaryModule('diario-obra'), true);
   assert.equal(isPrimaryModule('lancamentos'), true);
+  // Cadastros voltou ao menu em 2026-09-24: o atalho em Administração
+  // levava a uma aba sem permissão em nenhum perfil.
+  assert.equal(isPrimaryModule('cadastros'), true);
 });

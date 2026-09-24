@@ -120,8 +120,8 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Administração',
     items: [
+      { id: 'cadastros', label: 'Cadastros', icon: FolderPlus },
       { id: 'administracao', label: 'Administração', icon: Database },
-      { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
       { id: 'auditoria', label: 'Auditoria', icon: ShieldCheck },
       { id: 'permissoes', label: 'Permissões', icon: KeyRound },
     ],
@@ -156,6 +156,11 @@ export const PRIMARY_MODULE_IDS = [
   'presenca',
   'materiais',
   'relatorios',
+  // Cadastros ficou sem caminho na limpeza de 2026-09-24: o atalho dentro de
+  // Administração levava a uma aba que nenhum perfil tinha em ROLE_ACCESS, e
+  // o App devolvia a pessoa ao Painel. Voltou ao menu lateral como aba
+  // própria, logo acima de Administração.
+  'cadastros',
   'administracao',
 ] as const;
 
@@ -190,7 +195,6 @@ export const AUXILIARY_MODULE_DESTINATIONS: Readonly<Record<string, string>> = {
   timeline: 'dashboard',
   custos: 'relatorios',
   orcamento: 'relatorios',
-  cadastros: 'administracao',
   auditoria: 'administracao',
   permissoes: 'administracao',
 };
@@ -215,7 +219,9 @@ export const ALL_NAVIGATION_ITEMS = SIDEBAR_NAVIGATION_GROUPS
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   admin: [...PRIMARY_MODULE_IDS],
   gestor: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao'),
-  operador: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao'),
+  // Operador lança no dia a dia, mas não altera a base mestre (mesma regra
+  // de antes da limpeza do menu).
+  operador: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao' && id !== 'cadastros'),
   leitura: ['dashboard', 'relatorios'],
 };
 
