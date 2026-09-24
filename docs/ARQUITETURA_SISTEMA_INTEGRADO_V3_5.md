@@ -1,5 +1,7 @@
 # Arquitetura do Sistema Integrado de Controle de Obras
 
+> **Decisão superveniente (2026-09-23):** RDO integra oficialmente o produto RENEA SaaS. A afirmação histórica abaixo que o exclui não orienta novas implementações. Consulte `docs/superpowers/specs/2026-09-23-renea-saas-foundation-design.md`; nenhum dado ausente deve ser inventado para compor o RDO.
+
 ## Decisões de base
 
 - O projeto existente permanece uma aplicação React, TypeScript e Vite.

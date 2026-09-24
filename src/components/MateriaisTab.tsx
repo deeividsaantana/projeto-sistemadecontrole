@@ -6,23 +6,27 @@ import { useEffect, useMemo, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BarChart3, Boxes, Construction, FileSpreadsheet, Layers3, Mountain, Package, PackageX, Plus, Search, Trash2, Truck, X } from 'lucide-react';
-import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
+import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
 import { pendenciasDeRecebimento, resumoDeRecebimento } from '../utils/recebimentoMaterial';
-import { posicaoEstoque, saldoDoMaterial, validarMovimento } from '../utils/estoque';
+import { posicaoEstoque, saldoDoMaterial, validarMovimento, type PosicaoEstoque } from '../utils/estoque';
 import { buildMaterialsOperationalSummary, getDefaultMaterialsPeriod } from '../utils/materialsAnalytics';
 import { buildMaterialsFlow, summarizeMaterialsStock } from '../utils/materialsDashboard';
+import { materialUsageByBranch, type MaterialBranchUsage } from '../modules/materials/materialUsage';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../utils/formato';
 import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
 import {
   Badge,
+  DataTable,
   EmptyState,
+  FilterBar,
   Modal,
   PageHeader,
   TableBody,
   TableHead,
   TableShell,
   isoDay,
+  type DataTableColumn,
 } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
@@ -30,6 +34,7 @@ interface MateriaisTabProps {
   materiais: Material[];
   movimentos: MovimentoMaterial[];
   empresas: Empresa[];
+  etapas: EtapaServico[];
   responsavel: string;
   podeEditar: boolean;
   onSaveMaterial: (material: Material, isNew: boolean) => void;
@@ -40,7 +45,7 @@ interface MateriaisTabProps {
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
 const UNIDADES = ['m³', 't', 'kg', 'un', 'm', 'm²', 'L', 'sc'];
 
-type MateriaisAba = 'resumo' | 'estoque' | 'movimentos' | 'cadastro' | 'importacoes';
+type MateriaisAba = 'resumo' | 'utilizacao' | 'estoque' | 'movimentos' | 'cadastro' | 'importacoes';
 
 interface MaterialBatchRow {
   data: string;
@@ -72,6 +77,7 @@ export default function MateriaisTab({
   materiais,
   movimentos,
   empresas,
+  etapas,
   responsavel,
   podeEditar,
   onSaveMaterial,
@@ -112,6 +118,8 @@ export default function MateriaisTab({
     destino: '',
     origem: '',
     servico: '',
+    etapaServicoId: '',
+    finalidade: undefined as 'Consumo' | undefined,
     observacao: '',
   });
   const novaLinhaLote = (): MaterialBatchRow => ({
@@ -153,6 +161,20 @@ export default function MateriaisTab({
     .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
   const locaisResumo = useMemo(() => [...new Set(movimentos.flatMap(item => [item.destino, item.origem]).filter(Boolean) as string[])]
     .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
+  const utilizacaoPorRamo = useMemo(() => materialUsageByBranch(ativos, movimentos), [ativos, movimentos]);
+  const utilizacaoResumo = useMemo(() => {
+    const recebidos = utilizacaoPorRamo.reduce((soma, item) => soma + item.received, 0);
+    const utilizados = utilizacaoPorRamo.reduce((soma, item) => soma + item.used, 0);
+    const divergencias = utilizacaoPorRamo.filter(item => item.received > 0 && item.used > item.received).length;
+    return {
+      pares: utilizacaoPorRamo.length,
+      recebidos,
+      utilizados,
+      pendentes: Math.max(0, recebidos - utilizados),
+      percentual: recebidos > 0 ? Number(((utilizados / recebidos) * 100).toFixed(1)) : null,
+      divergencias,
+    };
+  }, [utilizacaoPorRamo]);
 
   const termo = normalizeComparable(busca).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
@@ -180,6 +202,30 @@ export default function MateriaisTab({
 
   const abrirMovimento = () => {
     setErro('');
+    setMovimentoAberto(true);
+  };
+
+  const abrirUsoMaterial = (uso?: MaterialBranchUsage) => {
+    setErro('');
+    setMovimento({
+      ...movimento,
+      data: hoje,
+      tipo: 'Saída',
+      materialId: uso?.materialId || movimento.materialId,
+      quantidade: 0,
+      destino: uso?.branchName || '',
+      origem: '',
+      servico: '',
+      etapaServicoId: uso?.branchId || '',
+      finalidade: 'Consumo',
+      observacao: '',
+      notaFiscal: '',
+      placa: '',
+      ticket: '',
+      solicitacaoCompra: '',
+      quantidadeNota: 0,
+      valorTotal: 0,
+    });
     setMovimentoAberto(true);
   };
 
@@ -276,6 +322,7 @@ export default function MateriaisTab({
       return;
     }
     const fornecedor = empresas.find(item => item.id === movimento.fornecedorId);
+    const etapa = etapas.find(item => item.id === movimento.etapaServicoId);
     onSaveMovimento({
       id: candidato.id,
       data: movimento.data,
@@ -302,6 +349,9 @@ export default function MateriaisTab({
       quantidadeNota: movimento.tipo === 'Entrada' && Number(movimento.quantidadeNota) > 0
         ? Number(movimento.quantidadeNota)
         : undefined,
+      etapaServicoId: etapa?.id,
+      etapaServicoNome: etapa?.nome,
+      finalidade: movimento.tipo === 'Saída' && movimento.finalidade === 'Consumo' ? 'Consumo' : undefined,
       destino: movimento.destino.trim() || undefined,
       origem: movimento.origem.trim() || undefined,
       servico: movimento.servico.trim() || undefined,
@@ -309,7 +359,7 @@ export default function MateriaisTab({
       observacao: movimento.observacao.trim() || undefined,
       criadoEm: new Date().toISOString(),
     });
-    setMovimento({ ...movimento, quantidade: 0, notaFiscal: '', placa: '', ticket: '', solicitacaoCompra: '', quantidadeNota: 0, destino: '', origem: '', servico: '', observacao: '', valorTotal: 0 });
+    setMovimento({ ...movimento, quantidade: 0, notaFiscal: '', placa: '', ticket: '', solicitacaoCompra: '', quantidadeNota: 0, destino: '', origem: '', servico: '', etapaServicoId: '', finalidade: undefined, observacao: '', valorTotal: 0 });
     setErro('');
     setMovimentoAberto(false);
   };
@@ -377,6 +427,90 @@ export default function MateriaisTab({
   };
 
   const saldoAtualDoForm = movimento.materialId ? saldoDoMaterial(movimentos, movimento.materialId) : 0;
+  const empresasPorId = new Map(empresas.map(empresa => [empresa.id, empresa.nome]));
+  const posicaoColumns: DataTableColumn<PosicaoEstoque>[] = [
+    { id: 'codigo', label: 'Código', sortValue: item => item.material.codigo, cell: item => <span className="font-mono text-slate-600">{item.material.codigo || '—'}</span> },
+    { id: 'material', label: 'Material', sortValue: item => item.material.descricao, cell: item => <strong className="text-slate-800">{item.material.descricao}</strong> },
+    { id: 'categoria', label: 'Categoria', sortValue: item => item.material.categoria, cell: item => <span className="text-slate-600">{item.material.categoria || '—'}</span> },
+  ];
+  if (aba === 'estoque') {
+    posicaoColumns.push(
+      { id: 'entradas', label: 'Entradas', sortValue: item => item.entradas, cell: item => <span className="font-mono text-slate-600">{numero(item.entradas)}</span> },
+      { id: 'saidas', label: 'Saídas', sortValue: item => item.saidas, cell: item => <span className="font-mono text-slate-600">{numero(item.saidas)}</span> },
+      { id: 'saldo', label: 'Saldo', sortValue: item => item.saldo, cell: item => <strong className={`font-mono ${item.abaixoDoMinimo ? 'text-amber-700' : 'text-slate-900'}`}>{numero(item.saldo)} {item.material.unidade}</strong> },
+      { id: 'minimo', label: 'Mínimo', sortValue: item => item.material.estoqueMinimo, cell: item => <span className="text-slate-600">{item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—'}</span> },
+    );
+  } else {
+    posicaoColumns.push(
+      { id: 'unidade', label: 'Unidade', sortValue: item => item.material.unidade, cell: item => <span className="text-slate-600">{item.material.unidade}</span> },
+      { id: 'minimo', label: 'Mínimo', sortValue: item => item.material.estoqueMinimo, cell: item => <span className="text-slate-600">{item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—'}</span> },
+      { id: 'fornecedor', label: 'Fornecedor padrão', sortValue: item => empresasPorId.get(item.material.fornecedorPadraoId || '') || null, cell: item => <span className="text-slate-600">{empresasPorId.get(item.material.fornecedorPadraoId || '') || '—'}</span> },
+    );
+    if (podeEditar) posicaoColumns.push({
+      id: 'acoes', label: 'Ações', align: 'right', cell: item => (
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={() => abrirCadastro(item.material)} className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Editar</button>
+          <button type="button" onClick={() => excluirMaterial(item.material)} className="min-h-9 rounded-lg border border-rose-200 px-2.5 text-[11px] font-bold text-rose-700 transition-colors hover:bg-rose-50">Excluir</button>
+        </div>
+      ),
+    });
+  }
+
+  const utilizacaoColumns: DataTableColumn<MaterialBranchUsage>[] = [
+    {
+      id: 'ramo',
+      label: 'Ramo / trecho',
+      sortValue: item => item.branchName,
+      cell: item => (
+        <div>
+          <strong className="block text-slate-900">{item.branchName}</strong>
+          <span className="text-[11px] text-slate-500">{item.branchId}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'material',
+      label: 'Material',
+      sortValue: item => item.materialDescription,
+      cell: item => <strong className="text-slate-800">{item.materialDescription}</strong>,
+    },
+    { id: 'recebido', label: 'Recebido', align: 'right', sortValue: item => item.received, cell: item => <span className="font-mono text-slate-700">{numero(item.received)} {item.unit}</span> },
+    { id: 'utilizado', label: 'Utilizado', align: 'right', sortValue: item => item.used, cell: item => <span className="font-mono text-slate-700">{numero(item.used)} {item.unit}</span> },
+    {
+      id: 'percentual',
+      label: 'Utilização',
+      align: 'right',
+      sortValue: item => item.percent ?? -1,
+      cell: item => (
+        <span className={item.percent !== null && item.percent > 100 ? 'font-black tabular-nums text-rose-700' : 'font-black tabular-nums text-emerald-700'}>
+          {item.percent === null ? '—' : `${item.percent.toLocaleString('pt-BR')}%`}
+        </span>
+      ),
+    },
+    {
+      id: 'restante',
+      label: 'A utilizar',
+      align: 'right',
+      sortValue: item => item.remaining,
+      cell: item => <span className={item.remaining < 0 ? 'font-mono text-rose-700' : 'font-mono text-slate-700'}>{numero(item.remaining)} {item.unit}</span>,
+    },
+    {
+      id: 'ultimo',
+      label: 'Último uso',
+      sortValue: item => item.lastUseDate || '',
+      cell: item => <span className="text-slate-600">{item.lastUseDate ? formatarData(item.lastUseDate) : '—'}</span>,
+    },
+  ];
+  if (podeEditar) utilizacaoColumns.push({
+    id: 'acao',
+    label: 'Ações',
+    align: 'right',
+    cell: item => (
+      <button type="button" onClick={() => abrirUsoMaterial(item)} className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">
+        Registrar uso
+      </button>
+    ),
+  });
 
   return (
     <div ref={escopoMotion} id="materiais-tab" className="min-h-full w-full bg-white px-3 pb-12 pt-0 sm:px-4">
@@ -543,7 +677,7 @@ export default function MateriaisTab({
 
       <div className="mt-4 flex flex-wrap items-stretch gap-2">
         <div className="flex flex-1 gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          {([['resumo', 'Resumo atual'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos']] as const).map(([id, rotulo]) => (
+          {([['resumo', 'Resumo atual'], ['utilizacao', 'Utilização'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos']] as const).map(([id, rotulo]) => (
             <button
               key={id}
               type="button"
@@ -757,7 +891,60 @@ export default function MateriaisTab({
             </article>
           </div>
         </section>
-      ) : aba !== 'importacoes' && <><label className="relative mt-3 block">
+      ) : aba === 'utilizacao' ? (
+        <section className="mt-3 space-y-3" aria-label="Utilização de materiais por ramo">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+            {[
+              { label: 'Vínculos', valor: String(utilizacaoResumo.pares), detalhe: 'material + ramo' },
+              { label: 'Recebido', valor: numero(utilizacaoResumo.recebidos), detalhe: 'entradas vinculadas' },
+              { label: 'Utilizado', valor: numero(utilizacaoResumo.utilizados), detalhe: 'consumo aprovado' },
+              { label: 'A utilizar', valor: numero(utilizacaoResumo.pendentes), detalhe: 'diferença operacional' },
+              { label: 'Uso geral', valor: utilizacaoResumo.percentual === null ? '—' : `${utilizacaoResumo.percentual.toLocaleString('pt-BR')}%`, detalhe: utilizacaoResumo.divergencias ? `${utilizacaoResumo.divergencias} divergência(s)` : 'sem excesso vinculado' },
+            ].map(item => (
+              <article key={item.label} className="renea-card rounded-lg border border-slate-200 bg-white p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">{item.label}</p>
+                <strong className="mt-1 block text-2xl font-black tabular-nums text-slate-950">{item.valor}</strong>
+                <span className="mt-1 block text-[11px] leading-4 text-slate-500">{item.detalhe}</span>
+              </article>
+            ))}
+          </div>
+          <FilterBar
+            label="Busca da utilização"
+            actions={podeEditar ? (
+              <button type="button" onClick={() => abrirUsoMaterial()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
+                <Plus className="h-4 w-4" /> Registrar uso
+              </button>
+            ) : undefined}
+          >
+            <label className="relative block min-w-48 flex-1">
+              <span className="sr-only">Buscar utilização</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={busca}
+                onChange={event => setBusca(event.target.value)}
+                placeholder="Material, ramo ou trecho"
+                className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+              />
+            </label>
+          </FilterBar>
+          {utilizacaoPorRamo.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              title="Nenhuma utilização vinculada"
+              description="Vincule entradas e saídas de consumo a Ramos / Trechos para acompanhar percentuais reais. Movimentos antigos com texto livre seguem no histórico."
+            />
+          ) : (
+            <DataTable
+              caption="Utilização de materiais por ramo"
+              rows={utilizacaoPorRamo.filter(item => !termo || normalizeComparable(`${item.branchName} ${item.materialDescription}`).includes(termo))}
+              columns={utilizacaoColumns}
+              getRowId={item => `${item.materialId}-${item.branchId}`}
+              minWidth={980}
+              pageSize={12}
+            />
+          )}
+        </section>
+      ) : aba !== 'importacoes' && <><FilterBar label="Filtros de materiais" className="mt-3"><label className="relative block min-w-48 flex-1">
         <span className="sr-only">Buscar material</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -766,7 +953,7 @@ export default function MateriaisTab({
           placeholder="Código, descrição, categoria, fornecedor ou nota"
           className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
         />
-      </label>
+      </label></FilterBar>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {aba === 'movimentos' ? (
@@ -805,63 +992,13 @@ export default function MateriaisTab({
         ) : posicoesFiltradas.length === 0 ? (
           <EmptyState icon={Package} title="Nenhum material cadastrado" description="Cadastre os materiais que a obra usa." />
         ) : (
-          <TableShell minWidth={aba === 'cadastro' ? 900 : 760}>
-            <TableHead>
-              <tr>
-                <th className="p-3">Código</th>
-                <th className="p-3">Material</th>
-                <th className="p-3">Categoria</th>
-                {aba === 'estoque' ? (
-                  <>
-                    <th className="p-3">Entradas</th>
-                    <th className="p-3">Saídas</th>
-                    <th className="p-3">Saldo</th>
-                    <th className="p-3">Mínimo</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="p-3">Unidade</th>
-                    <th className="p-3">Mínimo</th>
-                    <th className="p-3">Fornecedor padrão</th>
-                    {podeEditar && <th className="p-3 text-right">Ações</th>}
-                  </>
-                )}
-              </tr>
-            </TableHead>
-            <TableBody>
-              {posicoesFiltradas.map(item => (
-                <tr key={item.material.id} className="transition-colors hover:bg-slate-50">
-                  <td className="p-3 font-mono text-slate-600">{item.material.codigo || '—'}</td>
-                  <td className="p-3 font-bold text-slate-800">{item.material.descricao}</td>
-                  <td className="p-3 text-slate-600">{item.material.categoria || '—'}</td>
-                  {aba === 'estoque' ? (
-                    <>
-                      <td className="p-3 font-mono text-slate-600">{numero(item.entradas)}</td>
-                      <td className="p-3 font-mono text-slate-600">{numero(item.saidas)}</td>
-                      <td className={`p-3 font-mono font-bold ${item.abaixoDoMinimo ? 'text-amber-700' : 'text-slate-900'}`}>
-                        {numero(item.saldo)} {item.material.unidade}
-                      </td>
-                      <td className="p-3 text-slate-600">{item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—'}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="p-3 text-slate-600">{item.material.unidade}</td>
-                      <td className="p-3 text-slate-600">{item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—'}</td>
-                      <td className="p-3 text-slate-600">{empresas.find(empresa => empresa.id === item.material.fornecedorPadraoId)?.nome || '—'}</td>
-                      {podeEditar && (
-                        <td className="p-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => abrirCadastro(item.material)} className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Editar</button>
-                            <button type="button" onClick={() => excluirMaterial(item.material)} className="min-h-9 rounded-lg border border-rose-200 px-2.5 text-[11px] font-bold text-rose-700 transition-colors hover:bg-rose-50">Excluir</button>
-                          </div>
-                        </td>
-                      )}
-                    </>
-                  )}
-                </tr>
-              ))}
-            </TableBody>
-          </TableShell>
+          <DataTable
+            caption={aba === 'estoque' ? 'Posição de estoque por material' : 'Cadastro de materiais'}
+            rows={posicoesFiltradas}
+            columns={posicaoColumns}
+            getRowId={item => item.material.id}
+            minWidth={aba === 'cadastro' ? 900 : 760}
+          />
         )}
       </div></>}
 
@@ -938,7 +1075,10 @@ export default function MateriaisTab({
           </label>
           <label className="text-xs font-bold text-slate-600">
             Tipo
-            <select value={movimento.tipo} onChange={event => setMovimento({ ...movimento, tipo: event.target.value as TipoMovimentoMaterial })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+            <select value={movimento.tipo} onChange={event => {
+              const tipo = event.target.value as TipoMovimentoMaterial;
+              setMovimento({ ...movimento, tipo, finalidade: tipo === 'Saída' ? movimento.finalidade : undefined });
+            }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
               {TIPOS.map(item => <option key={item}>{item}</option>)}
             </select>
           </label>
@@ -1016,10 +1156,34 @@ export default function MateriaisTab({
               <input value={movimento.destino} onChange={event => setMovimento({ ...movimento, destino: event.target.value })} placeholder="Ex: Ramo 200" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
             </label>
           )}
+          {movimento.tipo !== 'Ajuste' && (
+            <label className="text-xs font-bold text-slate-600">
+              Ramo / trecho vinculado
+              <select value={movimento.etapaServicoId} onChange={event => {
+                const etapa = etapas.find(item => item.id === event.target.value);
+                setMovimento({ ...movimento, etapaServicoId: event.target.value, destino: etapa?.nome || movimento.destino });
+              }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+                <option value="">Sem vínculo estruturado</option>
+                {etapas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+              </select>
+              <span className="mt-1 block text-[11px] font-medium text-slate-400">Somente este vínculo entra no percentual de utilização.</span>
+            </label>
+          )}
           {movimento.tipo === 'Saída' && (
             <label className="text-xs font-bold text-slate-600">
               Serviço
               <input value={movimento.servico} onChange={event => setMovimento({ ...movimento, servico: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            </label>
+          )}
+          {movimento.tipo === 'Saída' && (
+            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700 sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={movimento.finalidade === 'Consumo'}
+                onChange={event => setMovimento({ ...movimento, finalidade: event.target.checked ? 'Consumo' : undefined })}
+                className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500"
+              />
+              Contabilizar esta saída como uso diário aprovado do ramo
             </label>
           )}
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
