@@ -6,6 +6,9 @@ import './index.css';
 import '@fontsource-variable/outfit';
 import '@fontsource-variable/geist';
 import { isPublicLinkUrl } from './app/routing/publicRoutes';
+import { parsePrivatePath } from './app/routing/privateRoutes';
+import { PrivateRouteApp } from './app/routing/PrivateRouteApp';
+import { isSupabaseCloudEnabled } from './platform/cloudProvider';
 import { restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';
 
 const startApplication = async () => {
@@ -19,17 +22,16 @@ const startApplication = async () => {
       </StrictMode>,
     );
   } else {
-    const [{ default: App }] = await Promise.all([
-      import('./App.tsx'),
-      restoreMissingReneaLocalStorage(),
-    ]);
-    root.render(
-      <StrictMode>
-        <AppProviders>
-          <App />
-        </AppProviders>
-      </StrictMode>,
-    );
+    const privateRoute = parsePrivatePath(window.location.pathname);
+    if (privateRoute && isSupabaseCloudEnabled) {
+      root.render(<StrictMode><AppProviders><PrivateRouteApp route={privateRoute} /></AppProviders></StrictMode>);
+    } else {
+      const [{ default: App }] = await Promise.all([
+        import('./App.tsx'),
+        restoreMissingReneaLocalStorage(),
+      ]);
+      root.render(<StrictMode><AppProviders><App /></AppProviders></StrictMode>);
+    }
     startReneaStorageMirror();
   }
   if ('serviceWorker' in navigator && import.meta.env.PROD) {

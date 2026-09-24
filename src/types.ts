@@ -12,11 +12,11 @@ export interface Empresa {
   // TERCEIRA: empresa contratada que presta serviço na obra (ex.: Tecnogeo,
   // Rivoli) — diferente de FORNECEDOR (vende material, ex.: Pedraforte,
   // Dovalle). Uma empresa pode acumular mais de um tipo.
-  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA' | 'TERCEIRA'>;
-  /** Só se aplica quando 'FORNECEDOR' está em `tipos` — separa fornecedor de
-   *  locação de equipamentos de fornecedor de materiais. Sem valor = ainda
-   *  não classificado, não vira "materiais" por omissão. */
-  categoriaFornecedor?: 'Locação de equipamentos' | 'Materiais';
+  // Subáreas de fornecedor: LOCACAO_EQUIPAMENTOS (locadora de máquinas),
+  // MATERIAIS (vende insumo) e SUBFORNECEDOR (atende por meio de outro
+  // fornecedor, apontado em fornecedorPrincipalId).
+  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA' | 'TERCEIRA' | 'LOCACAO_EQUIPAMENTOS' | 'MATERIAIS' | 'SUBFORNECEDOR'>;
+  fornecedorPrincipalId?: string;
   status?: 'ATIVO' | 'INATIVO';
   criadoEm?: string;
   atualizadoEm?: string;
@@ -567,6 +567,15 @@ export interface MovimentoMaterial {
   /** Sempre positiva, menos no ajuste, onde o sinal corrige o saldo. */
   quantidade: number;
   unidade: string;
+  /** Vínculo explícito com o ramo/trecho. Texto livre legado não vira vínculo automaticamente. */
+  etapaServicoId?: string;
+  etapaServicoNome?: string;
+  /** Apenas saídas de consumo compõem o indicador de utilização. */
+  finalidade?: 'Consumo';
+  /** Envio público aprovado que originou este movimento, quando aplicável. */
+  origemApontamentoId?: string;
+  /** Obra operacional informada na origem; migração SaaS exige mapeamento para project_id. */
+  obraId?: string;
   fornecedorId?: string;
   fornecedorNome?: string;
   notaFiscal?: string;
@@ -591,10 +600,6 @@ export interface MovimentoMaterial {
   destino?: string;
   origem?: string;
   servico?: string;
-  /** Ramo/trecho da obra ao qual este material foi destinado — mesmo
-   *  cadastro de EtapaServico exibido como "Ramos / Trechos" em Cadastros
-   *  Auxiliares. Liga o material a uma utilização acompanhável por ramo. */
-  ramoId?: string;
   responsavel: string;
   observacao?: string;
   criadoEm: string;

@@ -12,6 +12,22 @@
 }
 
 :root {
+  --renea-color-primary: #063c31;
+  --renea-color-success: #087653;
+  --renea-color-warning: #8a4b08;
+  --renea-color-danger: #be123c;
+  --renea-color-info: #0369a1;
+  --renea-color-neutral: #69726d;
+  --renea-space-1: 0.25rem;
+  --renea-space-2: 0.5rem;
+  --renea-space-3: 0.75rem;
+  --renea-space-4: 1rem;
+  --renea-radius-control: 0.75rem;
+  --renea-radius-panel: 1rem;
+  --renea-motion-fast: 180ms;
+  --renea-motion-standard: 240ms;
+  --renea-z-sticky: 10;
+  --renea-z-dialog: 50;
   --renea-ink: #17211e;
   --renea-muted: #69726d;
   --renea-line: #e2e8e4;
@@ -750,6 +766,27 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   background: rgb(255 255 255 / .96);
   color: #10211c;
   box-shadow: 0 1px 0 rgb(10 47 37 / .04);
+}
+
+.renea-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--renea-space-2);
+}
+.renea-filter-bar__fields {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--renea-space-2);
+  min-width: 0;
+}
+.renea-filter-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--renea-space-2);
 }
 .erp-topbar__breadcrumb,
 .erp-topbar__breadcrumb strong,
@@ -2241,6 +2278,36 @@ body,
 #main-tab-viewport,
 #main-tab-viewport > * {
   background-color: #fff;
+}
+
+/* Padrão transversal das 15 abas da sidebar: mesmo tamanho, mesmo respiro e
+   mesma área útil enquanto cada módulo é refeito por dentro. */
+#main-tab-viewport > .renea-route-motion {
+  width: 100%;
+  min-height: 100%;
+}
+
+#main-tab-viewport > .renea-route-motion > :not(.erp-dashboard),
+#main-tab-viewport > :not(.erp-dashboard) {
+  width: min(100%, 96rem);
+  margin-inline: auto;
+}
+
+#main-tab-viewport > .renea-route-motion > [id$="-tab"] {
+  min-height: calc(100vh - 7rem);
+}
+
+#main-tab-viewport .renea-filter-bar,
+#main-tab-viewport .renea-table,
+#main-tab-viewport .renea-card,
+#main-tab-viewport .renea-stat {
+  border-radius: 8px;
+}
+
+#main-tab-viewport .renea-page-actions button,
+#main-tab-viewport .renea-filter-bar button,
+#main-tab-viewport .renea-button {
+  min-height: 2.75rem;
 }
 
 #main-tab-viewport :is(

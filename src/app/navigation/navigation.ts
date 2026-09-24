@@ -37,7 +37,6 @@ import {
   FileSpreadsheet,
   FileText,
   BarChart3,
-  PackageCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -106,7 +105,6 @@ export const NAVIGATION_GROUPS = [
     label: 'Materiais',
     items: [
       { id: 'materiais', label: 'Materiais e Estoque', icon: Package },
-      { id: 'apontamento-materiais', label: 'Utilização de Materiais', icon: PackageCheck },
     ],
   },
   {
@@ -122,8 +120,8 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Administração',
     items: [
+      { id: 'cadastros', label: 'Cadastros', icon: FolderPlus },
       { id: 'administracao', label: 'Administração', icon: Database },
-      { id: 'cadastros', label: 'Cadastros Auxiliares', icon: FolderPlus },
       { id: 'auditoria', label: 'Auditoria', icon: ShieldCheck },
       { id: 'permissoes', label: 'Permissões', icon: KeyRound },
     ],
@@ -157,8 +155,12 @@ export const PRIMARY_MODULE_IDS = [
   'colaboradores',
   'presenca',
   'materiais',
-  'apontamento-materiais',
   'relatorios',
+  // Cadastros ficou sem caminho na limpeza de 2026-09-24: o atalho dentro de
+  // Administração levava a uma aba que nenhum perfil tinha em ROLE_ACCESS, e
+  // o App devolvia a pessoa ao Painel. Voltou ao menu lateral como aba
+  // própria, logo acima de Administração.
+  'cadastros',
   'administracao',
 ] as const;
 
@@ -193,7 +195,6 @@ export const AUXILIARY_MODULE_DESTINATIONS: Readonly<Record<string, string>> = {
   timeline: 'dashboard',
   custos: 'relatorios',
   orcamento: 'relatorios',
-  cadastros: 'administracao',
   auditoria: 'administracao',
   permissoes: 'administracao',
 };
@@ -211,47 +212,17 @@ export const SIDEBAR_NAVIGATION_GROUPS = NAVIGATION_GROUPS
   }))
   .filter(group => group.items.length > 0);
 
-export const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
+export const ALL_NAVIGATION_ITEMS = SIDEBAR_NAVIGATION_GROUPS
   .map(group => group.items as readonly NavigationItem[])
   .reduce<NavigationItem[]>((items, groupItems) => items.concat(groupItems), []);
 
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
-  admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
-  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => !['auditoria', 'permissoes', 'administracao'].includes(id)),
-  operador: [
-    'dashboard',
-    'consulta-geral',
-    'pendencias',
-    'notificacoes',
-    'assistente',
-    'indicadores',
-    'modo-campo',
-    'central-operacional',
-    'frentes',
-    'producao',
-    'planejamento',
-    'cronograma',
-    'diario-obra',
-    'fvs',
-    'inspecoes',
-    'ocorrencias',
-    'frota',
-    'controle-equipamentos',
-    'manutencao',
-    'horas-paradas',
-    'checklist',
-    'lancamentos',
-    'tickets-jazida',
-    'estacas',
-    'presenca',
-    'colaboradores',
-    'equipes',
-    'apontamentos',
-    'dds-treinamentos',
-    'materiais',
-    'apontamento-materiais',
-  ],
-  leitura: ['dashboard', 'consulta-geral', 'periodo'],
+  admin: [...PRIMARY_MODULE_IDS],
+  gestor: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao'),
+  // Operador lança no dia a dia, mas não altera a base mestre (mesma regra
+  // de antes da limpeza do menu).
+  operador: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao' && id !== 'cadastros'),
+  leitura: ['dashboard', 'relatorios'],
 };
 
 export const normalizeUserRole = (value: unknown): UserRole => {

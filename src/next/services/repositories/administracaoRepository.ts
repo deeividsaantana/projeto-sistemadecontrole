@@ -15,10 +15,10 @@ export const getPessoas = (): Funcionario[] =>
 export const getRamos = (): EtapaServico[] => readCollection<EtapaServico>(STORAGE_KEYS.etapas);
 
 /**
- * Fornecedor = empresa cujo `tipos` inclui 'FORNECEDOR'. `categoriaFornecedor`
- * separa locação de equipamentos de materiais; sem essa classificação, a
- * empresa aparece em "Não classificados" — nunca vira uma das duas por
- * suposição, pra não inventar dado que o cadastro não confirma.
+ * Fornecedor = empresa cujo `tipos` inclui 'FORNECEDOR'. As subclasses
+ * (LOCACAO_EQUIPAMENTOS, MATERIAIS) também vivem em `tipos` — uma empresa
+ * pode acumular as duas. Sem nenhuma das duas, o fornecedor aparece em
+ * "Não classificados": nunca vira uma categoria por suposição.
  */
 export type CategoriaFornecedor = 'Locação de equipamentos' | 'Materiais' | 'Não classificado';
 
@@ -31,18 +31,13 @@ export const getFornecedoresPorCategoria = (): FornecedorPorCategoria[] => {
   const empresas = readCollection<Empresa>(STORAGE_KEYS.empresas);
   const fornecedores = empresas.filter(item => item.tipos?.includes('FORNECEDOR'));
 
-  const grupos: Record<CategoriaFornecedor, Empresa[]> = {
-    'Locação de equipamentos': [],
-    Materiais: [],
-    'Não classificado': [],
-  };
-  for (const fornecedor of fornecedores) {
-    const chave: CategoriaFornecedor = fornecedor.categoriaFornecedor || 'Não classificado';
-    grupos[chave].push(fornecedor);
-  }
+  const locacao = fornecedores.filter(item => item.tipos?.includes('LOCACAO_EQUIPAMENTOS'));
+  const materiais = fornecedores.filter(item => item.tipos?.includes('MATERIAIS'));
+  const naoClassificado = fornecedores.filter(item => !item.tipos?.includes('LOCACAO_EQUIPAMENTOS') && !item.tipos?.includes('MATERIAIS'));
 
-  return (['Locação de equipamentos', 'Materiais', 'Não classificado'] as const).map(categoria => ({
-    categoria,
-    empresas: grupos[categoria],
-  }));
+  return [
+    { categoria: 'Locação de equipamentos', empresas: locacao },
+    { categoria: 'Materiais', empresas: materiais },
+    { categoria: 'Não classificado', empresas: naoClassificado },
+  ];
 };

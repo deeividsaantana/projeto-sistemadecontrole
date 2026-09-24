@@ -22,8 +22,7 @@ test('sidebar expõe os 16 módulos primários do ERP', () => {
   assert.equal(isPrimaryModule('planejamento'), true);
   assert.equal(isPrimaryModule('diario-obra'), true);
   assert.equal(isPrimaryModule('lancamentos'), true);
-  // Utilização de Materiais entrou em 2026-09-23: apontadores em campo
-  // precisam lançar recebimento/uso de material por ramo diariamente, sem
-  // depender de alguém passar isso pra trás.
-  assert.equal(isPrimaryModule('apontamento-materiais'), true);
+  // Cadastros voltou ao menu em 2026-09-24: o atalho em Administração
+  // levava a uma aba sem permissão em nenhum perfil.
+  assert.equal(isPrimaryModule('cadastros'), true);
 });

@@ -7,7 +7,7 @@ import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestSt
 import { uploadOperationalAttachment } from '../services/operationalAttachments';
 import StakeDrivingMap from './StakeDrivingMap';
 import EstacasImportacoesPanel from './EstacasImportacoesPanel';
-import { ConfirmDialog, CountUp } from '../shared/ui';
+import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
 import { inativar, somenteAtivos } from '../utils/inativacao';
 
 type Props = {
@@ -315,15 +315,13 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
   };
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-lg border border-emerald-500/20 bg-white p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700">ERP v2.6</p>
-            <h1 className="mt-1 text-2xl font-black text-slate-800">Controle de Estacas</h1>
-            <p className="mt-1 text-xs text-slate-400">Recebimento, NF, lote físico, cravação, sobra, perda e saldo confirmado.</p>
-          </div>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-500">
+    <div id="estacas-tab" className="space-y-5">
+      <PageHeader
+        eyebrow="Operação"
+        title="Controle de Estacas"
+        description="Recebimento, NF, lote físico, cravação, sobra, perda e saldo confirmado."
+        actions={(
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white hover:bg-emerald-800">
             <FileSpreadsheet className="h-4 w-4" />
             {isImporting ? 'Importando...' : 'Importar controle Excel'}
             <input type="file" accept=".xlsx" className="hidden" disabled={isImporting} onChange={event => {
@@ -332,8 +330,8 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
               event.target.value = '';
             }} />
           </label>
-        </div>
-      </section>
+        )}
+      />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[

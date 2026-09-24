@@ -113,7 +113,6 @@ const EquipesTab = lazy(() => import('./components/EquipesTab'));
 const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
 const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
-const ApontamentoUtilizacaoMateriaisTab = lazy(() => import('./components/ApontamentoUtilizacaoMateriaisTab'));
 const FrentesTab = lazy(() => import('./components/FrentesTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
@@ -208,6 +207,11 @@ import { describeInvalidBackup, validateSystemBackup } from './utils/systemBacku
 import { promoteMasterWorkbook } from './masterData/materializeMasterData';
 import type { MasterWorkbookAnalysis, MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
+import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
+import { obraDependencies, registryDependencies } from './masterData/registryDependencies';
+import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
+import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from './utils/cadastrosCategorias';
+import { appendMovement, applyMaterialImport, saveMaterial } from './modules/materials/materialCommands';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
@@ -271,7 +275,7 @@ import {
 
 import { AppNotification } from './types';
 
-type CadastroImportTarget = 'empresas' | 'fornecedores' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
+type CadastroImportTarget = CadastroCategoriaId;
 type CadastroImportRow = Record<string, string>;
 
 const normalizeImportText = (value: string = '') =>
@@ -1633,24 +1637,13 @@ export default function App() {
   const handleSaveEmpresa = (item: Empresa, isNew: boolean, onError?: (error: Error) => void) => {
     const now = new Date().toISOString();
     const previous = empresas.find(x => x.id === item.id);
-    const normalizedItem: Empresa = {
-      ...item,
-      tipos: item.tipos?.length ? item.tipos : previous?.tipos || ['EMPRESA'],
-      status: item.status || previous?.status || 'ATIVO',
-      criadoEm: previous?.criadoEm || item.criadoEm || now,
-      atualizadoEm: now,
-    };
+    const normalizedItem = normalizeEmpresa(item, previous, now);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: normalizedItem });
     if (errors.length > 0) {
       addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
-    let updated;
-    if (isNew) {
-      updated = [...empresas, normalizedItem];
-    } else {
-      updated = empresas.map(x => x.id === item.id ? normalizedItem : x);
-    }
+    const updated = saveRegistryItem(empresas, normalizedItem, isNew);
     saveAndLog(
       'Empresas',
       isNew ? 'Criou' : 'Editou',
@@ -1668,17 +1661,18 @@ export default function App() {
   const handleDeleteEmpresa = (id: string) => {
     const item = empresas.find(x => x.id === id);
     if (!item) return;
-    const updated = empresas.filter(x => x.id !== id);
+    const next = inactivateEmpresa(item, new Date().toISOString());
+    const updated = saveRegistryItem(empresas, next, false);
     saveAndLog(
       'Empresas',
-      'Excluiu',
-      `Excluiu permanentemente a empresa/fornecedor "${item.nome}".`,
+      'Inativou',
+      `Inativou a empresa/fornecedor "${item.nome}".`,
       historyLogs,
       () => {
         setEmpresas(updated);
         writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
+      { registroId: id, valorAnterior: item, valorNovo: next, tipoOperacao: 'UPDATE' },
     );
   };
 
@@ -1689,12 +1683,7 @@ export default function App() {
       addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
-    let updated;
-    if (isNew) {
-      updated = [...obras, item];
-    } else {
-      updated = obras.map(x => x.id === item.id ? item : x);
-    }
+    const updated = saveRegistryItem(obras, item, isNew);
     saveAndLog(
       'Obras/Locais',
       isNew ? 'Criou' : 'Editou',
@@ -1710,7 +1699,31 @@ export default function App() {
 
   const handleDeleteObra = (id: string) => {
     const item = obras.find(x => x.id === id);
-    if (!item) return;
+    if (!item) return false;
+    const dependencies = obraDependencies(id, {
+      equipamentos,
+      collections: {
+        Presenças: listasPresenca,
+        Equipes: gruposEquipe,
+        Frentes: frentesServico,
+        Diários: diariosObra,
+        Serviços: servicosObra,
+        Produção: producaoRegistros,
+        Planejamento: planejamentoItens,
+        FVS: fichasFvs,
+        Inspeções: inspecoes,
+        'Não conformidades': naoConformidades,
+        Medições: medicoes,
+        Documentos: documentos,
+        Ocorrências: ocorrencias,
+        Custos: lancamentosCusto,
+        Orçamentos: orcamentoItens,
+      },
+    });
+    if (dependencies.length > 0) {
+      notifyRegistryDeletionBlocked(dependencies);
+      return false;
+    }
     const updated = obras.filter(x => x.id !== id);
     saveAndLog(
       'Obras/Locais',
@@ -1723,6 +1736,7 @@ export default function App() {
       },
       { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
+    return true;
   };
 
   const handleSaveEquipamento = (item: Equipamento, isNew: boolean) => {
@@ -1732,12 +1746,7 @@ export default function App() {
       addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
-    let updated;
-    if (isNew) {
-      updated = [...equipamentos, item];
-    } else {
-      updated = equipamentos.map(x => x.id === item.id ? item : x);
-    }
+    const updated = saveRegistryItem(equipamentos, item, isNew);
     saveAndLog(
       'Equipamentos', 
       isNew ? 'Criou' : 'Editou', 
@@ -1802,41 +1811,31 @@ export default function App() {
   const handleDeleteEquipamento = (id: string) => {
     const item = equipamentos.find(x => x.id === id);
     if (!item) return;
-    const updated = equipamentos.filter(x => x.id !== id);
+    const next = inactivateEquipamento(item);
+    const updated = saveRegistryItem(equipamentos, next, false);
     saveAndLog(
       'Equipamentos', 
-      'Excluiu',
-      `Excluiu permanentemente o equipamento/veículo "${item.prefixo} - ${item.nome}".`,
+      'Desmobilizou',
+      `Desmobilizou o equipamento/veículo "${item.prefixo} - ${item.nome}".`,
       historyLogs,
       () => {
         setEquipamentos(updated);
         writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
+      { registroId: id, valorAnterior: item, valorNovo: next, tipoOperacao: 'UPDATE' },
     );
   };
 
   const handleSaveFuncionario = (item: Funcionario, isNew: boolean) => {
     const now = new Date().toISOString();
     const previous = funcionarios.find(x => x.id === item.id);
-    const normalizedItem: Funcionario = {
-      ...item,
-      ativo: !['INATIVO', 'DESMOBILIZADO'].includes(item.status || (item.ativo ? 'ATIVO' : 'INATIVO')),
-      status: item.status || (item.ativo ? 'ATIVO' : 'INATIVO'),
-      criadoEm: previous?.criadoEm || item.criadoEm || now,
-      atualizadoEm: now,
-    };
+    const normalizedItem = normalizeFuncionario(item, previous, now);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: normalizedItem });
     if (errors.length > 0) {
       addNotification('Cadastro não salvo', errors.join(' '), 'warning', 'Sistema Local');
       return;
     }
-    let updated;
-    if (isNew) {
-      updated = [...funcionarios, normalizedItem];
-    } else {
-      updated = funcionarios.map(x => x.id === item.id ? normalizedItem : x);
-    }
+    const updated = saveRegistryItem(funcionarios, normalizedItem, isNew);
     saveAndLog(
       'Funcionários', 
       isNew ? 'Criou' : 'Editou', 
@@ -1880,17 +1879,18 @@ export default function App() {
   const handleDeleteFuncionario = (id: string) => {
     const item = funcionarios.find(x => x.id === id);
     if (!item) return;
-    const updated = funcionarios.filter(x => x.id !== id);
+    const next = inactivateFuncionario(item, new Date().toISOString());
+    const updated = saveRegistryItem(funcionarios, next, false);
     saveAndLog(
       'Funcionários', 
-      'Excluiu',
-      `Excluiu permanentemente o colaborador "${item.nome}".`,
+      'Desmobilizou',
+      `Desmobilizou o colaborador "${item.nome}".`,
       historyLogs,
       () => {
         setFuncionarios(updated);
         writeStorageValue(localStorage, 'renea_funcionarios', JSON.stringify(updated));
       },
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
+      { registroId: id, valorAnterior: item, valorNovo: next, tipoOperacao: 'UPDATE' },
     );
   };
 
@@ -1913,9 +1913,31 @@ export default function App() {
     );
   };
 
+  const notifyRegistryDeletionBlocked = (dependencies: { collection: string; count: number }[]) => {
+    addNotification(
+      'Exclusão bloqueada',
+      `Este cadastro ainda é usado em ${dependencies.map(item => `${item.count} ${item.collection}`).join(' e ')}. Preserve o histórico antes de removê-lo.`,
+      'warning',
+      'Sistema Local',
+    );
+  };
+
+  const canDeleteAuxRegistry = (kind: 'comboio' | 'combustivel' | 'lubrificante' | 'etapa', id: string): boolean => {
+    const dependencies = registryDependencies(kind, id, {
+      abastecimentos,
+      equipamentos,
+      lubrificacoes,
+      apontamentos: apontamentosOperacionais,
+    });
+    if (dependencies.length === 0) return true;
+    notifyRegistryDeletionBlocked(dependencies);
+    return false;
+  };
+
   const handleDeleteComboio = (id: string) => {
     const item = comboios.find(x => x.id === id);
-    if (!item) return;
+    if (!item) return false;
+    if (!canDeleteAuxRegistry('comboio', id)) return false;
     const updated = comboios.filter(x => x.id !== id);
     saveAndLog(
       'Comboios', 
@@ -1927,6 +1949,7 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_comboios', JSON.stringify(updated));
       }
     );
+    return true;
   };
 
   const handleSaveTipoCombustivel = (item: TipoCombustivel, isNew: boolean) => {
@@ -1950,7 +1973,8 @@ export default function App() {
 
   const handleDeleteTipoCombustivel = (id: string) => {
     const item = combustiveis.find(x => x.id === id);
-    if (!item) return;
+    if (!item) return false;
+    if (!canDeleteAuxRegistry('combustivel', id)) return false;
     const updated = combustiveis.filter(x => x.id !== id);
     saveAndLog(
       'Combustíveis', 
@@ -1962,6 +1986,7 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_combustiveis', JSON.stringify(updated));
       }
     );
+    return true;
   };
 
   const handleSaveProdutoLubrificacao = (item: ProdutoLubrificacao, isNew: boolean) => {
@@ -1985,7 +2010,8 @@ export default function App() {
 
   const handleDeleteProdutoLubrificacao = (id: string) => {
     const item = lubrificantes.find(x => x.id === id);
-    if (!item) return;
+    if (!item) return false;
+    if (!canDeleteAuxRegistry('lubrificante', id)) return false;
     const updated = lubrificantes.filter(x => x.id !== id);
     saveAndLog(
       'Produtos Lubrificação', 
@@ -1997,6 +2023,7 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_lubrificantes', JSON.stringify(updated));
       }
     );
+    return true;
   };
 
   const handleSaveEtapaServico = (item: EtapaServico, isNew: boolean) => {
@@ -2020,7 +2047,8 @@ export default function App() {
 
   const handleDeleteEtapaServico = (id: string) => {
     const item = etapas.find(x => x.id === id);
-    if (!item) return;
+    if (!item) return false;
+    if (!canDeleteAuxRegistry('etapa', id)) return false;
     const updated = etapas.filter(x => x.id !== id);
     saveAndLog(
       'Etapas de Serviço', 
@@ -2032,6 +2060,7 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
       }
     );
+    return true;
   };
 
   const handleImportCadastros = (target: CadastroImportTarget, rows: CadastroImportRow[]) => {
@@ -2092,7 +2121,10 @@ export default function App() {
       return { success: true, message };
     };
 
-    if (target === 'empresas' || target === 'fornecedores') {
+    // Toda aba de empresa (inclusive Terceiras e as subáreas de fornecedor)
+    // importa como empresa com as classes do tipo escolhido. Antes, importar
+    // em Terceiras caía no fim desta função e gravava as linhas como Ramos.
+    if (isCategoriaEmpresa(target)) {
       const incoming = validRows.map((row, index): Empresa | null => {
         const cnpj = getImportValue(row, ['cnpj', 'documento']);
         const nome = getImportValue(row, ['nome', 'empresa', 'nome fantasia', 'razao social', 'razão social']) || cnpj || `Empresa ${index + 1}`;
@@ -2102,15 +2134,19 @@ export default function App() {
           cnpj,
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'gestor']),
-          tipos: [target === 'fornecedores' ? 'FORNECEDOR' : 'EMPRESA'],
+          tipos: [...TIPOS_POR_CATEGORIA_EMPRESA[target]],
           status: normalizeImportText(getImportValue(row, ['status', 'situacao', 'situação'])).includes('inativo') ? 'INATIVO' : 'ATIVO',
           criadoEm: new Date().toISOString(),
           atualizadoEm: new Date().toISOString(),
         };
       }).filter(Boolean) as Empresa[];
       if (incoming.length === 0) return { success: false, message: 'Nenhuma empresa foi encontrada na planilha.' };
-      const result = mergeImportedRecords(empresas, incoming, item => normalizeImportText(item.cnpj || item.nome));
-      return persistImport(target === 'fornecedores' ? 'Fornecedores' : 'Empresas', 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
+      const statusProvided = new Set(incoming.filter((_, index) => getImportValue(validRows[index], ['status', 'situacao', 'situação'])).map(item => item.id));
+      const result = mergeImportedRecords(
+        empresas, incoming, item => normalizeImportText(item.cnpj || item.nome),
+        (saved, sheet) => mergeEmpresaImport(saved, sheet, statusProvided.has(sheet.id)),
+      );
+      return persistImport(categoriaCadastro(target).label, 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'obras') {
@@ -2181,7 +2217,12 @@ export default function App() {
         };
       }).filter(Boolean) as Equipamento[];
       if (incoming.length === 0) return { success: false, message: 'Nenhum equipamento foi encontrado na planilha.' };
-      const result = mergeImportedRecords(equipamentos, incoming, item => normalizeImportText(item.prefixo));
+      const statusProvided = new Set(incoming.filter((_, index) => getImportValue(validRows[index], ['status', 'situacao', 'situação'])).map(item => item.id));
+      const mobilizationProvided = new Set(incoming.filter((_, index) => getImportValue(validRows[index], ['mobilizado', 'mobilizacao', 'mobilização'])).map(item => item.id));
+      const result = mergeImportedRecords(
+        equipamentos, incoming, item => normalizeImportText(item.prefixo),
+        (saved, sheet) => mergeEquipamentoImport(saved, sheet, statusProvided.has(sheet.id), mobilizationProvided.has(sheet.id)),
+      );
       return persistImport(target === 'veiculos' ? 'Veículos' : 'Equipamentos', 'renea_equipamentos', setEquipamentos, result.next, incoming.length, result.created, result.updated);
     }
 
@@ -2197,7 +2238,7 @@ export default function App() {
           cargo: getImportValue(row, ['cargo', 'funcao', 'função']) || 'A definir',
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
           empresaId: findEmpresaId(getImportValue(row, ['empresa', 'vinculo', 'vínculo'])),
-          ativo: !ativoValue || !ativoValue.includes('inativo'),
+          ativo: !ativoValue.includes('inativo') && !ativoValue.includes('desmobil'),
           status: ativoValue.includes('desmobil') ? 'DESMOBILIZADO'
             : ativoValue.includes('inativo') ? 'INATIVO'
               : ativoValue.includes('ferias') ? 'FÉRIAS'
@@ -2217,7 +2258,11 @@ export default function App() {
         };
       }).filter(Boolean) as Funcionario[];
       if (incoming.length === 0) return { success: false, message: 'Nenhum funcionário foi encontrado na planilha.' };
-      const result = mergeImportedRecords(funcionarios, incoming, item => normalizeImportText(item.matricula || item.nome));
+      const statusProvided = new Set(incoming.filter((_, index) => getImportValue(validRows[index], ['ativo', 'status', 'situacao', 'situação'])).map(item => item.id));
+      const result = mergeImportedRecords(
+        funcionarios, incoming, item => normalizeImportText(item.matricula || item.nome),
+        (saved, sheet) => mergeFuncionarioImport(saved, sheet, statusProvided.has(sheet.id)),
+      );
       return persistImport('Funcionários', 'renea_funcionarios', setFuncionarios, result.next, incoming.length, result.created, result.updated);
     }
 
@@ -3504,7 +3549,7 @@ export default function App() {
   };
 
   const handleSaveMaterial = (material: Material, isNew: boolean) => {
-    const updated = isNew ? [material, ...materiaisCadastro] : materiaisCadastro.map(item => item.id === material.id ? material : item);
+    const updated = saveMaterial(materiaisCadastro, material, isNew);
     saveAndLog('Materiais', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o material ${material.descricao}.`, historyLogs, () => {
       setMateriaisCadastro(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.materiaisCadastro, JSON.stringify(updated));
@@ -3512,7 +3557,7 @@ export default function App() {
   };
 
   const handleSaveMovimentoMaterial = (movimento: MovimentoMaterial) => {
-    const updated = [movimento, ...materiaisMovimentos];
+    const updated = appendMovement(materiaisMovimentos, movimento);
     saveAndLog('Materiais', 'Criou', `${movimento.tipo} de ${movimento.quantidade} ${movimento.unidade} de ${movimento.materialDescricao}.`, historyLogs, () => {
       setMateriaisMovimentos(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
@@ -3521,10 +3566,10 @@ export default function App() {
 
   const handleApplyMaterialImport = (newMaterials: Material[], newMovements: MovimentoMaterial[]) => {
     if (newMaterials.length === 0 && newMovements.length === 0) return;
-    const materialIds = new Set(materiaisCadastro.map(item => item.id));
-    const movementIds = new Set(materiaisMovimentos.map(item => item.id));
-    const updatedMaterials = [...newMaterials.filter(item => !materialIds.has(item.id)), ...materiaisCadastro];
-    const updatedMovements = [...newMovements.filter(item => !movementIds.has(item.id)), ...materiaisMovimentos];
+    const { materials: updatedMaterials, movements: updatedMovements, addedMaterials, addedMovements } = applyMaterialImport(
+      materiaisCadastro, materiaisMovimentos, newMaterials, newMovements,
+    );
+    if (addedMaterials === 0 && addedMovements === 0) return;
     // Mesmo caminho de todo outro lançamento em lote (Controle de Estacas,
     // Tickets Jazida, Planilha Mestre): saveAndLog grava o histórico de
     // auditoria e sincroniza com a nuvem, em vez de só atualizar o estado
@@ -3532,7 +3577,7 @@ export default function App() {
     saveAndLog(
       'Materiais',
       'Criou',
-      `Importou ${newMaterials.length} material(is) novo(s) e ${newMovements.length} movimento(s) por planilha.`,
+      `Importou ${addedMaterials} material(is) novo(s) e ${addedMovements} movimento(s) por planilha.`,
       historyLogs,
       () => {
         setMateriaisCadastro(updatedMaterials);
@@ -4458,8 +4503,35 @@ export default function App() {
     }))
     .filter(group => group.items.length > 0);
 
+  // Mapping of sub-tab IDs to their parent primary modules
+  const SUB_TAB_MAPPING: Record<string, string> = {
+    // Central Operacional sub-tabs
+    'frentes': 'central-operacional',
+    'producao': 'central-operacional',
+    'cronograma': 'central-operacional',
+    'fvs': 'central-operacional',
+    'inspecoes': 'central-operacional',
+    'nao-conformidades': 'central-operacional',
+    'medicoes': 'central-operacional',
+    'documentos': 'central-operacional',
+    'ocorrencias': 'central-operacional',
+  };
+
   const navigateTo = (tab: string, closeMobile = false) => {
-    setActiveTab(allowedTabs.includes(tab) ? tab : 'dashboard');
+    // Check if it's a primary module (top-level tab)
+    let targetTab = tab;
+    if (!allowedTabs.includes(tab)) {
+      // Check if it's a sub-tab that should route to a parent module
+      const parentTab = SUB_TAB_MAPPING[tab];
+      if (parentTab && allowedTabs.includes(parentTab)) {
+        // Route to parent tab instead of defaulting to dashboard
+        targetTab = parentTab;
+      } else {
+        // Unknown tab - default to dashboard
+        targetTab = 'dashboard';
+      }
+    }
+    setActiveTab(targetTab);
     if (closeMobile) setIsMobileMenuOpen(false);
     window.requestAnimationFrame(() => {
       document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
@@ -5108,21 +5180,12 @@ export default function App() {
                 materiais={materiaisCadastro}
                 movimentos={materiaisMovimentos}
                 empresas={empresas}
-                ramos={etapas}
+                etapas={etapas}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'materiais', 'editar')}
                 onSaveMaterial={handleSaveMaterial}
                 onSaveMovimento={handleSaveMovimentoMaterial}
                 onApplyImport={handleApplyMaterialImport}
-              />
-            )}
-
-            {activeTab === 'apontamento-materiais' && (
-              <ApontamentoUtilizacaoMateriaisTab
-                materiais={materiaisCadastro}
-                ramos={etapas}
-                responsavel={activeUserName}
-                onSaveMovimento={handleSaveMovimentoMaterial}
               />
             )}
 

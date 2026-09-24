@@ -22,3 +22,14 @@ assert.equal(second.updated, 0);
 assert.equal(second.unchanged, 2);
 assert.equal(second.duplicated, 1);
 assert.equal(second.next.length, first.next.length);
+
+const protectedImport = mergeImportedRecords(
+  [{ id: 'master-id', key: 'ABC', value: 'Desmobilizado', criadoEm: 'original' }],
+  [{ id: 'sheet-id', key: 'ABC', value: 'Ativo', criadoEm: 'sheet' }],
+  row => row.key,
+  (saved, sheet) => ({ ...sheet, value: saved.value, criadoEm: saved.criadoEm }),
+);
+assert.equal(protectedImport.updated, 0);
+assert.equal(protectedImport.next[0].id, 'master-id');
+assert.equal(protectedImport.next[0].value, 'Desmobilizado');
+assert.equal(protectedImport.next[0].criadoEm, 'original');

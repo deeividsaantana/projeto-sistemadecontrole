@@ -54,6 +54,7 @@ import { NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
 import * as fx from './fixtures';
 
 const noop = () => {};
+const blockRegistryDeletion = new URLSearchParams(location.search).get('blockedRegistry') === '1';
 const previewGroups = NAVIGATION_GROUPS.map(g => ({ label: g.label, items: [...g.items] }));
 const previewNotifications = [
   { id: '1', type: 'success' as const, title: 'Sincronizacao concluida', message: 'Dados do periodo enviados para a nuvem.', timestamp: '08:12', read: false, source: 'Firebase Cloud' as const },
@@ -164,7 +165,7 @@ const screens: Record<string, React.ReactNode> = {
       onSaveFuncionario={noop}
       onDeleteFuncionario={noop}
       onSaveComboio={noop}
-      onDeleteComboio={noop}
+      onDeleteComboio={blockRegistryDeletion ? () => false : noop}
       onSaveTipoCombustivel={noop}
       onDeleteTipoCombustivel={noop}
       onSaveProdutoLubrificacao={noop}
@@ -483,6 +484,7 @@ const screens: Record<string, React.ReactNode> = {
       materiais={fx.materiaisObra}
       movimentos={fx.movimentosMateriaisObra}
       empresas={fx.empresas}
+      etapas={[]}
       responsavel="Deivid Santana"
       podeEditar
       onSaveMaterial={noop}

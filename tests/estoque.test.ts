@@ -93,3 +93,20 @@ test('posição tolera cadastros legados sem descrição', () => {
   assert.equal(resultado.length, 2);
   assert.equal(resultado[0].material.id, 'sem-descricao');
 });
+
+test('posição agrega materiais independentes e preserva recorte, transferência e último movimento', () => {
+  const rows = [
+    movimento({ id: '1', materialId: 'mat-1', data: '2026-09-01', quantidade: 10 }),
+    movimento({ id: '2', materialId: 'mat-2', data: '2026-09-02', quantidade: 7 }),
+    movimento({ id: '3', materialId: 'mat-1', data: '2026-09-03', tipo: 'Transferência', quantidade: 4 }),
+    movimento({ id: '4', materialId: 'mat-1', data: '2026-09-05', tipo: 'Saída', quantidade: 3 }),
+    movimento({ id: '5', materialId: 'mat-1', data: '2026-09-10', tipo: 'Ajuste', quantidade: -2 }),
+  ];
+  const positions = posicaoEstoque([material({}), material({ id: 'mat-2', descricao: 'Areia' })], rows, '2026-09-05');
+  const byId = new Map(positions.map(item => [item.material.id, item]));
+  assert.equal(byId.get('mat-1')?.saldo, 7);
+  assert.equal(byId.get('mat-1')?.entradas, 10);
+  assert.equal(byId.get('mat-1')?.saidas, 3);
+  assert.equal(byId.get('mat-1')?.ultimoMovimento, '2026-09-05');
+  assert.equal(byId.get('mat-2')?.saldo, 7);
+});

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Inbox, Plus, Search, Trash2, Edit } from 'lucide-react';
-import { PageHeader, Modal, TableShell, TableHead, TableBody, Pagination, EmptyState, Badge, ConfirmDialog } from '../ui';
+import { PageHeader, Modal, TableShell, TableHead, TableBody, Pagination, EmptyState, Badge, ConfirmDialog, FilterBar } from '../ui';
 import type { RegistryConfig, RegistryField } from './registryTypes';
 import { useRegistryState } from './useRegistryState';
 import { isDuplicateOfExisting } from './duplicateDetection';
@@ -111,13 +111,13 @@ export default function RegistryScreen<T extends { id: string }>({ config, items
         <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[9px] font-black uppercase text-slate-500">Página</p><strong className="text-xl text-slate-800">{state.page}/{state.totalPages}</strong></div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <FilterBar actions={<button type="button" onClick={startBatch} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-700">Adicionar linhas</button>}>
         <label className="relative flex-1 min-w-48">
+          <span className="sr-only">Buscar em {config.label}</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <input value={state.search} onChange={e => { state.setSearch(e.target.value); state.setPage(1); }} placeholder="Buscar" className={`${inputClass} pl-8`} />
         </label>
-        <button type="button" onClick={startBatch} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-700">Adicionar linhas</button>
-      </div>
+      </FilterBar>
 
       {batchDrafts && (
         <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">

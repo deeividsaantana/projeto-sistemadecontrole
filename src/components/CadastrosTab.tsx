@@ -4,6 +4,9 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { 
@@ -24,20 +27,21 @@ import CentralRegistryOverview from './CentralRegistryOverview';
 import OrganizationChart from './OrganizationChart';
 import { validateEquipmentMasterRecord } from '../utils/equipmentOperations';
 import {
+  EMPRESA_CLASSES,
+  empresaTipoLabel,
   isActiveCollaborator,
+  isEquipmentRentalSupplier,
+  isMaterialSupplier,
+  isSubSupplier,
   isSupplier,
   isThirdPartyContractor,
   isVehicle,
   nextMasterId,
+  type EmpresaTipo,
 } from '../masterData/centralRegistry';
 
 import {
-  Building2,
-  MapPin,
   Truck,
-  Users,
-  Fuel,
-  Droplets,
   Search,
   Plus,
   Edit,
@@ -46,18 +50,31 @@ import {
   X,
   CheckCircle,
   Upload,
-  HardHat
 } from 'lucide-react';
-import { PageHeader } from '../shared/ui';
+import { FilterBar, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
+import { abaSugerida, abaVisivel, type AbaPlanilha } from '../utils/planilhaAbas';
+import CadastroCategoryPicker from './cadastros/CadastroCategoryPicker';
+import './cadastros/Cadastros.css';
+import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
 
-type SubTab = 'empresas' | 'fornecedores' | 'terceiras' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
+type SubTab = CadastroCategoriaId;
 
-// Empresas, Fornecedores e Terceiras compartilham o mesmo cadastro
-// (Empresa) e o mesmo formulário — só filtram por categoria. Centralizado
-// aqui para não repetir a mesma condição em cada trecho do arquivo que
-// precisa saber "isto é uma tela de empresa".
-const isEmpresaSubTab = (tab: SubTab) => tab === 'empresas' || tab === 'fornecedores' || tab === 'terceiras';
+// Empresas, Terceiras, Fornecedores e as subáreas de fornecedor compartilham
+// o mesmo cadastro (Empresa) e o mesmo formulário — só filtram por classe.
+const isEmpresaSubTab = (tab: SubTab) => isCategoriaEmpresa(tab);
+
+// Classes que a tela não mostra como opção, mas que vêm da planilha mestre e
+// precisam continuar no registro depois de uma edição.
+const CLASSES_PRESERVADAS: readonly EmpresaTipo[] = ['GERADOR', 'ACEITANTE', 'TRANSPORTADORA'];
+
+const empresaPorSubTab: Partial<Record<SubTab, (item: Empresa) => boolean>> = {
+  fornecedores: isSupplier,
+  'fornecedores-locacao': isEquipmentRentalSupplier,
+  'fornecedores-materiais': isMaterialSupplier,
+  subfornecedores: isSubSupplier,
+  terceiras: isThirdPartyContractor,
+};
 
 interface CadastrosTabProps {
   empresas: Empresa[];
@@ -73,19 +90,19 @@ interface CadastrosTabProps {
   onSaveEmpresa: (item: Empresa, isNew: boolean, onError?: (error: Error) => void) => void;
   onDeleteEmpresa: (id: string) => void;
   onSaveObra: (item: ObraLocal, isNew: boolean) => void;
-  onDeleteObra: (id: string) => void;
+  onDeleteObra: (id: string) => boolean | void;
   onSaveEquipamento: (item: Equipamento, isNew: boolean) => void;
   onDeleteEquipamento: (id: string) => void;
   onSaveFuncionario: (item: Funcionario, isNew: boolean) => void;
   onDeleteFuncionario: (id: string) => void;
   onSaveComboio: (item: Comboio, isNew: boolean) => void;
-  onDeleteComboio: (id: string) => void;
+  onDeleteComboio: (id: string) => boolean | void;
   onSaveTipoCombustivel: (item: TipoCombustivel, isNew: boolean) => void;
-  onDeleteTipoCombustivel: (id: string) => void;
+  onDeleteTipoCombustivel: (id: string) => boolean | void;
   onSaveProdutoLubrificacao: (item: ProdutoLubrificacao, isNew: boolean) => void;
-  onDeleteProdutoLubrificacao: (id: string) => void;
+  onDeleteProdutoLubrificacao: (id: string) => boolean | void;
   onSaveEtapaServico: (item: EtapaServico, isNew: boolean) => void;
-  onDeleteEtapaServico: (id: string) => void;
+  onDeleteEtapaServico: (id: string) => boolean | void;
   onImportCadastros: (target: SubTab, rows: Record<string, string>[]) => { success: boolean; message: string };
   onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
 }
@@ -153,11 +170,13 @@ export default function CadastrosTab({
 
   // Deletion confirmations
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const saveErrorRef = useRef(false);
   const [importFeedback, setImportFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [pendingImport, setPendingImport] = useState<{ fileName: string; rows: Record<string, string>[] } | null>(null);
+  const [pendingSheets, setPendingSheets] = useState<{ fileName: string; abas: AbaPlanilha[]; sugerida: string | null; ocultas: number } | null>(null);
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
 
   // Field validation warnings
@@ -169,7 +188,8 @@ export default function CadastrosTab({
   const [empCnpj, setEmpCnpj] = useState('');
   const [empTelefone, setEmpTelefone] = useState('');
   const [empResponsavel, setEmpResponsavel] = useState('');
-  const [empCategoriaFornecedor, setEmpCategoriaFornecedor] = useState<'' | 'Locação de equipamentos' | 'Materiais'>('');
+  const [empTipos, setEmpTipos] = useState<EmpresaTipo[]>([]);
+  const [empFornecedorPrincipalId, setEmpFornecedorPrincipalId] = useState('');
 
   // Obra Fields
   const [obrNome, setObrNome] = useState('');
@@ -236,7 +256,7 @@ export default function CadastrosTab({
   const resetFormState = () => {
     setEditingId(null);
     setValidationError('');
-    setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel(''); setEmpCategoriaFornecedor('');
+    setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel(''); setEmpTipos([]); setEmpFornecedorPrincipalId('');
     setObrNome(''); setObrEndereco(''); setObrResponsavel(''); setObrStatus('Ativa');
     setEqPrefixo(''); setEqNome(''); setEqTipo(''); setEqMarca(''); setEqModelo(''); setEqAno(''); setEqSeriePlaca(''); setEqPlaca(''); setEqEmpresaId(''); setEqStatus('Ativo'); setEqLocalId(''); setEqObservacao(''); setEqFoto(''); setEqHorasDisponiveis(0); setEqHorasIndisponiveis(0);
     setEqCategoriaFrota('Equipamento'); setEqCodigoSge(''); setEqFamilia(''); setEqMobilizado(false); setEqMetaDisponibilidade(80); setEqDataMobilizacao(''); setEqDataDesmobilizacao(''); setEqOperadorResponsavelId(''); setEqCombustivelId(''); setEqCapacidadeTanque(0); setEqEquipamentoVinculadoId('');
@@ -256,6 +276,8 @@ export default function CadastrosTab({
       if (subTab === 'veiculos') setEqCategoriaFrota('Veículo');
     } else if (subTab === 'funcionarios') {
       if (empresas.length > 0) setFunEmpresaId(empresas[0].id);
+    } else if (isCategoriaEmpresa(subTab)) {
+      setEmpTipos([...TIPOS_POR_CATEGORIA_EMPRESA[subTab]]);
     }
     setIsFormOpen(true);
   };
@@ -267,7 +289,9 @@ export default function CadastrosTab({
 
     if (isEmpresaSubTab(subTab)) {
       const x = item as Empresa;
-      setEmpNome(x.nome); setEmpCnpj(x.cnpj); setEmpTelefone(x.telefone); setEmpResponsavel(x.responsavel); setEmpCategoriaFornecedor(x.categoriaFornecedor || '');
+      setEmpNome(x.nome); setEmpCnpj(x.cnpj); setEmpTelefone(x.telefone); setEmpResponsavel(x.responsavel);
+      setEmpTipos((x.tipos || []).filter(tipo => !CLASSES_PRESERVADAS.includes(tipo)));
+      setEmpFornecedorPrincipalId(x.fornecedorPrincipalId || '');
     } else if (subTab === 'obras') {
       const x = item as ObraLocal;
       setObrNome(x.nome); setObrEndereco(x.endereco); setObrResponsavel(x.responsavel); setObrStatus(x.status);
@@ -304,7 +328,7 @@ export default function CadastrosTab({
           ? nextMasterId('EQ', equipamentos.map(item => item.id))
           : subTab === 'veiculos'
             ? nextMasterId('VEI', equipamentos.map(item => item.id))
-            : subTab === 'fornecedores'
+            : subTab === 'fornecedores' || subTab === 'fornecedores-locacao' || subTab === 'fornecedores-materiais' || subTab === 'subfornecedores'
               ? nextMasterId('FOR', empresas.map(item => item.id))
               : subTab === 'terceiras'
                 ? nextMasterId('TER', empresas.map(item => item.id))
@@ -324,21 +348,28 @@ export default function CadastrosTab({
         setValidationError('Nome da empresa/fornecedor é obrigatório!');
         return;
       }
+      if (empTipos.length === 0) {
+        setValidationError('Marque pelo menos uma classe para a empresa.');
+        return;
+      }
       const previous = empresas.find(item => item.id === currentId);
+      const subfornecedor = empTipos.includes('SUBFORNECEDOR');
       onSaveEmpresa({ // error callback parameter to handle cloud save failures
         id: currentId,
         nome: empNome.trim(),
         cnpj: empCnpj.trim(),
         telefone: empTelefone.trim(),
         responsavel: empResponsavel.trim(),
-        // Cada categoria só acrescenta ao conjunto existente, nunca troca —
-        // por isso uma empresa criada como fornecedora e depois editada pela
-        // aba Terceiras acumula os dois tipos, em vez de perder o primeiro.
+        // As classes vêm das opções marcadas no formulário, que abre com as
+        // classes atuais do registro: editar pela aba Terceiras não apaga a
+        // classe Fornecedor, e desmarcar é a forma de corrigir uma empresa
+        // classificada errado. Classes que a tela não mostra são mantidas.
         tipos: Array.from(new Set([
-          ...(previous?.tipos || []),
-          subTab === 'fornecedores' ? 'FORNECEDOR' as const : subTab === 'terceiras' ? 'TERCEIRA' as const : 'EMPRESA' as const,
+          ...(previous?.tipos || []).filter(tipo => CLASSES_PRESERVADAS.includes(tipo)),
+          ...empTipos,
+          ...(empTipos.some(tipo => tipo === 'LOCACAO_EQUIPAMENTOS' || tipo === 'MATERIAIS' || tipo === 'SUBFORNECEDOR') ? ['FORNECEDOR' as const] : []),
         ])),
-        categoriaFornecedor: subTab === 'fornecedores' ? (empCategoriaFornecedor || undefined) : previous?.categoriaFornecedor,
+        fornecedorPrincipalId: subfornecedor && empFornecedorPrincipalId ? empFornecedorPrincipalId : undefined,
         status: previous?.status || 'ATIVO',
         criadoEm: previous?.criadoEm,
       }, isNew, onError);
@@ -470,6 +501,7 @@ export default function CadastrosTab({
 
   // 4. Delete Handler with safe prompt confirmation
   const handleDeleteTrigger = (id: string) => {
+    setDeleteError('');
     setDeleteConfirmId(id);
   };
 
@@ -477,16 +509,22 @@ export default function CadastrosTab({
     if (isDeleting) return;
     setIsDeleting(true);
     try {
+      let deleted: boolean | void;
       if (isEmpresaSubTab(subTab)) onDeleteEmpresa(id);
-      else if (subTab === 'obras') onDeleteObra(id);
+      else if (subTab === 'obras') deleted = onDeleteObra(id);
       else if (subTab === 'equipamentos' || subTab === 'veiculos') onDeleteEquipamento(id);
       else if (subTab === 'funcionarios') onDeleteFuncionario(id);
-      else if (subTab === 'comboios') onDeleteComboio(id);
-      else if (subTab === 'combustiveis') onDeleteTipoCombustivel(id);
-      else if (subTab === 'lubrificantes') onDeleteProdutoLubrificacao(id);
-      else if (subTab === 'etapas') onDeleteEtapaServico(id);
+      else if (subTab === 'comboios') deleted = onDeleteComboio(id);
+      else if (subTab === 'combustiveis') deleted = onDeleteTipoCombustivel(id);
+      else if (subTab === 'lubrificantes') deleted = onDeleteProdutoLubrificacao(id);
+      else if (subTab === 'etapas') deleted = onDeleteEtapaServico(id);
 
-      setDeleteConfirmId(null);
+      if (deleted === false) {
+        setDeleteError('Este cadastro possui lançamentos vinculados e não pode ser excluído.');
+      } else {
+        setDeleteError('');
+        setDeleteConfirmId(null);
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -496,13 +534,9 @@ export default function CadastrosTab({
   const q = searchQuery.toLowerCase().trim();
 
   const filteredEmpresas = empresas.filter(x => x.nome.toLowerCase().includes(q) || x.cnpj.includes(q) || x.responsavel.toLowerCase().includes(q));
-  const filteredFornecedores = filteredEmpresas.filter(isSupplier);
-  const filteredTerceiras = filteredEmpresas.filter(isThirdPartyContractor);
-  const displayedEmpresas = subTab === 'fornecedores'
-    ? filteredFornecedores
-    : subTab === 'terceiras'
-      ? filteredTerceiras
-      : filteredEmpresas;
+  const filtroEmpresa = empresaPorSubTab[subTab];
+  const displayedEmpresas = filtroEmpresa ? filteredEmpresas.filter(filtroEmpresa) : filteredEmpresas;
+  const fornecedoresPrincipais = empresas.filter(item => isSupplier(item) && !isSubSupplier(item) && item.id !== editingId);
   const equipamentoTipos = Array.from(new Set(equipamentos.map(x => x.tipo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const funcionarioCargos = Array.from(new Set(funcionarios.map(x => x.cargo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
@@ -554,6 +588,8 @@ export default function CadastrosTab({
                   : etapas.find(item => item.id === deleteConfirmId)
     : null;
   const deleteTargetName = deleteTarget && 'nome' in deleteTarget ? String(deleteTarget.nome || '') : deleteConfirmId || '';
+  const deactivationSupported = isEmpresaSubTab(subTab) || subTab === 'equipamentos' || subTab === 'veiculos' || subTab === 'funcionarios';
+  const equipmentDeactivation = subTab === 'equipamentos' || subTab === 'veiculos';
   const deleteTargetCode = deleteTarget && 'prefixo' in deleteTarget
     ? String(deleteTarget.prefixo || '')
     : deleteTarget && 'placa' in deleteTarget
@@ -574,9 +610,7 @@ export default function CadastrosTab({
 
   const hasAdvancedFilters = filterStatus !== 'todos' || filterEmpresaId !== 'todos' || filterObraId !== 'todos' || filterAtivo !== 'todos' || filterTipoEquipamento !== 'todos' || filterCargo !== 'todos' || searchQuery !== '';
 
-  const currentFilteredCount = subTab === 'empresas' ? filteredEmpresas.length
-    : subTab === 'fornecedores' ? filteredFornecedores.length
-    : subTab === 'terceiras' ? filteredTerceiras.length
+  const currentFilteredCount = isEmpresaSubTab(subTab) ? displayedEmpresas.length
     : subTab === 'obras' ? filteredObras.length
     : subTab === 'equipamentos' ? filteredEquipamentos.filter(item => !isVehicle(item)).length
     : subTab === 'veiculos' ? filteredVeiculos.length
@@ -588,9 +622,10 @@ export default function CadastrosTab({
 
   // Get count of records
   const getSubTabCount = (tab: SubTab) => {
-    if (tab === 'empresas') return empresas.length;
-    if (tab === 'fornecedores') return empresas.filter(isSupplier).length;
-    if (tab === 'terceiras') return empresas.filter(isThirdPartyContractor).length;
+    if (isEmpresaSubTab(tab)) {
+      const filtro = empresaPorSubTab[tab];
+      return filtro ? empresas.filter(filtro).length : empresas.length;
+    }
     if (tab === 'obras') return obras.length;
     if (tab === 'equipamentos') return equipamentos.filter(item => !isVehicle(item)).length;
     if (tab === 'veiculos') return equipamentos.filter(isVehicle).length;
@@ -654,20 +689,24 @@ export default function CadastrosTab({
     }).filter(row => Object.values(row).some(Boolean));
   };
 
-  const parseWorkbookFile = async (file: File): Promise<Record<string, string>[]> => {
+  const parseWorkbookFile = async (file: File): Promise<{ abas: AbaPlanilha[]; ocultas: number }> => {
     const lowerName = file.name.toLowerCase();
     if (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv')) {
       if (file.size === 0) throw new Error('O arquivo está vazio.');
       if (file.size > 10 * 1024 * 1024) throw new Error('O arquivo CSV/TSV ultrapassa o limite de 10 MB.');
       const text = await file.text();
-      return lowerName.endsWith('.tsv')
+      const linhas = lowerName.endsWith('.tsv')
         ? parseCsvText(text.replace(/\t/g, ';'))
         : parseCsvText(text);
+      return { abas: [{ nome: file.name, linhas }], ocultas: 0 };
     }
 
     const workbook = await loadValidatedWorkbook(file);
-    const rows: Record<string, string>[] = [];
-    workbook.worksheets.forEach(worksheet => {
+    const abas: AbaPlanilha[] = [];
+    // Abas ocultas são resumo, detalhe ou apoio da planilha, nunca cadastro.
+    const visiveis = workbook.worksheets.filter(worksheet => abaVisivel(worksheet.state));
+    visiveis.forEach(worksheet => {
+      const rows: Record<string, string>[] = [];
       const headerRowNumber = Math.max(1, Array.from({ length: Math.min(10, worksheet.rowCount) }, (_, index) => index + 1)
         .find(rowNumber => {
           let filled = 0;
@@ -690,8 +729,9 @@ export default function CadastrosTab({
         });
         if (Object.values(record).some(Boolean)) rows.push(record);
       });
+      abas.push({ nome: worksheet.name, linhas: rows });
     });
-    return rows;
+    return { abas, ocultas: workbook.worksheets.length - visiveis.length };
   };
 
   const handleImportSpreadsheet = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -699,18 +739,36 @@ export default function CadastrosTab({
     if (!file) return;
     try {
       setImportFeedback(null);
-      const rows = await parseWorkbookFile(file);
-      if (rows.length === 0) {
-        setImportFeedback({ type: 'error', message: 'A planilha não possui linhas para importar.' });
+      const { abas, ocultas } = await parseWorkbookFile(file);
+      const comLinhas = abas.filter(aba => aba.linhas.length > 0);
+      if (comLinhas.length === 0) {
+        setImportFeedback({ type: 'error', message: ocultas > 0 && abas.length === 0
+          ? 'A planilha só tem abas ocultas. Reexiba a aba do cadastro no Excel e importe de novo.'
+          : 'A planilha não possui linhas para importar.' });
         return;
       }
-      setPendingImport({ fileName: file.name, rows });
+      if (comLinhas.length === 1) {
+        setPendingImport({ fileName: file.name, rows: comLinhas[0].linhas });
+        return;
+      }
+      setPendingSheets({
+        fileName: file.name,
+        abas: comLinhas,
+        sugerida: abaSugerida(comLinhas, [categoriaAtual.label, subTab]),
+        ocultas,
+      });
     } catch (error: unknown) {
       console.error('Erro ao importar planilha de cadastros:', error);
       setImportFeedback({ type: 'error', message: error instanceof Error && error.message ? error.message : 'Não foi possível ler a planilha. Use CSV, TSV, XLSX ou XLSM.' });
     } finally {
       if (importFileInputRef.current) importFileInputRef.current.value = '';
     }
+  };
+
+  const escolherAba = (aba: AbaPlanilha) => {
+    if (!pendingSheets) return;
+    setPendingImport({ fileName: `${pendingSheets.fileName} · ${aba.nome}`, rows: aba.linhas });
+    setPendingSheets(null);
   };
 
   const confirmSpreadsheetImport = () => {
@@ -751,20 +809,40 @@ export default function CadastrosTab({
     </div>
   );
 
-  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>([subTab, currentPage]);
+  const categoriaAtual = categoriaCadastro(subTab);
+
+  // Entrada do cabeçalho e dos grupos de tipos, no mesmo passo do Painel.
+  // Roda só ao abrir a aba: trocar de tipo anima apenas as linhas da lista.
+  useGSAP(() => {
+    const raiz = escopoMotion.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-cadastros-reveal]'), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.065, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopoMotion });
+
+  const selecionarCategoria = (module: SubTab) => {
+    setSubTab(module);
+    setIsFormOpen(false);
+    setSearchQuery('');
+    clearAdvancedFilters();
+    resetFormState();
+  };
 
   return (
-    <div ref={escopoMotion} className="erp-module erp-module--cadastros space-y-5" id="cadastros-container">
+    <div ref={escopoMotion} className="erp-module erp-module--cadastros space-y-5" id="cadastros-tab" data-testid="cadastros-tab">
+      <div data-cadastros-reveal>
       <PageHeader
+        className="cadastros-header"
         eyebrow="Base corporativa"
-        title="Cadastros mestres"
-        description="Cadastre uma única vez e reutilize dados oficiais em toda a operação."
+        title="Cadastros"
+        description="Escolha o tipo, pesquise e cadastre. Tudo que for gravado aqui vale para a operação inteira."
         actions={<>
           <button
+            type="button"
             onClick={() => importFileInputRef.current?.click()}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition duration-200 hover:border-emerald-500 hover:text-[#176b4d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
           >
-            <Upload className="w-4.5 h-4.5" />
+            <Upload className="size-5" aria-hidden="true" />
             Importar planilha
           </button>
           <input
@@ -775,24 +853,65 @@ export default function CadastrosTab({
             className="hidden"
           />
           <button
+            type="button"
+            data-testid="cadastro-acao-principal"
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-md transition-colors flex items-center gap-2 cursor-pointer"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-5 max-sm:order-first text-sm font-black text-white shadow-sm transition duration-200 hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
           >
-            <Plus className="w-4.5 h-4.5" />
-            {subTab === 'funcionarios' ? 'Novo colaborador' : 'Novo registro'}
+            <Plus className="size-5" aria-hidden="true" />
+            {categoriaAtual.acaoNovo}
           </button>
         </>}
       />
-      <CentralRegistryOverview
-        empresas={empresas}
-        obras={obras}
-        equipamentos={equipamentos}
-        funcionarios={funcionarios}
-        onSelectModule={module => { setSubTab(module); setIsFormOpen(false); clearAdvancedFilters(); resetFormState(); }}
-      />
+      </div>
+
+      <CadastroCategoryPicker value={subTab} getCount={getSubTabCount} onSelect={selecionarCategoria} />
+
+      {/* Portal: .erp-module usa container-type, que prende o fixed dentro do módulo. */}
+      {pendingSheets && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101a22]/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="cadastro-aba-titulo">
+          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6" data-testid="cadastro-escolher-aba">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#718087]">Importar {categoriaAtual.label.toLowerCase()}</p>
+                <h2 id="cadastro-aba-titulo" className="mt-1 text-xl font-black text-slate-900">Qual aba da planilha tem os cadastros?</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  {pendingSheets.fileName} tem {pendingSheets.abas.length} abas com linhas.
+                  {pendingSheets.ocultas > 0 && ` ${pendingSheets.ocultas} aba${pendingSheets.ocultas > 1 ? 's ocultas foram ignoradas' : ' oculta foi ignorada'}.`}
+                </p>
+              </div>
+              <button type="button" onClick={() => setPendingSheets(null)} aria-label="Cancelar importação" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60">
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="mt-5 grid gap-2">
+              {pendingSheets.abas.map(aba => {
+                const sugerida = aba.nome === pendingSheets.sugerida;
+                return (
+                  <button
+                    key={aba.nome}
+                    type="button"
+                    onClick={() => escolherAba(aba)}
+                    className={`flex min-h-14 w-full items-center gap-3 rounded-xl border px-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${sugerida ? 'border-[#176b4d] bg-emerald-50 hover:bg-emerald-100' : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50'}`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <strong className="block truncate text-base text-slate-900">{aba.nome}</strong>
+                      <span className="text-xs text-slate-500">{aba.linhas.length.toLocaleString('pt-BR')} linha{aba.linhas.length === 1 ? '' : 's'}</span>
+                    </span>
+                    {sugerida && <span className="shrink-0 rounded-full bg-[#176b4d] px-2.5 py-1 text-xs font-black text-white">Sugerida</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-4 text-xs text-slate-500">Depois de escolher, você confere a amostra antes de gravar.</p>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       <SpreadsheetImportReview
         open={Boolean(pendingImport)}
-        title={`Importar ${subTab}`}
+        title={`Importar ${categoriaAtual.label.toLowerCase()}`}
         fileName={pendingImport?.fileName || ''}
         validCount={pendingImport?.rows.length || 0}
         columns={pendingImport ? Object.keys(pendingImport.rows[0] || {}) : []}
@@ -803,56 +922,19 @@ export default function CadastrosTab({
         onConfirm={confirmSpreadsheetImport}
       />
 
-      <MasterDataReviewCenter
-        empresas={empresas}
-        obras={obras}
-        funcionarios={funcionarios}
-        equipamentos={equipamentos}
-        onApplyMasterWorkbook={onApplyMasterWorkbook}
-      />
-      
-      {/* Auxiliary Tabs Grid Selector */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2.5" id="subtab-selector">
-        {[
-          { id: 'funcionarios', label: 'Colaboradores', icon: Users },
-          { id: 'equipamentos', label: 'Equipamentos', icon: Truck },
-          { id: 'veiculos', label: 'Veículos', icon: Truck },
-          { id: 'fornecedores', label: 'Fornecedores', icon: Building2 },
-          { id: 'terceiras', label: 'Terceiras', icon: HardHat },
-          { id: 'empresas', label: 'Empresas', icon: Building2 },
-          { id: 'obras', label: 'Locais', icon: MapPin },
-          { id: 'etapas', label: 'Ramos / Trechos', icon: MapPin },
-          { id: 'comboios', label: 'Comboios', icon: Fuel },
-          { id: 'combustiveis', label: 'Combustíveis', icon: Fuel },
-          { id: 'lubrificantes', label: 'Lubrificantes', icon: Droplets }
-        ].map(tab => {
-          const Icon = tab.icon;
-          const active = subTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => { setSubTab(tab.id as SubTab); setIsFormOpen(false); setSearchQuery(''); clearAdvancedFilters(); resetFormState(); }}
-              className={`py-3.5 px-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${active ? 'bg-emerald-600/10 border-emerald-500 text-emerald-700 font-extrabold' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-200 hover:text-slate-700'}`}
-            >
-              <Icon className="w-5 h-5 shrink-0" />
-              <span className="text-[10px] uppercase font-bold tracking-tight block leading-none">{tab.label}</span>
-              <span className="text-[9px] font-mono opacity-60">({getSubTabCount(tab.id as SubTab)})</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* Main Filter Action Bar */}
-      <div className="bg-white border border-slate-200 p-3 rounded-lg space-y-2.5">
+      <FilterBar label="Filtros de cadastros" className="bg-white border border-slate-200 p-3 rounded-lg">
+        <div className="w-full space-y-2.5">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input 
-              type="text"
-              placeholder="Pesquisa rápida por qualquer termo..."
+              type="search"
+              aria-label="Buscar cadastros"
+              placeholder={`Buscar em ${categoriaAtual.label.toLowerCase()}: nome, código, placa...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-base text-slate-800 placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 sm:text-sm"
             />
           </div>
           {searchQuery && (
@@ -973,7 +1055,8 @@ export default function CadastrosTab({
             {currentFilteredCount} resultado{currentFilteredCount !== 1 ? 's' : ''}
           </div>
         )}
-      </div>
+        </div>
+      </FilterBar>
 
       {importFeedback && (
         <div className={`border rounded-lg p-3 text-xs font-bold flex items-start gap-2 ${importFeedback.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700' : 'bg-rose-500/10 border-rose-500/20 text-rose-700'}`}>
@@ -993,7 +1076,7 @@ export default function CadastrosTab({
           </button>
 
           <h3 className="text-sm font-bold text-emerald-700 mb-5 flex items-center gap-2">
-            {editingId ? 'Editar registro' : 'Novo cadastro'} · {subTab}
+            {editingId ? `Editar · ${categoriaAtual.label}` : categoriaAtual.acaoNovo}
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -1017,13 +1100,32 @@ export default function CadastrosTab({
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Engenheiro ou Gestor Responsável</label>
                   <input type="text" value={empResponsavel} onChange={e => setEmpResponsavel(e.target.value)} placeholder="Ex: Eng. Roberto Santos" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                 </div>
-                {subTab === 'fornecedores' && (
+                <fieldset className="md:col-span-4 space-y-2" data-testid="empresa-classes">
+                  <legend className="text-xxs font-bold uppercase tracking-wider text-slate-400">Classes da empresa *</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {EMPRESA_CLASSES.map(({ tipo, label }) => {
+                      const marcado = empTipos.includes(tipo);
+                      return (
+                        <label key={tipo} className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-bold transition duration-200 focus-within:ring-2 focus-within:ring-[#f26a2e]/60 ${marcado ? 'is-active border-[#176b4d] bg-emerald-50 text-[#176b4d]' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'}`}>
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-[#176b4d]"
+                            checked={marcado}
+                            onChange={() => setEmpTipos(atual => marcado ? atual.filter(item => item !== tipo) : [...atual, tipo])}
+                          />
+                          {label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500">Nas equipes da Presença aparecem só empresas de mão de obra, terceiras e as que ainda não têm classe.</p>
+                </fieldset>
+                {empTipos.includes('SUBFORNECEDOR') && (
                   <div className="md:col-span-2 space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Categoria do fornecedor</label>
-                    <select value={empCategoriaFornecedor} onChange={e => setEmpCategoriaFornecedor(e.target.value as typeof empCategoriaFornecedor)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500">
-                      <option value="">Não classificado</option>
-                      <option value="Locação de equipamentos">Locação de equipamentos</option>
-                      <option value="Materiais">Materiais</option>
+                    <label htmlFor="empresa-fornecedor-principal" className="text-xxs font-bold uppercase tracking-wider text-slate-400">Fornecedor principal</label>
+                    <select id="empresa-fornecedor-principal" value={empFornecedorPrincipalId} onChange={e => setEmpFornecedorPrincipalId(e.target.value)} className="min-h-11 w-full bg-white border border-slate-200 rounded-xl px-4 text-sm text-slate-800 focus:outline-none focus:border-emerald-500">
+                      <option value="">Sem fornecedor principal</option>
+                      {fornecedoresPrincipais.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
                     </select>
                   </div>
                 )}
@@ -1408,13 +1510,14 @@ export default function CadastrosTab({
                   <th className="py-3.5 px-5">CNPJ</th>
                   <th className="py-3.5 px-5">Responsável</th>
                   <th className="py-3.5 px-5">Contato</th>
+                  <th className="py-3.5 px-5">Classes</th>
                   <th className="py-3.5 px-5 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850">
                 {displayedEmpresas.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-500 italic">Nenhuma empresa encontrada com os termos de busca.</td>
+                    <td colSpan={6} className="py-10 text-center text-slate-500 italic">Nenhuma empresa encontrada com os termos de busca.</td>
                   </tr>
                 ) : (
                   displayedEmpresas.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => (
@@ -1423,6 +1526,16 @@ export default function CadastrosTab({
                       <td className="py-4 px-5 font-mono text-slate-700">{item.cnpj}</td>
                       <td className="py-4 px-5 text-slate-700">{item.responsavel || '—'}</td>
                       <td className="py-4 px-5 text-slate-700">{item.telefone || '—'}</td>
+                      <td className="py-4 px-5">
+                        <div className="flex flex-wrap gap-1">
+                          {(item.tipos || []).length === 0
+                            ? <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">Sem classe</span>
+                            : (item.tipos || []).map(tipo => <span key={tipo} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">{empresaTipoLabel(tipo)}</span>)}
+                        </div>
+                        {item.fornecedorPrincipalId && (
+                          <span className="mt-1 block text-[10px] text-slate-500">via {empresas.find(principal => principal.id === item.fornecedorPrincipalId)?.nome || 'fornecedor removido'}</span>
+                        )}
+                      </td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
@@ -1741,6 +1854,24 @@ export default function CadastrosTab({
 
       </div>
 
+      <section aria-labelledby="cadastros-ferramentas-title" className="space-y-4">
+        <h2 id="cadastros-ferramentas-title" className="text-xs font-black uppercase tracking-wide text-[#718087]">Ferramentas da base</h2>
+        <CentralRegistryOverview
+          empresas={empresas}
+          obras={obras}
+          equipamentos={equipamentos}
+          funcionarios={funcionarios}
+          onSelectModule={selecionarCategoria}
+        />
+        <MasterDataReviewCenter
+          empresas={empresas}
+          obras={obras}
+          funcionarios={funcionarios}
+          equipamentos={equipamentos}
+          onApplyMasterWorkbook={onApplyMasterWorkbook}
+        />
+      </section>
+
       {/* Safe inline Prompt Deletion Confirmation Dialog overlay */}
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-white flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="cadastro-delete-title">
@@ -1749,10 +1880,13 @@ export default function CadastrosTab({
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h3 id="cadastro-delete-title" className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">Confirmar inativacao?</h3>
+              <h3 id="cadastro-delete-title" className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">{deactivationSupported ? 'Confirmar inativacao?' : 'Confirmar exclusão?'}</h3>
               <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                O registro continuará no histórico e nos lançamentos existentes. {subTab === 'equipamentos' || subTab === 'veiculos' ? 'A frota será marcada como desmobilizada.' : 'O cadastro será marcado como inativo.'}
+                {deactivationSupported
+                  ? <>O registro continuará no histórico e nos lançamentos existentes. {equipmentDeactivation || subTab === 'funcionarios' ? 'Será marcado como desmobilizado.' : 'Será marcado como inativo.'}</>
+                  : 'Este cadastro será removido da lista. Confira os vínculos antes de continuar.'}
               </p>
+              {deleteError && <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{deleteError}</p>}
               <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-500">Registro selecionado</span>
                 <strong className="mt-1 block truncate text-sm text-slate-800">{deleteTargetName || 'Registro sem nome'}</strong>
@@ -1765,10 +1899,10 @@ export default function CadastrosTab({
                 disabled={isDeleting}
                 className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isDeleting ? 'PROCESSANDO...' : subTab === 'equipamentos' || subTab === 'veiculos' ? 'DESMOBILIZAR' : 'INATIVAR'}
+                {isDeleting ? 'PROCESSANDO...' : !deactivationSupported ? 'EXCLUIR' : equipmentDeactivation || subTab === 'funcionarios' ? 'DESMOBILIZAR' : 'INATIVAR'}
               </button>
               <button 
-                onClick={() => setDeleteConfirmId(null)}
+                onClick={() => { setDeleteError(''); setDeleteConfirmId(null); }}
                 disabled={isDeleting}
                 className="flex-1 py-2 bg-white hover:bg-slate-700 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >

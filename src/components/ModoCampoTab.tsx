@@ -41,7 +41,7 @@ const ACOES: Array<{ tab: string; rotulo: string; icone: typeof Activity }> = [
   { tab: 'checklist', rotulo: 'Checklist', icone: ClipboardCheck },
   { tab: 'ocorrencias', rotulo: 'Ocorrência', icone: Megaphone },
   { tab: 'diario-obra', rotulo: 'Diário de obra', icone: NotebookPen },
-  { tab: 'apontamento-materiais', rotulo: 'Utilização de material', icone: PackageCheck },
+  { tab: 'materiais', rotulo: 'Materiais', icone: PackageCheck },
 ];
 
 export default function ModoCampoTab({

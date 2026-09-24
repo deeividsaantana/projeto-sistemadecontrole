@@ -77,12 +77,55 @@ export const isActiveCollaborator = (item: Funcionario): boolean => (
   item.ativo !== false && !['INATIVO', 'DESMOBILIZADO'].includes(item.status || 'ATIVO')
 );
 
-export const isSupplier = (item: Empresa): boolean => item.tipos?.includes('FORNECEDOR') === true;
+export type EmpresaTipo = NonNullable<Empresa['tipos']>[number];
+
+const SUBAREAS_FORNECEDOR: readonly EmpresaTipo[] = ['LOCACAO_EQUIPAMENTOS', 'MATERIAIS', 'SUBFORNECEDOR'];
+
+// Toda subárea de fornecedor também conta como fornecedor, mesmo que o
+// registro tenha sido gravado só com a subárea.
+export const isSupplier = (item: Empresa): boolean => (
+  item.tipos?.some(tipo => tipo === 'FORNECEDOR' || SUBAREAS_FORNECEDOR.includes(tipo)) === true
+);
+export const isEquipmentRentalSupplier = (item: Empresa): boolean => item.tipos?.includes('LOCACAO_EQUIPAMENTOS') === true;
+export const isMaterialSupplier = (item: Empresa): boolean => item.tipos?.includes('MATERIAIS') === true;
+export const isSubSupplier = (item: Empresa): boolean => item.tipos?.includes('SUBFORNECEDOR') === true;
 // Terceira contratada presta serviço na obra (Tecnogeo, Rivoli) — diferente
 // de fornecedor de material (Pedraforte, Dovalle). Uma empresa pode ser as
 // duas coisas ao mesmo tempo (tipos aceita mais de um valor).
 export const isThirdPartyContractor = (item: Empresa): boolean => item.tipos?.includes('TERCEIRA') === true;
 export const isVehicle = (item: Equipamento): boolean => item.categoriaFrota === 'Veículo';
+
+/** Classes que a tela de empresa deixa marcar, na ordem em que aparecem. */
+export const EMPRESA_CLASSES: readonly { tipo: EmpresaTipo; label: string }[] = [
+  { tipo: 'EMPRESA', label: 'Empresa (mão de obra)' },
+  { tipo: 'TERCEIRA', label: 'Terceira (serviço na obra)' },
+  { tipo: 'FORNECEDOR', label: 'Fornecedor' },
+  { tipo: 'LOCACAO_EQUIPAMENTOS', label: 'Locação de equipamentos' },
+  { tipo: 'MATERIAIS', label: 'Materiais' },
+  { tipo: 'SUBFORNECEDOR', label: 'Subfornecedor' },
+];
+
+export const empresaTipoLabel = (tipo: EmpresaTipo): string => (
+  EMPRESA_CLASSES.find(item => item.tipo === tipo)?.label
+  ?? tipo.charAt(0) + tipo.slice(1).toLowerCase()
+);
+
+/**
+ * Empresas que podem ter gente em equipe: de mão de obra, terceiras e as ainda sem
+ * classe (para nenhuma sumir antes de ser classificada). Uma empresa só de
+ * fornecimento continua na lista quando já tem colaborador vinculado a ela,
+ * porque esconder essa empresa esconderia quem já trabalha na equipe.
+ */
+export const companiesForTeams = (empresas: Empresa[], funcionarios: Funcionario[] = []): Empresa[] => {
+  const comColaborador = new Set(funcionarios.map(item => item.empresaId).filter(Boolean));
+  return empresas.filter(item => {
+    const tipos = item.tipos ?? [];
+    return tipos.length === 0
+      || tipos.includes('EMPRESA')
+      || tipos.includes('TERCEIRA')
+      || comColaborador.has(item.id);
+  });
+};
 
 export const registrySummary = ({
   empresas,
