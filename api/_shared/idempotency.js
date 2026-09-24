@@ -25,9 +25,15 @@ export const buildIdempotencyDocumentId = (context, method, key) => stableHash([
   key,
 ].join('|')).slice(0, 48);
 
+// A API saiu de /.netlify/functions/ para /api/. O hash continua usando o
+// caminho antigo para que uma repetição de envio feita antes da troca (fila
+// offline, aba aberta) ainda bata com o registro de idempotência já gravado.
+const canonicalRequestPath = requestPath => cleanString(requestPath || '', 240)
+  .replace(/^\/api\//, '/.netlify/functions/');
+
 export const buildRequestHash = event => stableHash([
   cleanString(event?.httpMethod || 'GET', 12).toUpperCase(),
-  cleanString(event?.path || '', 240),
+  canonicalRequestPath(event?.path),
   event?.body || '',
 ].join('|'));
 

@@ -4,12 +4,12 @@ import {
   createApiRequestContext,
   sanitizeLogDetails,
   withApiTelemetry,
-} from '../netlify/functions/_shared/observability.js';
+} from '../api/_shared/observability.js';
 
 test('observabilidade preserva request id existente e anonimiza origem por hash', () => {
   const context = createApiRequestContext({
     httpMethod: 'post',
-    path: '/.netlify/functions/master-data',
+    path: '/api/master-data',
     headers: {
       'x-request-id': 'req-operacional-123',
       'x-forwarded-for': '192.168.0.10, proxy',
@@ -46,7 +46,7 @@ test('telemetria injeta X-Request-Id na resposta da function', async () => {
   try {
     const response = await withApiTelemetry({
       httpMethod: 'GET',
-      path: '/.netlify/functions/master-data',
+      path: '/api/master-data',
       headers: { 'x-request-id': 'req-telemetria-1' },
     }, 'master-data', async () => ({
       statusCode: 200,

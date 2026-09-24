@@ -1,9 +1,6 @@
 // Traduz entre o formato de rota do Express e o formato de evento que os
-// handlers do Netlify Functions esperam. Os handlers em netlify/functions/
-// não mudam uma linha: continuam sendo (event) => {statusCode, headers, body},
-// o mesmo contrato usado em produção até aqui. Isto existe só para poder
-// hospedar as mesmas funções num serviço Node comum (Render), sem depender
-// do runtime da Netlify.
+// handlers em api/ esperam: (event) => {statusCode, headers, body}. Assim os
+// handlers rodam num serviço Node comum (Render) sem runtime próprio.
 export const toExpressHandler = handler => async (req, res) => {
   const queryStringParameters = {};
   for (const [key, value] of Object.entries(req.query || {})) {

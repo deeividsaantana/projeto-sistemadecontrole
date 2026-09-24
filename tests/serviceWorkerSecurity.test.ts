@@ -13,7 +13,9 @@ test('service worker nao cacheia HTML ou dados operacionais como shell estatico'
 });
 
 test('service worker exclui Functions e respostas no-store do cache runtime', () => {
-  assert.match(serviceWorker, /url\.pathname\.startsWith\('\/\.netlify\/functions\/'\)/);
+  assert.match(serviceWorker, /pathname\.startsWith\('\/api\/'\)/);
+  assert.match(serviceWorker, /pathname\.startsWith\('\/\.netlify\/functions\/'\)/);
+  assert.match(serviceWorker, /isApiPath\(url\.pathname\)\) return;/);
   assert.match(serviceWorker, /response\.headers\.get\('Cache-Control'\) !== 'no-store'/);
 });
 

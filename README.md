@@ -30,7 +30,7 @@ npm run build
 
 ## Publicação
 
-O deploy de produção roda no Render (`server/index.js` serve o build do frontend e as mesmas funções em `netlify/functions/`, adaptadas para Express).
+O deploy de produção roda no Render (`server/index.js` serve o build do frontend e a API de `api/` em `/api/...`, adaptada para Express).
 
 Consulte `docs/INSTRUCOES_CONTAS_FIREBASE.md` e `docs/ARQUITETURA_MIGRACAO_SUPABASE.md`.
 
@@ -40,7 +40,7 @@ Consulte `docs/INSTRUCOES_CONTAS_FIREBASE.md` e `docs/ARQUITETURA_MIGRACAO_SUPAB
 - `src/next/`: novo frontend em construção, servido por `next.html`.
 - `preview/`: harness de telas sem login, usado pelos testes E2E.
 - `server/`: servidor Express do Render.
-- `netlify/functions/`: funções HTTP compartilhadas pelo servidor.
+- `api/`: handlers HTTP da API (links públicos, presença, cadastros), servidos em `/api/`.
 - `functions/`: Cloud Functions do Firebase.
 - `supabase/migrations/`: migrations versionadas do PostgreSQL.
 - `tests/`: contratos operacionais (`npm test`) e E2E (`npm run e2e`).

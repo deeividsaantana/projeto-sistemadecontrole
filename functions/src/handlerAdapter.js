@@ -1,6 +1,5 @@
-// Mesma tradução usada em server/netlifyAdapter.js (hospedagem no Render):
-// Express <-> evento do Netlify Functions. Os handlers em netlify/functions/
-// continuam com o contrato original, (event) => {statusCode, headers, body}.
+// Mesma tradução usada em server/handlerAdapter.js (hospedagem no Render):
+// Express <-> evento dos handlers em api/, (event) => {statusCode, headers, body}.
 export const toExpressHandler = handler => async (req, res) => {
   const queryStringParameters = {};
   for (const [key, value] of Object.entries(req.query || {})) {

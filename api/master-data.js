@@ -120,7 +120,7 @@ const gatewayStatus = async context => jsonResponse(200, {
   success: true,
   data: {
     configured: true,
-    mode: 'firebase-auth-netlify-firestore',
+    mode: 'firebase-auth-api-firestore',
     organization: {
       id: context.organizationId,
       code: context.organization.code || context.organizationId.toUpperCase(),

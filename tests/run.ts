@@ -82,6 +82,7 @@ import './mandatoryFirebaseSync.test';
 import './firebasePrivateRouteBootstrap.test';
 import './apiSecurity.test';
 import './serviceWorkerSecurity.test';
+import './apiRoutes.test';
 import './observability.test';
 import './auditLog.test';
 import './idempotency.test';
