@@ -105,7 +105,7 @@ export default function Dashboard(props: DashboardProps) {
   ];
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6">
+    <div id="dashboard-tab" className="flex flex-col gap-6 p-4 sm:p-6">
       {/* PageHeader with primary action */}
       <PageHeader
         eyebrow="Painel de Controle"
