@@ -14,44 +14,37 @@ test('perfil administrador mantém acesso a todos os módulos atuais', () => {
 });
 
 test('perfis preservam restrições e não expõem módulos removidos', () => {
-  assert.equal(ROLE_ACCESS.gestor.includes('configuracoes'), false);
-  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'consulta-geral', 'periodo']);
-  // Pendências virou tela própria: é derivada dos registros, então gestão e
-  // operação enxergam a mesma lista; leitura continua sem ela.
-  assert.equal(ROLE_ACCESS.gestor.includes('pendencias'), true);
-  assert.equal(ROLE_ACCESS.leitura.includes('pendencias'), false);
-  // Auditoria virou tela própria, exclusiva do admin.
-  assert.equal(ROLE_ACCESS.gestor.includes('auditoria'), false);
-  assert.equal(ROLE_ACCESS.operador.includes('auditoria'), false);
-  assert.equal(ROLE_ACCESS.leitura.includes('auditoria'), false);
-  assert.equal(ROLE_ACCESS.admin.includes('auditoria'), true);
-  // Permissões também é leitura de regra: só o admin precisa dela.
-  assert.equal(ROLE_ACCESS.admin.includes('permissoes'), true);
-  assert.equal(ROLE_ACCESS.gestor.includes('permissoes'), false);
+  // Leitura tem acesso apenas a dashboard e relatorios (módulos primários)
+  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'relatorios']);
+
+  // Administração é exclusiva do admin
   assert.equal(ROLE_ACCESS.admin.includes('administracao'), true);
   assert.equal(ROLE_ACCESS.gestor.includes('administracao'), false);
+  assert.equal(ROLE_ACCESS.operador.includes('administracao'), false);
+  assert.equal(ROLE_ACCESS.leitura.includes('administracao'), false);
+
+  // Módulos não-primários não aparecem em ROLE_ACCESS nem em ALL_NAVIGATION_ITEMS
+  assert.equal(ROLE_ACCESS.admin.includes('configuracoes'), false);
+  assert.equal(ROLE_ACCESS.admin.includes('usuarios'), false);
+  assert.equal(ROLE_ACCESS.admin.includes('reports'), false);
   assert.equal(ROLE_ACCESS.admin.includes('inteligencia'), false);
   assert.equal(ROLE_ACCESS.admin.includes('controle-presenca'), false);
   assert.equal(ROLE_ACCESS.admin.includes('partes-diarias'), false);
-  // Usuários agora é uma seção interna de Apoio e Configuração, não um item
-  // de navegação próprio — só quem acessa "configuracoes" chega lá.
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'usuarios'), false);
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'configuracoes'), false);
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'reports'), false);
-  // Central Operacional é tela de campo: operação usa, leitura não altera nada.
+
+  // Central Operacional é tela de campo: operação usa, leitura não
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'central-operacional'), true);
   assert.equal(ROLE_ACCESS.operador.includes('central-operacional'), true);
   assert.equal(ROLE_ACCESS.leitura.includes('central-operacional'), false);
-  // Frota (cadastro + ficha) fica no grupo Equipamentos e é operacional.
-  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'frota'), true);
-  assert.equal(ROLE_ACCESS.operador.includes('frota'), true);
-  assert.equal(ROLE_ACCESS.leitura.includes('frota'), false);
+
+  // Módulos primários estão em ALL_NAVIGATION_ITEMS
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'colaboradores'), true);
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'lancamentos'), true);
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'controle-equipamentos'), true);
   assert.equal(ROLE_ACCESS.operador.includes('colaboradores'), true);
-  assert.equal(ROLE_ACCESS.operador.includes('pendencias'), true);
   assert.equal(ROLE_ACCESS.operador.includes('lancamentos'), true);
-  assert.equal(ROLE_ACCESS.operador.includes('configuracoes'), false);
-  assert.equal(ROLE_ACCESS.operador.includes('partes-diarias'), false);
 });
 
 test('claim desconhecida aplica privilégio mínimo', () => {
