@@ -208,46 +208,15 @@ export const SIDEBAR_NAVIGATION_GROUPS = NAVIGATION_GROUPS
   }))
   .filter(group => group.items.length > 0);
 
-export const ALL_NAVIGATION_ITEMS = NAVIGATION_GROUPS
+export const ALL_NAVIGATION_ITEMS = SIDEBAR_NAVIGATION_GROUPS
   .map(group => group.items as readonly NavigationItem[])
   .reduce<NavigationItem[]>((items, groupItems) => items.concat(groupItems), []);
 
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
-  admin: ALL_NAVIGATION_ITEMS.map(item => item.id),
-  gestor: ALL_NAVIGATION_ITEMS.map(item => item.id).filter(id => !['auditoria', 'permissoes', 'administracao'].includes(id)),
-  operador: [
-    'dashboard',
-    'consulta-geral',
-    'pendencias',
-    'notificacoes',
-    'assistente',
-    'indicadores',
-    'modo-campo',
-    'central-operacional',
-    'frentes',
-    'producao',
-    'planejamento',
-    'cronograma',
-    'diario-obra',
-    'fvs',
-    'inspecoes',
-    'ocorrencias',
-    'frota',
-    'controle-equipamentos',
-    'manutencao',
-    'horas-paradas',
-    'checklist',
-    'lancamentos',
-    'tickets-jazida',
-    'estacas',
-    'presenca',
-    'colaboradores',
-    'equipes',
-    'apontamentos',
-    'dds-treinamentos',
-    'materiais',
-  ],
-  leitura: ['dashboard', 'consulta-geral', 'periodo'],
+  admin: [...PRIMARY_MODULE_IDS],
+  gestor: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao'),
+  operador: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao'),
+  leitura: ['dashboard', 'relatorios'],
 };
 
 export const normalizeUserRole = (value: unknown): UserRole => {
