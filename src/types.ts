@@ -550,6 +550,10 @@ export interface Material {
   ativo: boolean;
   criadoEm: string;
   atualizadoEm: string;
+  /** Diâmetro nominal, em mm — usado por materiais tubulares (ex: Ø800). */
+  diametroMm?: number;
+  /** Comprimento da peça, em metros — usado por materiais em barra/tubo. */
+  comprimentoM?: number;
 }
 
 export type TipoMovimentoMaterial = 'Entrada' | 'Saída' | 'Transferência' | 'Ajuste';
