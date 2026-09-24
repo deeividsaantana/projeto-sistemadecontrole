@@ -559,6 +559,15 @@ export interface MovimentoMaterial {
   /** Sempre positiva, menos no ajuste, onde o sinal corrige o saldo. */
   quantidade: number;
   unidade: string;
+  /** Vínculo explícito com o ramo/trecho. Texto livre legado não vira vínculo automaticamente. */
+  etapaServicoId?: string;
+  etapaServicoNome?: string;
+  /** Apenas saídas de consumo compõem o indicador de utilização. */
+  finalidade?: 'Consumo';
+  /** Envio público aprovado que originou este movimento, quando aplicável. */
+  origemApontamentoId?: string;
+  /** Obra operacional informada na origem; migração SaaS exige mapeamento para project_id. */
+  obraId?: string;
   fornecedorId?: string;
   fornecedorNome?: string;
   notaFiscal?: string;

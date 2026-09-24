@@ -18,6 +18,7 @@ export const mergeImportedRecords = <T extends { id: string }>(
   current: T[],
   incoming: T[],
   getKey: (item: T) => string,
+  mergeExisting?: (saved: T, imported: T) => T,
 ): ImportMergeResult<T> => {
   let created = 0;
   let updated = 0;
@@ -39,11 +40,12 @@ export const mergeImportedRecords = <T extends { id: string }>(
       created += 1;
       return;
     }
-    if (comparableRecord(next[index]) === comparableRecord(item)) {
+    const candidate = mergeExisting ? mergeExisting(next[index], item) : item;
+    if (comparableRecord(next[index]) === comparableRecord(candidate)) {
       unchanged += 1;
       return;
     }
-    next[index] = { ...item, id: next[index].id };
+    next[index] = { ...candidate, id: next[index].id };
     updated += 1;
   });
 

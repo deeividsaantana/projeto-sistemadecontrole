@@ -908,7 +908,7 @@ export default function ControlePresencaTab({
   ];
 
   return (
-    <section ref={tabRef} id="presenca-tempo-real" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-[#14231e] lg:pb-8">
+    <section ref={tabRef} id="presenca-tab" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-[#14231e] lg:pb-8">
       {/* O cabeçalho antigo era um hero: logo repetido, foto de fundo e os sete
           filtros sempre abertos. Media 307px no desktop e 788px no celular —
           mais alto que a própria tela de 727px, ou seja, uma tela inteira de

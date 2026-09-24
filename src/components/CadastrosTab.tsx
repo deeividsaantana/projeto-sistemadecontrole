@@ -48,7 +48,7 @@ import {
   Upload,
   HardHat
 } from 'lucide-react';
-import { PageHeader } from '../shared/ui';
+import { FilterBar, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
 type SubTab = 'empresas' | 'fornecedores' | 'terceiras' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
@@ -73,19 +73,19 @@ interface CadastrosTabProps {
   onSaveEmpresa: (item: Empresa, isNew: boolean, onError?: (error: Error) => void) => void;
   onDeleteEmpresa: (id: string) => void;
   onSaveObra: (item: ObraLocal, isNew: boolean) => void;
-  onDeleteObra: (id: string) => void;
+  onDeleteObra: (id: string) => boolean | void;
   onSaveEquipamento: (item: Equipamento, isNew: boolean) => void;
   onDeleteEquipamento: (id: string) => void;
   onSaveFuncionario: (item: Funcionario, isNew: boolean) => void;
   onDeleteFuncionario: (id: string) => void;
   onSaveComboio: (item: Comboio, isNew: boolean) => void;
-  onDeleteComboio: (id: string) => void;
+  onDeleteComboio: (id: string) => boolean | void;
   onSaveTipoCombustivel: (item: TipoCombustivel, isNew: boolean) => void;
-  onDeleteTipoCombustivel: (id: string) => void;
+  onDeleteTipoCombustivel: (id: string) => boolean | void;
   onSaveProdutoLubrificacao: (item: ProdutoLubrificacao, isNew: boolean) => void;
-  onDeleteProdutoLubrificacao: (id: string) => void;
+  onDeleteProdutoLubrificacao: (id: string) => boolean | void;
   onSaveEtapaServico: (item: EtapaServico, isNew: boolean) => void;
-  onDeleteEtapaServico: (id: string) => void;
+  onDeleteEtapaServico: (id: string) => boolean | void;
   onImportCadastros: (target: SubTab, rows: Record<string, string>[]) => { success: boolean; message: string };
   onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
 }
@@ -145,6 +145,7 @@ export default function CadastrosTab({
 
   // Deletion confirmations
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const saveErrorRef = useRef(false);
@@ -460,6 +461,7 @@ export default function CadastrosTab({
 
   // 4. Delete Handler with safe prompt confirmation
   const handleDeleteTrigger = (id: string) => {
+    setDeleteError('');
     setDeleteConfirmId(id);
   };
 
@@ -467,16 +469,22 @@ export default function CadastrosTab({
     if (isDeleting) return;
     setIsDeleting(true);
     try {
+      let deleted: boolean | void;
       if (isEmpresaSubTab(subTab)) onDeleteEmpresa(id);
-      else if (subTab === 'obras') onDeleteObra(id);
+      else if (subTab === 'obras') deleted = onDeleteObra(id);
       else if (subTab === 'equipamentos' || subTab === 'veiculos') onDeleteEquipamento(id);
       else if (subTab === 'funcionarios') onDeleteFuncionario(id);
-      else if (subTab === 'comboios') onDeleteComboio(id);
-      else if (subTab === 'combustiveis') onDeleteTipoCombustivel(id);
-      else if (subTab === 'lubrificantes') onDeleteProdutoLubrificacao(id);
-      else if (subTab === 'etapas') onDeleteEtapaServico(id);
+      else if (subTab === 'comboios') deleted = onDeleteComboio(id);
+      else if (subTab === 'combustiveis') deleted = onDeleteTipoCombustivel(id);
+      else if (subTab === 'lubrificantes') deleted = onDeleteProdutoLubrificacao(id);
+      else if (subTab === 'etapas') deleted = onDeleteEtapaServico(id);
 
-      setDeleteConfirmId(null);
+      if (deleted === false) {
+        setDeleteError('Este cadastro possui lançamentos vinculados e não pode ser excluído.');
+      } else {
+        setDeleteError('');
+        setDeleteConfirmId(null);
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -544,6 +552,8 @@ export default function CadastrosTab({
                   : etapas.find(item => item.id === deleteConfirmId)
     : null;
   const deleteTargetName = deleteTarget && 'nome' in deleteTarget ? String(deleteTarget.nome || '') : deleteConfirmId || '';
+  const deactivationSupported = isEmpresaSubTab(subTab) || subTab === 'equipamentos' || subTab === 'veiculos' || subTab === 'funcionarios';
+  const equipmentDeactivation = subTab === 'equipamentos' || subTab === 'veiculos';
   const deleteTargetCode = deleteTarget && 'prefixo' in deleteTarget
     ? String(deleteTarget.prefixo || '')
     : deleteTarget && 'placa' in deleteTarget
@@ -804,12 +814,14 @@ export default function CadastrosTab({
       </div>
 
       {/* Main Filter Action Bar */}
-      <div className="bg-white border border-slate-200 p-3 rounded-lg space-y-2.5">
+      <FilterBar label="Filtros de cadastros" className="bg-white border border-slate-200 p-3 rounded-lg">
+        <div className="w-full space-y-2.5">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
             <input 
               type="text"
+              aria-label="Buscar cadastros"
               placeholder="Pesquisa rápida por qualquer termo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -934,7 +946,8 @@ export default function CadastrosTab({
             {currentFilteredCount} resultado{currentFilteredCount !== 1 ? 's' : ''}
           </div>
         )}
-      </div>
+        </div>
+      </FilterBar>
 
       {importFeedback && (
         <div className={`border rounded-lg p-3 text-xs font-bold flex items-start gap-2 ${importFeedback.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700' : 'bg-rose-500/10 border-rose-500/20 text-rose-700'}`}>
@@ -1714,10 +1727,13 @@ export default function CadastrosTab({
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h3 id="cadastro-delete-title" className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">Confirmar inativacao?</h3>
+              <h3 id="cadastro-delete-title" className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">{deactivationSupported ? 'Confirmar inativacao?' : 'Confirmar exclusão?'}</h3>
               <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                O registro continuará no histórico e nos lançamentos existentes. {subTab === 'equipamentos' || subTab === 'veiculos' ? 'A frota será marcada como desmobilizada.' : 'O cadastro será marcado como inativo.'}
+                {deactivationSupported
+                  ? <>O registro continuará no histórico e nos lançamentos existentes. {equipmentDeactivation || subTab === 'funcionarios' ? 'Será marcado como desmobilizado.' : 'Será marcado como inativo.'}</>
+                  : 'Este cadastro será removido da lista. Confira os vínculos antes de continuar.'}
               </p>
+              {deleteError && <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{deleteError}</p>}
               <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                 <span className="block text-[9px] font-black uppercase tracking-wider text-slate-500">Registro selecionado</span>
                 <strong className="mt-1 block truncate text-sm text-slate-800">{deleteTargetName || 'Registro sem nome'}</strong>
@@ -1730,10 +1746,10 @@ export default function CadastrosTab({
                 disabled={isDeleting}
                 className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isDeleting ? 'PROCESSANDO...' : subTab === 'equipamentos' || subTab === 'veiculos' ? 'DESMOBILIZAR' : 'INATIVAR'}
+                {isDeleting ? 'PROCESSANDO...' : !deactivationSupported ? 'EXCLUIR' : equipmentDeactivation || subTab === 'funcionarios' ? 'DESMOBILIZAR' : 'INATIVAR'}
               </button>
               <button 
-                onClick={() => setDeleteConfirmId(null)}
+                onClick={() => { setDeleteError(''); setDeleteConfirmId(null); }}
                 disabled={isDeleting}
                 className="flex-1 py-2 bg-white hover:bg-slate-700 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >

@@ -32,21 +32,32 @@ export interface PosicaoEstoque {
   ultimoMovimento?: string;
 }
 
-/** Posição de estoque de cada material, para a tela e para os alertas. */
-export const posicaoEstoque = (materiais: Material[], movimentos: MovimentoMaterial[], ate?: string): PosicaoEstoque[] =>
-  materiais.map(material => {
-    const doMaterial = movimentos.filter(item => item.materialId === material.id && (!ate || item.data <= ate));
-    const saldo = Number(doMaterial.reduce((total, item) => total + efeitoNoSaldo(item), 0).toFixed(3));
+/** Um único percurso dos movimentos alimenta todos os saldos, inclusive listas extensas. */
+export const posicaoEstoque = (materiais: Material[], movimentos: MovimentoMaterial[], ate?: string): PosicaoEstoque[] => {
+  const totals = new Map<string, { saldo: number; entradas: number; saidas: number; ultimoMovimento?: string }>();
+  for (const item of movimentos) {
+    if (ate && item.data > ate) continue;
+    const current = totals.get(item.materialId) ?? { saldo: 0, entradas: 0, saidas: 0 };
+    current.saldo += efeitoNoSaldo(item);
+    if (item.tipo === 'Entrada') current.entradas += Math.abs(Number(item.quantidade) || 0);
+    if (item.tipo === 'Saída') current.saidas += Math.abs(Number(item.quantidade) || 0);
+    if (!current.ultimoMovimento || item.data > current.ultimoMovimento) current.ultimoMovimento = item.data;
+    totals.set(item.materialId, current);
+  }
+  return materiais.map(material => {
+    const total = totals.get(material.id);
+    const saldo = Number((total?.saldo ?? 0).toFixed(3));
     const minimo = Number(material.estoqueMinimo || 0);
     return {
       material,
       saldo,
-      entradas: Number(doMaterial.filter(item => item.tipo === 'Entrada').reduce((total, item) => total + Math.abs(Number(item.quantidade) || 0), 0).toFixed(3)),
-      saidas: Number(doMaterial.filter(item => item.tipo === 'Saída').reduce((total, item) => total + Math.abs(Number(item.quantidade) || 0), 0).toFixed(3)),
+      entradas: Number((total?.entradas ?? 0).toFixed(3)),
+      saidas: Number((total?.saidas ?? 0).toFixed(3)),
       abaixoDoMinimo: minimo > 0 && saldo < minimo,
-      ultimoMovimento: doMaterial.map(item => item.data).sort().at(-1),
+      ultimoMovimento: total?.ultimoMovimento,
     };
   }).sort((a, b) => String(a.material.descricao || '').localeCompare(String(b.material.descricao || ''), 'pt-BR'));
+};
 
 /** Recusa a saída que deixaria o saldo negativo, sem travar entrada e ajuste. */
 export const validarMovimento = (

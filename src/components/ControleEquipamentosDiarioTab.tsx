@@ -453,7 +453,7 @@ export default function ControleEquipamentosDiarioTab({
     }
   };
   return (
-    <main ref={pageRef} className="fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
+    <main id="controle-equipamentos-tab" ref={pageRef} className="fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
       <div data-fleet-enter>
         <PageHeader
           title="Controle Operacional de Frota"

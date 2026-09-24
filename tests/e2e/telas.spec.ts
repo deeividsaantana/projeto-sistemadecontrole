@@ -73,6 +73,54 @@ test('shell viewport usa largura total sem limite', async ({ page }) => {
   await expect(viewport).toHaveCSS('max-width', 'none');
 });
 
+test('cadastros oferece busca nomeada no grupo de filtros', async ({ page }) => {
+  await page.goto('/?screen=cadastros');
+  const filters = page.getByRole('region', { name: 'Filtros de cadastros' });
+  await expect(filters.getByRole('textbox', { name: 'Buscar cadastros' })).toBeVisible();
+});
+
+test('cadastros descreve desmobilização sem prometer exclusão', async ({ page }) => {
+  await page.goto('/?screen=cadastros');
+  await page.getByRole('button', { name: 'Excluir' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Confirmar inativacao?' });
+  await expect(dialog).toContainText('desmobilizado');
+  await expect(dialog.getByRole('button', { name: 'DESMOBILIZAR' })).toBeVisible();
+});
+
+test('cadastros mantém o diálogo aberto ao bloquear exclusão vinculada', async ({ page }) => {
+  await page.goto('/?screen=cadastros&blockedRegistry=1');
+  await page.getByRole('button', { name: /^Comboios \(/ }).click();
+  await page.getByRole('button', { name: 'Excluir' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Confirmar exclusão?' });
+  await dialog.getByRole('button', { name: 'EXCLUIR' }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('alert')).toContainText('lançamentos vinculados');
+});
+
+test('materiais oferece busca no grupo de filtros', async ({ page }) => {
+  await page.goto('/?screen=materiais');
+  await page.getByRole('button', { name: 'Estoque', exact: true }).click();
+  const filters = page.getByRole('region', { name: 'Filtros de materiais' });
+  await expect(filters.getByRole('textbox', { name: 'Buscar material' })).toBeVisible();
+});
+
+test('estoque de materiais ordena saldo com estado acessível', async ({ page }) => {
+  await page.goto('/?screen=materiais');
+  await page.getByRole('button', { name: 'Estoque', exact: true }).click();
+  const saldo = page.getByRole('columnheader', { name: /Saldo/ });
+  const values = async () => (await page.getByRole('table', { name: 'Posição de estoque por material' })
+    .locator('tbody tr td:nth-child(6)').allTextContents())
+    .map(text => Number(text.match(/-?[\d.,]+/)?.[0].replace(/\./g, '').replace(',', '.') ?? 'NaN'));
+  await saldo.getByRole('button').click();
+  await expect(saldo).toHaveAttribute('aria-sort', 'ascending');
+  const ascending = await values();
+  expect(ascending).toEqual([...ascending].sort((a, b) => a - b));
+  await saldo.getByRole('button').click();
+  await expect(saldo).toHaveAttribute('aria-sort', 'descending');
+  const descending = await values();
+  expect(descending).toEqual([...descending].sort((a, b) => b - a));
+});
+
 test('painel mostra cada indicador executivo uma única vez', async ({ page }) => {
   await page.goto('/?screen=painel');
 
