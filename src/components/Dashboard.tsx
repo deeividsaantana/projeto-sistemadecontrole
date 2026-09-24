@@ -48,6 +48,10 @@ export default function Dashboard(props: DashboardProps) {
   const view = useMemo(() => buildDashboardGeneralViewModel({ obraId, from: periodo.from, to: periodo.to }, props),
     [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.ordensServico]);
   const display = (value: number | null, unit = '') => value === null ? 'Sem registro' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)}${unit ? ` ${unit}` : ''}`;
+  const getTone = (value: string | number | null, defaultTone: 'green' | 'blue' | 'orange' | 'slate'): 'green' | 'blue' | 'orange' | 'slate' => {
+    if (value === 'Sem posição' || value === 'Sem registro') return 'slate';
+    return defaultTone;
+  };
 
   useGSAP(() => {
     if (!dashboardRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -73,11 +77,11 @@ export default function Dashboard(props: DashboardProps) {
       </div>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Indicadores principais">
-        <ExecutiveCard label="Frota em operação" value={view.fleet.confirmed ? view.fleet.operating : 'Sem posição'} detail={`${view.fleet.confirmed} posições confirmadas`} tone="green" icon={Truck} onClick={() => props.onNavigate('controle-equipamentos')} />
-        <ExecutiveCard label="Disponibilidade" value={view.fleet.availability === null ? 'Sem posição' : `${display(view.fleet.availability)}%`} detail="sobre posições confirmadas" tone="blue" icon={Activity} onClick={() => props.onNavigate('controle-equipamentos')} />
-        <ExecutiveCard label="Produção" value={display(view.production.value, view.production.unit)} detail="lançamentos em m³" tone="slate" icon={Activity} onClick={() => props.onNavigate('Produção')} />
-        <ExecutiveCard label="Presenças" value={display(view.presence.value)} detail="presenças registradas" tone="slate" icon={Users} onClick={() => props.onNavigate('Presença')} />
-        <ExecutiveCard label="OS abertas" value={display(view.maintenance.value)} detail="pendências da frota" tone="orange" icon={ClipboardList} onClick={() => props.onNavigate('Manutenção')} />
+        <ExecutiveCard label="Frota em operação" value={view.fleet.confirmed ? view.fleet.operating : 'Sem posição'} detail={`${view.fleet.confirmed} posições confirmadas`} tone={getTone(view.fleet.confirmed ? view.fleet.operating : 'Sem posição', 'green')} icon={Truck} onClick={() => props.onNavigate('controle-equipamentos')} />
+        <ExecutiveCard label="Disponibilidade" value={view.fleet.availability === null ? 'Sem posição' : `${display(view.fleet.availability)}%`} detail="sobre posições confirmadas" tone={getTone(view.fleet.availability === null ? 'Sem posição' : `${display(view.fleet.availability)}%`, 'blue')} icon={Activity} onClick={() => props.onNavigate('controle-equipamentos')} />
+        <ExecutiveCard label="Produção" value={display(view.production.value, view.production.unit)} detail="lançamentos em m³" tone={getTone(display(view.production.value, view.production.unit), 'slate')} icon={Activity} onClick={() => props.onNavigate('Produção')} />
+        <ExecutiveCard label="Presenças" value={display(view.presence.value)} detail="presenças registradas" tone={getTone(display(view.presence.value), 'slate')} icon={Users} onClick={() => props.onNavigate('Presença')} />
+        <ExecutiveCard label="OS abertas" value={display(view.maintenance.value)} detail="pendências da frota" tone={getTone(display(view.maintenance.value), 'orange')} icon={ClipboardList} onClick={() => props.onNavigate('Manutenção')} />
       </section>
 
       <TeamActivity view={view} onNavigate={props.onNavigate} />
