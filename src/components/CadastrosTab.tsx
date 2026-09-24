@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
@@ -52,6 +53,7 @@ import {
 } from 'lucide-react';
 import { FilterBar, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
+import { abaSugerida, abaVisivel, type AbaPlanilha } from '../utils/planilhaAbas';
 import CadastroCategoryPicker from './cadastros/CadastroCategoryPicker';
 import './cadastros/Cadastros.css';
 import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
@@ -174,6 +176,7 @@ export default function CadastrosTab({
   const saveErrorRef = useRef(false);
   const [importFeedback, setImportFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [pendingImport, setPendingImport] = useState<{ fileName: string; rows: Record<string, string>[] } | null>(null);
+  const [pendingSheets, setPendingSheets] = useState<{ fileName: string; abas: AbaPlanilha[]; sugerida: string | null; ocultas: number } | null>(null);
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
 
   // Field validation warnings
@@ -686,20 +689,24 @@ export default function CadastrosTab({
     }).filter(row => Object.values(row).some(Boolean));
   };
 
-  const parseWorkbookFile = async (file: File): Promise<Record<string, string>[]> => {
+  const parseWorkbookFile = async (file: File): Promise<{ abas: AbaPlanilha[]; ocultas: number }> => {
     const lowerName = file.name.toLowerCase();
     if (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv')) {
       if (file.size === 0) throw new Error('O arquivo está vazio.');
       if (file.size > 10 * 1024 * 1024) throw new Error('O arquivo CSV/TSV ultrapassa o limite de 10 MB.');
       const text = await file.text();
-      return lowerName.endsWith('.tsv')
+      const linhas = lowerName.endsWith('.tsv')
         ? parseCsvText(text.replace(/\t/g, ';'))
         : parseCsvText(text);
+      return { abas: [{ nome: file.name, linhas }], ocultas: 0 };
     }
 
     const workbook = await loadValidatedWorkbook(file);
-    const rows: Record<string, string>[] = [];
-    workbook.worksheets.forEach(worksheet => {
+    const abas: AbaPlanilha[] = [];
+    // Abas ocultas são resumo, detalhe ou apoio da planilha, nunca cadastro.
+    const visiveis = workbook.worksheets.filter(worksheet => abaVisivel(worksheet.state));
+    visiveis.forEach(worksheet => {
+      const rows: Record<string, string>[] = [];
       const headerRowNumber = Math.max(1, Array.from({ length: Math.min(10, worksheet.rowCount) }, (_, index) => index + 1)
         .find(rowNumber => {
           let filled = 0;
@@ -722,8 +729,9 @@ export default function CadastrosTab({
         });
         if (Object.values(record).some(Boolean)) rows.push(record);
       });
+      abas.push({ nome: worksheet.name, linhas: rows });
     });
-    return rows;
+    return { abas, ocultas: workbook.worksheets.length - visiveis.length };
   };
 
   const handleImportSpreadsheet = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -731,18 +739,36 @@ export default function CadastrosTab({
     if (!file) return;
     try {
       setImportFeedback(null);
-      const rows = await parseWorkbookFile(file);
-      if (rows.length === 0) {
-        setImportFeedback({ type: 'error', message: 'A planilha não possui linhas para importar.' });
+      const { abas, ocultas } = await parseWorkbookFile(file);
+      const comLinhas = abas.filter(aba => aba.linhas.length > 0);
+      if (comLinhas.length === 0) {
+        setImportFeedback({ type: 'error', message: ocultas > 0 && abas.length === 0
+          ? 'A planilha só tem abas ocultas. Reexiba a aba do cadastro no Excel e importe de novo.'
+          : 'A planilha não possui linhas para importar.' });
         return;
       }
-      setPendingImport({ fileName: file.name, rows });
+      if (comLinhas.length === 1) {
+        setPendingImport({ fileName: file.name, rows: comLinhas[0].linhas });
+        return;
+      }
+      setPendingSheets({
+        fileName: file.name,
+        abas: comLinhas,
+        sugerida: abaSugerida(comLinhas, [categoriaAtual.label, subTab]),
+        ocultas,
+      });
     } catch (error: unknown) {
       console.error('Erro ao importar planilha de cadastros:', error);
       setImportFeedback({ type: 'error', message: error instanceof Error && error.message ? error.message : 'Não foi possível ler a planilha. Use CSV, TSV, XLSX ou XLSM.' });
     } finally {
       if (importFileInputRef.current) importFileInputRef.current.value = '';
     }
+  };
+
+  const escolherAba = (aba: AbaPlanilha) => {
+    if (!pendingSheets) return;
+    setPendingImport({ fileName: `${pendingSheets.fileName} · ${aba.nome}`, rows: aba.linhas });
+    setPendingSheets(null);
   };
 
   const confirmSpreadsheetImport = () => {
@@ -840,6 +866,48 @@ export default function CadastrosTab({
       </div>
 
       <CadastroCategoryPicker value={subTab} getCount={getSubTabCount} onSelect={selecionarCategoria} />
+
+      {/* Portal: .erp-module usa container-type, que prende o fixed dentro do módulo. */}
+      {pendingSheets && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101a22]/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="cadastro-aba-titulo">
+          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6" data-testid="cadastro-escolher-aba">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#718087]">Importar {categoriaAtual.label.toLowerCase()}</p>
+                <h2 id="cadastro-aba-titulo" className="mt-1 text-xl font-black text-slate-900">Qual aba da planilha tem os cadastros?</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  {pendingSheets.fileName} tem {pendingSheets.abas.length} abas com linhas.
+                  {pendingSheets.ocultas > 0 && ` ${pendingSheets.ocultas} aba${pendingSheets.ocultas > 1 ? 's ocultas foram ignoradas' : ' oculta foi ignorada'}.`}
+                </p>
+              </div>
+              <button type="button" onClick={() => setPendingSheets(null)} aria-label="Cancelar importação" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60">
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="mt-5 grid gap-2">
+              {pendingSheets.abas.map(aba => {
+                const sugerida = aba.nome === pendingSheets.sugerida;
+                return (
+                  <button
+                    key={aba.nome}
+                    type="button"
+                    onClick={() => escolherAba(aba)}
+                    className={`flex min-h-14 w-full items-center gap-3 rounded-xl border px-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${sugerida ? 'border-[#176b4d] bg-emerald-50 hover:bg-emerald-100' : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50'}`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <strong className="block truncate text-base text-slate-900">{aba.nome}</strong>
+                      <span className="text-xs text-slate-500">{aba.linhas.length.toLocaleString('pt-BR')} linha{aba.linhas.length === 1 ? '' : 's'}</span>
+                    </span>
+                    {sugerida && <span className="shrink-0 rounded-full bg-[#176b4d] px-2.5 py-1 text-xs font-black text-white">Sugerida</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-4 text-xs text-slate-500">Depois de escolher, você confere a amostra antes de gravar.</p>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       <SpreadsheetImportReview
         open={Boolean(pendingImport)}
