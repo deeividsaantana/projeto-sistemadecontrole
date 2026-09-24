@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /private
+Disallow: /.well-known/
+
+Sitemap: /sitemap.xml
+
+# Crawl delay
+Crawl-delay: 1
