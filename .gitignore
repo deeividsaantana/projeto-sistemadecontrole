@@ -43,3 +43,11 @@ test-results/
 playwright-report/
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# Saídas locais de auditoria, prints e backups (nunca versionar dados reais)
+artifacts/
+tmp/
+.playwright-mcp/
+*.log
+RENEA/
+pnpm-lock.yaml
