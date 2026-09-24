@@ -91,6 +91,26 @@ Quando duas skills discordam, vale o padrão RENEA do Painel de Controle
 (seção 4). Nenhuma skill autoriza trocar a paleta, o `PageHeader` ou os
 cartões por outro estilo.
 
+### Travas automáticas
+
+Parte das regras acima é conferida pela máquina, e o PR não fica verde sem ela:
+
+| Trava | Onde roda | O que reprova |
+| --- | --- | --- |
+| `tests/padraoAbas.test.ts` | `npm run verify` e CI | Aba sem `PageHeader`, sem GSAP, sem `prefers-reduced-motion` ou com cor hex fora da paleta; aba do menu sem tela no `App.tsx`; aba principal sem permissão; tela `*Tab.tsx` que nenhum arquivo abre. |
+| `tests/repoHygiene.test.ts` | `npm run verify` e CI | Zip, log, `tmp/`, `artifacts/`, `netlify/` ou `.env` versionados; teste fora de `tests/run.ts`. |
+| `scripts/check-pr-checklist.mjs` | CI (`Checklist do PR`) | PR sem a seção `## Checklist` toda marcada; PR que cria ou altera tela sem a seção `### Se mexeu em tela` toda marcada. |
+| Hook de pre-push | Máquina de quem envia | Push com `npm run verify` falhando. |
+
+As abas antigas que ainda não cumprem o padrão estão listadas em `PENDENCIAS`, no
+`tests/padraoAbas.test.ts`. Essa lista só diminui: aba nova já nasce no
+padrão, e quando uma aba antiga é redesenhada o próprio teste pede para tirar
+o item da lista.
+
+A máquina não consegue julgar se a tela é fácil para uma pessoa cansada, se
+o visual está bonito ou se os prints batem. Isso continua sendo conferido na
+revisão, com o checklist marcado pela pessoa que abriu o PR.
+
 ## 5. Revisão
 
 1. Ler a descrição: o "Antes" e o "Depois" batem com o diff?

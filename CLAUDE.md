@@ -16,4 +16,5 @@ Leia antes de qualquer mudança:
 - Toda tela nova ou alterada responde à pergunta obrigatória: uma pessoa cansada e sem facilidade com aplicativos consegue usar sem travar? O visual precisa bater com o Painel de Controle, e as abas ocultas também são conferidas. Se não bater, não entra.
 - Mostre prints no celular (390 px) e no computador antes de dar uma tela por pronta.
 - Em trabalho de tela, use todas as skills de design de `.claude/skills/` (lista em `CONTRIBUTING.md`, seção 7). Quando elas discordam, vale o padrão do Painel.
+- As travas automáticas (`tests/padraoAbas.test.ts`, `tests/repoHygiene.test.ts` e o checklist do PR no CI) não podem ser afrouxadas; a lista `PENDENCIAS` só diminui.
 - Remova código morto em vez de comentar. Prove com busca de referências antes de apagar.
