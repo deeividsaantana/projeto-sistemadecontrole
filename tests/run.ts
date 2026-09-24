@@ -1,3 +1,4 @@
+import './dashboardLevels.test';
 import './critical-path.test';
 import './p0-03-listener-cleanup.test';
 import './p0-06-offline-recovery.test';
