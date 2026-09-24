@@ -1,5 +1,5 @@
 import gsap from 'gsap';
-import { Building2, Droplets, Fuel, HardHat, MapPin, Route, Truck, Users, type LucideIcon } from 'lucide-react';
+import { Building2, Construction, Droplets, Fuel, GitBranch, HardHat, MapPin, Package, Route, Truck, Users, type LucideIcon } from 'lucide-react';
 import {
   CADASTRO_GRUPOS,
   categoriasDoGrupo,
@@ -10,6 +10,9 @@ const ICONES: Record<CadastroCategoriaId, LucideIcon> = {
   funcionarios: Users,
   empresas: Building2,
   fornecedores: Building2,
+  'fornecedores-locacao': Construction,
+  'fornecedores-materiais': Package,
+  subfornecedores: GitBranch,
   terceiras: HardHat,
   equipamentos: Truck,
   veiculos: Truck,
@@ -40,7 +43,7 @@ export default function CadastroCategoryPicker({ value, getCount, onSelect }: Pr
   };
 
   return (
-    <nav aria-label="Tipos de cadastro" data-testid="cadastro-categorias" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <nav aria-label="Tipos de cadastro" data-testid="cadastro-categorias" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
       {CADASTRO_GRUPOS.map(grupo => (
         <section key={grupo.id} data-cadastros-reveal aria-labelledby={`cadastro-grupo-${grupo.id}`} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <h2 id={`cadastro-grupo-${grupo.id}`} className="px-1 pb-2 text-xs font-black uppercase tracking-wide text-[#718087]">{grupo.label}</h2>

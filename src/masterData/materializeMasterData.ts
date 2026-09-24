@@ -143,7 +143,7 @@ export const promoteMasterWorkbook = (
         .split(',')
         .map(item => item.trim().toUpperCase())
         .filter((item): item is NonNullable<Empresa['tipos']>[number] => (
-          ['EMPRESA', 'FORNECEDOR', 'GERADOR', 'ACEITANTE', 'TRANSPORTADORA'].includes(item)
+          ['EMPRESA', 'FORNECEDOR', 'GERADOR', 'ACEITANTE', 'TRANSPORTADORA', 'TERCEIRA', 'LOCACAO_EQUIPAMENTOS', 'MATERIAIS', 'SUBFORNECEDOR'].includes(item)
         ));
       const value: Empresa = {
         id: existing?.id || deterministicId('empresa', row),

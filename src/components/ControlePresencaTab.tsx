@@ -25,6 +25,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { companiesForTeams } from '../masterData/centralRegistry';
 import {
   applyTeamSyncPlan,
   buildTeamSyncPlan,
@@ -223,6 +224,9 @@ export default function ControlePresencaTab({
   const today = localToday();
   const safeFuncionarios = useMemo(() => (Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean), [funcionarios]);
   const safeEmpresas = useMemo(() => (Array.isArray(empresas) ? empresas : []).filter(Boolean), [empresas]);
+  // No editor de equipe só entram empresas que fornecem gente: locadoras e
+  // fornecedores de material ficam de fora, salvo se já tiverem colaborador.
+  const teamCompanies = useMemo(() => companiesForTeams(safeEmpresas, safeFuncionarios), [safeEmpresas, safeFuncionarios]);
   const safeObras = useMemo(() => (Array.isArray(obras) ? obras : []).filter(Boolean), [obras]);
   const safeGroups = useMemo(() => (Array.isArray(gruposEquipe) ? gruposEquipe : []).filter(Boolean).map(normalizeGroup), [gruposEquipe]);
   const safeRecords = useMemo(() => (Array.isArray(presencasLink) ? presencasLink : []).filter(Boolean).map(normalizeRecord), [presencasLink]);
@@ -1534,7 +1538,7 @@ export default function ControlePresencaTab({
               <label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Situação</span><select value={groupForm.status} onChange={event => setGroupForm(current => ({ ...current, status: event.target.value as GrupoEquipe['status'] }))} className={FIELD}><option value="ativo">Ativa</option><option value="inativo">Inativa</option></select></label>
               <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-[#d8d4c8] bg-white px-3 text-sm font-semibold text-[#26362f]"><input type="checkbox" checked={groupForm.linkAtivo} onChange={event => setGroupForm(current => ({ ...current, linkAtivo: event.target.checked }))} className="h-4 w-4 accent-emerald-700" /> Link de campo ativo</label>
             </div>
-            <div className="mt-6 border-t border-[#e4e0d6] pt-5"><div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
+            <div className="mt-6 border-t border-[#e4e0d6] pt-5"><div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{teamCompanies.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
               <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">{visibleEmployees.map(employee => { const checked = safeIds(groupForm.funcionarioIds).includes(employee.id); return <label key={employee.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked ? 'border-emerald-300 bg-emerald-50' : 'border-[#e1ddd2] bg-white hover:border-emerald-300'}`}><input type="checkbox" checked={checked} onChange={event => setGroupForm(current => ({ ...current, funcionarioIds: event.target.checked ? [...safeIds(current.funcionarioIds), employee.id] : safeIds(current.funcionarioIds).filter(id => id !== employee.id) }))} className="h-4 w-4 accent-emerald-700" /><div className="min-w-0"><p className="truncate text-sm font-bold text-[#101a22]">{employee.nome}</p><p className="truncate text-xs text-[#65716b]">{employee.cargo}{employee.matricula ? ` · ${employee.matricula}` : ''}</p></div></label>; })}</div>
             </div>
             {feedback && <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{feedback}</p>}

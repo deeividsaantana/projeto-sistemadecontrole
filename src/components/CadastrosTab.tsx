@@ -26,11 +26,17 @@ import CentralRegistryOverview from './CentralRegistryOverview';
 import OrganizationChart from './OrganizationChart';
 import { validateEquipmentMasterRecord } from '../utils/equipmentOperations';
 import {
+  EMPRESA_CLASSES,
+  empresaTipoLabel,
   isActiveCollaborator,
+  isEquipmentRentalSupplier,
+  isMaterialSupplier,
+  isSubSupplier,
   isSupplier,
   isThirdPartyContractor,
   isVehicle,
   nextMasterId,
+  type EmpresaTipo,
 } from '../masterData/centralRegistry';
 
 import {
@@ -48,15 +54,25 @@ import { FilterBar, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import CadastroCategoryPicker from './cadastros/CadastroCategoryPicker';
 import './cadastros/Cadastros.css';
-import { categoriaCadastro, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
+import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
 
 type SubTab = CadastroCategoriaId;
 
-// Empresas, Fornecedores e Terceiras compartilham o mesmo cadastro
-// (Empresa) e o mesmo formulário — só filtram por categoria. Centralizado
-// aqui para não repetir a mesma condição em cada trecho do arquivo que
-// precisa saber "isto é uma tela de empresa".
-const isEmpresaSubTab = (tab: SubTab) => tab === 'empresas' || tab === 'fornecedores' || tab === 'terceiras';
+// Empresas, Terceiras, Fornecedores e as subáreas de fornecedor compartilham
+// o mesmo cadastro (Empresa) e o mesmo formulário — só filtram por classe.
+const isEmpresaSubTab = (tab: SubTab) => isCategoriaEmpresa(tab);
+
+// Classes que a tela não mostra como opção, mas que vêm da planilha mestre e
+// precisam continuar no registro depois de uma edição.
+const CLASSES_PRESERVADAS: readonly EmpresaTipo[] = ['GERADOR', 'ACEITANTE', 'TRANSPORTADORA'];
+
+const empresaPorSubTab: Partial<Record<SubTab, (item: Empresa) => boolean>> = {
+  fornecedores: isSupplier,
+  'fornecedores-locacao': isEquipmentRentalSupplier,
+  'fornecedores-materiais': isMaterialSupplier,
+  subfornecedores: isSubSupplier,
+  terceiras: isThirdPartyContractor,
+};
 
 interface CadastrosTabProps {
   empresas: Empresa[];
@@ -169,6 +185,8 @@ export default function CadastrosTab({
   const [empCnpj, setEmpCnpj] = useState('');
   const [empTelefone, setEmpTelefone] = useState('');
   const [empResponsavel, setEmpResponsavel] = useState('');
+  const [empTipos, setEmpTipos] = useState<EmpresaTipo[]>([]);
+  const [empFornecedorPrincipalId, setEmpFornecedorPrincipalId] = useState('');
 
   // Obra Fields
   const [obrNome, setObrNome] = useState('');
@@ -235,7 +253,7 @@ export default function CadastrosTab({
   const resetFormState = () => {
     setEditingId(null);
     setValidationError('');
-    setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel('');
+    setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel(''); setEmpTipos([]); setEmpFornecedorPrincipalId('');
     setObrNome(''); setObrEndereco(''); setObrResponsavel(''); setObrStatus('Ativa');
     setEqPrefixo(''); setEqNome(''); setEqTipo(''); setEqMarca(''); setEqModelo(''); setEqAno(''); setEqSeriePlaca(''); setEqPlaca(''); setEqEmpresaId(''); setEqStatus('Ativo'); setEqLocalId(''); setEqObservacao(''); setEqFoto(''); setEqHorasDisponiveis(0); setEqHorasIndisponiveis(0);
     setEqCategoriaFrota('Equipamento'); setEqCodigoSge(''); setEqFamilia(''); setEqMobilizado(false); setEqMetaDisponibilidade(80); setEqDataMobilizacao(''); setEqDataDesmobilizacao(''); setEqOperadorResponsavelId(''); setEqCombustivelId(''); setEqCapacidadeTanque(0); setEqEquipamentoVinculadoId('');
@@ -255,6 +273,8 @@ export default function CadastrosTab({
       if (subTab === 'veiculos') setEqCategoriaFrota('Veículo');
     } else if (subTab === 'funcionarios') {
       if (empresas.length > 0) setFunEmpresaId(empresas[0].id);
+    } else if (isCategoriaEmpresa(subTab)) {
+      setEmpTipos([...TIPOS_POR_CATEGORIA_EMPRESA[subTab]]);
     }
     setIsFormOpen(true);
   };
@@ -267,6 +287,8 @@ export default function CadastrosTab({
     if (isEmpresaSubTab(subTab)) {
       const x = item as Empresa;
       setEmpNome(x.nome); setEmpCnpj(x.cnpj); setEmpTelefone(x.telefone); setEmpResponsavel(x.responsavel);
+      setEmpTipos((x.tipos || []).filter(tipo => !CLASSES_PRESERVADAS.includes(tipo)));
+      setEmpFornecedorPrincipalId(x.fornecedorPrincipalId || '');
     } else if (subTab === 'obras') {
       const x = item as ObraLocal;
       setObrNome(x.nome); setObrEndereco(x.endereco); setObrResponsavel(x.responsavel); setObrStatus(x.status);
@@ -303,7 +325,7 @@ export default function CadastrosTab({
           ? nextMasterId('EQ', equipamentos.map(item => item.id))
           : subTab === 'veiculos'
             ? nextMasterId('VEI', equipamentos.map(item => item.id))
-            : subTab === 'fornecedores'
+            : subTab === 'fornecedores' || subTab === 'fornecedores-locacao' || subTab === 'fornecedores-materiais' || subTab === 'subfornecedores'
               ? nextMasterId('FOR', empresas.map(item => item.id))
               : subTab === 'terceiras'
                 ? nextMasterId('TER', empresas.map(item => item.id))
@@ -323,20 +345,28 @@ export default function CadastrosTab({
         setValidationError('Nome da empresa/fornecedor é obrigatório!');
         return;
       }
+      if (empTipos.length === 0) {
+        setValidationError('Marque pelo menos uma classe para a empresa.');
+        return;
+      }
       const previous = empresas.find(item => item.id === currentId);
+      const subfornecedor = empTipos.includes('SUBFORNECEDOR');
       onSaveEmpresa({ // error callback parameter to handle cloud save failures
         id: currentId,
         nome: empNome.trim(),
         cnpj: empCnpj.trim(),
         telefone: empTelefone.trim(),
         responsavel: empResponsavel.trim(),
-        // Cada categoria só acrescenta ao conjunto existente, nunca troca —
-        // por isso uma empresa criada como fornecedora e depois editada pela
-        // aba Terceiras acumula os dois tipos, em vez de perder o primeiro.
+        // As classes vêm das opções marcadas no formulário, que abre com as
+        // classes atuais do registro: editar pela aba Terceiras não apaga a
+        // classe Fornecedor, e desmarcar é a forma de corrigir uma empresa
+        // classificada errado. Classes que a tela não mostra são mantidas.
         tipos: Array.from(new Set([
-          ...(previous?.tipos || []),
-          subTab === 'fornecedores' ? 'FORNECEDOR' as const : subTab === 'terceiras' ? 'TERCEIRA' as const : 'EMPRESA' as const,
+          ...(previous?.tipos || []).filter(tipo => CLASSES_PRESERVADAS.includes(tipo)),
+          ...empTipos,
+          ...(empTipos.some(tipo => tipo === 'LOCACAO_EQUIPAMENTOS' || tipo === 'MATERIAIS' || tipo === 'SUBFORNECEDOR') ? ['FORNECEDOR' as const] : []),
         ])),
+        fornecedorPrincipalId: subfornecedor && empFornecedorPrincipalId ? empFornecedorPrincipalId : undefined,
         status: previous?.status || 'ATIVO',
         criadoEm: previous?.criadoEm,
       }, isNew, onError);
@@ -501,13 +531,9 @@ export default function CadastrosTab({
   const q = searchQuery.toLowerCase().trim();
 
   const filteredEmpresas = empresas.filter(x => x.nome.toLowerCase().includes(q) || x.cnpj.includes(q) || x.responsavel.toLowerCase().includes(q));
-  const filteredFornecedores = filteredEmpresas.filter(isSupplier);
-  const filteredTerceiras = filteredEmpresas.filter(isThirdPartyContractor);
-  const displayedEmpresas = subTab === 'fornecedores'
-    ? filteredFornecedores
-    : subTab === 'terceiras'
-      ? filteredTerceiras
-      : filteredEmpresas;
+  const filtroEmpresa = empresaPorSubTab[subTab];
+  const displayedEmpresas = filtroEmpresa ? filteredEmpresas.filter(filtroEmpresa) : filteredEmpresas;
+  const fornecedoresPrincipais = empresas.filter(item => isSupplier(item) && !isSubSupplier(item) && item.id !== editingId);
   const equipamentoTipos = Array.from(new Set(equipamentos.map(x => x.tipo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const funcionarioCargos = Array.from(new Set(funcionarios.map(x => x.cargo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
@@ -581,9 +607,7 @@ export default function CadastrosTab({
 
   const hasAdvancedFilters = filterStatus !== 'todos' || filterEmpresaId !== 'todos' || filterObraId !== 'todos' || filterAtivo !== 'todos' || filterTipoEquipamento !== 'todos' || filterCargo !== 'todos' || searchQuery !== '';
 
-  const currentFilteredCount = subTab === 'empresas' ? filteredEmpresas.length
-    : subTab === 'fornecedores' ? filteredFornecedores.length
-    : subTab === 'terceiras' ? filteredTerceiras.length
+  const currentFilteredCount = isEmpresaSubTab(subTab) ? displayedEmpresas.length
     : subTab === 'obras' ? filteredObras.length
     : subTab === 'equipamentos' ? filteredEquipamentos.filter(item => !isVehicle(item)).length
     : subTab === 'veiculos' ? filteredVeiculos.length
@@ -595,9 +619,10 @@ export default function CadastrosTab({
 
   // Get count of records
   const getSubTabCount = (tab: SubTab) => {
-    if (tab === 'empresas') return empresas.length;
-    if (tab === 'fornecedores') return empresas.filter(isSupplier).length;
-    if (tab === 'terceiras') return empresas.filter(isThirdPartyContractor).length;
+    if (isEmpresaSubTab(tab)) {
+      const filtro = empresaPorSubTab[tab];
+      return filtro ? empresas.filter(filtro).length : empresas.length;
+    }
     if (tab === 'obras') return obras.length;
     if (tab === 'equipamentos') return equipamentos.filter(item => !isVehicle(item)).length;
     if (tab === 'veiculos') return equipamentos.filter(isVehicle).length;
@@ -983,7 +1008,7 @@ export default function CadastrosTab({
           </button>
 
           <h3 className="text-sm font-bold text-emerald-700 mb-5 flex items-center gap-2">
-            {editingId ? 'Editar registro' : 'Novo cadastro'} · {subTab}
+            {editingId ? `Editar · ${categoriaAtual.label}` : categoriaAtual.acaoNovo}
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -1007,6 +1032,35 @@ export default function CadastrosTab({
                   <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Engenheiro ou Gestor Responsável</label>
                   <input type="text" value={empResponsavel} onChange={e => setEmpResponsavel(e.target.value)} placeholder="Ex: Eng. Roberto Santos" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
                 </div>
+                <fieldset className="md:col-span-4 space-y-2" data-testid="empresa-classes">
+                  <legend className="text-xxs font-bold uppercase tracking-wider text-slate-400">Classes da empresa *</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {EMPRESA_CLASSES.map(({ tipo, label }) => {
+                      const marcado = empTipos.includes(tipo);
+                      return (
+                        <label key={tipo} className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-bold transition duration-200 focus-within:ring-2 focus-within:ring-[#f26a2e]/60 ${marcado ? 'is-active border-[#176b4d] bg-emerald-50 text-[#176b4d]' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'}`}>
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-[#176b4d]"
+                            checked={marcado}
+                            onChange={() => setEmpTipos(atual => marcado ? atual.filter(item => item !== tipo) : [...atual, tipo])}
+                          />
+                          {label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500">Nas equipes da Presença aparecem só empresas de mão de obra, terceiras e as que ainda não têm classe.</p>
+                </fieldset>
+                {empTipos.includes('SUBFORNECEDOR') && (
+                  <div className="md:col-span-2 space-y-1">
+                    <label htmlFor="empresa-fornecedor-principal" className="text-xxs font-bold uppercase tracking-wider text-slate-400">Fornecedor principal</label>
+                    <select id="empresa-fornecedor-principal" value={empFornecedorPrincipalId} onChange={e => setEmpFornecedorPrincipalId(e.target.value)} className="min-h-11 w-full bg-white border border-slate-200 rounded-xl px-4 text-sm text-slate-800 focus:outline-none focus:border-emerald-500">
+                      <option value="">Sem fornecedor principal</option>
+                      {fornecedoresPrincipais.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1388,13 +1442,14 @@ export default function CadastrosTab({
                   <th className="py-3.5 px-5">CNPJ</th>
                   <th className="py-3.5 px-5">Responsável</th>
                   <th className="py-3.5 px-5">Contato</th>
+                  <th className="py-3.5 px-5">Classes</th>
                   <th className="py-3.5 px-5 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850">
                 {displayedEmpresas.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-500 italic">Nenhuma empresa encontrada com os termos de busca.</td>
+                    <td colSpan={6} className="py-10 text-center text-slate-500 italic">Nenhuma empresa encontrada com os termos de busca.</td>
                   </tr>
                 ) : (
                   displayedEmpresas.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => (
@@ -1403,6 +1458,16 @@ export default function CadastrosTab({
                       <td className="py-4 px-5 font-mono text-slate-700">{item.cnpj}</td>
                       <td className="py-4 px-5 text-slate-700">{item.responsavel || '—'}</td>
                       <td className="py-4 px-5 text-slate-700">{item.telefone || '—'}</td>
+                      <td className="py-4 px-5">
+                        <div className="flex flex-wrap gap-1">
+                          {(item.tipos || []).length === 0
+                            ? <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">Sem classe</span>
+                            : (item.tipos || []).map(tipo => <span key={tipo} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">{empresaTipoLabel(tipo)}</span>)}
+                        </div>
+                        {item.fornecedorPrincipalId && (
+                          <span className="mt-1 block text-[10px] text-slate-500">via {empresas.find(principal => principal.id === item.fornecedorPrincipalId)?.nome || 'fornecedor removido'}</span>
+                        )}
+                      </td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
