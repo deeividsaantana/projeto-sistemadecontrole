@@ -23,6 +23,12 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ROLE_ACCESS.operador.includes('administracao'), false);
   assert.equal(ROLE_ACCESS.leitura.includes('administracao'), false);
 
+  // Cadastros mestres: admin e gestor alteram a base, operador e leitura não
+  assert.equal(ROLE_ACCESS.admin.includes('cadastros'), true);
+  assert.equal(ROLE_ACCESS.gestor.includes('cadastros'), true);
+  assert.equal(ROLE_ACCESS.operador.includes('cadastros'), false);
+  assert.equal(ROLE_ACCESS.leitura.includes('cadastros'), false);
+
   // Módulos não-primários não aparecem em ROLE_ACCESS nem em ALL_NAVIGATION_ITEMS
   assert.equal(ROLE_ACCESS.admin.includes('configuracoes'), false);
   assert.equal(ROLE_ACCESS.admin.includes('usuarios'), false);

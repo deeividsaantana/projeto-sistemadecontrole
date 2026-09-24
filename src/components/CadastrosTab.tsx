@@ -4,6 +4,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { 
@@ -32,12 +34,7 @@ import {
 } from '../masterData/centralRegistry';
 
 import {
-  Building2,
-  MapPin,
   Truck,
-  Users,
-  Fuel,
-  Droplets,
   Search,
   Plus,
   Edit,
@@ -46,12 +43,14 @@ import {
   X,
   CheckCircle,
   Upload,
-  HardHat
 } from 'lucide-react';
 import { FilterBar, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
+import CadastroCategoryPicker from './cadastros/CadastroCategoryPicker';
+import './cadastros/Cadastros.css';
+import { categoriaCadastro, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
 
-type SubTab = 'empresas' | 'fornecedores' | 'terceiras' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
+type SubTab = CadastroCategoriaId;
 
 // Empresas, Fornecedores e Terceiras compartilham o mesmo cadastro
 // (Empresa) e o mesmo formulário — só filtram por categoria. Centralizado
@@ -759,20 +758,40 @@ export default function CadastrosTab({
     </div>
   );
 
-  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>([subTab, currentPage]);
+  const categoriaAtual = categoriaCadastro(subTab);
+
+  // Entrada do cabeçalho e dos grupos de tipos, no mesmo passo do Painel.
+  // Roda só ao abrir a aba: trocar de tipo anima apenas as linhas da lista.
+  useGSAP(() => {
+    const raiz = escopoMotion.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-cadastros-reveal]'), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.065, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopoMotion });
+
+  const selecionarCategoria = (module: SubTab) => {
+    setSubTab(module);
+    setIsFormOpen(false);
+    setSearchQuery('');
+    clearAdvancedFilters();
+    resetFormState();
+  };
 
   return (
-    <div ref={escopoMotion} className="erp-module erp-module--cadastros space-y-5" id="cadastros-container">
+    <div ref={escopoMotion} className="erp-module erp-module--cadastros space-y-5" id="cadastros-tab" data-testid="cadastros-tab">
+      <div data-cadastros-reveal>
       <PageHeader
+        className="cadastros-header"
         eyebrow="Base corporativa"
-        title="Cadastros mestres"
-        description="Cadastre uma única vez e reutilize dados oficiais em toda a operação."
+        title="Cadastros"
+        description="Escolha o tipo, pesquise e cadastre. Tudo que for gravado aqui vale para a operação inteira."
         actions={<>
           <button
+            type="button"
             onClick={() => importFileInputRef.current?.click()}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition duration-200 hover:border-emerald-500 hover:text-[#176b4d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
           >
-            <Upload className="w-4.5 h-4.5" />
+            <Upload className="size-5" aria-hidden="true" />
             Importar planilha
           </button>
           <input
@@ -783,24 +802,23 @@ export default function CadastrosTab({
             className="hidden"
           />
           <button
+            type="button"
+            data-testid="cadastro-acao-principal"
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-md transition-colors flex items-center gap-2 cursor-pointer"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-5 max-sm:order-first text-sm font-black text-white shadow-sm transition duration-200 hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
           >
-            <Plus className="w-4.5 h-4.5" />
-            {subTab === 'funcionarios' ? 'Novo colaborador' : 'Novo registro'}
+            <Plus className="size-5" aria-hidden="true" />
+            {categoriaAtual.acaoNovo}
           </button>
         </>}
       />
-      <CentralRegistryOverview
-        empresas={empresas}
-        obras={obras}
-        equipamentos={equipamentos}
-        funcionarios={funcionarios}
-        onSelectModule={module => { setSubTab(module); setIsFormOpen(false); clearAdvancedFilters(); resetFormState(); }}
-      />
+      </div>
+
+      <CadastroCategoryPicker value={subTab} getCount={getSubTabCount} onSelect={selecionarCategoria} />
+
       <SpreadsheetImportReview
         open={Boolean(pendingImport)}
-        title={`Importar ${subTab}`}
+        title={`Importar ${categoriaAtual.label.toLowerCase()}`}
         fileName={pendingImport?.fileName || ''}
         validCount={pendingImport?.rows.length || 0}
         columns={pendingImport ? Object.keys(pendingImport.rows[0] || {}) : []}
@@ -811,58 +829,19 @@ export default function CadastrosTab({
         onConfirm={confirmSpreadsheetImport}
       />
 
-      <MasterDataReviewCenter
-        empresas={empresas}
-        obras={obras}
-        funcionarios={funcionarios}
-        equipamentos={equipamentos}
-        onApplyMasterWorkbook={onApplyMasterWorkbook}
-      />
-      
-      {/* Auxiliary Tabs Grid Selector */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2.5" id="subtab-selector">
-        {[
-          { id: 'funcionarios', label: 'Colaboradores', icon: Users },
-          { id: 'equipamentos', label: 'Equipamentos', icon: Truck },
-          { id: 'veiculos', label: 'Veículos', icon: Truck },
-          { id: 'fornecedores', label: 'Fornecedores', icon: Building2 },
-          { id: 'terceiras', label: 'Terceiras', icon: HardHat },
-          { id: 'empresas', label: 'Empresas', icon: Building2 },
-          { id: 'obras', label: 'Locais', icon: MapPin },
-          { id: 'etapas', label: 'Ramos / Trechos', icon: MapPin },
-          { id: 'comboios', label: 'Comboios', icon: Fuel },
-          { id: 'combustiveis', label: 'Combustíveis', icon: Fuel },
-          { id: 'lubrificantes', label: 'Lubrificantes', icon: Droplets }
-        ].map(tab => {
-          const Icon = tab.icon;
-          const active = subTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => { setSubTab(tab.id as SubTab); setIsFormOpen(false); setSearchQuery(''); clearAdvancedFilters(); resetFormState(); }}
-              className={`py-3.5 px-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${active ? 'bg-emerald-600/10 border-emerald-500 text-emerald-700 font-extrabold' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-200 hover:text-slate-700'}`}
-            >
-              <Icon className="w-5 h-5 shrink-0" />
-              <span className="text-[10px] uppercase font-bold tracking-tight block leading-none">{tab.label}</span>
-              <span className="text-[9px] font-mono opacity-60">({getSubTabCount(tab.id as SubTab)})</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* Main Filter Action Bar */}
       <FilterBar label="Filtros de cadastros" className="bg-white border border-slate-200 p-3 rounded-lg">
         <div className="w-full space-y-2.5">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input 
-              type="text"
+              type="search"
               aria-label="Buscar cadastros"
-              placeholder="Pesquisa rápida por qualquer termo..."
+              placeholder={`Buscar em ${categoriaAtual.label.toLowerCase()}: nome, código, placa...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-base text-slate-800 placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 sm:text-sm"
             />
           </div>
           {searchQuery && (
@@ -1741,6 +1720,24 @@ export default function CadastrosTab({
         })()}
 
       </div>
+
+      <section aria-labelledby="cadastros-ferramentas-title" className="space-y-4">
+        <h2 id="cadastros-ferramentas-title" className="text-xs font-black uppercase tracking-wide text-[#718087]">Ferramentas da base</h2>
+        <CentralRegistryOverview
+          empresas={empresas}
+          obras={obras}
+          equipamentos={equipamentos}
+          funcionarios={funcionarios}
+          onSelectModule={selecionarCategoria}
+        />
+        <MasterDataReviewCenter
+          empresas={empresas}
+          obras={obras}
+          funcionarios={funcionarios}
+          equipamentos={equipamentos}
+          onApplyMasterWorkbook={onApplyMasterWorkbook}
+        />
+      </section>
 
       {/* Safe inline Prompt Deletion Confirmation Dialog overlay */}
       {deleteConfirmId && (
