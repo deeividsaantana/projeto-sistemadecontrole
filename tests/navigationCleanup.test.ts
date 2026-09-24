@@ -46,7 +46,7 @@ test('ALL_NAVIGATION_ITEMS cleanup', async (suite) => {
     const allItemIds = new Set(ALL_NAVIGATION_ITEMS.map(item => item.id));
 
     allItemIds.forEach((id: string) => {
-      assert.strictEqual(primarySet.has(id), true, `${id} not in PRIMARY_MODULE_IDS`);
+      assert.strictEqual(primarySet.has(id as any), true, `${id} not in PRIMARY_MODULE_IDS`);
     });
   });
 
