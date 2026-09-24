@@ -121,3 +121,47 @@ export function sumBy<T>(items: T[], key: (item: T) => string, value: (item: T) 
   });
   return [...result].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
 }
+
+// Dashboard KPI Calculations
+export interface DashboardKpis {
+  obrasAbertas: number;
+  equipamentosAtivos: number;
+  equipamentosParados: number;
+  producaoMes: number;
+  eficienciaMedia: number;
+}
+
+export interface Periodo {
+  inicio: string; // YYYY-MM-DD
+  fim: string;    // YYYY-MM-DD
+}
+
+export function calculateDashboardKpis(
+  obras: any[],
+  equipamentos: Equipamento[],
+  producao: RegistroProducao[],
+  periodo: Periodo
+): DashboardKpis {
+  // Obras abertas
+  const obrasAbertas = obras.filter(o => o.status === 'em-andamento').length;
+
+  // Equipamentos ativos
+  const equipamentosAtivos = equipamentos.filter(e => e.status === 'operacional').length;
+  const equipamentosParados = equipamentos.filter(e => e.status === 'parado').length;
+
+  // Produção no período
+  const producaoMes = producao
+    .filter(p => p.data >= periodo.inicio && p.data <= periodo.fim)
+    .reduce((sum, p) => sum + (p.valor || 0), 0);
+
+  // Eficiência: produção / equipamentos ativos
+  const eficienciaMedia = equipamentosAtivos > 0 ? Math.round((producaoMes / equipamentosAtivos) * 100) / 100 : 0;
+
+  return {
+    obrasAbertas,
+    equipamentosAtivos,
+    equipamentosParados,
+    producaoMes,
+    eficienciaMedia,
+  };
+}
