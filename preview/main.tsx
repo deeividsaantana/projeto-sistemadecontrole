@@ -67,7 +67,9 @@ const previewNotifications = [
 
 // Cadastros com estado de verdade: excluir tira da lista e põe na Lixeira,
 // restaurar devolve. Com ?blockedRegistry=1 todo cadastro aparece como usado
-// em lançamentos, para conferir a janela que trava a exclusão.
+// em lançamentos, para conferir a janela que trava a exclusão; com
+// ?emUso=alguns só um em cada três fica travado, para conferir o lote misto.
+const algunsEmUso = new URLSearchParams(location.search).get('emUso') === 'alguns';
 function CadastrosPreview() {
   const [listas, setListas] = React.useState<Record<string, Array<{ id: string } & Record<string, unknown>>>>(() => ({
     empresas: [...fx.empresas],
@@ -86,9 +88,33 @@ function CadastrosPreview() {
       ? atual[tabela].map(registro => (registro.id === item.id ? item as never : registro))
       : [...atual[tabela], item as never],
   }));
-  const usos = (): Array<{ collection: string; count: number }> => (
-    blockRegistryDeletion ? [{ collection: 'Abastecimentos', count: 12 }, { collection: 'Presenças', count: 3 }] : []
+  const usos = (_tabela?: string, id = ''): Array<{ collection: string; count: number }> => (
+    blockRegistryDeletion || (algunsEmUso && Number(id.replace(/\D/g, '')) % 3 === 0)
+      ? [{ collection: 'Abastecimentos', count: 12 }, { collection: 'Presenças', count: 3 }]
+      : []
   );
+  const excluirVarios = (tabela: string, alvos: Array<{ id: string; rotulo: string }>) => {
+    const agora = new Date().toISOString();
+    const travados = alvos.filter(alvo => usos(tabela, alvo.id).length > 0).map(alvo => ({ ...alvo, usos: usos(tabela, alvo.id) }));
+    const livres = alvos.filter(alvo => usos(tabela, alvo.id).length === 0 && listas[tabela].some(item => item.id === alvo.id));
+    const novas = livres.map(alvo => criarExclusao({ tabela, registro: listas[tabela].find(item => item.id === alvo.id)!, rotulo: alvo.rotulo, usuario: 'Deivid Santana', agora }));
+    const ids = new Set(livres.map(alvo => alvo.id));
+    setListas(atual => ({ ...atual, [tabela]: atual[tabela].filter(item => !ids.has(item.id)) }));
+    setExclusoes(atual => [...novas, ...atual]);
+    return { excluidos: livres.map((alvo, indice) => ({ ...alvo, exclusaoId: novas[indice].id })), travados };
+  };
+  const restaurarVarios = (exclusaoIds: string[]) => {
+    const pedidos = exclusoes.filter(item => exclusaoIds.includes(item.id) && !item.restauradoEm);
+    if (pedidos.length === 0) return { ok: false, mensagem: 'Não achei esses itens na Lixeira.' };
+    const agora = new Date().toISOString();
+    setListas(atual => {
+      const proximo = { ...atual };
+      pedidos.forEach(exclusao => { proximo[exclusao.tabela] = [...proximo[exclusao.tabela], exclusao.registro as never]; });
+      return proximo;
+    });
+    setExclusoes(atual => atual.map(item => (exclusaoIds.includes(item.id) ? restaurarExclusao(item, 'Deivid Santana', agora) : item)));
+    return { ok: true, mensagem: pedidos.length === 1 ? `${pedidos[0].rotulo} voltou para a lista.` : `${pedidos.length} cadastros voltaram para a lista.` };
+  };
   return (
     <CadastrosTab
       empresas={listas.empresas as never}
@@ -117,21 +143,13 @@ function CadastrosPreview() {
       }))}
       usosDoCadastro={usos}
       onExcluir={(tabela, id, rotulo) => {
-        if (usos().length > 0) return { ok: false, usos: usos() };
-        const registro = listas[tabela].find(item => item.id === id);
-        if (!registro) return { ok: false, usos: [], mensagem: 'Cadastro não encontrado.' };
-        const exclusao = criarExclusao({ tabela, registro, rotulo, usuario: 'Deivid Santana', agora: new Date().toISOString() });
-        setListas(atual => ({ ...atual, [tabela]: atual[tabela].filter(item => item.id !== id) }));
-        setExclusoes(atual => [...atual, exclusao]);
-        return { ok: true, exclusaoId: exclusao.id };
+        const resultado = excluirVarios(tabela, [{ id, rotulo }]);
+        if (resultado.excluidos.length > 0) return { ok: true, exclusaoId: resultado.excluidos[0].exclusaoId };
+        return { ok: false, usos: resultado.travados[0]?.usos || [], mensagem: resultado.travados.length ? undefined : 'Cadastro não encontrado.' };
       }}
-      onRestaurar={exclusaoId => {
-        const exclusao = exclusoes.find(item => item.id === exclusaoId);
-        if (!exclusao) return { ok: false, mensagem: 'Não achei esse item na Lixeira.' };
-        setListas(atual => ({ ...atual, [exclusao.tabela]: [...atual[exclusao.tabela], exclusao.registro as never] }));
-        setExclusoes(atual => atual.map(item => (item.id === exclusaoId ? restaurarExclusao(item, 'Deivid Santana', new Date().toISOString()) : item)));
-        return { ok: true, mensagem: `${exclusao.rotulo} voltou para a lista.` };
-      }}
+      onRestaurar={exclusaoId => restaurarVarios([exclusaoId])}
+      onExcluirVarios={excluirVarios}
+      onRestaurarVarios={restaurarVarios}
       onImportCadastros={() => ({ success: true, message: 'ok' })}
       onApplyMasterWorkbook={async () => ({ success: true, message: 'ok' })}
     />

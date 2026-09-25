@@ -108,6 +108,37 @@ test('cadastros trava exclusão de cadastro usado e oferece inativar', async ({ 
   await expect(dialog.getByTestId('cadastro-confirmar')).toHaveCount(0);
 });
 
+test('cadastros marca vários, exclui de uma vez e desfaz o lote', async ({ page }) => {
+  await page.goto('/?screen=cadastros');
+  const caixas = page.locator('[data-linha-lista]:visible input[type="checkbox"]');
+  for (const indice of [0, 1, 2]) await caixas.nth(indice).check();
+  const barra = page.getByTestId('cadastro-barra-selecao');
+  await expect(barra).toContainText('3 marcados');
+  await barra.getByTestId('cadastro-excluir-marcados').click();
+  const dialog = page.getByTestId('cadastro-confirmacao-lote');
+  await expect(dialog).toContainText('Excluir 3 cadastros');
+  await dialog.getByTestId('cadastro-confirmar-lote').click();
+  const aviso = page.getByTestId('cadastro-aviso');
+  await expect(aviso).toContainText('3 cadastros excluídos');
+  await expect(barra).toHaveCount(0);
+  await aviso.getByRole('button', { name: 'Desfazer' }).click();
+  await expect(aviso).toContainText('3 cadastros voltaram');
+});
+
+test('cadastros em lote deixa de fora o que está em uso e diz qual', async ({ page }) => {
+  await page.goto('/?screen=cadastros&emUso=alguns');
+  await page.locator('[data-linha-lista]:visible input[type="checkbox"]').first().check();
+  // O preview tem 48 colaboradores ativos; "Marcar todos" pega a lista filtrada inteira.
+  await page.getByTestId('cadastro-marcar-todos').click();
+  await expect(page.getByTestId('cadastro-barra-selecao')).toContainText('48 marcados');
+  await page.getByTestId('cadastro-excluir-marcados').click();
+  const dialog = page.getByTestId('cadastro-confirmacao-lote');
+  await expect(dialog).toContainText('de fora por estar em uso');
+  await expect(dialog.getByRole('list', { name: 'Ficam de fora' })).toContainText('Abastecimentos');
+  await dialog.getByTestId('cadastro-confirmar-lote').click();
+  await expect(page.getByTestId('cadastro-aviso')).toContainText('por estar em uso');
+});
+
 test('materiais oferece busca no grupo de filtros', async ({ page }) => {
   await page.goto('/?screen=materiais');
   await page.getByRole('button', { name: 'Estoque', exact: true }).click();
