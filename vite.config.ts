@@ -64,7 +64,7 @@ export default defineConfig(() => {
       // No localhost, encaminha apenas as funções públicas para o backend já publicado.
       // Isso permite testar o link pelo celular sem fazer um novo deploy.
       proxy: {
-        '/.netlify/functions': {
+        '/api': {
           target: process.env.VITE_PUBLIC_FUNCTIONS_PROXY_TARGET || 'https://renea-erp.onrender.com',
           changeOrigin: true,
           secure: true,

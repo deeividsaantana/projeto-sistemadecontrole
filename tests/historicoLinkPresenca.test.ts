@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { __testing } from '../netlify/functions/public-presenca.js';
+import { __testing } from '../api/public-presenca.js';
 
 const { loadGroupHistory, HISTORY_DOCS_LIMIT } = __testing as {
   loadGroupHistory: (db: unknown, grupoId: string) => Promise<{ datas: string[] }>;

@@ -14,7 +14,7 @@ service cloud.firestore {
 
     // Contas administrativas são provisionadas no Firebase Authentication.
     // Links públicos nunca acessam o Firestore diretamente; usam funções
-    // Netlify com validação e projeção mínima dos dados.
+    // da API (api/) com validação e projeção mínima dos dados.
     function isStaff() {
       return request.auth != null
         && request.auth.token.staff == true;
@@ -152,7 +152,7 @@ service cloud.firestore {
     }
 
     // Espelho operacional de tickets. O público grava e pesquisa somente pelas
-    // funções Netlify; usuários autenticados administram o acervo pelo painel.
+    // funções da API (api/); usuários autenticados administram o acervo pelo painel.
     match /sistemarenea_public_tickets/{docId} {
       allow get: if isStaff() && isValidId(docId);
       allow list: if isStaff();
@@ -198,7 +198,7 @@ service cloud.firestore {
     }
 
     // Cadastros segmentados, auditoria, usuários e lotes de importação são
-    // manipulados exclusivamente por funções Netlify usando o Admin SDK.
+    // manipulados exclusivamente pela API (api/) usando o Admin SDK.
     // Não há acesso direto do navegador, mesmo para usuários autenticados.
     match /sistemarenea_master_data/{organizationId}/{document=**} {
       allow read, write: if false;

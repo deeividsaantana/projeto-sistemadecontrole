@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { __testing } from '../netlify/functions/public-presenca.js';
+import { __testing } from '../api/public-presenca.js';
 
 const submission = (data: string, records: Array<Record<string, unknown>>) => ({
   kind: 'presence',
@@ -49,7 +49,7 @@ test('historico limita a janela consultavel pelo link publico', () => {
 });
 
 test('a edicao pontual continua restrita ao dia corrente', () => {
-  const source = readFileSync(new URL('../netlify/functions/public-presenca.js', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../api/public-presenca.js', import.meta.url), 'utf8');
   const patchBlock = source.slice(source.indexOf("if (method === 'PATCH')"), source.indexOf("if (method !== 'POST')"));
   assert.match(patchBlock, /const date = todayInSaoPaulo\(\);/);
   assert.doesNotMatch(patchBlock, /body\.data/);

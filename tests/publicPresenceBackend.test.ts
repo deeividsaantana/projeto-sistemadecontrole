@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { __testing } from '../netlify/functions/public-presenca.js';
+import { __testing } from '../api/public-presenca.js';
 
 const employees = [
   { id: 'employee-1', matricula: 'A-101', nome: 'Ana Lima', cargo: 'Apontadora', empresaId: 'company-1', ativo: true },
@@ -78,7 +78,7 @@ test('backend aceita baixa, recesso, ferias e desligado no link', () => {
 });
 
 test('backend rejeita datas ISO que nao existem no calendario', async () => {
-  const source = await import('../netlify/functions/_shared/firebase-admin.js');
+  const source = await import('../api/_shared/firebase-admin.js');
   assert.equal(source.isIsoDate('2026-02-29'), false);
   assert.equal(source.isIsoDate('2026-02-28'), true);
   assert.equal(source.isIsoDate('2026-13-01'), false);

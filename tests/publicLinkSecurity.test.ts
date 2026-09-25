@@ -4,7 +4,7 @@ import {
   buildPublicTicketPath,
   getPublicTicketAccessToken,
   requirePublicTicketAccess,
-} from '../netlify/functions/_shared/public-access.js';
+} from '../api/_shared/public-access.js';
 import {
   estabilizarLinksPublicos,
   isWeakPresenceToken,

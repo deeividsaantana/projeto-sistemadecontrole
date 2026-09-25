@@ -10,7 +10,7 @@ import {
   sanitizeTravelImportRequest,
   sanitizeMasterDataPayload,
   sanitizeSearchTerm,
-} from '../netlify/functions/_shared/master-data-contract.js';
+} from '../api/_shared/master-data-contract.js';
 
 // A lista explícita substitui a contagem: uma entidade adicionada ou removida
 // por engano continua quebrando o teste, agora dizendo qual.

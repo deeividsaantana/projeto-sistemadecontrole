@@ -1,7 +1,7 @@
-// Empacota as 7 funções que já vivem em netlify/functions/ num único arquivo
+// Empacota os handlers de api/ num único arquivo
 // para o Cloud Functions, sem duplicar a lógica de negócio à mão: o esbuild
 // resolve os imports relativos (inclusive os módulos em _shared/) em tempo de
-// build, então netlify/functions/*.js continua sendo a única fonte de
+// build, então api/*.js continua sendo a única fonte de
 // verdade. As dependências reais de runtime (firebase-admin, firebase-functions,
 // express) ficam de fora do pacote: firebase-admin tem binário nativo (gRPC) e
 // não pode ser empacotado, e todas já vêm instaladas no ambiente do Cloud

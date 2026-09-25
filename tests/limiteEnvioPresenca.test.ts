@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { aplicarLimiteDeEnvio } from '../netlify/functions/public-presenca.js';
+import { aplicarLimiteDeEnvio } from '../api/public-presenca.js';
 
 type Chamada = { bucket: string; limite: number; identidade: string };
 

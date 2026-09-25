@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const mainSource = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
 const publicApiSource = readFileSync(new URL('../src/publicApi.ts', import.meta.url), 'utf8');
 const publicLinksSource = readFileSync(new URL('../src/PublicLinksApp.tsx', import.meta.url), 'utf8');
-const publicPresenceFunctionSource = readFileSync(new URL('../netlify/functions/public-presenca.js', import.meta.url), 'utf8');
+const publicPresenceFunctionSource = readFileSync(new URL('../api/public-presenca.js', import.meta.url), 'utf8');
 
 test('bootstrap publico carrega tela leve sem iniciar ERP administrativo', () => {
   assert.match(mainSource, /isPublicLinkUrl\(\)/);

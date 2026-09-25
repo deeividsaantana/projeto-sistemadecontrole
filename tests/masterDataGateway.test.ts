@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const gatewayUrl = new URL('../netlify/functions/master-data.js', import.meta.url);
+const gatewayUrl = new URL('../api/master-data.js', import.meta.url);
 const gateway = readFileSync(gatewayUrl, 'utf8');
 
 assert.match(gateway, /const staff = await requireStaffUser\(event\)/);

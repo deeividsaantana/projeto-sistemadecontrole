@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { jsonResponse } from '../netlify/functions/_shared/firebase-admin.js';
+import { jsonResponse } from '../api/_shared/firebase-admin.js';
 import {
   buildIdempotencyDocumentId,
   buildRequestHash,
   IDEMPOTENCY_COLLECTION,
   withIdempotency,
-} from '../netlify/functions/_shared/idempotency.js';
+} from '../api/_shared/idempotency.js';
 
 const createMemoryDatabase = () => {
   const store = new Map<string, Record<string, unknown>>();
@@ -60,7 +60,7 @@ const createContext = () => ({
 
 const event = {
   httpMethod: 'POST',
-  path: '/.netlify/functions/master-data',
+  path: '/api/master-data',
   body: JSON.stringify({ entity: 'equipment', data: { code: 'EQ-01' } }),
 };
 

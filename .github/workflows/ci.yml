@@ -33,3 +33,6 @@ jobs:
 
       - name: Gerar build
         run: npm run build
+
+      - name: Conferir peso do build
+        run: npm run check:bundle
