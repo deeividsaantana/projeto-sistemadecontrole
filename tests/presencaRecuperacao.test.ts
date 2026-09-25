@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { presencasFaltantes, resumoRecuperadas } from '../src/utils/presencaRecuperacao';
+import { juntarPresencaBaixada, presencasFaltantes, resumoRecuperadas } from '../src/utils/presencaRecuperacao';
 import type { PeriodoArquivado, PresencaApontamento } from '../src/types';
 
 const registro = (funcionarioId: string, data: string, status: string, extra: Partial<PresencaApontamento> = {}) => ({
@@ -42,4 +42,16 @@ test('apontamento com o mesmo id não volta como cópia, mesmo se a equipe mudou
   const local = [registro('c-1', '2026-09-20', 'Presente', { id: 'p-1', grupoId: 'g-novo' })];
   const fila = [registro('c-1', '2026-09-20', 'Presente', { id: 'p-1', grupoId: 'g-antigo' })];
   assert.deepEqual(presencasFaltantes(local, fila), []);
+});
+
+test('download da nuvem não apaga presença lançada aqui que ainda não subiu', () => {
+  const nuvem = [registro('c-9', '2026-09-01', 'Presente'), registro('c-8', '2026-09-01', 'Presente'), registro('c-1', '2026-09-25', 'Presente')];
+  const local = [registro('c-1', '2026-09-25', 'Presente'), registro('c-2', '2026-09-25', 'Presente')];
+  const resultado = juntarPresencaBaixada(nuvem, local, ['c-1-2026-09-25']);
+  assert.deepEqual(resultado.map(item => item.id).sort(), ['c-1-2026-09-25', 'c-2-2026-09-25', 'c-8-2026-09-01', 'c-9-2026-09-01']);
+});
+
+test('presença que saiu da nuvem depois da última sincronização sai daqui também', () => {
+  const local = [registro('c-1', '2026-09-25', 'Presente')];
+  assert.deepEqual(juntarPresencaBaixada([], local, ['c-1-2026-09-25']), []);
 });
