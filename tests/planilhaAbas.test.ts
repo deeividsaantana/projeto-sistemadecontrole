@@ -30,7 +30,8 @@ test('sem aba parecida, sugere a primeira com linhas', () => {
 
 test('Cadastros filtra abas ocultas e pede a aba quando há mais de uma', () => {
   const source = readFileSync(new URL('../src/components/CadastrosTab.tsx', import.meta.url), 'utf8');
-  assert.match(source, /worksheets\.filter\(worksheet => abaVisivel\(worksheet\.state\)\)/);
-  assert.doesNotMatch(source, /workbook\.worksheets\.forEach/);
+  const leitor = readFileSync(new URL('../src/components/cadastros/lerPlanilhaCadastros.ts', import.meta.url), 'utf8');
+  assert.match(leitor, /worksheets\.filter\(worksheet => abaVisivel\(worksheet\.state\)\)/);
+  assert.doesNotMatch(leitor, /workbook\.worksheets\.forEach/);
   assert.match(source, /data-testid="cadastro-escolher-aba"/);
 });

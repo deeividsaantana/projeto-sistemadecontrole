@@ -3,78 +3,59 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { loadValidatedWorkbook } from '../utils/excelCorporate';
-import SpreadsheetImportReview from './SpreadsheetImportReview';
-import { 
-  Empresa, 
-  ObraLocal, 
-  Equipamento, 
-  Funcionario, 
-  Comboio, 
-  TipoCombustivel, 
-  ProdutoLubrificacao, 
+import { AlertTriangle, CheckCircle, Download, Network, Plus, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import type {
+  Comboio,
+  Empresa,
+  Equipamento,
   EtapaServico,
-  OrdemServico,
+  Funcionario,
+  HistoryLog,
+  ObraLocal,
+  ProdutoLubrificacao,
+  TipoCombustivel,
 } from '../types';
-import MasterDataReviewCenter from './MasterDataReviewCenter';
 import type { MasterWorkbookAnalysis } from '../masterData/masterWorkbook';
-import EquipmentOperationsPanel from './EquipmentOperationsPanel';
-import CentralRegistryOverview from './CentralRegistryOverview';
+import { validateCentralRecord } from '../masterData/centralRegistry';
+import { exclusoesAtivas, type ExclusaoRegistro } from '../cloud/exclusoes';
+import MasterDataReviewCenter from './MasterDataReviewCenter';
 import OrganizationChart from './OrganizationChart';
-import { validateEquipmentMasterRecord } from '../utils/equipmentOperations';
-import {
-  EMPRESA_CLASSES,
-  empresaTipoLabel,
-  isActiveCollaborator,
-  isEquipmentRentalSupplier,
-  isMaterialSupplier,
-  isSubSupplier,
-  isSupplier,
-  isThirdPartyContractor,
-  isVehicle,
-  nextMasterId,
-  type EmpresaTipo,
-} from '../masterData/centralRegistry';
-
-import {
-  Truck,
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  AlertTriangle,
-  X,
-  CheckCircle,
-  Upload,
-} from 'lucide-react';
+import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { FilterBar, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
-import { abaSugerida, abaVisivel, type AbaPlanilha } from '../utils/planilhaAbas';
-import CadastroCategoryPicker from './cadastros/CadastroCategoryPicker';
+import { abaSugerida, type AbaPlanilha } from '../utils/planilhaAbas';
+import { CADASTRO_CATEGORIAS, categoriaCadastro, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
+import {
+  COLUNAS,
+  FILTROS,
+  TABELA_DA_CATEGORIA,
+  contarSituacoes,
+  filtrarLinhas,
+  montarLinhas,
+  opcoesDoFiltro,
+  ordenarLinhas,
+  temSituacao,
+  type DadosCadastros,
+  type LinhaCadastro,
+  type RegistroCadastro,
+  type SituacaoLista,
+} from '../utils/cadastrosLista';
+import CadastroTipos, { type VistaCadastros } from './cadastros/CadastroTipos';
+import CadastroLista from './cadastros/CadastroLista';
+import CadastroDetalhe, { type UsoCadastro } from './cadastros/CadastroDetalhe';
+import CadastroFormulario from './cadastros/CadastroFormulario';
+import CadastroConfirmacao, { type AcaoConfirmacao } from './cadastros/CadastroConfirmacao';
+import CadastroLixeira from './cadastros/CadastroLixeira';
+import { montarRegistro, novoId, valoresIniciais, type ValoresCadastro } from './cadastros/camposCadastro';
+import { parseWorkbookFile } from './cadastros/lerPlanilhaCadastros';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, reduzMovimento } from './cadastros/estilos';
 import './cadastros/Cadastros.css';
-import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
 
-type SubTab = CadastroCategoriaId;
-
-// Empresas, Terceiras, Fornecedores e as subáreas de fornecedor compartilham
-// o mesmo cadastro (Empresa) e o mesmo formulário — só filtram por classe.
-const isEmpresaSubTab = (tab: SubTab) => isCategoriaEmpresa(tab);
-
-// Classes que a tela não mostra como opção, mas que vêm da planilha mestre e
-// precisam continuar no registro depois de uma edição.
-const CLASSES_PRESERVADAS: readonly EmpresaTipo[] = ['GERADOR', 'ACEITANTE', 'TRANSPORTADORA'];
-
-const empresaPorSubTab: Partial<Record<SubTab, (item: Empresa) => boolean>> = {
-  fornecedores: isSupplier,
-  'fornecedores-locacao': isEquipmentRentalSupplier,
-  'fornecedores-materiais': isMaterialSupplier,
-  subfornecedores: isSubSupplier,
-  terceiras: isThirdPartyContractor,
-};
+type ResultadoExclusao = { ok: true; exclusaoId: string } | { ok: false; usos: UsoCadastro[]; mensagem?: string };
 
 interface CadastrosTabProps {
   empresas: Empresa[];
@@ -85,1834 +66,692 @@ interface CadastrosTabProps {
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
   etapas: EtapaServico[];
-  ordensServico: OrdemServico[];
+  historyLogs: HistoryLog[];
+  exclusoes: ExclusaoRegistro[];
+  podeEditar: boolean;
+  podeExcluir: boolean;
 
   onSaveEmpresa: (item: Empresa, isNew: boolean, onError?: (error: Error) => void) => void;
-  onDeleteEmpresa: (id: string) => void;
   onSaveObra: (item: ObraLocal, isNew: boolean) => void;
-  onDeleteObra: (id: string) => boolean | void;
   onSaveEquipamento: (item: Equipamento, isNew: boolean) => void;
-  onDeleteEquipamento: (id: string) => void;
   onSaveFuncionario: (item: Funcionario, isNew: boolean) => void;
-  onDeleteFuncionario: (id: string) => void;
   onSaveComboio: (item: Comboio, isNew: boolean) => void;
-  onDeleteComboio: (id: string) => boolean | void;
   onSaveTipoCombustivel: (item: TipoCombustivel, isNew: boolean) => void;
-  onDeleteTipoCombustivel: (id: string) => boolean | void;
   onSaveProdutoLubrificacao: (item: ProdutoLubrificacao, isNew: boolean) => void;
-  onDeleteProdutoLubrificacao: (id: string) => boolean | void;
   onSaveEtapaServico: (item: EtapaServico, isNew: boolean) => void;
-  onDeleteEtapaServico: (id: string) => boolean | void;
-  onImportCadastros: (target: SubTab, rows: Record<string, string>[]) => { success: boolean; message: string };
+  /** Inativa empresa, colaborador ou equipamento, mantendo o histórico. */
+  onInativar: (tabela: string, id: string) => void;
+  usosDoCadastro: (tabela: string, id: string) => UsoCadastro[];
+  onExcluir: (tabela: string, id: string, rotulo: string) => ResultadoExclusao;
+  onRestaurar: (exclusaoId: string) => { ok: boolean; mensagem: string };
+  onImportCadastros: (target: CadastroCategoriaId, rows: Record<string, string>[]) => { success: boolean; message: string };
   onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
 }
 
-export default function CadastrosTab({
-  empresas,
-  obras,
-  equipamentos,
-  funcionarios,
-  comboios,
-  combustiveis,
-  lubrificantes,
-  etapas,
-  ordensServico,
-  onSaveEmpresa,
-  onDeleteEmpresa,
-  onSaveObra,
-  onDeleteObra,
-  onSaveEquipamento,
-  onDeleteEquipamento,
-  onSaveFuncionario,
-  onDeleteFuncionario,
-  onSaveComboio,
-  onDeleteComboio,
-  onSaveTipoCombustivel,
-  onDeleteTipoCombustivel,
-  onSaveProdutoLubrificacao,
-  onDeleteProdutoLubrificacao,
-  onSaveEtapaServico,
-  onDeleteEtapaServico,
-  onImportCadastros,
-  onApplyMasterWorkbook,
-}: CadastrosTabProps) {
+interface Aviso {
+  tipo: 'ok' | 'erro';
+  texto: string;
+  desfazer?: () => void;
+}
 
-  // Current subtab state
-  const [subTab, setSubTab] = useState<SubTab>('equipamentos');
+const TEMPO_DO_AVISO_MS = 10_000;
 
-  // Search State
-  const [searchQuery, setSearchQuery] = useState<string>('');
+export default function CadastrosTab(props: CadastrosTabProps) {
+  const {
+    empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
+    historyLogs, exclusoes, podeEditar, podeExcluir,
+    onInativar, usosDoCadastro, onExcluir, onRestaurar, onImportCadastros, onApplyMasterWorkbook,
+  } = props;
 
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50;
-
-  // Advanced filters (contextuais por sub-aba)
-  const [filterStatus, setFilterStatus] = useState<string>('todos');
-  const [filterEmpresaId, setFilterEmpresaId] = useState<string>('todos');
-  const [filterObraId, setFilterObraId] = useState<string>('todos');
-  const [filterAtivo, setFilterAtivo] = useState<string>('todos');
-  const [filterTipoEquipamento, setFilterTipoEquipamento] = useState<string>('todos');
-  const [filterCargo, setFilterCargo] = useState<string>('todos');
-
-  // Toda lista paginada aqui usa a mesma currentPage. Trocar de aba, buscar
-  // ou filtrar muda o total de páginas — sem isso a pessoa ficava presa numa
-  // página que não existe mais na lista nova (ex: página 3 de uma busca que
-  // só tem 1 página).
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [subTab, searchQuery, filterStatus, filterEmpresaId, filterObraId, filterAtivo, filterTipoEquipamento, filterCargo]);
-  const [activeFuncionarioId, setActiveFuncionarioId] = useState<string | null>(null);
-
-  // Form togglers & editing identifiers
-  const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Deletion confirmations
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const importFileInputRef = useRef<HTMLInputElement>(null);
-  const saveErrorRef = useRef(false);
-  const [importFeedback, setImportFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [pendingImport, setPendingImport] = useState<{ fileName: string; rows: Record<string, string>[] } | null>(null);
-  const [pendingSheets, setPendingSheets] = useState<{ fileName: string; abas: AbaPlanilha[]; sugerida: string | null; ocultas: number } | null>(null);
-  const [isConfirmingImport, setIsConfirmingImport] = useState(false);
-
-  // Field validation warnings
-  const [validationError, setValidationError] = useState<string>('');
-
-  // 1. Temporary states for Form fields
-  // Empresa Fields
-  const [empNome, setEmpNome] = useState('');
-  const [empCnpj, setEmpCnpj] = useState('');
-  const [empTelefone, setEmpTelefone] = useState('');
-  const [empResponsavel, setEmpResponsavel] = useState('');
-  const [empTipos, setEmpTipos] = useState<EmpresaTipo[]>([]);
-  const [empFornecedorPrincipalId, setEmpFornecedorPrincipalId] = useState('');
-
-  // Obra Fields
-  const [obrNome, setObrNome] = useState('');
-  const [obrEndereco, setObrEndereco] = useState('');
-  const [obrResponsavel, setObrResponsavel] = useState('');
-  const [obrStatus, setObrStatus] = useState<'Ativa' | 'Concluída' | 'Planejada'>('Ativa');
-
-  // Equipamento Fields
-  const [eqPrefixo, setEqPrefixo] = useState('');
-  const [eqNome, setEqNome] = useState('');
-  const [eqTipo, setEqTipo] = useState('');
-  const [eqMarca, setEqMarca] = useState('');
-  const [eqModelo, setEqModelo] = useState('');
-  const [eqAno, setEqAno] = useState('');
-  const [eqSeriePlaca, setEqSeriePlaca] = useState('');
-  const [eqPlaca, setEqPlaca] = useState('');
-  const [eqEmpresaId, setEqEmpresaId] = useState('');
-  const [eqStatus, setEqStatus] = useState<Equipamento['status']>('Ativo');
-  const [eqLocalId, setEqLocalId] = useState('');
-  const [eqObservacao, setEqObservacao] = useState('');
-  const [eqFoto, setEqFoto] = useState<string>('');
-  const [eqHorasDisponiveis, setEqHorasDisponiveis] = useState<number>(0);
-  const [eqHorasIndisponiveis, setEqHorasIndisponiveis] = useState<number>(0);
-  const [eqCategoriaFrota, setEqCategoriaFrota] = useState<NonNullable<Equipamento['categoriaFrota']>>('Equipamento');
-  const [eqCodigoSge, setEqCodigoSge] = useState('');
-  const [eqFamilia, setEqFamilia] = useState('');
-  const [eqMobilizado, setEqMobilizado] = useState(false);
-  const [eqMetaDisponibilidade, setEqMetaDisponibilidade] = useState<number>(80);
-  const [eqDataMobilizacao, setEqDataMobilizacao] = useState('');
-  const [eqDataDesmobilizacao, setEqDataDesmobilizacao] = useState('');
-  const [eqOperadorResponsavelId, setEqOperadorResponsavelId] = useState('');
-  const [eqCombustivelId, setEqCombustivelId] = useState('');
-  const [eqCapacidadeTanque, setEqCapacidadeTanque] = useState<number>(0);
-  const [eqEquipamentoVinculadoId, setEqEquipamentoVinculadoId] = useState('');
-
-  // Funcionario Fields
-  const [funNome, setFunNome] = useState('');
-  const [funMatricula, setFunMatricula] = useState('');
-  const [funCargo, setFunCargo] = useState('');
-  const [funTelefone, setFunTelefone] = useState('');
-  const [funEmpresaId, setFunEmpresaId] = useState('');
-  const [funAtivo, setFunAtivo] = useState(true);
-  const [funStatus, setFunStatus] = useState<NonNullable<Funcionario['status']>>('ATIVO');
-  const [funDivisao, setFunDivisao] = useState('');
-  const [funSecao, setFunSecao] = useState('');
-  const [funLiderId, setFunLiderId] = useState('');
-  const [funArea, setFunArea] = useState('');
-  const [funResponsavelArea, setFunResponsavelArea] = useState('');
-  const [funDataMobilizacao, setFunDataMobilizacao] = useState('');
-  const [funDataDesmobilizacao, setFunDataDesmobilizacao] = useState('');
-  const [funSituacaoRh, setFunSituacaoRh] = useState('');
-  const [funObservacao, setFunObservacao] = useState('');
-
-  // Comboio Fields
-  const [comNome, setComNome] = useState('');
-  const [comPlaca, setComPlaca] = useState('');
-  const [comCapacidade, setComCapacidade] = useState<number>(3000);
-  const [comResponsavel, setComResponsavel] = useState('');
-
-  // Simple item lists (combustivel, lubrificante, etapas) Fields
-  const [simpleName, setSimpleName] = useState('');
-
-  // Clear fields helper
-  const resetFormState = () => {
-    setEditingId(null);
-    setValidationError('');
-    setEmpNome(''); setEmpCnpj(''); setEmpTelefone(''); setEmpResponsavel(''); setEmpTipos([]); setEmpFornecedorPrincipalId('');
-    setObrNome(''); setObrEndereco(''); setObrResponsavel(''); setObrStatus('Ativa');
-    setEqPrefixo(''); setEqNome(''); setEqTipo(''); setEqMarca(''); setEqModelo(''); setEqAno(''); setEqSeriePlaca(''); setEqPlaca(''); setEqEmpresaId(''); setEqStatus('Ativo'); setEqLocalId(''); setEqObservacao(''); setEqFoto(''); setEqHorasDisponiveis(0); setEqHorasIndisponiveis(0);
-    setEqCategoriaFrota('Equipamento'); setEqCodigoSge(''); setEqFamilia(''); setEqMobilizado(false); setEqMetaDisponibilidade(80); setEqDataMobilizacao(''); setEqDataDesmobilizacao(''); setEqOperadorResponsavelId(''); setEqCombustivelId(''); setEqCapacidadeTanque(0); setEqEquipamentoVinculadoId('');
-    setFunNome(''); setFunMatricula(''); setFunCargo(''); setFunTelefone(''); setFunEmpresaId(''); setFunAtivo(true); setFunStatus('ATIVO');
-    setFunDivisao(''); setFunSecao(''); setFunLiderId(''); setFunArea(''); setFunResponsavelArea(''); setFunDataMobilizacao(''); setFunDataDesmobilizacao(''); setFunSituacaoRh(''); setFunObservacao('');
-    setComNome(''); setComPlaca(''); setComCapacidade(3000); setComResponsavel('');
-    setSimpleName('');
-  };
-
-  // 2. Open Form for creation or editing
-  const handleOpenCreate = () => {
-    resetFormState();
-    // Pre-fill some defaults if available
-    if (subTab === 'equipamentos' || subTab === 'veiculos') {
-      if (empresas.length > 0) setEqEmpresaId(empresas[0].id);
-      if (obras.length > 0) setEqLocalId(obras[0].id);
-      if (subTab === 'veiculos') setEqCategoriaFrota('Veículo');
-    } else if (subTab === 'funcionarios') {
-      if (empresas.length > 0) setFunEmpresaId(empresas[0].id);
-    } else if (isCategoriaEmpresa(subTab)) {
-      setEmpTipos([...TIPOS_POR_CATEGORIA_EMPRESA[subTab]]);
-    }
-    setIsFormOpen(true);
-  };
-
-  const handleOpenEdit = (item: Empresa | ObraLocal | Equipamento | Funcionario | Comboio | TipoCombustivel | ProdutoLubrificacao | EtapaServico) => {
-    resetFormState();
-    setEditingId(item.id);
-    setValidationError('');
-
-    if (isEmpresaSubTab(subTab)) {
-      const x = item as Empresa;
-      setEmpNome(x.nome); setEmpCnpj(x.cnpj); setEmpTelefone(x.telefone); setEmpResponsavel(x.responsavel);
-      setEmpTipos((x.tipos || []).filter(tipo => !CLASSES_PRESERVADAS.includes(tipo)));
-      setEmpFornecedorPrincipalId(x.fornecedorPrincipalId || '');
-    } else if (subTab === 'obras') {
-      const x = item as ObraLocal;
-      setObrNome(x.nome); setObrEndereco(x.endereco); setObrResponsavel(x.responsavel); setObrStatus(x.status);
-    } else if (subTab === 'equipamentos' || subTab === 'veiculos') {
-      const x = item as Equipamento;
-      setEqPrefixo(x.prefixo); setEqNome(x.nome); setEqTipo(x.tipo); setEqMarca(x.marca); setEqModelo(x.modelo); setEqAno(x.ano ? String(x.ano) : ''); setEqSeriePlaca(x.seriePlaca); setEqEmpresaId(x.empresaId); setEqStatus(x.status); setEqLocalId(x.localAtualId); setEqObservacao(x.observacao);
-      setEqPlaca(x.placa || ''); setEqFoto(x.foto || ''); setEqHorasDisponiveis(x.horasDisponiveis || 0); setEqHorasIndisponiveis(x.horasIndisponiveis || 0);
-      setEqCategoriaFrota(x.categoriaFrota || 'Equipamento'); setEqCodigoSge(x.codigoSge || ''); setEqFamilia(x.familia || ''); setEqMobilizado(Boolean(x.mobilizado)); setEqMetaDisponibilidade(x.metaDisponibilidade ?? 80); setEqDataMobilizacao(x.dataMobilizacao || ''); setEqDataDesmobilizacao(x.dataDesmobilizacao || ''); setEqOperadorResponsavelId(x.operadorResponsavelId || ''); setEqCombustivelId(x.combustivelId || ''); setEqCapacidadeTanque(x.capacidadeTanqueLitros || 0); setEqEquipamentoVinculadoId(x.equipamentoVinculadoId || '');
-    } else if (subTab === 'funcionarios') {
-      const x = item as Funcionario;
-      const leader = funcionarios.find(person => person.matricula && person.matricula === x.liderMatricula);
-      setFunNome(x.nome); setFunMatricula(x.matricula || ''); setFunCargo(x.cargo); setFunTelefone(x.telefone); setFunEmpresaId(x.empresaId); setFunAtivo(x.ativo); setFunStatus(x.status || (x.ativo ? 'ATIVO' : 'INATIVO'));
-      setFunDivisao(x.divisao || ''); setFunSecao(x.secao || ''); setFunLiderId(leader?.id || ''); setFunArea(x.area || ''); setFunResponsavelArea(x.responsavelArea || ''); setFunDataMobilizacao(x.dataMobilizacao || ''); setFunDataDesmobilizacao(x.dataDesmobilizacao || ''); setFunSituacaoRh(x.situacaoRh || ''); setFunObservacao(x.observacao || '');
-    } else if (subTab === 'comboios') {
-      const x = item as Comboio;
-      setComNome(x.nome); setComPlaca(x.placa); setComCapacidade(x.capacidadeLitros); setComResponsavel(x.responsavel);
-    } else {
-      setSimpleName(item.nome);
-    }
-    setIsFormOpen(true);
-  };
-
-  // 3. Form Submit with validation
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setValidationError('');
-    saveErrorRef.current = false;
-
-    const isNew = editingId === null;
-    const currentId = isNew
-      ? subTab === 'funcionarios'
-        ? nextMasterId('COL', funcionarios.map(item => item.id))
-        : subTab === 'equipamentos'
-          ? nextMasterId('EQ', equipamentos.map(item => item.id))
-          : subTab === 'veiculos'
-            ? nextMasterId('VEI', equipamentos.map(item => item.id))
-            : subTab === 'fornecedores' || subTab === 'fornecedores-locacao' || subTab === 'fornecedores-materiais' || subTab === 'subfornecedores'
-              ? nextMasterId('FOR', empresas.map(item => item.id))
-              : subTab === 'terceiras'
-                ? nextMasterId('TER', empresas.map(item => item.id))
-                : subTab === 'empresas'
-                  ? nextMasterId('EMP', empresas.map(item => item.id))
-                  : `${subTab.substring(0, 3).toUpperCase()}-${Date.now()}`
-      : editingId!;
-
-    // Error callback to show validation errors if cloud save fails
-    const onError = (err: Error) => {
-      saveErrorRef.current = true;
-      setValidationError(err.message);
-    };
-
-    if (isEmpresaSubTab(subTab)) {
-      if (!empNome.trim()) {
-        setValidationError('Nome da empresa/fornecedor é obrigatório!');
-        return;
-      }
-      if (empTipos.length === 0) {
-        setValidationError('Marque pelo menos uma classe para a empresa.');
-        return;
-      }
-      const previous = empresas.find(item => item.id === currentId);
-      const subfornecedor = empTipos.includes('SUBFORNECEDOR');
-      onSaveEmpresa({ // error callback parameter to handle cloud save failures
-        id: currentId,
-        nome: empNome.trim(),
-        cnpj: empCnpj.trim(),
-        telefone: empTelefone.trim(),
-        responsavel: empResponsavel.trim(),
-        // As classes vêm das opções marcadas no formulário, que abre com as
-        // classes atuais do registro: editar pela aba Terceiras não apaga a
-        // classe Fornecedor, e desmarcar é a forma de corrigir uma empresa
-        // classificada errado. Classes que a tela não mostra são mantidas.
-        tipos: Array.from(new Set([
-          ...(previous?.tipos || []).filter(tipo => CLASSES_PRESERVADAS.includes(tipo)),
-          ...empTipos,
-          ...(empTipos.some(tipo => tipo === 'LOCACAO_EQUIPAMENTOS' || tipo === 'MATERIAIS' || tipo === 'SUBFORNECEDOR') ? ['FORNECEDOR' as const] : []),
-        ])),
-        fornecedorPrincipalId: subfornecedor && empFornecedorPrincipalId ? empFornecedorPrincipalId : undefined,
-        status: previous?.status || 'ATIVO',
-        criadoEm: previous?.criadoEm,
-      }, isNew, onError);
-
-    } else if (subTab === 'obras') {
-      if (!obrNome.trim() || !obrEndereco.trim()) {
-        setValidationError('Descrição da obra e Endereço/local são obrigatórios!');
-        return;
-      }
-      onSaveObra({
-        id: currentId,
-        nome: obrNome.trim(),
-        endereco: obrEndereco.trim(),
-        responsavel: obrResponsavel.trim(),
-        status: obrStatus
-      }, isNew);
-
-    } else if (subTab === 'equipamentos' || subTab === 'veiculos') {
-      const responsibleOperator = funcionarios.find(item => item.id === eqOperadorResponsavelId);
-      const equipmentToSave: Equipamento = {
-        id: currentId,
-        prefixo: eqPrefixo.trim().toUpperCase(),
-        nome: eqNome.trim(),
-        tipo: eqTipo.trim() || 'Outro',
-        marca: eqMarca.trim(),
-        modelo: eqModelo.trim(),
-        ano: eqAno.trim() ? Number(eqAno) : undefined,
-        seriePlaca: eqSeriePlaca.trim().toUpperCase(),
-        placa: eqPlaca.trim().toUpperCase() || undefined,
-        empresaId: eqEmpresaId,
-        status: eqStatus,
-        localAtualId: eqLocalId || (obras[0] ? obras[0].id : ''),
-        observacao: eqObservacao.trim(),
-        foto: eqFoto || undefined,
-        horasDisponiveis: Number(eqHorasDisponiveis) || 0,
-        horasIndisponiveis: Number(eqHorasIndisponiveis) || 0,
-        categoriaFrota: subTab === 'veiculos' ? 'Veículo' : eqCategoriaFrota,
-        codigoSge: eqCodigoSge.trim() || undefined,
-        familia: eqFamilia.trim() || undefined,
-        mobilizado: eqMobilizado,
-        metaDisponibilidade: Number(eqMetaDisponibilidade),
-        dataMobilizacao: eqDataMobilizacao || undefined,
-        dataDesmobilizacao: eqDataDesmobilizacao || undefined,
-        operadorResponsavelId: eqOperadorResponsavelId || undefined,
-        operadorResponsavelNome: responsibleOperator?.nome || undefined,
-        combustivelId: eqCombustivelId || undefined,
-        capacidadeTanqueLitros: Number(eqCapacidadeTanque) || undefined,
-        equipamentoVinculadoId: eqEquipamentoVinculadoId || undefined,
-      };
-      const validation = validateEquipmentMasterRecord(equipmentToSave);
-      if (validation.errors.length > 0) {
-        setValidationError(validation.errors.join(' '));
-        return;
-      }
-      onSaveEquipamento(equipmentToSave, isNew);
-
-    } else if (subTab === 'funcionarios') {
-      if (!funMatricula.trim() || !funNome.trim() || !funCargo.trim() || !funEmpresaId) {
-        setValidationError('Matrícula, nome, função e empresa vinculada são obrigatórios!');
-        return;
-      }
-      const leader = funcionarios.find(item => item.id === funLiderId);
-      const previous = funcionarios.find(item => item.id === currentId);
-      onSaveFuncionario({
-        id: currentId,
-        matricula: funMatricula.trim(),
-        nome: funNome.trim(),
-        cargo: funCargo.trim(),
-        telefone: funTelefone.trim(),
-        empresaId: funEmpresaId,
-        ativo: !['INATIVO', 'DESMOBILIZADO'].includes(funStatus) && funAtivo,
-        status: funStatus,
-        liderMatricula: leader?.matricula,
-        liderNome: leader?.nome,
-        area: funArea.trim() || undefined,
-        responsavelArea: funResponsavelArea.trim() || undefined,
-        divisao: funDivisao.trim() || undefined,
-        secao: funSecao.trim() || undefined,
-        dataMobilizacao: funDataMobilizacao || undefined,
-        dataDesmobilizacao: funDataDesmobilizacao || undefined,
-        situacaoRh: funSituacaoRh.trim() || undefined,
-        observacao: funObservacao.trim() || undefined,
-        criadoEm: previous?.criadoEm,
-      }, isNew);
-
-    } else if (subTab === 'comboios') {
-      if (!comNome.trim() || !comPlaca.trim() || !comResponsavel.trim()) {
-        setValidationError('Identificação, Placa e Motorista Responsável do comboio são obrigatórios!');
-        return;
-      }
-      onSaveComboio({
-        id: currentId,
-        nome: comNome.trim(),
-        placa: comPlaca.trim().toUpperCase(),
-        capacidadeLitros: Number(comCapacidade) || 3000,
-        responsavel: comResponsavel.trim()
-      }, isNew);
-
-    } else if (subTab === 'combustiveis') {
-      if (!simpleName.trim()) {
-        setValidationError('Nome do combustível é obrigatório!');
-        return;
-      }
-      onSaveTipoCombustivel({ id: currentId, nome: simpleName.trim() }, isNew);
-
-    } else if (subTab === 'lubrificantes') {
-      if (!simpleName.trim()) {
-        setValidationError('Nome do produto é obrigatório!');
-        return;
-      }
-      onSaveProdutoLubrificacao({ id: currentId, nome: simpleName.trim() }, isNew);
-
-    } else if (subTab === 'etapas') {
-      if (!simpleName.trim()) {
-        setValidationError('Descrição da etapa de serviço é obrigatória!');
-        return;
-      }
-      onSaveEtapaServico({ id: currentId, nome: simpleName.trim() }, isNew);
-    }
-
-    // Close modal only if no error occurred (check after brief delay to let error callback execute)
-    setTimeout(() => {
-      if (!saveErrorRef.current) {
-        setIsFormOpen(false);
-        resetFormState();
-      }
-    }, 50);
-  };
-
-  // 4. Delete Handler with safe prompt confirmation
-  const handleDeleteTrigger = (id: string) => {
-    setDeleteError('');
-    setDeleteConfirmId(id);
-  };
-
-  const executeDeletion = (id: string) => {
-    if (isDeleting) return;
-    setIsDeleting(true);
-    try {
-      let deleted: boolean | void;
-      if (isEmpresaSubTab(subTab)) onDeleteEmpresa(id);
-      else if (subTab === 'obras') deleted = onDeleteObra(id);
-      else if (subTab === 'equipamentos' || subTab === 'veiculos') onDeleteEquipamento(id);
-      else if (subTab === 'funcionarios') onDeleteFuncionario(id);
-      else if (subTab === 'comboios') deleted = onDeleteComboio(id);
-      else if (subTab === 'combustiveis') deleted = onDeleteTipoCombustivel(id);
-      else if (subTab === 'lubrificantes') deleted = onDeleteProdutoLubrificacao(id);
-      else if (subTab === 'etapas') deleted = onDeleteEtapaServico(id);
-
-      if (deleted === false) {
-        setDeleteError('Este cadastro possui lançamentos vinculados e não pode ser excluído.');
-      } else {
-        setDeleteError('');
-        setDeleteConfirmId(null);
-      }
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // 5. Query Filters
-  const q = searchQuery.toLowerCase().trim();
-
-  const filteredEmpresas = empresas.filter(x => x.nome.toLowerCase().includes(q) || x.cnpj.includes(q) || x.responsavel.toLowerCase().includes(q));
-  const filtroEmpresa = empresaPorSubTab[subTab];
-  const displayedEmpresas = filtroEmpresa ? filteredEmpresas.filter(filtroEmpresa) : filteredEmpresas;
-  const fornecedoresPrincipais = empresas.filter(item => isSupplier(item) && !isSubSupplier(item) && item.id !== editingId);
-  const equipamentoTipos = Array.from(new Set(equipamentos.map(x => x.tipo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  const funcionarioCargos = Array.from(new Set(funcionarios.map(x => x.cargo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-  const filteredObras = obras.filter(x => {
-    if (filterStatus !== 'todos' && x.status !== filterStatus) return false;
-    return x.nome.toLowerCase().includes(q) || x.endereco.toLowerCase().includes(q) || x.responsavel.toLowerCase().includes(q);
-  });
-  const filteredEquipamentos = equipamentos.filter(x => {
-    if (filterStatus !== 'todos' && x.status !== filterStatus) return false;
-    if (filterEmpresaId !== 'todos' && x.empresaId !== filterEmpresaId) return false;
-    if (filterObraId !== 'todos' && x.localAtualId !== filterObraId) return false;
-    if (filterTipoEquipamento !== 'todos' && x.tipo !== filterTipoEquipamento) return false;
-    return x.prefixo.toLowerCase().includes(q) || x.nome.toLowerCase().includes(q) || x.seriePlaca.toLowerCase().includes(q) || (x.placa || '').toLowerCase().includes(q) || x.tipo.toLowerCase().includes(q);
-  });
-  const filteredVeiculos = filteredEquipamentos.filter(isVehicle);
-  const displayedEquipamentos = subTab === 'veiculos'
-    ? filteredVeiculos
-    : filteredEquipamentos.filter(item => !isVehicle(item));
-  const filteredFuncionarios = funcionarios.filter(x => {
-    if (filterEmpresaId !== 'todos' && x.empresaId !== filterEmpresaId) return false;
-    if (filterAtivo !== 'todos' && String(x.ativo) !== filterAtivo) return false;
-    if (filterCargo !== 'todos' && x.cargo !== filterCargo) return false;
-    return x.nome.toLowerCase().includes(q)
-      || x.cargo.toLowerCase().includes(q)
-      || (x.matricula || '').toLowerCase().includes(q)
-      || (x.liderNome || '').toLowerCase().includes(q)
-      || (x.area || '').toLowerCase().includes(q)
-      || (x.responsavelArea || '').toLowerCase().includes(q);
-  });
-  const filteredComboios = comboios.filter(x => x.nome.toLowerCase().includes(q) || x.placa.toLowerCase().includes(q) || x.responsavel.toLowerCase().includes(q));
-  const filteredCombustiveis = combustiveis.filter(x => x.nome.toLowerCase().includes(q));
-  const filteredLubrificantes = lubrificantes.filter(x => x.nome.toLowerCase().includes(q));
-  const filteredEtapas = etapas.filter(x => x.nome.toLowerCase().includes(q));
-  const deleteTarget = deleteConfirmId
-    ? isEmpresaSubTab(subTab)
-      ? empresas.find(item => item.id === deleteConfirmId)
-      : subTab === 'obras'
-        ? obras.find(item => item.id === deleteConfirmId)
-        : subTab === 'equipamentos' || subTab === 'veiculos'
-          ? equipamentos.find(item => item.id === deleteConfirmId)
-          : subTab === 'funcionarios'
-            ? funcionarios.find(item => item.id === deleteConfirmId)
-            : subTab === 'comboios'
-              ? comboios.find(item => item.id === deleteConfirmId)
-              : subTab === 'combustiveis'
-                ? combustiveis.find(item => item.id === deleteConfirmId)
-                : subTab === 'lubrificantes'
-                  ? lubrificantes.find(item => item.id === deleteConfirmId)
-                  : etapas.find(item => item.id === deleteConfirmId)
-    : null;
-  const deleteTargetName = deleteTarget && 'nome' in deleteTarget ? String(deleteTarget.nome || '') : deleteConfirmId || '';
-  const deactivationSupported = isEmpresaSubTab(subTab) || subTab === 'equipamentos' || subTab === 'veiculos' || subTab === 'funcionarios';
-  const equipmentDeactivation = subTab === 'equipamentos' || subTab === 'veiculos';
-  const deleteTargetCode = deleteTarget && 'prefixo' in deleteTarget
-    ? String(deleteTarget.prefixo || '')
-    : deleteTarget && 'placa' in deleteTarget
-      ? String(deleteTarget.placa || '')
-      : deleteTarget && 'cnpj' in deleteTarget
-        ? String(deleteTarget.cnpj || '')
-        : deleteConfirmId || '';
-
-  const clearAdvancedFilters = () => {
-    setFilterStatus('todos');
-    setFilterEmpresaId('todos');
-    setFilterObraId('todos');
-    setFilterAtivo('todos');
-    setFilterTipoEquipamento('todos');
-    setFilterCargo('todos');
-    setSearchQuery('');
-  };
-
-  const hasAdvancedFilters = filterStatus !== 'todos' || filterEmpresaId !== 'todos' || filterObraId !== 'todos' || filterAtivo !== 'todos' || filterTipoEquipamento !== 'todos' || filterCargo !== 'todos' || searchQuery !== '';
-
-  const currentFilteredCount = isEmpresaSubTab(subTab) ? displayedEmpresas.length
-    : subTab === 'obras' ? filteredObras.length
-    : subTab === 'equipamentos' ? filteredEquipamentos.filter(item => !isVehicle(item)).length
-    : subTab === 'veiculos' ? filteredVeiculos.length
-    : subTab === 'funcionarios' ? filteredFuncionarios.length
-    : subTab === 'comboios' ? filteredComboios.length
-    : subTab === 'combustiveis' ? filteredCombustiveis.length
-    : subTab === 'lubrificantes' ? filteredLubrificantes.length
-    : filteredEtapas.length;
-
-  // Get count of records
-  const getSubTabCount = (tab: SubTab) => {
-    if (isEmpresaSubTab(tab)) {
-      const filtro = empresaPorSubTab[tab];
-      return filtro ? empresas.filter(filtro).length : empresas.length;
-    }
-    if (tab === 'obras') return obras.length;
-    if (tab === 'equipamentos') return equipamentos.filter(item => !isVehicle(item)).length;
-    if (tab === 'veiculos') return equipamentos.filter(isVehicle).length;
-    if (tab === 'funcionarios') return funcionarios.length;
-    if (tab === 'comboios') return comboios.length;
-    if (tab === 'combustiveis') return combustiveis.length;
-    if (tab === 'lubrificantes') return lubrificantes.length;
-    return etapas.length;
-  };
-
-  const cellToText = (value: unknown): string => {
-    if (value === null || value === undefined) return '';
-    if (value instanceof Date) return value.toISOString().split('T')[0];
-    if (typeof value === 'object') {
-      const record = value as Record<string, unknown>;
-      if ('text' in record) return String(record.text ?? '').trim();
-      if ('result' in record) return cellToText(record.result);
-      if ('richText' in record && Array.isArray(record.richText)) {
-        return record.richText
-          .map(part => (typeof (part as Record<string, unknown>)?.text === 'string' ? (part as Record<string, unknown>).text : ''))
-          .join('')
-          .trim();
-      }
-    }
-    return String(value).trim();
-  };
-
-  const parseCsvText = (text: string): Record<string, string>[] => {
-    const delimiter = (text.split('\n')[0].match(/;/g) || []).length >= (text.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
-    const parseLine = (line: string) => {
-      const cells: string[] = [];
-      let current = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        const next = line[i + 1];
-        if (char === '"' && inQuotes && next === '"') {
-          current += '"';
-          i++;
-        } else if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === delimiter && !inQuotes) {
-          cells.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      cells.push(current.trim());
-      return cells;
-    };
-
-    const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(line => line.trim());
-    const headers = parseLine(lines[0] || '').map(header => header.trim());
-    return lines.slice(1).map(line => {
-      const cells = parseLine(line);
-      return headers.reduce<Record<string, string>>((row, header, idx) => {
-        row[header || `coluna_${idx + 1}`] = cells[idx] || '';
-        return row;
-      }, {});
-    }).filter(row => Object.values(row).some(Boolean));
-  };
-
-  const parseWorkbookFile = async (file: File): Promise<{ abas: AbaPlanilha[]; ocultas: number }> => {
-    const lowerName = file.name.toLowerCase();
-    if (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv')) {
-      if (file.size === 0) throw new Error('O arquivo está vazio.');
-      if (file.size > 10 * 1024 * 1024) throw new Error('O arquivo CSV/TSV ultrapassa o limite de 10 MB.');
-      const text = await file.text();
-      const linhas = lowerName.endsWith('.tsv')
-        ? parseCsvText(text.replace(/\t/g, ';'))
-        : parseCsvText(text);
-      return { abas: [{ nome: file.name, linhas }], ocultas: 0 };
-    }
-
-    const workbook = await loadValidatedWorkbook(file);
-    const abas: AbaPlanilha[] = [];
-    // Abas ocultas são resumo, detalhe ou apoio da planilha, nunca cadastro.
-    const visiveis = workbook.worksheets.filter(worksheet => abaVisivel(worksheet.state));
-    visiveis.forEach(worksheet => {
-      const rows: Record<string, string>[] = [];
-      const headerRowNumber = Math.max(1, Array.from({ length: Math.min(10, worksheet.rowCount) }, (_, index) => index + 1)
-        .find(rowNumber => {
-          let filled = 0;
-          worksheet.getRow(rowNumber).eachCell({ includeEmpty: false }, cell => {
-            if (cellToText(cell.value)) filled += 1;
-          });
-          return filled >= 2;
-        }) || 1);
-
-      const headers: string[] = [];
-      worksheet.getRow(headerRowNumber).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-        headers[colNumber - 1] = cellToText(cell.value) || `coluna_${colNumber}`;
-      });
-
-      worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-        if (rowNumber <= headerRowNumber) return;
-        const record: Record<string, string> = { Aba: worksheet.name };
-        headers.forEach((header, idx) => {
-          record[header] = cellToText(row.getCell(idx + 1).value);
-        });
-        if (Object.values(record).some(Boolean)) rows.push(record);
-      });
-      abas.push({ nome: worksheet.name, linhas: rows });
-    });
-    return { abas, ocultas: workbook.worksheets.length - visiveis.length };
-  };
-
-  const handleImportSpreadsheet = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      setImportFeedback(null);
-      const { abas, ocultas } = await parseWorkbookFile(file);
-      const comLinhas = abas.filter(aba => aba.linhas.length > 0);
-      if (comLinhas.length === 0) {
-        setImportFeedback({ type: 'error', message: ocultas > 0 && abas.length === 0
-          ? 'A planilha só tem abas ocultas. Reexiba a aba do cadastro no Excel e importe de novo.'
-          : 'A planilha não possui linhas para importar.' });
-        return;
-      }
-      if (comLinhas.length === 1) {
-        setPendingImport({ fileName: file.name, rows: comLinhas[0].linhas });
-        return;
-      }
-      setPendingSheets({
-        fileName: file.name,
-        abas: comLinhas,
-        sugerida: abaSugerida(comLinhas, [categoriaAtual.label, subTab]),
-        ocultas,
-      });
-    } catch (error: unknown) {
-      console.error('Erro ao importar planilha de cadastros:', error);
-      setImportFeedback({ type: 'error', message: error instanceof Error && error.message ? error.message : 'Não foi possível ler a planilha. Use CSV, TSV, XLSX ou XLSM.' });
-    } finally {
-      if (importFileInputRef.current) importFileInputRef.current.value = '';
-    }
-  };
-
-  const escolherAba = (aba: AbaPlanilha) => {
-    if (!pendingSheets) return;
-    setPendingImport({ fileName: `${pendingSheets.fileName} · ${aba.nome}`, rows: aba.linhas });
-    setPendingSheets(null);
-  };
-
-  const confirmSpreadsheetImport = () => {
-    if (!pendingImport || isConfirmingImport) return;
-    setIsConfirmingImport(true);
-    const result = onImportCadastros(subTab, pendingImport.rows);
-    setImportFeedback({ type: result.success ? 'success' : 'error', message: result.message });
-    setPendingImport(null);
-    setIsConfirmingImport(false);
-  };
-
-  // Rodapé de paginação compartilhado por todas as sub-abas — antes só
-  // Colaboradores tinha, as outras 10 renderizavam a lista inteira de uma vez.
-  const totalPages = Math.max(1, Math.ceil(currentFilteredCount / itemsPerPage));
-  const PaginationFooter = () => (
-    <div className="mt-4 flex items-center justify-between px-2 py-3 bg-white border-t border-slate-200">
-      <span className="text-xs text-slate-500">
-        Página {currentPage} de {totalPages} ({currentFilteredCount} registros)
-      </span>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-          disabled={currentPage === 1}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
-          Anterior
-        </button>
-        <button
-          type="button"
-          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-          disabled={currentPage >= totalPages}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
-          Próxima
-        </button>
-      </div>
-    </div>
+  const dados: DadosCadastros = useMemo(
+    () => ({ empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas }),
+    [empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas],
   );
 
-  const escopoMotion = useEntradaDeLista<HTMLDivElement>([subTab, currentPage]);
-  const categoriaAtual = categoriaCadastro(subTab);
+  // O tipo escolhido fica guardado mesmo com a Lixeira aberta: é ele que o
+  // botão principal e a importação usam.
+  const [categoria, setCategoria] = useState<CadastroCategoriaId>('funcionarios');
+  const [vista, setVista] = useState<VistaCadastros>('funcionarios');
+  const [busca, setBusca] = useState('');
+  const [situacao, setSituacao] = useState<SituacaoLista>('ativos');
+  const [filtros, setFiltros] = useState<Record<string, string>>({});
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [ordem, setOrdem] = useState<{ coluna: string; direcao: 'asc' | 'desc' }>({ coluna: COLUNAS.funcionarios[0].id, direcao: 'asc' });
+  const [pagina, setPagina] = useState(1);
+  const [organograma, setOrganograma] = useState(false);
+  const [organogramaAtivoId, setOrganogramaAtivoId] = useState<string | null>(null);
 
-  // Entrada do cabeçalho e dos grupos de tipos, no mesmo passo do Painel.
-  // Roda só ao abrir a aba: trocar de tipo anima apenas as linhas da lista.
+  const [detalheId, setDetalheId] = useState<string | null>(null);
+  const [formulario, setFormulario] = useState<{ editandoId: string | null; valores: ValoresCadastro } | null>(null);
+  const [erroFormulario, setErroFormulario] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [confirmacao, setConfirmacao] = useState<{ acao: AcaoConfirmacao; linha: LinhaCadastro; usos: UsoCadastro[] } | null>(null);
+  const [processando, setProcessando] = useState(false);
+  const [restaurandoId, setRestaurandoId] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [exportando, setExportando] = useState(false);
+
+  const arquivoRef = useRef<HTMLInputElement>(null);
+  const [importacao, setImportacao] = useState<{ fileName: string; rows: Record<string, string>[] } | null>(null);
+  const [escolhaDeAba, setEscolhaDeAba] = useState<{ fileName: string; abas: AbaPlanilha[]; sugerida: string | null; ocultas: number } | null>(null);
+  const [confirmandoImportacao, setConfirmandoImportacao] = useState(false);
+
+  const categoriaAtual = categoriaCadastro(categoria);
+  const tabela = TABELA_DA_CATEGORIA[categoria];
+  const comSituacao = temSituacao(categoria);
+
+  const todasAsLinhas = useMemo(() => montarLinhas(categoria, dados), [categoria, dados]);
+  const contagem = useMemo(() => contarSituacoes(todasAsLinhas), [todasAsLinhas]);
+  const linhasFiltradas = useMemo(() => {
+    const filtradas = filtrarLinhas(todasAsLinhas, { busca, situacao: comSituacao ? situacao : 'todos', filtros });
+    return ordenarLinhas(filtradas, ordem.coluna, ordem.direcao);
+  }, [todasAsLinhas, busca, situacao, comSituacao, filtros, ordem]);
+
+  const lixeira = useMemo(
+    () => Array.from(exclusoesAtivas(exclusoes).values()).sort((a, b) => b.excluidoEm.localeCompare(a.excluidoEm)),
+    [exclusoes],
+  );
+
+  const totais = useMemo(() => {
+    const mapa = new Map<VistaCadastros, number>();
+    CADASTRO_CATEGORIAS.forEach(item => mapa.set(item.id, montarLinhas(item.id, dados).filter(linha => linha.ativo).length));
+    mapa.set('lixeira', lixeira.length);
+    return mapa;
+  }, [dados, lixeira.length]);
+
+  const linhaDetalhe = detalheId ? todasAsLinhas.find(linha => linha.id === detalheId) : undefined;
+  const usosDetalhe = useMemo(() => (linhaDetalhe ? usosDoCadastro(tabela, linhaDetalhe.id) : []), [linhaDetalhe, usosDoCadastro, tabela]);
+  const historicoDetalhe = useMemo(
+    () => (linhaDetalhe ? historyLogs.filter(log => log.registroId === linhaDetalhe.id).slice(0, 6) : []),
+    [historyLogs, linhaDetalhe],
+  );
+
+  // Busca, filtro ou troca de tipo mudam o total de páginas: volta para a primeira.
+  useEffect(() => setPagina(1), [categoria, busca, situacao, filtros, ordem]);
+
+  useEffect(() => {
+    if (!aviso) return undefined;
+    const relogio = window.setTimeout(() => setAviso(null), TEMPO_DO_AVISO_MS);
+    return () => window.clearTimeout(relogio);
+  }, [aviso]);
+
+  const escopo = useEntradaDeLista<HTMLDivElement>([vista, pagina, busca, situacao, filtros]);
+
+  // Entrada do cabeçalho, dos tipos e da barra de filtros, no passo do Painel.
   useGSAP(() => {
-    const raiz = escopoMotion.current;
+    const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    gsap.fromTo(raiz.querySelectorAll('[data-cadastros-reveal]'), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.065, ease: 'power3.out', clearProps: 'transform,opacity' });
-  }, { scope: escopoMotion });
+    gsap.fromTo(raiz.querySelectorAll('[data-cadastros-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
 
-  const selecionarCategoria = (module: SubTab) => {
-    setSubTab(module);
-    setIsFormOpen(false);
-    setSearchQuery('');
-    clearAdvancedFilters();
-    resetFormState();
+  const avisoRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!aviso || !avisoRef.current || reduzMovimento()) return;
+    gsap.fromTo(avisoRef.current, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'transform,opacity' });
+  }, [aviso]);
+
+  const escolherVista = (proxima: VistaCadastros) => {
+    setVista(proxima);
+    setDetalheId(null);
+    if (proxima === 'lixeira') return;
+    setCategoria(proxima);
+    setBusca('');
+    setFiltros({});
+    setSituacao('ativos');
+    setOrganograma(false);
+    setOrdem({ coluna: COLUNAS[proxima][0].id, direcao: 'asc' });
   };
 
+  const ordenar = (coluna: string) => setOrdem(atual => (
+    atual.coluna === coluna ? { coluna, direcao: atual.direcao === 'asc' ? 'desc' : 'asc' } : { coluna, direcao: 'asc' }
+  ));
+
+  const limparFiltros = () => {
+    setBusca('');
+    setFiltros({});
+    setSituacao('ativos');
+  };
+
+  // ---- Gravar -------------------------------------------------------------
+
+  // O Desfazer roda segundos depois. Ele usa as funções do App da última
+  // renderização: as de antes ainda enxergam a lista sem a exclusão.
+  const ultimas = useRef(props);
+  ultimas.current = props;
+
+  const gravar = (registro: RegistroCadastro, novo: boolean, onError?: (error: Error) => void, tabela = TABELA_DA_CATEGORIA[categoria]) => {
+    const props = ultimas.current;
+    if (tabela === 'empresas') props.onSaveEmpresa(registro as Empresa, novo, onError);
+    else if (tabela === 'funcionarios') props.onSaveFuncionario(registro as Funcionario, novo);
+    else if (tabela === 'equipamentos') props.onSaveEquipamento(registro as Equipamento, novo);
+    else if (tabela === 'obras') props.onSaveObra(registro as ObraLocal, novo);
+    else if (tabela === 'comboios') props.onSaveComboio(registro as Comboio, novo);
+    else if (tabela === 'combustiveis') props.onSaveTipoCombustivel(registro as TipoCombustivel, novo);
+    else if (tabela === 'lubrificantes') props.onSaveProdutoLubrificacao(registro as ProdutoLubrificacao, novo);
+    else props.onSaveEtapaServico(registro as EtapaServico, novo);
+  };
+
+  const abrirNovo = () => {
+    if (vista === 'lixeira') setVista(categoria);
+    setErroFormulario('');
+    setDetalheId(null);
+    setFormulario({ editandoId: null, valores: valoresIniciais(categoria, undefined, dados) });
+  };
+
+  const abrirEdicao = (linha: LinhaCadastro) => {
+    setErroFormulario('');
+    setDetalheId(null);
+    setFormulario({ editandoId: linha.id, valores: valoresIniciais(categoria, linha.registro, dados) });
+  };
+
+  const salvarFormulario = (valores: ValoresCadastro) => {
+    if (!formulario) return;
+    const anterior = formulario.editandoId ? todasAsLinhas.find(linha => linha.id === formulario.editandoId)?.registro : undefined;
+    const id = formulario.editandoId || novoId(categoria, dados);
+    const montado = montarRegistro(categoria, valores, anterior, id, dados);
+    if (montado.ok === false) {
+      setErroFormulario(montado.erro);
+      return;
+    }
+    // Mesma checagem do App (matrícula, prefixo, CNPJ e nome repetidos), feita
+    // aqui para o erro aparecer no formulário em vez de só no sino.
+    if (['empresas', 'funcionarios', 'equipamentos', 'obras'].includes(tabela)) {
+      const erros = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: montado.registro as Empresa });
+      if (erros.length > 0) {
+        setErroFormulario(erros.join(' '));
+        return;
+      }
+    }
+    setSalvando(true);
+    const novo = !formulario.editandoId;
+    let falhou = false;
+    gravar(montado.registro, novo, error => {
+      falhou = true;
+      setAviso({ tipo: 'erro', texto: `Salvo neste aparelho, mas não chegou à nuvem: ${error.message}` });
+    });
+    setSalvando(false);
+    if (falhou) return;
+    setFormulario(null);
+    setDetalheId(id);
+    setAviso({ tipo: 'ok', texto: novo ? `${montado.registro && 'nome' in montado.registro ? montado.registro.nome : 'Cadastro'} cadastrado.` : 'Alterações salvas.' });
+  };
+
+  // ---- Inativar, reativar, excluir e restaurar ---------------------------
+
+  const registroComSituacao = (linha: LinhaCadastro, ativo: boolean): RegistroCadastro => {
+    const registro = linha.registro;
+    if (tabela === 'empresas') return { ...(registro as Empresa), status: ativo ? 'ATIVO' : 'INATIVO', atualizadoEm: new Date().toISOString() };
+    if (tabela === 'funcionarios') return { ...(registro as Funcionario), status: ativo ? 'ATIVO' : 'DESMOBILIZADO', ativo };
+    if (tabela === 'equipamentos') return { ...(registro as Equipamento), status: ativo ? 'Ativo' : 'Desmobilizado', mobilizado: ativo ? (registro as Equipamento).mobilizado : false };
+    return { ...(registro as ObraLocal), status: ativo ? 'Ativa' : 'Concluída' };
+  };
+
+  const inativar = (linha: LinhaCadastro) => {
+    if (tabela === 'obras') gravar(registroComSituacao(linha, false), false);
+    else onInativar(tabela, linha.id);
+    const original = linha.registro;
+    const tabelaDoRegistro = tabela;
+    setConfirmacao(null);
+    setDetalheId(null);
+    setAviso({ tipo: 'ok', texto: `${linha.titulo} inativado.`, desfazer: () => { gravar(original, false, undefined, tabelaDoRegistro); setAviso({ tipo: 'ok', texto: `${linha.titulo} voltou a ficar ativo.` }); } });
+  };
+
+  const reativar = (linha: LinhaCadastro) => {
+    gravar(registroComSituacao(linha, true), false);
+    setAviso({ tipo: 'ok', texto: `${linha.titulo} está ativo de novo.` });
+  };
+
+  const pedirExclusao = (linha: LinhaCadastro) => {
+    setConfirmacao({ acao: 'excluir', linha, usos: usosDoCadastro(tabela, linha.id) });
+  };
+
+  const confirmar = () => {
+    if (!confirmacao || processando) return;
+    const { acao, linha } = confirmacao;
+    if (acao === 'inativar') {
+      inativar(linha);
+      return;
+    }
+    setProcessando(true);
+    const resultado = onExcluir(tabela, linha.id, linha.titulo);
+    setProcessando(false);
+    if (resultado.ok === false) {
+      if (resultado.usos.length > 0) setConfirmacao({ acao, linha, usos: resultado.usos });
+      else {
+        setConfirmacao(null);
+        setAviso({ tipo: 'erro', texto: resultado.mensagem || 'Não deu para excluir.' });
+      }
+      return;
+    }
+    setConfirmacao(null);
+    setDetalheId(null);
+    setAviso({
+      tipo: 'ok',
+      texto: `${linha.titulo} excluído.`,
+      desfazer: () => {
+        const volta = ultimas.current.onRestaurar(resultado.exclusaoId);
+        setAviso({ tipo: volta.ok ? 'ok' : 'erro', texto: volta.mensagem });
+      },
+    });
+  };
+
+  const restaurar = (exclusao: ExclusaoRegistro) => {
+    setRestaurandoId(exclusao.id);
+    const resultado = onRestaurar(exclusao.id);
+    setRestaurandoId(null);
+    setAviso({ tipo: resultado.ok ? 'ok' : 'erro', texto: resultado.mensagem });
+  };
+
+  // ---- Importar e exportar ------------------------------------------------
+
+  const importarArquivo = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = event.target.files?.[0];
+    if (!arquivo) return;
+    try {
+      const { abas, ocultas } = await parseWorkbookFile(arquivo);
+      const comLinhas = abas.filter(aba => aba.linhas.length > 0);
+      if (comLinhas.length === 0) {
+        setAviso({ tipo: 'erro', texto: ocultas > 0 && abas.length === 0
+          ? 'A planilha só tem abas ocultas. Reexiba a aba do cadastro no Excel e importe de novo.'
+          : 'A planilha não tem linhas para importar.' });
+        return;
+      }
+      if (comLinhas.length === 1) setImportacao({ fileName: arquivo.name, rows: comLinhas[0].linhas });
+      else setEscolhaDeAba({ fileName: arquivo.name, abas: comLinhas, sugerida: abaSugerida(comLinhas, [categoriaAtual.label, categoria]), ocultas });
+    } catch (error: unknown) {
+      console.error('Erro ao importar planilha de cadastros:', error);
+      setAviso({ tipo: 'erro', texto: error instanceof Error && error.message ? error.message : 'Não foi possível ler a planilha. Use CSV, TSV, XLSX ou XLSM.' });
+    } finally {
+      if (arquivoRef.current) arquivoRef.current.value = '';
+    }
+  };
+
+  const confirmarImportacao = () => {
+    if (!importacao || confirmandoImportacao) return;
+    setConfirmandoImportacao(true);
+    const resultado = onImportCadastros(categoria, importacao.rows);
+    setAviso({ tipo: resultado.success ? 'ok' : 'erro', texto: resultado.message });
+    setImportacao(null);
+    setConfirmandoImportacao(false);
+  };
+
+  const exportar = async () => {
+    if (exportando) return;
+    setExportando(true);
+    try {
+      const { autoFitCorporateColumns, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } = await import('../utils/excelCorporate');
+      const planilha = await createCorporateWorkbook();
+      const aba = planilha.addWorksheet(categoriaAtual.label.slice(0, 31));
+      const colunas = COLUNAS[categoria];
+      aba.addRow([...colunas.map(coluna => coluna.label), ...(comSituacao ? ['Situação'] : []), 'Código']);
+      linhasFiltradas.forEach(linha => aba.addRow([...colunas.map(coluna => linha.colunas[coluna.id] || ''), ...(comSituacao ? [linha.situacao] : []), linha.id]));
+      styleCorporateWorksheet(aba, { title: categoriaAtual.label, headerRow: 1, freezeRows: 1, recordCount: linhasFiltradas.length });
+      autoFitCorporateColumns(aba);
+      const hoje = new Date();
+      const dia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+      await downloadCorporateWorkbook(planilha, `RENEA_${categoria}_${dia}.xlsx`);
+    } catch (error) {
+      console.error('Erro ao exportar cadastros:', error);
+      setAviso({ tipo: 'erro', texto: 'Não deu para gerar a planilha. Tente de novo.' });
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  // Arquivo oficial com todas as abas (colaboradores, empresas, equipamentos,
+  // veículos, locais) que alimenta o Power Query das planilhas da obra.
+  const baixarBaseCompleta = async () => {
+    if (exportando) return;
+    setExportando(true);
+    try {
+      const { downloadCentralRegistryWorkbook } = await import('../masterData/centralWorkbookExport');
+      await downloadCentralRegistryWorkbook({ empresas, obras, equipamentos, funcionarios });
+    } catch (error) {
+      console.error('Erro ao gerar a base completa de cadastros:', error);
+      setAviso({ tipo: 'erro', texto: 'Não deu para gerar a planilha. Tente de novo.' });
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  // ---- Tela ---------------------------------------------------------------
+
+  const filtrosDoTipo = FILTROS[categoria];
+  const filtrosAtivos = Object.entries(filtros).filter(([, valor]) => valor);
+  const temConsulta = Boolean(busca) || filtrosAtivos.length > 0 || situacao !== 'ativos';
+  const emLixeira = vista === 'lixeira';
+
   return (
-    <div ref={escopoMotion} className="erp-module erp-module--cadastros space-y-5" id="cadastros-tab" data-testid="cadastros-tab">
+    <div ref={escopo} className="erp-module erp-module--cadastros space-y-5" id="cadastros-tab" data-testid="cadastros-tab">
       <div data-cadastros-reveal>
-      <PageHeader
-        className="cadastros-header"
-        eyebrow="Base corporativa"
-        title="Cadastros"
-        description="Escolha o tipo, pesquise e cadastre. Tudo que for gravado aqui vale para a operação inteira."
-        actions={<>
-          <button
-            type="button"
-            onClick={() => importFileInputRef.current?.click()}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition duration-200 hover:border-emerald-500 hover:text-[#176b4d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
-          >
-            <Upload className="size-5" aria-hidden="true" />
-            Importar planilha
-          </button>
-          <input
-            ref={importFileInputRef}
-            type="file"
-            accept=".xlsx,.xlsm,.csv,.tsv"
-            onChange={handleImportSpreadsheet}
-            className="hidden"
-          />
-          <button
-            type="button"
-            data-testid="cadastro-acao-principal"
-            onClick={handleOpenCreate}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-5 max-sm:order-first text-sm font-black text-white shadow-sm transition duration-200 hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
-          >
-            <Plus className="size-5" aria-hidden="true" />
-            {categoriaAtual.acaoNovo}
-          </button>
-        </>}
-      />
+        <PageHeader
+          className="cadastros-header"
+          eyebrow="Base corporativa"
+          title="Cadastros"
+          description="Escolha o tipo, filtre e abra o cadastro. O que for gravado aqui vale para a obra inteira."
+          actions={<>
+            {!emLixeira && (
+              <button type="button" onClick={exportar} disabled={exportando || linhasFiltradas.length === 0} className={`${BOTAO_SECUNDARIO} max-sm:hidden`}>
+                <Download className="size-5" aria-hidden="true" />
+                {exportando ? 'Gerando…' : 'Exportar lista'}
+              </button>
+            )}
+            {podeEditar && (
+              <button type="button" onClick={() => arquivoRef.current?.click()} className={BOTAO_SECUNDARIO}>
+                <Upload className="size-5" aria-hidden="true" />
+                Importar planilha
+              </button>
+            )}
+            <input ref={arquivoRef} type="file" accept=".xlsx,.xlsm,.csv,.tsv" onChange={importarArquivo} className="hidden" />
+            {podeEditar && (
+              <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
+                <Plus className="size-5" aria-hidden="true" />
+                {categoriaAtual.acaoNovo}
+              </button>
+            )}
+          </>}
+        />
       </div>
 
-      <CadastroCategoryPicker value={subTab} getCount={getSubTabCount} onSelect={selecionarCategoria} />
+      <div className="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+        <CadastroTipos value={vista} contar={item => totais.get(item) ?? 0} onSelect={escolherVista} mostrarLixeira={podeExcluir || lixeira.length > 0} />
 
-      {/* Portal: .erp-module usa container-type, que prende o fixed dentro do módulo. */}
-      {pendingSheets && createPortal(
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101a22]/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="cadastro-aba-titulo">
-          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6" data-testid="cadastro-escolher-aba">
+        <div className="min-w-0 space-y-3">
+          {emLixeira ? (
+            <>
+              <div data-cadastros-reveal className="space-y-1">
+                <h2 className="text-lg font-bold text-slate-900">Lixeira</h2>
+                <p className="text-sm text-slate-500">Cadastros excluídos. Restaurar devolve o cadastro para a lista em todos os aparelhos.</p>
+              </div>
+              <CadastroLixeira exclusoes={lixeira} podeRestaurar={podeExcluir} restaurandoId={restaurandoId} onRestaurar={restaurar} />
+            </>
+          ) : (
+            <>
+              <div data-cadastros-reveal>
+                <FilterBar label="Filtros de cadastros" className="rounded-2xl border border-slate-200 bg-white p-3">
+                  <div className="w-full space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <div className="relative min-w-0 flex-1">
+                        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                        <input
+                          type="search"
+                          aria-label="Buscar cadastros"
+                          placeholder={`Buscar em ${categoriaAtual.label.toLowerCase()}`}
+                          value={busca}
+                          onChange={event => setBusca(event.target.value)}
+                          className={`${CAMPO} pl-11`}
+                        />
+                      </div>
+                      {comSituacao && (
+                        <div role="radiogroup" aria-label="Situação" className="grid grid-cols-3 overflow-hidden rounded-xl border border-slate-200 bg-white text-sm font-semibold">
+                          {([
+                            ['ativos', 'Ativos', contagem.ativos],
+                            ['inativos', 'Inativos', contagem.inativos],
+                            ['todos', 'Todos', contagem.todos],
+                          ] as const).map(([valor, rotulo, total]) => (
+                            <button
+                              key={valor}
+                              type="button"
+                              role="radio"
+                              aria-checked={situacao === valor}
+                              onClick={() => setSituacao(valor)}
+                              className={`flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap border-r border-slate-200 px-3 transition-colors duration-150 last:border-0 ${FOCO} ${situacao === valor ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                              {rotulo}
+                              <span className={`text-xs tabular-nums ${situacao === valor ? 'text-white/70' : 'text-slate-400'}`}>{total}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {filtrosDoTipo.length > 0 && (
+                        <button
+                          type="button"
+                          aria-expanded={filtrosAbertos}
+                          onClick={() => setFiltrosAbertos(atual => !atual)}
+                          className={`${BOTAO_SECUNDARIO} sm:hidden`}
+                        >
+                          <SlidersHorizontal className="size-5" aria-hidden="true" />
+                          {filtrosAtivos.length > 0 ? `Filtros · ${filtrosAtivos.length}` : 'Filtros'}
+                        </button>
+                      )}
+                    </div>
+
+                    {filtrosDoTipo.length > 0 && (
+                      <div className={`${filtrosAbertos ? 'grid' : 'hidden'} gap-2 sm:grid sm:grid-cols-2 xl:grid-cols-4`}>
+                        {filtrosDoTipo.map(filtro => (
+                          <label key={filtro.id} className="min-w-0">
+                            <span className="sr-only">{filtro.label}</span>
+                            <select
+                              value={filtros[filtro.id] || ''}
+                              onChange={event => setFiltros(atual => ({ ...atual, [filtro.id]: event.target.value }))}
+                              className={`${CAMPO} cursor-pointer ${filtros[filtro.id] ? 'border-[#f26a2e]/60 bg-orange-50/40' : ''}`}
+                            >
+                              <option value="">{filtro.label}: todos</option>
+                              {opcoesDoFiltro(todasAsLinhas, filtro.id).map(opcao => (
+                                <option key={opcao.valor} value={opcao.valor}>{`${opcao.valor} (${opcao.total})`}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {(filtrosAtivos.length > 0 || temConsulta || categoria === 'funcionarios') && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {filtrosAtivos.map(([id, valor]) => (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => setFiltros(atual => ({ ...atual, [id]: '' }))}
+                            className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#f26a2e]/40 bg-orange-50 px-3 text-sm font-medium text-slate-800 ${FOCO}`}
+                          >
+                            {filtrosDoTipo.find(filtro => filtro.id === id)?.label}: {valor}
+                            <X className="size-4" aria-label="Tirar filtro" />
+                          </button>
+                        ))}
+                        {temConsulta && (
+                          <button type="button" onClick={limparFiltros} className={`min-h-9 rounded-lg px-2 text-sm font-semibold text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline ${FOCO}`}>
+                            Limpar filtros
+                          </button>
+                        )}
+                        {categoria === 'funcionarios' && (
+                          <button
+                            type="button"
+                            aria-pressed={organograma}
+                            onClick={() => setOrganograma(atual => !atual)}
+                            className={`ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold ${organograma ? 'text-[#176b4d]' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
+                          >
+                            <Network className="size-4" aria-hidden="true" />
+                            {organograma ? 'Esconder organograma' : 'Ver organograma'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </FilterBar>
+              </div>
+
+              {organograma && categoria === 'funcionarios' && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                  <OrganizationChart
+                    funcionarios={linhasFiltradas.map(linha => linha.registro as Funcionario)}
+                    empresas={empresas}
+                    activeId={organogramaAtivoId}
+                    onActiveIdChange={setOrganogramaAtivoId}
+                  />
+                </div>
+              )}
+
+              <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`}>
+                <CadastroLista
+                  linhas={linhasFiltradas}
+                  colunas={COLUNAS[categoria]}
+                  mostrarSituacao={comSituacao}
+                  ordem={ordem}
+                  onOrdenar={ordenar}
+                  pagina={pagina}
+                  onPagina={setPagina}
+                  selecionadoId={detalheId}
+                  onAbrir={linha => setDetalheId(linha.id)}
+                  vazio={todasAsLinhas.length === 0
+                    ? {
+                        titulo: `Nenhum cadastro em ${categoriaAtual.label.toLowerCase()}`,
+                        texto: podeEditar ? 'Cadastre o primeiro pelo botão verde ou importe uma planilha.' : 'Ainda não há nada cadastrado aqui.',
+                        acao: podeEditar ? { label: categoriaAtual.acaoNovo, onClick: abrirNovo } : undefined,
+                      }
+                    : {
+                        titulo: 'Nada encontrado',
+                        texto: 'Nenhum cadastro bate com a busca e os filtros escolhidos.',
+                        acao: { label: 'Limpar filtros', onClick: limparFiltros },
+                      }}
+                />
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+
+      {podeEditar && (
+        <section aria-labelledby="cadastros-planilha-mestre" className="space-y-3 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="cadastros-planilha-mestre" className="text-xs font-bold uppercase tracking-wide text-[#718087]">Planilha mestre</h2>
+            <button type="button" onClick={baixarBaseCompleta} disabled={exportando} className={BOTAO_SECUNDARIO} data-testid="cadastro-base-completa">
+              <Download className="size-5" aria-hidden="true" />
+              Baixar base completa
+            </button>
+          </div>
+          <MasterDataReviewCenter
+            empresas={empresas}
+            obras={obras}
+            funcionarios={funcionarios}
+            equipamentos={equipamentos}
+            onApplyMasterWorkbook={onApplyMasterWorkbook}
+          />
+        </section>
+      )}
+
+      {linhaDetalhe && !formulario && !confirmacao && (
+        <CadastroDetalhe
+          categoria={categoria}
+          linha={linhaDetalhe}
+          dados={dados}
+          usos={usosDetalhe}
+          historico={historicoDetalhe}
+          podeEditar={podeEditar}
+          podeExcluir={podeExcluir}
+          onEditar={() => abrirEdicao(linhaDetalhe)}
+          onInativar={() => setConfirmacao({ acao: 'inativar', linha: linhaDetalhe, usos: [] })}
+          onReativar={() => reativar(linhaDetalhe)}
+          onExcluir={() => pedirExclusao(linhaDetalhe)}
+          onFechar={() => setDetalheId(null)}
+        />
+      )}
+
+      {formulario && (
+        <CadastroFormulario
+          key={formulario.editandoId || 'novo'}
+          categoria={categoria}
+          titulo={formulario.editandoId ? todasAsLinhas.find(linha => linha.id === formulario.editandoId)?.titulo || categoriaAtual.label : categoriaAtual.acaoNovo}
+          editandoId={formulario.editandoId}
+          valoresIniciais={formulario.valores}
+          dados={dados}
+          erro={erroFormulario}
+          salvando={salvando}
+          onSalvar={salvarFormulario}
+          onFechar={() => setFormulario(null)}
+        />
+      )}
+
+      {confirmacao && (
+        <CadastroConfirmacao
+          acao={confirmacao.acao}
+          nome={confirmacao.linha.titulo}
+          codigo={confirmacao.linha.id}
+          usos={confirmacao.usos}
+          podeInativar={comSituacao}
+          processando={processando}
+          onConfirmar={confirmar}
+          onInativarNoLugar={() => setConfirmacao({ acao: 'inativar', linha: confirmacao.linha, usos: [] })}
+          onCancelar={() => setConfirmacao(null)}
+        />
+      )}
+
+      {escolhaDeAba && createPortal(
+        <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="cadastro-aba-titulo">
+          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6" data-testid="cadastro-escolher-aba">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#718087]">Importar {categoriaAtual.label.toLowerCase()}</p>
-                <h2 id="cadastro-aba-titulo" className="mt-1 text-xl font-black text-slate-900">Qual aba da planilha tem os cadastros?</h2>
+                <p className="text-xs font-bold uppercase tracking-wide text-[#718087]">Importar {categoriaAtual.label.toLowerCase()}</p>
+                <h2 id="cadastro-aba-titulo" className="mt-1 text-xl font-bold text-slate-900">Qual aba da planilha tem os cadastros?</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  {pendingSheets.fileName} tem {pendingSheets.abas.length} abas com linhas.
-                  {pendingSheets.ocultas > 0 && ` ${pendingSheets.ocultas} aba${pendingSheets.ocultas > 1 ? 's ocultas foram ignoradas' : ' oculta foi ignorada'}.`}
+                  {escolhaDeAba.fileName} tem {escolhaDeAba.abas.length} abas com linhas.
+                  {escolhaDeAba.ocultas > 0 && ` ${escolhaDeAba.ocultas} aba${escolhaDeAba.ocultas > 1 ? 's ocultas foram ignoradas' : ' oculta foi ignorada'}.`}
                 </p>
               </div>
-              <button type="button" onClick={() => setPendingSheets(null)} aria-label="Cancelar importação" className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60">
+              <button type="button" onClick={() => setEscolhaDeAba(null)} aria-label="Cancelar importação" className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 ${FOCO}`}>
                 <X className="size-5" />
               </button>
             </div>
             <div className="mt-5 grid gap-2">
-              {pendingSheets.abas.map(aba => {
-                const sugerida = aba.nome === pendingSheets.sugerida;
+              {escolhaDeAba.abas.map(aba => {
+                const sugerida = aba.nome === escolhaDeAba.sugerida;
                 return (
                   <button
                     key={aba.nome}
                     type="button"
-                    onClick={() => escolherAba(aba)}
-                    className={`flex min-h-14 w-full items-center gap-3 rounded-xl border px-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${sugerida ? 'border-[#176b4d] bg-emerald-50 hover:bg-emerald-100' : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50'}`}
+                    onClick={() => { setImportacao({ fileName: `${escolhaDeAba.fileName} · ${aba.nome}`, rows: aba.linhas }); setEscolhaDeAba(null); }}
+                    className={`flex min-h-14 w-full items-center gap-3 rounded-xl border px-4 text-left transition duration-200 ${FOCO} ${sugerida ? 'border-[#176b4d] bg-emerald-50 hover:bg-emerald-100' : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50'}`}
                   >
                     <span className="min-w-0 flex-1">
                       <strong className="block truncate text-base text-slate-900">{aba.nome}</strong>
-                      <span className="text-xs text-slate-500">{aba.linhas.length.toLocaleString('pt-BR')} linha{aba.linhas.length === 1 ? '' : 's'}</span>
+                      <span className="text-sm text-slate-500">{aba.linhas.length.toLocaleString('pt-BR')} linha{aba.linhas.length === 1 ? '' : 's'}</span>
                     </span>
-                    {sugerida && <span className="shrink-0 rounded-full bg-[#176b4d] px-2.5 py-1 text-xs font-black text-white">Sugerida</span>}
+                    {sugerida && <span className="shrink-0 rounded-full bg-[#176b4d] px-2.5 py-1 text-xs font-bold text-white">Sugerida</span>}
                   </button>
                 );
               })}
             </div>
-            <p className="mt-4 text-xs text-slate-500">Depois de escolher, você confere a amostra antes de gravar.</p>
+            <p className="mt-4 text-sm text-slate-500">Depois de escolher, você confere a amostra antes de gravar.</p>
           </div>
         </div>,
         document.body,
       )}
 
       <SpreadsheetImportReview
-        open={Boolean(pendingImport)}
+        open={Boolean(importacao)}
         title={`Importar ${categoriaAtual.label.toLowerCase()}`}
-        fileName={pendingImport?.fileName || ''}
-        validCount={pendingImport?.rows.length || 0}
-        columns={pendingImport ? Object.keys(pendingImport.rows[0] || {}) : []}
-        rows={pendingImport?.rows || []}
-        note="Registros com a mesma chave serão atualizados. Confira a amostra antes de gravar no banco de dados."
-        confirming={isConfirmingImport}
-        onCancel={() => setPendingImport(null)}
-        onConfirm={confirmSpreadsheetImport}
+        fileName={importacao?.fileName || ''}
+        validCount={importacao?.rows.length || 0}
+        columns={importacao ? Object.keys(importacao.rows[0] || {}) : []}
+        rows={importacao?.rows || []}
+        note="Cadastros com a mesma chave são atualizados. Confira a amostra antes de gravar."
+        confirming={confirmandoImportacao}
+        onCancel={() => setImportacao(null)}
+        onConfirm={confirmarImportacao}
       />
 
-      {/* Main Filter Action Bar */}
-      <FilterBar label="Filtros de cadastros" className="bg-white border border-slate-200 p-3 rounded-lg">
-        <div className="w-full space-y-2.5">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-            <input 
-              type="search"
-              aria-label="Buscar cadastros"
-              placeholder={`Buscar em ${categoriaAtual.label.toLowerCase()}: nome, código, placa...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-base text-slate-800 placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 sm:text-sm"
-            />
-          </div>
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')}
-              className="text-xs text-slate-500 hover:text-slate-800 underline font-bold px-2 cursor-pointer"
-            >
-              Limpar
-            </button>
-          )}
-        </div>
-
-        {/* Contextual advanced filters per sub-tab */}
-        {(subTab === 'equipamentos' || subTab === 'veiculos' || subTab === 'funcionarios' || subTab === 'obras') && (
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-[10px] font-bold text-slate-500 font-mono uppercase mr-0.5">Filtros:</span>
-
-            {subTab === 'obras' && (
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-              >
-                <option value="todos">Todos os Status</option>
-                <option value="Ativa">Ativa</option>
-                <option value="Concluída">Concluída</option>
-                <option value="Planejada">Planejada</option>
-              </select>
-            )}
-
-            {(subTab === 'equipamentos' || subTab === 'veiculos') && (
-              <>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                >
-                  <option value="todos">Todos os Status</option>
-                  <option value="Ativo">Ativo</option>
-                  <option value="Parado">Parado</option>
-                  <option value="Manutenção">Manutenção</option>
-                  <option value="Mobilizado">Mobilizado</option>
-                  <option value="Desmobilizado">Desmobilizado</option>
-                  <option value="Esperando motorista">Esperando motorista</option>
-                </select>
-
-                <select
-                  value={filterObraId}
-                  onChange={(e) => setFilterObraId(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                >
-                  <option value="todos">Todas as Obras</option>
-                  {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
-                </select>
-
-                <select
-                  value={filterTipoEquipamento}
-                  onChange={(e) => setFilterTipoEquipamento(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                >
-                  <option value="todos">Todos os Tipos</option>
-                  {equipamentoTipos.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
-                </select>
-              </>
-            )}
-
-            {subTab === 'funcionarios' && (
-              <>
-                <select
-                  value={filterAtivo}
-                  onChange={(e) => setFilterAtivo(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                >
-                  <option value="todos">Ativos e Inativos</option>
-                  <option value="true">Somente Ativos</option>
-                  <option value="false">Somente Inativos</option>
-                </select>
-
-                <select
-                  value={filterCargo}
-                  onChange={(e) => setFilterCargo(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                >
-                  <option value="todos">Todos os Cargos</option>
-                  {funcionarioCargos.map(cargo => <option key={cargo} value={cargo}>{cargo}</option>)}
-                </select>
-              </>
-            )}
-
-            {(subTab === 'equipamentos' || subTab === 'veiculos' || subTab === 'funcionarios') && (
-              <select
-                value={filterEmpresaId}
-                onChange={(e) => setFilterEmpresaId(e.target.value)}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-              >
-                <option value="todos">Todas as Empresas</option>
-                {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-              </select>
-            )}
-
-            {hasAdvancedFilters && (
-              <button
-                onClick={clearAdvancedFilters}
-                className="text-[11px] font-bold text-rose-700 hover:underline cursor-pointer"
-              >
-                Limpar filtros
-              </button>
-            )}
-
-            <span className="text-[10px] text-slate-600 font-mono ml-auto">
-              {currentFilteredCount} resultado{currentFilteredCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-        )}
-
-        {!(subTab === 'equipamentos' || subTab === 'veiculos' || subTab === 'funcionarios' || subTab === 'obras') && (searchQuery || true) && (
-          <div className="text-[10px] text-slate-600 font-mono px-1">
-            {currentFilteredCount} resultado{currentFilteredCount !== 1 ? 's' : ''}
-          </div>
-        )}
-        </div>
-      </FilterBar>
-
-      {importFeedback && (
-        <div className={`border rounded-lg p-3 text-xs font-bold flex items-start gap-2 ${importFeedback.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700' : 'bg-rose-500/10 border-rose-500/20 text-rose-700'}`}>
-          {importFeedback.type === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
-          <span>{importFeedback.message}</span>
-        </div>
-      )}
-
-      {/* Inline Form Panel (Expandable above list) */}
-      {isFormOpen && (
-        <div className="bg-white border border-emerald-500/30 p-4 rounded-lg  relative" id="inline-form-card">
-          <button 
-            onClick={() => { setIsFormOpen(false); resetFormState(); }}
-            className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-lg cursor-pointer"
+      {aviso && createPortal(
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[115] flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div
+            ref={avisoRef}
+            role="status"
+            data-testid="cadastro-aviso"
+            className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium shadow-2xl ${aviso.tipo === 'ok' ? 'bg-[#176b4d] text-white' : 'bg-rose-700 text-white'}`}
           >
-            <X className="w-5 h-5" />
-          </button>
-
-          <h3 className="text-sm font-bold text-emerald-700 mb-5 flex items-center gap-2">
-            {editingId ? `Editar · ${categoriaAtual.label}` : categoriaAtual.acaoNovo}
-          </h3>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Conditional Form Fields based on Subtab */}
-            {(isEmpresaSubTab(subTab)) && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Nome Fantasia / Razão Social *</label>
-                  <input type="text" value={empNome} onChange={e => setEmpNome(e.target.value)} placeholder="Ex: RENEA INFRAESTRUTURA" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">CNPJ *</label>
-                  <input type="text" value={empCnpj} onChange={e => setEmpCnpj(e.target.value)} placeholder="00.000.000/0001-00" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Telefone</label>
-                  <input type="text" value={empTelefone} onChange={e => setEmpTelefone(e.target.value)} placeholder="(11) 99999-9999" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Engenheiro ou Gestor Responsável</label>
-                  <input type="text" value={empResponsavel} onChange={e => setEmpResponsavel(e.target.value)} placeholder="Ex: Eng. Roberto Santos" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <fieldset className="md:col-span-4 space-y-2" data-testid="empresa-classes">
-                  <legend className="text-xxs font-bold uppercase tracking-wider text-slate-400">Classes da empresa *</legend>
-                  <div className="flex flex-wrap gap-2">
-                    {EMPRESA_CLASSES.map(({ tipo, label }) => {
-                      const marcado = empTipos.includes(tipo);
-                      return (
-                        <label key={tipo} className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-bold transition duration-200 focus-within:ring-2 focus-within:ring-[#f26a2e]/60 ${marcado ? 'is-active border-[#176b4d] bg-emerald-50 text-[#176b4d]' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'}`}>
-                          <input
-                            type="checkbox"
-                            className="size-4 accent-[#176b4d]"
-                            checked={marcado}
-                            onChange={() => setEmpTipos(atual => marcado ? atual.filter(item => item !== tipo) : [...atual, tipo])}
-                          />
-                          {label}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-slate-500">Nas equipes da Presença aparecem só empresas de mão de obra, terceiras e as que ainda não têm classe.</p>
-                </fieldset>
-                {empTipos.includes('SUBFORNECEDOR') && (
-                  <div className="md:col-span-2 space-y-1">
-                    <label htmlFor="empresa-fornecedor-principal" className="text-xxs font-bold uppercase tracking-wider text-slate-400">Fornecedor principal</label>
-                    <select id="empresa-fornecedor-principal" value={empFornecedorPrincipalId} onChange={e => setEmpFornecedorPrincipalId(e.target.value)} className="min-h-11 w-full bg-white border border-slate-200 rounded-xl px-4 text-sm text-slate-800 focus:outline-none focus:border-emerald-500">
-                      <option value="">Sem fornecedor principal</option>
-                      {fornecedoresPrincipais.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {subTab === 'obras' && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Descrição do Local / Obra *</label>
-                  <input type="text" value={obrNome} onChange={e => setObrNome(e.target.value)} placeholder="Ex: Duplicação BR-101 KM 230" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Endereço / Cidade *</label>
-                  <input type="text" value={obrEndereco} onChange={e => setObrEndereco(e.target.value)} placeholder="Ex: Palhoça - SC" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Encarregado / Engenheiro Responsável</label>
-                  <input type="text" value={obrResponsavel} onChange={e => setObrResponsavel(e.target.value)} placeholder="Ex: Eng. Aline Lima" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status Operacional</label>
-                  <select value={obrStatus} onChange={e => setObrStatus(e.target.value as 'Ativa' | 'Concluída' | 'Planejada')} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="Ativa" className="bg-white text-slate-700">Ativa</option>
-                    <option value="Concluída" className="bg-white text-slate-700">Concluída</option>
-                    <option value="Planejada" className="bg-white text-slate-700">Planejada</option>
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {(subTab === 'equipamentos' || subTab === 'veiculos') && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Prefixo de Frota *</label>
-                  <input type="text" value={eqPrefixo} onChange={e => setEqPrefixo(e.target.value)} placeholder="Ex: ESC-01, CAM-05" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Nome / Descrição Equipamento *</label>
-                  <input type="text" value={eqNome} onChange={e => setEqNome(e.target.value)} placeholder="Ex: Escavadeira Caterpillar 320D" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Equipamento</label>
-                  <input type="text" value={eqTipo} onChange={e => setEqTipo(e.target.value)} placeholder="Ex: Escavadeira, Caçamba, Rolo" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Marca</label>
-                  <input type="text" value={eqMarca} onChange={e => setEqMarca(e.target.value)} placeholder="Ex: Caterpillar, Volvo" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Modelo</label>
-                  <input type="text" value={eqModelo} onChange={e => setEqModelo(e.target.value)} placeholder="Ex: 320D L" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Ano</label>
-                  <input type="number" inputMode="numeric" min={1950} max={2100} value={eqAno} onChange={e => setEqAno(e.target.value)} placeholder="Ex: 2019" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Número de Série ou Placa</label>
-                  <input type="text" value={eqSeriePlaca} onChange={e => setEqSeriePlaca(e.target.value)} placeholder="Ex: CAT320-123X ou BRA-3E45" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa (se houver)</label>
-                  <input type="text" value={eqPlaca} onChange={e => setEqPlaca(e.target.value)} placeholder="Ex: BRA-3E45" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa Proprietária *</label>
-                  <select value={eqEmpresaId} onChange={e => setEqEmpresaId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                    <option value="">Selecione...</option>
-                    {empresas.map(emp => (
-                      <option key={emp.id} value={emp.id} className="bg-white text-slate-800">{emp.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status Operacional</label>
-                  <select value={eqStatus} onChange={e => setEqStatus(e.target.value as Equipamento['status'])} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="Ativo" className="bg-white text-slate-800">Ativo</option>
-                    <option value="Parado" className="bg-white text-slate-800">Parado</option>
-                    <option value="Manutenção" className="bg-white text-slate-800">Manutenção</option>
-                    <option value="Mobilizado" className="bg-white text-slate-800">Mobilizado</option>
-                    <option value="Desmobilizado" className="bg-white text-slate-800">Desmobilizado</option>
-                    <option value="Esperando motorista" className="bg-white text-slate-800">Esperando motorista</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Local / Obra Atual</label>
-                  <select value={eqLocalId} onChange={e => setEqLocalId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="">Selecione...</option>
-                    {obras.map(obr => (
-                      <option key={obr.id} value={obr.id} className="bg-white text-slate-800">{obr.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Categoria da Frota</label>
-                  <select value={eqCategoriaFrota} onChange={e => setEqCategoriaFrota(e.target.value as NonNullable<Equipamento['categoriaFrota']>)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="Equipamento">Equipamento</option>
-                    <option value="Veículo">Veículo</option>
-                    <option value="Implemento">Implemento</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Código de Integração SGE</label>
-                  <input type="text" value={eqCodigoSge} onChange={e => setEqCodigoSge(e.target.value)} placeholder="Ex: 726" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Família</label>
-                  <input type="text" value={eqFamilia} onChange={e => setEqFamilia(e.target.value)} placeholder="Ex: Basculantes, Escavadeira" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <label className="flex min-h-[62px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5">
-                  <input type="checkbox" checked={eqMobilizado} onChange={e => setEqMobilizado(e.target.checked)} className="h-4 w-4 accent-emerald-500" />
-                  <span>
-                    <strong className="block text-xxs uppercase tracking-wider text-slate-700">Mobilizado</strong>
-                    <span className="text-[9px] text-slate-500">Mantém o histórico por período.</span>
-                  </span>
-                </label>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Meta de Disponibilidade (%)</label>
-                  <input type="number" min="0" max="100" step="0.1" value={eqMetaDisponibilidade} onChange={e => setEqMetaDisponibilidade(Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de Mobilização</label>
-                  <input type="date" value={eqDataMobilizacao} onChange={e => setEqDataMobilizacao(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de Desmobilização</label>
-                  <input type="date" value={eqDataDesmobilizacao} onChange={e => setEqDataDesmobilizacao(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Operador / Responsável</label>
-                  <select value={eqOperadorResponsavelId} onChange={e => setEqOperadorResponsavelId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="">Sem responsável fixo</option>
-                    {funcionarios.filter(item => item.ativo).map(item => (
-                      <option key={item.id} value={item.id}>{item.nome}{item.matricula ? ` - ${item.matricula}` : ''}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Combustível Padrão</label>
-                  <select value={eqCombustivelId} onChange={e => setEqCombustivelId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="">Não informado</option>
-                    {combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Capacidade do Tanque (L)</label>
-                  <input type="number" min="0" step="0.1" value={eqCapacidadeTanque || ''} onChange={e => setEqCapacidadeTanque(Number(e.target.value))} placeholder="Ex: 400" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Equipamento Vinculado</label>
-                  <select value={eqEquipamentoVinculadoId} onChange={e => setEqEquipamentoVinculadoId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="">Sem vínculo</option>
-                    {equipamentos.filter(item => item.id !== editingId).map(item => (
-                      <option key={item.id} value={item.id}>{item.prefixo} - {item.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observações Extras</label>
-                  <input type="text" value={eqObservacao} onChange={e => setEqObservacao(e.target.value)} placeholder="Ex: Operador fixo: Roberto" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Horas Disponíveis (período)</label>
-                  <input type="number" min="0" step="0.5" value={eqHorasDisponiveis} onChange={e => setEqHorasDisponiveis(Number(e.target.value))} placeholder="Ex: 220" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Horas Indisponíveis (quebra/manutenção)</label>
-                  <input type="number" min="0" step="0.5" value={eqHorasIndisponiveis} onChange={e => setEqHorasIndisponiveis(Number(e.target.value))} placeholder="Ex: 12" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Taxa de Disponibilidade / Deficiência</label>
-                  <div className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-700 flex items-center justify-between">
-                    {(() => {
-                      const total = (Number(eqHorasDisponiveis) || 0) + (Number(eqHorasIndisponiveis) || 0);
-                      const disp = total > 0 ? ((Number(eqHorasDisponiveis) || 0) / total) * 100 : 0;
-                      const def = total > 0 ? 100 - disp : 0;
-                      return (
-                        <>
-                          <span className="text-emerald-700 font-bold">{disp.toFixed(1)}% disp.</span>
-                          <span className="text-rose-700 font-bold">{def.toFixed(1)}% defic.</span>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                <div className="md:col-span-4 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Foto do Equipamento</label>
-                  <div className="flex items-center gap-3">
-                    {eqFoto && (
-                      <img src={eqFoto} alt="Pré-visualização" className="w-16 h-16 rounded-xl object-cover border border-slate-200" />
-                    )}
-                    <label className="flex-1 cursor-pointer bg-white border border-dashed border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-400 hover:border-emerald-500 hover:text-emerald-700 transition-colors text-center">
-                      {eqFoto ? 'Trocar foto...' : 'Clique para enviar uma foto (câmera ou galeria)'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = () => setEqFoto(reader.result as string);
-                          reader.readAsDataURL(file);
-                        }}
-                      />
-                    </label>
-                    {eqFoto && (
-                      <button type="button" onClick={() => setEqFoto('')} className="p-2.5 bg-white text-slate-700 hover:text-rose-700 rounded-xl transition-colors cursor-pointer" title="Remover foto">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-            )}
-
-            {subTab === 'funcionarios' && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">ID Mestre</label>
-                  <input type="text" value={editingId || 'Gerado automaticamente ao salvar'} disabled className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Matrícula *</label>
-                  <input type="text" value={funMatricula} onChange={e => setFunMatricula(e.target.value)} placeholder="Ex: 102200" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Nome do Colaborador / Operador *</label>
-                  <input type="text" value={funNome} onChange={e => setFunNome(e.target.value)} placeholder="Ex: Carlos Alberto Silva" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Cargo / Função *</label>
-                  <input type="text" value={funCargo} onChange={e => setFunCargo(e.target.value)} placeholder="Ex: Operador de Escavadeira" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Divisão</label>
-                  <input type="text" value={funDivisao} onChange={e => setFunDivisao(e.target.value)} placeholder="Ex: DIRETO DE OBRA" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Seção</label>
-                  <input type="text" value={funSecao} onChange={e => setFunSecao(e.target.value)} placeholder="Ex: MÃO DE OBRA" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Líder</label>
-                  <select value={funLiderId} onChange={e => setFunLiderId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="">Sem líder definido</option>
-                    {funcionarios.filter(item => item.id !== editingId && isActiveCollaborator(item)).map(item => (
-                      <option key={item.id} value={item.id}>{item.matricula || 'Sem matrícula'} — {item.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Área</label>
-                  <input type="text" value={funArea} onChange={e => setFunArea(e.target.value)} placeholder="Ex: TERRAPLENAGEM" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável</label>
-                  <input type="text" value={funResponsavelArea} onChange={e => setFunResponsavelArea(e.target.value)} placeholder="Responsável da área" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Telefone Contato</label>
-                  <input type="text" value={funTelefone} onChange={e => setFunTelefone(e.target.value)} placeholder="(48) 99999-9999" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa Vinculada *</label>
-                  <select value={funEmpresaId} onChange={e => setFunEmpresaId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                    <option value="">Selecione...</option>
-                    {empresas.map(emp => (
-                      <option key={emp.id} value={emp.id} className="bg-white text-slate-800">{emp.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Situação Cadastral</label>
-                  <select value={funStatus} onChange={e => { const status = e.target.value as NonNullable<Funcionario['status']>; setFunStatus(status); setFunAtivo(!['INATIVO', 'DESMOBILIZADO'].includes(status)); }} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                    <option value="ATIVO">ATIVO</option>
-                    <option value="INATIVO">INATIVO</option>
-                    <option value="FÉRIAS">FÉRIAS</option>
-                    <option value="AFASTADO">AFASTADO</option>
-                    <option value="DESMOBILIZADO">DESMOBILIZADO</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de mobilização</label>
-                  <input type="date" value={funDataMobilizacao} onChange={e => setFunDataMobilizacao(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de desmobilização</label>
-                  <input type="date" value={funDataDesmobilizacao} onChange={e => setFunDataDesmobilizacao(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Situação RH</label>
-                  <input type="text" value={funSituacaoRh} onChange={e => setFunSituacaoRh(e.target.value)} placeholder="Situação registrada pelo RH" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="md:col-span-3 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observação</label>
-                  <input type="text" value={funObservacao} onChange={e => setFunObservacao(e.target.value)} placeholder="Informações adicionais" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-              </div>
-            )}
-
-            {subTab === 'comboios' && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Identificação do Comboio / Posto Móvel *</label>
-                  <input type="text" value={comNome} onChange={e => setComNome(e.target.value)} placeholder="Ex: Comboio 01 - Mercedes Benz" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Placa do Veículo *</label>
-                  <input type="text" value={comPlaca} onChange={e => setComPlaca(e.target.value)} placeholder="BRA-9A12" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Capacidade Volumétrica (Litros) *</label>
-                  <input type="number" value={comCapacidade} onChange={e => setComCapacidade(Number(e.target.value))} placeholder="4000" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Motorista / Responsável pelo Fornecimento *</label>
-                  <input type="text" value={comResponsavel} onChange={e => setComResponsavel(e.target.value)} placeholder="Ex: José da Silva Costa" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                </div>
-              </div>
-            )}
-
-            {/* Simple Text items (Combustível, lubrificante e etapa) */}
-            {(subTab === 'combustiveis' || subTab === 'lubrificantes' || subTab === 'etapas') && (
-              <div className="space-y-1 max-w-md">
-                <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">
-                  {subTab === 'combustiveis' ? 'Nome do Combustível *' : subTab === 'lubrificantes' ? 'Nome do Produto de Lubrificação *' : 'Nome da Etapa/Ramo de Serviço *'}
-                </label>
-                <input 
-                  type="text" 
-                  value={simpleName} 
-                  onChange={e => setSimpleName(e.target.value)} 
-                  placeholder={subTab === 'combustiveis' ? 'Ex: Diesel S10, Arla 32' : subTab === 'lubrificantes' ? 'Ex: Graxa de Lítio NLGI 2, Óleo Motor 15W40' : 'Ex: Terraplenagem / Escavação'} 
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" 
-                  required 
-                />
-              </div>
-            )}
-
-            {validationError && (
-              <div className="text-xs font-bold text-rose-700 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
-                ⚠️ {validationError}
-              </div>
-            )}
-
-            {/* Form Actions */}
-            <div className="flex gap-2.5 pt-3">
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl  transition-all cursor-pointer"
-              >
-                {editingId ? 'Salvar Alterações' : 'Cadastrar Registro'}
+            {aviso.tipo === 'ok' ? <CheckCircle className="size-5 shrink-0 text-white" aria-hidden="true" /> : <AlertTriangle className="size-5 shrink-0" aria-hidden="true" />}
+            <span className="min-w-0 flex-1">{aviso.texto}</span>
+            {aviso.desfazer && (
+              <button type="button" onClick={aviso.desfazer} className={`min-h-11 shrink-0 rounded-lg px-3 font-bold text-orange-300 hover:bg-white/10 ${FOCO}`}>
+                Desfazer
               </button>
-              <button
-                type="button"
-                onClick={() => { setIsFormOpen(false); resetFormState(); }}
-                className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-              >
-                Cancelar
-              </button>
-            </div>
-
-          </form>
-        </div>
+            )}
+            <button type="button" aria-label="Fechar aviso" onClick={() => setAviso(null)} className={`inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 ${FOCO}`}>
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>,
+        document.body,
       )}
-
-      {/* Database Lists (Tables) */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden" id="database-lists-viewport">
-        
-        {/* Table View Conditional rendering */}
-        {(isEmpresaSubTab(subTab)) && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
-                  <th className="py-3.5 px-5">Empresa</th>
-                  <th className="py-3.5 px-5">CNPJ</th>
-                  <th className="py-3.5 px-5">Responsável</th>
-                  <th className="py-3.5 px-5">Contato</th>
-                  <th className="py-3.5 px-5">Classes</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {displayedEmpresas.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-slate-500 italic">Nenhuma empresa encontrada com os termos de busca.</td>
-                  </tr>
-                ) : (
-                  displayedEmpresas.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => (
-                    <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
-                      <td className="py-4 px-5 font-black text-slate-700">{item.nome}</td>
-                      <td className="py-4 px-5 font-mono text-slate-700">{item.cnpj}</td>
-                      <td className="py-4 px-5 text-slate-700">{item.responsavel || '—'}</td>
-                      <td className="py-4 px-5 text-slate-700">{item.telefone || '—'}</td>
-                      <td className="py-4 px-5">
-                        <div className="flex flex-wrap gap-1">
-                          {(item.tipos || []).length === 0
-                            ? <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">Sem classe</span>
-                            : (item.tipos || []).map(tipo => <span key={tipo} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">{empresaTipoLabel(tipo)}</span>)}
-                        </div>
-                        {item.fornecedorPrincipalId && (
-                          <span className="mt-1 block text-[10px] text-slate-500">via {empresas.find(principal => principal.id === item.fornecedorPrincipalId)?.nome || 'fornecedor removido'}</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-5 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-            {displayedEmpresas.length > 0 && <PaginationFooter />}
-          </div>
-        )}
-
-        {subTab === 'obras' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
-                  <th className="py-3.5 px-5">Local / Canteiro</th>
-                  <th className="py-3.5 px-5">Endereço</th>
-                  <th className="py-3.5 px-5">Responsável Técnico</th>
-                  <th className="py-3.5 px-5">Status</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {filteredObras.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-500 italic">Nenhuma obra cadastrada.</td>
-                  </tr>
-                ) : (
-                  filteredObras.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
-                    const statusColor = item.status === 'Ativa' 
-                      ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
-                      : item.status === 'Concluída' 
-                      ? 'bg-white text-slate-400 border-slate-200/60' 
-                      : 'bg-blue-500/10 text-blue-700 border-blue-500/20';
-
-                    return (
-                      <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4 px-5 font-black text-slate-700">{item.nome}</td>
-                        <td className="py-4 px-5 text-slate-700">{item.endereco}</td>
-                        <td className="py-4 px-5 text-slate-700">{item.responsavel || '—'}</td>
-                        <td className="py-4 px-5">
-                          <span className={`px-2 py-0.5 border text-[9px] font-bold rounded-full ${statusColor}`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-            {filteredObras.length > 0 && <PaginationFooter />}
-          </div>
-        )}
-
-        {(subTab === 'equipamentos' || subTab === 'veiculos') && (
-          <>
-          <EquipmentOperationsPanel
-            equipamentos={equipamentos}
-            ordensServico={ordensServico}
-          />
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
-                  <th className="py-3.5 px-5">Prefixo / Nome</th>
-                  <th className="py-3.5 px-5">Marca/Modelo</th>
-                  <th className="py-3.5 px-5">Proprietário</th>
-                  <th className="py-3.5 px-5">Status</th>
-                  <th className="py-3.5 px-5">Local Atual</th>
-                  <th className="py-3.5 px-5">Disponibilidade</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {displayedEquipamentos.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-500 italic">Nenhum equipamento correspondente encontrado.</td>
-                  </tr>
-                ) : (
-                  displayedEquipamentos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
-                    const emp = empresas.find(e => e.id === item.empresaId);
-                    const local = obras.find(o => o.id === item.localAtualId);
-                    
-                    const statusColor = item.status === 'Ativo' || item.status === 'Mobilizado'
-                      ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
-                      : item.status === 'Manutenção'
-                      ? 'bg-amber-500/10 text-amber-700 border-amber-500/20'
-                      : item.status === 'Esperando motorista'
-                      ? 'bg-blue-500/10 text-blue-700 border-blue-500/20'
-                      : 'bg-white text-slate-400 border-slate-200/60';
-
-                    return (
-                      <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4 px-5">
-                          <div className="flex items-center gap-2">
-                            {item.foto ? (
-                              <img src={item.foto} alt={item.nome} className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0" />
-                            ) : (
-                              <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
-                                <Truck className="w-3.5 h-3.5 text-slate-600" />
-                              </div>
-                            )}
-                            <span className="font-mono font-black text-emerald-700 text-xs bg-white border border-slate-200 px-2 py-0.5 rounded-md">
-                              {item.prefixo}
-                            </span>
-                            <span className="font-bold text-slate-700">{item.nome}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-5 text-slate-700">
-                          <span className="block font-semibold">{item.marca} • {item.modelo}</span>
-                          <span className="text-[10px] text-slate-500 uppercase font-mono block">Série: {item.seriePlaca || 'SEM SÉRIE'}</span>
-                          {item.placa && <span className="text-[10px] text-emerald-700 uppercase font-mono block">Placa: {item.placa}</span>}
-                          <span className="text-[10px] text-cyan-700 uppercase font-mono block">
-                            {item.categoriaFrota || 'Equipamento'} · SGE {item.codigoSge || '—'}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5 text-slate-400 max-w-[150px] truncate" title={emp ? emp.nome : ''}>
-                          {emp ? emp.nome : '—'}
-                        </td>
-                        <td className="py-4 px-5">
-                          <span className={`px-2 py-0.5 border text-[9px] font-bold rounded-full ${statusColor}`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5 text-slate-700 max-w-[140px] truncate" title={local ? local.nome : ''}>
-                          {local ? local.nome : '—'}
-                        </td>
-                        <td className="py-4 px-5">
-                          {(() => {
-                            const disp = item.horasDisponiveis || 0;
-                            const indisp = item.horasIndisponiveis || 0;
-                            const total = disp + indisp;
-                            if (total === 0) return <span className="text-[10px] text-slate-600 italic">Sem registro</span>;
-                            const taxaDisp = (disp / total) * 100;
-                            const taxaDef = 100 - taxaDisp;
-                            return (
-                              <div className="flex flex-col gap-0.5 min-w-[90px]">
-                                <span className="text-[10px] font-bold text-emerald-700">{taxaDisp.toFixed(1)}% disp.</span>
-                                <span className="text-[9px] font-semibold text-rose-700">{taxaDef.toFixed(1)}% defic.</span>
-                              </div>
-                            );
-                          })()}
-                        </td>
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-            {displayedEquipamentos.length > 0 && <PaginationFooter />}
-          </div>
-          </>
-        )}
-
-        {subTab === 'funcionarios' && (
-          <>
-          <OrganizationChart
-            funcionarios={filteredFuncionarios}
-            empresas={empresas}
-            activeId={activeFuncionarioId}
-            onActiveIdChange={setActiveFuncionarioId}
-          />
-          <div className="overflow-x-auto" id="funcionarios-table-container">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
-                  <th className="py-3.5 px-5">Matrícula / Colaborador</th>
-                  <th className="py-3.5 px-5">Cargo / Função</th>
-                  <th className="py-3.5 px-5">Empresa Vínculo</th>
-                  <th className="py-3.5 px-5">Contato</th>
-                  <th className="py-3.5 px-5">Situação</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {filteredFuncionarios.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-slate-500 italic">Nenhum funcionário encontrado.</td>
-                  </tr>
-                ) : (
-                  filteredFuncionarios.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
-                    const emp = empresas.find(e => e.id === item.empresaId);
-                    return (
-                      <tr
-                        id={`func-row-${item.id}`}
-                        key={item.id}
-                        onMouseEnter={() => setActiveFuncionarioId(item.id)}
-                        onMouseLeave={() => setActiveFuncionarioId(null)}
-                        className={`transition-colors ${activeFuncionarioId === item.id ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}
-                      >
-                        <td className="py-4 px-5">
-                          <span className="block font-mono text-[10px] text-emerald-700">{item.matricula || 'SEM MATRÍCULA'}</span>
-                          <span className="font-black text-slate-700">{item.nome}</span>
-                          {item.liderNome && <span className="block text-[10px] text-slate-500">Líder: {item.liderNome}</span>}
-                        </td>
-                        <td className="py-4 px-5 text-slate-700">{item.cargo}</td>
-                        <td className="py-4 px-5 text-slate-400 truncate max-w-[150px]">{emp ? emp.nome : '—'}</td>
-                        <td className="py-4 px-5 text-slate-400 font-mono">{item.telefone || '—'}</td>
-                        <td className="py-4 px-5">
-                          <span className={`px-2 py-0.5 border text-[9px] font-bold rounded-full ${item.ativo ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : 'bg-rose-500/10 text-rose-700 border-rose-500/20'}`}>
-                            {item.status || (item.ativo ? 'ATIVO' : 'INATIVO')}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-            {filteredFuncionarios.length > 0 && <PaginationFooter />}
-          </div>
-          </>
-        )}
-
-        {subTab === 'comboios' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
-                  <th className="py-3.5 px-5">Identificação</th>
-                  <th className="py-3.5 px-5">Placa</th>
-                  <th className="py-3.5 px-5">Capacidade Máxima</th>
-                  <th className="py-3.5 px-5">Responsável / Motorista</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {filteredComboios.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-500 italic">Nenhum comboio cadastrado.</td>
-                  </tr>
-                ) : (
-                  filteredComboios.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => (
-                    <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
-                      <td className="py-4 px-5 font-black text-slate-700">{item.nome}</td>
-                      <td className="py-4 px-5 font-mono text-emerald-700">{item.placa}</td>
-                      <td className="py-4 px-5 font-mono text-slate-700 font-bold">{item.capacidadeLitros.toLocaleString('pt-BR')} Litros</td>
-                      <td className="py-4 px-5 text-slate-700">{item.responsavel}</td>
-                      <td className="py-4 px-5 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-            {filteredComboios.length > 0 && <PaginationFooter />}
-          </div>
-        )}
-
-        {/* Simple Item list render for Combustiveis, Lubrificantes, Etapas */}
-        {(subTab === 'combustiveis' || subTab === 'lubrificantes' || subTab === 'etapas') && (() => {
-          const simpleList = subTab === 'combustiveis' ? filteredCombustiveis : subTab === 'lubrificantes' ? filteredLubrificantes : filteredEtapas;
-          return (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
-                  <th className="py-3.5 px-5">ID Interno</th>
-                  <th className="py-3.5 px-5">Descrição / Nome do Item</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {simpleList.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="py-10 text-center text-slate-500 italic">Nenhum item cadastrado nesta categoria.</td>
-                  </tr>
-                ) : (
-                  simpleList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => (
-                    <tr key={item.id} data-linha-lista className="hover:bg-slate-50 transition-colors">
-                      <td className="py-4 px-5 font-mono text-slate-500 text-xxs">{item.id}</td>
-                      <td className="py-4 px-5 font-black text-slate-700 text-xs">{item.nome}</td>
-                      <td className="py-4 px-5 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg transition-colors cursor-pointer" title="Editar" aria-label="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDeleteTrigger(item.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg transition-colors cursor-pointer" title="Excluir" aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-            {simpleList.length > 0 && <PaginationFooter />}
-          </div>
-          );
-        })()}
-
-      </div>
-
-      <section aria-labelledby="cadastros-ferramentas-title" className="space-y-4">
-        <h2 id="cadastros-ferramentas-title" className="text-xs font-black uppercase tracking-wide text-[#718087]">Ferramentas da base</h2>
-        <CentralRegistryOverview
-          empresas={empresas}
-          obras={obras}
-          equipamentos={equipamentos}
-          funcionarios={funcionarios}
-          onSelectModule={selecionarCategoria}
-        />
-        <MasterDataReviewCenter
-          empresas={empresas}
-          obras={obras}
-          funcionarios={funcionarios}
-          equipamentos={equipamentos}
-          onApplyMasterWorkbook={onApplyMasterWorkbook}
-        />
-      </section>
-
-      {/* Safe inline Prompt Deletion Confirmation Dialog overlay */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 bg-white flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="cadastro-delete-title">
-          <div className="w-full max-w-md bg-white border border-rose-500/30 rounded-lg p-6  space-y-4">
-            <div className="p-3 bg-rose-500/10 text-rose-700 rounded-lg w-fit">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 id="cadastro-delete-title" className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">{deactivationSupported ? 'Confirmar inativacao?' : 'Confirmar exclusão?'}</h3>
-              <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                {deactivationSupported
-                  ? <>O registro continuará no histórico e nos lançamentos existentes. {equipmentDeactivation || subTab === 'funcionarios' ? 'Será marcado como desmobilizado.' : 'Será marcado como inativo.'}</>
-                  : 'Este cadastro será removido da lista. Confira os vínculos antes de continuar.'}
-              </p>
-              {deleteError && <p role="alert" className="mt-3 text-xs font-semibold text-rose-700">{deleteError}</p>}
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
-                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-500">Registro selecionado</span>
-                <strong className="mt-1 block truncate text-sm text-slate-800">{deleteTargetName || 'Registro sem nome'}</strong>
-                <span className="mt-1 block truncate font-mono text-[10px] text-slate-400">{deleteTargetCode}</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => executeDeletion(deleteConfirmId)}
-                disabled={isDeleting}
-                className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isDeleting ? 'PROCESSANDO...' : !deactivationSupported ? 'EXCLUIR' : equipmentDeactivation || subTab === 'funcionarios' ? 'DESMOBILIZAR' : 'INATIVAR'}
-              </button>
-              <button 
-                onClick={() => { setDeleteError(''); setDeleteConfirmId(null); }}
-                disabled={isDeleting}
-                className="flex-1 py-2 bg-white hover:bg-slate-700 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Não, Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
