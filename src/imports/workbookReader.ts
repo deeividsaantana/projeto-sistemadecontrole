@@ -128,13 +128,20 @@ const detectLastUsedRow = (worksheet: ExcelJS.Worksheet): number => {
   return lastUsedRow;
 };
 
+/**
+ * Cabeçalho é a primeira linha preenchida quase tão larga quanto a mais larga
+ * do topo. Só "2 células" pegava a linha de total acima do cabeçalho
+ * ("QUANTIDADE DE VIAGENS | 1150" nas abas de bota-fora) e a aba inteira ia
+ * para conferência.
+ */
 const detectHeaderRow = (worksheet: ExcelJS.Worksheet, lastUsedRow: number): number => {
-  for (let rowNumber = 1; rowNumber <= Math.min(lastUsedRow, 20); rowNumber += 1) {
-    const values = worksheet.getRow(rowNumber).values;
-    const filled = Array.isArray(values) ? values.filter(value => cleanImportValue(value) !== '').length : 0;
-    if (filled >= 2) return rowNumber;
-  }
-  return 1;
+  const filledByRow = Array.from({ length: Math.min(lastUsedRow, 20) }, (_, index) => {
+    const values = worksheet.getRow(index + 1).values;
+    return Array.isArray(values) ? values.filter(value => cleanImportValue(value) !== '').length : 0;
+  });
+  const widest = Math.max(0, ...filledByRow);
+  const index = filledByRow.findIndex(filled => filled >= 2 && filled >= widest * 0.6);
+  return index >= 0 ? index + 1 : 1;
 };
 
 const readSheet = (worksheet: ExcelJS.Worksheet): WorkbookSheetContent => {

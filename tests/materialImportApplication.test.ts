@@ -31,3 +31,20 @@ assert.deepEqual(result.skipped, { duplicate: 1, review: 1, other: 0 });
 const reapplied = buildMaterialImportApplication(preview, result.materials, result.movements, 'Deivid Santana');
 assert.equal(reapplied.materials.length, 0);
 assert.equal(reapplied.movements.length, 0, 'reaplicar o mesmo lote é idempotente');
+
+// Viagem de agregado leva fornecedor, nota, placa e valor; mesmo nome em outra
+// unidade vira outro material, para tonelada e viagem não somarem.
+const viagem = (row: number, sheet: string, unidade: string, nota: string) => ({
+  disposition: 'new' as const,
+  row: {
+    lineage: { ...lineage(row), sourceSheet: sheet }, operationalKey: `mov|${nota}`,
+    value: { material: 'LIXO', data: '2026-05-07', destino: 'BOTA ESPERA', quantidade: 1, unidade, placaOuPrefixo: 'DIQ0627', fornecedor: 'RENEA', notaFiscal: nota, valorUnitario: null, valorTotal: 850 },
+  },
+});
+const agregados = buildMaterialImportApplication({ ...preview, rows: [viagem(3, 'BOTA FORA (LARA)', 't', '1'), viagem(4, 'Q.E.SÃO BENTO', 'VIAGEM', '2')] }, [], [], 'Deivid Santana');
+assert.deepEqual(agregados.materials.map(item => item.descricao), ['LIXO', 'LIXO (VIAGEM)']);
+assert.equal(agregados.movements[0].fornecedorNome, 'RENEA');
+assert.equal(agregados.movements[0].notaFiscal, '1');
+assert.equal(agregados.movements[0].placa, 'DIQ0627');
+assert.equal(agregados.movements[0].valorTotal, 850);
+assert.equal('valorUnitario' in agregados.movements[0], false);
