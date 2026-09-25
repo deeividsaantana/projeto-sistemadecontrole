@@ -57,10 +57,10 @@ test('detalhes tecnicos e controles manuais de sincronizacao nao aparecem nas co
   assert.match(configSource, /EXCLUIR \$\{selectedTab/);
 });
 
-test('recuperacao de presenca roda automaticamente para todo usuario autenticado', () => {
-  assert.match(appSource, /automaticPresenceRecovery/);
-  assert.match(appSource, /handleRestorePresenceHistory\(\)/);
-  assert.match(appSource, /if \(!isLoggedIn \|\| !currentUser \|\| externalTicketLink \|\| externalPresenceToken\)/);
+test('recuperacao de presenca so roda pelo botao: a sincronizacao e em tempo real', () => {
+  assert.doesNotMatch(appSource, /automaticPresenceRecovery/);
+  assert.match(appSource, /onRestorePresenceHistory=\{handleRestorePresenceHistory\}/);
+  assert.match(appSource, /onSnapshot\(doc\(db, 'sistemarenea_cloud', 'main_data_v2'\)/);
 });
 
 test('navegador novo baixa a nuvem antes de enviar qualquer coisa', () => {

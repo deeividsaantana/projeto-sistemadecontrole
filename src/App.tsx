@@ -2861,18 +2861,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
-    let cancelled = false;
-    const automaticPresenceRecovery = async () => {
-      const result = await handleRestorePresenceHistory();
-      if (cancelled || !result.success || result.message.includes('já tinha todos')) return;
-      addNotification('Presença sincronizada', result.message, 'success', 'Sistema Local');
-    };
-    void automaticPresenceRecovery();
-    return () => { cancelled = true; };
-  }, [isLoggedIn, currentUser?.uid, currentUserRole, externalTicketLink, externalPresenceToken]);
-
-  useEffect(() => {
     if (!publicLinksRotationPending || !isLoggedIn || externalTicketLink || externalPresenceToken) return;
     let cancelled = false;
     let running = false;
