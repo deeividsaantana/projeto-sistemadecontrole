@@ -11,6 +11,8 @@
 // 3. Sem data comparável dos dois lados, prevalece o que já está publicado na
 //    nuvem, para não sobrescrever o trabalho alheio com uma cópia velha.
 
+import { TABELA_EXCLUSOES, aplicarExclusoes } from './cloud/exclusoes';
+
 type CloudRecord = Record<string, unknown>;
 export type CloudSnapshot = Record<string, unknown>;
 
@@ -201,8 +203,11 @@ export const resolvePublishPayload = ({
  * compartilhado ficava preso no teto e as entradas dos colegas apareciam e
  * sumiam. Aqui essas tabelas só ganham linhas: quem quiser apagar auditoria
  * faz pelo backend, não por um corte de armazenamento do navegador.
+ *
+ * As exclusões de cadastro entram aqui pelo mesmo motivo: se uma marca de
+ * exclusão sumisse, o registro excluído voltaria.
  */
-const TABELAS_SOMENTE_ACRESCIMO = new Set(['historyLogs', 'presencasLink']);
+const TABELAS_SOMENTE_ACRESCIMO = new Set(['historyLogs', 'presencasLink', TABELA_EXCLUSOES]);
 
 export const mergeCloudSnapshotsWithBaseline = (
   remote: CloudSnapshot | null | undefined,
@@ -220,7 +225,9 @@ export const mergeCloudSnapshotsWithBaseline = (
         : mergeCloudTableWithBaseline(remoteValue, localValue, baseline?.[key]);
     }
   }
-  return merged;
+  // Um lado pode ainda ter o registro que o outro excluiu; a marca de
+  // exclusão, já somada acima, decide.
+  return aplicarExclusoes(merged);
 };
 
 export const mergeCloudSnapshots = (
@@ -236,5 +243,5 @@ export const mergeCloudSnapshots = (
       merged[key] = mergeCloudTable(remoteValue, localValue);
     }
   }
-  return merged;
+  return aplicarExclusoes(merged);
 };
