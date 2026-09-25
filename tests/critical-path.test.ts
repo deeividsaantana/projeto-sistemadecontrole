@@ -19,6 +19,7 @@ import { readFileSync } from 'node:fs';
 // Read source files to understand current implementation
 const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const cadastrosSource = readFileSync(new URL('../src/components/CadastrosTab.tsx', import.meta.url), 'utf8');
+const camposSource = readFileSync(new URL('../src/components/cadastros/camposCadastro.ts', import.meta.url), 'utf8');
 
 /**
  * TEST SUITE 1: Valid Create → Persist → Reload
@@ -42,12 +43,12 @@ test('[P0-01-01] Valid empresa create persists to localStorage', () => {
   // Verify that CadastrosTab calls onSaveEmpresa from handleSubmit
   assert.match(cadastrosSource, /onSaveEmpresa\(/);
 
-  // Verify that form has name field (required for validation)
-  assert.match(cadastrosSource, /empNome/);
+  // Verify that the empresa form has a required name field
+  assert.match(camposSource, /\{ id: 'nome', label: 'Nome ou razão social', tipo: 'texto', obrigatorio: true/);
 
   console.log(
     '[PASS] ✓ Valid empresa create flow exists:\n' +
-    '  - Form captures empresa name (empNome)\n' +
+    '  - Form requires the empresa name\n' +
     '  - handleSaveEmpresa performs optimistic write to state (setEmpresas)\n' +
     '  - Persists to localStorage (renea_empresas)\n' +
     '  - Reload would restore from localStorage\n\n'

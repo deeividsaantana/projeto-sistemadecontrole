@@ -13,7 +13,8 @@ import {
 } from '../src/utils/cadastrosCategorias';
 
 const tabSource = readFileSync(new URL('../src/components/CadastrosTab.tsx', import.meta.url), 'utf8');
-const pickerSource = readFileSync(new URL('../src/components/cadastros/CadastroCategoryPicker.tsx', import.meta.url), 'utf8');
+const tiposSource = readFileSync(new URL('../src/components/cadastros/CadastroTipos.tsx', import.meta.url), 'utf8');
+const estilosSource = readFileSync(new URL('../src/components/cadastros/estilos.ts', import.meta.url), 'utf8');
 
 test('todo tipo de cadastro aparece em exatamente um grupo', () => {
   const agrupados = CADASTRO_GRUPOS.flatMap(grupo => categoriasDoGrupo(grupo.id).map(item => item.id));
@@ -45,16 +46,18 @@ test('aba Cadastros segue o padrão: cabeçalho, ação principal no topo e GSAP
   assert.match(tabSource, /useGSAP\(/);
   assert.match(tabSource, /prefers-reduced-motion: reduce/);
   assert.match(tabSource, /\[data-cadastros-reveal\]/);
-  // Lista vem antes das ferramentas de base (visão geral e planilha mestre)
-  assert.ok(tabSource.indexOf('id="database-lists-viewport"') < tabSource.indexOf('<CentralRegistryOverview'));
-  assert.ok(tabSource.indexOf('<CadastroCategoryPicker') < tabSource.indexOf('label="Filtros de cadastros"'));
+  // Tipos, filtros e lista vêm antes das ferramentas de base (planilha mestre)
+  assert.ok(tabSource.indexOf('<CadastroTipos') < tabSource.indexOf('label="Filtros de cadastros"'));
+  assert.ok(tabSource.indexOf('label="Filtros de cadastros"') < tabSource.indexOf('id="database-lists-viewport"'));
+  assert.ok(tabSource.indexOf('id="database-lists-viewport"') < tabSource.indexOf('<MasterDataReviewCenter'));
 });
 
 test('seletor de tipos é acessível ao toque e ao teclado', () => {
-  assert.match(pickerSource, /aria-pressed=\{ativo\}/);
-  assert.match(pickerSource, /min-h-12/);
-  assert.match(pickerSource, /focus-visible:ring-\[#f26a2e\]\/60/);
-  assert.match(pickerSource, /aria-label="Tipos de cadastro"/);
+  assert.match(tiposSource, /aria-current=\{ativo \? 'true' : undefined\}/);
+  assert.match(tiposSource, /min-h-12/);
+  assert.match(tiposSource, /\$\{FOCO\}/);
+  assert.match(estilosSource, /focus-visible:ring-\[#f26a2e\]\/60/);
+  assert.match(tiposSource, /aria-label="Tipos de cadastro"/);
 });
 
 const empresa = (id: string, tipos?: Empresa['tipos']): Empresa => ({ id, nome: id, cnpj: '', telefone: '', responsavel: '', tipos });

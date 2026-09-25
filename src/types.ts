@@ -207,13 +207,13 @@ export interface HistoryLog {
   id: string;
   timestamp: string; // Data e hora da alteração
   usuario: string; // admin
-  acao: 'Criou' | 'Editou' | 'Excluiu' | 'Inativou' | 'Desmobilizou' | 'Sincronizou';
+  acao: 'Criou' | 'Editou' | 'Excluiu' | 'Inativou' | 'Desmobilizou' | 'Sincronizou' | 'Restaurou';
   tela: string; // ex: Empresas, Abastecimentos, etc.
   descricao: string; // Detalhes legíveis por humanos
   registroId?: string;
   valorAnterior?: unknown;
   valorNovo?: unknown;
-  tipoOperacao?: 'CREATE' | 'UPDATE' | 'INACTIVATE' | 'DEMOBILIZE' | 'SYNC' | 'DELETE';
+  tipoOperacao?: 'CREATE' | 'UPDATE' | 'INACTIVATE' | 'DEMOBILIZE' | 'SYNC' | 'DELETE' | 'RESTORE';
 }
 
 export interface PresencaItem {

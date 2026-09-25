@@ -211,7 +211,7 @@ import { promoteMasterWorkbook } from './masterData/materializeMasterData';
 import type { MasterWorkbookAnalysis, MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
-import { obraDependencies, registryDependencies } from './masterData/registryDependencies';
+import { usosDoCadastro } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
 import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from './utils/cadastrosCategorias';
 import { appendMovement, applyMaterialImport, saveMaterial } from './modules/materials/materialCommands';
@@ -940,7 +940,6 @@ export default function App() {
       SESSION_ACTIVITY_EVENTS.forEach(eventName => window.removeEventListener(eventName, refreshActivity));
     };
   }, [isLoggedIn]);
-
 
   // Check the real Firestore connection only after authentication.
   useEffect(() => {
@@ -1770,37 +1769,103 @@ export default function App() {
       },
       { registroId: item.id, valorAnterior: item, tipoOperacao: 'DELETE' },
     );
+    return exclusao.id;
   };
 
-  const handleDeleteObra = (id: string) => {
-    const item = obras.find(x => x.id === id);
-    if (!item) return false;
-    const dependencies = obraDependencies(id, {
-      equipamentos,
-      collections: {
-        Presenças: listasPresenca,
-        Equipes: gruposEquipe,
-        Frentes: frentesServico,
-        Diários: diariosObra,
-        Serviços: servicosObra,
-        Produção: producaoRegistros,
-        Planejamento: planejamentoItens,
-        FVS: fichasFvs,
-        Inspeções: inspecoes,
-        'Não conformidades': naoConformidades,
-        Medições: medicoes,
-        Documentos: documentos,
-        Ocorrências: ocorrencias,
-        Custos: lancamentosCusto,
-        Orçamentos: orcamentoItens,
-      },
-    });
-    if (dependencies.length > 0) {
-      notifyRegistryDeletionBlocked(dependencies);
-      return false;
+  /** Tabelas que a aba Cadastros edita, com onde cada uma é guardada. */
+  const tabelasCadastro = (): Record<string, { lista: Array<{ id: string; nome?: string }>; setLista: (next: never[]) => void; storageKey: string; tela: string }> => ({
+    empresas: { lista: empresas, setLista: setEmpresas as (next: never[]) => void, storageKey: 'renea_empresas', tela: 'Empresas' },
+    funcionarios: { lista: funcionarios, setLista: setFuncionarios as (next: never[]) => void, storageKey: 'renea_funcionarios', tela: 'Funcionários' },
+    equipamentos: { lista: equipamentos, setLista: setEquipamentos as (next: never[]) => void, storageKey: 'renea_equipamentos', tela: 'Equipamentos' },
+    obras: { lista: obras, setLista: setObras as (next: never[]) => void, storageKey: 'renea_obras', tela: 'Obras/Locais' },
+    comboios: { lista: comboios, setLista: setComboios as (next: never[]) => void, storageKey: 'renea_comboios', tela: 'Comboios' },
+    combustiveis: { lista: combustiveis, setLista: setCombustiveis as (next: never[]) => void, storageKey: 'renea_combustiveis', tela: 'Combustíveis' },
+    lubrificantes: { lista: lubrificantes, setLista: setLubrificantes as (next: never[]) => void, storageKey: 'renea_lubrificantes', tela: 'Produtos Lubrificação' },
+    etapas: { lista: etapas, setLista: setEtapas as (next: never[]) => void, storageKey: 'renea_etapas', tela: 'Etapas de Serviço' },
+  });
+
+  const usosDoCadastroAtual = (tabela: string, id: string) => usosDoCadastro(tabela, id, {
+    empresas,
+    funcionarios,
+    equipamentos,
+    abastecimentos,
+    lubrificacoes,
+    apontamentos: apontamentosOperacionais,
+    ordensServico,
+    listasPresenca,
+    presencasLink,
+    gruposEquipe,
+    controleEquipamentosDiario,
+    materiaisMovimentos,
+    colecoesDaObra: {
+      Presenças: listasPresenca,
+      Equipes: gruposEquipe,
+      Frentes: frentesServico,
+      Diários: diariosObra,
+      Serviços: servicosObra,
+      Produção: producaoRegistros,
+      Planejamento: planejamentoItens,
+      FVS: fichasFvs,
+      Inspeções: inspecoes,
+      'Não conformidades': naoConformidades,
+      Medições: medicoes,
+      Documentos: documentos,
+      Ocorrências: ocorrencias,
+      Custos: lancamentosCusto,
+      Orçamentos: orcamentoItens,
+    },
+  });
+
+  /**
+   * Exclusão real pedida pela aba Cadastros. Só admin, e só de cadastro que
+   * não aparece em nenhum lançamento: com uso, devolve onde ele aparece e a
+   * tela oferece inativar.
+   */
+  const handleExcluirCadastro = (tabela: string, id: string, rotulo: string): { ok: true; exclusaoId: string } | { ok: false; usos: { collection: string; count: number }[]; mensagem?: string } => {
+    if (!pode(currentUserRole, 'cadastros', 'excluir')) {
+      return { ok: false, usos: [], mensagem: 'Só o administrador pode excluir cadastros.' };
     }
-    excluirCadastro({ tabela: 'obras', storageKey: 'renea_obras', tela: 'Obras/Locais', item, rotulo: item.nome, lista: obras, setLista: setObras });
-    return true;
+    const alvo = tabelasCadastro()[tabela];
+    const item = alvo?.lista.find(x => x.id === id);
+    if (!alvo || !item) return { ok: false, usos: [], mensagem: 'Este cadastro não existe mais neste aparelho.' };
+    const usos = usosDoCadastroAtual(tabela, id);
+    if (usos.length > 0) return { ok: false, usos };
+    const exclusaoId = excluirCadastro({ tabela, storageKey: alvo.storageKey, tela: alvo.tela, item, rotulo, lista: alvo.lista, setLista: alvo.setLista as (next: typeof alvo.lista) => void });
+    return { ok: true, exclusaoId };
+  };
+
+  /** Devolve o cadastro guardado na exclusão e marca a exclusão como desfeita. */
+  const handleRestaurarCadastro = (exclusaoId: string): { ok: boolean; mensagem: string } => {
+    const exclusao = exclusoes.find(item => item.id === exclusaoId);
+    if (!exclusao || exclusao.restauradoEm) return { ok: false, mensagem: 'Este cadastro já foi restaurado.' };
+    const alvo = tabelasCadastro()[exclusao.tabela];
+    if (!alvo) return { ok: false, mensagem: 'Este tipo de cadastro não pode ser restaurado por aqui.' };
+    const agora = new Date().toISOString();
+    const jaExiste = alvo.lista.some(item => item.id === exclusao.registroId);
+    const registro = { ...exclusao.registro, id: exclusao.registroId } as { id: string };
+    if (!jaExiste && ['empresas', 'funcionarios', 'equipamentos', 'obras'].includes(exclusao.tabela)) {
+      const erros = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: registro as Empresa });
+      if (erros.length > 0) return { ok: false, mensagem: `Não deu para restaurar: ${erros.join(' ')}` };
+    }
+    const restaurado = ['empresas', 'funcionarios'].includes(exclusao.tabela) ? { ...registro, atualizadoEm: agora } : registro;
+    const updated = jaExiste ? alvo.lista : [...alvo.lista, restaurado];
+    const nextExclusoes = exclusoes.map(item => (item.id === exclusaoId ? restaurarExclusao(item, activeUserName, agora) : item));
+    saveAndLog(
+      alvo.tela,
+      'Restaurou',
+      `Restaurou "${exclusao.rotulo}" da Lixeira.`,
+      historyLogs,
+      () => {
+        commitStorageBatch(localStorage, [
+          { key: alvo.storageKey, value: JSON.stringify(updated) },
+          { key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) },
+        ]);
+        alvo.setLista(updated as never[]);
+        setExclusoes(nextExclusoes);
+      },
+      { registroId: exclusao.registroId, valorNovo: restaurado, tipoOperacao: 'RESTORE' },
+    );
+    return { ok: true, mensagem: `${exclusao.rotulo} voltou para a lista.` };
   };
 
   const handleSaveEquipamento = (item: Equipamento, isNew: boolean) => {
@@ -1977,34 +2042,7 @@ export default function App() {
     );
   };
 
-  const notifyRegistryDeletionBlocked = (dependencies: { collection: string; count: number }[]) => {
-    addNotification(
-      'Exclusão bloqueada',
-      `Este cadastro ainda é usado em ${dependencies.map(item => `${item.count} ${item.collection}`).join(' e ')}. Preserve o histórico antes de removê-lo.`,
-      'warning',
-      'Sistema Local',
-    );
-  };
 
-  const canDeleteAuxRegistry = (kind: 'comboio' | 'combustivel' | 'lubrificante' | 'etapa', id: string): boolean => {
-    const dependencies = registryDependencies(kind, id, {
-      abastecimentos,
-      equipamentos,
-      lubrificacoes,
-      apontamentos: apontamentosOperacionais,
-    });
-    if (dependencies.length === 0) return true;
-    notifyRegistryDeletionBlocked(dependencies);
-    return false;
-  };
-
-  const handleDeleteComboio = (id: string) => {
-    const item = comboios.find(x => x.id === id);
-    if (!item) return false;
-    if (!canDeleteAuxRegistry('comboio', id)) return false;
-    excluirCadastro({ tabela: 'comboios', storageKey: 'renea_comboios', tela: 'Comboios', item, rotulo: item.nome, lista: comboios, setLista: setComboios });
-    return true;
-  };
 
   const handleSaveTipoCombustivel = (item: TipoCombustivel, isNew: boolean) => {
     let updated;
@@ -2023,14 +2061,6 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_combustiveis', JSON.stringify(updated));
       }
     );
-  };
-
-  const handleDeleteTipoCombustivel = (id: string) => {
-    const item = combustiveis.find(x => x.id === id);
-    if (!item) return false;
-    if (!canDeleteAuxRegistry('combustivel', id)) return false;
-    excluirCadastro({ tabela: 'combustiveis', storageKey: 'renea_combustiveis', tela: 'Combustíveis', item, rotulo: item.nome, lista: combustiveis, setLista: setCombustiveis });
-    return true;
   };
 
   const handleSaveProdutoLubrificacao = (item: ProdutoLubrificacao, isNew: boolean) => {
@@ -2052,14 +2082,6 @@ export default function App() {
     );
   };
 
-  const handleDeleteProdutoLubrificacao = (id: string) => {
-    const item = lubrificantes.find(x => x.id === id);
-    if (!item) return false;
-    if (!canDeleteAuxRegistry('lubrificante', id)) return false;
-    excluirCadastro({ tabela: 'lubrificantes', storageKey: 'renea_lubrificantes', tela: 'Produtos Lubrificação', item, rotulo: item.nome, lista: lubrificantes, setLista: setLubrificantes });
-    return true;
-  };
-
   const handleSaveEtapaServico = (item: EtapaServico, isNew: boolean) => {
     let updated;
     if (isNew) {
@@ -2077,14 +2099,6 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
       }
     );
-  };
-
-  const handleDeleteEtapaServico = (id: string) => {
-    const item = etapas.find(x => x.id === id);
-    if (!item) return false;
-    if (!canDeleteAuxRegistry('etapa', id)) return false;
-    excluirCadastro({ tabela: 'etapas', storageKey: 'renea_etapas', tela: 'Etapas de Serviço', item, rotulo: item.nome, lista: etapas, setLista: setEtapas });
-    return true;
   };
 
   const handleImportCadastros = (target: CadastroImportTarget, rows: CadastroImportRow[]) => {
@@ -2720,7 +2734,6 @@ export default function App() {
       setIsRetryingPending(false);
     }
   }, [isRetryingPending, uploadLocalSnapshotToFirebase, addNotification]);
-
 
   // Reconstrói o histórico de presença a partir da fila pública original
   // (sistemarenea_public_submissions), que nunca é apagada nem sobrescrita
@@ -4371,7 +4384,6 @@ export default function App() {
     }, null, 2);
   };
 
-
   const handleImportFullData = (importedJson: string): boolean => {
     try {
       const parsed = JSON.parse(importedJson);
@@ -4887,7 +4899,7 @@ export default function App() {
             )}
 
             {activeTab === 'cadastros' && allowedTabs.includes('cadastros') && (
-              <CadastrosTab 
+              <CadastrosTab
                 empresas={empresas}
                 obras={obras}
                 equipamentos={equipamentos}
@@ -4896,23 +4908,26 @@ export default function App() {
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
                 etapas={etapas}
-                ordensServico={ordensServico}
+                historyLogs={historyLogs}
+                exclusoes={exclusoes}
+                podeEditar={pode(currentUserRole, 'cadastros', 'editar')}
+                podeExcluir={pode(currentUserRole, 'cadastros', 'excluir')}
                 onSaveEmpresa={handleSaveEmpresa}
-                onDeleteEmpresa={handleDeleteEmpresa}
                 onSaveObra={handleSaveObra}
-                onDeleteObra={handleDeleteObra}
                 onSaveEquipamento={handleSaveEquipamento}
-                onDeleteEquipamento={handleDeleteEquipamento}
                 onSaveFuncionario={handleSaveFuncionario}
-                onDeleteFuncionario={handleDeleteFuncionario}
                 onSaveComboio={handleSaveComboio}
-                onDeleteComboio={handleDeleteComboio}
                 onSaveTipoCombustivel={handleSaveTipoCombustivel}
-                onDeleteTipoCombustivel={handleDeleteTipoCombustivel}
                 onSaveProdutoLubrificacao={handleSaveProdutoLubrificacao}
-                onDeleteProdutoLubrificacao={handleDeleteProdutoLubrificacao}
                 onSaveEtapaServico={handleSaveEtapaServico}
-                onDeleteEtapaServico={handleDeleteEtapaServico}
+                onInativar={(tabela, id) => {
+                  if (tabela === 'empresas') handleDeleteEmpresa(id);
+                  else if (tabela === 'funcionarios') handleDeleteFuncionario(id);
+                  else if (tabela === 'equipamentos') handleDeleteEquipamento(id);
+                }}
+                usosDoCadastro={usosDoCadastroAtual}
+                onExcluir={handleExcluirCadastro}
+                onRestaurar={handleRestaurarCadastro}
                 onImportCadastros={handleImportCadastros}
                 onApplyMasterWorkbook={handleApplyMasterWorkbook}
               />

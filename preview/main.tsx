@@ -55,6 +55,7 @@ import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
 import * as fx from './fixtures';
+import { criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
 const blockRegistryDeletion = new URLSearchParams(location.search).get('blockedRegistry') === '1';
@@ -63,6 +64,79 @@ const previewNotifications = [
   { id: '1', type: 'success' as const, title: 'Sincronizacao concluida', message: 'Dados do periodo enviados para a nuvem.', timestamp: '08:12', read: false, source: 'Firebase Cloud' as const },
   { id: '2', type: 'warning' as const, title: 'Estoque baixo', message: 'Produto de lubrificacao abaixo do minimo.', timestamp: '07:40', read: true, source: 'Sistema Local' as const },
 ];
+
+// Cadastros com estado de verdade: excluir tira da lista e põe na Lixeira,
+// restaurar devolve. Com ?blockedRegistry=1 todo cadastro aparece como usado
+// em lançamentos, para conferir a janela que trava a exclusão.
+function CadastrosPreview() {
+  const [listas, setListas] = React.useState<Record<string, Array<{ id: string } & Record<string, unknown>>>>(() => ({
+    empresas: [...fx.empresas],
+    funcionarios: [...fx.funcionarios, ...fx.efetivoPresenca],
+    equipamentos: [...fx.equipamentos],
+    obras: [...fx.obras],
+    comboios: [...fx.comboios],
+    combustiveis: [...fx.combustiveis],
+    lubrificantes: [...fx.lubrificantes],
+    etapas: [...fx.etapasRamos],
+  } as never));
+  const [exclusoes, setExclusoes] = React.useState<ExclusaoRegistro[]>([]);
+  const salvar = (tabela: string) => (item: { id: string }) => setListas(atual => ({
+    ...atual,
+    [tabela]: atual[tabela].some(registro => registro.id === item.id)
+      ? atual[tabela].map(registro => (registro.id === item.id ? item as never : registro))
+      : [...atual[tabela], item as never],
+  }));
+  const usos = (): Array<{ collection: string; count: number }> => (
+    blockRegistryDeletion ? [{ collection: 'Abastecimentos', count: 12 }, { collection: 'Presenças', count: 3 }] : []
+  );
+  return (
+    <CadastrosTab
+      empresas={listas.empresas as never}
+      obras={listas.obras as never}
+      equipamentos={listas.equipamentos as never}
+      funcionarios={listas.funcionarios as never}
+      comboios={listas.comboios as never}
+      combustiveis={listas.combustiveis as never}
+      lubrificantes={listas.lubrificantes as never}
+      etapas={listas.etapas as never}
+      historyLogs={[]}
+      exclusoes={exclusoes}
+      podeEditar
+      podeExcluir
+      onSaveEmpresa={salvar('empresas')}
+      onSaveObra={salvar('obras')}
+      onSaveEquipamento={salvar('equipamentos')}
+      onSaveFuncionario={salvar('funcionarios')}
+      onSaveComboio={salvar('comboios')}
+      onSaveTipoCombustivel={salvar('combustiveis')}
+      onSaveProdutoLubrificacao={salvar('lubrificantes')}
+      onSaveEtapaServico={salvar('etapas')}
+      onInativar={(tabela, id) => setListas(atual => ({
+        ...atual,
+        [tabela]: atual[tabela].map(registro => (registro.id === id ? { ...registro, ativo: false, status: tabela === 'equipamentos' ? 'Desmobilizado' : 'INATIVO' } : registro)),
+      }))}
+      usosDoCadastro={usos}
+      onExcluir={(tabela, id, rotulo) => {
+        if (usos().length > 0) return { ok: false, usos: usos() };
+        const registro = listas[tabela].find(item => item.id === id);
+        if (!registro) return { ok: false, usos: [], mensagem: 'Cadastro não encontrado.' };
+        const exclusao = criarExclusao({ tabela, registro, rotulo, usuario: 'Deivid Santana', agora: new Date().toISOString() });
+        setListas(atual => ({ ...atual, [tabela]: atual[tabela].filter(item => item.id !== id) }));
+        setExclusoes(atual => [...atual, exclusao]);
+        return { ok: true, exclusaoId: exclusao.id };
+      }}
+      onRestaurar={exclusaoId => {
+        const exclusao = exclusoes.find(item => item.id === exclusaoId);
+        if (!exclusao) return { ok: false, mensagem: 'Não achei esse item na Lixeira.' };
+        setListas(atual => ({ ...atual, [exclusao.tabela]: [...atual[exclusao.tabela], exclusao.registro as never] }));
+        setExclusoes(atual => atual.map(item => (item.id === exclusaoId ? restaurarExclusao(item, 'Deivid Santana', new Date().toISOString()) : item)));
+        return { ok: true, mensagem: `${exclusao.rotulo} voltou para a lista.` };
+      }}
+      onImportCadastros={() => ({ success: true, message: 'ok' })}
+      onApplyMasterWorkbook={async () => ({ success: true, message: 'ok' })}
+    />
+  );
+}
 
 // Espelha o link público depois da mudança de desempenho: a resposta traz só o
 // dia aberto, e escolher outro dia na régua vai buscar aquele dia. O e2e cobre
@@ -157,37 +231,7 @@ const screens: Record<string, React.ReactNode> = {
     </div>
   ),
   usuarios: <UsuariosTab />,
-  cadastros: (
-    <CadastrosTab
-      empresas={fx.empresas}
-      obras={fx.obras}
-      equipamentos={fx.equipamentos}
-      funcionarios={fx.funcionarios}
-      comboios={fx.comboios}
-      combustiveis={fx.combustiveis}
-      lubrificantes={fx.lubrificantes}
-      etapas={[]}
-      ordensServico={fx.ordensServico}
-      onSaveEmpresa={noop}
-      onDeleteEmpresa={noop}
-      onSaveObra={noop}
-      onDeleteObra={noop}
-      onSaveEquipamento={noop}
-      onDeleteEquipamento={noop}
-      onSaveFuncionario={noop}
-      onDeleteFuncionario={noop}
-      onSaveComboio={noop}
-      onDeleteComboio={blockRegistryDeletion ? () => false : noop}
-      onSaveTipoCombustivel={noop}
-      onDeleteTipoCombustivel={noop}
-      onSaveProdutoLubrificacao={noop}
-      onDeleteProdutoLubrificacao={noop}
-      onSaveEtapaServico={noop}
-      onDeleteEtapaServico={noop}
-      onImportCadastros={() => ({ success: true, message: 'ok' })}
-      onApplyMasterWorkbook={async () => ({ success: true, message: 'ok' })}
-    />
-  ),
+  cadastros: <CadastrosPreview />,
   estacas: (
     <EstacasTab
       controle={{ lotes: [], cravacoes: [] }}

@@ -76,25 +76,36 @@ test('shell viewport usa largura total sem limite', async ({ page }) => {
 test('cadastros oferece busca nomeada no grupo de filtros', async ({ page }) => {
   await page.goto('/?screen=cadastros');
   const filters = page.getByRole('region', { name: 'Filtros de cadastros' });
-  await expect(filters.getByRole('textbox', { name: 'Buscar cadastros' })).toBeVisible();
+  await expect(filters.getByRole('searchbox', { name: 'Buscar cadastros' })).toBeVisible();
 });
 
-test('cadastros descreve desmobilização sem prometer exclusão', async ({ page }) => {
+test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({ page }) => {
   await page.goto('/?screen=cadastros');
-  await page.getByRole('button', { name: 'Excluir' }).first().click();
-  const dialog = page.getByRole('dialog', { name: 'Confirmar inativacao?' });
-  await expect(dialog).toContainText('desmobilizado');
-  await expect(dialog.getByRole('button', { name: 'DESMOBILIZAR' })).toBeVisible();
+  await page.locator('[data-linha-lista]:visible').first().click();
+  await page.getByTestId('cadastro-excluir').click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText('Firebase');
+  await dialog.getByTestId('cadastro-confirmar').click();
+  const aviso = page.getByTestId('cadastro-aviso');
+  await expect(aviso).toContainText('excluído');
+  // No celular os tipos ficam num seletor que abre de baixo para cima.
+  const seletor = page.getByTestId('cadastro-escolher-tipo');
+  if (await seletor.isVisible()) await seletor.click();
+  await page.locator('[data-testid="cadastro-categoria-lixeira"]:visible').click();
+  await expect(page.getByTestId('cadastro-lixeira')).toContainText('excluído por');
+  await aviso.getByRole('button', { name: 'Desfazer' }).click();
+  await expect(page.getByTestId('cadastro-lixeira')).toContainText('A Lixeira está vazia');
 });
 
-test('cadastros mantém o diálogo aberto ao bloquear exclusão vinculada', async ({ page }) => {
+test('cadastros trava exclusão de cadastro usado e oferece inativar', async ({ page }) => {
   await page.goto('/?screen=cadastros&blockedRegistry=1');
-  await page.getByRole('button', { name: /^Comboios \(/ }).click();
-  await page.getByRole('button', { name: 'Excluir' }).first().click();
-  const dialog = page.getByRole('dialog', { name: 'Confirmar exclusão?' });
-  await dialog.getByRole('button', { name: 'EXCLUIR' }).click();
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('alert')).toContainText('lançamentos vinculados');
+  await page.locator('[data-linha-lista]:visible').first().click();
+  await page.getByTestId('cadastro-excluir').click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText('Não dá para excluir');
+  await expect(dialog.getByRole('list', { name: 'Onde é usado' })).toContainText('Abastecimentos');
+  await expect(dialog.getByRole('button', { name: 'Inativar' })).toBeVisible();
+  await expect(dialog.getByTestId('cadastro-confirmar')).toHaveCount(0);
 });
 
 test('materiais oferece busca no grupo de filtros', async ({ page }) => {
