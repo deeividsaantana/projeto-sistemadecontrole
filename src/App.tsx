@@ -1728,36 +1728,39 @@ export default function App() {
    * é o que faz a exclusão chegar ao Firebase e aos outros aparelhos sem
    * voltar (ver src/cloud/exclusoes.ts).
    */
-  const excluirCadastro = <T extends { id: string; nome?: string }>({
+  const excluirCadastros = <T extends { id: string; nome?: string }>({
     tabela,
     storageKey,
     tela,
-    item,
-    rotulo,
+    itens,
     lista,
     setLista,
   }: {
     tabela: string;
     storageKey: string;
     tela: string;
-    item: T;
-    rotulo: string;
+    itens: Array<{ item: T; rotulo: string }>;
     lista: T[];
     setLista: (next: T[]) => void;
   }) => {
-    const exclusao = criarExclusao({
+    // Vários de uma vez gravam num lote só: chamadas seguidas enxergariam a
+    // mesma lista antiga e só a última exclusão ficaria.
+    const agora = new Date().toISOString();
+    const novas = itens.map(({ item, rotulo }) => criarExclusao({
       tabela,
       registro: item as unknown as { id: string } & Record<string, unknown>,
       rotulo,
       usuario: activeUserName,
-      agora: new Date().toISOString(),
-    });
-    const updated = lista.filter(x => x.id !== item.id);
-    const nextExclusoes = [exclusao, ...exclusoes];
+      agora,
+    }));
+    const ids = new Set(itens.map(({ item }) => item.id));
+    const updated = lista.filter(x => !ids.has(x.id));
+    const nextExclusoes = [...novas, ...exclusoes];
+    const nomes = itens.map(({ rotulo }) => `"${rotulo}"`).join(', ');
     saveAndLog(
       tela,
       'Excluiu',
-      `Excluiu "${rotulo}".`,
+      itens.length === 1 ? `Excluiu ${nomes}.` : `Excluiu ${itens.length} cadastros: ${nomes}.`,
       historyLogs,
       () => {
         commitStorageBatch(localStorage, [
@@ -1767,9 +1770,13 @@ export default function App() {
         setLista(updated);
         setExclusoes(nextExclusoes);
       },
-      { registroId: item.id, valorAnterior: item, tipoOperacao: 'DELETE' },
+      {
+        registroId: itens.map(({ item }) => item.id).join(','),
+        valorAnterior: itens.length === 1 ? itens[0].item : itens.map(({ item }) => item),
+        tipoOperacao: 'DELETE',
+      },
     );
-    return exclusao.id;
+    return novas.map(exclusao => exclusao.id);
   };
 
   /** Tabelas que a aba Cadastros edita, com onde cada uma é guardada. */
@@ -1821,52 +1828,107 @@ export default function App() {
    * não aparece em nenhum lançamento: com uso, devolve onde ele aparece e a
    * tela oferece inativar.
    */
-  const handleExcluirCadastro = (tabela: string, id: string, rotulo: string): { ok: true; exclusaoId: string } | { ok: false; usos: { collection: string; count: number }[]; mensagem?: string } => {
+  type UsoRegistro = { collection: string; count: number };
+
+  /**
+   * Exclui vários cadastros da mesma tabela. O que está em uso fica de fora e
+   * volta na lista de travados, com onde aparece; o resto sai num lote só.
+   */
+  const handleExcluirCadastros = (tabela: string, alvos: Array<{ id: string; rotulo: string }>): {
+    excluidos: Array<{ id: string; rotulo: string; exclusaoId: string }>;
+    travados: Array<{ id: string; rotulo: string; usos: UsoRegistro[] }>;
+    mensagem?: string;
+  } => {
     if (!pode(currentUserRole, 'cadastros', 'excluir')) {
-      return { ok: false, usos: [], mensagem: 'Só o administrador pode excluir cadastros.' };
+      return { excluidos: [], travados: [], mensagem: 'Só o administrador pode excluir cadastros.' };
     }
     const alvo = tabelasCadastro()[tabela];
-    const item = alvo?.lista.find(x => x.id === id);
-    if (!alvo || !item) return { ok: false, usos: [], mensagem: 'Este cadastro não existe mais neste aparelho.' };
-    const usos = usosDoCadastroAtual(tabela, id);
-    if (usos.length > 0) return { ok: false, usos };
-    const exclusaoId = excluirCadastro({ tabela, storageKey: alvo.storageKey, tela: alvo.tela, item, rotulo, lista: alvo.lista, setLista: alvo.setLista as (next: typeof alvo.lista) => void });
-    return { ok: true, exclusaoId };
+    if (!alvo) return { excluidos: [], travados: [], mensagem: 'Este tipo de cadastro não pode ser excluído por aqui.' };
+    const porId = new Map(alvo.lista.map(item => [item.id, item]));
+    const livres: Array<{ item: (typeof alvo.lista)[number]; rotulo: string }> = [];
+    const travados: Array<{ id: string; rotulo: string; usos: UsoRegistro[] }> = [];
+    alvos.forEach(({ id, rotulo }) => {
+      const item = porId.get(id);
+      if (!item) return;
+      const usos = usosDoCadastroAtual(tabela, id);
+      if (usos.length > 0) travados.push({ id, rotulo, usos });
+      else livres.push({ item, rotulo });
+    });
+    if (livres.length === 0) return { excluidos: [], travados };
+    const ids = excluirCadastros({ tabela, storageKey: alvo.storageKey, tela: alvo.tela, itens: livres, lista: alvo.lista, setLista: alvo.setLista as (next: typeof alvo.lista) => void });
+    return { excluidos: livres.map(({ item, rotulo }, indice) => ({ id: item.id, rotulo, exclusaoId: ids[indice] })), travados };
   };
 
-  /** Devolve o cadastro guardado na exclusão e marca a exclusão como desfeita. */
-  const handleRestaurarCadastro = (exclusaoId: string): { ok: boolean; mensagem: string } => {
-    const exclusao = exclusoes.find(item => item.id === exclusaoId);
-    if (!exclusao || exclusao.restauradoEm) return { ok: false, mensagem: 'Este cadastro já foi restaurado.' };
-    const alvo = tabelasCadastro()[exclusao.tabela];
-    if (!alvo) return { ok: false, mensagem: 'Este tipo de cadastro não pode ser restaurado por aqui.' };
-    const agora = new Date().toISOString();
-    const jaExiste = alvo.lista.some(item => item.id === exclusao.registroId);
-    const registro = { ...exclusao.registro, id: exclusao.registroId } as { id: string };
-    if (!jaExiste && ['empresas', 'funcionarios', 'equipamentos', 'obras'].includes(exclusao.tabela)) {
-      const erros = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: registro as Empresa });
-      if (erros.length > 0) return { ok: false, mensagem: `Não deu para restaurar: ${erros.join(' ')}` };
+  const handleExcluirCadastro = (tabela: string, id: string, rotulo: string): { ok: true; exclusaoId: string } | { ok: false; usos: UsoRegistro[]; mensagem?: string } => {
+    const alvo = tabelasCadastro()[tabela];
+    if (pode(currentUserRole, 'cadastros', 'excluir') && !alvo?.lista.some(x => x.id === id)) {
+      return { ok: false, usos: [], mensagem: 'Este cadastro não existe mais neste aparelho.' };
     }
-    const restaurado = ['empresas', 'funcionarios'].includes(exclusao.tabela) ? { ...registro, atualizadoEm: agora } : registro;
-    const updated = jaExiste ? alvo.lista : [...alvo.lista, restaurado];
-    const nextExclusoes = exclusoes.map(item => (item.id === exclusaoId ? restaurarExclusao(item, activeUserName, agora) : item));
+    const resultado = handleExcluirCadastros(tabela, [{ id, rotulo }]);
+    if (resultado.excluidos.length > 0) return { ok: true, exclusaoId: resultado.excluidos[0].exclusaoId };
+    return { ok: false, usos: resultado.travados[0]?.usos || [], mensagem: resultado.mensagem };
+  };
+
+  /**
+   * Devolve os cadastros guardados nas exclusões e marca as exclusões como
+   * desfeitas, tudo num lote só (o Desfazer de uma exclusão em lote passa aqui).
+   */
+  const handleRestaurarCadastros = (exclusaoIds: string[]): { ok: boolean; mensagem: string } => {
+    const pedidos = new Set(exclusaoIds);
+    const pendentes = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm);
+    if (pendentes.length === 0) return { ok: false, mensagem: exclusaoIds.length === 1 ? 'Este cadastro já foi restaurado.' : 'Estes cadastros já foram restaurados.' };
+    const tabelas = tabelasCadastro();
+    const agora = new Date().toISOString();
+    const listas = new Map<string, Array<{ id: string }>>();
+    const restaurados: typeof pendentes = [];
+    const erros: string[] = [];
+    pendentes.forEach(exclusao => {
+      const alvo = tabelas[exclusao.tabela];
+      if (!alvo) {
+        erros.push(`${exclusao.rotulo}: este tipo não pode ser restaurado por aqui.`);
+        return;
+      }
+      const lista = listas.get(exclusao.tabela) || alvo.lista;
+      if (lista.some(item => item.id === exclusao.registroId)) {
+        restaurados.push(exclusao);
+        return;
+      }
+      const registro = { ...exclusao.registro, id: exclusao.registroId } as { id: string };
+      if (['empresas', 'funcionarios', 'equipamentos', 'obras'].includes(exclusao.tabela)) {
+        const problemas = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: registro as Empresa });
+        if (problemas.length > 0) {
+          erros.push(`${exclusao.rotulo}: ${problemas.join(' ')}`);
+          return;
+        }
+      }
+      const restaurado = ['empresas', 'funcionarios'].includes(exclusao.tabela) ? { ...registro, atualizadoEm: agora } : registro;
+      listas.set(exclusao.tabela, [...lista, restaurado]);
+      restaurados.push(exclusao);
+    });
+    if (restaurados.length === 0) return { ok: false, mensagem: `Não deu para restaurar: ${erros.join(' ')}` };
+    const feitos = new Set(restaurados.map(item => item.id));
+    const nextExclusoes = exclusoes.map(item => (feitos.has(item.id) ? restaurarExclusao(item, activeUserName, agora) : item));
+    const nomes = restaurados.map(item => `"${item.rotulo}"`).join(', ');
     saveAndLog(
-      alvo.tela,
+      tabelas[restaurados[0].tabela]?.tela || 'Cadastros',
       'Restaurou',
-      `Restaurou "${exclusao.rotulo}" da Lixeira.`,
+      restaurados.length === 1 ? `Restaurou ${nomes} da Lixeira.` : `Restaurou ${restaurados.length} cadastros da Lixeira: ${nomes}.`,
       historyLogs,
       () => {
         commitStorageBatch(localStorage, [
-          { key: alvo.storageKey, value: JSON.stringify(updated) },
+          ...Array.from(listas, ([tabela, lista]) => ({ key: tabelas[tabela].storageKey, value: JSON.stringify(lista) })),
           { key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) },
         ]);
-        alvo.setLista(updated as never[]);
+        listas.forEach((lista, tabela) => tabelas[tabela].setLista(lista as never[]));
         setExclusoes(nextExclusoes);
       },
-      { registroId: exclusao.registroId, valorNovo: restaurado, tipoOperacao: 'RESTORE' },
+      { registroId: restaurados.map(item => item.registroId).join(','), valorNovo: restaurados.map(item => item.registro), tipoOperacao: 'RESTORE' },
     );
-    return { ok: true, mensagem: `${exclusao.rotulo} voltou para a lista.` };
+    const texto = restaurados.length === 1 ? `${restaurados[0].rotulo} voltou para a lista.` : `${restaurados.length} cadastros voltaram para a lista.`;
+    return { ok: erros.length === 0, mensagem: erros.length === 0 ? texto : `${texto} Não voltaram: ${erros.join(' ')}` };
   };
+
+  const handleRestaurarCadastro = (exclusaoId: string) => handleRestaurarCadastros([exclusaoId]);
 
   const handleSaveEquipamento = (item: Equipamento, isNew: boolean) => {
     const previous = equipamentos.find(x => x.id === item.id);
@@ -4928,6 +4990,8 @@ export default function App() {
                 usosDoCadastro={usosDoCadastroAtual}
                 onExcluir={handleExcluirCadastro}
                 onRestaurar={handleRestaurarCadastro}
+                onExcluirVarios={handleExcluirCadastros}
+                onRestaurarVarios={handleRestaurarCadastros}
                 onImportCadastros={handleImportCadastros}
                 onApplyMasterWorkbook={handleApplyMasterWorkbook}
               />

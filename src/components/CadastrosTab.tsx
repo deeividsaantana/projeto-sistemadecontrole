@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, CheckCircle, Download, Network, Plus, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Download, Network, Plus, Search, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react';
 import type {
   Comboio,
   Empresa,
@@ -50,9 +50,10 @@ import CadastroDetalhe, { type UsoCadastro } from './cadastros/CadastroDetalhe';
 import CadastroFormulario from './cadastros/CadastroFormulario';
 import CadastroConfirmacao, { type AcaoConfirmacao } from './cadastros/CadastroConfirmacao';
 import CadastroLixeira from './cadastros/CadastroLixeira';
+import CadastroConfirmacaoLote, { type ItemTravado } from './cadastros/CadastroConfirmacaoLote';
 import { montarRegistro, novoId, valoresIniciais, type ValoresCadastro } from './cadastros/camposCadastro';
 import { parseWorkbookFile } from './cadastros/lerPlanilhaCadastros';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, reduzMovimento } from './cadastros/estilos';
+import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, reduzMovimento } from './cadastros/estilos';
 import './cadastros/Cadastros.css';
 
 type ResultadoExclusao = { ok: true; exclusaoId: string } | { ok: false; usos: UsoCadastro[]; mensagem?: string };
@@ -84,6 +85,12 @@ interface CadastrosTabProps {
   usosDoCadastro: (tabela: string, id: string) => UsoCadastro[];
   onExcluir: (tabela: string, id: string, rotulo: string) => ResultadoExclusao;
   onRestaurar: (exclusaoId: string) => { ok: boolean; mensagem: string };
+  onExcluirVarios: (tabela: string, alvos: Array<{ id: string; rotulo: string }>) => {
+    excluidos: Array<{ id: string; rotulo: string; exclusaoId: string }>;
+    travados: Array<{ id: string; rotulo: string; usos: UsoCadastro[] }>;
+    mensagem?: string;
+  };
+  onRestaurarVarios: (exclusaoIds: string[]) => { ok: boolean; mensagem: string };
   onImportCadastros: (target: CadastroCategoriaId, rows: Record<string, string>[]) => { success: boolean; message: string };
   onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
 }
@@ -129,6 +136,9 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const [processando, setProcessando] = useState(false);
   const [restaurandoId, setRestaurandoId] = useState<string | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
+  // Marcados para excluir em lote. Valem só para o tipo aberto.
+  const [marcados, setMarcados] = useState<ReadonlySet<string>>(() => new Set());
+  const [lote, setLote] = useState<{ livres: LinhaCadastro[]; travados: ItemTravado[] } | null>(null);
   const [exportando, setExportando] = useState(false);
 
   const arquivoRef = useRef<HTMLInputElement>(null);
@@ -193,6 +203,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const escolherVista = (proxima: VistaCadastros) => {
     setVista(proxima);
     setDetalheId(null);
+    setMarcados(new Set());
     if (proxima === 'lixeira') return;
     setCategoria(proxima);
     setBusca('');
@@ -330,6 +341,60 @@ export default function CadastrosTab(props: CadastrosTabProps) {
       texto: `${linha.titulo} excluído.`,
       desfazer: () => {
         const volta = ultimas.current.onRestaurar(resultado.exclusaoId);
+        setAviso({ tipo: volta.ok ? 'ok' : 'erro', texto: volta.mensagem });
+      },
+    });
+  };
+
+  // ---- Seleção e exclusão em lote ---------------------------------------
+
+  const alternarMarcado = (id: string) => setMarcados(atual => {
+    const proximo = new Set(atual);
+    if (proximo.has(id)) proximo.delete(id);
+    else proximo.add(id);
+    return proximo;
+  });
+
+  const alternarPagina = (ids: string[], marcar: boolean) => setMarcados(atual => {
+    const proximo = new Set(atual);
+    ids.forEach(id => (marcar ? proximo.add(id) : proximo.delete(id)));
+    return proximo;
+  });
+
+  const pedirExclusaoEmLote = () => {
+    const escolhidas = todasAsLinhas.filter(linha => marcados.has(linha.id));
+    const livres: LinhaCadastro[] = [];
+    const travados: ItemTravado[] = [];
+    escolhidas.forEach(linha => {
+      const usos = usosDoCadastro(tabela, linha.id);
+      if (usos.length > 0) travados.push({ id: linha.id, titulo: linha.titulo, usos });
+      else livres.push(linha);
+    });
+    setLote({ livres, travados });
+  };
+
+  const confirmarLote = () => {
+    if (!lote || processando) return;
+    setProcessando(true);
+    const deFora = lote.travados.length;
+    const resultado = ultimas.current.onExcluirVarios(tabela, lote.livres.map(linha => ({ id: linha.id, rotulo: linha.titulo })));
+    setProcessando(false);
+    setLote(null);
+    if (resultado.excluidos.length === 0) {
+      setAviso({ tipo: 'erro', texto: resultado.mensagem || 'Nenhum cadastro foi excluído.' });
+      return;
+    }
+    setMarcados(new Set());
+    setDetalheId(null);
+    const total = resultado.excluidos.length;
+    // Os travados na janela nem foram enviados; o App ainda pode travar algum que ganhou uso no meio.
+    const ficaram = deFora + resultado.travados.length;
+    const ids = resultado.excluidos.map(item => item.exclusaoId);
+    setAviso({
+      tipo: 'ok',
+      texto: `${total.toLocaleString('pt-BR')} ${total === 1 ? 'cadastro excluído' : 'cadastros excluídos'}.${ficaram > 0 ? ` ${ficaram.toLocaleString('pt-BR')} ${ficaram === 1 ? 'ficou' : 'ficaram'} por estar em uso.` : ''}`,
+      desfazer: () => {
+        const volta = ultimas.current.onRestaurarVarios(ids);
         setAviso({ tipo: volta.ok ? 'ok' : 'erro', texto: volta.mensagem });
       },
     });
@@ -582,7 +647,26 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                 </div>
               )}
 
-              <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`}>
+              <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`} className="space-y-3">
+                {podeExcluir && marcados.size > 0 && (
+                  <div role="region" aria-label="Cadastros marcados" data-testid="cadastro-barra-selecao" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 shadow-sm sm:pl-4">
+                    <p className="basis-full px-2 pt-1 text-sm font-bold text-emerald-900 sm:mr-auto sm:basis-auto sm:p-0" aria-live="polite">
+                      {marcados.size.toLocaleString('pt-BR')} {marcados.size === 1 ? 'marcado' : 'marcados'}
+                    </p>
+                    {marcados.size < linhasFiltradas.length && (
+                      <button type="button" onClick={() => alternarPagina(linhasFiltradas.map(linha => linha.id), true)} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`} data-testid="cadastro-marcar-todos">
+                        Marcar todos os {linhasFiltradas.length.toLocaleString('pt-BR')}
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setMarcados(new Set())} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`}>
+                      Desmarcar
+                    </button>
+                    <button type="button" onClick={pedirExclusaoEmLote} className={`${BOTAO_PERIGO} px-3 max-sm:basis-full`} data-testid="cadastro-excluir-marcados">
+                      <Trash2 className="size-5" aria-hidden="true" />
+                      Excluir marcados
+                    </button>
+                  </div>
+                )}
                 <CadastroLista
                   linhas={linhasFiltradas}
                   colunas={COLUNAS[categoria]}
@@ -593,6 +677,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                   onPagina={setPagina}
                   selecionadoId={detalheId}
                   onAbrir={linha => setDetalheId(linha.id)}
+                  selecao={podeExcluir ? { marcados, onAlternar: alternarMarcado, onAlternarPagina: alternarPagina } : undefined}
                   vazio={todasAsLinhas.length === 0
                     ? {
                         titulo: `Nenhum cadastro em ${categoriaAtual.label.toLowerCase()}`,
@@ -659,6 +744,17 @@ export default function CadastrosTab(props: CadastrosTabProps) {
           salvando={salvando}
           onSalvar={salvarFormulario}
           onFechar={() => setFormulario(null)}
+        />
+      )}
+
+      {lote && (
+        <CadastroConfirmacaoLote
+          tipo={categoriaAtual.label}
+          livres={lote.livres.length}
+          travados={lote.travados}
+          processando={processando}
+          onConfirmar={confirmarLote}
+          onCancelar={() => setLote(null)}
         />
       )}
 

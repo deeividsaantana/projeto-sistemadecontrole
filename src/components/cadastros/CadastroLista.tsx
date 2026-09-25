@@ -15,18 +15,29 @@ interface Props {
   selecionadoId: string | null;
   onAbrir: (linha: LinhaCadastro) => void;
   vazio: { titulo: string; texto: string; acao?: { label: string; onClick: () => void } };
+  /** Com seleção, cada linha ganha uma caixa para marcar e excluir vários de uma vez. */
+  selecao?: {
+    marcados: ReadonlySet<string>;
+    onAlternar: (id: string) => void;
+    onAlternarPagina: (ids: string[], marcar: boolean) => void;
+  };
 }
+
+const CAIXA = 'size-5 cursor-pointer rounded border-slate-300 accent-[#176b4d]';
 
 /**
  * Tabela no computador e cartões no celular, da mesma lista já filtrada.
  * A linha inteira abre o detalhe: não há ícone pequeno para acertar.
  */
-export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem, onOrdenar, pagina, onPagina, selecionadoId, onAbrir, vazio }: Props) {
+export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem, onOrdenar, pagina, onPagina, selecionadoId, onAbrir, vazio, selecao }: Props) {
   const total = linhas.length;
   const paginas = Math.max(1, Math.ceil(total / LINHAS_POR_PAGINA));
   const atual = Math.min(pagina, paginas);
   const inicio = (atual - 1) * LINHAS_POR_PAGINA;
   const visiveis = linhas.slice(inicio, inicio + LINHAS_POR_PAGINA);
+  const idsDaPagina = visiveis.map(linha => linha.id);
+  const marcadosNaPagina = selecao ? idsDaPagina.filter(id => selecao.marcados.has(id)).length : 0;
+  const paginaToda = marcadosNaPagina > 0 && marcadosNaPagina === idsDaPagina.length;
 
   if (total === 0) {
     return (
@@ -44,6 +55,21 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
       <table className="hidden w-full border-collapse text-left text-sm md:table">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
+            {selecao && (
+              <th scope="col" className="w-12 p-0">
+                <label className="flex min-h-11 cursor-pointer items-center justify-center">
+                  <input
+                    type="checkbox"
+                    className={CAIXA}
+                    aria-label={paginaToda ? 'Desmarcar esta página' : 'Marcar esta página'}
+                    checked={paginaToda}
+                    ref={caixa => { if (caixa) caixa.indeterminate = marcadosNaPagina > 0 && !paginaToda; }}
+                    onChange={() => selecao.onAlternarPagina(idsDaPagina, !paginaToda)}
+                    data-testid="cadastro-marcar-pagina"
+                  />
+                </label>
+              </th>
+            )}
             {colunas.map(coluna => {
               const ativa = ordem.coluna === coluna.id;
               const Seta = ordem.direcao === 'asc' ? ArrowUp : ArrowDown;
@@ -66,8 +92,21 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
               key={linha.id}
               data-linha-lista
               onClick={() => onAbrir(linha)}
-              className={`group cursor-pointer border-b border-slate-100 transition-colors duration-150 last:border-0 hover:bg-emerald-50/50 ${selecionadoId === linha.id ? 'bg-emerald-50/70' : ''} ${linha.ativo ? '' : 'text-slate-400'}`}
+              className={`group cursor-pointer border-b border-slate-100 transition-colors duration-150 last:border-0 hover:bg-emerald-50/50 ${selecionadoId === linha.id || selecao?.marcados.has(linha.id) ? 'bg-emerald-50/70' : ''} ${linha.ativo ? '' : 'text-slate-400'}`}
             >
+              {selecao && (
+                <td className="p-0" onClick={event => event.stopPropagation()}>
+                  <label className="flex h-12 cursor-pointer items-center justify-center">
+                    <input
+                      type="checkbox"
+                      className={CAIXA}
+                      aria-label={`Marcar ${linha.titulo}`}
+                      checked={selecao.marcados.has(linha.id)}
+                      onChange={() => selecao.onAlternar(linha.id)}
+                    />
+                  </label>
+                </td>
+              )}
               {colunas.map((coluna, indice) => (
                 <td key={coluna.id} className={`h-12 max-w-[16rem] truncate px-4 ${coluna.codigo ? 'font-mono text-[13px] tabular-nums' : ''} ${indice === 0 || coluna.id === 'nome' ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
                   {indice === 0 ? (
@@ -90,8 +129,19 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
 
       <ul className="divide-y divide-slate-100 md:hidden">
         {visiveis.map(linha => (
-          <li key={linha.id} data-linha-lista>
-            <button type="button" onClick={() => onAbrir(linha)} className={`flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 active:bg-emerald-50 ${FOCO}`}>
+          <li key={linha.id} data-linha-lista className={`flex items-stretch ${selecao?.marcados.has(linha.id) ? 'bg-emerald-50/70' : ''}`}>
+            {selecao && (
+              <label className="flex w-14 shrink-0 cursor-pointer items-center justify-center">
+                <input
+                  type="checkbox"
+                  className={`${CAIXA} size-6`}
+                  aria-label={`Marcar ${linha.titulo}`}
+                  checked={selecao.marcados.has(linha.id)}
+                  onChange={() => selecao.onAlternar(linha.id)}
+                />
+              </label>
+            )}
+            <button type="button" onClick={() => onAbrir(linha)} className={`flex min-h-16 w-full min-w-0 items-center gap-3 py-3 pr-4 text-left ${selecao ? 'pl-0' : 'pl-4'} transition-colors duration-150 active:bg-emerald-50 ${FOCO}`}>
               <span className="min-w-0 flex-1">
                 <span className={`block break-words text-base font-semibold leading-snug ${linha.ativo ? 'text-slate-900' : 'text-slate-500'}`}>{linha.titulo}</span>
                 {linha.detalhe && <span className="mt-0.5 block truncate text-sm text-slate-500">{linha.detalhe}</span>}
