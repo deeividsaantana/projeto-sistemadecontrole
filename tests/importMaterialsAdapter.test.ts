@@ -63,3 +63,13 @@ assert.equal(viagens[2].lineage.validationStatus, 'review', 'placa na coluna de 
 assert.match(viagens[2].lineage.validationMessages.join(' '), /Unidade "EFO7545"/);
 const viagensPreview = materialsAdapter.reconcile(viagens, [] as MovimentoMaterial[]);
 assert.equal(viagensPreview.counts.new, 2);
+
+// Bota-fora é transporte para o aterro da aba, não entrada no estoque.
+const [botaFora] = materialsAdapter.parse({
+  ...context,
+  sourceSheet: 'BOTA FORA (LARA)',
+  rows: [{ DATA: '2026-03-22', ITEM: 'LIXO', UNIDADE: 'TON', QUANTIDADE: 13.16, PLACA: 'EFO7556', 'NUMERO DA NOTA': 411961, LOCAL: 'CS RAMO 600/700' }],
+});
+assert.equal(botaFora.value.tipoMovimento, 'Transferência');
+assert.equal(botaFora.value.origem, 'CS RAMO 600/700');
+assert.equal(botaFora.value.destino, 'LARA');

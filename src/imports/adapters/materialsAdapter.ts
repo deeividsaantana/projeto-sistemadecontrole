@@ -28,6 +28,16 @@ const RECOGNIZED_SHEETS = [
   'q e sao bento', 'q e sao bento spe ltda', 'faixa', 'lancamentos renea', 'lanc mat renea',
 ];
 
+// Bota-fora é transporte: a viagem sai da obra para o aterro e não é
+// material que entra no estoque. O aterro vem do nome da aba; a coluna de
+// local da planilha vira a origem.
+const BOTA_FORA: Record<string, string> = {
+  'bota fora lara': 'LARA',
+  'bota fora itaquareia': 'ITAQUAREIA',
+  'q e sao bento': 'Q.E. SÃO BENTO',
+  'q e sao bento spe ltda': 'Q.E. SÃO BENTO',
+};
+
 const FIELD_ALIASES: Record<string, string[]> = {
   data: ['Data'],
   tipoMovimento: ['Movimento', 'Tipo', 'Tipo Movimento'],
@@ -92,13 +102,14 @@ export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMoveme
     // Compara o nome exato da coluna: "LOCAIS" contém "LOCAL" e passaria.
     const filled = new Set(Object.entries(raw).filter(([, cell]) => cleanImportValue(cell) !== '').map(([column]) => normalizeImportText(column)));
     if (!LINE_FIELDS.some(field => FIELD_ALIASES[field].some(alias => filled.has(normalizeImportText(alias))))) return [];
+    const aterro = BOTA_FORA[normalizeSheetKey(context.sourceSheet)];
     const placaOuPrefixoRaw = getImportValue(raw, FIELD_ALIASES.placaOuPrefixo);
     const value: NormalizedMaterialMovementRow = {
       material: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.item))?.toUpperCase() || context.sourceSheet.trim(),
       data: normalizeImportDateOrNull(getImportValue(raw, FIELD_ALIASES.data)),
-      tipoMovimento: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.tipoMovimento)),
-      origem: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.origem)),
-      destino: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.destino)),
+      tipoMovimento: aterro ? 'Transferência' : normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.tipoMovimento)),
+      origem: normalizeImportTextOrNull(getImportValue(raw, aterro ? FIELD_ALIASES.destino : FIELD_ALIASES.origem)),
+      destino: aterro || normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.destino)),
       quantidade: normalizeImportDecimalOrNull(getImportValue(raw, FIELD_ALIASES.quantidade)),
       unidade: normalizeImportUnitOrNull(getImportValue(raw, FIELD_ALIASES.unidade)),
       placaOuPrefixo: normalizeImportPlateOrNull(placaOuPrefixoRaw) || normalizeImportPrefixOrNull(placaOuPrefixoRaw),
