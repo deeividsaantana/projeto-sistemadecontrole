@@ -172,3 +172,4 @@ import './useRegistryState.test';
 import './registryScreenUi.test';
 import './pageHeaderVisibility.test';
 import './initialSeedCleanup.test';
+import './reservaArmazenamento.test';
