@@ -36,6 +36,7 @@ import './historicoLinkPresenca.test';
 import './inativacao.test';
 import './situacaoColaborador.test';
 import './presencaManual.test';
+import './presencaRecuperacao.test';
 import './mapaChuva.test';
 import './recebimentoMaterial.test';
 import './painelPresenca.test';

@@ -175,6 +175,7 @@ import {
 } from './firebasePublicSubmissions';
 import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
+import { presenceBusinessKey, presencasFaltantes } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import { aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import {
@@ -345,10 +346,6 @@ const mergeRecordsById = <T extends { id: string }>(current: T[], incoming: T[])
   incoming.forEach(item => indexed.set(item.id, item));
   return Array.from(indexed.values());
 };
-
-const presenceBusinessKey = (item: Pick<PresencaApontamento, 'grupoId' | 'data' | 'funcionarioId'>) => (
-  `${item.grupoId}|${item.data}|${item.funcionarioId}`
-);
 
 /**
  * De qual chave local sai cada tabela do retrato da nuvem. Fica em um só
@@ -2815,14 +2812,17 @@ export default function App() {
       const storedPresence = parseStoredJson<PresencaApontamento[]>(
         localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', [],
       );
-      const beforeCount = storedPresence.length;
-      const merged = mergePresenceRecords(storedPresence, recoveredRecords);
-      const addedCount = merged.length - beforeCount;
-      writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(merged));
-      setPresencasLink(merged);
-      if (addedCount <= 0) {
+      const arquivados = parseStoredJson<PeriodoArquivado[]>(
+        localStorage.getItem('renea_periodos_arquivados'), 'renea_periodos_arquivados', [],
+      );
+      const faltantes = presencasFaltantes(storedPresence, recoveredRecords, arquivados);
+      const addedCount = faltantes.length;
+      if (addedCount === 0) {
         return { success: true, message: 'O histórico local já tinha todos os registros da fila pública.' };
       }
+      const merged = [...storedPresence, ...faltantes];
+      writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(merged));
+      setPresencasLink(merged);
       if (currentUserRoleRef.current === 'leitura') {
         return {
           success: true,
