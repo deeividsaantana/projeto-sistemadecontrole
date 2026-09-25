@@ -17,11 +17,11 @@ interface ApiEnvelope<T> {
 
 const PUBLIC_API_TIMEOUT_MS = 8_000;
 
-const callPublicApi = async <T,>(path: string, init?: RequestInit): Promise<ApiEnvelope<T>> => {
+const callPublicApi = async <T,>(path: string, init?: RequestInit, timeoutMs = PUBLIC_API_TIMEOUT_MS): Promise<ApiEnvelope<T>> => {
   const controller = new AbortController();
   const abortFromCaller = () => controller.abort();
   init?.signal?.addEventListener('abort', abortFromCaller, { once: true });
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), PUBLIC_API_TIMEOUT_MS);
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(path, {
       ...init,
@@ -38,7 +38,7 @@ const callPublicApi = async <T,>(path: string, init?: RequestInit): Promise<ApiE
     return payload;
   } catch (error) {
     if (controller.signal.aborted && !init?.signal?.aborted) {
-      throw new Error('O serviço demorou mais de 8 segundos. Verifique a conexão e tente novamente.');
+      throw new Error(`O serviço demorou mais de ${Math.round(timeoutMs / 1000)} segundos. Verifique a conexão e tente novamente.`);
     }
     throw error;
   } finally {
@@ -325,6 +325,8 @@ export interface PublicMaterialUseInput {
   apontador: string;
   itens: Array<{ materialId: string; quantidade: number }>;
   observacao?: string;
+  /** Fotos em data URL JPEG, já reduzidas no celular. */
+  fotos?: string[];
 }
 
 const materialAccessHeaders = (accessToken: string) => ({
@@ -340,12 +342,16 @@ export const loadPublicMaterialView = async (accessToken: string): Promise<Publi
 };
 
 export const submitPublicMaterialUse = async (accessToken: string, input: PublicMaterialUseInput) => {
-  const response = await callPublicApi<{ id: string; replay: boolean; view: PublicMaterialView }>('/api/public-materiais', {
+  const response = await callPublicApi<{ id: string; replay: boolean; view: PublicMaterialView; fotos?: number; fotosFalharam?: boolean }>('/api/public-materiais', {
     method: 'POST',
     headers: materialAccessHeaders(accessToken),
     body: JSON.stringify(input),
-  });
-  return { message: response.message || 'Uso salvo.', view: response.data?.view };
+  }, input.fotos?.length ? 60_000 : undefined);
+  return {
+    message: response.message || 'Uso salvo.',
+    view: response.data?.view,
+    fotosFalharam: Boolean(response.data?.fotosFalharam),
+  };
 };
 
 export const getSecurePublicMaterialLink = async () => {

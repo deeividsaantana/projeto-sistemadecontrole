@@ -4,6 +4,7 @@ import { gsap } from 'gsap';
 import {
   AlertTriangle,
   ArrowLeft,
+  Camera,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -14,17 +15,21 @@ import {
   Search,
   Send,
   UserRound,
+  X,
 } from 'lucide-react';
 import reneaLogo from '../assets/images/logo-renea-branco.png';
 import type { PublicMaterialStock, PublicMaterialUseInput, PublicMaterialView } from '../publicApi';
 import { formatMaterialQuantity, fromPieces, pieceLength, toPieces } from '../modules/materials/materialPieces';
+import { comprimirImagem, validarFoto } from '../utils/imagem';
 import './presencaTempoRealPublica.css';
 import './materialLinkApontador.css';
 
 interface Props {
   loadView: () => Promise<PublicMaterialView>;
-  submitUse: (input: PublicMaterialUseInput) => Promise<{ message: string; view?: PublicMaterialView }>;
+  submitUse: (input: PublicMaterialUseInput) => Promise<{ message: string; view?: PublicMaterialView; fotosFalharam?: boolean }>;
 }
+
+const MAX_FOTOS = 3;
 
 const NAME_KEY = 'renea_material_apontador_nome';
 const PENDING_KEY = 'renea_material_envio_pendente';
@@ -78,7 +83,10 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
   const [quantidades, setQuantidades] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [erroEnvio, setErroEnvio] = useState('');
-  const [recibo, setRecibo] = useState<{ ramo: string; data: string; linhas: string[]; hora: string } | null>(null);
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [preparandoFoto, setPreparandoFoto] = useState(false);
+  const [erroFoto, setErroFoto] = useState('');
+  const [recibo, setRecibo] = useState<{ ramo: string; data: string; linhas: string[]; hora: string; fotos: number; fotosFalharam: boolean } | null>(null);
   const envioIdRef = useRef('');
 
   const carregar = useCallback(async (silencioso = false) => {
@@ -125,6 +133,29 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
     });
   }, { scope: rootRef, dependencies: [ramoId, Boolean(view), Boolean(recibo), Boolean(nome)] });
 
+  // A foto recém-tirada entra com um pulo curto: confirma que ela ficou.
+  useGSAP(() => {
+    if (!rootRef.current || fotos.length === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const ultima = rootRef.current.querySelector('[data-foto]:last-of-type');
+    if (ultima) gsap.fromTo(ultima, { opacity: 0, scale: 0.86 }, { opacity: 1, scale: 1, duration: 0.38, ease: 'back.out(1.8)', clearProps: 'transform,opacity' });
+  }, { scope: rootRef, dependencies: [fotos.length] });
+
+  const receberFoto = async (arquivo?: File) => {
+    if (!arquivo || fotos.length >= MAX_FOTOS) return;
+    setErroFoto('');
+    setPreparandoFoto(true);
+    try {
+      const foto = await comprimirImagem(arquivo);
+      const problema = foto.startsWith('data:image/jpeg') ? validarFoto(foto) : 'Essa foto veio num formato que o sistema não aceita. Tire com a câmera.';
+      if (problema) setErroFoto(problema);
+      else setFotos(atuais => [...atuais, foto].slice(0, MAX_FOTOS));
+    } catch {
+      setErroFoto('Não foi possível ler a foto. Tire de novo.');
+    } finally {
+      setPreparandoFoto(false);
+    }
+  };
+
   const ramosFiltrados = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase('pt-BR');
     return (view?.ramos || []).filter(item => !termo || item.nome.toLocaleLowerCase('pt-BR').includes(termo)
@@ -155,6 +186,8 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
   const abrirRamo = (id: string) => {
     setRamoId(id);
     setQuantidades({});
+    setFotos([]);
+    setErroFoto('');
     setErroEnvio('');
     setRecibo(null);
     if (view) setData(view.dataAtual);
@@ -185,6 +218,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
         etapaServicoId: ramo.id,
         apontador: nome,
         itens: itensMarcados.map(({ item, contagem }) => ({ materialId: item.materialId, quantidade: fromPieces(item, contagem) })),
+        fotos: fotos.length ? fotos : undefined,
       });
       envioIdRef.current = '';
       writeStorage(PENDING_KEY, '');
@@ -193,8 +227,11 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
         data: data || view?.dataAtual || '',
         linhas: itensMarcados.map(({ item, contagem }) => `${number(contagem)} ${countUnit(item)} de ${item.descricao}`),
         hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        fotos: fotos.length,
+        fotosFalharam: Boolean(resposta.fotosFalharam),
       });
       setQuantidades({});
+      setFotos([]);
       if (resposta.view) setView(resposta.view);
       window.scrollTo({ top: 0 });
     } catch (error) {
@@ -328,7 +365,9 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           <p>{recibo.ramo} · {dayLabel(recibo.data, view?.dataAtual || recibo.data)} · às {recibo.hora}</p>
           <ul className="material-link__receipt">
             {recibo.linhas.map(linha => <li key={linha}><Package className="h-4 w-4" />{linha}</li>)}
+            {recibo.fotos > 0 && !recibo.fotosFalharam && <li><Camera className="h-4 w-4" />{recibo.fotos} {recibo.fotos === 1 ? 'foto enviada' : 'fotos enviadas'}</li>}
           </ul>
+          {recibo.fotosFalharam && <p className="material-link__warning" role="status"><AlertTriangle className="h-4 w-4" /> O uso foi salvo, mas as fotos não chegaram. Avise o escritório.</p>}
           <div className="material-link__receipt-actions">
             <button type="button" className="material-link__primary" onClick={() => setRecibo(null)}>Apontar mais neste ramo</button>
             <button type="button" className="material-link__secondary" onClick={() => { setRecibo(null); setRamoId(''); }}>Trocar de ramo</button>
@@ -418,6 +457,36 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
             })}
           </section>
 
+          <section className="material-link__photos" aria-labelledby="material-link-fotos" data-material-reveal>
+            <div className="material-link__photos-head">
+              <h2 id="material-link-fotos">Fotos do serviço</h2>
+              <span>Opcional · até {MAX_FOTOS}</span>
+            </div>
+            <div className="material-link__photo-grid">
+              {fotos.map((foto, index) => (
+                <figure key={foto.slice(-40)} data-foto className="material-link__photo">
+                  <img src={foto} alt={`Foto ${index + 1} do serviço`} />
+                  <button type="button" onClick={() => setFotos(atuais => atuais.filter((_, i) => i !== index))} aria-label={`Tirar a foto ${index + 1}`}><X className="h-5 w-5" /></button>
+                </figure>
+              ))}
+              {fotos.length < MAX_FOTOS && (
+                <label className="material-link__photo-add" data-busy={preparandoFoto || undefined}>
+                  {preparandoFoto ? <RefreshCw className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
+                  <span>{preparandoFoto ? 'Preparando' : fotos.length ? 'Outra foto' : 'Tirar foto'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="sr-only"
+                    disabled={preparandoFoto}
+                    onChange={event => { void receberFoto(event.target.files?.[0]); event.target.value = ''; }}
+                  />
+                </label>
+              )}
+            </div>
+            {erroFoto && <p className="material-link__warning" role="alert"><AlertTriangle className="h-4 w-4" /> {erroFoto}</p>}
+          </section>
+
           {lancadosNoRamo.length > 0 && (
             <section className="material-link__today" data-material-reveal>
               <h2>Já lançado hoje neste ramo</h2>
@@ -443,10 +512,10 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
             <div className="presence-public__pending-count">
               <Clock3 className="h-5 w-5" />
               <strong>{itensMarcados.length === 0 ? 'Nada marcado' : unidadesMarcadas.size === 1 ? `${number(totalMarcado)} ${[...unidadesMarcadas][0]}` : `${itensMarcados.length} materiais`}</strong>
-              <span>{dayLabel(data || hoje, hoje)} · {ramo.nome}</span>
+              <span>{dayLabel(data || hoje, hoje)} · {ramo.nome}{fotos.length ? ` · ${fotos.length} ${fotos.length === 1 ? 'foto' : 'fotos'}` : ''}</span>
             </div>
             <div className="presence-public__submit-actions">
-              <button type="submit" className="material-link__primary" disabled={enviando || itensMarcados.length === 0}>
+              <button type="submit" className="material-link__primary" disabled={enviando || preparandoFoto || itensMarcados.length === 0}>
                 {enviando ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                 {enviando ? 'Salvando' : 'Salvar uso'}
               </button>

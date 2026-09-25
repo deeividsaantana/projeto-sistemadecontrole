@@ -19,6 +19,8 @@ export interface MaterialUseSubmission {
     apontador: string;
     itens: MaterialUseItem[];
     observacao?: string;
+    /** Caminhos no Storage das fotos tiradas no link. */
+    fotos?: string[];
   };
 }
 
@@ -48,6 +50,7 @@ export const movementsFromMaterialUse = (submission: MaterialUseSubmission): Mov
       apontadoPor: submission.payload.apontador,
       responsavel: submission.payload.apontador || 'Link do apontador',
       observacao: submission.payload.observacao || undefined,
+      fotos: submission.payload.fotos?.length ? [...submission.payload.fotos] : undefined,
       criadoEm: submission.createdAtIso || new Date().toISOString(),
     }));
 
