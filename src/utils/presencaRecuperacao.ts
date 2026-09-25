@@ -16,12 +16,28 @@ export const presencasFaltantes = (
   fila: PresencaApontamento[],
   arquivados: Pick<PeriodoArquivado, 'dados'>[] = [],
 ): PresencaApontamento[] => {
-  const conhecidas = new Set(local.map(presenceBusinessKey));
-  arquivados.forEach(periodo => (periodo.dados?.presencasLink || []).forEach(item => conhecidas.add(presenceBusinessKey(item))));
+  const jaGuardadas = [...local, ...arquivados.flatMap(periodo => periodo.dados?.presencasLink || [])];
+  const conhecidas = new Set(jaGuardadas.map(presenceBusinessKey));
+  // O mesmo id é o mesmo apontamento, mesmo que a equipe ou a pessoa tenha
+  // mudado depois. Trazer de novo criaria um id repetido, que a sincronização
+  // junta num só, e a cópia voltaria a "faltar" na entrada seguinte.
+  const ids = new Set(jaGuardadas.map(item => item.id).filter(Boolean));
   const faltantes = new Map<string, PresencaApontamento>();
   fila.forEach(item => {
     const chave = presenceBusinessKey(item);
-    if (!conhecidas.has(chave)) faltantes.set(chave, item);
+    if (!conhecidas.has(chave) && !(item.id && ids.has(item.id))) faltantes.set(chave, item);
   });
   return Array.from(faltantes.values());
+};
+
+/** "Equipe X em 20/09 (18)": diz ao usuário o que voltou, não só quantos. */
+export const resumoRecuperadas = (registros: PresencaApontamento[]): string => {
+  const contagem = new Map<string, number>();
+  registros.forEach(item => {
+    const dia = String(item.data || '').split('-').reverse().join('/');
+    const chave = `${item.grupoNome || 'Equipe sem nome'} em ${dia}`;
+    contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
+  });
+  const partes = Array.from(contagem, ([chave, total]) => `${chave} (${total})`);
+  return partes.length > 3 ? `${partes.slice(0, 3).join(', ')} e mais ${partes.length - 3}` : partes.join(', ');
 };
