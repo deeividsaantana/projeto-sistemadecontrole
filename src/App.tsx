@@ -436,6 +436,9 @@ const SYNC_CHECK_MIN_INTERVAL_MS = 15_000;
  */
 const SYNC_FALLBACK_INTERVAL_MS = 5 * 60_000;
 
+/** Marca o navegador que ainda não baixou a nuvem nenhuma vez. */
+const AGUARDANDO_PRIMEIRO_DOWNLOAD = 'renea_aguardando_primeiro_download';
+
 const mergePresenceRecords = (current: PresencaApontamento[], incoming: PresencaApontamento[]) => {
   const indexed = new Map(current.map(item => [presenceBusinessKey(item), item]));
   incoming.forEach(item => indexed.set(presenceBusinessKey(item), item));
@@ -648,6 +651,9 @@ export default function App() {
       commitStorageBatch(localStorage, [
         ...initialStorageEntries,
         { key: 'renea_data_loaded_v2', value: 'true' },
+        // Navegador sem nenhum dado (aba anônima, computador novo): o que está
+        // aqui é só a semente do sistema. Nada sobe até a nuvem ser baixada.
+        { key: AGUARDANDO_PRIMEIRO_DOWNLOAD, value: 'true' },
         { key: 'renea_colaboradores_planilha_v1', value: 'true' },
         { key: 'renea_planilhas_operacionais_v2', value: 'true' },
       ]);
@@ -1030,6 +1036,11 @@ export default function App() {
   const handleUploadToFirebase = async (
     overrides: Partial<CloudData> = {},
   ): Promise<{ success: boolean; message: string }> => {
+    // Enviar a semente de um navegador novo por cima da nuvem trocava os
+    // links das equipes e zerava a presença de todo mundo.
+    if (localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD)) {
+      return { success: false, message: 'Este navegador ainda está baixando os dados da nuvem; nada foi enviado.' };
+    }
     uploadsInFlightRef.current += 1;
     try {
       const stored = readLocalCloudTables();
@@ -1165,6 +1176,7 @@ export default function App() {
           if (!isStorageQuotaExceededError(error)) throw error;
           console.warn('A cache local está cheia. Os dados remotos continuarão disponíveis nesta sessão.');
         }
+        localStorage.removeItem(AGUARDANDO_PRIMEIRO_DOWNLOAD);
 
         // Só atualiza o React depois de toda a persistência local concluir.
         if (Object.hasOwn(data, 'empresas')) {
@@ -1364,7 +1376,7 @@ export default function App() {
         // locais antigos dos dados da nuvem. Perfis de escrita fazem uma
         // mesclagem conservadora antes de baixar o retrato publicado; assim
         // nenhum lancamento que so existe neste aparelho e perdido.
-        if (!localCloudVersion && currentUserRoleRef.current !== 'leitura') {
+        if (!localCloudVersion && currentUserRoleRef.current !== 'leitura' && !localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD)) {
           const uploadResult = await handleUploadToFirebase();
           if (!uploadResult.success) {
             pendingRemoteVersionRef.current = requestedVersion;

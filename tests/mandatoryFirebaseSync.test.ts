@@ -19,7 +19,7 @@ test('primeiro acesso nao finge que baixou a versao remota', () => {
     appSource.indexOf('/** Le uma tabela do armazenamento local'),
   );
   assert.doesNotMatch(connectionEffect, /renea_last_cloud_sync_iso/);
-  assert.match(appSource, /if \(!localCloudVersion && currentUserRoleRef\.current !== 'leitura'\)/);
+  assert.match(appSource, /if \(!localCloudVersion && currentUserRoleRef\.current !== 'leitura' && !localStorage\.getItem\(AGUARDANDO_PRIMEIRO_DOWNLOAD\)\)/);
   assert.match(appSource, /const uploadResult = await handleUploadToFirebase\(\)/);
   assert.match(appSource, /const downloadResult = await handleDownloadFromFirebase\(\)/);
 });
@@ -61,4 +61,11 @@ test('recuperacao de presenca roda automaticamente para todo usuario autenticado
   assert.match(appSource, /automaticPresenceRecovery/);
   assert.match(appSource, /handleRestorePresenceHistory\(\)/);
   assert.match(appSource, /if \(!isLoggedIn \|\| !currentUser \|\| externalTicketLink \|\| externalPresenceToken\)/);
+});
+
+test('navegador novo baixa a nuvem antes de enviar qualquer coisa', () => {
+  assert.match(appSource, /\{ key: AGUARDANDO_PRIMEIRO_DOWNLOAD, value: 'true' \}/);
+  assert.match(appSource, /if \(localStorage\.getItem\(AGUARDANDO_PRIMEIRO_DOWNLOAD\)\) \{\s*return \{ success: false/);
+  assert.match(appSource, /!localCloudVersion && currentUserRoleRef\.current !== 'leitura' && !localStorage\.getItem\(AGUARDANDO_PRIMEIRO_DOWNLOAD\)/);
+  assert.match(appSource, /localStorage\.removeItem\(AGUARDANDO_PRIMEIRO_DOWNLOAD\)/);
 });
