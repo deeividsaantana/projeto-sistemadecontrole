@@ -10,8 +10,13 @@ import { parsePrivatePath } from './app/routing/privateRoutes';
 import { PrivateRouteApp } from './app/routing/PrivateRouteApp';
 import { isSupabaseCloudEnabled } from './platform/cloudProvider';
 import { restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';
+import { instalarReservaEmMemoria } from './utils/reservaArmazenamento';
 
 const startApplication = async () => {
+  // Antes de qualquer leitura: memória cheia não pode fazer o envio publicar cópia antiga.
+  instalarReservaEmMemoria(window.localStorage, chave => {
+    console.warn(`A memória do navegador está cheia; ${chave} fica em memória até a próxima sincronização.`);
+  });
   document.documentElement.dataset.appVersion = APP_VERSION;
   const root = createRoot(document.getElementById('root')!);
   if (isPublicLinkUrl()) {
