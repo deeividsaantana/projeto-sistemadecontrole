@@ -7,6 +7,9 @@ export const MATERIAL_USE_KIND = 'material-uso';
 export const MATERIAL_USE_DOCUMENT_PREFIX = 'material_uso_';
 export const MAX_ITEMS_PER_SUBMISSION = 40;
 export const MAX_QUANTITY_PER_ITEM = 100_000;
+export const MAX_PHOTOS_PER_SUBMISSION = 3;
+/** O celular reduz a foto para 1280 px antes de enviar; três cabem no limite de 1,9 MB do envio. */
+export const MAX_PHOTO_BYTES = 450 * 1024;
 
 const round = value => Number(Number(value).toFixed(3));
 
@@ -188,3 +191,24 @@ export const sanitizeMaterialUse = (body, view, { today, yesterday }) => {
     },
   };
 };
+
+/**
+ * Fotos chegam como data URL JPEG já reduzidas pelo celular. Aqui só se
+ * confere o formato, o tamanho e a assinatura do arquivo, sem confiar no
+ * cabeçalho que o navegador mandou.
+ */
+export const sanitizeMaterialPhotos = body => {
+  const raw = Array.isArray(body?.fotos) ? body.fotos : [];
+  if (raw.length > MAX_PHOTOS_PER_SUBMISSION) throw badRequest(`Envie no máximo ${MAX_PHOTOS_PER_SUBMISSION} fotos.`);
+  return raw.map(value => {
+    const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(value || ''));
+    if (!match) throw badRequest('Uma das fotos veio num formato que o sistema não aceita. Tire de novo.');
+    const bytes = Buffer.from(match[1], 'base64');
+    if (bytes.byteLength === 0 || bytes.byteLength > MAX_PHOTO_BYTES) throw badRequest('Uma das fotos ficou grande demais. Tire de novo.');
+    if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) throw badRequest('Uma das fotos não é uma imagem válida. Tire de novo.');
+    return bytes;
+  });
+};
+
+/** Caminho no Storage, dentro da regra obras/{obra}/{modulo}/{registro}/{arquivo}. */
+export const materialUsePhotoPath = (submissionId, index) => `obras/renea/materiais-uso/${submissionId}/foto-${index + 1}.jpg`;

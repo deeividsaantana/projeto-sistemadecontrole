@@ -1,6 +1,7 @@
 import {
   enforceRateLimit,
   functionErrorResponse,
+  getAdminBucket,
   getAdminDb,
   jsonResponse,
   parseJsonBody,
@@ -14,7 +15,9 @@ import {
   MATERIAL_USE_KIND,
   buildFieldView,
   dateInSaoPaulo,
+  materialUsePhotoPath,
   resolveMaterialLinkToken,
+  sanitizeMaterialPhotos,
   sanitizeMaterialUse,
 } from './_shared/material-usage.js';
 
@@ -80,16 +83,39 @@ const loadView = async database => {
   });
 };
 
+/**
+ * Grava as fotos antes do envio. Se o Storage falhar, o uso de material não
+ * se perde: salva sem as fotos e o celular avisa que elas não foram.
+ */
+const uploadPhotos = async (submissionId, photos) => {
+  if (photos.length === 0) return { paths: [], failed: false };
+  try {
+    const bucket = getAdminBucket();
+    const paths = await Promise.all(photos.map(async (bytes, index) => {
+      const path = materialUsePhotoPath(submissionId, index);
+      await bucket.file(path).save(bytes, { contentType: 'image/jpeg', resumable: false, metadata: { cacheControl: 'private, max-age=31536000' } });
+      return path;
+    }));
+    return { paths, failed: false };
+  } catch (error) {
+    console.error('Fotos do apontador não foram gravadas:', error?.message || error);
+    return { paths: [], failed: true };
+  }
+};
+
 const saveSubmission = async (database, event, body) => {
   const view = await loadView(database);
   const submission = sanitizeMaterialUse(body, view, { today: view.dataAtual, yesterday: dateInSaoPaulo(-1) });
+  const photos = sanitizeMaterialPhotos(body);
   const reference = database.collection(SUBMISSIONS_COLLECTION).doc(submission.id);
+  // Mesmo envio de novo (toque duplo, rede caiu depois de gravar): devolve o
+  // que já está salvo em vez de contar o uso duas vezes nem subir as fotos de novo.
+  if ((await reference.get()).exists) return { id: submission.id, replay: true, fotos: photos.length, fotosFalharam: false };
+  const uploaded = await uploadPhotos(submission.id, photos);
   const createdAtIso = new Date().toISOString();
   let replay = false;
   await database.runTransaction(async transaction => {
     const current = await transaction.get(reference);
-    // Mesmo envio de novo (toque duplo, rede caiu depois de gravar): devolve o
-    // que já está salvo em vez de contar o uso duas vezes.
     if (current.exists) {
       replay = true;
       return;
@@ -100,10 +126,10 @@ const saveSubmission = async (database, event, body) => {
       createdAtIso,
       createdAt: serverTimestamp(),
       sourceIpHash: requestIpHash(event),
-      payload: JSON.parse(JSON.stringify(submission.payload)),
+      payload: JSON.parse(JSON.stringify({ ...submission.payload, fotos: uploaded.paths.length ? uploaded.paths : undefined })),
     });
   });
-  return { id: submission.id, replay, createdAtIso };
+  return { id: submission.id, replay, createdAtIso, fotos: uploaded.paths.length, fotosFalharam: uploaded.failed };
 };
 
 export const handler = async event => {
@@ -119,7 +145,7 @@ export const handler = async event => {
       return jsonResponse(200, { success: true, data: { path: `/material-link/${encodeURIComponent(token)}` } });
     }
 
-    const body = method === 'POST' ? parseJsonBody(event, 60_000) : {};
+    const body = method === 'POST' ? parseJsonBody(event, 1_900_000) : {};
     requireMaterialAccess(event, body);
     const database = getAdminDb();
 
@@ -132,7 +158,7 @@ export const handler = async event => {
     const saved = await saveSubmission(database, event, body);
     return jsonResponse(saved.replay ? 200 : 201, {
       success: true,
-      message: 'Uso salvo.',
+      message: saved.fotosFalharam ? 'Uso salvo, mas as fotos não foram. Avise o escritório.' : 'Uso salvo.',
       data: { ...saved, view: await loadView(database) },
     });
   } catch (error) {
