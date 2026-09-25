@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { extractBearerToken, mergeSecurityHeaders } from './api-security.js';
 
 const FIREBASE_SERVICE_ACCOUNT_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64
@@ -28,6 +29,14 @@ export const getAdminDb = () => {
     });
   }
   return getFirestore();
+};
+
+/** Bucket do Storage. A Render já tem o nome em VITE_FIREBASE_STORAGE_BUCKET. */
+export const getAdminBucket = (env = process.env) => {
+  const name = String(env.FIREBASE_STORAGE_BUCKET || env.VITE_FIREBASE_STORAGE_BUCKET || '').trim();
+  if (!name) throw new Error('Bucket do Storage não configurado no servidor.');
+  getAdminDb();
+  return getStorage().bucket(name);
 };
 
 export const getAdminAuth = () => {

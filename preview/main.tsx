@@ -119,6 +119,15 @@ const materialLinkView = buildFieldView({
   today: '2026-09-24',
 });
 
+// Fotos de mentira para a prévia do Painel: no app elas vêm do Storage.
+const fotoPrevia = (fundo: string, terra: string) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90"><rect width="90" height="90" fill="${fundo}"/><path d="M0 60 Q30 45 90 58 V90 H0Z" fill="${terra}"/><circle cx="46" cy="64" r="11" fill="#9aa39e" stroke="#6f7873" stroke-width="3"/></svg>`)}`;
+const fotosPorEnvio: Record<string, string[]> = {
+  u3: [fotoPrevia('#b9d3e6', '#8a6a4a'), fotoPrevia('#c9dbe8', '#7a5c3e')],
+  u4: [fotoPrevia('#d6e2ea', '#94704f')],
+  u7: [fotoPrevia('#bcd0dd', '#80603f'), fotoPrevia('#cfdde6', '#8f6b48'), fotoPrevia('#c4d6e2', '#7d5a3b')],
+};
+const movimentosComFotos = fx.movimentosUtilizacao.map(item => ({ ...item, fotos: fotosPorEnvio[item.id] }));
+
 const screens: Record<string, React.ReactNode> = {
   sidebar: (
     <div className="erp-shell" style={{ height: '100dvh' }}>
@@ -646,6 +655,7 @@ const screens: Record<string, React.ReactNode> = {
       presencasLink={fx.registrosEnviados}
       controlesEquipamentos={fx.controlesEquipamentos}
       gruposEquipe={[fx.grupo]}
+      movimentosMaterial={movimentosComFotos}
       onNavigate={noop}
     />
   ),

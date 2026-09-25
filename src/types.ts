@@ -582,6 +582,8 @@ export interface MovimentoMaterial {
   finalidade?: 'Consumo';
   /** Envio público aprovado que originou este movimento, quando aplicável. */
   origemApontamentoId?: string;
+  /** Fotos do envio do apontador: caminhos no Storage, que só a equipe logada lê. */
+  fotos?: string[];
   /** Obra operacional informada na origem; migração SaaS exige mapeamento para project_id. */
   obraId?: string;
   fornecedorId?: string;

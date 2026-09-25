@@ -14,6 +14,8 @@ import { PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
 import { buildDashboardGeneralViewModel } from '../utils/dashboardGeneral';
 import { AvailabilityTrend, FleetDonut } from './dashboard/OperationalVisuals';
 import { TeamActivity } from './dashboard/TeamActivity';
+import { FieldReports } from './dashboard/FieldReports';
+import { fieldReportsFromMovements } from '../utils/fieldReports';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -47,6 +49,7 @@ export default function Dashboard(props: DashboardProps) {
   const dashboardRef = useRef<HTMLDivElement>(null);
   const view = useMemo(() => buildDashboardGeneralViewModel({ obraId, from: periodo.from, to: periodo.to }, props),
     [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.ordensServico]);
+  const fieldReports = useMemo(() => fieldReportsFromMovements(props.movimentosMaterial || [], { from: periodo.from, to: periodo.to }), [props.movimentosMaterial, periodo.from, periodo.to]);
   const display = (value: number | null, unit = '') => value === null ? 'Sem registro' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)}${unit ? ` ${unit}` : ''}`;
   const getTone = (value: string | number | null, defaultTone: 'green' | 'blue' | 'orange' | 'slate'): 'green' | 'blue' | 'orange' | 'slate' => {
     if (value === 'Sem posição' || value === 'Sem registro') return 'slate';
@@ -85,6 +88,8 @@ export default function Dashboard(props: DashboardProps) {
       </section>
 
       <TeamActivity view={view} onNavigate={props.onNavigate} />
+
+      <FieldReports reports={fieldReports} onNavigate={props.onNavigate} />
     </div>
   );
 }

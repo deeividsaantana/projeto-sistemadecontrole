@@ -16,9 +16,12 @@ import { efeitoNoSaldo } from '../src/utils/estoque';
 import { getMaterialAccessTokenFromUrl, isMaterialLinkUrl, isPublicLinkUrl } from '../src/app/routing/publicRoutes';
 import {
   buildFieldView,
+  materialUsePhotoPath,
   resolveMaterialLinkToken,
+  sanitizeMaterialPhotos,
   sanitizeMaterialUse,
 } from '../api/_shared/material-usage.js';
+import { fieldReportTime, fieldReportsFromMovements } from '../src/utils/fieldReports';
 
 const tubo: Material = {
   id: 'tubo-800', codigo: '', descricao: 'TUBO DE CONCRETO Ø800 PA4 1,50 m', categoria: 'Tubos de concreto',
@@ -198,4 +201,39 @@ test('servidor recusa envio fora das regras e aceita o excesso para conferência
 
 test('comprimento digitado no cadastro manual também converte em peça', () => {
   assert.equal(toPieces({ comprimentoM: 1.5 }, 21), 14);
+});
+
+const jpeg = (bytes = 64) => `data:image/jpeg;base64,${Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(bytes)]).toString('base64')}`;
+
+test('fotos do link: até 3 JPEG pequenos passam; formato, tamanho e assinatura errados são recusados', () => {
+  assert.equal(sanitizeMaterialPhotos({}).length, 0);
+  assert.equal(sanitizeMaterialPhotos({ fotos: [jpeg(), jpeg()] }).length, 2);
+  assert.throws(() => sanitizeMaterialPhotos({ fotos: [jpeg(), jpeg(), jpeg(), jpeg()] }), /no máximo 3/);
+  assert.throws(() => sanitizeMaterialPhotos({ fotos: ['data:image/png;base64,iVBORw0KGgo='] }), /formato/);
+  assert.throws(() => sanitizeMaterialPhotos({ fotos: [`data:image/jpeg;base64,${Buffer.from('<svg/>').toString('base64')}`] }), /não é uma imagem/);
+  assert.throws(() => sanitizeMaterialPhotos({ fotos: [jpeg(460 * 1024)] }), /grande demais/);
+  assert.equal(materialUsePhotoPath('material_uso_abc', 0), 'obras/renea/materiais-uso/material_uso_abc/foto-1.jpg');
+});
+
+test('fotos do envio seguem para o movimento e o Painel agrupa o envio com local, dia e hora', () => {
+  const fotos = ['obras/renea/materiais-uso/material_uso_abc123abc123abc123/foto-1.jpg'];
+  const envio = submission({
+    fotos,
+    itens: [
+      { materialId: tubo.id, materialDescricao: tubo.descricao, unidade: 'MT', quantidade: 15 },
+      { materialId: 'brita', materialDescricao: 'Brita', unidade: 'M3', quantidade: 2 },
+    ],
+  });
+  const movimentos = movementsFromMaterialUse(envio);
+  assert.deepEqual(movimentos[0].fotos, fotos);
+  const manual = mov({ id: 'manual', tipo: 'Saída', finalidade: 'Consumo' });
+  const reports = fieldReportsFromMovements([...movimentos, manual], { from: '2026-09-01', to: '2026-09-30' });
+  assert.equal(reports.length, 1);
+  assert.deepEqual(reports[0], {
+    id: envio.id, ramo: 'Ramo 1400', data: '2026-09-24', enviadoEm: '2026-09-24T15:00:00Z', apontador: 'Jonas', itens: 2, fotos,
+  });
+  // 15h UTC é meio-dia na obra.
+  assert.equal(fieldReportTime(reports[0].enviadoEm), '12:00');
+  assert.equal(fieldReportsFromMovements(movimentos, { from: '2026-10-01' }).length, 0);
+  assert.equal(fieldReportsFromMovements(movimentos.map(item => cancelMaterialMovement(item, 'Escritório'))).length, 0);
 });
