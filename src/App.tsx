@@ -175,7 +175,7 @@ import {
 } from './firebasePublicSubmissions';
 import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
-import { presenceBusinessKey, presencasFaltantes } from './utils/presencaRecuperacao';
+import { presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import { aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import {
@@ -2820,25 +2820,26 @@ export default function App() {
       if (addedCount === 0) {
         return { success: true, message: 'O histórico local já tinha todos os registros da fila pública.' };
       }
+      const origem = resumoRecuperadas(faltantes);
       const merged = [...storedPresence, ...faltantes];
       writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(merged));
       setPresencasLink(merged);
       if (currentUserRoleRef.current === 'leitura') {
         return {
           success: true,
-          message: `${addedCount} registro(s) de presença recuperado(s) neste aparelho.`,
+          message: `${addedCount} registro(s) de presença recuperado(s) neste aparelho: ${origem}.`,
         };
       }
       const uploadResult = await uploadLocalSnapshotToFirebase();
       if (!uploadResult.success) {
         return {
           success: false,
-          message: `${addedCount} registro(s) recuperado(s) neste aparelho, mas não foi possível publicar na nuvem ainda. Motivo: ${uploadResult.message}`,
+          message: `${addedCount} registro(s) recuperado(s) neste aparelho (${origem}), mas não foi possível publicar na nuvem ainda. Motivo: ${uploadResult.message}`,
         };
       }
       return {
         success: true,
-        message: `${addedCount} registro(s) de presença recuperado(s) e publicado(s) na nuvem.`,
+        message: `${addedCount} registro(s) de presença recuperado(s) e publicado(s) na nuvem: ${origem}.`,
       };
     } catch (error) {
       return { success: false, message: formatCloudSyncError(error) };
