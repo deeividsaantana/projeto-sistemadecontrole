@@ -25,7 +25,7 @@ export type MasterDataReviewEntity =
 
 export interface MasterDataGatewayStatus {
   configured: boolean;
-  mode: 'firebase-auth-netlify-firestore';
+  mode: 'firebase-auth-api-firestore';
   organization: {
     id: string;
     code: string;
@@ -64,7 +64,7 @@ interface ApiEnvelope<T> {
   message?: string;
 }
 
-const endpoint = '/.netlify/functions/master-data';
+const endpoint = '/api/master-data';
 
 interface MasterDataRequestInit extends RequestInit {
   idempotencyKey?: string;

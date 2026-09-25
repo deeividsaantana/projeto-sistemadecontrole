@@ -12,6 +12,7 @@ import {
   CloudOff,
   Megaphone,
   NotebookPen,
+  PackageCheck,
   Users,
   Wifi,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ const ACOES: Array<{ tab: string; rotulo: string; icone: typeof Activity }> = [
   { tab: 'checklist', rotulo: 'Checklist', icone: ClipboardCheck },
   { tab: 'ocorrencias', rotulo: 'Ocorrência', icone: Megaphone },
   { tab: 'diario-obra', rotulo: 'Diário de obra', icone: NotebookPen },
+  { tab: 'materiais', rotulo: 'Materiais', icone: PackageCheck },
 ];
 
 export default function ModoCampoTab({

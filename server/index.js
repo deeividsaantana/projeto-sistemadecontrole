@@ -1,19 +1,18 @@
 // Servidor único do RENEA ERP para hospedagem sem cartão (Render free).
-// Serve o build do frontend (dist/) e as mesmas 7 funções públicas, no mesmo
-// domínio e nos mesmos caminhos relativos que o app já usa
-// (/.netlify/functions/...). O front não precisa saber onde está hospedado.
+// Serve o build do frontend (dist/) e a API (handlers em api/) no mesmo
+// domínio, em /api/... O front não precisa saber onde está hospedado.
 import crypto from 'node:crypto';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { toExpressHandler } from './netlifyAdapter.js';
+import { toExpressHandler } from './handlerAdapter.js';
 
-import { handler as publicPresenca } from '../netlify/functions/public-presenca.js';
-import { handler as publicTickets } from '../netlify/functions/public-tickets.js';
-import { handler as publicMateriais } from '../netlify/functions/public-materiais.js';
-import { handler as masterData } from '../netlify/functions/master-data.js';
-import { handler as usageTelemetry } from '../netlify/functions/usage-telemetry.js';
-import { handler as cleanupCloudData } from '../netlify/functions/cleanup-cloud-data.js';
+import { handler as publicPresenca } from '../api/public-presenca.js';
+import { handler as publicTickets } from '../api/public-tickets.js';
+import { handler as publicMateriais } from '../api/public-materiais.js';
+import { handler as masterData } from '../api/master-data.js';
+import { handler as usageTelemetry } from '../api/usage-telemetry.js';
+import { handler as cleanupCloudData } from '../api/cleanup-cloud-data.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -21,7 +20,7 @@ const distDir = path.join(__dirname, '..', 'dist');
 const app = express();
 app.disable('x-powered-by');
 // Corpo cru como string: os handlers fazem o próprio parse/limite de tamanho
-// (parseJsonBody em firebase-admin.js), igual ao que a Netlify já entrega.
+// (parseJsonBody em firebase-admin.js), no formato de evento que os handlers esperam.
 app.use(express.text({ type: '*/*', limit: '2mb' }));
 
 app.use((req, res, next) => {
@@ -32,22 +31,27 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/.netlify/functions/public-presenca', toExpressHandler(publicPresenca));
-app.post('/.netlify/functions/public-presenca', toExpressHandler(publicPresenca));
-app.patch('/.netlify/functions/public-presenca', toExpressHandler(publicPresenca));
-app.delete('/.netlify/functions/public-presenca', toExpressHandler(publicPresenca));
+// A API vive em /api/. O prefixo antigo /.netlify/functions/ continua
+// respondendo com os mesmos handlers para não quebrar quem ainda está com o
+// app antigo aberto, service worker em cache ou fila offline gravada antes
+// da troca. Pode sair depois que todos os aparelhos atualizarem.
+for (const prefix of ['/api', '/.netlify/functions']) {
+  app.get(`${prefix}/public-presenca`, toExpressHandler(publicPresenca));
+  app.post(`${prefix}/public-presenca`, toExpressHandler(publicPresenca));
+  app.patch(`${prefix}/public-presenca`, toExpressHandler(publicPresenca));
+  app.delete(`${prefix}/public-presenca`, toExpressHandler(publicPresenca));
 
-app.get('/.netlify/functions/public-tickets', toExpressHandler(publicTickets));
-app.post('/.netlify/functions/public-tickets', toExpressHandler(publicTickets));
+  app.get(`${prefix}/public-tickets`, toExpressHandler(publicTickets));
+  app.post(`${prefix}/public-tickets`, toExpressHandler(publicTickets));
 
-app.get('/.netlify/functions/public-materiais', toExpressHandler(publicMateriais));
-app.post('/.netlify/functions/public-materiais', toExpressHandler(publicMateriais));
+  app.get(`${prefix}/public-materiais`, toExpressHandler(publicMateriais));
+  app.post(`${prefix}/public-materiais`, toExpressHandler(publicMateriais));
 
-app.all('/.netlify/functions/master-data', toExpressHandler(masterData));
-app.all('/.netlify/functions/usage-telemetry', toExpressHandler(usageTelemetry));
+  app.all(`${prefix}/master-data`, toExpressHandler(masterData));
+  app.all(`${prefix}/usage-telemetry`, toExpressHandler(usageTelemetry));
+}
 
-// A limpeza roda no Netlify por schedule (netlify.toml). Aqui não existe
-// cron nativo no plano gratuito: um pinger externo gratuito (cron-job.org,
+// Não existe cron nativo no plano gratuito: um pinger externo gratuito (cron-job.org,
 // sem cartão) chama esta rota 1x/dia com o segredo configurado no painel.
 app.post('/tasks/cleanup-cloud-data', async (req, res) => {
   const expected = process.env.CLEANUP_TASK_SECRET || '';

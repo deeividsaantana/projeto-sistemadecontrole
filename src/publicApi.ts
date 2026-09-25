@@ -81,7 +81,7 @@ export interface PublicPresenceConfig {
 export const loadPublicPresenceConfig = async (token: string, data = ''): Promise<PublicPresenceConfig> => {
   const dateParam = data ? `&data=${encodeURIComponent(data)}` : '';
   const response = await callPublicApi<PublicPresenceConfig>(
-    `/.netlify/functions/public-presenca?token=${encodeURIComponent(token)}${dateParam}`,
+    `/api/public-presenca?token=${encodeURIComponent(token)}${dateParam}`,
   );
   if (!response.data || !Array.isArray(response.data.gruposEquipe)) {
     throw new Error('A lista de equipes retornada pelo serviço é inválida.');
@@ -97,7 +97,7 @@ export const submitPublicPresence = async (
   observacaoDia = '',
 ) => {
   const payload = { token, grupoId, data, items, observacaoDia };
-  const response = await callPublicApi<{ submissionId: string; createdAtIso: string }>('/.netlify/functions/public-presenca', {
+  const response = await callPublicApi<{ submissionId: string; createdAtIso: string }>('/api/public-presenca', {
     method: 'POST',
     headers: { 'X-Idempotency-Key': stableRequestKey('presenca', payload) },
     body: JSON.stringify(payload),
@@ -118,7 +118,7 @@ export const updatePublicPresenceRecord = async (
   observacao: string,
 ) => {
   const payload = { token, grupoId, funcionarioId, status, observacao };
-  const response = await callPublicApi<{ record: PresencaApontamento }>('/.netlify/functions/public-presenca', {
+  const response = await callPublicApi<{ record: PresencaApontamento }>('/api/public-presenca', {
     method: 'PATCH',
     headers: { 'X-Idempotency-Key': stableRequestKey('presenca-update', payload) },
     body: JSON.stringify(payload),
@@ -141,7 +141,7 @@ export const addPublicPresenceMember = async (
   funcionarioId: string,
 ) => {
   const payload = { action: 'adicionar-colaborador', token, grupoId, funcionarioId };
-  const response = await callPublicApi<{ funcionario: Funcionario }>('/.netlify/functions/public-presenca', {
+  const response = await callPublicApi<{ funcionario: Funcionario }>('/api/public-presenca', {
     method: 'POST',
     headers: { 'X-Idempotency-Key': stableRequestKey('presenca-membro', payload) },
     body: JSON.stringify(payload),
@@ -160,7 +160,7 @@ export const removePublicPresenceMember = async (
   funcionarioId: string,
 ) => {
   const payload = { action: 'remover-colaborador', token, grupoId, funcionarioId };
-  const response = await callPublicApi<{ funcionarioId: string }>('/.netlify/functions/public-presenca', {
+  const response = await callPublicApi<{ funcionarioId: string }>('/api/public-presenca', {
     method: 'POST',
     headers: { 'X-Idempotency-Key': stableRequestKey('presenca-remover-membro', payload) },
     body: JSON.stringify(payload),
@@ -179,7 +179,7 @@ export const updatePublicPresenceDayNote = async (
   observacaoDia: string,
 ) => {
   const payload = { action: 'observacao-dia', token, grupoId, observacaoDia };
-  const response = await callPublicApi<{ observacaoDia: string }>('/.netlify/functions/public-presenca', {
+  const response = await callPublicApi<{ observacaoDia: string }>('/api/public-presenca', {
     method: 'PATCH',
     headers: { 'X-Idempotency-Key': stableRequestKey('presenca-nota-dia', payload) },
     body: JSON.stringify(payload),
@@ -197,7 +197,7 @@ export const resetPresenceDay = async (grupoId: string, data: string) => {
   if (!user) throw new Error('Faça login novamente para zerar o dia.');
   const idToken = await user.getIdToken();
   const response = await callPublicApi<{ enviosRemovidos: number; registrosRemovidos: number }>(
-    `/.netlify/functions/public-presenca?grupoId=${encodeURIComponent(grupoId)}&data=${encodeURIComponent(data)}`,
+    `/api/public-presenca?grupoId=${encodeURIComponent(grupoId)}&data=${encodeURIComponent(data)}`,
     { method: 'DELETE', headers: { Authorization: `Bearer ${idToken}` } },
   );
   return {
@@ -216,7 +216,7 @@ export const deletePublicPresenceRecords = async (
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login novamente para excluir os registros.');
   const idToken = await user.getIdToken();
-  const response = await callPublicApi<{ registrosRemovidos: number }>('/.netlify/functions/public-presenca', {
+  const response = await callPublicApi<{ registrosRemovidos: number }>('/api/public-presenca', {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ action: 'excluir-registros', targets }),
@@ -234,7 +234,7 @@ const ticketAccessHeaders = (accessToken: string) => ({
 });
 
 export const validatePublicTicketAccess = async (accessToken: string) => {
-  await callPublicApi<{ valid: true }>('/.netlify/functions/public-tickets?action=validate', {
+  await callPublicApi<{ valid: true }>('/api/public-tickets?action=validate', {
     headers: ticketAccessHeaders(accessToken),
   });
 };
@@ -244,7 +244,7 @@ export const getSecurePublicTicketLink = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login novamente para gerar o link público.');
   const idToken = await user.getIdToken();
-  const response = await callPublicApi<{ path: string }>('/.netlify/functions/public-tickets?action=link', {
+  const response = await callPublicApi<{ path: string }>('/api/public-tickets?action=link', {
     headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!response.data?.path) throw new Error('O servidor não retornou o link protegido.');
@@ -256,14 +256,14 @@ export const searchPendingPublicTickets = async (
   accessToken: string,
 ): Promise<TicketJazida[]> => {
   const response = await callPublicApi<{ tickets: TicketJazida[] }>(
-    `/.netlify/functions/public-tickets?q=${encodeURIComponent(query)}`,
+    `/api/public-tickets?q=${encodeURIComponent(query)}`,
     { headers: ticketAccessHeaders(accessToken) },
   );
   return response.data?.tickets || [];
 };
 
 export const reservePublicTicketNumberViaApi = async (accessToken: string): Promise<string> => {
-  const response = await callPublicApi<{ ticketNumero: string }>('/.netlify/functions/public-tickets', {
+  const response = await callPublicApi<{ ticketNumero: string }>('/api/public-tickets', {
     method: 'POST',
     headers: ticketAccessHeaders(accessToken),
     body: JSON.stringify({ action: 'reserve' }),
@@ -273,7 +273,7 @@ export const reservePublicTicketNumberViaApi = async (accessToken: string): Prom
 };
 
 export const savePublicTicketViaApi = async (ticket: TicketJazida, accessToken: string) => {
-  const response = await callPublicApi<{ ticket: TicketJazida }>('/.netlify/functions/public-tickets', {
+  const response = await callPublicApi<{ ticket: TicketJazida }>('/api/public-tickets', {
     method: 'POST',
     headers: ticketAccessHeaders(accessToken),
     body: JSON.stringify({ action: 'save', ticket }),
@@ -332,7 +332,7 @@ const materialAccessHeaders = (accessToken: string) => ({
 });
 
 export const loadPublicMaterialView = async (accessToken: string): Promise<PublicMaterialView> => {
-  const response = await callPublicApi<PublicMaterialView>('/.netlify/functions/public-materiais', {
+  const response = await callPublicApi<PublicMaterialView>('/api/public-materiais', {
     headers: materialAccessHeaders(accessToken),
   });
   if (!response.data) throw new Error('O servidor não devolveu os materiais.');
@@ -340,7 +340,7 @@ export const loadPublicMaterialView = async (accessToken: string): Promise<Publi
 };
 
 export const submitPublicMaterialUse = async (accessToken: string, input: PublicMaterialUseInput) => {
-  const response = await callPublicApi<{ id: string; replay: boolean; view: PublicMaterialView }>('/.netlify/functions/public-materiais', {
+  const response = await callPublicApi<{ id: string; replay: boolean; view: PublicMaterialView }>('/api/public-materiais', {
     method: 'POST',
     headers: materialAccessHeaders(accessToken),
     body: JSON.stringify(input),
@@ -353,7 +353,7 @@ export const getSecurePublicMaterialLink = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login novamente para gerar o link dos apontadores.');
   const idToken = await user.getIdToken();
-  const response = await callPublicApi<{ path: string }>('/.netlify/functions/public-materiais?action=link', {
+  const response = await callPublicApi<{ path: string }>('/api/public-materiais?action=link', {
     headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!response.data?.path) throw new Error('O servidor não retornou o link dos apontadores.');

@@ -1,6 +1,8 @@
 import { createPortal } from 'react-dom';
 import { Lock, X } from 'lucide-react';
 import { MODULES } from '../../constants/navigation';
+import { PRODUCT_NAME } from '../../constants/brand';
+import { useActiveOrganization } from '../../app/organizations/OrganizationContext';
 
 export const MobileNavDrawer = ({
   open,
@@ -13,7 +15,9 @@ export const MobileNavDrawer = ({
   currentPath: string;
   onNavigate: (path: string) => void;
 }) => {
+  const { userRole } = useActiveOrganization();
   if (!open) return null;
+  const modulosVisiveis = MODULES.filter(module => !module.roles || (userRole && module.roles.includes(userRole)));
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex md:hidden">
@@ -24,15 +28,15 @@ export const MobileNavDrawer = ({
       >
         <div className="flex h-16 items-center justify-between px-4">
           <span className="flex items-center gap-2 text-sm font-black tracking-tight">
-            <span className="grid size-8 place-items-center rounded-[var(--radius-md)] bg-[var(--color-brand-500)] text-white">R</span>
-            RENEA ERP
+            <span className="grid size-8 place-items-center rounded-[var(--radius-md)] bg-[var(--color-brand-500)] text-white">{PRODUCT_NAME.charAt(0)}</span>
+            {PRODUCT_NAME}
           </span>
           <button type="button" onClick={onClose} aria-label="Fechar menu" className="grid size-8 place-items-center rounded-full hover:bg-white/10">
             <X className="size-4" />
           </button>
         </div>
         <div className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
-          {MODULES.map(module => {
+          {modulosVisiveis.map(module => {
             const active = module.path === currentPath;
             const Icon = module.icon;
             return (

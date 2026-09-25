@@ -7,7 +7,7 @@ import {
   extractBearerToken,
   mergeSecurityHeaders,
   optionsResponse,
-} from '../netlify/functions/_shared/api-security.js';
+} from '../api/_shared/api-security.js';
 
 test('extrai token bearer sem aceitar autorizacao ausente', () => {
   assert.equal(extractBearerToken({ headers: { authorization: 'Bearer token-seguro' } }), 'token-seguro');

@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXCLUDED_DIRS = {".git", ".netlify", ".publicar-tudo-tools", "node_modules"}
+EXCLUDED_DIRS = {".git", ".publicar-tudo-tools", "node_modules"}
 EXCLUDED_FILES = {".publicar-tudo.local.json", ".env.publicar-tudo.local"}
 
 

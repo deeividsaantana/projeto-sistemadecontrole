@@ -7,7 +7,7 @@ const publicAppSource = readFileSync(new URL('../src/PublicLinksApp.tsx', import
 const publicPresenceSource = readFileSync(new URL('../src/components/PresencaTempoRealPublica.tsx', import.meta.url), 'utf8');
 const adminPresenceSource = readFileSync(new URL('../src/components/ControlePresencaTab.tsx', import.meta.url), 'utf8');
 const subscriptionSource = readFileSync(new URL('../src/firebasePublicSubmissions.ts', import.meta.url), 'utf8');
-const functionSource = readFileSync(new URL('../netlify/functions/public-presenca.js', import.meta.url), 'utf8');
+const functionSource = readFileSync(new URL('../api/public-presenca.js', import.meta.url), 'utf8');
 
 test('presenca usa somente os componentes novos e remove camadas antigas', () => {
   assert.match(publicAppSource, /PresencaTempoRealPublica/);

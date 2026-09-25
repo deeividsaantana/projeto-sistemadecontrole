@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import { Sidebar } from '../components/navigation/Sidebar';
 import { MobileNavDrawer } from '../components/navigation/MobileNavDrawer';
 import { Topbar } from '../components/navigation/Topbar';
-import { MOCK_TENANT } from '../app/tenant';
 
 export const AppShell = ({
   currentPath,
@@ -37,7 +36,7 @@ export const AppShell = ({
         }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar tenant={MOCK_TENANT} onToggleSidebar={handleToggleNav} />
+        <Topbar onToggleSidebar={handleToggleNav} />
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">{children}</div>
         </main>

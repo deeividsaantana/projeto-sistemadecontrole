@@ -5,7 +5,6 @@ Webapp operacional para controle de equipamentos, combustível, materiais, ticke
 ## Módulos principais
 
 - Combustível inteligente com digitação rápida por prefixo, auditoria contínua, importação e exportação em Excel.
-- Leitura assistida de PDF ou foto de abastecimento, com transcrição estruturada e conferência humana obrigatória.
 - Dashboard de consumo, qualidade dos dados, sequência de bomba e desvios de KM/horímetro.
 - Parte diária de equipamentos com lançamento, indicadores, filtros, edição e PDF no padrão do formulário físico.
 - Consulta e migração controlada do legado SGE, preservando os dados dos bancos Access antigos.
@@ -31,58 +30,27 @@ npm run build
 
 ## Publicação
 
-O deploy de produção roda no Render (`server/index.js` serve o build do frontend e as mesmas funções em `netlify/functions/`, adaptadas para Express). A leitura de documentos de combustível funciona localmente e exige revisão humana antes da gravação.
+O deploy de produção roda no Render (`server/index.js` serve o build do frontend e a API de `api/` em `/api/...`, adaptada para Express).
 
-Consulte:
+Consulte `docs/INSTRUCOES_CONTAS_FIREBASE.md` e `docs/ARQUITETURA_MIGRACAO_SUPABASE.md`.
 
-- `INSTRUCOES_CONTAS_FIREBASE.md`
-- `LEGADO_SGE_CONVERSAO.md`
-- `VALIDACAO_V7.md`
-- `docs/ARQUITETURA_MIGRACAO_SUPABASE.md`
+## Estrutura do repositório
 
-## Segurança dos documentos
+- `src/`: aplicação React (telas em `src/components`, regras puras em `src/utils`).
+- `src/next/`: novo frontend em construção, servido por `next.html`.
+- `preview/`: harness de telas sem login, usado pelos testes E2E.
+- `server/`: servidor Express do Render.
+- `api/`: handlers HTTP da API (links públicos, presença, cadastros), servidos em `/api/`.
+- `functions/`: Cloud Functions do Firebase.
+- `supabase/migrations/`: migrations versionadas do PostgreSQL.
+- `tests/`: contratos operacionais (`npm test`) e E2E (`npm run e2e`).
+- `scripts/`: utilitários de manutenção e testes.
 
-PDFs e fotos enviados para análise não são persistidos no banco. O sistema grava apenas os dados revisados, o nome do arquivo, a impressão digital SHA-256 e a trilha de conferência.
+## Documentação
 
-
-## Sistema RENEA ERP v3.4
-
-A base oficial está sendo evoluída por versões, sem reescrita e sem remoção de funcionalidades.
-
-Documentação:
-
-- docs/AUDITORIA_TECNICA_V2_0.md
-- docs/AUDITORIA_PLANILHAS_OPERACIONAIS.md
-- docs/PLANO_TECNICO_ERP.md
-- docs/ALTERACOES_V2_0.md
-- docs/VALIDACAO_V2_0.md
-- docs/ARQUITETURA_DADOS_V2_1.md
-- docs/ALTERACOES_V2_1.md
-- docs/VALIDACAO_V2_1.md
-- docs/ARQUITETURA_CADASTROS_V2_2.md
-- docs/ALTERACOES_V2_2.md
-- docs/VALIDACAO_V2_2.md
-- docs/ARQUITETURA_EQUIPAMENTOS_V2_3.md
-- docs/ALTERACOES_V2_3.md
-- docs/VALIDACAO_V2_3.md
-- docs/ARQUITETURA_COMBUSTIVEL_V2_4.md
-- docs/ALTERACOES_V2_4.md
-- docs/VALIDACAO_V2_4.md
-- docs/ARQUITETURA_VIAGENS_V2_5.md
-- docs/ALTERACOES_V2_5.md
-- docs/VALIDACAO_V2_5.md
-- docs/ALTERACOES_V2_6.md
-- docs/ALTERACOES_V2_7.md
-- docs/ALTERACOES_V2_8.md
-- docs/ALTERACOES_V2_9.md
-- docs/ALTERACOES_V3_0.md
-- docs/ARQUITETURA_ERP_V3_0.md
-- docs/MATRIZ_PLANILHAS_PARA_MODULOS_V3_0.md
-- docs/VALIDACAO_V3_0.md
-- docs/AUDITORIA_GERAL_POS_V3_0_E_ROADMAP.md
-- docs/ALTERACOES_V3_1.md
-- docs/VALIDACAO_V3_1.md
-- docs/ALTERACOES_V3_2.md
-- docs/VALIDACAO_V3_2.md
-- docs/ALTERACOES_V3_3.md
-- docs/VALIDACAO_V3_3.md
+- `docs/ARQUITETURA_SISTEMA_INTEGRADO_V3_5.md`: arquitetura atual.
+- `docs/ARQUITETURA_MIGRACAO_SUPABASE.md`: migração gradual para Supabase.
+- `docs/SAAS_DESIGN_SYSTEM.md` e `docs/superpowers/`: padrão visual das telas.
+- `docs/SEGURANCA_FIRESTORE.md`: invariantes de segurança do Firestore.
+- `docs/LEGADO_SGE_CONVERSAO.md` e `docs/ANALISE_BANCOS_ACCESS_SGE.md`: legado SGE.
+- `docs/historico/`: notas de alteração e validação de cada versão (V2.0 a V3.5 e V7).

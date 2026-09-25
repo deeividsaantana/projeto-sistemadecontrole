@@ -3,13 +3,13 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
-const publicPresence = readFileSync(new URL('../netlify/functions/public-presenca.js', import.meta.url), 'utf8');
+const publicPresence = readFileSync(new URL('../api/public-presenca.js', import.meta.url), 'utf8');
 
 /**
  * P0-07 Authorization Boundary Tests
  *
  * Firestore direct access is default-deny. Public presence is intentionally
- * served only through the Netlify handler, which validates the link token
+ * served only through the API handler, which validates the link token
  * against active groups before it reads or mutates operational data.
  */
 test('[P0-07-01] non-staff users cannot read staff-only cloud collections', () => {

@@ -18,7 +18,7 @@ import {
   buildFieldView,
   resolveMaterialLinkToken,
   sanitizeMaterialUse,
-} from '../netlify/functions/_shared/material-usage.js';
+} from '../api/_shared/material-usage.js';
 
 const tubo: Material = {
   id: 'tubo-800', codigo: '', descricao: 'TUBO DE CONCRETO Ø800 PA4 1,50 m', categoria: 'Tubos de concreto',
@@ -194,4 +194,8 @@ test('servidor recusa envio fora das regras e aceita o excesso para conferência
   assert.throws(() => sanitizeMaterialUse({ ...body, itens: [{ materialId: 'outro', quantidade: 1 }] }, view, dates), /não foi recebido/);
   assert.throws(() => sanitizeMaterialUse({ ...body, itens: [{ materialId: tubo.id, quantidade: 0 }] }, view, dates), /Quantidade/);
   assert.throws(() => sanitizeMaterialUse({ ...body, itens: [body.itens[0], body.itens[0]] }, view, dates), /duas vezes/);
+});
+
+test('comprimento digitado no cadastro manual também converte em peça', () => {
+  assert.equal(toPieces({ comprimentoM: 1.5 }, 21), 14);
 });

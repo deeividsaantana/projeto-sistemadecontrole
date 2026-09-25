@@ -104,7 +104,7 @@ export default function MateriaisTab({
   const [materialAberto, setMaterialAberto] = useState(false);
   const [movimentoAberto, setMovimentoAberto] = useState(false);
   const [loteAberto, setLoteAberto] = useState(false);
-  const [cadastro, setCadastro] = useState({ codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '' });
+  const [cadastro, setCadastro] = useState({ codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '', diametroMm: '', comprimentoM: '' });
   const [movimento, setMovimento] = useState({
     data: hoje,
     tipo: 'Entrada' as TipoMovimentoMaterial,
@@ -186,8 +186,10 @@ export default function MateriaisTab({
         estoqueMinimo: material.estoqueMinimo || 0,
         fornecedorPadraoId: material.fornecedorPadraoId || '',
         observacao: material.observacao || '',
+        diametroMm: material.diametroMm ? String(material.diametroMm) : '',
+        comprimentoM: material.comprimentoM ? String(material.comprimentoM) : '',
       }
-      : { codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '' });
+      : { codigo: '', descricao: '', categoria: '', unidade: 'm³', estoqueMinimo: 0, fornecedorPadraoId: '', observacao: '', diametroMm: '', comprimentoM: '' });
     setErro('');
     setMaterialAberto(true);
   };
@@ -254,6 +256,8 @@ export default function MateriaisTab({
       estoqueMinimo: Number(cadastro.estoqueMinimo) || undefined,
       fornecedorPadraoId: cadastro.fornecedorPadraoId || undefined,
       observacao: cadastro.observacao.trim() || undefined,
+      diametroMm: Number(cadastro.diametroMm.replace(',', '.')) || undefined,
+      comprimentoM: Number(cadastro.comprimentoM.replace(',', '.')) || undefined,
       ativo: formMaterial?.ativo ?? true,
       criadoEm: formMaterial?.criadoEm || agora,
       atualizadoEm: agora,
@@ -589,7 +593,7 @@ export default function MateriaisTab({
 
       <div className="mt-4 flex flex-wrap items-stretch gap-2">
         <div className="flex flex-1 gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          {([['resumo', 'Resumo atual'], ['utilizacao', 'Utilização'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos']] as const).map(([id, rotulo]) => (
+          {([['resumo', 'Resumo atual'], ['utilizacao', 'Utilização por Ramo'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos']] as const).map(([id, rotulo]) => (
             <button
               key={id}
               type="button"
@@ -814,6 +818,7 @@ export default function MateriaisTab({
           onUpdateMovimentos={onUpdateMovimentos}
         />
       ) : aba !== 'importacoes' && <><FilterBar label="Filtros de materiais" className="mt-3"><label className="relative block min-w-48 flex-1">
+
         <span className="sr-only">Buscar material</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -908,6 +913,14 @@ export default function MateriaisTab({
           <label className="text-xs font-bold text-slate-600">
             Estoque mínimo
             <input type="number" min="0" step="0.001" value={cadastro.estoqueMinimo} onChange={event => setCadastro({ ...cadastro, estoqueMinimo: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+          </label>
+          <label className="text-xs font-bold text-slate-600">
+            Diâmetro (mm)
+            <input inputMode="decimal" placeholder="Ex: 800" value={cadastro.diametroMm} onChange={event => setCadastro({ ...cadastro, diametroMm: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+          </label>
+          <label className="text-xs font-bold text-slate-600">
+            Comprimento (m)
+            <input inputMode="decimal" placeholder="Ex: 1,50" value={cadastro.comprimentoM} onChange={event => setCadastro({ ...cadastro, comprimentoM: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Fornecedor padrão

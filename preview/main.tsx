@@ -25,7 +25,7 @@ import DdsTreinamentosTab from '../src/components/DdsTreinamentosTab';
 import MateriaisTab from '../src/components/MateriaisTab';
 import MateriaisUtilizacaoPanel from '../src/components/MateriaisUtilizacaoPanel';
 import MaterialLinkApontador from '../src/components/MaterialLinkApontador';
-import { buildFieldView } from '../netlify/functions/_shared/material-usage.js';
+import { buildFieldView } from '../api/_shared/material-usage.js';
 import FrentesTab from '../src/components/FrentesTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
 import ProducaoTab from '../src/components/ProducaoTab';

@@ -3,17 +3,18 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { MetricCard } from '../../../components/ui/MetricCard';
 import { Card, CardHeader, CardBody } from '../../../components/ui/Card';
 import { LoadingState, ErrorState } from '../../../components/ui/States';
-import { MOCK_TENANT } from '../../../app/tenant';
+import { useActiveOrganization } from '../../../app/organizations/OrganizationContext';
 import { useDashboardSummary } from '../hooks/useDashboardSummary';
 
 export const DashboardPage = () => {
   const { data, isLoading, isError, refetch } = useDashboardSummary();
+  const { userName, activeWorksite } = useActiveOrganization();
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title={`Olá, ${MOCK_TENANT.userName.split(' ')[0]}`}
-        description={`${MOCK_TENANT.worksites.find(w => w.id === MOCK_TENANT.activeWorksiteId)?.name} · hoje`}
+        title={`Olá, ${userName.split(' ')[0]}`}
+        description={`${activeWorksite?.name ?? 'Nenhuma obra ativa'} · hoje`}
       />
 
       {isLoading && <LoadingState label="Carregando indicadores…" />}

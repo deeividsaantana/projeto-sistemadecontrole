@@ -4,7 +4,7 @@ import {
   buildAuditRecord,
   changedAuditFields,
   sanitizeAuditValue,
-} from '../netlify/functions/_shared/audit-log.js';
+} from '../api/_shared/audit-log.js';
 
 test('auditoria redige campos sensiveis e limita listas grandes', () => {
   const result = sanitizeAuditValue({
