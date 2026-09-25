@@ -11,6 +11,7 @@ import { getImportValue, normalizeImportText } from '../../utils/importHelpers';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { buildImportPreview } from '../preview';
 import type { MovimentoMaterial } from '../../types';
+import { receiptMaterialDescription } from '../materialImportApplication';
 
 // "Resumo Geral" é agregado, não linha de origem — fica deferred de propósito.
 const RECOGNIZED_SHEETS = ['tubos de concreto', 'tubos pead/pvc', 'tubos pead - pvc', 'tubos pead', 'madeiras e formas', 'ferramentas e materiais de apoio', 'ferramentas e materiais de apoi'];
@@ -23,8 +24,14 @@ const FIELD_ALIASES: Record<string, string[]> = {
   quantidadeNota: ['Quantidade Nota', 'Qtd Nota', 'Qtde Nota'],
   quantidadeRecebida: ['Quantidade Recebida', 'Qtd Recebida', 'Recebido'],
   unidade: ['Unidade', 'Un', 'UN'],
-  notaFiscal: ['NF', 'Nota Fiscal', 'Nota'],
+  // A planilha de recebimento da obra chama a nota de "NÚMERO DA NOTA".
+  notaFiscal: ['NF', 'Nota Fiscal', 'Nota', 'Número da Nota', 'Numero da Nota', 'Nº da Nota'],
   localAplicacao: ['Local de Aplicação', 'Local Aplicação', 'Aplicação'],
+  solicitacaoCompra: ['Solicitação de Compra', 'Solicitacao de Compra', 'SC'],
+  diametroMm: ['Diâmetro (mm)', 'Diametro (mm)', 'Diâmetro', 'DN'],
+  classe: ['Classe'],
+  // Na aba de tubos de concreto, "ALTURA (mm)" é o comprimento da peça (1500).
+  comprimentoMm: ['Altura (mm)', 'Comprimento (mm)', 'Comprimento'],
 };
 
 export interface NormalizedReceiptRow {
@@ -37,7 +44,15 @@ export interface NormalizedReceiptRow {
   readonly unidade: string | null;
   readonly notaFiscal: string | null;
   readonly localAplicacao: string | null;
+  readonly solicitacaoCompra?: string | null;
+  readonly diametroMm?: number | null;
+  readonly classe?: string | null;
+  /** Só quando plausível como peça (0,5 m a 6 m); o "4" do PEAD não é comprimento. */
+  readonly comprimentoPecaM?: number | null;
 }
+
+const pieceLengthFromMillimeters = (value: number | null): number | null =>
+  value !== null && value >= 500 && value <= 6000 ? Number((value / 1000).toFixed(3)) : null;
 
 const describeColumns = (headers: readonly string[]): readonly ImportColumnMapping[] => headers.map(column => {
   const normalizedColumn = normalizeImportText(column);
@@ -48,7 +63,7 @@ const describeColumns = (headers: readonly string[]): readonly ImportColumnMappi
 
 const buildOperationalKey = (row: NormalizedReceiptRow): string | undefined => {
   if (!row.notaFiscal || !row.material || !row.data || !row.unidade || row.quantidadeRecebida === null) return undefined;
-  return ['recebimento', row.notaFiscal, normalizeComparable(row.material), row.data, row.unidade, row.quantidadeRecebida].join('|');
+  return ['recebimento', row.notaFiscal, normalizeComparable(receiptMaterialDescription(row)), row.data, row.unidade, row.quantidadeRecebida].join('|');
 };
 
 export const receiptsAdapter: SpreadsheetImportAdapter<NormalizedReceiptRow, readonly MovimentoMaterial[]> = {
@@ -67,6 +82,10 @@ export const receiptsAdapter: SpreadsheetImportAdapter<NormalizedReceiptRow, rea
       unidade: normalizeImportUnitOrNull(getImportValue(raw, FIELD_ALIASES.unidade)),
       notaFiscal: normalizeImportInvoiceOrNull(getImportValue(raw, FIELD_ALIASES.notaFiscal)),
       localAplicacao: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.localAplicacao)),
+      solicitacaoCompra: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.solicitacaoCompra)),
+      diametroMm: normalizeImportDecimalOrNull(getImportValue(raw, FIELD_ALIASES.diametroMm)),
+      classe: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.classe))?.toUpperCase() ?? null,
+      comprimentoPecaM: pieceLengthFromMillimeters(normalizeImportDecimalOrNull(getImportValue(raw, FIELD_ALIASES.comprimentoMm))),
     };
     const messages: string[] = [];
     if (!value.data) messages.push('Data ausente ou não reconhecida.');
@@ -99,7 +118,7 @@ export const receiptsAdapter: SpreadsheetImportAdapter<NormalizedReceiptRow, rea
       seenKeys.add(row.operationalKey);
       const existing = current.find(movimento =>
         normalizeImportInvoiceOrNull(movimento.notaFiscal) === row.value.notaFiscal
-        && normalizeComparable(movimento.materialDescricao) === normalizeComparable(row.value.material || '')
+        && [receiptMaterialDescription(row.value), row.value.material || ''].some(nome => normalizeComparable(movimento.materialDescricao) === normalizeComparable(nome))
         && movimento.data === row.value.data
         && normalizeImportUnitOrNull(movimento.unidade) === row.value.unidade
         && movimento.quantidade === row.value.quantidadeRecebida);

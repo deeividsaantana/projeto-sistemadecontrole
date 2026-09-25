@@ -169,9 +169,11 @@ import {
 } from './firebaseTickets';
 import {
   markPublicSubmissionsProcessed,
+  subscribePendingMaterialUses,
   subscribePendingPublicSubmissions,
   type PublicSubmission,
 } from './firebasePublicSubmissions';
+import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
 import { captureCloudBaseline, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import {
@@ -534,6 +536,9 @@ export default function App() {
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [materiaisCadastro, setMateriaisCadastro] = useState<Material[]>([]);
   const [materiaisMovimentos, setMateriaisMovimentos] = useState<MovimentoMaterial[]>([]);
+  // Lançamento desfeito continua guardado para o histórico, mas nenhuma outra
+  // tela soma ele: só a aba Materiais mostra o registro, marcado como desfeito.
+  const materiaisMovimentosVigentes = useMemo(() => materiaisMovimentos.filter(item => !item.canceladoEm), [materiaisMovimentos]);
   const [frentesServico, setFrentesServico] = useState<FrenteServico[]>([]);
   const [diariosObra, setDiariosObra] = useState<DiarioObra[]>([]);
   const [servicosObra, setServicosObra] = useState<ServicoObra[]>([]);
@@ -2991,6 +2996,97 @@ export default function App() {
     };
   }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken]);
 
+  // Uso de material apontado pelo link do apontador. Cada envio vira saídas de
+  // consumo com ID derivado do envio, então dois computadores abertos ou uma
+  // queda no meio nunca contam o mesmo uso duas vezes. Só marca o envio como
+  // processado depois que o retrato com as saídas subiu para a nuvem.
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
+    let cancelled = false;
+    let running = false;
+    let queued: MaterialUseSubmission[] | null = null;
+
+    const readStoredMovements = () => parseStoredJson<MovimentoMaterial[]>(
+      localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [],
+    );
+    const applyIncoming = (incoming: MovimentoMaterial[]) => {
+      const merged = mergeMaterialUseMovements(readStoredMovements(), incoming);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(merged.movements));
+      setMateriaisMovimentos(merged.movements);
+      return merged.added;
+    };
+
+    const ingest = async (submissions: MaterialUseSubmission[]) => {
+      if (cancelled || submissions.length === 0) return;
+      if (running) {
+        queued = submissions;
+        return;
+      }
+      running = true;
+      const release = await acquirePresenceSync();
+      try {
+        const incoming = submissions.flatMap(movementsFromMaterialUse);
+        const added = applyIncoming(incoming);
+        if (added > 0) {
+          const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
+          const nextHistory = mergeRecordsById(storedHistory, submissions.map(item => ({
+            id: `log-public-${item.id}`,
+            timestamp: new Date(item.createdAtIso || Date.now()).toLocaleString('pt-BR'),
+            usuario: item.payload.apontador || 'Link do apontador',
+            acao: 'Criou' as const,
+            tela: 'Materiais',
+            descricao: `Apontou uso no ${item.payload.etapaServicoNome}: ${item.payload.itens.map(uso => `${uso.quantidade} ${uso.unidade} de ${uso.materialDescricao}`).join('; ')}.`,
+          })));
+          writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(nextHistory));
+          setHistoryLogs(nextHistory);
+        }
+        let syncResult = await uploadLocalSnapshotToFirebase();
+        if (!syncResult.success && /conflito|outro computador|vers[aã]o mais recente/i.test(syncResult.message)) {
+          // Outro computador salvou antes: baixa o retrato vencedor e reaplica
+          // só as saídas deste envio por cima, sem apagar nada do que chegou.
+          const downloadResult = await handleDownloadFromFirebase();
+          if (!downloadResult.success) throw new Error(downloadResult.message);
+          applyIncoming(incoming);
+          syncResult = await uploadLocalSnapshotToFirebase();
+        }
+        if (!syncResult.success) throw new Error(syncResult.message);
+        await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Falha ao incorporar o uso de materiais do link; os envios continuam na fila:', error);
+          addNotification(
+            'Uso de material do link ainda não entrou',
+            `Os apontamentos chegaram e estão guardados na fila, mas não foi possível gravá-los neste painel. Motivo: ${error instanceof Error ? error.message : String(error)}`,
+            'error',
+            'Sistema Local',
+          );
+        }
+      } finally {
+        release();
+        running = false;
+        if (!cancelled && queued) {
+          const next = queued;
+          queued = null;
+          void ingest(next);
+        }
+      }
+    };
+
+    const unsubscribe = subscribePendingMaterialUses(
+      db,
+      submissions => { if (!cancelled) void ingest(submissions); },
+      error => {
+        if (cancelled) return;
+        console.warn('Falha ao acompanhar o uso de materiais do link:', error);
+      },
+    );
+    return () => {
+      cancelled = true;
+      queued = null;
+      unsubscribe();
+    };
+  }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken]);
+
   const handleSaveGrupoEquipe = (grupo: GrupoEquipe, isNew: boolean) => {
     const updated = isNew
       ? [...gruposEquipe, grupo]
@@ -3415,9 +3511,9 @@ export default function App() {
     producao: producaoRegistros,
     medicoes,
     materiais: materiaisCadastro,
-    movimentosMaterial: materiaisMovimentos,
+    movimentosMaterial: materiaisMovimentosVigentes,
     ocorrencias,
-  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentos, ocorrencias]);
+  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentosVigentes, ocorrencias]);
 
   const handleSaveOrcamento = (item: OrcamentoItem, isNew: boolean) => {
     const updated = isNew ? [item, ...orcamentoItens] : orcamentoItens.map(atual => atual.id === item.id ? item : atual);
@@ -3559,6 +3655,29 @@ export default function App() {
   const handleSaveMovimentoMaterial = (movimento: MovimentoMaterial) => {
     const updated = appendMovement(materiaisMovimentos, movimento);
     saveAndLog('Materiais', 'Criou', `${movimento.tipo} de ${movimento.quantidade} ${movimento.unidade} de ${movimento.materialDescricao}.`, historyLogs, () => {
+      setMateriaisMovimentos(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
+    });
+  };
+
+  // Vários itens de uma vez (apontamento do dia no ERP): um único saveAndLog,
+  // para o segundo item não sobrescrever o primeiro com um estado antigo.
+  const handleSaveMovimentosMaterial = (movimentos: MovimentoMaterial[], descricao: string) => {
+    if (movimentos.length === 0) return;
+    const updated = mergeMaterialUseMovements(materiaisMovimentos, movimentos).movements;
+    saveAndLog('Materiais', 'Criou', descricao, historyLogs, () => {
+      setMateriaisMovimentos(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
+    });
+  };
+
+  // Vincular entradas a um ramo e desfazer um uso trocam o registro pelo mesmo
+  // ID, sem apagar nenhum movimento.
+  const handleUpdateMovimentosMaterial = (alterados: MovimentoMaterial[], descricao: string, acao: 'Editou' | 'Excluiu' = 'Editou') => {
+    if (alterados.length === 0) return;
+    const porId = new Map(alterados.map(item => [item.id, item]));
+    const updated = materiaisMovimentos.map(item => porId.get(item.id) || item);
+    saveAndLog('Materiais', acao, descricao, historyLogs, () => {
       setMateriaisMovimentos(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
     });
@@ -4708,7 +4827,7 @@ export default function App() {
                 producao={producaoRegistros}
                 medicoes={medicoes}
                 materiais={materiaisCadastro}
-                movimentosMaterial={materiaisMovimentos}
+                movimentosMaterial={materiaisMovimentosVigentes}
                 fichasFvs={fichasFvs}
                 inspecoes={inspecoes}
                 naoConformidades={naoConformidades}
@@ -4810,7 +4929,7 @@ export default function App() {
                 obras={obras}
                 frentes={frentesServico}
                 apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentos}
+                movimentosMaterial={materiaisMovimentosVigentes}
                 servicos={servicosObra}
                 producao={producaoRegistros}
                 ocorrencias={ocorrencias}
@@ -4860,7 +4979,7 @@ export default function App() {
                   planejamento: planejamentoItens,
                   producao: producaoRegistros,
                   medicoes,
-                  movimentosMaterial: materiaisMovimentos,
+                  movimentosMaterial: materiaisMovimentosVigentes,
                   ocorrencias,
                   abastecimentos,
                   historyLogs,
@@ -4938,7 +5057,7 @@ export default function App() {
                   producao: producaoRegistros,
                   medicoes,
                   materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentos,
+                  movimentosMaterial: materiaisMovimentosVigentes,
                   ocorrencias,
                   servicos: servicosObra,
                   lancamentosCusto,
@@ -5003,7 +5122,7 @@ export default function App() {
                   producao: producaoRegistros,
                   medicoes,
                   materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentos,
+                  movimentosMaterial: materiaisMovimentosVigentes,
                   ocorrencias,
                 }}
               />
@@ -5029,7 +5148,7 @@ export default function App() {
                   producao: producaoRegistros,
                   medicoes,
                   materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentos,
+                  movimentosMaterial: materiaisMovimentosVigentes,
                   ocorrencias,
                 }}
                 onNavigate={navigateTo}
@@ -5152,7 +5271,7 @@ export default function App() {
                 presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentos}
+                movimentosMaterial={materiaisMovimentosVigentes}
                 ticketsJazida={ticketsJazidaAtivos}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
@@ -5168,7 +5287,7 @@ export default function App() {
                 presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentos}
+                movimentosMaterial={materiaisMovimentosVigentes}
                 ticketsJazida={ticketsJazidaAtivos}
                 podeEditar={pode(currentUserRole, 'frentes', 'editar')}
                 onSave={handleSaveFrente}
@@ -5185,6 +5304,8 @@ export default function App() {
                 podeEditar={pode(currentUserRole, 'materiais', 'editar')}
                 onSaveMaterial={handleSaveMaterial}
                 onSaveMovimento={handleSaveMovimentoMaterial}
+                onSaveMovimentos={handleSaveMovimentosMaterial}
+                onUpdateMovimentos={handleUpdateMovimentosMaterial}
                 onApplyImport={handleApplyMaterialImport}
               />
             )}

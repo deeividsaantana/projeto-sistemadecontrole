@@ -547,6 +547,14 @@ export interface Material {
   fornecedorPadraoId?: string;
   estoqueMinimo?: number;
   observacao?: string;
+  /** Tubo de concreto: classe de resistência (PA2, PA3, PA4). */
+  classe?: string;
+  /**
+   * Comprimento de uma peça, em metros, quando o material chega medido em
+   * metro mas é aplicado por peça (tubo de 1,50 m). Sem ele, a quantidade
+   * aparece só na unidade do cadastro.
+   */
+  comprimentoPecaM?: number;
   ativo: boolean;
   criadoEm: string;
   atualizadoEm: string;
@@ -596,6 +604,14 @@ export interface MovimentoMaterial {
    * verdade para divergir.
    */
   quantidadeNota?: number;
+  /** Quem apontou o uso em campo (link do apontador ou usuário do ERP). */
+  apontadoPor?: string;
+  /**
+   * Lançamento desfeito. Fica no histórico com quem e quando desfez, mas sai
+   * do saldo e da utilização: apagar sumiria com o registro fornecido.
+   */
+  canceladoEm?: string;
+  canceladoPor?: string;
   /** Para onde foi: frente, obra ou ponto de apoio. */
   destino?: string;
   origem?: string;

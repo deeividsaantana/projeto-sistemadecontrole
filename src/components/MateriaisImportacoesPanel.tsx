@@ -12,6 +12,8 @@ interface Props {
   movimentos: MovimentoMaterial[];
   materiais: Material[];
   responsavel: string;
+  /** Ramos cadastrados: o local de aplicação com o mesmo nome já entra vinculado. */
+  etapas?: ReadonlyArray<{ id: string; nome: string }>;
   onApply: (materials: Material[], movements: MovimentoMaterial[]) => void;
   onError: (message: string) => void;
 }
@@ -26,7 +28,7 @@ const STATUS_LABELS: Record<ImportDisposition, string> = {
   deferred: 'Adiado',
 };
 
-export default function MateriaisImportacoesPanel({ movimentos, materiais, responsavel, onApply, onError }: Props) {
+export default function MateriaisImportacoesPanel({ movimentos, materiais, responsavel, etapas = [], onApply, onError }: Props) {
   const [fileName, setFileName] = useState('');
   const [preview, setPreview] = useState<ImportPreview<unknown> | null>(null);
   const [truncationNote, setTruncationNote] = useState('');
@@ -161,7 +163,7 @@ export default function MateriaisImportacoesPanel({ movimentos, materiais, respo
       onCancel={resetAll}
       onConfirm={() => {
         if (!effectivePreview || !dryRunRan) return;
-        const applied = buildMaterialImportApplication(effectivePreview, materiais, movimentos, responsavel);
+        const applied = buildMaterialImportApplication(effectivePreview, materiais, movimentos, responsavel, etapas);
         onApply(applied.materials, applied.movements);
         // Nenhuma linha pode sumir em silêncio: mesmo o gate de materiais já
         // bater com a chave operacional do adaptador, o resumo mostra sempre

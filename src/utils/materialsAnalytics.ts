@@ -85,6 +85,9 @@ export function getDefaultMaterialsPeriod(referenceDate: string): MaterialsPerio
   };
 }
 
+// A planilha de jazida escreve "TON"; o importador grava "t". Os dois são tonelada.
+const TON_UNITS = new Set(['t', 'ton', 'tonelada', 'toneladas']);
+
 export function buildMaterialsOperationalSummary(
   movimentos: MovimentoMaterial[],
   filters: MaterialsSummaryFilters,
@@ -105,7 +108,7 @@ export function buildMaterialsOperationalSummary(
     const quantidade = Math.abs(asNumber(item.quantidade));
     const valorTotal = asNumber(item.valorTotal) || (asNumber(item.valorUnitario) * quantidade);
     const fator = asNumber(item.fatorConversao);
-    const toneladas = normalize(item.unidade) === 't' ? quantidade : 0;
+    const toneladas = TON_UNITS.has(normalize(item.unidade)) ? quantidade : 0;
     const metrosCubicos = fator > 0 ? quantidade / fator : 0;
 
     addToMap(materials, normalize(item.materialDescricao), () => ({

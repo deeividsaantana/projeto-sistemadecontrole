@@ -16,6 +16,8 @@ import './privateRoutes.test';
 import './supabaseMemberships.test';
 import './materialCommands.test';
 import './materialUsage.test';
+import './materialFieldUse.test';
+import './materialsAnalytics.test';
 import './registryCommands.test';
 import './registryDependencies.test';
 import './registryImportMerge.test';

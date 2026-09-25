@@ -9,6 +9,7 @@ import { toExpressHandler } from './handlerAdapter.js';
 
 import { handler as publicPresenca } from '../api/public-presenca.js';
 import { handler as publicTickets } from '../api/public-tickets.js';
+import { handler as publicMateriais } from '../api/public-materiais.js';
 import { handler as masterData } from '../api/master-data.js';
 import { handler as usageTelemetry } from '../api/usage-telemetry.js';
 import { handler as cleanupCloudData } from '../api/cleanup-cloud-data.js';
@@ -42,6 +43,9 @@ for (const prefix of ['/api', '/.netlify/functions']) {
 
   app.get(`${prefix}/public-tickets`, toExpressHandler(publicTickets));
   app.post(`${prefix}/public-tickets`, toExpressHandler(publicTickets));
+
+  app.get(`${prefix}/public-materiais`, toExpressHandler(publicMateriais));
+  app.post(`${prefix}/public-materiais`, toExpressHandler(publicMateriais));
 
   app.all(`${prefix}/master-data`, toExpressHandler(masterData));
   app.all(`${prefix}/usage-telemetry`, toExpressHandler(usageTelemetry));

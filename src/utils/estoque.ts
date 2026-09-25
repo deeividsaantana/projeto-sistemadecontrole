@@ -5,7 +5,8 @@ import type { Material, MovimentoMaterial } from '../types';
  * respeita o sinal informado e transferência é neutra: muda de lugar, não muda
  * a quantidade que a obra tem.
  */
-export const efeitoNoSaldo = (movimento: Pick<MovimentoMaterial, 'tipo' | 'quantidade'>): number => {
+export const efeitoNoSaldo = (movimento: Pick<MovimentoMaterial, 'tipo' | 'quantidade'> & { canceladoEm?: string }): number => {
+  if (movimento.canceladoEm) return 0;
   const quantidade = Number(movimento.quantidade) || 0;
   if (movimento.tipo === 'Entrada') return Math.abs(quantidade);
   if (movimento.tipo === 'Saída') return -Math.abs(quantidade);
@@ -37,6 +38,7 @@ export const posicaoEstoque = (materiais: Material[], movimentos: MovimentoMater
   const totals = new Map<string, { saldo: number; entradas: number; saidas: number; ultimoMovimento?: string }>();
   for (const item of movimentos) {
     if (ate && item.data > ate) continue;
+    if (item.canceladoEm) continue;
     const current = totals.get(item.materialId) ?? { saldo: 0, entradas: 0, saidas: 0 };
     current.saldo += efeitoNoSaldo(item);
     if (item.tipo === 'Entrada') current.entradas += Math.abs(Number(item.quantidade) || 0);

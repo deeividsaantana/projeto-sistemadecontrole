@@ -11,10 +11,10 @@ import { pendenciasDeRecebimento, resumoDeRecebimento } from '../utils/recebimen
 import { posicaoEstoque, saldoDoMaterial, validarMovimento, type PosicaoEstoque } from '../utils/estoque';
 import { buildMaterialsOperationalSummary, getDefaultMaterialsPeriod } from '../utils/materialsAnalytics';
 import { buildMaterialsFlow, summarizeMaterialsStock } from '../utils/materialsDashboard';
-import { materialUsageByBranch, type MaterialBranchUsage } from '../modules/materials/materialUsage';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../utils/formato';
 import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
+import MateriaisUtilizacaoPanel from './MateriaisUtilizacaoPanel';
 import {
   Badge,
   DataTable,
@@ -39,6 +39,8 @@ interface MateriaisTabProps {
   podeEditar: boolean;
   onSaveMaterial: (material: Material, isNew: boolean) => void;
   onSaveMovimento: (movimento: MovimentoMaterial) => void;
+  onSaveMovimentos: (movimentos: MovimentoMaterial[], descricao: string) => void;
+  onUpdateMovimentos: (movimentos: MovimentoMaterial[], descricao: string, acao?: 'Editou' | 'Excluiu') => void;
   onApplyImport: (materials: Material[], movements: MovimentoMaterial[]) => void;
 }
 
@@ -82,6 +84,8 @@ export default function MateriaisTab({
   podeEditar,
   onSaveMaterial,
   onSaveMovimento,
+  onSaveMovimentos,
+  onUpdateMovimentos,
   onApplyImport,
 }: MateriaisTabProps) {
   const hoje = isoDay(new Date());
@@ -139,42 +143,30 @@ export default function MateriaisTab({
   const [linhasLote, setLinhasLote] = useState<MaterialBatchRow[]>([novaLinhaLote()]);
 
   const ativos = useMemo(() => materiais.filter(item => item.ativo !== false), [materiais]);
+  // Uso desfeito fica na lista de movimentos, marcado; resumo e gráficos não somam ele.
+  const movimentosVigentes = useMemo(() => movimentos.filter(item => !item.canceladoEm), [movimentos]);
   const posicoes = useMemo(() => posicaoEstoque(ativos, movimentos), [ativos, movimentos]);
   const abaixoDoMinimo = posicoes.filter(item => item.abaixoDoMinimo);
   // Carga que a nota prometeu e não chegou é dinheiro parado: fica em cima.
-  const pendencias = useMemo(() => pendenciasDeRecebimento(movimentos), [movimentos]);
-  const recebimento = useMemo(() => resumoDeRecebimento(movimentos), [movimentos]);
+  const pendencias = useMemo(() => pendenciasDeRecebimento(movimentosVigentes), [movimentosVigentes]);
+  const recebimento = useMemo(() => resumoDeRecebimento(movimentosVigentes), [movimentosVigentes]);
   const estoqueResumo = useMemo(() => summarizeMaterialsStock(posicoes), [posicoes]);
-  const fluxoSemanal = useMemo(() => buildMaterialsFlow(movimentos, hoje), [movimentos, hoje]);
+  const fluxoSemanal = useMemo(() => buildMaterialsFlow(movimentosVigentes, hoje), [movimentosVigentes, hoje]);
   const maiorFluxo = Math.max(1, ...fluxoSemanal.flatMap(item => [item.entradas, item.saidas, item.transferencias]));
-  const resumoOperacional = useMemo(() => buildMaterialsOperationalSummary(movimentos, {
+  const resumoOperacional = useMemo(() => buildMaterialsOperationalSummary(movimentosVigentes, {
     from: periodo.from,
     to: periodo.to,
     material: filtrosResumo.material,
     fornecedor: filtrosResumo.fornecedor,
     local: filtrosResumo.local,
     tipo: filtrosResumo.tipo,
-  }), [filtrosResumo, movimentos, periodo]);
+  }), [filtrosResumo, movimentosVigentes, periodo]);
   const materiaisResumo = useMemo(() => [...new Set(movimentos.map(item => item.materialDescricao).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
   const fornecedoresResumo = useMemo(() => [...new Set(movimentos.map(item => item.fornecedorNome).filter(Boolean) as string[])]
     .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
   const locaisResumo = useMemo(() => [...new Set(movimentos.flatMap(item => [item.destino, item.origem]).filter(Boolean) as string[])]
     .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
-  const utilizacaoPorRamo = useMemo(() => materialUsageByBranch(ativos, movimentos), [ativos, movimentos]);
-  const utilizacaoResumo = useMemo(() => {
-    const recebidos = utilizacaoPorRamo.reduce((soma, item) => soma + item.received, 0);
-    const utilizados = utilizacaoPorRamo.reduce((soma, item) => soma + item.used, 0);
-    const divergencias = utilizacaoPorRamo.filter(item => item.received > 0 && item.used > item.received).length;
-    return {
-      pares: utilizacaoPorRamo.length,
-      recebidos,
-      utilizados,
-      pendentes: Math.max(0, recebidos - utilizados),
-      percentual: recebidos > 0 ? Number(((utilizados / recebidos) * 100).toFixed(1)) : null,
-      divergencias,
-    };
-  }, [utilizacaoPorRamo]);
 
   const termo = normalizeComparable(busca).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
@@ -204,30 +196,6 @@ export default function MateriaisTab({
 
   const abrirMovimento = () => {
     setErro('');
-    setMovimentoAberto(true);
-  };
-
-  const abrirUsoMaterial = (uso?: MaterialBranchUsage) => {
-    setErro('');
-    setMovimento({
-      ...movimento,
-      data: hoje,
-      tipo: 'Saída',
-      materialId: uso?.materialId || movimento.materialId,
-      quantidade: 0,
-      destino: uso?.branchName || '',
-      origem: '',
-      servico: '',
-      etapaServicoId: uso?.branchId || '',
-      finalidade: 'Consumo',
-      observacao: '',
-      notaFiscal: '',
-      placa: '',
-      ticket: '',
-      solicitacaoCompra: '',
-      quantidadeNota: 0,
-      valorTotal: 0,
-    });
     setMovimentoAberto(true);
   };
 
@@ -459,62 +427,6 @@ export default function MateriaisTab({
       ),
     });
   }
-
-  const utilizacaoColumns: DataTableColumn<MaterialBranchUsage>[] = [
-    {
-      id: 'ramo',
-      label: 'Ramo / trecho',
-      sortValue: item => item.branchName,
-      cell: item => (
-        <div>
-          <strong className="block text-slate-900">{item.branchName}</strong>
-          <span className="text-[11px] text-slate-500">{item.branchId}</span>
-        </div>
-      ),
-    },
-    {
-      id: 'material',
-      label: 'Material',
-      sortValue: item => item.materialDescription,
-      cell: item => <strong className="text-slate-800">{item.materialDescription}</strong>,
-    },
-    { id: 'recebido', label: 'Recebido', align: 'right', sortValue: item => item.received, cell: item => <span className="font-mono text-slate-700">{numero(item.received)} {item.unit}</span> },
-    { id: 'utilizado', label: 'Utilizado', align: 'right', sortValue: item => item.used, cell: item => <span className="font-mono text-slate-700">{numero(item.used)} {item.unit}</span> },
-    {
-      id: 'percentual',
-      label: 'Utilização',
-      align: 'right',
-      sortValue: item => item.percent ?? -1,
-      cell: item => (
-        <span className={item.percent !== null && item.percent > 100 ? 'font-black tabular-nums text-rose-700' : 'font-black tabular-nums text-emerald-700'}>
-          {item.percent === null ? '—' : `${item.percent.toLocaleString('pt-BR')}%`}
-        </span>
-      ),
-    },
-    {
-      id: 'restante',
-      label: 'A utilizar',
-      align: 'right',
-      sortValue: item => item.remaining,
-      cell: item => <span className={item.remaining < 0 ? 'font-mono text-rose-700' : 'font-mono text-slate-700'}>{numero(item.remaining)} {item.unit}</span>,
-    },
-    {
-      id: 'ultimo',
-      label: 'Último uso',
-      sortValue: item => item.lastUseDate || '',
-      cell: item => <span className="text-slate-600">{item.lastUseDate ? formatarData(item.lastUseDate) : '—'}</span>,
-    },
-  ];
-  if (podeEditar) utilizacaoColumns.push({
-    id: 'acao',
-    label: 'Ações',
-    align: 'right',
-    cell: item => (
-      <button type="button" onClick={() => abrirUsoMaterial(item)} className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">
-        Registrar uso
-      </button>
-    ),
-  });
 
   return (
     <div ref={escopoMotion} id="materiais-tab" className="min-h-full w-full bg-white px-3 pb-12 pt-0 sm:px-4">
@@ -896,58 +808,15 @@ export default function MateriaisTab({
           </div>
         </section>
       ) : aba === 'utilizacao' ? (
-        <section className="mt-3 space-y-3" aria-label="Utilização de materiais por ramo">
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-            {[
-              { label: 'Vínculos', valor: String(utilizacaoResumo.pares), detalhe: 'material + ramo' },
-              { label: 'Recebido', valor: numero(utilizacaoResumo.recebidos), detalhe: 'entradas vinculadas' },
-              { label: 'Utilizado', valor: numero(utilizacaoResumo.utilizados), detalhe: 'consumo aprovado' },
-              { label: 'A utilizar', valor: numero(utilizacaoResumo.pendentes), detalhe: 'diferença operacional' },
-              { label: 'Uso geral', valor: utilizacaoResumo.percentual === null ? '—' : `${utilizacaoResumo.percentual.toLocaleString('pt-BR')}%`, detalhe: utilizacaoResumo.divergencias ? `${utilizacaoResumo.divergencias} divergência(s)` : 'sem excesso vinculado' },
-            ].map(item => (
-              <article key={item.label} className="renea-card rounded-lg border border-slate-200 bg-white p-3.5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">{item.label}</p>
-                <strong className="mt-1 block text-2xl font-black tabular-nums text-slate-950">{item.valor}</strong>
-                <span className="mt-1 block text-[11px] leading-4 text-slate-500">{item.detalhe}</span>
-              </article>
-            ))}
-          </div>
-          <FilterBar
-            label="Busca da utilização"
-            actions={podeEditar ? (
-              <button type="button" onClick={() => abrirUsoMaterial()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
-                <Plus className="h-4 w-4" /> Registrar uso
-              </button>
-            ) : undefined}
-          >
-            <label className="relative block min-w-48 flex-1">
-              <span className="sr-only">Buscar utilização</span>
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                value={busca}
-                onChange={event => setBusca(event.target.value)}
-                placeholder="Material, ramo ou trecho"
-                className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
-              />
-            </label>
-          </FilterBar>
-          {utilizacaoPorRamo.length === 0 ? (
-            <EmptyState
-              icon={Package}
-              title="Nenhuma utilização vinculada"
-              description="Vincule entradas e saídas de consumo a Ramos / Trechos para acompanhar percentuais reais. Movimentos antigos com texto livre seguem no histórico."
-            />
-          ) : (
-            <DataTable
-              caption="Utilização de materiais por ramo"
-              rows={utilizacaoPorRamo.filter(item => !termo || normalizeComparable(`${item.branchName} ${item.materialDescription}`).includes(termo))}
-              columns={utilizacaoColumns}
-              getRowId={item => `${item.materialId}-${item.branchId}`}
-              minWidth={980}
-              pageSize={12}
-            />
-          )}
-        </section>
+        <MateriaisUtilizacaoPanel
+          materiais={ativos}
+          movimentos={movimentos}
+          etapas={etapas}
+          responsavel={responsavel}
+          podeEditar={podeEditar}
+          onSaveMovimentos={onSaveMovimentos}
+          onUpdateMovimentos={onUpdateMovimentos}
+        />
       ) : aba !== 'importacoes' && <><FilterBar label="Filtros de materiais" className="mt-3"><label className="relative block min-w-48 flex-1">
 
         <span className="sr-only">Buscar material</span>
@@ -1007,7 +876,7 @@ export default function MateriaisTab({
         )}
       </div></>}
 
-      {aba === 'importacoes' && podeEditar && <MateriaisImportacoesPanel materiais={materiais} movimentos={movimentos} responsavel={responsavel} onApply={onApplyImport} onError={setErro} />}
+      {aba === 'importacoes' && podeEditar && <MateriaisImportacoesPanel materiais={materiais} movimentos={movimentos} responsavel={responsavel} etapas={etapas} onApply={onApplyImport} onError={setErro} />}
 
       <Modal
         open={materialAberto}

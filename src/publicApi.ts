@@ -284,3 +284,78 @@ export const savePublicTicketViaApi = async (ticket: TicketJazida, accessToken: 
     ticket: response.data?.ticket || ticket,
   };
 };
+
+/** Material recebido num ramo, como o link do apontador enxerga. */
+export interface PublicMaterialStock {
+  ramoId: string;
+  materialId: string;
+  descricao: string;
+  unidade: string;
+  comprimentoPecaM?: number;
+  recebido: number;
+  usado: number;
+  saldo: number;
+}
+
+export interface PublicMaterialBranch {
+  id: string;
+  nome: string;
+  materiais: PublicMaterialStock[];
+}
+
+export interface PublicMaterialTodayUse {
+  id: string;
+  ramoId: string;
+  materialId: string;
+  quantidade: number;
+  apontador: string;
+  criadoEm: string;
+}
+
+export interface PublicMaterialView {
+  dataAtual: string;
+  ramos: PublicMaterialBranch[];
+  lancamentosHoje: PublicMaterialTodayUse[];
+}
+
+export interface PublicMaterialUseInput {
+  envioId: string;
+  data: string;
+  etapaServicoId: string;
+  apontador: string;
+  itens: Array<{ materialId: string; quantidade: number }>;
+  observacao?: string;
+}
+
+const materialAccessHeaders = (accessToken: string) => ({
+  'X-Renea-Material-Access': accessToken,
+});
+
+export const loadPublicMaterialView = async (accessToken: string): Promise<PublicMaterialView> => {
+  const response = await callPublicApi<PublicMaterialView>('/api/public-materiais', {
+    headers: materialAccessHeaders(accessToken),
+  });
+  if (!response.data) throw new Error('O servidor não devolveu os materiais.');
+  return response.data;
+};
+
+export const submitPublicMaterialUse = async (accessToken: string, input: PublicMaterialUseInput) => {
+  const response = await callPublicApi<{ id: string; replay: boolean; view: PublicMaterialView }>('/api/public-materiais', {
+    method: 'POST',
+    headers: materialAccessHeaders(accessToken),
+    body: JSON.stringify(input),
+  });
+  return { message: response.message || 'Uso salvo.', view: response.data?.view };
+};
+
+export const getSecurePublicMaterialLink = async () => {
+  const { auth } = await import('./firebase');
+  const user = auth.currentUser;
+  if (!user) throw new Error('Faça login novamente para gerar o link dos apontadores.');
+  const idToken = await user.getIdToken();
+  const response = await callPublicApi<{ path: string }>('/api/public-materiais?action=link', {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!response.data?.path) throw new Error('O servidor não retornou o link dos apontadores.');
+  return `${window.location.origin}${response.data.path}`;
+};
