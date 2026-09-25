@@ -51,7 +51,7 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
   }
 
   return (
-    <div className={`${CARTAO} overflow-hidden`}>
+    <div className={`${CARTAO} overflow-clip`}>
       <table className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
         {/* Largura fixa por coluna: texto longo corta com reticências em vez de
             empurrar a tabela para fora da tela em notebook com zoom de 100%. */}
@@ -61,7 +61,7 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
           {mostrarSituacao && <col className="w-28" />}
           <col className="w-10" />
         </colgroup>
-        <thead>
+        <thead className="lg:sticky lg:top-[var(--cad-topo-lista,0px)] lg:z-10">
           <tr className="border-b border-slate-200 bg-slate-50">
             {selecao && (
               <th scope="col" className="w-12 p-0">

@@ -88,6 +88,15 @@ test('cadastros cabe em notebook sem zoom e mostra a lista logo de cara', async 
   expect(estouro, 'a tabela não pode empurrar a página para o lado').toBeLessThanOrEqual(0);
   const topo = await primeira.evaluate(linha => linha.getBoundingClientRect().top);
   expect(topo, 'a primeira linha aparece sem rolar').toBeLessThan(400);
+
+  await page.mouse.move(700, 500);
+  await page.mouse.wheel(0, 900);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+  const busca = await page.getByRole('searchbox', { name: 'Buscar cadastros' }).boundingBox();
+  expect(busca?.y ?? -1, 'a busca fica presa no topo ao rolar a lista').toBeGreaterThanOrEqual(0);
+  const cabecalho = await page.locator('#database-lists-viewport thead').boundingBox();
+  expect(cabecalho?.y ?? -1, 'o cabeçalho da tabela para logo abaixo dos filtros').toBeGreaterThan(0);
+  expect(cabecalho?.y ?? 999).toBeLessThan(200);
 });
 
 test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({ page }) => {

@@ -195,6 +195,26 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   }, { scope: escopo });
 
   const avisoRef = useRef<HTMLDivElement>(null);
+  // No computador, busca, filtros e barra de marcados ficam presos no topo e só
+  // a lista rola. A altura deles vira variável para o cabeçalho da tabela
+  // parar logo abaixo.
+  const topoFixoRef = useRef<HTMLDivElement>(null);
+  const barraSelecaoRef = useRef<HTMLDivElement>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const lista = listaRef.current;
+    if (!lista || typeof ResizeObserver === 'undefined') return;
+    const medir = () => {
+      const filtros = topoFixoRef.current?.offsetHeight ?? 0;
+      const barra = barraSelecaoRef.current?.offsetHeight ?? 0;
+      lista.style.setProperty('--cad-filtros', `${filtros}px`);
+      lista.style.setProperty('--cad-topo-lista', `${filtros + barra}px`);
+    };
+    medir();
+    const observador = new ResizeObserver(medir);
+    [topoFixoRef.current, barraSelecaoRef.current].forEach(alvo => { if (alvo) observador.observe(alvo); });
+    return () => observador.disconnect();
+  });
   useEffect(() => {
     if (!aviso || !avisoRef.current || reduzMovimento()) return;
     gsap.fromTo(avisoRef.current, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'transform,opacity' });
@@ -521,7 +541,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
       <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
         <CadastroTipos value={vista} contar={item => totais.get(item) ?? 0} onSelect={escolherVista} mostrarLixeira={podeExcluir || lixeira.length > 0} />
 
-        <div className="min-w-0 space-y-3">
+        <div ref={listaRef} className="min-w-0 space-y-3">
           {emLixeira ? (
             <>
               <div data-cadastros-reveal className="space-y-1">
@@ -532,7 +552,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
             </>
           ) : (
             <>
-              <div data-cadastros-reveal>
+              <div ref={topoFixoRef} data-cadastros-reveal className="lg:sticky lg:top-0 lg:z-20 lg:-mt-2 lg:bg-white lg:pb-2 lg:pt-2">
                 <FilterBar label="Filtros de cadastros" className="rounded-2xl border border-slate-200 bg-white p-3">
                   <div className="w-full space-y-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -649,7 +669,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
 
               <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`} className="space-y-3">
                 {podeExcluir && marcados.size > 0 && (
-                  <div role="region" aria-label="Cadastros marcados" data-testid="cadastro-barra-selecao" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 shadow-sm sm:pl-4">
+                  <div role="region" aria-label="Cadastros marcados" ref={barraSelecaoRef} data-testid="cadastro-barra-selecao" className="sticky top-2 z-10 lg:top-[var(--cad-filtros,0px)] flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 shadow-sm sm:pl-4">
                     <p className="basis-full px-2 pt-1 text-sm font-bold text-emerald-900 sm:mr-auto sm:basis-auto sm:p-0" aria-live="polite">
                       {marcados.size.toLocaleString('pt-BR')} {marcados.size === 1 ? 'marcado' : 'marcados'}
                     </p>
