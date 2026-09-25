@@ -51,9 +51,17 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
   }
 
   return (
-    <div className={`${CARTAO} overflow-hidden`}>
-      <table className="hidden w-full border-collapse text-left text-sm md:table">
-        <thead>
+    <div className={`${CARTAO} overflow-clip`}>
+      <table className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+        {/* Largura fixa por coluna: texto longo corta com reticências em vez de
+            empurrar a tabela para fora da tela em notebook com zoom de 100%. */}
+        <colgroup>
+          {selecao && <col className="w-12" />}
+          {colunas.map(coluna => <col key={coluna.id} className={`${coluna.codigo ? 'w-28' : coluna.larga ? 'w-[28%]' : ''} ${coluna.secundaria ? 'hidden xl:table-column' : ''}`} />)}
+          {mostrarSituacao && <col className="w-28" />}
+          <col className="w-10" />
+        </colgroup>
+        <thead className="lg:sticky lg:top-[var(--cad-topo-lista,0px)] lg:z-10">
           <tr className="border-b border-slate-200 bg-slate-50">
             {selecao && (
               <th scope="col" className="w-12 p-0">
@@ -74,15 +82,15 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
               const ativa = ordem.coluna === coluna.id;
               const Seta = ordem.direcao === 'asc' ? ArrowUp : ArrowDown;
               return (
-                <th key={coluna.id} scope="col" aria-sort={ativa ? (ordem.direcao === 'asc' ? 'ascending' : 'descending') : 'none'} className="p-0">
-                  <button type="button" onClick={() => onOrdenar(coluna.id)} className={`flex min-h-11 w-full items-center gap-1.5 px-4 text-xs font-bold uppercase tracking-wide text-slate-500 hover:text-slate-800 ${FOCO}`}>
-                    {coluna.label}
+                <th key={coluna.id} scope="col" aria-sort={ativa ? (ordem.direcao === 'asc' ? 'ascending' : 'descending') : 'none'} className={`p-0 ${coluna.secundaria ? 'hidden xl:table-cell' : ''}`}>
+                  <button type="button" onClick={() => onOrdenar(coluna.id)} className={`flex min-h-10 w-full min-w-0 items-center gap-1.5 px-3 text-xs font-bold uppercase tracking-wide text-slate-500 hover:text-slate-800 ${FOCO}`}>
+                    <span className="truncate" title={coluna.label}>{coluna.label}</span>
                     {ativa && <Seta className="size-3.5 text-[#176b4d]" aria-hidden="true" />}
                   </button>
                 </th>
               );
             })}
-            {mostrarSituacao && <th scope="col" className="px-4 text-xs font-bold uppercase tracking-wide text-slate-500">Situação</th>}
+            {mostrarSituacao && <th scope="col" className="px-3 text-xs font-bold uppercase tracking-wide text-slate-500">Situação</th>}
             <th scope="col" className="w-10"><span className="sr-only">Abrir</span></th>
           </tr>
         </thead>
@@ -96,7 +104,7 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
             >
               {selecao && (
                 <td className="p-0" onClick={event => event.stopPropagation()}>
-                  <label className="flex h-12 cursor-pointer items-center justify-center">
+                  <label className="flex h-11 cursor-pointer items-center justify-center">
                     <input
                       type="checkbox"
                       className={CAIXA}
@@ -108,7 +116,7 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
                 </td>
               )}
               {colunas.map((coluna, indice) => (
-                <td key={coluna.id} className={`h-12 max-w-[16rem] truncate px-4 ${coluna.codigo ? 'font-mono text-[13px] tabular-nums' : ''} ${indice === 0 || coluna.id === 'nome' ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
+                <td key={coluna.id} title={linha.colunas[coluna.id] || undefined} className={`h-11 truncate px-3 ${coluna.secundaria ? 'hidden xl:table-cell' : ''} ${coluna.codigo ? 'font-mono text-[13px] tabular-nums' : ''} ${indice === 0 || coluna.id === 'nome' ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
                   {indice === 0 ? (
                     <button type="button" onClick={event => { event.stopPropagation(); onAbrir(linha); }} className={`max-w-full truncate rounded text-left ${FOCO}`}>
                       {linha.colunas[coluna.id] || '—'}
@@ -117,7 +125,7 @@ export default function CadastroLista({ linhas, colunas, mostrarSituacao, ordem,
                 </td>
               ))}
               {mostrarSituacao && (
-                <td className="px-4">
+                <td className="truncate px-3">
                   <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${TOM_SITUACAO[linha.tom]}`}>{linha.situacao}</span>
                 </td>
               )}

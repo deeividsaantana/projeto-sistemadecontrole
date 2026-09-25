@@ -54,6 +54,10 @@ export interface ColunaCadastro {
   label: string;
   /** Números e códigos em fonte tabular. */
   codigo?: boolean;
+  /** Coluna principal: ganha mais largura que as outras. */
+  larga?: boolean;
+  /** Some em tela estreita (notebook), para as outras não cortarem. */
+  secundaria?: boolean;
 }
 
 export interface FiltroCadastro {
@@ -85,7 +89,7 @@ export const temSituacao = (categoria: CadastroCategoriaId): boolean => (
 );
 
 const COLUNAS_EMPRESA: ColunaCadastro[] = [
-  { id: 'nome', label: 'Nome' },
+  { id: 'nome', label: 'Nome', larga: true },
   { id: 'cnpj', label: 'CNPJ', codigo: true },
   { id: 'classes', label: 'Classes' },
   { id: 'responsavel', label: 'Responsável' },
@@ -94,10 +98,10 @@ const COLUNAS_EMPRESA: ColunaCadastro[] = [
 export const COLUNAS: Record<CadastroCategoriaId, ColunaCadastro[]> = {
   funcionarios: [
     { id: 'matricula', label: 'Matrícula', codigo: true },
-    { id: 'nome', label: 'Nome' },
+    { id: 'nome', label: 'Nome', larga: true },
     { id: 'cargo', label: 'Função' },
     { id: 'empresa', label: 'Empresa' },
-    { id: 'lider', label: 'Líder' },
+    { id: 'lider', label: 'Líder', secundaria: true },
   ],
   empresas: COLUNAS_EMPRESA,
   terceiras: COLUNAS_EMPRESA,
@@ -107,14 +111,14 @@ export const COLUNAS: Record<CadastroCategoriaId, ColunaCadastro[]> = {
   subfornecedores: [...COLUNAS_EMPRESA.slice(0, 2), { id: 'principal', label: 'Atende por' }, COLUNAS_EMPRESA[3]],
   equipamentos: [
     { id: 'prefixo', label: 'Prefixo', codigo: true },
-    { id: 'nome', label: 'Descrição' },
+    { id: 'nome', label: 'Descrição', larga: true },
     { id: 'tipo', label: 'Tipo' },
     { id: 'empresa', label: 'Proprietária' },
-    { id: 'local', label: 'Local' },
+    { id: 'local', label: 'Local', secundaria: true },
   ],
   veiculos: [
     { id: 'prefixo', label: 'Prefixo', codigo: true },
-    { id: 'nome', label: 'Descrição' },
+    { id: 'nome', label: 'Descrição', larga: true },
     { id: 'placa', label: 'Placa', codigo: true },
     { id: 'empresa', label: 'Proprietária' },
     { id: 'local', label: 'Local' },
