@@ -175,7 +175,8 @@ import {
 } from './firebasePublicSubmissions';
 import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
-import { captureCloudBaseline, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
+import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
+import { aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import {
   addPublicPresenceMember,
   deletePublicPresenceRecords,
@@ -398,6 +399,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
   ['notifications', 'renea_notifications'],
   ['historyLogs', 'renea_history_logs'],
+  ['exclusoes', STORAGE_KEYS.exclusoes],
 ];
 
 /**
@@ -571,6 +573,7 @@ export default function App() {
   const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
   const [vinculosOperadorEquipamento, setVinculosOperadorEquipamento] = useState<VinculoOperadorEquipamento[]>([]);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
+  const [exclusoes, setExclusoes] = useState<ExclusaoRegistro[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [externalPresenceLoadError, setExternalPresenceLoadError] = useState('');
   const [externalMeuGrupo, setExternalMeuGrupo] = useState<GrupoEquipe | null>(null);
@@ -794,6 +797,7 @@ export default function App() {
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
+      setExclusoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.exclusoes), STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[]));
       setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
 
       // Efetivo do EFETIVO_OBRA_3 em quem já usa o sistema. A semente acima só
@@ -1023,6 +1027,7 @@ export default function App() {
     masterDataReviewQueue: readTable('renea_master_data_review_queue', [] as MasterWorkbookReviewRow[]),
     notifications: readTable('renea_notifications', getInitialNotifications()),
     historyLogs: readTable('renea_history_logs', [] as HistoryLog[]),
+    exclusoes: readTable(STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[]),
   });
 
   // Envio para a nuvem pelo gateway de migração.
@@ -1033,12 +1038,14 @@ export default function App() {
     try {
       const stored = readLocalCloudTables();
       const controleEstacasSalvo = readTable('renea_controle_estacas', controleEstacas);
-      const data = {
+      // Rede de proteção: nada com exclusão ativa sai deste aparelho, mesmo
+      // que uma tela antiga tenha deixado o registro no armazenamento local.
+      const data = aplicarExclusoes({
         ...stored,
         estacaLotes: controleEstacasSalvo.lotes,
         estacaCravacoes: controleEstacasSalvo.cravacoes,
         ...overrides,
-      };
+      });
 
       // Recarrega as claims antes de qualquer gravação. Usuários que receberam
       // o perfil staff/admin depois do login podem estar com um token antigo,
@@ -1118,6 +1125,17 @@ export default function App() {
         if (localPresence.length > remotePresence.length) {
           data.presencasLink = mergePresenceRecords(remotePresence, localPresence);
         }
+        // As exclusões nunca são trocadas pelo que veio da nuvem, só somadas:
+        // uma exclusão feita aqui que ainda não subiu não pode se perder, senão
+        // o registro volta. Depois disso, a marca vale para todas as tabelas.
+        const localExclusoes = parseStoredJson<ExclusaoRegistro[]>(
+          localStorage.getItem(STORAGE_KEYS.exclusoes),
+          STORAGE_KEYS.exclusoes,
+          [],
+        );
+        const remoteExclusoes = Array.isArray(data.exclusoes) ? data.exclusoes : [];
+        data.exclusoes = mergeCloudTable(remoteExclusoes, localExclusoes);
+        Object.assign(data, aplicarExclusoes(data));
         const downloadedBaseline = captureCloudBaseline(data);
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
@@ -1287,6 +1305,9 @@ export default function App() {
         const restoredHistory = normalizeRuntimeCollection<HistoryLog>(data.historyLogs);
         setHistoryLogs(restoredHistory);
         writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(restoredHistory));
+      }
+      if (Array.isArray(data.exclusoes)) {
+        setExclusoes(data.exclusoes as ExclusaoRegistro[]);
       }
       if (Array.isArray(data.vinculosOperadorEquipamento)) {
         setVinculosOperadorEquipamento(data.vinculosOperadorEquipamento);
@@ -1702,6 +1723,55 @@ export default function App() {
     );
   };
 
+  /**
+   * Exclusão real de um cadastro: tira da lista e grava a marca em
+   * `exclusoes` no mesmo lote do armazenamento local, antes do envio. A marca
+   * é o que faz a exclusão chegar ao Firebase e aos outros aparelhos sem
+   * voltar (ver src/cloud/exclusoes.ts).
+   */
+  const excluirCadastro = <T extends { id: string; nome?: string }>({
+    tabela,
+    storageKey,
+    tela,
+    item,
+    rotulo,
+    lista,
+    setLista,
+  }: {
+    tabela: string;
+    storageKey: string;
+    tela: string;
+    item: T;
+    rotulo: string;
+    lista: T[];
+    setLista: (next: T[]) => void;
+  }) => {
+    const exclusao = criarExclusao({
+      tabela,
+      registro: item as unknown as { id: string } & Record<string, unknown>,
+      rotulo,
+      usuario: activeUserName,
+      agora: new Date().toISOString(),
+    });
+    const updated = lista.filter(x => x.id !== item.id);
+    const nextExclusoes = [exclusao, ...exclusoes];
+    saveAndLog(
+      tela,
+      'Excluiu',
+      `Excluiu "${rotulo}".`,
+      historyLogs,
+      () => {
+        commitStorageBatch(localStorage, [
+          { key: storageKey, value: JSON.stringify(updated) },
+          { key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) },
+        ]);
+        setLista(updated);
+        setExclusoes(nextExclusoes);
+      },
+      { registroId: item.id, valorAnterior: item, tipoOperacao: 'DELETE' },
+    );
+  };
+
   const handleDeleteObra = (id: string) => {
     const item = obras.find(x => x.id === id);
     if (!item) return false;
@@ -1729,18 +1799,7 @@ export default function App() {
       notifyRegistryDeletionBlocked(dependencies);
       return false;
     }
-    const updated = obras.filter(x => x.id !== id);
-    saveAndLog(
-      'Obras/Locais',
-      'Excluiu',
-      `Excluiu permanentemente a obra/local "${item.nome}".`,
-      historyLogs,
-      () => {
-        setObras(updated);
-        writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
-      },
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
-    );
+    excluirCadastro({ tabela: 'obras', storageKey: 'renea_obras', tela: 'Obras/Locais', item, rotulo: item.nome, lista: obras, setLista: setObras });
     return true;
   };
 
@@ -1943,17 +2002,7 @@ export default function App() {
     const item = comboios.find(x => x.id === id);
     if (!item) return false;
     if (!canDeleteAuxRegistry('comboio', id)) return false;
-    const updated = comboios.filter(x => x.id !== id);
-    saveAndLog(
-      'Comboios', 
-      'Excluiu', 
-      `Excluiu o comboio "${item.nome}".`,
-      historyLogs,
-      () => {
-        setComboios(updated);
-        writeStorageValue(localStorage, 'renea_comboios', JSON.stringify(updated));
-      }
-    );
+    excluirCadastro({ tabela: 'comboios', storageKey: 'renea_comboios', tela: 'Comboios', item, rotulo: item.nome, lista: comboios, setLista: setComboios });
     return true;
   };
 
@@ -1980,17 +2029,7 @@ export default function App() {
     const item = combustiveis.find(x => x.id === id);
     if (!item) return false;
     if (!canDeleteAuxRegistry('combustivel', id)) return false;
-    const updated = combustiveis.filter(x => x.id !== id);
-    saveAndLog(
-      'Combustíveis', 
-      'Excluiu', 
-      `Excluiu o tipo de combustível "${item.nome}".`,
-      historyLogs,
-      () => {
-        setCombustiveis(updated);
-        writeStorageValue(localStorage, 'renea_combustiveis', JSON.stringify(updated));
-      }
-    );
+    excluirCadastro({ tabela: 'combustiveis', storageKey: 'renea_combustiveis', tela: 'Combustíveis', item, rotulo: item.nome, lista: combustiveis, setLista: setCombustiveis });
     return true;
   };
 
@@ -2017,17 +2056,7 @@ export default function App() {
     const item = lubrificantes.find(x => x.id === id);
     if (!item) return false;
     if (!canDeleteAuxRegistry('lubrificante', id)) return false;
-    const updated = lubrificantes.filter(x => x.id !== id);
-    saveAndLog(
-      'Produtos Lubrificação', 
-      'Excluiu', 
-      `Excluiu o lubrificante "${item.nome}".`,
-      historyLogs,
-      () => {
-        setLubrificantes(updated);
-        writeStorageValue(localStorage, 'renea_lubrificantes', JSON.stringify(updated));
-      }
-    );
+    excluirCadastro({ tabela: 'lubrificantes', storageKey: 'renea_lubrificantes', tela: 'Produtos Lubrificação', item, rotulo: item.nome, lista: lubrificantes, setLista: setLubrificantes });
     return true;
   };
 
@@ -2054,17 +2083,7 @@ export default function App() {
     const item = etapas.find(x => x.id === id);
     if (!item) return false;
     if (!canDeleteAuxRegistry('etapa', id)) return false;
-    const updated = etapas.filter(x => x.id !== id);
-    saveAndLog(
-      'Etapas de Serviço', 
-      'Excluiu', 
-      `Excluiu a etapa/ramo "${item.nome}".`,
-      historyLogs,
-      () => {
-        setEtapas(updated);
-        writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
-      }
-    );
+    excluirCadastro({ tabela: 'etapas', storageKey: 'renea_etapas', tela: 'Etapas de Serviço', item, rotulo: item.nome, lista: etapas, setLista: setEtapas });
     return true;
   };
 

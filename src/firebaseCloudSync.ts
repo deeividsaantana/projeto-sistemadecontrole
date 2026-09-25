@@ -64,6 +64,7 @@ export const INTERMEDIATE_TABLE_IDS = [
   'notifications',
   'historyLogs',
   'vinculosOperadorEquipamento',
+  'exclusoes',
 ] as const;
 const MAX_CHUNK_PAYLOAD_BYTES = 600_000;
 const FIREBASE_READ_TIMEOUT_MS = 20_000;

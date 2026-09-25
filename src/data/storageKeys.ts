@@ -44,6 +44,7 @@ export const STORAGE_KEYS = {
   vinculosOperadorEquipamento: 'renea_vinculos_operador_equipamento',
   masterDataReviewQueue: 'renea_master_data_review_queue',
   historyLogs: 'renea_history_logs',
+  exclusoes: 'renea_exclusoes',
   notifications: 'renea_notifications',
   colaboradoresPlanilhaV1: 'renea_colaboradores_planilha_v1',
   planilhasOperacionaisV2: 'renea_planilhas_operacionais_v2',
@@ -103,4 +104,5 @@ export const CORE_DATA_STORAGE_KEYS = [
   STORAGE_KEYS.lancamentosCusto,
   STORAGE_KEYS.orcamentoItens,
   STORAGE_KEYS.modelosChecklist,
+  STORAGE_KEYS.exclusoes,
 ] as const;
