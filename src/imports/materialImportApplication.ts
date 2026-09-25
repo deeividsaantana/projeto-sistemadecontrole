@@ -8,7 +8,10 @@ type Receipt = {
   quantidadeNota?: number | null; quantidadeRecebida: number | null; unidade: string | null; notaFiscal: string | null;
   localAplicacao?: string | null; solicitacaoCompra?: string | null; diametroMm?: number | null; classe?: string | null; comprimentoPecaM?: number | null;
 };
-type Movement = { material: string; data: string | null; tipoMovimento?: string | null; origem?: string | null; destino: string | null; quantidade: number | null; unidade: string | null };
+type Movement = {
+  material: string; data: string | null; tipoMovimento?: string | null; origem?: string | null; destino: string | null; quantidade: number | null; unidade: string | null;
+  placaOuPrefixo?: string | null; fornecedor?: string | null; notaFiscal?: string | null; valorUnitario?: number | null; valorTotal?: number | null;
+};
 
 /**
  * "Saída", "SAIDA", "saída de material": a planilha escreve do jeito dela.
@@ -70,11 +73,17 @@ export const buildMaterialImportApplication = (
     const description = receipt ? receiptMaterialDescription(value) : value.material;
     const quantity = receipt ? value.quantidadeRecebida : value.quantidade;
     if (!description || !value.data || quantity === null || !value.unidade || !item.row.operationalKey) { skipped.review++; return; }
-    const key = normalizeComparable(description);
+    // "LIXO" em tonelada (Lara) e "LIXO" em viagem (São Bento) não somam: com
+    // unidade diferente do material já existente, o nome leva a unidade.
+    const sameName = [...currentMaterials, ...materials].find(entry => normalizeComparable(entry.descricao) === normalizeComparable(description));
+    const name = !receipt && sameName && normalizeComparable(sameName.unidade) !== normalizeComparable(value.unidade)
+      ? `${description} (${value.unidade})`
+      : description;
+    const key = normalizeComparable(name);
     let material = [...currentMaterials, ...materials].find(entry => normalizeComparable(entry.descricao) === key);
     if (!material) {
       material = {
-        id: stableId('mat-import', key), codigo: receipt ? value.codigo || '' : '', descricao: description, categoria: item.row.lineage.sourceSheet, unidade: value.unidade,
+        id: stableId('mat-import', key), codigo: receipt ? value.codigo || '' : '', descricao: name, categoria: item.row.lineage.sourceSheet, unidade: value.unidade,
         ...(receipt && value.diametroMm ? { diametroMm: value.diametroMm } : {}),
         ...(receipt && value.classe ? { classe: value.classe } : {}),
         ...(receipt && value.comprimentoPecaM ? { comprimentoPecaM: value.comprimentoPecaM } : {}),
@@ -89,10 +98,18 @@ export const buildMaterialImportApplication = (
     // um ramo cadastrado; o resto fica como texto para quem confere vincular.
     const local = receipt ? value.localAplicacao || '' : '';
     const branch = local ? branches.find(entry => normalizeComparable(entry.nome) === normalizeComparable(local)) : undefined;
-    movements.push({ id, data: value.data, tipo: receipt ? 'Entrada' : movementTypeFromSheet(value.tipoMovimento),
+    // Agregado chega com fornecedor, nota, placa e valor da viagem; antes tudo
+    // isso ficava só na planilha.
+    const trip = receipt ? {} : {
+      ...(value.fornecedor ? { fornecedorNome: value.fornecedor } : {}),
+      ...(value.placaOuPrefixo ? { placa: value.placaOuPrefixo } : {}),
+      ...(value.valorUnitario != null ? { valorUnitario: value.valorUnitario } : {}),
+      ...(value.valorTotal != null ? { valorTotal: value.valorTotal } : {}),
+    };
+    movements.push({ id, data: value.data, tipo: receipt ? 'Entrada' : movementTypeFromSheet(value.tipoMovimento), ...trip,
       ...(branch ? { etapaServicoId: branch.id, etapaServicoNome: branch.nome } : {}),
       ...(receipt && value.solicitacaoCompra ? { solicitacaoCompra: value.solicitacaoCompra } : {}),
-      materialId: material.id, materialDescricao: material.descricao, quantidade: quantity, unidade: value.unidade, quantidadeNota: receipt ? value.quantidadeNota ?? undefined : undefined, notaFiscal: receipt ? value.notaFiscal || undefined : undefined, destino: receipt ? value.localAplicacao || undefined : value.destino || undefined, origem: receipt ? undefined : value.origem || undefined, responsavel: responsible, criadoEm: preview.generatedAt, observacao: `Importado de ${preview.sourceFile} · ${item.row.lineage.sourceSheet} · linha ${item.row.lineage.sourceRow}` });
+      materialId: material.id, materialDescricao: material.descricao, quantidade: quantity, unidade: value.unidade, quantidadeNota: receipt ? value.quantidadeNota ?? undefined : undefined, notaFiscal: value.notaFiscal || undefined, destino: receipt ? value.localAplicacao || undefined : value.destino || undefined, origem: receipt ? undefined : value.origem || undefined, responsavel: responsible, criadoEm: preview.generatedAt, observacao: `Importado de ${preview.sourceFile} · ${item.row.lineage.sourceSheet} · linha ${item.row.lineage.sourceRow}` });
   });
   return { materials, movements, skipped };
 };

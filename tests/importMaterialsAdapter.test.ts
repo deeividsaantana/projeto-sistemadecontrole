@@ -37,3 +37,29 @@ const preview = materialsAdapter.reconcile(parsed, [] as MovimentoMaterial[]);
 assert.equal(preview.counts.new, 1);
 assert.equal(preview.counts.review, 1);
 assert.equal(preview.counts['duplicate-in-file'], 1, 'segunda ocorrência da mesma chave no arquivo é duplicate-in-file, nunca descartada');
+
+// Planilha real de agregados: o mesmo caminhão faz viagens iguais no dia, a
+// nota separa uma da outra; o item nomeia o material; a coluna LOCAIS ao lado
+// e a fórmula de total arrastada não são viagem.
+const agregados: ImportParseContext = {
+  ...context,
+  sourceSheet: 'Q.E.SÃO BENTO SPE LTDA',
+  rows: [
+    { DATA: '2026-05-07', ITEM: 'LIXO', UNIDADE: 'VIAGEM', QUANTIDADE: 1, FORNECEDOR: 'Renea', PLACA: 'DIQ0627', 'NUMERO DA NOTA': 682925, 'LOCAL DE CARREGAMENTO': 'BOTA ESPERA RAMO 600/700', 'TOTAL R$': 850 },
+    { DATA: '2026-05-07', ITEM: 'LIXO', UNIDADE: 'VIAGEM', QUANTIDADE: 1, FORNECEDOR: 'Renea', PLACA: 'DIQ0627', 'NUMERO DA NOTA': 682926, 'LOCAL DE CARREGAMENTO': 'BOTA ESPERA RAMO 600/700', 'TOTAL R$': 850 },
+    { LOCAIS: 'CS RAMO 900' },
+    { 'TOTAL R$': '' , 'VALOR UNIT.': 70 },
+    { DATA: '2026-05-08', ITEM: 'BRITA 02', UNIDADE: 'EFO7545', QUANTIDADE: 9.91, 'NUMERO DA NOTA': 372175, LOCAL: 'COLUNA DE BRITA RAMO 700' },
+  ],
+};
+const viagens = materialsAdapter.parse(agregados);
+assert.equal(viagens.length, 3, 'LOCAIS e fórmula de total sozinhas não viram linha');
+assert.equal(viagens[0].value.material, 'LIXO');
+assert.equal(viagens[0].value.fornecedor, 'RENEA');
+assert.equal(viagens[0].value.notaFiscal, '682925');
+assert.equal(viagens[0].value.valorTotal, 850);
+assert.notEqual(viagens[0].operationalKey, viagens[1].operationalKey, 'nota diferente é outra viagem');
+assert.equal(viagens[2].lineage.validationStatus, 'review', 'placa na coluna de unidade vai para conferência');
+assert.match(viagens[2].lineage.validationMessages.join(' '), /Unidade "EFO7545"/);
+const viagensPreview = materialsAdapter.reconcile(viagens, [] as MovimentoMaterial[]);
+assert.equal(viagensPreview.counts.new, 2);

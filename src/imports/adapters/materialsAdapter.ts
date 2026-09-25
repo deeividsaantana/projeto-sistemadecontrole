@@ -3,12 +3,13 @@ import { buildRowLineage, cleanRowForLineage } from '../provenance';
 import {
   normalizeImportDateOrNull,
   normalizeImportDecimalOrNull,
+  normalizeImportInvoiceOrNull,
   normalizeImportPlateOrNull,
   normalizeImportPrefixOrNull,
   normalizeImportTextOrNull,
   normalizeImportUnitOrNull,
 } from '../normalizers';
-import { getImportValue, normalizeImportText } from '../../utils/importHelpers';
+import { cleanImportValue, getImportValue, normalizeImportText } from '../../utils/importHelpers';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { buildImportPreview } from '../preview';
 import type { MovimentoMaterial } from '../../types';
@@ -40,7 +41,15 @@ const FIELD_ALIASES: Record<string, string[]> = {
   quantidade: ['Quantidade', 'Qtd', 'Qtde'],
   unidade: ['Unidade', 'Un', 'UN'],
   placaOuPrefixo: ['Placa', 'Prefixo', 'Placa/Prefixo'],
+  // A aba é o grupo; o item diz qual material foi ("RACHÃO GABIÃO", "SAIBRO").
+  item: ['Item', 'Material'],
+  fornecedor: ['Fornecedor'],
+  notaFiscal: ['Numero da Nota', 'Número da Nota', 'Nota Fiscal', 'NF', 'Nota'],
+  valorUnitario: ['Valor Unit.', 'Valor Unitário', 'Valor Unitario'],
+  valorTotal: ['Total R$', 'Valor Total', 'Total'],
 };
+
+const LINE_FIELDS = ['data', 'tipoMovimento', 'origem', 'destino', 'quantidade', 'unidade', 'placaOuPrefixo', 'item', 'notaFiscal'];
 
 export interface NormalizedMaterialMovementRow {
   readonly material: string;
@@ -51,6 +60,10 @@ export interface NormalizedMaterialMovementRow {
   readonly quantidade: number | null;
   readonly unidade: string | null;
   readonly placaOuPrefixo: string | null;
+  readonly fornecedor?: string | null;
+  readonly notaFiscal?: string | null;
+  readonly valorUnitario?: number | null;
+  readonly valorTotal?: number | null;
 }
 
 const describeColumns = (headers: readonly string[]): readonly ImportColumnMapping[] => headers.map(column => {
@@ -62,6 +75,9 @@ const describeColumns = (headers: readonly string[]): readonly ImportColumnMappi
 
 const buildOperationalKey = (row: NormalizedMaterialMovementRow): string | undefined => {
   if (!row.data || !row.destino || row.quantidade === null) return undefined;
+  // O mesmo caminhão faz várias viagens iguais no dia; o que separa uma da
+  // outra é a nota. Sem ela, 561 viagens da Q.E. São Bento sumiam como repetidas.
+  if (row.notaFiscal) return ['movimento', normalizeComparable(row.material), row.data, 'nota', row.notaFiscal].join('|');
   return ['movimento', normalizeComparable(row.material), row.data, normalizeComparable(row.origem || ''), normalizeComparable(row.destino), row.quantidade, row.placaOuPrefixo || ''].join('|');
 };
 
@@ -69,11 +85,16 @@ export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMoveme
   domain: 'materials-movements',
   supports: sheetName => RECOGNIZED_SHEETS.includes(normalizeSheetKey(sheetName)),
   describeColumns,
-  parse: (context: ImportParseContext) => context.rows.map((raw, index) => {
+  parse: (context: ImportParseContext) => context.rows.flatMap((raw, index) => {
     const sourceRow = index + context.headerRow + 1;
+    // Linha só com a lista de validação ao lado ("LOCAIS") ou com a fórmula de
+    // total arrastada para baixo não é viagem: nem entra em conferência.
+    // Compara o nome exato da coluna: "LOCAIS" contém "LOCAL" e passaria.
+    const filled = new Set(Object.entries(raw).filter(([, cell]) => cleanImportValue(cell) !== '').map(([column]) => normalizeImportText(column)));
+    if (!LINE_FIELDS.some(field => FIELD_ALIASES[field].some(alias => filled.has(normalizeImportText(alias))))) return [];
     const placaOuPrefixoRaw = getImportValue(raw, FIELD_ALIASES.placaOuPrefixo);
     const value: NormalizedMaterialMovementRow = {
-      material: context.sourceSheet,
+      material: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.item))?.toUpperCase() || context.sourceSheet.trim(),
       data: normalizeImportDateOrNull(getImportValue(raw, FIELD_ALIASES.data)),
       tipoMovimento: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.tipoMovimento)),
       origem: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.origem)),
@@ -81,14 +102,22 @@ export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMoveme
       quantidade: normalizeImportDecimalOrNull(getImportValue(raw, FIELD_ALIASES.quantidade)),
       unidade: normalizeImportUnitOrNull(getImportValue(raw, FIELD_ALIASES.unidade)),
       placaOuPrefixo: normalizeImportPlateOrNull(placaOuPrefixoRaw) || normalizeImportPrefixOrNull(placaOuPrefixoRaw),
+      fornecedor: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.fornecedor))?.toUpperCase() ?? null,
+      notaFiscal: normalizeImportInvoiceOrNull(getImportValue(raw, FIELD_ALIASES.notaFiscal)),
+      valorUnitario: normalizeImportDecimalOrNull(getImportValue(raw, FIELD_ALIASES.valorUnitario)),
+      valorTotal: normalizeImportDecimalOrNull(getImportValue(raw, FIELD_ALIASES.valorTotal)),
     };
     const messages: string[] = [];
     if (!value.data) messages.push('Data ausente ou não reconhecida.');
     if (!value.destino) messages.push('Destino não identificado.');
     if (value.quantidade === null) messages.push('Quantidade ausente.');
-    const operationalKey = buildOperationalKey(value);
+    // Placa ou número digitado na coluna de unidade ("EFO7545", "7") criaria
+    // um material novo com unidade inventada.
+    const badUnit = Boolean(value.unidade && /^\d|^[A-Z]{3}-?\d/.test(value.unidade));
+    if (badUnit) messages.push(`Unidade "${value.unidade}" não reconhecida.`);
+    const operationalKey = badUnit ? undefined : buildOperationalKey(value);
     if (!operationalKey) messages.push('Chave operacional incompleta (data + destino + quantidade): linha fica em conferência.');
-    return {
+    return [{
       lineage: buildRowLineage({
         sourceFile: context.sourceFile,
         sourceSheet: context.sourceSheet,
@@ -102,7 +131,7 @@ export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMoveme
       }),
       value,
       operationalKey,
-    } satisfies ImportRow<NormalizedMaterialMovementRow>;
+    } satisfies ImportRow<NormalizedMaterialMovementRow>];
   }),
   reconcile: (rows, current) => {
     const seenKeys = new Set<string>();
@@ -110,8 +139,10 @@ export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMoveme
       if (!row.operationalKey) return { row, disposition: 'review' as const };
       if (seenKeys.has(row.operationalKey)) return { row, disposition: 'duplicate-in-file' as const };
       seenKeys.add(row.operationalKey);
-      const existing = current.find(movimento =>
-        normalizeComparable(movimento.materialDescricao) === normalizeComparable(row.value.material)
+      const existing = current.find(movimento => row.value.notaFiscal && movimento.notaFiscal
+        ? movimento.notaFiscal === row.value.notaFiscal && movimento.data === row.value.data
+          && normalizeComparable(movimento.materialDescricao) === normalizeComparable(row.value.material)
+        : normalizeComparable(movimento.materialDescricao) === normalizeComparable(row.value.material)
         && movimento.data === row.value.data
         && normalizeComparable(movimento.destino || '') === normalizeComparable(row.value.destino || '')
         && movimento.quantidade === row.value.quantidade);

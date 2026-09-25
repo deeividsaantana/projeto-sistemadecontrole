@@ -28,3 +28,15 @@ assert.deepEqual(readSheet.headers, ['Data', 'Material', 'NF', 'Quantidade Receb
 assert.equal(readSheet.rows.length, 2);
 assert.equal(readSheet.rows[0].rowNumber, 2);
 assert.equal(readSheet.rows[1].values['NF'], '12346');
+
+// Linha de total acima do cabeçalho (abas de bota-fora) não é o cabeçalho.
+const comTotal = new ExcelJS.Workbook();
+const bota = comTotal.addWorksheet('BOTA FORA (ITAQUAREIA)');
+bota.addRow(['QUANTIDADE DE VIAGENS', 1150]);
+bota.addRow(['DATA', 'ITEM', 'UNIDADE', 'QUANTIDADE', 'FORNECEDOR', 'PLACA', 'NUMERO DA NOTA']);
+bota.addRow(['30/04/2026', 'SOLO CONTAMINADO', 'M³', 16, 'RENEA', 'EFO7669', 563073]);
+const botaFile = new File([new Uint8Array(await comTotal.xlsx.writeBuffer())], 'MATERIAIS.xlsx') as unknown as Parameters<typeof readWorkbookFile>[0];
+const [botaSheet] = (await readWorkbookFile(botaFile)).sheets;
+assert.equal(botaSheet.headerRow, 2);
+assert.equal(botaSheet.rows.length, 1);
+assert.equal(botaSheet.rows[0].values['NUMERO DA NOTA'], 563073);
