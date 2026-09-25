@@ -41,3 +41,23 @@ export const resumoRecuperadas = (registros: PresencaApontamento[]): string => {
   const partes = Array.from(contagem, ([chave, total]) => `${chave} (${total})`);
   return partes.length > 3 ? `${partes.slice(0, 3).join(', ')} e mais ${partes.length - 3}` : partes.join(', ');
 };
+
+/**
+ * Presença que só existe aqui e ainda não subiu (id fora da base da última
+ * sincronização) não pode sumir quando a nuvem chega. Antes a decisão era pelo
+ * total de registros: bastava a nuvem ter mais registros no geral para as
+ * presenças novas de hoje serem trocadas pelas da nuvem.
+ */
+export const juntarPresencaBaixada = (
+  nuvem: PresencaApontamento[],
+  local: PresencaApontamento[],
+  idsDaBase: string[] = [],
+): PresencaApontamento[] => {
+  const base = new Set(idsDaBase);
+  const idsDaNuvem = new Set(nuvem.map(item => item.id));
+  const chavesDaNuvem = new Set(nuvem.map(presenceBusinessKey));
+  const novasAqui = local.filter(item => !base.has(item.id)
+    && !idsDaNuvem.has(item.id)
+    && !chavesDaNuvem.has(presenceBusinessKey(item)));
+  return novasAqui.length === 0 ? nuvem : [...nuvem, ...novasAqui];
+};

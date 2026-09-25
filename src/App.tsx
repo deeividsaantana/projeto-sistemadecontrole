@@ -175,7 +175,7 @@ import {
 } from './firebasePublicSubmissions';
 import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
-import { presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
+import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import { aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import {
@@ -1126,12 +1126,9 @@ export default function App() {
           'renea_presencas_link',
           [],
         );
-        // O manifesto pode estar atrasado em relação ao histórico público já
-        // recuperado neste aparelho. Nunca deixe um download menor apagar
-        // presenças locais que ainda não chegaram a esse manifesto.
-        if (localPresence.length > remotePresence.length) {
-          data.presencasLink = mergePresenceRecords(remotePresence, localPresence);
-        }
+        // Presença lançada ou recuperada aqui que ainda não subiu continua;
+        // a que saiu da nuvem depois da última sincronização sai daqui também.
+        data.presencasLink = juntarPresencaBaixada(remotePresence, localPresence, cloudBaselineRef.current?.presencasLink);
         // As exclusões nunca são trocadas pelo que veio da nuvem, só somadas:
         // uma exclusão feita aqui que ainda não subiu não pode se perder, senão
         // o registro volta. Depois disso, a marca vale para todas as tabelas.
