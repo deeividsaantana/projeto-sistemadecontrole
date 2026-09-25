@@ -12,6 +12,7 @@ import type {
   PresencaApontamento,
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { recoverTeamGroups, teamRecordMatches } from '../utils/teamIdentity';
 import { Badge, Card, ConfirmDialog, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
 
 interface EquipesTabProps {
@@ -43,19 +44,23 @@ export default function EquipesTab({
   const [dia, setDia] = useState(hoje);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [realocacao, setRealocacao] = useState<{ funcionario: Funcionario; destinoId: string } | null>(null);
+  const recoveredGroups = useMemo(
+    () => recoverTeamGroups(gruposEquipe, presencasLink, funcionarios),
+    [funcionarios, gruposEquipe, presencasLink],
+  );
 
   const lista = useMemo(() => {
     const termo = normalizeComparable(busca).trim();
-    return gruposEquipe
+    return recoveredGroups
       .filter(item => filtroStatus === 'todas' || item.status !== 'inativo')
       .filter(item => !filtroObra || item.obraId === filtroObra)
       .filter(item => !filtroFrente || (item.frenteServico || '').trim() === filtroFrente)
       .filter(item => !termo || normalizeComparable(`${item.nome} ${item.frenteServico || ''}`).includes(termo))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  }, [gruposEquipe, filtroStatus, filtroObra, filtroFrente, busca]);
+  }, [recoveredGroups, filtroStatus, filtroObra, filtroFrente, busca]);
 
   const resumoDaEquipe = (grupo: GrupoEquipe) => {
-    const apontamentos = presencasLink.filter(item => item.grupoId === grupo.id && item.data === dia);
+    const apontamentos = presencasLink.filter(item => teamRecordMatches(grupo, item) && item.data === dia);
     return {
       efetivo: grupo.funcionarioIds.length,
       apontados: apontamentos.length,
@@ -93,7 +98,7 @@ export default function EquipesTab({
       .map(id => funcionarios.find(item => item.id === id))
       .filter((item): item is Funcionario => Boolean(item))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-    const apontamentosDoDia = presencasLink.filter(item => item.grupoId === selecionada.id && item.data === dia);
+    const apontamentosDoDia = presencasLink.filter(item => teamRecordMatches(selecionada, item) && item.data === dia);
     const nomesDaEquipe = new Set(membros.map(item => normalizeComparable(item.nome)));
     const frota = controlesEquipamentos
       .filter(item => item.data === dia && (

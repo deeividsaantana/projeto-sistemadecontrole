@@ -35,6 +35,7 @@ import {
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { readableTeamText, recoverTeamGroups, teamRecordMatches } from '../utils/teamIdentity';
 import type { SituacaoLancada } from '../utils/presencaManual';
 import {
   AFASTAMENTOS_PREVISTOS,
@@ -146,7 +147,7 @@ const localToday = () => {
   return local.toISOString().slice(0, 10);
 };
 
-const safeText = (value: unknown) => typeof value === 'string' ? value : '';
+const safeText = readableTeamText;
 const safeIds = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && Boolean(item)) : [];
 
 const normalizeGroup = (group: GrupoEquipe): GrupoEquipe => ({
@@ -228,8 +229,12 @@ export default function ControlePresencaTab({
   // fornecedores de material ficam de fora, salvo se já tiverem colaborador.
   const teamCompanies = useMemo(() => companiesForTeams(safeEmpresas, safeFuncionarios), [safeEmpresas, safeFuncionarios]);
   const safeObras = useMemo(() => (Array.isArray(obras) ? obras : []).filter(Boolean), [obras]);
-  const safeGroups = useMemo(() => (Array.isArray(gruposEquipe) ? gruposEquipe : []).filter(Boolean).map(normalizeGroup), [gruposEquipe]);
   const safeRecords = useMemo(() => (Array.isArray(presencasLink) ? presencasLink : []).filter(Boolean).map(normalizeRecord), [presencasLink]);
+  const safeGroups = useMemo(() => recoverTeamGroups(
+    (Array.isArray(gruposEquipe) ? gruposEquipe : []).filter(Boolean).map(normalizeGroup),
+    safeRecords,
+    safeFuncionarios,
+  ), [gruposEquipe, safeFuncionarios, safeRecords]);
   const safeHistory = useMemo(() => (Array.isArray(historicoPresencas) ? historicoPresencas : []).filter(Boolean), [historicoPresencas]);
 
   const [view, setView] = useState<View>('ao-vivo');
@@ -346,7 +351,7 @@ export default function ControlePresencaTab({
     const employee = employeeById.get(record.funcionarioId);
     const operationalLocation = `${record.grupoNome} ${record.frenteServico}`.toLocaleLowerCase('pt-BR');
     return (dashboardCompany === 'todas' || employee?.empresaId === dashboardCompany)
-      && (dashboardGroup === 'todos' || record.grupoId === dashboardGroup)
+      && (dashboardGroup === 'todos' || activeGroups.some(group => group.id === dashboardGroup && teamRecordMatches(group, record)))
       && (dashboardRole === 'todas' || record.funcao === dashboardRole)
       && (dashboardStatus === 'todos' || record.status === dashboardStatus)
       && (dashboardBranch === 'todos' || contemTermo(operationalLocation, dashboardBranch))
@@ -361,8 +366,10 @@ export default function ControlePresencaTab({
     () => dayRecords.filter(recordMatchesDashboard),
     [buscaPainel, dashboardBranch, dashboardCompany, dashboardGroup, dashboardRole, dashboardSite, dashboardStatus, dayRecords, employeeById],
   );
-  const sentGroupIds = useMemo(() => new Set(dayRecords.map(record => record.grupoId).filter(Boolean)), [dayRecords]);
-  const pendingGroups = useMemo(() => activeGroups.filter(group => !sentGroupIds.has(group.id)), [activeGroups, sentGroupIds]);
+  const pendingGroups = useMemo(
+    () => activeGroups.filter(group => !dayRecords.some(record => teamRecordMatches(group, record))),
+    [activeGroups, dayRecords],
+  );
   const dashboardPendingGroups = useMemo(
     () => pendingGroups.filter(group => {
       const location = `${group.nome} ${group.frenteServico}`.toLocaleLowerCase('pt-BR');
@@ -568,7 +575,7 @@ export default function ControlePresencaTab({
   }, { scope: tabRef, dependencies: [view] });
 
   const teamRows = useMemo(() => activeGroups.map(group => {
-    const records = dayRecords.filter(record => record.grupoId === group.id);
+    const records = dayRecords.filter(record => teamRecordMatches(group, record));
     return {
       group,
       sent: records.length > 0,

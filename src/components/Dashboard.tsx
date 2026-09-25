@@ -43,12 +43,12 @@ function ExecutiveCard({ label, value, detail, tone, icon: Icon, onClick }: { la
 }
 
 export default function Dashboard(props: DashboardProps) {
-  // Period state with default to current month
-  const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('mes'));
+  // Cada abertura começa no retrato operacional do dia atual.
+  const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('hoje'));
   const [obraId, setObraId] = useState('');
   const dashboardRef = useRef<HTMLDivElement>(null);
   const view = useMemo(() => buildDashboardGeneralViewModel({ obraId, from: periodo.from, to: periodo.to }, props),
-    [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.ordensServico]);
+    [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.funcionarios, props.ordensServico]);
   const fieldReports = useMemo(() => fieldReportsFromMovements(props.movimentosMaterial || [], { from: periodo.from, to: periodo.to }), [props.movimentosMaterial, periodo.from, periodo.to]);
   const display = (value: number | null, unit = '') => value === null ? 'Sem registro' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)}${unit ? ` ${unit}` : ''}`;
   const getTone = (value: string | number | null, defaultTone: 'green' | 'blue' | 'orange' | 'slate'): 'green' | 'blue' | 'orange' | 'slate' => {

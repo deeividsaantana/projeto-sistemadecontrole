@@ -1,8 +1,9 @@
 import type {
-  Abastecimento, ControleEquipamentoDiario, Equipamento, GrupoEquipe,
+  Abastecimento, ControleEquipamentoDiario, Equipamento, Funcionario, GrupoEquipe,
   OrdemServico, PresencaApontamento, RegistroProducao,
 } from '../types';
 import { fleetSnapshot, fleetSummary, withinPeriod } from './dashboardOperational';
+import { recoverTeamGroups, teamRecordMatches } from './teamIdentity';
 
 export interface DashboardGeneralFilters {
   obraId: string;
@@ -16,6 +17,7 @@ export interface DashboardGeneralSource {
   producao?: RegistroProducao[];
   abastecimentos?: Abastecimento[];
   presencasLink?: PresencaApontamento[];
+  funcionarios?: Funcionario[];
   gruposEquipe?: Array<Pick<GrupoEquipe, 'id' | 'obraId'> & Partial<Pick<GrupoEquipe, 'nome' | 'frenteServico' | 'status'>>>;
   ordensServico?: OrdemServico[];
 }
@@ -118,13 +120,13 @@ export function buildDashboardGeneralViewModel(filters: DashboardGeneralFilters,
   const fuelRows = (source.abastecimentos ?? []).filter(item =>
     (!filters.obraId || equipmentIds.has(item.equipamentoId)) && withinPeriod(item.data, filters.from, filters.to));
   const groups = (source.gruposEquipe ?? []).filter(item => item.status !== 'inativo' && inScope(item.obraId));
-  const groupIds = new Set(groups.map(item => item.id));
+  const recoveredGroups = recoverTeamGroups(groups as GrupoEquipe[], source.presencasLink ?? [], source.funcionarios ?? []);
   const teamRecords = (source.presencasLink ?? []).filter(item =>
-    !item.inativoEm && (!filters.obraId || groupIds.has(item.grupoId))
+    !item.inativoEm && (!filters.obraId || recoveredGroups.some(group => teamRecordMatches(group, item)))
     && withinPeriod(item.data, filters.from, filters.to));
   const presenceRows = teamRecords.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status));
-  const teamItems = groups.map(group => {
-    const records = teamRecords.filter(item => item.grupoId === group.id);
+  const teamItems = recoveredGroups.map(group => {
+    const records = teamRecords.filter(item => teamRecordMatches(group, item));
     const present = records.filter(item => ['Presente', 'Atraso', 'Saída antecipada'].includes(item.status));
     return {
       id: group.id,

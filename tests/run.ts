@@ -29,6 +29,7 @@ import './publicPresenceHistory.test';
 import './publicPresenceTeamMembers.test';
 import './teamSpreadsheetSync.test';
 import './runtimeDataSafety.test';
+import './teamIdentity.test';
 import './publicLinkSecurity.test';
 import './limiteEnvioPresenca.test';
 import './historicoLinkPresenca.test';
