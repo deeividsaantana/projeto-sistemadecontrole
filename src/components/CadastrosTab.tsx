@@ -487,7 +487,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const emLixeira = vista === 'lixeira';
 
   return (
-    <div ref={escopo} className="erp-module erp-module--cadastros space-y-5" id="cadastros-tab" data-testid="cadastros-tab">
+    <div ref={escopo} className="erp-module erp-module--cadastros space-y-4" id="cadastros-tab" data-testid="cadastros-tab">
       <div data-cadastros-reveal>
         <PageHeader
           className="cadastros-header"
@@ -518,7 +518,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
         <CadastroTipos value={vista} contar={item => totais.get(item) ?? 0} onSelect={escolherVista} mostrarLixeira={podeExcluir || lixeira.length > 0} />
 
         <div className="min-w-0 space-y-3">
@@ -534,7 +534,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
             <>
               <div data-cadastros-reveal>
                 <FilterBar label="Filtros de cadastros" className="rounded-2xl border border-slate-200 bg-white p-3">
-                  <div className="w-full space-y-3">
+                  <div className="w-full space-y-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                       <div className="relative min-w-0 flex-1">
                         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
@@ -579,10 +579,21 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                           {filtrosAtivos.length > 0 ? `Filtros · ${filtrosAtivos.length}` : 'Filtros'}
                         </button>
                       )}
+                      {categoria === 'funcionarios' && (
+                        <button
+                          type="button"
+                          aria-pressed={organograma}
+                          onClick={() => setOrganograma(atual => !atual)}
+                          className={`${BOTAO_SECUNDARIO} shrink-0 px-3 ${organograma ? 'border-emerald-500 text-[#176b4d]' : ''}`}
+                        >
+                          <Network className="size-5" aria-hidden="true" />
+                          {organograma ? 'Esconder organograma' : 'Organograma'}
+                        </button>
+                      )}
                     </div>
 
                     {filtrosDoTipo.length > 0 && (
-                      <div className={`${filtrosAbertos ? 'grid' : 'hidden'} gap-2 sm:grid sm:grid-cols-2 xl:grid-cols-4`}>
+                      <div className={`${filtrosAbertos ? 'grid' : 'hidden'} gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-4`}>
                         {filtrosDoTipo.map(filtro => (
                           <label key={filtro.id} className="min-w-0">
                             <span className="sr-only">{filtro.label}</span>
@@ -601,7 +612,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                       </div>
                     )}
 
-                    {(filtrosAtivos.length > 0 || temConsulta || categoria === 'funcionarios') && (
+                    {(filtrosAtivos.length > 0 || temConsulta) && (
                       <div className="flex flex-wrap items-center gap-2">
                         {filtrosAtivos.map(([id, valor]) => (
                           <button
@@ -617,17 +628,6 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                         {temConsulta && (
                           <button type="button" onClick={limparFiltros} className={`min-h-9 rounded-lg px-2 text-sm font-semibold text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline ${FOCO}`}>
                             Limpar filtros
-                          </button>
-                        )}
-                        {categoria === 'funcionarios' && (
-                          <button
-                            type="button"
-                            aria-pressed={organograma}
-                            onClick={() => setOrganograma(atual => !atual)}
-                            className={`ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold ${organograma ? 'text-[#176b4d]' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
-                          >
-                            <Network className="size-4" aria-hidden="true" />
-                            {organograma ? 'Esconder organograma' : 'Ver organograma'}
                           </button>
                         )}
                       </div>

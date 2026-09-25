@@ -79,6 +79,17 @@ test('cadastros oferece busca nomeada no grupo de filtros', async ({ page }) => 
   await expect(filters.getByRole('searchbox', { name: 'Buscar cadastros' })).toBeVisible();
 });
 
+test('cadastros cabe em notebook sem zoom e mostra a lista logo de cara', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 700 });
+  await page.goto('/?screen=cadastros');
+  const primeira = page.locator('[data-linha-lista]:visible').first();
+  await expect(primeira).toBeVisible();
+  const estouro = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(estouro, 'a tabela não pode empurrar a página para o lado').toBeLessThanOrEqual(0);
+  const topo = await primeira.evaluate(linha => linha.getBoundingClientRect().top);
+  expect(topo, 'a primeira linha aparece sem rolar').toBeLessThan(400);
+});
+
 test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({ page }) => {
   await page.goto('/?screen=cadastros');
   await page.locator('[data-linha-lista]:visible').first().click();
