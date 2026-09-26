@@ -28,3 +28,28 @@ test('registro sem nome legível de equipe conta só na equipe dele', async () =
   assert.equal(teamRecordMatches({ id: 'g-1', nome: 'CIVIL - ANA', responsavel: 'ANA' } as never, registro), true);
   assert.equal(teamRecordMatches({ id: 'g-2', nome: 'CIVIL - JOSE', responsavel: 'JOSE' } as never, registro), false);
 });
+
+test('equipe "DIVERSOS" sem responsável ganha o nome do encarregado, como no app', () => {
+  const [grupo] = __testing.recuperarEquipes(
+    [{ id: 'g-1', nome: { x: 1 }, responsavel: '', frenteServico: 'TERRAPLENAGEM', liderMatricula: '123', funcionarioIds: [] }],
+    [{ id: 'f-1', matricula: '123', nome: 'EDSON MARTINS DA SILVA' }],
+  );
+  assert.equal(grupo.nome, 'TERRAPLENAGEM - EDSON MARTINS DA SILVA');
+  assert.equal(grupo.responsavel, 'EDSON MARTINS DA SILVA');
+  const [porMembros] = __testing.recuperarEquipes(
+    [{ id: 'g-2', nome: 'DIVERSOS', frenteServico: 'DIVERSOS', funcionarioIds: ['f-2', 'f-3'] }],
+    [{ id: 'f-2', liderNome: 'ANA' }, { id: 'f-3', liderNome: 'ANA' }],
+  );
+  assert.equal(porMembros.nome, 'DIVERSOS - ANA');
+});
+
+test('frente "DIVERSOS" usa a frente e o nome do último envio da equipe', () => {
+  const [grupo] = __testing.recuperarEquipes(
+    [{ id: 'g-1', nome: '', frenteServico: 'DIVERSOS', funcionarioIds: [] }],
+    [],
+    [{ grupoId: 'g-1', data: '2026-09-25', grupoNome: 'CIVIL - JOSE AUGUSTO', frenteServico: 'CIVIL', responsavel: 'JOSE AUGUSTO' }],
+  );
+  assert.equal(grupo.nome, 'CIVIL - JOSE AUGUSTO');
+  assert.equal(grupo.frenteServico, 'CIVIL');
+  assert.equal(grupo.responsavel, 'JOSE AUGUSTO');
+});

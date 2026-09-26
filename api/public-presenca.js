@@ -110,8 +110,58 @@ const nomeDaEquipe = group => textoLegivel(group.nome, 160)
   || [textoLegivel(group.frenteServico, 80), textoLegivel(group.responsavel, 80)].filter(Boolean).join(' - ')
   || 'Equipe sem nome';
 
+// Mesma regra do app (recoverTeamGroups): nome genérico ou ilegível vira
+// "frente - encarregado", com o encarregado achado pela matrícula do líder
+// ou pelo líder mais comum entre os membros.
+const NOMES_GENERICOS = new Set(['', 'DIVERSOS', 'EQUIPE', 'SEM NOME', 'EQUIPE SEM NOME']);
+const recuperarEquipes = (groups, employees = [], records = []) => {
+  const ultimoEnvio = new Map();
+  (Array.isArray(records) ? records : []).forEach(record => {
+    const id = textoLegivel(record?.grupoId);
+    if (!id) return;
+    const carimbo = `${textoLegivel(record.data)} ${textoLegivel(record.horaEnvio)}`;
+    const atual = ultimoEnvio.get(id);
+    if (!atual || carimbo >= atual.carimbo) ultimoEnvio.set(id, { carimbo, record });
+  });
+  const porMatricula = new Map(employees.map(item => [textoLegivel(item?.matricula), item]).filter(([mat]) => mat));
+  const porId = new Map(employees.map(item => [textoLegivel(item?.id), item]));
+  return groups.map(group => {
+    const envio = ultimoEnvio.get(textoLegivel(group.id))?.record;
+    const frenteGuardada = textoLegivel(group.frenteServico, 200);
+    const frente = frenteGuardada && frenteGuardada !== 'DIVERSOS'
+      ? frenteGuardada
+      : textoLegivel(envio?.frenteServico, 200) || frenteGuardada;
+    const contagem = new Map();
+    (Array.isArray(group.funcionarioIds) ? group.funcionarioIds : []).forEach(id => {
+      const lider = textoLegivel(porId.get(textoLegivel(id))?.liderNome, 160);
+      if (lider) contagem.set(lider, (contagem.get(lider) || 0) + 1);
+    });
+    const liderDosMembros = [...contagem].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    const responsavel = textoLegivel(group.responsavel, 160)
+      || textoLegivel(porMatricula.get(textoLegivel(group.liderMatricula))?.nome, 160)
+      || textoLegivel(group.liderNome, 160)
+      || liderDosMembros
+      || textoLegivel(envio?.responsavel, 160);
+    const nomeGuardado = textoLegivel(group.nome, 160);
+    const nomeDoEnvio = textoLegivel(envio?.grupoNome, 160);
+    const ehGenerico = texto => NOMES_GENERICOS.has(texto.toLocaleUpperCase('pt-BR')) || texto.toLocaleUpperCase('pt-BR') === frente.toLocaleUpperCase('pt-BR');
+    const nome = ehGenerico(nomeGuardado) && nomeDoEnvio && !ehGenerico(nomeDoEnvio) ? nomeDoEnvio : nomeGuardado;
+    const generico = ehGenerico(nome);
+    return {
+      ...group,
+      nome: generico ? ([frente, responsavel].filter(Boolean).join(' - ') || nome) : nome,
+      responsavel,
+      frenteServico: frente,
+    };
+  });
+};
+
 const activeGroupsForToken = (snapshot, token) => {
-  const active = (snapshot.gruposEquipe || []).filter(group => group?.status === 'ativo' && group?.linkAtivo);
+  const active = recuperarEquipes(
+    (snapshot.gruposEquipe || []).filter(group => group?.status === 'ativo' && group?.linkAtivo),
+    snapshot.funcionarios || [],
+    snapshot.presencasLink || [],
+  );
   if (active.some(group => group.tokenGeral === token)) return active;
   return active.filter(group => group.token === token);
 };
@@ -531,6 +581,7 @@ export const __testing = {
   getPublicConfig,
   resolveGroupEmployeeIds,
   sanitizeGroup,
+  recuperarEquipes,
   textoLegivel,
   teamMemberDocId,
   todayInSaoPaulo,
