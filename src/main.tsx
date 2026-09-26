@@ -9,13 +9,18 @@ import { isPublicLinkUrl } from './app/routing/publicRoutes';
 import { parsePrivatePath } from './app/routing/privateRoutes';
 import { PrivateRouteApp } from './app/routing/PrivateRouteApp';
 import { isSupabaseCloudEnabled } from './platform/cloudProvider';
-import { restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';
-import { instalarReservaEmMemoria } from './utils/reservaArmazenamento';
+import { mirrorReneaLocalStorage, restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';
+import { instalarReservaEmMemoria, registrarPendentesDaReserva } from './utils/reservaArmazenamento';
 
 const startApplication = async () => {
   // Antes de qualquer leitura: memória cheia não pode fazer o envio publicar cópia antiga.
-  instalarReservaEmMemoria(window.localStorage, chave => {
-    console.warn(`A memória do navegador está cheia; ${chave} fica em memória até a próxima sincronização.`);
+  // O que não coube vai na hora para a cópia de recuperação (IndexedDB, bem
+  // maior), para um F5 antes do envio à nuvem não perder o que foi lançado.
+  let espelhoAgendado = 0;
+  const reserva = instalarReservaEmMemoria(window.localStorage, chave => {
+    console.warn(`A memória do navegador está cheia; ${chave} fica guardado na cópia de recuperação até a próxima sincronização.`);
+    window.clearTimeout(espelhoAgendado);
+    espelhoAgendado = window.setTimeout(() => void mirrorReneaLocalStorage(reserva), 0);
   });
   document.documentElement.dataset.appVersion = APP_VERSION;
   const root = createRoot(document.getElementById('root')!);
@@ -31,13 +36,14 @@ const startApplication = async () => {
     if (privateRoute && isSupabaseCloudEnabled) {
       root.render(<StrictMode><AppProviders><PrivateRouteApp route={privateRoute} /></AppProviders></StrictMode>);
     } else {
-      const [{ default: App }] = await Promise.all([
+      const [{ default: App }, pendentes] = await Promise.all([
         import('./App.tsx'),
-        restoreMissingReneaLocalStorage(),
+        restoreMissingReneaLocalStorage(reserva),
       ]);
+      registrarPendentesDaReserva(pendentes);
       root.render(<StrictMode><AppProviders><App /></AppProviders></StrictMode>);
     }
-    startReneaStorageMirror();
+    startReneaStorageMirror(reserva);
   }
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('/service-worker.js').catch(error => {
