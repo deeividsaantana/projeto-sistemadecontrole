@@ -53,3 +53,12 @@ test('frente "DIVERSOS" usa a frente e o nome do último envio da equipe', () =>
   assert.equal(grupo.frenteServico, 'CIVIL');
   assert.equal(grupo.responsavel, 'JOSE AUGUSTO');
 });
+
+test('frente "DIVERSOS" usa a área do encarregado na planilha do efetivo', () => {
+  const [grupo] = __testing.recuperarEquipes(
+    [{ id: 'g-1', nome: 'DIVERSOS', frenteServico: 'DIVERSOS', liderMatricula: '103242', funcionarioIds: [] }],
+    [],
+    [{ grupoId: 'g-1', data: '2026-09-26', grupoNome: 'DIVERSOS - EDSON MARTINS DA SILVA', frenteServico: 'DIVERSOS' }],
+  );
+  assert.equal(grupo.nome, 'TERRAPLENAGEM - EDSON MARTINS DA SILVA');
+});
