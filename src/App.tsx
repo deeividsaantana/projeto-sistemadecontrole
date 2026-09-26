@@ -208,8 +208,7 @@ import { parseStoredJson, readStoredFlag, writeStorageValue, writeStoredFlag } f
 import { ordemDoChecklist, MODELO_CHECKLIST_PADRAO } from './utils/checklist';
 import { STORAGE_KEYS } from './data/storageKeys';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
-import { promoteMasterWorkbook } from './masterData/materializeMasterData';
-import type { MasterWorkbookAnalysis, MasterWorkbookReviewRow } from './masterData/masterWorkbook';
+import type { MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
 import { usosDoCadastro } from './masterData/registryDependencies';
@@ -2413,74 +2412,6 @@ export default function App() {
     const incoming = incomingSimple as EtapaServico[];
     const result = mergeImportedRecords(etapas, incoming, item => normalizeImportText(item.nome));
     return persistImport('Etapas de Serviço', 'renea_etapas', setEtapas, result.next, incoming.length, result.created, result.updated);
-  };
-
-  const handleApplyMasterWorkbook = async (
-    analysis: MasterWorkbookAnalysis,
-  ): Promise<{ success: boolean; message: string }> => {
-    try {
-      const promoted = promoteMasterWorkbook(analysis, {
-        empresas,
-        obras,
-        funcionarios,
-        equipamentos,
-      });
-      const previousReviewRows = parseStoredJson<MasterWorkbookReviewRow[]>(
-        localStorage.getItem('renea_master_data_review_queue'),
-        'renea_master_data_review_queue',
-        [],
-      );
-      const reviewIndex = new Map(previousReviewRows.map(row => [
-        `${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`,
-        row,
-      ]));
-      promoted.reviewRows.forEach(row => {
-        reviewIndex.set(`${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`, row);
-      });
-      const nextReviewRows = Array.from(reviewIndex.values());
-      const created = Object.values(promoted.counts).reduce((total, count) => total + count.created, 0);
-      const updated = Object.values(promoted.counts).reduce((total, count) => total + count.updated, 0);
-      const preserved = promoted.reviewRows.length;
-      const message = `Planilha Mestre aplicada: ${created} cadastro(s) criado(s), ${updated} atualizado(s) e ${preserved} linha(s) preservada(s) para revisão.`;
-      const nextHistory: HistoryLog[] = [{
-        id: `log-master-${Date.now()}`,
-        timestamp: new Date().toLocaleString('pt-BR'),
-        usuario: activeUserName,
-        acao: 'Criou',
-        tela: 'Cadastros Mestres',
-        descricao: `${message} Origem: ${analysis.sourceName}.`,
-      }, ...historyLogs];
-
-      commitStorageBatch(localStorage, [
-        { key: 'renea_empresas', value: JSON.stringify(promoted.empresas) },
-        { key: 'renea_obras', value: JSON.stringify(promoted.obras) },
-        { key: 'renea_funcionarios', value: JSON.stringify(promoted.funcionarios) },
-        { key: 'renea_equipamentos', value: JSON.stringify(promoted.equipamentos) },
-        { key: 'renea_master_data_review_queue', value: JSON.stringify(nextReviewRows) },
-        { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
-      ]);
-
-      setEmpresas(promoted.empresas);
-      setObras(promoted.obras);
-      setFuncionarios(promoted.funcionarios);
-      setEquipamentos(promoted.equipamentos);
-      setHistoryLogs(nextHistory);
-      addNotification('Planilha Mestre atualizada', message, preserved > 0 ? 'warning' : 'success', 'Sistema Local');
-
-      // Sem atraso, pelo mesmo motivo do saveAndLog: handleUploadToFirebase
-      // marca uploadsInFlightRef antes de qualquer await, e é essa marca que
-      // impede uma sincronização automática concorrente de sobrescrever este
-      // lote recém-aplicado com uma versão mais antiga da nuvem.
-      if (isAutoSyncEnabled) {
-        void uploadLocalSnapshotToFirebase();
-      }
-      return { success: true, message };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Falha ao aplicar a Planilha Mestre.',
-      };
-    }
   };
 
   // Mantém exatamente o que foi digitado/importado e acrescenta somente campos
@@ -4991,7 +4922,6 @@ export default function App() {
                 onExcluirVarios={handleExcluirCadastros}
                 onRestaurarVarios={handleRestaurarCadastros}
                 onImportCadastros={handleImportCadastros}
-                onApplyMasterWorkbook={handleApplyMasterWorkbook}
               />
             )}
 

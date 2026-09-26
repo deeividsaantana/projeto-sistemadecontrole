@@ -19,10 +19,8 @@ import type {
   ProdutoLubrificacao,
   TipoCombustivel,
 } from '../types';
-import type { MasterWorkbookAnalysis } from '../masterData/masterWorkbook';
 import { validateCentralRecord } from '../masterData/centralRegistry';
 import { exclusoesAtivas, type ExclusaoRegistro } from '../cloud/exclusoes';
-import MasterDataReviewCenter from './MasterDataReviewCenter';
 import OrganizationChart from './OrganizationChart';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { FilterBar, PageHeader } from '../shared/ui';
@@ -92,7 +90,6 @@ interface CadastrosTabProps {
   };
   onRestaurarVarios: (exclusaoIds: string[]) => { ok: boolean; mensagem: string };
   onImportCadastros: (target: CadastroCategoriaId, rows: Record<string, string>[]) => { success: boolean; message: string };
-  onApplyMasterWorkbook: (analysis: MasterWorkbookAnalysis) => Promise<{ success: boolean; message: string }>;
 }
 
 interface Aviso {
@@ -107,7 +104,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const {
     empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
     historyLogs, exclusoes, podeEditar, podeExcluir,
-    onInativar, usosDoCadastro, onExcluir, onRestaurar, onImportCadastros, onApplyMasterWorkbook,
+    onInativar, usosDoCadastro, onExcluir, onRestaurar, onImportCadastros,
   } = props;
 
   const dados: DadosCadastros = useMemo(
@@ -483,22 +480,6 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     }
   };
 
-  // Arquivo oficial com todas as abas (colaboradores, empresas, equipamentos,
-  // veículos, locais) que alimenta o Power Query das planilhas da obra.
-  const baixarBaseCompleta = async () => {
-    if (exportando) return;
-    setExportando(true);
-    try {
-      const { downloadCentralRegistryWorkbook } = await import('../masterData/centralWorkbookExport');
-      await downloadCentralRegistryWorkbook({ empresas, obras, equipamentos, funcionarios });
-    } catch (error) {
-      console.error('Erro ao gerar a base completa de cadastros:', error);
-      setAviso({ tipo: 'erro', texto: 'Não deu para gerar a planilha. Tente de novo.' });
-    } finally {
-      setExportando(false);
-    }
-  };
-
   // ---- Tela ---------------------------------------------------------------
 
   const filtrosDoTipo = FILTROS[categoria];
@@ -715,25 +696,6 @@ export default function CadastrosTab(props: CadastrosTabProps) {
           )}
         </div>
       </div>
-
-      {podeEditar && (
-        <section aria-labelledby="cadastros-planilha-mestre" className="space-y-3 pt-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="cadastros-planilha-mestre" className="text-xs font-bold uppercase tracking-wide text-[#718087]">Planilha mestre</h2>
-            <button type="button" onClick={baixarBaseCompleta} disabled={exportando} className={BOTAO_SECUNDARIO} data-testid="cadastro-base-completa">
-              <Download className="size-5" aria-hidden="true" />
-              Baixar base completa
-            </button>
-          </div>
-          <MasterDataReviewCenter
-            empresas={empresas}
-            obras={obras}
-            funcionarios={funcionarios}
-            equipamentos={equipamentos}
-            onApplyMasterWorkbook={onApplyMasterWorkbook}
-          />
-        </section>
-      )}
 
       {linhaDetalhe && !formulario && !confirmacao && (
         <CadastroDetalhe

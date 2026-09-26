@@ -209,16 +209,6 @@ export const preserveMasterDataImport = async (
   return response.data;
 };
 
-export interface StagedMasterDataImport {
-  batchId: string;
-  entity: MasterDataReviewEntity;
-  totalRows: number;
-  readyRows: number;
-  matchedRows: number;
-  duplicateRows: number;
-  invalidRows: number;
-}
-
 export interface StagedFuelImport {
   batchId: string;
   preservedRows: number;
@@ -233,28 +223,6 @@ export interface StagedTravelImport {
   pendingRows: number;
   duplicateRows: number;
 }
-
-export const stageMasterDataImport = async (
-  sourceName: string,
-  entity: MasterDataReviewEntity,
-  worksheetName: string,
-  rows: unknown[],
-  metadata: Record<string, unknown> = {},
-): Promise<StagedMasterDataImport> => {
-  const response = await request<StagedMasterDataImport>(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'stage-master-import',
-      sourceName,
-      sourceType: 'master-workbook',
-      entity,
-      worksheetName,
-      rows,
-      metadata,
-    }),
-  });
-  return response.data;
-};
 
 export const stageFuelDataset = async (
   sourceName: string,

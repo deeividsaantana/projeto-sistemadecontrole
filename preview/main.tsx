@@ -151,7 +151,6 @@ function CadastrosPreview() {
       onExcluirVarios={excluirVarios}
       onRestaurarVarios={restaurarVarios}
       onImportCadastros={() => ({ success: true, message: 'ok' })}
-      onApplyMasterWorkbook={async () => ({ success: true, message: 'ok' })}
     />
   );
 }
