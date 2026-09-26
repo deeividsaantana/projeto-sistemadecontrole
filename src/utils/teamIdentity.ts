@@ -78,5 +78,6 @@ export const teamRecordMatches = (group: GrupoEquipe, record: PresencaApontament
   if (groupName && recordName && groupName === recordName) return true;
   const responsible = comparable(group.responsavel);
   const recordResponsible = comparable(record.responsavel);
-  return Boolean(responsible && (responsible === recordResponsible || recordName.endsWith(responsible) || groupName.endsWith(recordResponsible)));
+  // Responsável vazio no registro não pode casar com toda equipe: endsWith('') é sempre verdadeiro.
+  return Boolean(responsible && (responsible === recordResponsible || (recordName && recordName.endsWith(responsible)) || (recordResponsible && groupName.endsWith(recordResponsible))));
 };
