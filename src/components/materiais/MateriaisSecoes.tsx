@@ -9,6 +9,8 @@ export type SecaoMateriais = 'resumo' | 'utilizacao' | 'estoque' | 'movimentos' 
 interface Secao {
   id: SecaoMateriais;
   nome: string;
+  /** Uma linha dizendo o que tem ali, para ninguém precisar abrir para descobrir. */
+  ajuda: string;
   Icone: LucideIcon;
 }
 
@@ -17,18 +19,18 @@ const GRUPOS: ReadonlyArray<{ id: string; nome: string; secoes: readonly Secao[]
     id: 'acompanhar',
     nome: 'Acompanhar',
     secoes: [
-      { id: 'resumo', nome: 'Visão geral', Icone: LayoutDashboard },
-      { id: 'utilizacao', nome: 'Uso por ramo', Icone: Route },
-      { id: 'estoque', nome: 'Estoque', Icone: Boxes },
-      { id: 'movimentos', nome: 'Movimentos', Icone: ListOrdered },
+      { id: 'resumo', nome: 'Visão geral', ajuda: 'Avisos, gráficos e o período', Icone: LayoutDashboard },
+      { id: 'utilizacao', nome: 'Uso por ramo', ajuda: 'Quanto cada ramo recebeu e usou', Icone: Route },
+      { id: 'estoque', nome: 'Estoque', ajuda: 'Quanto sobra de cada material', Icone: Boxes },
+      { id: 'movimentos', nome: 'Movimentos', ajuda: 'Tudo que entrou, saiu ou mudou de lugar', Icone: ListOrdered },
     ],
   },
   {
     id: 'cadastrar',
     nome: 'Cadastrar',
     secoes: [
-      { id: 'cadastro', nome: 'Materiais', Icone: Package },
-      { id: 'importacoes', nome: 'Importar planilha', Icone: FileSpreadsheet },
+      { id: 'cadastro', nome: 'Materiais', ajuda: 'Cadastro, unidade e mínimo', Icone: Package },
+      { id: 'importacoes', nome: 'Importar planilha', ajuda: 'Trazer viagens do Excel', Icone: FileSpreadsheet },
     ],
   },
 ];
@@ -41,6 +43,8 @@ interface Props {
   value: SecaoMateriais;
   secoes: readonly SecaoMateriais[];
   contar: (id: SecaoMateriais) => number | null;
+  /** Avisos abertos de cada parte: aparecem em laranja no lugar da contagem. */
+  avisos?: (id: SecaoMateriais) => number;
   onSelect: (id: SecaoMateriais) => void;
 }
 
@@ -49,7 +53,7 @@ interface Props {
  * é uma coluna fixa com as partes e a quantidade de cada uma; no celular vira
  * um seletor grande que abre a lista de baixo para cima.
  */
-export default function MateriaisSecoes({ value, secoes, contar, onSelect }: Props) {
+export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 0, onSelect }: Props) {
   const [aberto, setAberto] = useState(false);
   const folha = useRef<HTMLDivElement>(null);
   const atual = TODAS.find(secao => secao.id === value) ?? TODAS[0];
@@ -78,7 +82,20 @@ export default function MateriaisSecoes({ value, secoes, contar, onSelect }: Pro
     return total == null ? '' : total.toLocaleString('pt-BR');
   };
 
-  const item = ({ id, nome, Icone }: Secao, grande: boolean) => {
+  const marcador = (id: SecaoMateriais, ativo: boolean) => {
+    const abertos = avisos(id);
+    if (abertos > 0) {
+      return (
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${ativo ? 'bg-white text-[#f26a2e]' : 'bg-[#f26a2e] text-white'}`}>
+          {abertos.toLocaleString('pt-BR')}
+          <span className="sr-only"> aviso(s)</span>
+        </span>
+      );
+    }
+    return <span aria-hidden="true" className={`shrink-0 text-xs font-bold tabular-nums ${ativo ? 'text-white/80' : 'text-slate-400'}`}>{quantidade(id)}</span>;
+  };
+
+  const item = ({ id, nome, ajuda, Icone }: Secao, grande: boolean) => {
     const ativo = value === id;
     return (
       <li key={id}>
@@ -86,14 +103,22 @@ export default function MateriaisSecoes({ value, secoes, contar, onSelect }: Pro
           type="button"
           aria-current={ativo ? 'true' : undefined}
           data-testid={`materiais-secao-${id}`}
+          aria-describedby={`materiais-ajuda-${id}-${grande ? 'm' : 'd'}`}
           onClick={() => escolher(id)}
-          className={`flex w-full min-w-0 items-center gap-3 rounded-xl px-3 text-left font-semibold transition duration-200 ${FOCO} ${grande ? 'min-h-12 text-base' : 'min-h-10 text-sm'} ${ativo
+          className={`flex w-full min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-left font-semibold transition duration-200 ${FOCO} ${grande ? 'min-h-14 text-base' : 'min-h-12 text-sm'} ${ativo
             ? 'is-active bg-[#176b4d] text-white'
             : 'text-slate-700 hover:bg-emerald-50 hover:text-[#176b4d]'}`}
         >
           <Icone className="size-[18px] shrink-0 opacity-80" aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate">{nome}</span>
-          <span aria-hidden="true" className={`shrink-0 text-xs font-bold tabular-nums ${ativo ? 'text-white/80' : 'text-slate-400'}`}>{quantidade(id)}</span>
+          {/* O número fica ao lado do nome e a explicação usa a largura toda:
+              no menu estreito do computador o nome não é mais cortado. */}
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center justify-between gap-2">
+              <span className="min-w-0 break-words">{nome}</span>
+              {marcador(id, ativo)}
+            </span>
+            <span id={`materiais-ajuda-${id}-${grande ? 'm' : 'd'}`} aria-hidden="true" className={`block text-xs font-normal leading-snug ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{ajuda}</span>
+          </span>
         </button>
       </li>
     );
@@ -131,7 +156,7 @@ export default function MateriaisSecoes({ value, secoes, contar, onSelect }: Pro
         >
           <IconeAtual className="size-5 shrink-0 text-[#176b4d]" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate"><span className="font-normal text-slate-500">Ver: </span>{atual.nome}</span>
-          <span className="text-sm font-bold tabular-nums text-slate-400">{quantidade(value)}</span>
+          {marcador(value, false)}
           <ChevronDown className="size-5 text-slate-500" aria-hidden="true" />
         </button>
       </div>

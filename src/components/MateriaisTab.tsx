@@ -10,6 +10,7 @@ import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoM
 import { posicaoEstoque, type PosicaoEstoque } from '../utils/estoque';
 import { cancelMaterialMovement } from '../modules/materials/materialFieldUse';
 import { filtrarOpcoes } from '../modules/materials/lancamentoRapido';
+import { avisosDeMateriais } from '../modules/materials/avisosMateriais';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { numero } from '../utils/formato';
 import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
@@ -115,6 +116,7 @@ export default function MateriaisTab({
   // Uso desfeito fica na lista de movimentos, marcado; resumo e gráficos não somam ele.
   const movimentosVigentes = useMemo(() => movimentos.filter(item => !item.canceladoEm), [movimentos]);
   const posicoes = useMemo(() => posicaoEstoque(ativos, movimentos), [ativos, movimentos]);
+  const avisos = useMemo(() => avisosDeMateriais(posicoes, movimentos, hoje), [hoje, movimentos, posicoes]);
   // A busca olha os 11 mil movimentos: a digitação vem primeiro, a lista acompanha.
   const termo = normalizeComparable(useDeferredValue(busca)).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
@@ -389,7 +391,7 @@ export default function MateriaisTab({
       )}
 
       <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
-        <MateriaisSecoes value={aba} secoes={secoes} contar={contar} onSelect={escolherSecao} />
+        <MateriaisSecoes value={aba} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : 0)} onSelect={escolherSecao} />
 
         <div className="min-w-0 space-y-3">
           {comBusca && (
@@ -437,7 +439,9 @@ export default function MateriaisTab({
               movimentosVigentes={movimentosVigentes}
               posicoes={posicoes}
               podeEditar={podeEditar}
+              avisos={avisos}
               onEditarMaterial={abrirCadastro}
+              onVerMovimentos={termoAviso => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoAviso); }}
             />
           )}
 
@@ -523,6 +527,7 @@ export default function MateriaisTab({
         title={formMaterial ? `Editar ${formMaterial.descricao}` : 'Novo material'}
         onSubmit={() => salvarMaterial()}
         size="md"
+        telaCheia="materiais-material"
         onClose={() => setMaterialAberto(false)}
         footer={(
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
