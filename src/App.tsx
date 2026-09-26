@@ -177,7 +177,7 @@ import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSu
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
 import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
-import { aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
+import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import {
   addPublicPresenceMember,
   deletePublicPresenceRecords,
@@ -208,8 +208,7 @@ import { parseStoredJson, readStoredFlag, writeStorageValue, writeStoredFlag } f
 import { ordemDoChecklist, MODELO_CHECKLIST_PADRAO } from './utils/checklist';
 import { STORAGE_KEYS } from './data/storageKeys';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
-import { promoteMasterWorkbook } from './masterData/materializeMasterData';
-import type { MasterWorkbookAnalysis, MasterWorkbookReviewRow } from './masterData/masterWorkbook';
+import type { MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
 import { usosDoCadastro } from './masterData/registryDependencies';
@@ -1881,8 +1880,8 @@ export default function App() {
    */
   const handleRestaurarCadastros = (exclusaoIds: string[]): { ok: boolean; mensagem: string } => {
     const pedidos = new Set(exclusaoIds);
-    const pendentes = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm);
-    if (pendentes.length === 0) return { ok: false, mensagem: exclusaoIds.length === 1 ? 'Este cadastro já foi restaurado.' : 'Estes cadastros já foram restaurados.' };
+    const pendentes = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm && !item.apagadoEm);
+    if (pendentes.length === 0) return { ok: false, mensagem: exclusaoIds.length === 1 ? 'Este cadastro já foi restaurado ou excluído de vez.' : 'Estes cadastros já foram restaurados ou excluídos de vez.' };
     const tabelas = tabelasCadastro();
     const agora = new Date().toISOString();
     const listas = new Map<string, Array<{ id: string }>>();
@@ -1935,6 +1934,35 @@ export default function App() {
   };
 
   const handleRestaurarCadastro = (exclusaoId: string) => handleRestaurarCadastros([exclusaoId]);
+
+  /**
+   * Tira da Lixeira e joga fora a cópia guardada. A marca de exclusão fica,
+   * para nenhum aparelho publicar o cadastro de volta. Não tem desfazer.
+   */
+  const handleApagarDeVez = (exclusaoIds: string[]): { ok: boolean; mensagem: string } => {
+    if (!pode(currentUserRole, 'cadastros', 'excluir')) {
+      return { ok: false, mensagem: 'Só o administrador pode excluir de vez.' };
+    }
+    const pedidos = new Set(exclusaoIds);
+    const alvos = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm && !item.apagadoEm);
+    if (alvos.length === 0) return { ok: false, mensagem: 'Nada para excluir de vez: a Lixeira já mudou.' };
+    const agora = new Date().toISOString();
+    const feitos = new Set(alvos.map(item => item.id));
+    const nextExclusoes = exclusoes.map(item => (feitos.has(item.id) ? apagarDeVez(item, activeUserName, agora) : item));
+    const nomes = alvos.map(item => `"${item.rotulo}"`).join(', ');
+    saveAndLog(
+      tabelasCadastro()[alvos[0].tabela]?.tela || 'Cadastros',
+      'Excluiu',
+      alvos.length === 1 ? `Excluiu de vez ${nomes} da Lixeira.` : `Excluiu de vez ${alvos.length} cadastros da Lixeira: ${nomes}.`,
+      historyLogs,
+      () => {
+        commitStorageBatch(localStorage, [{ key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) }]);
+        setExclusoes(nextExclusoes);
+      },
+      { registroId: alvos.map(item => item.registroId).join(','), tipoOperacao: 'DELETE' },
+    );
+    return { ok: true, mensagem: alvos.length === 1 ? `${alvos[0].rotulo} foi excluído de vez.` : `${alvos.length} cadastros foram excluídos de vez.` };
+  };
 
   const handleSaveEquipamento = (item: Equipamento, isNew: boolean) => {
     const previous = equipamentos.find(x => x.id === item.id);
@@ -2413,74 +2441,6 @@ export default function App() {
     const incoming = incomingSimple as EtapaServico[];
     const result = mergeImportedRecords(etapas, incoming, item => normalizeImportText(item.nome));
     return persistImport('Etapas de Serviço', 'renea_etapas', setEtapas, result.next, incoming.length, result.created, result.updated);
-  };
-
-  const handleApplyMasterWorkbook = async (
-    analysis: MasterWorkbookAnalysis,
-  ): Promise<{ success: boolean; message: string }> => {
-    try {
-      const promoted = promoteMasterWorkbook(analysis, {
-        empresas,
-        obras,
-        funcionarios,
-        equipamentos,
-      });
-      const previousReviewRows = parseStoredJson<MasterWorkbookReviewRow[]>(
-        localStorage.getItem('renea_master_data_review_queue'),
-        'renea_master_data_review_queue',
-        [],
-      );
-      const reviewIndex = new Map(previousReviewRows.map(row => [
-        `${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`,
-        row,
-      ]));
-      promoted.reviewRows.forEach(row => {
-        reviewIndex.set(`${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`, row);
-      });
-      const nextReviewRows = Array.from(reviewIndex.values());
-      const created = Object.values(promoted.counts).reduce((total, count) => total + count.created, 0);
-      const updated = Object.values(promoted.counts).reduce((total, count) => total + count.updated, 0);
-      const preserved = promoted.reviewRows.length;
-      const message = `Planilha Mestre aplicada: ${created} cadastro(s) criado(s), ${updated} atualizado(s) e ${preserved} linha(s) preservada(s) para revisão.`;
-      const nextHistory: HistoryLog[] = [{
-        id: `log-master-${Date.now()}`,
-        timestamp: new Date().toLocaleString('pt-BR'),
-        usuario: activeUserName,
-        acao: 'Criou',
-        tela: 'Cadastros Mestres',
-        descricao: `${message} Origem: ${analysis.sourceName}.`,
-      }, ...historyLogs];
-
-      commitStorageBatch(localStorage, [
-        { key: 'renea_empresas', value: JSON.stringify(promoted.empresas) },
-        { key: 'renea_obras', value: JSON.stringify(promoted.obras) },
-        { key: 'renea_funcionarios', value: JSON.stringify(promoted.funcionarios) },
-        { key: 'renea_equipamentos', value: JSON.stringify(promoted.equipamentos) },
-        { key: 'renea_master_data_review_queue', value: JSON.stringify(nextReviewRows) },
-        { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
-      ]);
-
-      setEmpresas(promoted.empresas);
-      setObras(promoted.obras);
-      setFuncionarios(promoted.funcionarios);
-      setEquipamentos(promoted.equipamentos);
-      setHistoryLogs(nextHistory);
-      addNotification('Planilha Mestre atualizada', message, preserved > 0 ? 'warning' : 'success', 'Sistema Local');
-
-      // Sem atraso, pelo mesmo motivo do saveAndLog: handleUploadToFirebase
-      // marca uploadsInFlightRef antes de qualquer await, e é essa marca que
-      // impede uma sincronização automática concorrente de sobrescrever este
-      // lote recém-aplicado com uma versão mais antiga da nuvem.
-      if (isAutoSyncEnabled) {
-        void uploadLocalSnapshotToFirebase();
-      }
-      return { success: true, message };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Falha ao aplicar a Planilha Mestre.',
-      };
-    }
   };
 
   // Mantém exatamente o que foi digitado/importado e acrescenta somente campos
@@ -4990,8 +4950,8 @@ export default function App() {
                 onRestaurar={handleRestaurarCadastro}
                 onExcluirVarios={handleExcluirCadastros}
                 onRestaurarVarios={handleRestaurarCadastros}
+                onApagarDeVez={handleApagarDeVez}
                 onImportCadastros={handleImportCadastros}
-                onApplyMasterWorkbook={handleApplyMasterWorkbook}
               />
             )}
 

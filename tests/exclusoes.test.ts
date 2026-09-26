@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { aplicarExclusoes, criarExclusao, exclusoesAtivas, restaurarExclusao } from '../src/cloud/exclusoes';
+import { apagarDeVez, aplicarExclusoes, criarExclusao, exclusoesAtivas, restaurarExclusao } from '../src/cloud/exclusoes';
 import { mergeCloudSnapshotsWithBaseline, resolvePublishPayload } from '../src/cloudMerge';
 
 const josue = { id: 'COL-0163', nome: 'Josué Pereira', matricula: '01063' };
@@ -86,4 +86,22 @@ test('a cópia para restaurar deixa de fora foto grande', () => {
 test('retrato sem exclusões volta o mesmo objeto', () => {
   const retrato = { funcionarios: [josue] };
   assert.equal(aplicarExclusoes(retrato), retrato);
+});
+
+test('excluir de vez joga fora a cópia, mas a marca continua tirando o cadastro', () => {
+  const apagada = apagarDeVez(excluirJosue(), 'Deivid', '2026-09-26T12:00:00.000Z');
+  assert.deepEqual(apagada.registro, {});
+  assert.equal(apagada.apagadoPor, 'Deivid');
+  assert.equal(exclusoesAtivas([apagada]).size, 1);
+  assert.equal(aplicarExclusoes({ funcionarios: [josue], exclusoes: [apagada] }).funcionarios.length, 0);
+});
+
+test('excluir de vez vale nos outros aparelhos, mesmo com a nuvem ainda guardando a cópia', () => {
+  const remoto = { funcionarios: [cleiton], exclusoes: [excluirJosue()] };
+  const local = { funcionarios: [josue, cleiton], exclusoes: [apagarDeVez(excluirJosue(), 'Deivid', '2026-09-26T12:00:00.000Z')] };
+  const publicado = mergeCloudSnapshotsWithBaseline(remoto, local, undefined);
+  const [marca] = publicado.exclusoes as Array<{ apagadoEm?: string; registro: object }>;
+  assert.equal(marca.apagadoEm, '2026-09-26T12:00:00.000Z');
+  assert.deepEqual(marca.registro, {});
+  assert.deepEqual((publicado.funcionarios as { id: string }[]).map(item => item.id), ['COL-0144']);
 });

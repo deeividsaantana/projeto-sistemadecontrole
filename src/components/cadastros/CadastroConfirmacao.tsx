@@ -5,7 +5,7 @@ import { AlertTriangle, Lock } from 'lucide-react';
 import type { UsoCadastro } from './CadastroDetalhe';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, reduzMovimento } from './estilos';
 
-export type AcaoConfirmacao = 'excluir' | 'inativar';
+export type AcaoConfirmacao = 'excluir' | 'inativar' | 'excluir-de-vez';
 
 interface Props {
   acao: AcaoConfirmacao;
@@ -45,7 +45,7 @@ export default function CadastroConfirmacao({ acao, nome, codigo, usos, podeInat
 
   const titulo = travada
     ? `Não dá para excluir ${nome}`
-    : acao === 'excluir' ? `Excluir ${nome}?` : `Inativar ${nome}?`;
+    : acao === 'excluir' ? `Excluir ${nome}?` : acao === 'excluir-de-vez' ? `Excluir ${nome} de vez?` : `Inativar ${nome}?`;
 
   return createPortal(
     <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/40 sm:items-center sm:p-5" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onCancelar(); }}>
@@ -58,7 +58,7 @@ export default function CadastroConfirmacao({ acao, nome, codigo, usos, podeInat
         data-testid="cadastro-confirmacao"
         className="w-full max-w-md space-y-4 rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6"
       >
-        <div className={`inline-flex size-11 items-center justify-center rounded-xl ${travada ? 'bg-amber-50 text-amber-700' : acao === 'excluir' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
+        <div className={`inline-flex size-11 items-center justify-center rounded-xl ${travada ? 'bg-amber-50 text-amber-700' : acao !== 'inativar' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
           {travada ? <Lock className="size-5" aria-hidden="true" /> : <AlertTriangle className="size-5" aria-hidden="true" />}
         </div>
         <div className="space-y-2">
@@ -70,6 +70,8 @@ export default function CadastroConfirmacao({ acao, nome, codigo, usos, podeInat
                 : 'Ele aparece em lançamentos. Se sumir, esses lançamentos ficam sem nome no histórico e nos relatórios.'
               : acao === 'excluir'
                 ? 'Ele sai deste aparelho, do Firebase e dos outros aparelhos. Fica na Lixeira desta aba, onde dá para restaurar.'
+                : acao === 'excluir-de-vez'
+                  ? 'Sai da Lixeira em todos os aparelhos e não dá mais para restaurar. O histórico de lançamentos não muda.'
                 : 'Ele sai das listas de escolha, mas continua no histórico e nos lançamentos antigos. Dá para reativar quando quiser.'}
           </p>
         </div>
@@ -93,8 +95,8 @@ export default function CadastroConfirmacao({ acao, nome, codigo, usos, podeInat
               Inativar
             </button>
           ) : (
-            <button type="button" onClick={onConfirmar} disabled={processando} className={`${acao === 'excluir' ? BOTAO_PERIGO : BOTAO_PRIMARIO} flex-1`} data-testid="cadastro-confirmar">
-              {processando ? 'Aguarde…' : acao === 'excluir' ? 'Excluir' : 'Inativar'}
+            <button type="button" onClick={onConfirmar} disabled={processando} className={`${acao === 'inativar' ? BOTAO_PRIMARIO : BOTAO_PERIGO} flex-1`} data-testid="cadastro-confirmar">
+              {processando ? 'Aguarde…' : acao === 'excluir' ? 'Excluir' : acao === 'excluir-de-vez' ? 'Excluir de vez' : 'Inativar'}
             </button>
           )}
         </div>

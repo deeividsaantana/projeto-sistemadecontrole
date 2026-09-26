@@ -46,10 +46,10 @@ test('aba Cadastros segue o padrão: cabeçalho, ação principal no topo e GSAP
   assert.match(tabSource, /useGSAP\(/);
   assert.match(tabSource, /prefers-reduced-motion: reduce/);
   assert.match(tabSource, /\[data-cadastros-reveal\]/);
-  // Tipos, filtros e lista vêm antes das ferramentas de base (planilha mestre)
+  // Tipos e filtros vêm antes da lista; a central de planilha mestre saiu da tela
   assert.ok(tabSource.indexOf('<CadastroTipos') < tabSource.indexOf('label="Filtros de cadastros"'));
   assert.ok(tabSource.indexOf('label="Filtros de cadastros"') < tabSource.indexOf('id="database-lists-viewport"'));
-  assert.ok(tabSource.indexOf('id="database-lists-viewport"') < tabSource.indexOf('<MasterDataReviewCenter'));
+  assert.doesNotMatch(tabSource, /MasterDataReviewCenter|Baixar base completa/);
 });
 
 test('seletor de tipos é acessível ao toque e ao teclado', () => {
