@@ -47,6 +47,8 @@ interface MateriaisTabProps {
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
 const UNIDADES = ['m³', 't', 'kg', 'un', 'm', 'm²', 'L', 'sc'];
 
+const PASSO_MOVIMENTOS = 100;
+
 type MateriaisAba = 'resumo' | 'utilizacao' | 'estoque' | 'movimentos' | 'cadastro' | 'importacoes';
 
 interface MaterialBatchRow {
@@ -96,6 +98,11 @@ export default function MateriaisTab({
   // o painel só polui: some nessas abas, como numa tela de cadastro de ERP.
   const painelOperacionalVisivel = aba === 'resumo' || aba === 'estoque' || aba === 'movimentos';
   const [busca, setBusca] = useState('');
+  // Com a planilha de agregados são mais de 11 mil movimentos: desenhar todos
+  // de uma vez parava a tela por uns 7 segundos. A lista mostra um pedaço e
+  // cresce quando a pessoa pede; a busca continua olhando todos.
+  const [limiteMovimentos, setLimiteMovimentos] = useState(PASSO_MOVIMENTOS);
+  useEffect(() => { setLimiteMovimentos(PASSO_MOVIMENTOS); }, [busca, aba]);
   const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca]);
   const [erro, setErro] = useState('');
   const [periodo, setPeriodo] = useState(periodoInicial);
@@ -833,7 +840,7 @@ export default function MateriaisTab({
         {aba === 'movimentos' ? (
           movimentosFiltrados.length === 0 ? (
             <EmptyState icon={Boxes} title="Nenhum movimento" description="Registre entradas, saídas, transferências e ajustes." />
-          ) : (
+          ) : (<>
             <TableShell minWidth={980}>
               <TableHead>
                 <tr>
@@ -847,7 +854,7 @@ export default function MateriaisTab({
                 </tr>
               </TableHead>
               <TableBody>
-                {movimentosFiltrados.map(item => (
+                {movimentosFiltrados.slice(0, limiteMovimentos).map(item => (
                   <tr key={item.id} data-linha-lista className="transition-colors hover:bg-slate-50">
                     <td className="p-3 text-slate-600">{formatarData(item.data)}</td>
                     <td className="p-3">
@@ -862,7 +869,17 @@ export default function MateriaisTab({
                 ))}
               </TableBody>
             </TableShell>
-          )
+            {movimentosFiltrados.length > limiteMovimentos && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-600">
+                  Mostrando os {numero(limiteMovimentos)} mais recentes de {numero(movimentosFiltrados.length)}. Use a busca para achar um movimento.
+                </p>
+                <button type="button" onClick={() => setLimiteMovimentos(atual => atual + PASSO_MOVIMENTOS)} className="min-h-10 rounded-md border border-slate-300 bg-white px-4 text-xs font-black text-slate-700 hover:border-emerald-500 hover:text-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60">
+                  Mostrar mais {PASSO_MOVIMENTOS}
+                </button>
+              </div>
+            )}
+          </>)
         ) : posicoesFiltradas.length === 0 ? (
           <EmptyState icon={Package} title="Nenhum material cadastrado" description="Cadastre os materiais que a obra usa." />
         ) : (

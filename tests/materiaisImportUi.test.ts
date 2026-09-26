@@ -17,3 +17,7 @@ const tabSource = readFileSync(new URL('../src/components/MateriaisTab.tsx', imp
 assert.match(tabSource, /'importacoes'/);
 assert.match(tabSource, /MateriaisImportacoesPanel/);
 assert.match(tabSource, /Importações/);
+
+// Com 11 mil movimentos, desenhar a lista inteira parava a tela: ela mostra um pedaço por vez.
+assert.match(tabSource, /movimentosFiltrados\.slice\(0, limiteMovimentos\)/);
+assert.match(tabSource, /Mostrar mais/);
