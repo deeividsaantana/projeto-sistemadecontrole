@@ -262,6 +262,8 @@ export default function ControlePresencaTab({
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
   const groupEditorScrollRef = useRef<HTMLDivElement>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  // Ao editar, a lista abre só com quem já está na equipe; "Todos ativos" mostra o efetivo inteiro.
+  const [membrosAoAbrir, setMembrosAoAbrir] = useState<string[] | null>(null);
   const [editingRecord, setEditingRecord] = useState<PresencaApontamento | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [editStatus, setEditStatus] = useState<PresencaStatus>('Presente');
@@ -595,11 +597,12 @@ export default function ControlePresencaTab({
     const query = employeeSearch.trim().toLocaleLowerCase('pt-BR');
     return safeFuncionarios
       .filter(employee => employee?.ativo && !['INATIVO', 'DESMOBILIZADO'].includes(safeText(employee.status)))
+      .filter(employee => !membrosAoAbrir || membrosAoAbrir.includes(employee.id))
       .filter(employee => !employeeCompany || employee.empresaId === employeeCompany)
       .filter(employee => !query || [safeText(employee.nome), safeText(employee.cargo), safeText(employee.matricula)]
         .some(value => value.toLocaleLowerCase('pt-BR').includes(query)))
       .sort((a, b) => safeText(a.nome).localeCompare(safeText(b.nome), 'pt-BR'));
-  }, [employeeCompany, employeeSearch, safeFuncionarios]);
+  }, [employeeCompany, employeeSearch, membrosAoAbrir, safeFuncionarios]);
 
   const filteredRecords = useMemo(() => {
     const query = recordSearch.trim().toLocaleLowerCase('pt-BR');
@@ -639,6 +642,7 @@ export default function ControlePresencaTab({
 
   const openNewGroup = () => {
     setEditingGroupId(null);
+    setMembrosAoAbrir(null);
     setGroupForm(createEmptyGroup());
     setFeedback('');
     setIsGroupEditorOpen(true);
@@ -647,6 +651,7 @@ export default function ControlePresencaTab({
   const openGroup = (group: GrupoEquipe) => {
     setEditingGroupId(group.id);
     setGroupForm(normalizeGroup(group));
+    setMembrosAoAbrir(safeIds(normalizeGroup(group).funcionarioIds));
     setFeedback('');
     setIsGroupEditorOpen(true);
   };
@@ -1545,8 +1550,8 @@ export default function ControlePresencaTab({
               <label><span className="mb-1.5 block text-xs font-bold text-[#53605a]">Situação</span><select value={groupForm.status} onChange={event => setGroupForm(current => ({ ...current, status: event.target.value as GrupoEquipe['status'] }))} className={FIELD}><option value="ativo">Ativa</option><option value="inativo">Inativa</option></select></label>
               <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-[#d8d4c8] bg-white px-3 text-sm font-semibold text-[#26362f]"><input type="checkbox" checked={groupForm.linkAtivo} onChange={event => setGroupForm(current => ({ ...current, linkAtivo: event.target.checked }))} className="h-4 w-4 accent-emerald-700" /> Link de campo ativo</label>
             </div>
-            <div className="mt-6 border-t border-[#e4e0d6] pt-5"><div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{teamCompanies.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
-              <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">{visibleEmployees.map(employee => { const checked = safeIds(groupForm.funcionarioIds).includes(employee.id); return <label key={employee.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked ? 'border-emerald-300 bg-emerald-50' : 'border-[#e1ddd2] bg-white hover:border-emerald-300'}`}><input type="checkbox" checked={checked} onChange={event => setGroupForm(current => ({ ...current, funcionarioIds: event.target.checked ? [...safeIds(current.funcionarioIds), employee.id] : safeIds(current.funcionarioIds).filter(id => id !== employee.id) }))} className="h-4 w-4 accent-emerald-700" /><div className="min-w-0"><p className="truncate text-sm font-bold text-[#101a22]">{employee.nome}</p><p className="truncate text-xs text-[#65716b]">{employee.cargo}{employee.matricula ? ` · ${employee.matricula}` : ''}</p></div></label>; })}</div>
+            <div className="mt-6 border-t border-[#e4e0d6] pt-5">{editingGroupId && <div className="mb-3 inline-flex rounded-xl border border-[#d8d4c8] bg-white p-1" role="group" aria-label="Quais colaboradores mostrar"><button type="button" aria-pressed={Boolean(membrosAoAbrir)} onClick={() => setMembrosAoAbrir(safeIds(groupForm.funcionarioIds))} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-[#53605a] hover:text-[#101a22]'}`}>Da equipe ({safeIds(groupForm.funcionarioIds).length})</button><button type="button" aria-pressed={!membrosAoAbrir} onClick={() => setMembrosAoAbrir(null)} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${!membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-[#53605a] hover:text-[#101a22]'}`}>Todos ativos</button></div>}<div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#79847e]" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{teamCompanies.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
+              <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">{membrosAoAbrir && visibleEmployees.length === 0 && <p className="rounded-xl border border-dashed border-[#d8d4c8] bg-white p-4 text-sm text-[#53605a]">Nenhum colaborador ativo nesta equipe. Toque em <strong>Todos ativos</strong> para incluir.</p>}{visibleEmployees.map(employee => { const checked = safeIds(groupForm.funcionarioIds).includes(employee.id); return <label key={employee.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked ? 'border-emerald-300 bg-emerald-50' : 'border-[#e1ddd2] bg-white hover:border-emerald-300'}`}><input type="checkbox" checked={checked} onChange={event => setGroupForm(current => ({ ...current, funcionarioIds: event.target.checked ? [...safeIds(current.funcionarioIds), employee.id] : safeIds(current.funcionarioIds).filter(id => id !== employee.id) }))} className="h-4 w-4 accent-emerald-700" /><div className="min-w-0"><p className="truncate text-sm font-bold text-[#101a22]">{employee.nome}</p><p className="truncate text-xs text-[#65716b]">{employee.cargo}{employee.matricula ? ` · ${employee.matricula}` : ''}</p></div></label>; })}</div>
             </div>
             {feedback && <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{feedback}</p>}
             <div className="sticky bottom-0 mt-6 flex gap-3 border-t border-[#e4e0d6] bg-[#fffefa] pt-4"><button type="button" onClick={() => setIsGroupEditorOpen(false)} className={`${SECONDARY_BUTTON} flex-1`}>Cancelar</button><button type="button" onClick={saveGroup} className={`${PRIMARY_BUTTON} flex-1`}><CheckCircle2 className="h-4 w-4" /> Salvar equipe</button></div>

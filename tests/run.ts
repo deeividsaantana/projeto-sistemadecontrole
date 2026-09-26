@@ -174,3 +174,4 @@ import './pageHeaderVisibility.test';
 import './initialSeedCleanup.test';
 import './reservaArmazenamento.test';
 import './publicPresenceTeamNames.test';
+import './editarEquipeFiltro.test';
