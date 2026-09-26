@@ -159,10 +159,10 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
           { label: 'Acima do recebido', valor: String(resumo.acima), detalhe: resumo.acima ? 'conferir entrada ou ramo' : 'nenhum excesso', alerta: resumo.acima > 0 },
           { label: 'Entradas sem ramo', valor: String(semRamo.reduce((soma, item) => soma + item.movementIds.length, 0)), detalhe: semRamo.length ? 'vincule abaixo para contar' : 'tudo vinculado', alerta: semRamo.length > 0 },
         ].map(item => (
-          <article key={item.label} data-uso-reveal className={`renea-card rounded-lg border bg-white p-3.5 sm:p-4 ${item.alerta ? 'border-[#f26a2e]/40' : 'border-slate-200'}`}>
-            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">{item.label}</p>
+          <article key={item.label} data-uso-reveal className={`renea-card rounded-2xl border bg-white p-3.5 sm:p-4 ${item.alerta ? 'border-[#f26a2e]/40' : 'border-slate-200'}`}>
+            <p className="text-sm font-semibold text-slate-600">{item.label}</p>
             <strong className={`mt-1 block text-2xl font-black tabular-nums ${item.alerta ? 'text-[#b3461a]' : 'text-slate-950'}`}>{item.valor}</strong>
-            <span className="mt-1 block text-[11px] leading-4 text-slate-500">{item.detalhe}</span>
+            <span className="mt-1 block text-xs leading-4 text-slate-500">{item.detalhe}</span>
           </article>
         ))}
       </div>
@@ -171,10 +171,10 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
         label="Busca da utilização"
         actions={podeEditar ? (
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-            <button type="button" onClick={() => void gerarLink()} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 active:scale-[0.98] ${focusRing}`}>
+            <button type="button" onClick={() => void gerarLink()} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 active:scale-[0.98] ${focusRing}`}>
               <Link2 className="h-4 w-4" /> Link dos apontadores
             </button>
-            <button type="button" onClick={() => abrirApontar()} disabled={ramosComEntrada.length === 0} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
+            <button type="button" onClick={() => abrirApontar()} disabled={ramosComEntrada.length === 0} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
               <Plus className="h-4 w-4" /> Apontar uso
             </button>
           </div>
@@ -187,28 +187,28 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
             value={busca}
             onChange={event => setBusca(event.target.value)}
             placeholder="Ramo ou material"
-            className={`min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500 ${focusRing}`}
+            className={`min-h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500 ${focusRing}`}
           />
         </label>
       </FilterBar>
 
       {link.estado !== 'fechado' && (
-        <article data-uso-reveal className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4" aria-live="polite">
+        <article data-uso-reveal className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4" aria-live="polite">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-black text-slate-950">Link dos apontadores</h2>
               <p className="mt-1 text-xs text-slate-600">Mande pelo WhatsApp. Abre no celular sem senha; cada um informa o nome uma vez.</p>
             </div>
-            <button type="button" onClick={() => setLink({ estado: 'fechado' })} className={`min-h-9 rounded-lg px-2 text-xs font-bold text-slate-500 hover:text-slate-800 ${focusRing}`}>Fechar</button>
+            <button type="button" onClick={() => setLink({ estado: 'fechado' })} className={`min-h-9 rounded-xl px-2 text-xs font-bold text-slate-500 hover:text-slate-800 ${focusRing}`}>Fechar</button>
           </div>
           {link.estado === 'carregando' && <p className="mt-3 text-xs font-bold text-slate-500">Gerando o link protegido...</p>}
           {link.url && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input readOnly value={link.url} onFocus={event => event.target.select()} aria-label="Endereço do link dos apontadores" className={`min-h-11 min-w-0 flex-1 rounded-lg border border-emerald-200 bg-white px-3 font-mono text-xs text-slate-700 ${focusRing}`} />
-              <button type="button" onClick={() => void copiarLink()} className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] ${focusRing}`}>
+              <input readOnly value={link.url} onFocus={event => event.target.select()} aria-label="Endereço do link dos apontadores" className={`min-h-11 min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-3 font-mono text-xs text-slate-700 ${focusRing}`} />
+              <button type="button" onClick={() => void copiarLink()} className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] ${focusRing}`}>
                 {link.copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {link.copiado ? 'Copiado' : 'Copiar'}
               </button>
-              <a href={link.url} target="_blank" rel="noreferrer" className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:border-emerald-500 ${focusRing}`}>
+              <a href={link.url} target="_blank" rel="noreferrer" className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:border-emerald-500 ${focusRing}`}>
                 <ExternalLink className="h-4 w-4" /> Abrir
               </a>
             </div>
@@ -218,28 +218,28 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
       )}
 
       {podeEditar && semRamo.length > 0 && (
-        <article data-uso-reveal className="rounded-lg border border-[#f26a2e]/40 bg-[#fff7f2] p-4">
+        <article data-uso-reveal className="rounded-2xl border border-[#f26a2e]/40 bg-[#fff7f2] p-4">
           <h2 className="flex items-center gap-2 text-sm font-black text-slate-950"><AlertTriangle className="h-4 w-4 text-[#f26a2e]" /> Entradas que ainda não contam</h2>
           <p className="mt-1 text-xs text-slate-600">Estas notas têm o local escrito à mão. Escolha o ramo cadastrado e toque em Vincular. Nada é apagado.</p>
           <ul className="mt-3 grid gap-2">
             {semRamo.slice(0, 8).map(grupo => {
               const escolhido = vinculos[grupo.destino] ?? grupo.suggestedBranchId ?? '';
               return (
-                <li key={grupo.destino} className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-center">
+                <li key={grupo.destino} className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-center">
                   <div className="min-w-0">
                     <strong className="block truncate text-sm text-slate-900">{grupo.destino}</strong>
-                    <span className="text-[11px] text-slate-500">{grupo.movementIds.length} entrada(s)</span>
+                    <span className="text-xs text-slate-500">{grupo.movementIds.length} entrada(s)</span>
                   </div>
                   <select
                     value={escolhido}
                     onChange={event => setVinculos(atual => ({ ...atual, [grupo.destino]: event.target.value }))}
                     aria-label={`Ramo para ${grupo.destino}`}
-                    className={`min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 ${focusRing}`}
+                    className={`min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 ${focusRing}`}
                   >
                     <option value="">Escolha o ramo</option>
                     {etapas.map(etapa => <option key={etapa.id} value={etapa.id}>{etapa.nome}</option>)}
                   </select>
-                  <button type="button" disabled={!escolhido} onClick={() => vincular(grupo.destino, grupo.movementIds)} className={`min-h-11 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
+                  <button type="button" disabled={!escolhido} onClick={() => vincular(grupo.destino, grupo.movementIds)} className={`min-h-11 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
                     Vincular
                   </button>
                 </li>
@@ -263,15 +263,15 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
               <header className="flex items-end justify-between gap-3 border-b border-slate-100 px-4 pb-3 pt-4">
                 <div className="min-w-0">
                   <h2 id={`ramo-${grupo.branchId}`} className="truncate text-base font-black text-slate-950">{grupo.branchName}</h2>
-                  <p className="mt-0.5 text-[11px] text-slate-500">{grupo.rows.length} material(is){grupo.mixedUnits ? ' · uso médio entre eles' : ''}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{grupo.rows.length} material(is){grupo.mixedUnits ? ' · uso médio entre eles' : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="grid justify-items-end">
                     <strong className={`text-3xl font-black leading-none tabular-nums ${grupo.percent !== null && grupo.percent > 100 ? 'text-[#b3461a]' : 'text-emerald-800'}`}>{percentText(grupo.percent)}</strong>
-                    <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">aplicado</span>
+                    <span className="mt-0.5 text-xs font-semibold text-slate-500">aplicado</span>
                   </span>
                   {podeEditar && (
-                    <button type="button" onClick={() => abrirApontar(grupo.branchId)} className={`min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700 active:scale-[0.98] ${focusRing}`}>
+                    <button type="button" onClick={() => abrirApontar(grupo.branchId)} className={`min-h-9 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700 active:scale-[0.98] ${focusRing}`}>
                       Apontar
                     </button>
                   )}
@@ -309,7 +309,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                         >
                           <span className={`block h-full origin-left rounded-full transition-transform duration-500 ${acima ? 'bg-[#f26a2e]' : 'bg-emerald-700'}`} style={{ transform: `scaleX(${largura / 100})` }} />
                         </span>
-                        <span className="flex flex-wrap items-center justify-between gap-x-3 text-[11px] text-slate-500">
+                        <span className="flex flex-wrap items-center justify-between gap-x-3 text-xs text-slate-500">
                           <span className={acima ? 'font-bold text-[#b3461a]' : ''}>
                             {row.received === 0
                               ? 'Uso sem entrada neste ramo'
@@ -329,7 +329,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                           ) : (
                             <ul className="grid gap-1.5">
                               {usosDoMaterial(row).map(uso => (
-                                <li key={uso.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs ${uso.canceladoEm ? 'opacity-60' : ''}`}>
+                                <li key={uso.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs ${uso.canceladoEm ? 'opacity-60' : ''}`}>
                                   <span className="min-w-0">
                                     <strong className={`tabular-nums text-slate-900 ${uso.canceladoEm ? 'line-through' : ''}`}>{number(inCountUnit(material, uso.quantidade))} {unidade}</strong>
                                     <span className="text-slate-500"> · {formatarData(uso.data)} · {uso.apontadoPor || uso.responsavel}{uso.origemApontamentoId ? ' (link)' : ''}</span>
@@ -337,11 +337,11 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                                   </span>
                                   {podeEditar && !uso.canceladoEm && (confirmarDesfazer === uso.id ? (
                                     <span className="flex gap-1.5">
-                                      <button type="button" onClick={() => desfazer(uso)} className={`inline-flex min-h-9 items-center gap-1 rounded-lg bg-[#b3461a] px-2.5 text-[11px] font-bold text-white ${focusRing}`}><Undo2 className="h-3.5 w-3.5" /> Confirmar</button>
-                                      <button type="button" onClick={() => setConfirmarDesfazer('')} className={`min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 ${focusRing}`}>Manter</button>
+                                      <button type="button" onClick={() => desfazer(uso)} className={`inline-flex min-h-9 items-center gap-1 rounded-xl bg-[#b3461a] px-2.5 text-xs font-bold text-white ${focusRing}`}><Undo2 className="h-3.5 w-3.5" /> Confirmar</button>
+                                      <button type="button" onClick={() => setConfirmarDesfazer('')} className={`min-h-9 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-600 ${focusRing}`}>Manter</button>
                                     </span>
                                   ) : (
-                                    <button type="button" onClick={() => setConfirmarDesfazer(uso.id)} className={`inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 hover:border-[#f26a2e] hover:text-[#b3461a] ${focusRing}`}>
+                                    <button type="button" onClick={() => setConfirmarDesfazer(uso.id)} className={`inline-flex min-h-9 items-center gap-1 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-600 hover:border-[#f26a2e] hover:text-[#b3461a] ${focusRing}`}>
                                       <RotateCcw className="h-3.5 w-3.5" /> Desfazer
                                     </button>
                                   ))}
@@ -371,8 +371,8 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-bold text-slate-500">{itensApontados.length ? `${itensApontados.length} material(is) marcado(s)` : 'Nada marcado'}</span>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setApontar(null)} className={`min-h-11 rounded-lg border border-slate-200 px-4 text-xs font-bold text-slate-600 ${focusRing}`}>Cancelar</button>
-              <button type="button" onClick={salvarApontamento} disabled={itensApontados.length === 0} className={`min-h-11 rounded-lg bg-emerald-700 px-5 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>Salvar uso</button>
+              <button type="button" onClick={() => setApontar(null)} className={`min-h-11 rounded-xl border border-slate-200 px-4 text-xs font-bold text-slate-600 ${focusRing}`}>Cancelar</button>
+              <button type="button" onClick={salvarApontamento} disabled={itensApontados.length === 0} className={`min-h-11 rounded-xl bg-emerald-700 px-5 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>Salvar uso</button>
             </div>
           </div>
         )}
@@ -385,7 +385,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                 <select
                   value={apontar.ramoId}
                   onChange={event => setApontar({ ...apontar, ramoId: event.target.value, quantidades: {} })}
-                  className={`min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 ${focusRing}`}
+                  className={`min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 ${focusRing}`}
                 >
                   <option value="">Escolha o ramo</option>
                   {ramosComEntrada.map(ramo => <option key={ramo.branchId} value={ramo.branchId}>{ramo.branchName}</option>)}
@@ -393,11 +393,11 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
               </label>
               <label className="grid gap-1 text-xs font-bold text-slate-600">
                 Dia
-                <input type="date" value={apontar.data} max={isoDay(new Date())} onChange={event => setApontar({ ...apontar, data: event.target.value || apontar.data })} className={`min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 ${focusRing}`} />
+                <input type="date" value={apontar.data} max={isoDay(new Date())} onChange={event => setApontar({ ...apontar, data: event.target.value || apontar.data })} className={`min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 ${focusRing}`} />
               </label>
             </div>
             {!ramoApontado ? (
-              <p className="rounded-lg bg-slate-50 p-4 text-center text-sm text-slate-500">Escolha o ramo para ver os materiais que chegaram lá.</p>
+              <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">Escolha o ramo para ver os materiais que chegaram lá.</p>
             ) : (
               <ul className="grid gap-2">
                 {ramoApontado.rows.map(row => {
@@ -409,11 +409,11 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                     <li key={row.materialId} className={`grid gap-2 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${marcado > 0 ? 'border-emerald-600 bg-emerald-50/40' : 'border-slate-200'}`}>
                       <div className="min-w-0">
                         <strong className="block text-sm text-slate-900">{row.materialDescription}</strong>
-                        <span className="text-[11px] text-slate-500">Sobram {number(inCountUnit(material, Math.max(0, row.remaining)))} de {number(inCountUnit(material, row.received))} {unidade}</span>
+                        <span className="text-xs text-slate-500">Sobram {number(inCountUnit(material, Math.max(0, row.remaining)))} de {number(inCountUnit(material, row.received))} {unidade}</span>
                       </div>
                       <div className="grid grid-cols-[44px_minmax(0,6rem)_44px] items-center gap-1.5">
-                        <button type="button" aria-label={`Diminuir ${row.materialDescription}`} disabled={marcado <= 0} onClick={() => ajustarApontado(row.materialId, -1)} className={`grid h-11 place-items-center rounded-lg border border-slate-200 text-slate-700 disabled:opacity-40 ${focusRing}`}><Minus className="h-4 w-4" /></button>
-                        <label className="flex h-11 items-baseline justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2">
+                        <button type="button" aria-label={`Diminuir ${row.materialDescription}`} disabled={marcado <= 0} onClick={() => ajustarApontado(row.materialId, -1)} className={`grid h-11 place-items-center rounded-xl border border-slate-200 text-slate-700 disabled:opacity-40 ${focusRing}`}><Minus className="h-4 w-4" /></button>
+                        <label className="flex h-11 items-baseline justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2">
                           <span className="sr-only">Quantidade de {row.materialDescription} em {unidade}</span>
                           <input
                             inputMode="decimal"
@@ -428,7 +428,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                           />
                           <small className="text-xs font-bold text-slate-500">{unidade}</small>
                         </label>
-                        <button type="button" aria-label={`Aumentar ${row.materialDescription}`} onClick={() => ajustarApontado(row.materialId, 1)} className={`grid h-11 place-items-center rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 ${focusRing}`}><Plus className="h-4 w-4" /></button>
+                        <button type="button" aria-label={`Aumentar ${row.materialDescription}`} onClick={() => ajustarApontado(row.materialId, 1)} className={`grid h-11 place-items-center rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 ${focusRing}`}><Plus className="h-4 w-4" /></button>
                       </div>
                     </li>
                   );
