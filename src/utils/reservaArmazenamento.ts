@@ -22,9 +22,26 @@ export const instalarReservaEmMemoria = (
   const ler = armazenamento.getItem.bind(armazenamento);
   const remover = armazenamento.removeItem.bind(armazenamento);
 
+  // No navegador, definir propriedade direto no localStorage só grava um item
+  // chamado "setItem"; o método real continua o mesmo. Por isso a troca é
+  // feita no protótipo do Storage, valendo apenas para este armazenamento.
+  const proto = typeof Storage !== 'undefined' && armazenamento instanceof Storage
+    ? Storage.prototype as unknown as Record<string, unknown>
+    : null;
   const substituir = <K extends keyof ArmazenamentoBasico>(nome: K, funcao: ArmazenamentoBasico[K]) => {
-    Object.defineProperty(armazenamento, nome, { value: funcao, configurable: true, writable: true });
+    if (!proto) {
+      Object.defineProperty(armazenamento, nome, { value: funcao, configurable: true, writable: true });
+      return;
+    }
+    const original = proto[nome] as (...args: unknown[]) => unknown;
+    proto[nome] = function (this: unknown, ...args: unknown[]) {
+      return this === armazenamento ? (funcao as (...a: unknown[]) => unknown)(...args) : original.apply(this, args);
+    };
   };
+  // Limpa os itens que a versão anterior deixou gravados por engano.
+  ['setItem', 'getItem', 'removeItem'].forEach(nome => {
+    try { remover(nome); } catch { /* armazenamento indisponível */ }
+  });
 
   substituir('setItem', (chave: string, valor: string) => {
     try {
