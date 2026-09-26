@@ -135,6 +135,7 @@ import './stakeImportApplication.test';
 import './travelImportApplication.test';
 import './importReceiptsAdapter.test';
 import './importMaterialsAdapter.test';
+import './lerPlanilhaMateriais.test';
 import './importStakesAdapter.test';
 import './importTravelsAdapter.test';
 import './importAdapterRegistry.test';

@@ -12,6 +12,9 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    // A leitura de planilha de Materiais roda num worker que carrega o ExcelJS
+    // sob demanda; worker em IIFE não aceita esse carregamento dividido.
+    worker: { format: 'es' },
     build: {
       target: 'es2022',
       rollupOptions: {

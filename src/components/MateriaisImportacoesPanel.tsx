@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { FileSpreadsheet, Upload } from 'lucide-react';
 import SpreadsheetImportReview, { type ImportBatchPreviewViewModel } from './SpreadsheetImportReview';
-import { readWorkbookFile } from '../imports/workbookReader';
-import { runImportPipeline } from '../imports/runImportPipeline';
+import { lerPlanilhaMateriais } from '../imports/lerPlanilhaMateriais';
 import type { ImportDisposition, ImportPreview } from '../imports/types';
 import type { MovimentoMaterial } from '../types';
 import type { Material } from '../types';
@@ -59,14 +58,12 @@ export default function MateriaisImportacoesPanel({ movimentos, materiais, respo
     setReviewOpen(false);
     setResultSummary('');
     try {
-      const workbook = await readWorkbookFile(file);
-      const result = runImportPipeline(workbook, domain =>
-        domain === 'materials-receipts' || domain === 'materials-movements' ? movimentos : undefined);
+      const { preview: result, truncatedSheets } = await lerPlanilhaMateriais(file, movimentos);
       setFileName(file.name);
       setPreview(result);
-      if (workbook.truncatedSheets?.length) {
+      if (truncatedSheets?.length) {
         setTruncationNote(
-          `Aba(s) muito maior(es) que o esperado foram cortadas por segurança, sem travar a leitura: ${workbook.truncatedSheets
+          `Aba(s) muito maior(es) que o esperado foram cortadas por segurança, sem travar a leitura: ${truncatedSheets
             .map(sheet => `${sheet.sheetName} (${sheet.originalRowsDeclared.toLocaleString('pt-BR')} linhas declaradas, ${sheet.keptRows.toLocaleString('pt-BR')} lidas)`)
             .join('; ')}. Confira manualmente se há dado real além do corte.`,
         );
