@@ -21,3 +21,10 @@ test('sem nome legível, a equipe usa frente e responsável', () => {
   assert.equal(grupo.nome, 'DRENAGEM - MARIA');
   assert.equal(textoLegivel({}), '');
 });
+
+test('registro sem nome legível de equipe conta só na equipe dele', async () => {
+  const { teamRecordMatches } = await import('../src/utils/teamIdentity');
+  const registro = { grupoId: 'g-1', grupoNome: '[object Object]', responsavel: '[object Object]' } as never;
+  assert.equal(teamRecordMatches({ id: 'g-1', nome: 'CIVIL - ANA', responsavel: 'ANA' } as never, registro), true);
+  assert.equal(teamRecordMatches({ id: 'g-2', nome: 'CIVIL - JOSE', responsavel: 'JOSE' } as never, registro), false);
+});
