@@ -13,6 +13,7 @@ import {
   stableHash,
 } from './_shared/firebase-admin.js';
 import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
+import { EFETIVO_OBRA_3_LEADERS } from './_shared/efetivo-obra3.js';
 import { assertIdempotencyKey } from './_shared/api-security.js';
 import { withIdempotency } from './_shared/idempotency.js';
 
@@ -127,10 +128,11 @@ const recuperarEquipes = (groups, employees = [], records = []) => {
   const porId = new Map(employees.map(item => [textoLegivel(item?.id), item]));
   return groups.map(group => {
     const envio = ultimoEnvio.get(textoLegivel(group.id))?.record;
+    const daPlanilha = EFETIVO_OBRA_3_LEADERS[textoLegivel(group.liderMatricula)];
     const frenteGuardada = textoLegivel(group.frenteServico, 200);
-    const frente = frenteGuardada && frenteGuardada !== 'DIVERSOS'
-      ? frenteGuardada
-      : textoLegivel(envio?.frenteServico, 200) || frenteGuardada;
+    const frenteDoEnvio = textoLegivel(envio?.frenteServico, 200);
+    const frente = [frenteGuardada, frenteDoEnvio, daPlanilha?.area || '']
+      .find(texto => texto && texto !== 'DIVERSOS') || frenteGuardada;
     const contagem = new Map();
     (Array.isArray(group.funcionarioIds) ? group.funcionarioIds : []).forEach(id => {
       const lider = textoLegivel(porId.get(textoLegivel(id))?.liderNome, 160);
@@ -140,11 +142,17 @@ const recuperarEquipes = (groups, employees = [], records = []) => {
     const responsavel = textoLegivel(group.responsavel, 160)
       || textoLegivel(porMatricula.get(textoLegivel(group.liderMatricula))?.nome, 160)
       || textoLegivel(group.liderNome, 160)
+      || textoLegivel(daPlanilha?.name, 160)
       || liderDosMembros
       || textoLegivel(envio?.responsavel, 160);
     const nomeGuardado = textoLegivel(group.nome, 160);
     const nomeDoEnvio = textoLegivel(envio?.grupoNome, 160);
-    const ehGenerico = texto => NOMES_GENERICOS.has(texto.toLocaleUpperCase('pt-BR')) || texto.toLocaleUpperCase('pt-BR') === frente.toLocaleUpperCase('pt-BR');
+    const ehGenerico = texto => {
+      const upper = texto.toLocaleUpperCase('pt-BR');
+      // "DIVERSOS - FULANO" foi gravado antes de a frente ser recuperada.
+      return NOMES_GENERICOS.has(upper) || upper === frente.toLocaleUpperCase('pt-BR')
+        || (frente !== 'DIVERSOS' && upper.startsWith('DIVERSOS - '));
+    };
     const nome = ehGenerico(nomeGuardado) && nomeDoEnvio && !ehGenerico(nomeDoEnvio) ? nomeDoEnvio : nomeGuardado;
     const generico = ehGenerico(nome);
     return {
