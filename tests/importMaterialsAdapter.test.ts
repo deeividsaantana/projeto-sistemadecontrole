@@ -8,6 +8,8 @@ assert.equal(materialsAdapter.supports('Rachão'), true);
 assert.equal(materialsAdapter.supports('Bota-fora Lara'), true);
 assert.equal(materialsAdapter.supports('Q.E. São Bento'), true);
 assert.equal(materialsAdapter.supports('resumo geral'), false, 'resumo agregado fica deferred');
+assert.equal(materialsAdapter.supports('BRITA'), true, 'a aba "BRITA 02" foi renomeada para "BRITA" na planilha de 26/09');
+assert.equal(materialsAdapter.supports('LANÇ_MAT_RENEA'), true);
 assert.equal(materialsAdapter.supports('Aba qualquer'), false);
 
 const context: ImportParseContext = {
