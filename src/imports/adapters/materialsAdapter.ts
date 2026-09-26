@@ -23,7 +23,7 @@ import type { MovimentoMaterial } from '../../types';
 const normalizeSheetKey = (value: string) => normalizeComparable(value).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 const RECOGNIZED_SHEETS = [
-  'rachao', 'macadame', 'solo reforcado', 'bica corrida', 'areia industrial', 'bgs', 'brita 02',
+  'rachao', 'macadame', 'solo reforcado', 'bica corrida', 'areia industrial', 'bgs', 'brita', 'brita 02',
   'bota fora lara', 'bota fora itaquareia',
   'q e sao bento', 'q e sao bento spe ltda', 'faixa', 'lancamentos renea', 'lanc mat renea',
 ];
