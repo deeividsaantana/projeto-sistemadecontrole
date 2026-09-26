@@ -204,6 +204,7 @@ import {
   normalizeTeamGroups,
 } from './utils/runtimeDataSafety';
 import { commitStorageBatch, isStorageQuotaExceededError } from './utils/resilientStorage';
+import { retirarPendentesDaReserva } from './utils/reservaArmazenamento';
 import { parseStoredJson, readStoredFlag, writeStorageValue, writeStoredFlag } from './data/localStore';
 import { ordemDoChecklist, MODELO_CHECKLIST_PADRAO } from './utils/checklist';
 import { STORAGE_KEYS } from './data/storageKeys';
@@ -1446,7 +1447,27 @@ export default function App() {
     // — e o navegador nunca chegava a baixar os dados reais da nuvem.
     if (!isLoggedIn || !isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
 
-    const initialCheck = window.setTimeout(pullRemoteChanges, 3_000);
+    // O que não coube na memória do navegador e voltou da cópia de
+    // recuperação num F5 sobe antes de qualquer checagem: sem isso a
+    // importação só chegava à nuvem no próximo salvamento, se chegasse.
+    const initialCheck = window.setTimeout(() => {
+      const pendentes = retirarPendentesDaReserva();
+      if (pendentes.length === 0) {
+        void pullRemoteChanges();
+        return;
+      }
+      void handleUploadToFirebase().then(resultado => {
+        if (!resultado.success) {
+          addNotification(
+            'Envio pendente para a nuvem',
+            `O que foi salvo antes de recarregar a página está neste aparelho, mas ainda não chegou à nuvem. Motivo: ${resultado.message}`,
+            'error',
+            'Sistema Local',
+          );
+        }
+        return pullRemoteChanges();
+      });
+    }, 3_000);
     // O manifesto dispara a atualização imediatamente quando outro cliente
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.

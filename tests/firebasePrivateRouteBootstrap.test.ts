@@ -9,6 +9,6 @@ test('rotas privadas SaaS nao desligam o sincronizador Firebase durante a transi
   assert.match(mainSource, /const privateRoute = parsePrivatePath\(window\.location\.pathname\)/);
   assert.match(mainSource, /if \(privateRoute && isSupabaseCloudEnabled\)/);
   assert.match(mainSource, /import\('\.\/App\.tsx'\)/);
-  assert.match(mainSource, /restoreMissingReneaLocalStorage\(\)/);
-  assert.match(mainSource, /startReneaStorageMirror\(\)/);
+  assert.match(mainSource, /restoreMissingReneaLocalStorage\(reserva\)/);
+  assert.match(mainSource, /startReneaStorageMirror\(reserva\)/);
 });

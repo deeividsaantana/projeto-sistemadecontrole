@@ -10,8 +10,9 @@ type ArmazenamentoBasico = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
  * abastecimentos e materiais sumindo).
  *
  * Aqui o valor que não coube fica guardado em memória e toda leitura passa a
- * devolvê-lo, então o envio publica o que está na tela. Ao recarregar a
- * página, o app baixa da nuvem o que foi publicado.
+ * devolvê-lo, então o envio publica o que está na tela. A cópia de
+ * recuperação (IndexedDB) guarda a reserva, e ao recarregar a página ela volta
+ * para cá antes de o app ler qualquer tabela.
  */
 export const instalarReservaEmMemoria = (
   armazenamento: ArmazenamentoBasico,
@@ -59,4 +60,18 @@ export const instalarReservaEmMemoria = (
     remover(chave);
   });
   return reserva;
+};
+
+let pendentesDaReserva: string[] = [];
+
+/** Chaves que voltaram da cópia de recuperação ao abrir e ainda não subiram. */
+export const registrarPendentesDaReserva = (chaves: readonly string[]) => {
+  pendentesDaReserva = [...chaves];
+};
+
+/** Entrega as pendentes uma vez só: quem pega é quem envia para a nuvem. */
+export const retirarPendentesDaReserva = (): string[] => {
+  const chaves = pendentesDaReserva;
+  pendentesDaReserva = [];
+  return chaves;
 };

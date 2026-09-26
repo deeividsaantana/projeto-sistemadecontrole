@@ -67,7 +67,56 @@ interface MirroredValue {
   key: string;
   value: string;
   updatedAt: string;
+  /**
+   * O valor não coube no armazenamento local e só existia na memória da aba.
+   * A cópia do localStorage está velha; ao abrir de novo, vale esta.
+   */
+  emReserva?: boolean;
 }
+
+/** O que a aba guarda em memória quando o armazenamento local enche. */
+export type ReservaArmazenamento = Map<string, string | null>;
+
+/**
+ * Registros da cópia de recuperação: tudo do armazenamento local mais o que
+ * só está na reserva, marcando o que é da reserva. Sem isso, a importação de
+ * 11 mil viagens que não coube voltava ao estado antigo com um F5.
+ */
+export const registrosDoEspelho = (
+  chavesNoDisco: readonly string[],
+  ler: (chave: string) => string | null,
+  reserva: ReservaArmazenamento | undefined,
+  updatedAt: string,
+): MirroredValue[] => {
+  const chaves = new Set(chavesNoDisco.filter(chave => chave.startsWith(KEY_PREFIX)));
+  reserva?.forEach((valor, chave) => { if (valor !== null && chave.startsWith(KEY_PREFIX)) chaves.add(chave); });
+  const registros: MirroredValue[] = [];
+  chaves.forEach(key => {
+    const value = ler(key);
+    // Nunca troca a última cópia íntegra por um JSON quebrado.
+    if (value === null || !isReneaStoredValueValid(key, value)) return;
+    registros.push({ key, value, updatedAt, emReserva: Boolean(reserva?.has(key)) });
+  });
+  return registros;
+};
+
+/**
+ * Ao abrir a página, o que estava na reserva volta para ela antes de o app
+ * ler qualquer tabela. Devolve as chaves trazidas, que ainda precisam subir.
+ */
+export const devolverParaReserva = (
+  registros: readonly MirroredValue[],
+  reserva: ReservaArmazenamento,
+): string[] => {
+  const devolvidas: string[] = [];
+  registros.forEach(registro => {
+    if (!registro.emReserva || !registro.key.startsWith(KEY_PREFIX)) return;
+    if (!isReneaStoredValueValid(registro.key, registro.value)) return;
+    reserva.set(registro.key, registro.value);
+    devolvidas.push(registro.key);
+  });
+  return devolvidas;
+};
 
 interface StorageAdapter {
   getItem(key: string): string | null;
@@ -178,20 +227,24 @@ const requestResult = <T,>(request: IDBRequest<T>) => new Promise<T>((resolve, r
   request.onerror = () => reject(request.error || new Error('Falha no armazenamento de recuperação.'));
 });
 
-export const mirrorReneaLocalStorage = async () => {
+export const mirrorReneaLocalStorage = async (reserva?: ReservaArmazenamento) => {
   try {
     const database = await openRecoveryDatabase();
     const transaction = database.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const updatedAt = new Date().toISOString();
+    const chavesNoDisco: string[] = [];
     for (let index = 0; index < localStorage.length; index += 1) {
       const key = localStorage.key(index);
-      if (!key?.startsWith(KEY_PREFIX)) continue;
-      const value = localStorage.getItem(key);
-      // Nunca troca a última cópia íntegra por um JSON quebrado.
-      if (value === null || !isReneaStoredValueValid(key, value)) continue;
-      store.put({ key, value, updatedAt } satisfies MirroredValue);
+      if (key) chavesNoDisco.push(key);
     }
+    const registros = registrosDoEspelho(chavesNoDisco, chave => localStorage.getItem(chave), reserva, new Date().toISOString());
+    registros.forEach(registro => store.put(registro));
+    // Uma chave que saiu da reserva e foi apagada não pode voltar no próximo F5.
+    const atuais = new Set(registros.map(registro => registro.key));
+    const antigos = await requestResult(store.getAll()) as MirroredValue[];
+    antigos.forEach(registro => {
+      if (registro.emReserva && !atuais.has(registro.key)) store.delete(registro.key);
+    });
     await new Promise<void>((resolve, reject) => {
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error || new Error('Falha ao concluir a cópia local.'));
@@ -203,15 +256,18 @@ export const mirrorReneaLocalStorage = async () => {
   }
 };
 
-export const restoreMissingReneaLocalStorage = async () => {
+export const restoreMissingReneaLocalStorage = async (reserva?: ReservaArmazenamento): Promise<string[]> => {
+  let devolvidas: string[] = [];
   try {
     const database = await openRecoveryDatabase();
     const transaction = database.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const records = await requestResult(store.getAll()) as MirroredValue[];
     const restoredKeys: string[] = [];
+    if (reserva) devolvidas = devolverParaReserva(records, reserva);
 
     records.forEach(record => {
+      if (record.emReserva && devolvidas.includes(record.key)) return;
       if (!record.key.startsWith(KEY_PREFIX) || !isReneaStoredValueValid(record.key, record.value)) return;
       const currentValue = localStorage.getItem(record.key);
       if (isReneaStoredValueValid(record.key, currentValue)) return;
@@ -245,13 +301,15 @@ export const restoreMissingReneaLocalStorage = async () => {
   } catch (error) {
     console.warn('Nenhuma cópia IndexedDB pôde ser restaurada:', error);
   }
+  return devolvidas;
 };
 
-export const startReneaStorageMirror = () => {
-  void mirrorReneaLocalStorage();
-  const interval = window.setInterval(() => void mirrorReneaLocalStorage(), 10_000);
+export const startReneaStorageMirror = (reserva?: ReservaArmazenamento) => {
+  const espelhar = () => void mirrorReneaLocalStorage(reserva);
+  espelhar();
+  const interval = window.setInterval(espelhar, 10_000);
   const onVisibilityChange = () => {
-    if (document.visibilityState === 'hidden') void mirrorReneaLocalStorage();
+    if (document.visibilityState === 'hidden') espelhar();
   };
   document.addEventListener('visibilitychange', onVisibilityChange);
   return () => {

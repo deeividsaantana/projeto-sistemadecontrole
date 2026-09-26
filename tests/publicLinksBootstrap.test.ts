@@ -11,8 +11,8 @@ test('bootstrap publico carrega tela leve sem iniciar ERP administrativo', () =>
   assert.match(mainSource, /isPublicLinkUrl\(\)/);
   assert.match(mainSource, /import\('\.\/PublicLinksApp'\)/);
   assert.match(mainSource, /import\('\.\/App\.tsx'\)/);
-  assert.match(mainSource, /restoreMissingReneaLocalStorage\(\)/);
-  assert.match(mainSource, /startReneaStorageMirror\(\)/);
+  assert.match(mainSource, /restoreMissingReneaLocalStorage\(reserva\)/);
+  assert.match(mainSource, /startReneaStorageMirror\(reserva\)/);
 });
 
 test('servicos publicos nao importam Firebase no caminho inicial do link', () => {
