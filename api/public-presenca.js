@@ -89,6 +89,27 @@ const loadPresenceSnapshot = async database => {
   return snapshotRequest;
 };
 
+// Equipes antigas na nuvem guardam nome, responsável e frente como objeto.
+// String() disso vira "[object Object]" no link; aqui sai o texto legível.
+const TEXTO_CHAVES = ['nome', 'name', 'label', 'descricao', 'grupoNome', 'value', 'text'];
+const textoLegivel = (value, maxLength = 200) => {
+  if (typeof value === 'string' || typeof value === 'number') {
+    const text = cleanString(value, maxLength);
+    return text === '[object Object]' ? '' : text;
+  }
+  if (value && typeof value === 'object') {
+    for (const key of TEXTO_CHAVES) {
+      const text = textoLegivel(value[key], maxLength);
+      if (text) return text;
+    }
+  }
+  return '';
+};
+
+const nomeDaEquipe = group => textoLegivel(group.nome, 160)
+  || [textoLegivel(group.frenteServico, 80), textoLegivel(group.responsavel, 80)].filter(Boolean).join(' - ')
+  || 'Equipe sem nome';
+
 const activeGroupsForToken = (snapshot, token) => {
   const active = (snapshot.gruposEquipe || []).filter(group => group?.status === 'ativo' && group?.linkAtivo);
   if (active.some(group => group.tokenGeral === token)) return active;
@@ -97,9 +118,9 @@ const activeGroupsForToken = (snapshot, token) => {
 
 const sanitizeGroup = (group, exposedToken = '') => ({
   id: cleanString(group.id, 160),
-  nome: cleanString(group.nome, 160),
-  responsavel: cleanString(group.responsavel, 160),
-  frenteServico: cleanString(group.frenteServico, 200),
+  nome: nomeDaEquipe(group),
+  responsavel: textoLegivel(group.responsavel, 160),
+  frenteServico: textoLegivel(group.frenteServico, 200),
   obraId: cleanString(group.obraId, 160) || undefined,
   funcionarioIds: Array.isArray(group.funcionarioIds) ? group.funcionarioIds.map(id => cleanString(id, 160)).filter(Boolean) : [],
   status: 'ativo',
@@ -428,9 +449,9 @@ const applyRecordEdit = ({ records, group, employee, funcionarioId, status, obse
       data: date,
       horaEnvio,
       grupoId: group.id,
-      grupoNome: cleanString(group.nome, 160),
-      responsavel: cleanString(group.responsavel, 160),
-      frenteServico: cleanString(group.frenteServico, 200),
+      grupoNome: nomeDaEquipe(group),
+      responsavel: textoLegivel(group.responsavel, 160),
+      frenteServico: textoLegivel(group.frenteServico, 200),
       funcionarioId,
       funcionarioNome: cleanString(employee.nome, 180),
       funcao: cleanString(employee.cargo, 120),
@@ -480,9 +501,9 @@ const buildPresenceRecords = ({ group, employees, date, items, token, submission
       data: date,
       horaEnvio,
       grupoId: group.id,
-      grupoNome: cleanString(group.nome, 160),
-      responsavel: cleanString(group.responsavel, 160),
-      frenteServico: cleanString(group.frenteServico, 200),
+      grupoNome: nomeDaEquipe(group),
+      responsavel: textoLegivel(group.responsavel, 160),
+      frenteServico: textoLegivel(group.frenteServico, 200),
       funcionarioId,
       funcionarioNome: cleanString(employee.nome, 180),
       funcao: cleanString(employee.cargo, 120),
@@ -509,6 +530,8 @@ export const __testing = {
   findDaySubmissionDoc,
   getPublicConfig,
   resolveGroupEmployeeIds,
+  sanitizeGroup,
+  textoLegivel,
   teamMemberDocId,
   todayInSaoPaulo,
 };
@@ -857,7 +880,7 @@ export const handler = async event => {
             payload: {
               operacao: 'remover',
               grupoId: group.id,
-              grupoNome: cleanString(group.nome, 160),
+              grupoNome: nomeDaEquipe(group),
               data: todayInSaoPaulo(),
               funcionarioId,
               funcionarioNome,
@@ -966,7 +989,7 @@ export const handler = async event => {
               payload: {
                 operacao: 'adicionar',
                 grupoId: group.id,
-                grupoNome: cleanString(group.nome, 160),
+                grupoNome: nomeDaEquipe(group),
                 data: todayInSaoPaulo(),
                 funcionarioId,
                 funcionarioNome,
@@ -1039,7 +1062,7 @@ export const handler = async event => {
         sourceIpHash: requestIpHash(event),
         payload: {
         grupoId: group.id,
-        grupoNome: cleanString(group.nome, 160),
+        grupoNome: nomeDaEquipe(group),
         data: date,
         observacaoDia: cleanString(body.observacaoDia, 600),
         records,

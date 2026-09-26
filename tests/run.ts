@@ -173,3 +173,4 @@ import './registryScreenUi.test';
 import './pageHeaderVisibility.test';
 import './initialSeedCleanup.test';
 import './reservaArmazenamento.test';
+import './publicPresenceTeamNames.test';
