@@ -2,29 +2,26 @@
  * Materiais: cadastro, movimentação e estoque. O saldo é sempre a soma dos
  * movimentos — não existe contador guardado para divergir do histórico.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BarChart3, Boxes, Construction, FileSpreadsheet, Layers3, Mountain, Package, PackageX, Plus, Search, Trash2, Truck, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Layers, PackagePlus, Plus, Search, X } from 'lucide-react';
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
-import { pendenciasDeRecebimento, resumoDeRecebimento } from '../utils/recebimentoMaterial';
 import { posicaoEstoque, saldoDoMaterial, validarMovimento, type PosicaoEstoque } from '../utils/estoque';
-import { buildMaterialsOperationalSummary, getDefaultMaterialsPeriod } from '../utils/materialsAnalytics';
-import { buildMaterialsFlow, summarizeMaterialsStock } from '../utils/materialsDashboard';
 import { normalizeComparable } from '../utils/canonicalIdentity';
-import { formatarData, moeda, numero } from '../utils/formato';
+import { numero } from '../utils/formato';
 import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
 import MateriaisUtilizacaoPanel from './MateriaisUtilizacaoPanel';
+import MateriaisSecoes, { nomeDaSecao, type SecaoMateriais } from './materiais/MateriaisSecoes';
+import MateriaisVisaoGeral from './materiais/MateriaisVisaoGeral';
+import { CartoesMateriais, ListaMovimentos } from './materiais/MateriaisListas';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from './cadastros/estilos';
+import './materiais/Materiais.css';
 import {
-  Badge,
   DataTable,
-  EmptyState,
   FilterBar,
   Modal,
   PageHeader,
-  TableBody,
-  TableHead,
-  TableShell,
   isoDay,
   type DataTableColumn,
 } from '../shared/ui';
@@ -47,7 +44,6 @@ interface MateriaisTabProps {
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
 const UNIDADES = ['m³', 't', 'kg', 'un', 'm', 'm²', 'L', 'sc'];
 
-type MateriaisAba = 'resumo' | 'utilizacao' | 'estoque' | 'movimentos' | 'cadastro' | 'importacoes';
 
 interface MaterialBatchRow {
   data: string;
@@ -65,16 +61,6 @@ interface MaterialBatchRow {
   observacao: string;
 }
 
-const materialVisual = (descricao: string) => {
-  const text = normalizeComparable(descricao);
-  if (text.includes('lixo') || text.includes('bota fora')) return { Icon: Trash2, tone: 'bg-rose-50 text-rose-700 border-rose-100' };
-  if (text.includes('solo')) return { Icon: Mountain, tone: 'bg-amber-50 text-amber-800 border-amber-100' };
-  if (text.includes('rachao') || text.includes('macadame') || text.includes('bica')) return { Icon: Layers3, tone: 'bg-emerald-50 text-emerald-800 border-emerald-100' };
-  if (text.includes('brita') || text.includes('pedra') || text.includes('saibro')) return { Icon: Construction, tone: 'bg-sky-50 text-sky-800 border-sky-100' };
-  return { Icon: Package, tone: 'bg-slate-50 text-slate-700 border-slate-100' };
-};
-
-
 export default function MateriaisTab({
   materiais,
   movimentos,
@@ -89,17 +75,10 @@ export default function MateriaisTab({
   onApplyImport,
 }: MateriaisTabProps) {
   const hoje = isoDay(new Date());
-  const periodoInicial = getDefaultMaterialsPeriod(hoje);
-  const [aba, setAba] = useState<MateriaisAba>('resumo');
-  // Painel de KPIs e gráficos é contexto operacional (quanto tem, quanto
-  // mexeu). Em Cadastro/Importações a tarefa é outra (mestre de dados), então
-  // o painel só polui: some nessas abas, como numa tela de cadastro de ERP.
-  const painelOperacionalVisivel = aba === 'resumo' || aba === 'estoque' || aba === 'movimentos';
+  const [aba, setAba] = useState<SecaoMateriais>('resumo');
   const [busca, setBusca] = useState('');
-  const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca]);
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca, aba]);
   const [erro, setErro] = useState('');
-  const [periodo, setPeriodo] = useState(periodoInicial);
-  const [filtrosResumo, setFiltrosResumo] = useState({ material: '', fornecedor: '', local: '', tipo: '' });
   const [formMaterial, setFormMaterial] = useState<Material | null>(null);
   const [materialAberto, setMaterialAberto] = useState(false);
   const [movimentoAberto, setMovimentoAberto] = useState(false);
@@ -146,29 +125,8 @@ export default function MateriaisTab({
   // Uso desfeito fica na lista de movimentos, marcado; resumo e gráficos não somam ele.
   const movimentosVigentes = useMemo(() => movimentos.filter(item => !item.canceladoEm), [movimentos]);
   const posicoes = useMemo(() => posicaoEstoque(ativos, movimentos), [ativos, movimentos]);
-  const abaixoDoMinimo = posicoes.filter(item => item.abaixoDoMinimo);
-  // Carga que a nota prometeu e não chegou é dinheiro parado: fica em cima.
-  const pendencias = useMemo(() => pendenciasDeRecebimento(movimentosVigentes), [movimentosVigentes]);
-  const recebimento = useMemo(() => resumoDeRecebimento(movimentosVigentes), [movimentosVigentes]);
-  const estoqueResumo = useMemo(() => summarizeMaterialsStock(posicoes), [posicoes]);
-  const fluxoSemanal = useMemo(() => buildMaterialsFlow(movimentosVigentes, hoje), [movimentosVigentes, hoje]);
-  const maiorFluxo = Math.max(1, ...fluxoSemanal.flatMap(item => [item.entradas, item.saidas, item.transferencias]));
-  const resumoOperacional = useMemo(() => buildMaterialsOperationalSummary(movimentosVigentes, {
-    from: periodo.from,
-    to: periodo.to,
-    material: filtrosResumo.material,
-    fornecedor: filtrosResumo.fornecedor,
-    local: filtrosResumo.local,
-    tipo: filtrosResumo.tipo,
-  }), [filtrosResumo, movimentosVigentes, periodo]);
-  const materiaisResumo = useMemo(() => [...new Set(movimentos.map(item => item.materialDescricao).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
-  const fornecedoresResumo = useMemo(() => [...new Set(movimentos.map(item => item.fornecedorNome).filter(Boolean) as string[])]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
-  const locaisResumo = useMemo(() => [...new Set(movimentos.flatMap(item => [item.destino, item.origem]).filter(Boolean) as string[])]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR')), [movimentos]);
-
-  const termo = normalizeComparable(busca).trim();
+  // A busca olha os 11 mil movimentos: a digitação vem primeiro, a lista acompanha.
+  const termo = normalizeComparable(useDeferredValue(busca)).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
     || normalizeComparable(`${item.material.codigo} ${item.material.descricao} ${item.material.categoria}`).includes(termo));
   const movimentosFiltrados = useMemo(() => [...movimentos]
@@ -212,34 +170,6 @@ export default function MateriaisTab({
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
   }, [loteAberto, materialAberto, movimentoAberto, podeEditar]);
-
-  const exportarResumoCsv = () => {
-    const cabecalho = ['Data', 'Tipo', 'Material', 'Unidade', 'Quantidade', 'Fator', 'Fornecedor', 'Placa', 'Ticket', 'Local', 'Valor unitario', 'Valor total'];
-    const linhas = resumoOperacional.filteredMovements.map(item => [
-      item.data,
-      item.tipo,
-      item.materialDescricao,
-      item.unidade,
-      String(item.quantidade).replace('.', ','),
-      item.fatorConversao ? String(item.fatorConversao).replace('.', ',') : '',
-      item.fornecedorNome || '',
-      item.placa || '',
-      item.ticket || item.notaFiscal || '',
-      item.destino || item.origem || '',
-      item.valorUnitario ? String(item.valorUnitario).replace('.', ',') : '',
-      item.valorTotal ? String(item.valorTotal).replace('.', ',') : '',
-    ]);
-    const csv = [cabecalho, ...linhas]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
-      .join('\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `materiais-${periodo.from}-a-${periodo.to}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
 
   const salvarMaterial = () => {
     if (!cadastro.descricao.trim()) {
@@ -395,7 +325,7 @@ export default function MateriaisTab({
     setLinhasLote([novaLinhaLote()]);
     setErro('');
     setLoteAberto(false);
-    setAba('resumo');
+    setAba('movimentos');
   };
 
   const saldoAtualDoForm = movimento.materialId ? saldoDoMaterial(movimentos, movimento.materialId) : 0;
@@ -421,462 +351,150 @@ export default function MateriaisTab({
     if (podeEditar) posicaoColumns.push({
       id: 'acoes', label: 'Ações', align: 'right', cell: item => (
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => abrirCadastro(item.material)} className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Editar</button>
-          <button type="button" onClick={() => excluirMaterial(item.material)} className="min-h-9 rounded-lg border border-rose-200 px-2.5 text-[11px] font-bold text-rose-700 transition-colors hover:bg-rose-50">Excluir</button>
+          <button type="button" onClick={() => abrirCadastro(item.material)} className={`min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition duration-200 hover:border-emerald-500 hover:text-[#176b4d] ${FOCO}`}>Editar</button>
+          <button type="button" onClick={() => excluirMaterial(item.material)} className={`min-h-10 rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 transition duration-200 hover:bg-rose-50 ${FOCO}`}>Excluir</button>
         </div>
       ),
     });
   }
 
+  const secoes: SecaoMateriais[] = podeEditar
+    ? ['resumo', 'utilizacao', 'estoque', 'movimentos', 'cadastro', 'importacoes']
+    : ['resumo', 'utilizacao', 'estoque', 'movimentos', 'cadastro'];
+  const contar = (secao: SecaoMateriais) => {
+    if (secao === 'estoque' || secao === 'cadastro') return ativos.length;
+    if (secao === 'movimentos') return movimentos.length;
+    return null;
+  };
+  const escolherSecao = (secao: SecaoMateriais) => {
+    setAba(secao);
+    setBusca('');
+  };
+  const comBusca = aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro';
+
+  // Entrada do cabeçalho, do menu e dos blocos, no passo do Painel e de Cadastros.
+  useGSAP(() => {
+    const raiz = escopoMotion.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-materiais-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopoMotion, dependencies: [aba] });
+
+  const nenhumaJanela = !materialAberto && !movimentoAberto && !loteAberto;
+
   return (
-    <div ref={escopoMotion} id="materiais-tab" className="min-h-full w-full bg-white px-3 pb-12 pt-0 sm:px-4">
-      <PageHeader
-        title="Materiais"
-        description="Cadastro, movimentação e estoque. O saldo vem da soma dos movimentos."
-        className="-mt-3 sm:-mt-4"
-        actions={podeEditar ? (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => abrirCadastro()} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Novo material</button>
-            <button type="button" onClick={abrirMovimento} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
-              <Plus className="h-4 w-4" /> Novo lançamento <span className="hidden rounded border border-white/30 px-1.5 py-0.5 font-mono text-[9px] xl:inline">N</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setErro(''); setLoteAberto(true); }}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-            >
-              <Plus className="h-4 w-4" /> Lote
-            </button>
-          </div>
-        ) : undefined}
-      />
-
-      {painelOperacionalVisivel && <section id="materials-dashboard" aria-label="Painel de materiais" className="mt-2 grid gap-3 lg:grid-cols-12">
-        <div className="grid grid-cols-2 gap-2 lg:col-span-12 lg:grid-cols-4">
-          {[
-            { label: 'Materiais ativos', valor: String(estoqueResumo.total), detalhe: 'itens no cadastro operacional' },
-            { label: 'Movimentos', valor: String(movimentos.length), detalhe: 'registros no histórico' },
-            { label: 'Abaixo do mínimo', valor: String(estoqueResumo.abaixoDoMinimo), detalhe: 'pedem reposição' },
-            { label: 'Sem saldo', valor: String(estoqueResumo.semSaldo), detalhe: 'sem disponibilidade' },
-          ].map((item, index) => (
-            <article key={item.label} className="renea-card rounded-lg border border-slate-200 bg-white p-3.5 sm:p-4" data-linha-lista data-card-index={index}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">{item.label}</p>
-              <strong className="mt-1 block text-2xl font-black tabular-nums text-slate-950">{item.valor}</strong>
-              <span className="mt-1 block text-[11px] leading-4 text-slate-500">{item.detalhe}</span>
-            </article>
-          ))}
-        </div>
-
-        <article className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-4" aria-labelledby="stock-coverage-title">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-700">Estoque</p>
-              <h2 id="stock-coverage-title" className="mt-1 text-sm font-black text-slate-950">Cobertura operacional</h2>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">posição atual</span>
-          </div>
-          <div className="mt-3 flex items-center gap-5">
-            <div className="relative size-28 shrink-0" role="img" aria-label={`${estoqueResumo.coberturaPercentual ?? 0}% dos materiais com saldo regular`}>
-              <svg viewBox="0 0 112 112" className="size-28 -rotate-90" aria-hidden="true">
-                <circle cx="56" cy="56" r="43" fill="none" stroke="#edf1ee" strokeWidth="10" />
-                <circle
-                  cx="56"
-                  cy="56"
-                  r="43"
-                  fill="none"
-                  stroke="#008b62"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  pathLength="100"
-                  strokeDasharray={`${estoqueResumo.coberturaPercentual ?? 0} 100`}
-                />
-              </svg>
-              <div className="absolute inset-0 grid place-items-center text-center">
-                <strong className="text-xl font-black tabular-nums text-slate-950">{estoqueResumo.coberturaPercentual == null ? '—' : `${estoqueResumo.coberturaPercentual}%`}</strong>
-              </div>
-            </div>
-            <dl className="min-w-0 flex-1 space-y-2 text-xs">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2"><dt className="text-slate-500">Regular</dt><dd className="font-black tabular-nums text-emerald-700">{estoqueResumo.regulares}</dd></div>
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2"><dt className="text-slate-500">Abaixo do mínimo</dt><dd className="font-black tabular-nums text-amber-700">{estoqueResumo.abaixoDoMinimo}</dd></div>
-              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Sem saldo</dt><dd className="font-black tabular-nums text-rose-700">{estoqueResumo.semSaldo}</dd></div>
-            </dl>
-          </div>
-        </article>
-
-        <article className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-8" aria-labelledby="material-flow-title">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-700">Movimentação</p>
-              <h2 id="material-flow-title" className="mt-1 text-sm font-black text-slate-950">Fluxo dos últimos 7 dias</h2>
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wide text-slate-500" aria-label="Legenda do gráfico">
-              <span className="flex items-center gap-1.5"><i className="size-2 rounded-sm bg-emerald-600" /> Entradas</span>
-              <span className="flex items-center gap-1.5"><i className="size-2 rounded-sm bg-amber-500" /> Saídas</span>
-              <span className="flex items-center gap-1.5"><i className="size-2 rounded-sm bg-slate-400" /> Transferências</span>
-            </div>
-          </div>
-          <div className="mt-4 grid h-36 grid-cols-7 items-end gap-2 border-b border-slate-200" role="img" aria-label="Comparação diária entre entradas e saídas de materiais">
-            {fluxoSemanal.map(item => (
-              <div key={item.date} className="flex h-full min-w-0 flex-col justify-end gap-1 text-center">
-                <div className="flex h-[104px] items-end justify-center gap-1">
-                  <span title={`${numero(item.entradas)} em entradas`} className="w-2.5 min-h-0 bg-emerald-600" style={{ height: `${(item.entradas / maiorFluxo) * 100}%` }} />
-                  <span title={`${numero(item.saidas)} em saídas`} className="w-2.5 min-h-0 bg-amber-500" style={{ height: `${(item.saidas / maiorFluxo) * 100}%` }} />
-                  <span title={`${numero(item.transferencias)} em transferências`} className="w-2.5 min-h-0 bg-slate-400" style={{ height: `${(item.transferencias / maiorFluxo) * 100}%` }} />
-                </div>
-                <span className="pb-2 text-[9px] font-bold tabular-nums text-slate-400">{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>}
-
-      {/* Carga que a nota prometeu e não chegou é nota paga sem material na
-          obra. Fica antes do estoque porque é a conversa mais cara. */}
-      {painelOperacionalVisivel && pendencias.length > 0 && (
-        <section id="recebimentos-pendentes" className="mt-4 overflow-hidden rounded-lg border border-rose-200 bg-white">
-          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-200 bg-rose-50 px-4 py-3">
-            <p className="flex items-center gap-2 text-xs font-bold text-rose-900">
-              <PackageX className="h-4 w-4 shrink-0 text-rose-600" />
-              {pendencias.length} entrega(s) com carga faltando
-            </p>
-            <span className="text-[11px] font-bold text-rose-800">
-              {recebimento.percentualRecebido}% do que as notas prometeram já chegou
-            </span>
-          </header>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-xs">
-              <thead className="bg-[#fafcfb] text-[11px] uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="p-3">Material</th>
-                  <th className="p-3">SC / Nota</th>
-                  <th className="p-3">Aplicação</th>
-                  <th className="p-3 text-right">Nota</th>
-                  <th className="p-3 text-right">Recebido</th>
-                  <th className="p-3 text-right">Falta</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {pendencias.map(item => (
-                  <tr key={item.movimentoId} data-linha-lista>
-                    <td className="p-3">
-                      <strong className="block font-bold text-slate-900">{item.material}</strong>
-                      <span className="text-[11px] text-slate-500">{item.data.split('-').reverse().join('/')}</span>
-                    </td>
-                    <td className="p-3 text-slate-600">
-                      {[item.solicitacaoCompra, item.notaFiscal && `NF ${item.notaFiscal}`].filter(Boolean).join(' · ') || '—'}
-                    </td>
-                    <td className="p-3 text-slate-600">{item.destino || '—'}</td>
-                    <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeNota.toLocaleString('pt-BR')}</td>
-                    <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeRecebida.toLocaleString('pt-BR')}</td>
-                    <td className="p-3 text-right font-black tabular-nums text-rose-700">
-                      {item.faltante.toLocaleString('pt-BR')} {item.unidade}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {painelOperacionalVisivel && abaixoDoMinimo.length > 0 && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="flex items-center gap-2 text-xs font-bold text-amber-900">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-            {abaixoDoMinimo.length} material(is) abaixo do estoque mínimo
-          </p>
-          <p className="mt-1 text-[11px] text-amber-800">
-            {abaixoDoMinimo.slice(0, 6).map(item => `${item.material.descricao} (${numero(item.saldo)} ${item.material.unidade})`).join(' · ')}
-          </p>
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-wrap items-stretch gap-2">
-        <div className="flex flex-1 gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          {([['resumo', 'Resumo atual'], ['utilizacao', 'Utilização por Ramo'], ['estoque', 'Estoque'], ['movimentos', 'Movimentos']] as const).map(([id, rotulo]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setAba(id)}
-              aria-pressed={aba === id}
-              className={`min-h-10 flex-1 rounded-md text-xs font-bold transition-colors ${aba === id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-            >
-              {rotulo}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
-          {([['cadastro', 'Cadastro'], ['importacoes', 'Importações']] as const).map(([id, rotulo]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setAba(id)}
-              aria-pressed={aba === id}
-              className={`min-h-10 rounded-md px-4 text-xs font-bold transition-colors ${aba === id ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-200'}`}
-            >
-              {rotulo}
-            </button>
-          ))}
-        </div>
+    <div ref={escopoMotion} id="materiais-tab" data-testid="materiais-tab" className="erp-module erp-module--materiais space-y-4">
+      <div data-materiais-reveal>
+        <PageHeader
+          className="materiais-header"
+          eyebrow="Suprimentos"
+          title="Materiais"
+          description="O que chegou, o que saiu e quanto sobra. O saldo é a soma dos movimentos."
+          actions={podeEditar ? (
+            <>
+              <button type="button" onClick={() => abrirCadastro()} className={BOTAO_SECUNDARIO}>
+                <PackagePlus className="size-5" aria-hidden="true" />
+                Novo material
+              </button>
+              <button type="button" onClick={() => { setErro(''); setLoteAberto(true); }} className={BOTAO_SECUNDARIO}>
+                <Layers className="size-5" aria-hidden="true" />
+                Várias viagens
+              </button>
+              <button type="button" onClick={abrirMovimento} data-testid="materiais-acao-principal" className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
+                <Plus className="size-5" aria-hidden="true" />
+                Novo lançamento
+              </button>
+            </>
+          ) : undefined}
+        />
       </div>
 
-      {aba === 'resumo' ? (
-        <section className="mt-3 space-y-3" aria-label="Resumo atual de materiais">
-          <div className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="grid gap-2 md:grid-cols-6">
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Início
-                <input type="date" value={periodo.from} onChange={event => setPeriodo({ ...periodo, from: event.target.value })} className="mt-1 min-h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-500" />
-              </label>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Fim
-                <input type="date" value={periodo.to} onChange={event => setPeriodo({ ...periodo, to: event.target.value })} className="mt-1 min-h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-500" />
-              </label>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Material
-                <select value={filtrosResumo.material} onChange={event => setFiltrosResumo({ ...filtrosResumo, material: event.target.value })} className="mt-1 min-h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-500">
-                  <option value="">Todos</option>
-                  {materiaisResumo.map(item => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Fornecedor
-                <select value={filtrosResumo.fornecedor} onChange={event => setFiltrosResumo({ ...filtrosResumo, fornecedor: event.target.value })} className="mt-1 min-h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-500">
-                  <option value="">Todos</option>
-                  {fornecedoresResumo.map(item => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Local
-                <input list="materiais-locais-resumo" value={filtrosResumo.local} onChange={event => setFiltrosResumo({ ...filtrosResumo, local: event.target.value })} placeholder="Ramo, base, estoque..." className="mt-1 min-h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-500" />
-                <datalist id="materiais-locais-resumo">{locaisResumo.map(item => <option key={item} value={item} />)}</datalist>
-              </label>
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Tipo
-                <select value={filtrosResumo.tipo} onChange={event => setFiltrosResumo({ ...filtrosResumo, tipo: event.target.value })} className="mt-1 min-h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-500">
-                  <option value="">Todos</option>
-                  {TIPOS.map(item => <option key={item}>{item}</option>)}
-                </select>
-              </label>
+      {erro && nenhumaJanela && (
+        <div role="alert" className="flex items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+          <span>{erro}</span>
+          <button type="button" onClick={() => setErro('')} className={`shrink-0 rounded-lg p-1 text-rose-700 hover:bg-rose-100 ${FOCO}`} aria-label="Fechar aviso"><X className="size-5" aria-hidden="true" /></button>
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
+        <MateriaisSecoes value={aba} secoes={secoes} contar={contar} onSelect={escolherSecao} />
+
+        <div className="min-w-0 space-y-3">
+          {comBusca && (
+            <div data-materiais-reveal className="lg:sticky lg:top-0 lg:z-20 lg:-mt-2 lg:bg-white lg:pb-2 lg:pt-2">
+              <FilterBar label="Filtros de materiais" className="rounded-2xl border border-slate-200 bg-white p-3">
+                <label className="relative block min-w-0 flex-1">
+                  <span className="sr-only">Buscar material</span>
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={busca}
+                    onChange={event => setBusca(event.target.value)}
+                    placeholder={aba === 'movimentos' ? 'Buscar movimento' : `Buscar em ${nomeDaSecao(aba).toLocaleLowerCase('pt-BR')}`}
+                    className={`${CAMPO} pl-11`}
+                  />
+                </label>
+              </FilterBar>
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-              <p className="text-xs font-bold text-slate-500">
-                {resumoOperacional.filteredMovements.length} lançamento(s) no período · {numero(resumoOperacional.totals.quantidade)} em quantidade · {moeda(resumoOperacional.totals.valorTotal)}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setPeriodo(getDefaultMaterialsPeriod(hoje))} className="min-h-9 rounded-md border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700">Mês atual</button>
-                <button type="button" onClick={() => setFiltrosResumo({ material: '', fornecedor: '', local: '', tipo: '' })} className="min-h-9 rounded-md border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700">Limpar filtros</button>
-                <button type="button" onClick={exportarResumoCsv} disabled={resumoOperacional.filteredMovements.length === 0} className="inline-flex min-h-9 items-center gap-2 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white disabled:opacity-40"><FileSpreadsheet className="h-4 w-4" /> Exportar CSV</button>
+          )}
+
+          {aba === 'resumo' && (
+            <MateriaisVisaoGeral
+              hoje={hoje}
+              materiais={materiais}
+              movimentos={movimentos}
+              movimentosVigentes={movimentosVigentes}
+              posicoes={posicoes}
+              podeEditar={podeEditar}
+              onEditarMaterial={abrirCadastro}
+            />
+          )}
+
+          {aba === 'utilizacao' && (
+            <div data-materiais-reveal>
+              <MateriaisUtilizacaoPanel
+                materiais={ativos}
+                movimentos={movimentos}
+                etapas={etapas}
+                responsavel={responsavel}
+                podeEditar={podeEditar}
+                onSaveMovimentos={onSaveMovimentos}
+                onUpdateMovimentos={onUpdateMovimentos}
+              />
+            </div>
+          )}
+
+          {aba === 'movimentos' && <div data-materiais-reveal><ListaMovimentos movimentos={movimentosFiltrados} chave={termo} /></div>}
+
+          {(aba === 'estoque' || aba === 'cadastro') && (
+            <div data-materiais-reveal>
+              <div className="hidden md:block">
+                <DataTable
+                  caption={aba === 'estoque' ? 'Posição de estoque por material' : 'Cadastro de materiais'}
+                  rows={posicoesFiltradas}
+                  columns={posicaoColumns}
+                  getRowId={item => item.material.id}
+                  minWidth={aba === 'cadastro' ? 820 : 720}
+                  emptyMessage={termo ? 'Nenhum material com essa busca.' : 'Nenhum material cadastrado. Use Novo material.'}
+                />
+              </div>
+              <div className="md:hidden">
+                <CartoesMateriais
+                  posicoes={posicoesFiltradas}
+                  modo={aba}
+                  fornecedorDe={item => empresasPorId.get(item.material.fornecedorPadraoId || '') || ''}
+                  podeEditar={podeEditar}
+                  onEditar={item => abrirCadastro(item.material)}
+                  onExcluir={item => excluirMaterial(item.material)}
+                />
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-            <article className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Resumo atual</p>
-                  <h2 className="text-sm font-black text-slate-950">Materiais no período</h2>
-                </div>
-                <BarChart3 className="h-5 w-5 text-slate-400" />
-              </header>
-              <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-3">
-                {resumoOperacional.materials.slice(0, 12).map(item => {
-                  const ativo = normalizeComparable(filtrosResumo.material) === normalizeComparable(item.material);
-                  const { Icon, tone } = materialVisual(item.material);
-                  const materialDoCard = materiais.find(material => normalizeComparable(material.descricao) === normalizeComparable(item.material));
-                  return (
-                    <button
-                      key={item.material}
-                      type="button"
-                      onClick={() => setFiltrosResumo({ ...filtrosResumo, material: ativo ? '' : item.material })}
-                      onDoubleClick={() => materialDoCard && abrirCadastro(materialDoCard)}
-                      title={podeEditar ? 'Clique para filtrar. Duplo clique para editar o cadastro.' : 'Clique para filtrar.'}
-                      className={`rounded-lg border p-3 text-left transition-colors ${ativo ? 'border-emerald-600 bg-emerald-50' : 'border-slate-200 bg-white hover:border-emerald-300'}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md border ${tone}`}>
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-[11px] font-black uppercase tracking-wide text-slate-500">{item.material}</span>
-                          <span className="block text-[10px] font-bold text-slate-400">tipo operacional</span>
-                        </span>
-                      </span>
-                      <strong className="mt-1 block text-xl font-black tabular-nums text-slate-950">{numero(item.quantidade)} {item.unidade}</strong>
-                      {(item.toneladas > 0 || item.metrosCubicos > 0) && (
-                        <span className="mt-1 block text-[11px] font-bold text-emerald-700">
-                          {[
-                            item.toneladas > 0 ? `${numero(item.toneladas)} t` : null,
-                            item.metrosCubicos > 0 ? `${numero(item.metrosCubicos)} m³` : null,
-                            item.densidadeMedia ? `dens. ${item.densidadeMedia.toFixed(2)}` : null,
-                          ].filter(Boolean).join(' · ')}
-                        </span>
-                      )}
-                      <span className="mt-1 block text-[11px] font-bold text-slate-500">
-                        {item.viagens} viagem(ns) · {item.custoMedio ? `${moeda(item.custoMedio)}/un` : 'sem custo'}
-                      </span>
-                      {podeEditar && materialDoCard && <span className="mt-2 block text-[10px] font-black uppercase tracking-wide text-emerald-700">duplo clique edita</span>}
-                    </button>
-                  );
-                })}
-                {resumoOperacional.materials.length === 0 && <EmptyState icon={Package} title="Sem lançamentos no período" description="Ajuste os filtros ou registre novos movimentos." />}
-              </div>
-            </article>
-
-            <article className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Fornecedores</p>
-                  <h2 className="text-sm font-black text-slate-950">Volume e custo</h2>
-                </div>
-                <Truck className="h-5 w-5 text-slate-400" />
-              </header>
-              <div className="divide-y divide-slate-100">
-                {resumoOperacional.suppliers.slice(0, 8).map(item => (
-                  <button key={item.fornecedor} type="button" onClick={() => setFiltrosResumo({ ...filtrosResumo, fornecedor: item.fornecedor })} className="grid w-full grid-cols-[1fr_auto] gap-3 px-4 py-3 text-left hover:bg-slate-50">
-                    <span className="min-w-0">
-                      <strong className="block truncate text-sm text-slate-900">{item.fornecedor}</strong>
-                      <span className="text-[11px] font-bold text-slate-500">{item.viagens} viagem(ns)</span>
-                    </span>
-                    <span className="text-right">
-                      <strong className="block font-mono text-sm text-slate-900">{numero(item.quantidade)}</strong>
-                      <span className="text-[11px] font-bold text-emerald-700">{moeda(item.valorTotal)}</span>
-                    </span>
-                  </button>
-                ))}
-                {resumoOperacional.suppliers.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Sem fornecedor no filtro atual.</p>}
-              </div>
-            </article>
-          </div>
-
-          <div className="grid gap-3 xl:grid-cols-2">
-            <article className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <header className="border-b border-slate-200 px-4 py-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Local x material</p>
-                <h2 className="text-sm font-black text-slate-950">Totais por frente, estoque ou base</h2>
-              </header>
-              <TableShell minWidth={680}>
-                <TableHead>
-                  <tr>
-                    <th className="p-3">Local</th>
-                    <th className="p-3">Material</th>
-                    <th className="p-3 text-right">Quantidade</th>
-                    <th className="p-3 text-right">Custo</th>
-                  </tr>
-                </TableHead>
-                <TableBody>
-                  {resumoOperacional.locations.slice(0, 14).map(item => (
-                    <tr key={`${item.local}-${item.material}`} className="hover:bg-slate-50">
-                      <td className="p-3 font-bold text-slate-800">{item.local}</td>
-                      <td className="p-3 text-slate-600">{item.material}</td>
-                      <td className="p-3 text-right font-mono text-slate-900">{numero(item.quantidade)} {item.unidade}</td>
-                      <td className="p-3 text-right font-mono text-emerald-700">{moeda(item.valorTotal)}</td>
-                    </tr>
-                  ))}
-                </TableBody>
-              </TableShell>
-            </article>
-
-            <article className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <header className="border-b border-slate-200 px-4 py-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Viagens</p>
-                <h2 className="text-sm font-black text-slate-950">Bota-fora e solo</h2>
-              </header>
-              <TableShell minWidth={560}>
-                <TableHead>
-                  <tr>
-                    <th className="p-3">Local</th>
-                    <th className="p-3 text-right">Lixo</th>
-                    <th className="p-3 text-right">Solo contaminado</th>
-                    <th className="p-3 text-right">Solo</th>
-                  </tr>
-                </TableHead>
-                <TableBody>
-                  {resumoOperacional.trips.slice(0, 12).map(item => (
-                    <tr key={item.local} className="hover:bg-slate-50">
-                      <td className="p-3 font-bold text-slate-800">{item.local}</td>
-                      <td className="p-3 text-right font-mono text-slate-900">{numero(item.lixo)}</td>
-                      <td className="p-3 text-right font-mono text-slate-900">{numero(item.soloContaminado)}</td>
-                      <td className="p-3 text-right font-mono text-slate-900">{numero(item.solo)}</td>
-                    </tr>
-                  ))}
-                </TableBody>
-              </TableShell>
-              {resumoOperacional.trips.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhuma viagem de bota-fora/solo encontrada no filtro atual.</p>}
-            </article>
-          </div>
-        </section>
-      ) : aba === 'utilizacao' ? (
-        <MateriaisUtilizacaoPanel
-          materiais={ativos}
-          movimentos={movimentos}
-          etapas={etapas}
-          responsavel={responsavel}
-          podeEditar={podeEditar}
-          onSaveMovimentos={onSaveMovimentos}
-          onUpdateMovimentos={onUpdateMovimentos}
-        />
-      ) : aba !== 'importacoes' && <><FilterBar label="Filtros de materiais" className="mt-3"><label className="relative block min-w-48 flex-1">
-
-        <span className="sr-only">Buscar material</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input
-          value={busca}
-          onChange={event => setBusca(event.target.value)}
-          placeholder="Código, descrição, categoria, fornecedor ou nota"
-          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
-        />
-      </label></FilterBar>
-
-      <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
-        {aba === 'movimentos' ? (
-          movimentosFiltrados.length === 0 ? (
-            <EmptyState icon={Boxes} title="Nenhum movimento" description="Registre entradas, saídas, transferências e ajustes." />
-          ) : (
-            <TableShell minWidth={980}>
-              <TableHead>
-                <tr>
-                  <th className="p-3">Data</th>
-                  <th className="p-3">Tipo</th>
-                  <th className="p-3">Material</th>
-                  <th className="p-3">Quantidade</th>
-                  <th className="p-3">Origem / Destino</th>
-                  <th className="p-3">Fornecedor / Nota</th>
-                  <th className="p-3">Responsável</th>
-                </tr>
-              </TableHead>
-              <TableBody>
-                {movimentosFiltrados.map(item => (
-                  <tr key={item.id} data-linha-lista className="transition-colors hover:bg-slate-50">
-                    <td className="p-3 text-slate-600">{formatarData(item.data)}</td>
-                    <td className="p-3">
-                      <Badge tone={item.tipo === 'Entrada' ? 'success' : item.tipo === 'Saída' ? 'danger' : 'neutral'}>{item.tipo}</Badge>
-                    </td>
-                    <td className="p-3 font-bold text-slate-800">{item.materialDescricao}</td>
-                    <td className="p-3 font-mono text-slate-900">{numero(item.quantidade)} {item.unidade}</td>
-                    <td className="p-3 text-slate-600">{[item.origem, item.destino].filter(Boolean).join(' → ') || '—'}</td>
-                    <td className="p-3 text-slate-600">{[item.fornecedorNome, item.notaFiscal && `NF ${item.notaFiscal}`].filter(Boolean).join(' · ') || '—'}</td>
-                    <td className="p-3 text-slate-600">{item.responsavel}</td>
-                  </tr>
-                ))}
-              </TableBody>
-            </TableShell>
-          )
-        ) : posicoesFiltradas.length === 0 ? (
-          <EmptyState icon={Package} title="Nenhum material cadastrado" description="Cadastre os materiais que a obra usa." />
-        ) : (
-          <DataTable
-            caption={aba === 'estoque' ? 'Posição de estoque por material' : 'Cadastro de materiais'}
-            rows={posicoesFiltradas}
-            columns={posicaoColumns}
-            getRowId={item => item.material.id}
-            minWidth={aba === 'cadastro' ? 900 : 760}
-          />
-        )}
-      </div></>}
-
-      {aba === 'importacoes' && podeEditar && <MateriaisImportacoesPanel materiais={materiais} movimentos={movimentos} responsavel={responsavel} etapas={etapas} onApply={onApplyImport} onError={setErro} />}
+          {aba === 'importacoes' && podeEditar && (
+            <MateriaisImportacoesPanel materiais={materiais} movimentos={movimentos} responsavel={responsavel} etapas={etapas} onApply={onApplyImport} onError={setErro} />
+          )}
+        </div>
+      </div>
 
       <Modal
         open={materialAberto}
@@ -886,52 +504,52 @@ export default function MateriaisTab({
         onClose={() => setMaterialAberto(false)}
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setMaterialAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
-            <button type="button" onClick={salvarMaterial} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar material</button>
+            <button type="button" onClick={() => setMaterialAberto(false)} className={BOTAO_SECUNDARIO}>Cancelar</button>
+            <button type="button" onClick={salvarMaterial} className={BOTAO_PRIMARIO}>Salvar material</button>
           </div>
         )}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Código
-            <input value={cadastro.codigo} onChange={event => setCadastro({ ...cadastro, codigo: event.target.value })} placeholder="Ex: BR-01" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input value={cadastro.codigo} onChange={event => setCadastro({ ...cadastro, codigo: event.target.value })} placeholder="Ex: BR-01" className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Unidade
-            <select value={cadastro.unidade} onChange={event => setCadastro({ ...cadastro, unidade: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+            <select value={cadastro.unidade} onChange={event => setCadastro({ ...cadastro, unidade: event.target.value })} className={`mt-1 ${CAMPO}`}>
               {UNIDADES.map(item => <option key={item}>{item}</option>)}
             </select>
           </label>
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
+          <label className="block text-sm font-semibold text-slate-700 sm:col-span-2">
             Descrição
-            <input value={cadastro.descricao} onChange={event => setCadastro({ ...cadastro, descricao: event.target.value })} placeholder="Ex: Brita 1" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input value={cadastro.descricao} onChange={event => setCadastro({ ...cadastro, descricao: event.target.value })} placeholder="Ex: Brita 1" className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Categoria
-            <input value={cadastro.categoria} onChange={event => setCadastro({ ...cadastro, categoria: event.target.value })} placeholder="Ex: Agregado" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input value={cadastro.categoria} onChange={event => setCadastro({ ...cadastro, categoria: event.target.value })} placeholder="Ex: Agregado" className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Estoque mínimo
-            <input type="number" min="0" step="0.001" value={cadastro.estoqueMinimo} onChange={event => setCadastro({ ...cadastro, estoqueMinimo: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="number" min="0" step="0.001" value={cadastro.estoqueMinimo} onChange={event => setCadastro({ ...cadastro, estoqueMinimo: Number(event.target.value) })} className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Diâmetro (mm)
-            <input inputMode="decimal" placeholder="Ex: 800" value={cadastro.diametroMm} onChange={event => setCadastro({ ...cadastro, diametroMm: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input inputMode="decimal" placeholder="Ex: 800" value={cadastro.diametroMm} onChange={event => setCadastro({ ...cadastro, diametroMm: event.target.value })} className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Comprimento (m)
-            <input inputMode="decimal" placeholder="Ex: 1,50" value={cadastro.comprimentoM} onChange={event => setCadastro({ ...cadastro, comprimentoM: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input inputMode="decimal" placeholder="Ex: 1,50" value={cadastro.comprimentoM} onChange={event => setCadastro({ ...cadastro, comprimentoM: event.target.value })} className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
+          <label className="block text-sm font-semibold text-slate-700 sm:col-span-2">
             Fornecedor padrão
-            <select value={cadastro.fornecedorPadraoId} onChange={event => setCadastro({ ...cadastro, fornecedorPadraoId: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+            <select value={cadastro.fornecedorPadraoId} onChange={event => setCadastro({ ...cadastro, fornecedorPadraoId: event.target.value })} className={`mt-1 ${CAMPO}`}>
               <option value="">Sem fornecedor padrão</option>
               {empresas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
             </select>
           </label>
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
+          <label className="block text-sm font-semibold text-slate-700 sm:col-span-2">
             Observação
-            <textarea value={cadastro.observacao} onChange={event => setCadastro({ ...cadastro, observacao: event.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <textarea value={cadastro.observacao} onChange={event => setCadastro({ ...cadastro, observacao: event.target.value })} rows={2} className={`mt-1 ${CAMPO} py-2`} />
           </label>
         </div>
         {erro && <p className="mt-3 rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{erro}</p>}
@@ -939,87 +557,87 @@ export default function MateriaisTab({
 
       <Modal
         open={movimentoAberto}
-        title="Movimentar material"
+        title="Novo lançamento"
         size="md"
         onSubmit={salvarMovimento}
         onClose={() => setMovimentoAberto(false)}
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setMovimentoAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
-            <button type="button" onClick={salvarMovimento} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Registrar <span className="ml-1 text-[10px] text-emerald-100">Ctrl+Enter</span></button>
+            <button type="button" onClick={() => setMovimentoAberto(false)} className={BOTAO_SECUNDARIO}>Cancelar</button>
+            <button type="button" onClick={salvarMovimento} className={BOTAO_PRIMARIO}>Registrar</button>
           </div>
         )}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Data
-            <input type="date" value={movimento.data} onChange={event => setMovimento({ ...movimento, data: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="date" value={movimento.data} onChange={event => setMovimento({ ...movimento, data: event.target.value })} className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Tipo
             <select value={movimento.tipo} onChange={event => {
               const tipo = event.target.value as TipoMovimentoMaterial;
               setMovimento({ ...movimento, tipo, finalidade: tipo === 'Saída' ? movimento.finalidade : undefined });
-            }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+            }} className={`mt-1 ${CAMPO}`}>
               {TIPOS.map(item => <option key={item}>{item}</option>)}
             </select>
           </label>
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
+          <label className="block text-sm font-semibold text-slate-700 sm:col-span-2">
             Material
-            <select value={movimento.materialId} onChange={event => setMovimento({ ...movimento, materialId: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+            <select value={movimento.materialId} onChange={event => setMovimento({ ...movimento, materialId: event.target.value })} className={`mt-1 ${CAMPO}`}>
               <option value="">Selecione</option>
               {ativos.map(item => <option key={item.id} value={item.id}>{item.descricao}{item.codigo ? ` · ${item.codigo}` : ''}</option>)}
             </select>
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Quantidade{movimento.tipo === 'Ajuste' ? ' (use sinal negativo para baixar)' : ''}
-            <input type="number" step="0.001" value={movimento.quantidade} onChange={event => setMovimento({ ...movimento, quantidade: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="number" step="0.001" value={movimento.quantidade} onChange={event => setMovimento({ ...movimento, quantidade: Number(event.target.value) })} className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Fator / densidade
-            <input type="number" min="0" step="0.001" value={movimento.fatorConversao} onChange={event => setMovimento({ ...movimento, fatorConversao: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="number" min="0" step="0.001" value={movimento.fatorConversao} onChange={event => setMovimento({ ...movimento, fatorConversao: Number(event.target.value) })} className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Placa
-            <input value={movimento.placa} onChange={event => setMovimento({ ...movimento, placa: event.target.value.toUpperCase() })} placeholder="UFW-0D22" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input value={movimento.placa} onChange={event => setMovimento({ ...movimento, placa: event.target.value.toUpperCase() })} placeholder="UFW-0D22" className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Ticket / vale
-            <input value={movimento.ticket} onChange={event => setMovimento({ ...movimento, ticket: event.target.value })} placeholder="173353" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input value={movimento.ticket} onChange={event => setMovimento({ ...movimento, ticket: event.target.value })} placeholder="173353" className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Valor unitário
-            <input type="number" min="0" step="0.01" value={movimento.valorUnitario || ''} onChange={event => setMovimento({ ...movimento, valorUnitario: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="number" min="0" step="0.01" value={movimento.valorUnitario || ''} onChange={event => setMovimento({ ...movimento, valorUnitario: Number(event.target.value) })} className={`mt-1 ${CAMPO}`} />
           </label>
-          <label className="text-xs font-bold text-slate-600">
+          <label className="block text-sm font-semibold text-slate-700">
             Valor total
-            <input type="number" min="0" step="0.01" value={movimento.valorTotal || ''} onChange={event => setMovimento({ ...movimento, valorTotal: Number(event.target.value) })} placeholder={movimento.valorUnitario && movimento.quantidade ? String((movimento.valorUnitario * movimento.quantidade).toFixed(2)) : ''} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="number" min="0" step="0.01" value={movimento.valorTotal || ''} onChange={event => setMovimento({ ...movimento, valorTotal: Number(event.target.value) })} placeholder={movimento.valorUnitario && movimento.quantidade ? String((movimento.valorUnitario * movimento.quantidade).toFixed(2)) : ''} className={`mt-1 ${CAMPO}`} />
           </label>
           {movimento.tipo === 'Entrada' && (
             <>
-              <label className="text-xs font-bold text-slate-600">
+              <label className="block text-sm font-semibold text-slate-700">
                 Nota fiscal
-                <input value={movimento.notaFiscal} onChange={event => setMovimento({ ...movimento, notaFiscal: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+                <input value={movimento.notaFiscal} onChange={event => setMovimento({ ...movimento, notaFiscal: event.target.value })} className={`mt-1 ${CAMPO}`} />
               </label>
-              <label className="text-xs font-bold text-slate-600">
+              <label className="block text-sm font-semibold text-slate-700">
                 Quantidade na nota
                 <input
                   type="number" min="0" step="0.01" inputMode="decimal"
                   value={movimento.quantidadeNota || ''}
                   onChange={event => setMovimento({ ...movimento, quantidadeNota: Number(event.target.value) })}
-                  className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+                  className={`mt-1 ${CAMPO}`}
                 />
                 <span className="mt-1 block text-[11px] font-medium text-slate-400">
                   O que a nota promete. A quantidade acima é o que de fato chegou — a diferença vira pendência.
                 </span>
               </label>
-              <label className="text-xs font-bold text-slate-600">
+              <label className="block text-sm font-semibold text-slate-700">
                 Solicitação de compra
-                <input value={movimento.solicitacaoCompra} onChange={event => setMovimento({ ...movimento, solicitacaoCompra: event.target.value })} placeholder="SC 93011249" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+                <input value={movimento.solicitacaoCompra} onChange={event => setMovimento({ ...movimento, solicitacaoCompra: event.target.value })} placeholder="SC 93011249" className={`mt-1 ${CAMPO}`} />
               </label>
-              <label className="text-xs font-bold text-slate-600 sm:col-span-2">
+              <label className="block text-sm font-semibold text-slate-700 sm:col-span-2">
                 Fornecedor
-                <select value={movimento.fornecedorId} onChange={event => setMovimento({ ...movimento, fornecedorId: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+                <select value={movimento.fornecedorId} onChange={event => setMovimento({ ...movimento, fornecedorId: event.target.value })} className={`mt-1 ${CAMPO}`}>
                   <option value="">Sem fornecedor informado</option>
                   {empresas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
                 </select>
@@ -1027,24 +645,24 @@ export default function MateriaisTab({
             </>
           )}
           {movimento.tipo === 'Transferência' && (
-            <label className="text-xs font-bold text-slate-600">
+            <label className="block text-sm font-semibold text-slate-700">
               Origem
-              <input value={movimento.origem} onChange={event => setMovimento({ ...movimento, origem: event.target.value })} placeholder="De onde saiu" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+              <input value={movimento.origem} onChange={event => setMovimento({ ...movimento, origem: event.target.value })} placeholder="De onde saiu" className={`mt-1 ${CAMPO}`} />
             </label>
           )}
           {movimento.tipo !== 'Ajuste' && (
-            <label className="text-xs font-bold text-slate-600">
+            <label className="block text-sm font-semibold text-slate-700">
               Destino / frente
-              <input value={movimento.destino} onChange={event => setMovimento({ ...movimento, destino: event.target.value })} placeholder="Ex: Ramo 200" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+              <input value={movimento.destino} onChange={event => setMovimento({ ...movimento, destino: event.target.value })} placeholder="Ex: Ramo 200" className={`mt-1 ${CAMPO}`} />
             </label>
           )}
           {movimento.tipo !== 'Ajuste' && (
-            <label className="text-xs font-bold text-slate-600">
+            <label className="block text-sm font-semibold text-slate-700">
               Ramo / trecho vinculado
               <select value={movimento.etapaServicoId} onChange={event => {
                 const etapa = etapas.find(item => item.id === event.target.value);
                 setMovimento({ ...movimento, etapaServicoId: event.target.value, destino: etapa?.nome || movimento.destino });
-              }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+              }} className={`mt-1 ${CAMPO}`}>
                 <option value="">Sem vínculo estruturado</option>
                 {etapas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
               </select>
@@ -1052,9 +670,9 @@ export default function MateriaisTab({
             </label>
           )}
           {movimento.tipo === 'Saída' && (
-            <label className="text-xs font-bold text-slate-600">
+            <label className="block text-sm font-semibold text-slate-700">
               Serviço
-              <input value={movimento.servico} onChange={event => setMovimento({ ...movimento, servico: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+              <input value={movimento.servico} onChange={event => setMovimento({ ...movimento, servico: event.target.value })} className={`mt-1 ${CAMPO}`} />
             </label>
           )}
           {movimento.tipo === 'Saída' && (
@@ -1068,9 +686,9 @@ export default function MateriaisTab({
               Contabilizar esta saída como uso diário aprovado do ramo
             </label>
           )}
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
+          <label className="block text-sm font-semibold text-slate-700 sm:col-span-2">
             Observação
-            <textarea value={movimento.observacao} onChange={event => setMovimento({ ...movimento, observacao: event.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <textarea value={movimento.observacao} onChange={event => setMovimento({ ...movimento, observacao: event.target.value })} rows={2} className={`mt-1 ${CAMPO} py-2`} />
           </label>
         </div>
         {movimento.materialId && (
@@ -1084,19 +702,19 @@ export default function MateriaisTab({
 
       <Modal
         open={loteAberto}
-        title="Lançamento em lote"
-        description="Uma linha por viagem ou movimento. Linhas vazias são ignoradas."
+        title="Lançar várias viagens"
+        description="Uma linha por viagem. Linha vazia não é gravada."
         size="xl"
         onSubmit={salvarLote}
         onClose={() => setLoteAberto(false)}
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <button type="button" onClick={() => setLinhasLote(linhas => [...linhas, novaLinhaLote()])} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700">
+            <button type="button" onClick={() => setLinhasLote(linhas => [...linhas, novaLinhaLote()])} className={BOTAO_SECUNDARIO}>
               <Plus className="h-4 w-4" /> Adicionar linha
             </button>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setLoteAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
-              <button type="button" onClick={salvarLote} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar lote <span className="ml-1 text-[10px] text-emerald-100">Ctrl+Enter</span></button>
+              <button type="button" onClick={() => setLoteAberto(false)} className={BOTAO_SECUNDARIO}>Cancelar</button>
+              <button type="button" onClick={salvarLote} className={BOTAO_PRIMARIO}>Salvar viagens</button>
             </div>
           </div>
         )}
