@@ -527,6 +527,7 @@ export default function MateriaisTab({
         title={formMaterial ? `Editar ${formMaterial.descricao}` : 'Novo material'}
         onSubmit={() => salvarMaterial()}
         size="md"
+        telaCheia="materiais-material"
         onClose={() => setMaterialAberto(false)}
         footer={(
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

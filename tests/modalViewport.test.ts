@@ -27,3 +27,11 @@ test('digitar num campo do modal não devolve o foco ao primeiro botão', () => 
   assert.doesNotMatch(dependencias, /onSubmit|onClose/);
   assert.match(modalSource, /acoes\.current = \{ onSubmit, onClose \}/);
 });
+
+test('telas de lançamento de Materiais abrem em tela cheia e lembram a escolha', () => {
+  assert.match(modalSource, /modal-tela-cheia:\$\{nome\}/);
+  assert.match(modalSource, /h-\[100dvh\]/);
+  for (const arquivo of ['src/components/materiais/FormLancamento.tsx', 'src/components/materiais/GradeViagens.tsx', 'src/components/MateriaisTab.tsx']) {
+    assert.match(readFileSync(arquivo, 'utf8'), /telaCheia="materiais-/, arquivo);
+  }
+});
