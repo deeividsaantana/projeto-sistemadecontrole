@@ -51,7 +51,7 @@ import CadastroLixeira from './cadastros/CadastroLixeira';
 import CadastroConfirmacaoLote, { type ItemTravado } from './cadastros/CadastroConfirmacaoLote';
 import { montarRegistro, novoId, valoresIniciais, type ValoresCadastro } from './cadastros/camposCadastro';
 import { parseWorkbookFile } from './cadastros/lerPlanilhaCadastros';
-import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, reduzMovimento } from './cadastros/estilos';
+import { BOTAO_PERIGO, BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, reduzMovimento } from './cadastros/estilos';
 import './cadastros/Cadastros.css';
 
 type ResultadoExclusao = { ok: true; exclusaoId: string } | { ok: false; usos: UsoCadastro[]; mensagem?: string };
@@ -89,6 +89,7 @@ interface CadastrosTabProps {
     mensagem?: string;
   };
   onRestaurarVarios: (exclusaoIds: string[]) => { ok: boolean; mensagem: string };
+  onApagarDeVez: (exclusaoIds: string[]) => { ok: boolean; mensagem: string };
   onImportCadastros: (target: CadastroCategoriaId, rows: Record<string, string>[]) => { success: boolean; message: string };
 }
 
@@ -104,7 +105,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const {
     empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
     historyLogs, exclusoes, podeEditar, podeExcluir,
-    onInativar, usosDoCadastro, onExcluir, onRestaurar, onImportCadastros,
+    onInativar, usosDoCadastro, onExcluir, onRestaurar, onApagarDeVez, onImportCadastros,
   } = props;
 
   const dados: DadosCadastros = useMemo(
@@ -132,6 +133,8 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const [confirmacao, setConfirmacao] = useState<{ acao: AcaoConfirmacao; linha: LinhaCadastro; usos: UsoCadastro[] } | null>(null);
   const [processando, setProcessando] = useState(false);
   const [restaurandoId, setRestaurandoId] = useState<string | null>(null);
+  // Itens da Lixeira esperando a confirmação de excluir de vez (um ou todos).
+  const [apagando, setApagando] = useState<ExclusaoRegistro[] | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   // Marcados para excluir em lote. Valem só para o tipo aberto.
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(() => new Set());
@@ -155,7 +158,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   }, [todasAsLinhas, busca, situacao, comSituacao, filtros, ordem]);
 
   const lixeira = useMemo(
-    () => Array.from(exclusoesAtivas(exclusoes).values()).sort((a, b) => b.excluidoEm.localeCompare(a.excluidoEm)),
+    () => Array.from(exclusoesAtivas(exclusoes).values()).filter(item => !item.apagadoEm).sort((a, b) => b.excluidoEm.localeCompare(a.excluidoEm)),
     [exclusoes],
   );
 
@@ -424,6 +427,13 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     setAviso({ tipo: resultado.ok ? 'ok' : 'erro', texto: resultado.mensagem });
   };
 
+  const confirmarApagarDeVez = () => {
+    if (!apagando) return;
+    const resultado = onApagarDeVez(apagando.map(item => item.id));
+    setApagando(null);
+    setAviso({ tipo: resultado.ok ? 'ok' : 'erro', texto: resultado.mensagem });
+  };
+
   // ---- Importar e exportar ------------------------------------------------
 
   const importarArquivo = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -526,10 +536,18 @@ export default function CadastrosTab(props: CadastrosTabProps) {
           {emLixeira ? (
             <>
               <div data-cadastros-reveal className="space-y-1">
-                <h2 className="text-lg font-bold text-slate-900">Lixeira</h2>
-                <p className="text-sm text-slate-500">Cadastros excluídos. Restaurar devolve o cadastro para a lista em todos os aparelhos.</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-bold text-slate-900">Lixeira</h2>
+                  {podeExcluir && lixeira.length > 1 && (
+                    <button type="button" onClick={() => setApagando(lixeira)} className={BOTAO_PERIGO_LEVE} data-testid="lixeira-esvaziar">
+                      <Trash2 className="size-5" aria-hidden="true" />
+                      Esvaziar Lixeira
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500">Cadastros excluídos. Restaurar devolve o cadastro para a lista em todos os aparelhos. Excluir de vez tira daqui e não tem volta.</p>
               </div>
-              <CadastroLixeira exclusoes={lixeira} podeRestaurar={podeExcluir} restaurandoId={restaurandoId} onRestaurar={restaurar} />
+              <CadastroLixeira exclusoes={lixeira} podeRestaurar={podeExcluir} restaurandoId={restaurandoId} onRestaurar={restaurar} onExcluirDeVez={item => setApagando([item])} />
             </>
           ) : (
             <>
@@ -737,6 +755,20 @@ export default function CadastrosTab(props: CadastrosTabProps) {
           processando={processando}
           onConfirmar={confirmarLote}
           onCancelar={() => setLote(null)}
+        />
+      )}
+
+      {apagando && (
+        <CadastroConfirmacao
+          acao="excluir-de-vez"
+          nome={apagando.length === 1 ? apagando[0].rotulo : `${apagando.length.toLocaleString('pt-BR')} cadastros da Lixeira`}
+          codigo=""
+          usos={[]}
+          podeInativar={false}
+          processando={false}
+          onConfirmar={confirmarApagarDeVez}
+          onInativarNoLugar={() => setApagando(null)}
+          onCancelar={() => setApagando(null)}
         />
       )}
 

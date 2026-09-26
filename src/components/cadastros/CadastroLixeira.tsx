@@ -1,6 +1,6 @@
 import { RotateCcw, Trash2 } from 'lucide-react';
 import type { ExclusaoRegistro } from '../../cloud/exclusoes';
-import { BOTAO_SECUNDARIO, CARTAO } from './estilos';
+import { BOTAO_PERIGO_LEVE, BOTAO_SECUNDARIO, CARTAO } from './estilos';
 
 const NOME_DA_TABELA: Record<string, string> = {
   funcionarios: 'Colaborador',
@@ -25,10 +25,11 @@ interface Props {
   podeRestaurar: boolean;
   restaurandoId: string | null;
   onRestaurar: (exclusao: ExclusaoRegistro) => void;
+  onExcluirDeVez: (exclusao: ExclusaoRegistro) => void;
 }
 
-/** O que foi excluído, por quem e quando, com o botão de restaurar ao lado de cada um. */
-export default function CadastroLixeira({ exclusoes, podeRestaurar, restaurandoId, onRestaurar }: Props) {
+/** O que foi excluído, por quem e quando, com restaurar e excluir de vez ao lado de cada um. */
+export default function CadastroLixeira({ exclusoes, podeRestaurar, restaurandoId, onRestaurar, onExcluirDeVez }: Props) {
   if (exclusoes.length === 0) {
     return (
       <div className={`${CARTAO} flex flex-col items-center gap-2 px-6 py-12 text-center`} data-testid="cadastro-lixeira">
@@ -49,10 +50,16 @@ export default function CadastroLixeira({ exclusoes, podeRestaurar, restaurandoI
             </p>
           </div>
           {podeRestaurar && (
-            <button type="button" onClick={() => onRestaurar(exclusao)} disabled={restaurandoId === exclusao.id} className={`${BOTAO_SECUNDARIO} shrink-0`}>
-              <RotateCcw className="size-5" aria-hidden="true" />
-              {restaurandoId === exclusao.id ? 'Restaurando…' : 'Restaurar'}
-            </button>
+            <div className="flex shrink-0 gap-2 max-sm:[&>button]:flex-1 max-sm:[&>button]:whitespace-nowrap max-sm:[&>button]:px-3 max-sm:[&_svg]:hidden">
+              <button type="button" onClick={() => onRestaurar(exclusao)} disabled={restaurandoId === exclusao.id} className={BOTAO_SECUNDARIO}>
+                <RotateCcw className="size-5" aria-hidden="true" />
+                {restaurandoId === exclusao.id ? 'Restaurando…' : 'Restaurar'}
+              </button>
+              <button type="button" onClick={() => onExcluirDeVez(exclusao)} disabled={restaurandoId === exclusao.id} className={BOTAO_PERIGO_LEVE} data-testid="lixeira-excluir-de-vez">
+                <Trash2 className="size-5" aria-hidden="true" />
+                Excluir de vez
+              </button>
+            </div>
           )}
         </li>
       ))}

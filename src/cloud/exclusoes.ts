@@ -11,6 +11,9 @@
  * regra `aplicarExclusoes` tira dos retratos qualquer registro com exclusão
  * ativa. Restaurar marca a exclusão como desfeita e devolve a cópia guardada.
  *
+ * Excluir de vez tira o item da Lixeira e joga fora a cópia guardada, mas a
+ * marca continua: sem ela, um aparelho atrasado publicaria o cadastro de volta.
+ *
  * Não depende do Firebase: no Supabase a mesma marca vira `deleted_at` e
  * `deleted_by` na linha do cadastro.
  */
@@ -30,6 +33,9 @@ export interface ExclusaoRegistro {
   excluidoPor: string;
   restauradoEm?: string;
   restauradoPor?: string;
+  /** Excluído de vez: some da Lixeira e não dá mais para restaurar. */
+  apagadoEm?: string;
+  apagadoPor?: string;
   atualizadoEm: string;
 }
 
@@ -72,6 +78,14 @@ export const restaurarExclusao = (exclusao: ExclusaoRegistro, usuario: string, a
   ...exclusao,
   restauradoEm: agora,
   restauradoPor: usuario,
+  atualizadoEm: agora,
+});
+
+export const apagarDeVez = (exclusao: ExclusaoRegistro, usuario: string, agora: string): ExclusaoRegistro => ({
+  ...exclusao,
+  registro: {},
+  apagadoEm: agora,
+  apagadoPor: usuario,
   atualizadoEm: agora,
 });
 

@@ -55,7 +55,7 @@ import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
 import * as fx from './fixtures';
-import { criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
+import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
 const blockRegistryDeletion = new URLSearchParams(location.search).get('blockedRegistry') === '1';
@@ -115,6 +115,11 @@ function CadastrosPreview() {
     setExclusoes(atual => atual.map(item => (exclusaoIds.includes(item.id) ? restaurarExclusao(item, 'Deivid Santana', agora) : item)));
     return { ok: true, mensagem: pedidos.length === 1 ? `${pedidos[0].rotulo} voltou para a lista.` : `${pedidos.length} cadastros voltaram para a lista.` };
   };
+  const apagarVarios = (exclusaoIds: string[]) => {
+    const agora = new Date().toISOString();
+    setExclusoes(atual => atual.map(item => (exclusaoIds.includes(item.id) ? apagarDeVez(item, 'Deivid Santana', agora) : item)));
+    return { ok: true, mensagem: exclusaoIds.length === 1 ? 'Excluído de vez.' : `${exclusaoIds.length} cadastros foram excluídos de vez.` };
+  };
   return (
     <CadastrosTab
       empresas={listas.empresas as never}
@@ -150,6 +155,7 @@ function CadastrosPreview() {
       onRestaurar={exclusaoId => restaurarVarios([exclusaoId])}
       onExcluirVarios={excluirVarios}
       onRestaurarVarios={restaurarVarios}
+      onApagarDeVez={apagarVarios}
       onImportCadastros={() => ({ success: true, message: 'ok' })}
     />
   );

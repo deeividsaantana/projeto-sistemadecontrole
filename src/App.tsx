@@ -177,7 +177,7 @@ import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSu
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
 import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
-import { aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
+import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import {
   addPublicPresenceMember,
   deletePublicPresenceRecords,
@@ -1880,8 +1880,8 @@ export default function App() {
    */
   const handleRestaurarCadastros = (exclusaoIds: string[]): { ok: boolean; mensagem: string } => {
     const pedidos = new Set(exclusaoIds);
-    const pendentes = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm);
-    if (pendentes.length === 0) return { ok: false, mensagem: exclusaoIds.length === 1 ? 'Este cadastro já foi restaurado.' : 'Estes cadastros já foram restaurados.' };
+    const pendentes = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm && !item.apagadoEm);
+    if (pendentes.length === 0) return { ok: false, mensagem: exclusaoIds.length === 1 ? 'Este cadastro já foi restaurado ou excluído de vez.' : 'Estes cadastros já foram restaurados ou excluídos de vez.' };
     const tabelas = tabelasCadastro();
     const agora = new Date().toISOString();
     const listas = new Map<string, Array<{ id: string }>>();
@@ -1934,6 +1934,35 @@ export default function App() {
   };
 
   const handleRestaurarCadastro = (exclusaoId: string) => handleRestaurarCadastros([exclusaoId]);
+
+  /**
+   * Tira da Lixeira e joga fora a cópia guardada. A marca de exclusão fica,
+   * para nenhum aparelho publicar o cadastro de volta. Não tem desfazer.
+   */
+  const handleApagarDeVez = (exclusaoIds: string[]): { ok: boolean; mensagem: string } => {
+    if (!pode(currentUserRole, 'cadastros', 'excluir')) {
+      return { ok: false, mensagem: 'Só o administrador pode excluir de vez.' };
+    }
+    const pedidos = new Set(exclusaoIds);
+    const alvos = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm && !item.apagadoEm);
+    if (alvos.length === 0) return { ok: false, mensagem: 'Nada para excluir de vez: a Lixeira já mudou.' };
+    const agora = new Date().toISOString();
+    const feitos = new Set(alvos.map(item => item.id));
+    const nextExclusoes = exclusoes.map(item => (feitos.has(item.id) ? apagarDeVez(item, activeUserName, agora) : item));
+    const nomes = alvos.map(item => `"${item.rotulo}"`).join(', ');
+    saveAndLog(
+      tabelasCadastro()[alvos[0].tabela]?.tela || 'Cadastros',
+      'Excluiu',
+      alvos.length === 1 ? `Excluiu de vez ${nomes} da Lixeira.` : `Excluiu de vez ${alvos.length} cadastros da Lixeira: ${nomes}.`,
+      historyLogs,
+      () => {
+        commitStorageBatch(localStorage, [{ key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) }]);
+        setExclusoes(nextExclusoes);
+      },
+      { registroId: alvos.map(item => item.registroId).join(','), tipoOperacao: 'DELETE' },
+    );
+    return { ok: true, mensagem: alvos.length === 1 ? `${alvos[0].rotulo} foi excluído de vez.` : `${alvos.length} cadastros foram excluídos de vez.` };
+  };
 
   const handleSaveEquipamento = (item: Equipamento, isNew: boolean) => {
     const previous = equipamentos.find(x => x.id === item.id);
@@ -4921,6 +4950,7 @@ export default function App() {
                 onRestaurar={handleRestaurarCadastro}
                 onExcluirVarios={handleExcluirCadastros}
                 onRestaurarVarios={handleRestaurarCadastros}
+                onApagarDeVez={handleApagarDeVez}
                 onImportCadastros={handleImportCadastros}
               />
             )}
