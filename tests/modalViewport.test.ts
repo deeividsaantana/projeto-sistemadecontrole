@@ -19,3 +19,11 @@ test('animação de entrada não mantém transform no ancestral dos diálogos', 
   const reveal = styles.match(/@keyframes renea-white-reveal\s*\{[\s\S]*?\n\}/)?.[0] || '';
   assert.match(reveal, /to\s*\{[^}]*transform:\s*none/);
 });
+
+test('digitar num campo do modal não devolve o foco ao primeiro botão', () => {
+  // onSubmit e onClose mudam a cada digitação de quem usa o Modal; se entrarem
+  // nas dependências do efeito, o foco volta ao botão de fechar a cada letra.
+  const dependencias = modalSource.match(/\}, \[([^\]]*)\]\);/)?.[1] ?? '';
+  assert.doesNotMatch(dependencias, /onSubmit|onClose/);
+  assert.match(modalSource, /acoes\.current = \{ onSubmit, onClose \}/);
+});

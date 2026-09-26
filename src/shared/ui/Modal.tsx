@@ -56,6 +56,11 @@ export function Modal({
   className,
 }: ModalProps) {
   const panelRef = useRef<HTMLElement>(null);
+  // Quem usa o Modal costuma passar funções novas a cada digitação. Guardadas
+  // aqui, elas não reiniciam o efeito abaixo, que jogava o foco de volta para
+  // o primeiro botão a cada letra digitada.
+  const acoes = useRef({ onSubmit, onClose });
+  acoes.current = { onSubmit, onClose };
 
   useEffect(() => {
     if (!open) return undefined;
@@ -63,6 +68,7 @@ export function Modal({
     (initialFocusRef?.current || panel?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      const { onSubmit, onClose } = acoes.current;
       if (event.key === 'Escape' && !busy) {
         onClose();
         return;
@@ -100,7 +106,7 @@ export function Modal({
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [busy, initialFocusRef, onClose, onSubmit, open]);
+  }, [busy, initialFocusRef, open]);
 
   if (!open) return null;
 
