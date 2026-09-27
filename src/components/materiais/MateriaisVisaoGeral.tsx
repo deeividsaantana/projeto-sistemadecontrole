@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
-import { FileSpreadsheet, Package, PackageX, SlidersHorizontal } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { ChevronRight, FileSpreadsheet, ListOrdered, Package, PackageMinus, PackageX, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import type { EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import type { PosicaoEstoque } from '../../utils/estoque';
 import { pendenciasDeRecebimento, resumoDeRecebimento } from '../../utils/recebimentoMaterial';
@@ -9,11 +11,12 @@ import { rankingPor, type AvisoMaterial } from '../../modules/materials/avisosMa
 import { resumirBotaFora, viagensDeBotaFora } from '../../modules/materials/botaFora';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../../utils/formato';
-import { EmptyState } from '../../shared/ui';
+import { CountUp, EmptyState } from '../../shared/ui';
+import type { SecaoMateriais } from './MateriaisSecoes';
 import AvisosMateriais from './AvisosMateriais';
 import BarrasRanking from './BarrasRanking';
 import GraficoSemanas from './GraficoSemanas';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '../cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
 
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
 const FILTROS_VAZIOS = { material: '', fornecedor: '', local: '', tipo: '' };
@@ -30,6 +33,8 @@ interface Props {
   onEditarMaterial: (material: Material) => void;
   onVerMovimentos: (busca: string) => void;
   onVerBotaFora: () => void;
+  /** Tocar num número abre a parte que explica ele. */
+  onIr: (secao: SecaoMateriais) => void;
 }
 
 /**
@@ -37,7 +42,7 @@ interface Props {
  * como o estoque está e o que se mexeu no período. O que pede ação vem antes
  * dos números de acompanhamento.
  */
-export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movimentosVigentes, etapas, posicoes, podeEditar, avisos, onEditarMaterial, onVerMovimentos, onVerBotaFora }: Props) {
+export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movimentosVigentes, etapas, posicoes, podeEditar, avisos, onEditarMaterial, onVerMovimentos, onVerBotaFora, onIr }: Props) {
   const [periodo, setPeriodo] = useState(() => getDefaultMaterialsPeriod(hoje));
   const [filtros, setFiltros] = useState(FILTROS_VAZIOS);
   const [maisFiltros, setMaisFiltros] = useState(false);
@@ -45,6 +50,12 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
   const pendencias = useMemo(() => pendenciasDeRecebimento(movimentosVigentes), [movimentosVigentes]);
   const recebimento = useMemo(() => resumoDeRecebimento(movimentosVigentes), [movimentosVigentes]);
   const estoque = useMemo(() => summarizeMaterialsStock(posicoes), [posicoes]);
+  const anel = useRef<SVGCircleElement>(null);
+  // O anel do estoque se desenha até a porcentagem, como os do Painel.
+  useGSAP(() => {
+    if (!anel.current || reduzMovimento()) return;
+    gsap.from(anel.current, { attr: { 'stroke-dasharray': '0 100' }, duration: 0.9, ease: 'power2.out', delay: 0.15 });
+  }, { dependencies: [estoque.coberturaPercentual] });
   const resumo = useMemo(() => buildMaterialsOperationalSummary(movimentosVigentes, { from: periodo.from, to: periodo.to, ...filtros }), [filtros, movimentosVigentes, periodo]);
   const opcoes = useMemo(() => {
     const ordenar = (valores: Iterable<string>) => [...new Set(valores)].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -86,22 +97,36 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
     URL.revokeObjectURL(url);
   };
 
-  const indicadores = [
-    { rotulo: 'Materiais ativos', valor: estoque.total, detalhe: 'no cadastro' },
-    { rotulo: 'Movimentos', valor: movimentos.length, detalhe: 'no histórico' },
-    { rotulo: 'Abaixo do mínimo', valor: estoque.abaixoDoMinimo, detalhe: 'pedem reposição', alerta: estoque.abaixoDoMinimo > 0 },
-    { rotulo: 'Sem saldo', valor: estoque.semSaldo, detalhe: 'sem nada no estoque', alerta: estoque.semSaldo > 0 },
+  const indicadores: Array<{ rotulo: string; valor: number; detalhe: string; Icone: LucideIcon; secao: SecaoMateriais; alerta?: boolean }> = [
+    { rotulo: 'Materiais ativos', valor: estoque.total, detalhe: 'no cadastro', Icone: Package, secao: 'cadastro' },
+    { rotulo: 'Movimentos', valor: movimentos.length, detalhe: 'no histórico', Icone: ListOrdered, secao: 'movimentos' },
+    { rotulo: 'Abaixo do mínimo', valor: estoque.abaixoDoMinimo, detalhe: 'pedem reposição', Icone: PackageMinus, secao: 'estoque', alerta: estoque.abaixoDoMinimo > 0 },
+    { rotulo: 'Sem saldo', valor: estoque.semSaldo, detalhe: 'sem nada no estoque', Icone: PackageX, secao: 'estoque', alerta: estoque.semSaldo > 0 },
   ];
 
   return (
     <div className="space-y-4">
       <section aria-label="Indicadores de materiais" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {indicadores.map(item => (
-          <article key={item.rotulo} data-materiais-reveal className={`${CARTAO} p-4`}>
-            <p className="text-sm font-semibold text-slate-600">{item.rotulo}</p>
-            <strong className={`mt-1 block text-3xl font-black tabular-nums ${item.alerta ? 'text-[#f26a2e]' : 'text-slate-950'}`}>{item.valor.toLocaleString('pt-BR')}</strong>
-            <span className="text-xs text-slate-500">{item.detalhe}</span>
-          </article>
+        {indicadores.map(({ rotulo, valor, detalhe, Icone, secao, alerta }) => (
+          <button
+            key={rotulo}
+            type="button"
+            data-materiais-reveal
+            onClick={() => onIr(secao)}
+            className={`${CARTAO} materiais-vivo group flex min-w-0 flex-col p-4 text-left ${FOCO}`}
+          >
+            <span className="flex w-full items-start justify-between gap-2">
+              <span className="text-sm font-semibold text-slate-600">{rotulo}</span>
+              <span className={`hidden size-9 shrink-0 place-items-center rounded-xl sm:grid ${alerta ? 'bg-orange-50 text-[#f26a2e]' : 'bg-emerald-50 text-[#176b4d]'}`}>
+                <Icone className="size-5" aria-hidden="true" />
+              </span>
+            </span>
+            <CountUp value={valor} className={`block text-3xl font-black tabular-nums ${alerta ? 'text-[#f26a2e]' : 'text-slate-950'}`} />
+            <span className="mt-auto flex items-center gap-1 text-xs text-slate-500">
+              {detalhe}
+              <ChevronRight className="size-3.5 opacity-0 transition duration-200 group-hover:translate-x-0.5 group-hover:opacity-100 motion-reduce:transition-none" aria-hidden="true" />
+            </span>
+          </button>
         ))}
       </section>
 
@@ -167,9 +192,9 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
             <div className="relative size-28 shrink-0" role="img" aria-label={`${estoque.coberturaPercentual ?? 0}% dos materiais com saldo regular`}>
               <svg viewBox="0 0 112 112" className="size-28 -rotate-90" aria-hidden="true">
                 <circle cx="56" cy="56" r="43" fill="none" strokeWidth="10" className="stroke-slate-100" />
-                <circle cx="56" cy="56" r="43" fill="none" strokeWidth="10" strokeLinecap="round" pathLength="100" strokeDasharray={`${estoque.coberturaPercentual ?? 0} 100`} className="stroke-[#176b4d]" />
+                <circle ref={anel} cx="56" cy="56" r="43" fill="none" strokeWidth="10" strokeLinecap="round" pathLength="100" strokeDasharray={`${estoque.coberturaPercentual ?? 0} 100`} className="stroke-[#176b4d]" />
               </svg>
-              <strong className="absolute inset-0 grid place-items-center text-xl font-black tabular-nums text-slate-950">{estoque.coberturaPercentual == null ? '-' : `${estoque.coberturaPercentual}%`}</strong>
+              <strong className="absolute inset-0 grid place-items-center text-xl font-black tabular-nums text-slate-950">{estoque.coberturaPercentual == null ? '-' : <CountUp value={estoque.coberturaPercentual} suffix="%" />}</strong>
             </div>
             <dl className="min-w-0 flex-1 space-y-2 text-sm">
               <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2"><dt className="text-slate-600">Regular</dt><dd className="font-black tabular-nums text-[#176b4d]">{estoque.regulares}</dd></div>
@@ -256,7 +281,7 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
                 const ativo = normalizeComparable(filtros.material) === normalizeComparable(item.material);
                 const cadastro = materiais.find(material => normalizeComparable(material.descricao) === normalizeComparable(item.material));
                 return (
-                  <div key={item.material} className={`rounded-xl border p-3 transition duration-200 ${ativo ? 'border-[#176b4d] bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                  <div key={item.material} className={`materiais-vivo rounded-xl border p-3 ${ativo ? 'border-[#176b4d] bg-emerald-50' : 'border-slate-200 bg-white'}`}>
                     <button type="button" onClick={() => setFiltros({ ...filtros, material: ativo ? '' : item.material })} className={`block w-full rounded-lg text-left ${FOCO}`} aria-pressed={ativo}>
                       <span className="block truncate text-sm font-bold text-slate-700">{item.material}</span>
                       <strong className="mt-1 block text-xl font-black tabular-nums text-slate-950">{numero(item.quantidade)} {item.unidade}</strong>

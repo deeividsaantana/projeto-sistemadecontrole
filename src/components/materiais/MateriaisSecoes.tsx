@@ -82,6 +82,7 @@ interface Props {
 export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 0, onSelect, compacto = false }: Props) {
   const [aberto, setAberto] = useState(false);
   const folha = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLElement>(null);
   const atual = TODAS.find(secao => secao.id === value) ?? TODAS[0];
   const IconeAtual = atual.Icone;
 
@@ -97,6 +98,16 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
     document.addEventListener('keydown', tecla);
     return () => document.removeEventListener('keydown', tecla);
   }, [aberto]);
+
+  // Parte escolhida por atalho ou botão fica à vista no menu, sem rolar a página.
+  useEffect(() => {
+    const caixa = menu.current;
+    const ativo = caixa?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!caixa || !ativo) return;
+    const topo = ativo.getBoundingClientRect().top - caixa.getBoundingClientRect().top + caixa.scrollTop;
+    if (topo < caixa.scrollTop) caixa.scrollTop = topo - 8;
+    else if (topo + ativo.offsetHeight > caixa.scrollTop + caixa.clientHeight) caixa.scrollTop = topo + ativo.offsetHeight - caixa.clientHeight + 8;
+  }, [value]);
 
   const escolher = (id: SecaoMateriais) => {
     setAberto(false);
@@ -131,11 +142,11 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
           data-testid={`materiais-secao-${id}`}
           aria-describedby={`materiais-ajuda-${id}-${grande ? 'm' : 'd'}`}
           onClick={() => escolher(id)}
-          className={`flex w-full min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-left font-semibold transition duration-200 ${FOCO} ${grande ? 'min-h-14 text-base' : 'min-h-12 text-sm'} ${ativo
+          className={`group flex w-full min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-left font-semibold transition duration-200 ${FOCO} ${grande ? 'min-h-14 text-base' : 'min-h-12 text-sm'} ${ativo
             ? 'is-active bg-[#176b4d] text-white'
             : 'text-slate-700 hover:bg-emerald-50 hover:text-[#176b4d]'}`}
         >
-          <Icone className="size-[18px] shrink-0 opacity-80" aria-hidden="true" />
+          <Icone className={`size-[18px] shrink-0 transition-transform duration-200 motion-reduce:transition-none ${ativo ? 'opacity-100' : 'opacity-80 group-hover:scale-110 group-hover:text-[#176b4d]'}`} aria-hidden="true" />
           {/* O número fica ao lado do nome e a explicação usa a largura toda:
               no menu estreito do computador o nome não é mais cortado. */}
           <span className="min-w-0 flex-1">
@@ -167,7 +178,7 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
 
   return (
     <>
-      <nav aria-label="Partes de materiais" data-materiais-reveal className={`${compacto ? 'hidden' : 'hidden lg:block'} self-start rounded-2xl border border-slate-200 bg-white p-2 py-3 lg:sticky lg:top-4`}>
+      <nav ref={menu} aria-label="Partes de materiais" data-materiais-reveal className={`${compacto ? 'hidden' : 'hidden lg:block'} materiais-menu self-start rounded-2xl border border-slate-200 bg-white p-2 py-3 lg:sticky lg:top-4`}>
         {lista(false)}
       </nav>
 

@@ -75,7 +75,8 @@ export default function PrevistoMateriais({ hoje, materiais, movimentos, etapas,
   const [confirmarTirar, setConfirmarTirar] = useState(false);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
-  const [semPrevistoAberto, setSemPrevistoAberto] = useState(false);
+  // Sem nada previsto, a lista do que chegou já vem aberta: é o ponto de partida.
+  const [semPrevistoAberto, setSemPrevistoAberto] = useState<boolean | null>(null);
 
   const ativos = useMemo(() => materiais.filter(item => item.ativo !== false), [materiais]);
   const ramos = useMemo(() => ramosDaObra(etapas), [etapas]);
@@ -83,6 +84,7 @@ export default function PrevistoMateriais({ hoje, materiais, movimentos, etapas,
     () => acompanharMes({ mes, hoje, previstos, movimentos, etapas, materiais }),
     [etapas, hoje, materiais, mes, movimentos, previstos],
   );
+  const listaAberta = semPrevistoAberto ?? linhas.length === 0;
   const mesAnterior = somarMes(mes, -1);
   const paraCopiar = useMemo(
     () => copiarPrevistos(previstos, mesAnterior, mes, responsavel, '', () => ''),
@@ -346,8 +348,16 @@ export default function PrevistoMateriais({ hoje, materiais, movimentos, etapas,
           <EmptyState
             icon={Target}
             title={`Nada previsto para ${nomeDoMes(mes)}`}
-            description={podeEditar ? 'Toque em Novo previsto e diga quanto de cada material cada ramo deve receber no mês. A porcentagem sobe sozinha com as entregas.' : 'Quem cuida de Materiais ainda não lançou o previsto deste mês.'}
+            description={podeEditar ? 'Diga quanto de cada material cada ramo deve receber no mês. A porcentagem sobe sozinha com as entregas.' : 'Quem cuida de Materiais ainda não lançou o previsto deste mês.'}
           />
+          {podeEditar && (
+            <div className="-mt-4 flex justify-center pb-4">
+              <button type="button" onClick={() => abrir()} className={BOTAO_PRIMARIO}>
+                <Plus className="size-5" aria-hidden="true" />
+                Fazer o previsto do mês
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3 xl:columns-2 xl:gap-3 xl:space-y-0">
@@ -365,14 +375,14 @@ export default function PrevistoMateriais({ hoje, materiais, movimentos, etapas,
 
       {semPrevisto.length > 0 && (
         <section data-previsto-reveal aria-labelledby="previsto-sem" className={`${CARTAO} overflow-hidden`}>
-          <button type="button" onClick={() => setSemPrevistoAberto(atual => !atual)} aria-expanded={semPrevistoAberto} className={`flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition duration-200 hover:bg-slate-50 ${FOCO}`}>
+          <button type="button" onClick={() => setSemPrevistoAberto(!listaAberta)} aria-expanded={listaAberta} className={`flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition duration-200 hover:bg-slate-50 ${FOCO}`}>
             <span className="min-w-0 flex-1">
               <span id="previsto-sem" className="block text-base font-bold text-slate-900">Chegou sem previsto</span>
               <span className="block text-sm text-slate-500">{plural(semPrevisto.length, 'material chegou', 'materiais chegaram')} a um ramo em {nomeDoMes(mes)} sem nada previsto.</span>
             </span>
-            <ChevronDown className={`size-5 shrink-0 text-slate-500 transition duration-200 ${semPrevistoAberto ? 'rotate-180' : ''}`} aria-hidden="true" />
+            <ChevronDown className={`size-5 shrink-0 text-slate-500 transition duration-200 ${listaAberta ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
-          {semPrevistoAberto && <div className="border-t border-slate-100">{listaSemPrevisto(semPrevisto)}</div>}
+          {listaAberta && <div className="border-t border-slate-100">{listaSemPrevisto(semPrevisto)}</div>}
         </section>
       )}
 
