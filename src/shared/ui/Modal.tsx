@@ -1,6 +1,6 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 import { cn } from './styles';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -25,7 +25,18 @@ interface ModalProps {
   initialFocusRef?: RefObject<HTMLElement | null>;
   children?: ReactNode;
   className?: string;
+  /**
+   * Nome do diálogo para oferecer o botão "Tela cheia". A escolha fica
+   * lembrada neste aparelho: quem lança o dia inteiro abre sempre grande.
+   */
+  telaCheia?: string;
 }
+
+const chaveTelaCheia = (nome: string) => `modal-tela-cheia:${nome}`;
+const lerTelaCheia = (nome?: string) => {
+  if (!nome) return false;
+  try { return localStorage.getItem(chaveTelaCheia(nome)) === '1'; } catch { return false; }
+};
 
 const sizeClass: Record<ModalSize, string> = {
   sm: 'sm:max-w-md',
@@ -34,6 +45,7 @@ const sizeClass: Record<ModalSize, string> = {
   xl: 'sm:max-w-5xl',
 };
 
+const CAMPO_INICIAL = 'input:not([disabled]):not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([readonly]), select:not([disabled]), textarea:not([disabled]):not([readonly])';
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
@@ -54,8 +66,17 @@ export function Modal({
   initialFocusRef,
   children,
   className,
+  telaCheia,
 }: ModalProps) {
   const panelRef = useRef<HTMLElement>(null);
+  const [cheia, setCheia] = useState(() => lerTelaCheia(telaCheia));
+  const alternarTelaCheia = () => {
+    const proxima = !cheia;
+    setCheia(proxima);
+    if (!telaCheia) return;
+    try { localStorage.setItem(chaveTelaCheia(telaCheia), proxima ? '1' : '0'); } catch { /* só não lembra */ }
+  };
+  const emTelaCheia = Boolean(telaCheia) && cheia;
   // Quem usa o Modal costuma passar funções novas a cada digitação. Guardadas
   // aqui, elas não reiniciam o efeito abaixo, que jogava o foco de volta para
   // o primeiro botão a cada letra digitada.
@@ -65,7 +86,11 @@ export function Modal({
   useEffect(() => {
     if (!open) return undefined;
     const panel = panelRef.current;
-    (initialFocusRef?.current || panel?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+    // Abre já no primeiro campo: quem vai lançar começa a digitar sem clicar.
+    // Diálogo sem campo (confirmação) fica no primeiro botão, como antes.
+    (initialFocusRef?.current
+      || panel?.querySelector<HTMLElement>(CAMPO_INICIAL)
+      || panel?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const { onSubmit, onClose } = acoes.current;
@@ -112,7 +137,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-900/10 sm:items-center sm:p-4"
+      className={cn('fixed inset-0 z-[120] flex items-end justify-center bg-slate-900/10 sm:items-center', emTelaCheia ? 'sm:p-0' : 'sm:p-4')}
       role="presentation"
       onMouseDown={event => {
         if (event.target === event.currentTarget && !busy) onClose();
@@ -123,10 +148,12 @@ export function Modal({
         role={role}
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : undefined}
+        data-tela-cheia={emTelaCheia ? 'true' : undefined}
         className={cn(
-          'flex max-h-[92vh] w-full flex-col rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[88vh] sm:rounded-2xl',
-          sizeClass[size],
-          className,
+          'flex w-full flex-col border border-slate-200 bg-white shadow-2xl',
+          emTelaCheia
+            ? 'h-[100dvh] max-h-[100dvh] rounded-none'
+            : cn('max-h-[92vh] rounded-t-2xl sm:max-h-[88vh] sm:rounded-2xl', sizeClass[size], className),
         )}
       >
         {(title || description) && (
@@ -135,6 +162,18 @@ export function Modal({
               {title && <h2 className="text-base font-bold text-slate-900">{title}</h2>}
               {description && <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>}
             </div>
+            {telaCheia && (
+              <button
+                type="button"
+                onClick={alternarTelaCheia}
+                aria-pressed={emTelaCheia}
+                data-testid="modal-tela-cheia"
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
+              >
+                {emTelaCheia ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
+                <span className="max-sm:sr-only">{emTelaCheia ? 'Sair da tela cheia' : 'Tela cheia'}</span>
+              </button>
+            )}
             <button
               type="button"
               aria-label="Fechar"
@@ -146,8 +185,18 @@ export function Modal({
             </button>
           </header>
         )}
-        {children && <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>}
-        {footer && <footer className="border-t border-slate-100 px-5 py-4">{footer}</footer>}
+        {/* Em tela cheia, formulário curto fica numa coluna legível no meio;
+            a grade de viagens (xl) usa a largura toda. */}
+        {children && (
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {emTelaCheia && size !== 'xl' ? <div className="mx-auto w-full max-w-4xl">{children}</div> : children}
+          </div>
+        )}
+        {footer && (
+          <footer className="border-t border-slate-100 px-5 py-4">
+            {emTelaCheia && size !== 'xl' ? <div className="mx-auto w-full max-w-4xl">{footer}</div> : footer}
+          </footer>
+        )}
       </section>
     </div>,
     document.body,

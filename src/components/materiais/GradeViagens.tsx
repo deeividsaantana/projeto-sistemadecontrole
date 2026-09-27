@@ -205,6 +205,7 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
         : 'Um cartão por viagem. O próximo já vem com o material e o fornecedor do anterior.'}
       size="xl"
       className="sm:!max-w-[min(96vw,88rem)]"
+      telaCheia="materiais-viagens"
       onSubmit={salvar}
       onClose={onFechar}
       footer={(

@@ -221,6 +221,7 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
       open={aberto}
       title={editando ? 'Editar lançamento' : 'Novo lançamento'}
       size="md"
+      telaCheia="materiais-lancamento"
       onSubmit={registrar}
       onClose={onFechar}
       footer={(

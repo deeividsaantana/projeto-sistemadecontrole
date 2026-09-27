@@ -162,7 +162,7 @@ export function ListaMovimentos({ movimentos, chave, selecao, onAbrir }: Movimen
                 {trajeto(item).length > 0 && (
                   <span className="flex flex-wrap items-center gap-1 text-sm text-slate-600">
                     {trajeto(item).map((local, posicao) => (
-                      <span key={local} className="inline-flex items-center gap-1">
+                      <span key={`${posicao}-${local}`} className="inline-flex items-center gap-1">
                         {posicao > 0 && <ArrowRight className="size-4 text-slate-400" aria-label="para" />}
                         {local}
                       </span>

@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, FileSpreadsheet, Package, PackageX, SlidersHorizontal } from 'lucide-react';
+import { FileSpreadsheet, Package, PackageX, SlidersHorizontal } from 'lucide-react';
 import type { Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import type { PosicaoEstoque } from '../../utils/estoque';
 import { pendenciasDeRecebimento, resumoDeRecebimento } from '../../utils/recebimentoMaterial';
 import { buildMaterialsOperationalSummary, getDefaultMaterialsPeriod } from '../../utils/materialsAnalytics';
-import { buildMaterialsFlow, summarizeMaterialsStock } from '../../utils/materialsDashboard';
+import { summarizeMaterialsStock } from '../../utils/materialsDashboard';
+import { rankingPor, type AvisoMaterial } from '../../modules/materials/avisosMateriais';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../../utils/formato';
 import { EmptyState } from '../../shared/ui';
+import AvisosMateriais from './AvisosMateriais';
+import BarrasRanking from './BarrasRanking';
+import GraficoSemanas from './GraficoSemanas';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '../cadastros/estilos';
 
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
@@ -20,7 +24,9 @@ interface Props {
   movimentosVigentes: MovimentoMaterial[];
   posicoes: PosicaoEstoque[];
   podeEditar: boolean;
+  avisos: readonly AvisoMaterial[];
   onEditarMaterial: (material: Material) => void;
+  onVerMovimentos: (busca: string) => void;
 }
 
 /**
@@ -28,7 +34,7 @@ interface Props {
  * como o estoque está e o que se mexeu no período. O que pede ação vem antes
  * dos números de acompanhamento.
  */
-export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movimentosVigentes, posicoes, podeEditar, onEditarMaterial }: Props) {
+export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movimentosVigentes, posicoes, podeEditar, avisos, onEditarMaterial, onVerMovimentos }: Props) {
   const [periodo, setPeriodo] = useState(() => getDefaultMaterialsPeriod(hoje));
   const [filtros, setFiltros] = useState(FILTROS_VAZIOS);
   const [maisFiltros, setMaisFiltros] = useState(false);
@@ -36,9 +42,6 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
   const pendencias = useMemo(() => pendenciasDeRecebimento(movimentosVigentes), [movimentosVigentes]);
   const recebimento = useMemo(() => resumoDeRecebimento(movimentosVigentes), [movimentosVigentes]);
   const estoque = useMemo(() => summarizeMaterialsStock(posicoes), [posicoes]);
-  const fluxo = useMemo(() => buildMaterialsFlow(movimentosVigentes, hoje), [movimentosVigentes, hoje]);
-  const maiorFluxo = Math.max(1, ...fluxo.flatMap(item => [item.entradas, item.saidas, item.transferencias]));
-  const abaixoDoMinimo = posicoes.filter(item => item.abaixoDoMinimo);
   const resumo = useMemo(() => buildMaterialsOperationalSummary(movimentosVigentes, { from: periodo.from, to: periodo.to, ...filtros }), [filtros, movimentosVigentes, periodo]);
   const opcoes = useMemo(() => {
     const ordenar = (valores: Iterable<string>) => [...new Set(valores)].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -49,6 +52,8 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
     };
   }, [movimentos]);
   const filtrosAtivos = Object.values(filtros).filter(Boolean).length;
+  const porFornecedor = useMemo(() => rankingPor(resumo.filteredMovements, item => item.fornecedorNome), [resumo.filteredMovements]);
+  const porLocal = useMemo(() => rankingPor(resumo.filteredMovements, item => item.destino || item.origem, 10), [resumo.filteredMovements]);
 
   const exportarCsv = () => {
     const cabecalho = ['Data', 'Tipo', 'Material', 'Unidade', 'Quantidade', 'Fator', 'Fornecedor', 'Placa', 'Ticket', 'Local', 'Valor unitario', 'Valor total'];
@@ -95,6 +100,8 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
           </article>
         ))}
       </section>
+
+      <AvisosMateriais avisos={avisos} onVerMovimentos={onVerMovimentos} />
 
       {/* Carga que a nota prometeu e não chegou é nota paga sem material na
           obra: é a conversa mais cara, por isso vem antes dos gráficos. */}
@@ -149,16 +156,6 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
         </section>
       )}
 
-      {abaixoDoMinimo.length > 0 && (
-        <div data-materiais-reveal className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="flex items-center gap-2 text-base font-bold text-amber-900">
-            <AlertTriangle className="size-5 shrink-0 text-amber-600" aria-hidden="true" />
-            {abaixoDoMinimo.length} material(is) abaixo do estoque mínimo
-          </p>
-          <p className="mt-1 text-sm text-amber-800">{abaixoDoMinimo.slice(0, 6).map(item => `${item.material.descricao} (${numero(item.saldo)} ${item.material.unidade})`).join(' · ')}</p>
-        </div>
-      )}
-
       <section className="grid gap-4 lg:grid-cols-12" aria-label="Estoque e movimentação">
         <article data-materiais-reveal className={`${CARTAO} p-4 lg:col-span-4`} aria-labelledby="materiais-cobertura">
           <h2 id="materiais-cobertura" className="text-base font-bold text-slate-900">Como está o estoque</h2>
@@ -178,28 +175,7 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
           </div>
         </article>
 
-        <article data-materiais-reveal className={`${CARTAO} p-4 lg:col-span-8`} aria-labelledby="materiais-fluxo">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <h2 id="materiais-fluxo" className="text-base font-bold text-slate-900">Últimos 7 dias</h2>
-            <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600" aria-label="Legenda do gráfico">
-              <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-sm bg-[#176b4d]" /> Entradas</span>
-              <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-sm bg-[#f26a2e]" /> Saídas</span>
-              <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-sm bg-[#718087]" /> Transporte</span>
-            </div>
-          </div>
-          <div className="mt-4 grid h-36 grid-cols-7 items-end gap-1 border-b border-slate-200 sm:gap-2" role="img" aria-label="Entradas, saídas e transporte de materiais por dia">
-            {fluxo.map(item => (
-              <div key={item.date} className="flex h-full min-w-0 flex-col justify-end gap-1 text-center">
-                <div className="flex h-[104px] items-end justify-center gap-0.5 sm:gap-1">
-                  <span title={`${numero(item.entradas)} em entradas`} className="w-2 bg-[#176b4d] sm:w-2.5" style={{ height: `${(item.entradas / maiorFluxo) * 100}%` }} />
-                  <span title={`${numero(item.saidas)} em saídas`} className="w-2 bg-[#f26a2e] sm:w-2.5" style={{ height: `${(item.saidas / maiorFluxo) * 100}%` }} />
-                  <span title={`${numero(item.transferencias)} em transporte`} className="w-2 bg-[#718087] sm:w-2.5" style={{ height: `${(item.transferencias / maiorFluxo) * 100}%` }} />
-                </div>
-                <span className="pb-2 text-[11px] font-semibold tabular-nums text-slate-500">{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </article>
+        <GraficoSemanas hoje={hoje} materiais={materiais} movimentos={movimentosVigentes} />
       </section>
 
       <section data-materiais-reveal aria-labelledby="materiais-periodo" className={`${CARTAO} space-y-3 p-4`}>
@@ -297,47 +273,27 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
           )}
         </section>
 
-        <section data-materiais-reveal className={`${CARTAO} overflow-hidden`} aria-labelledby="materiais-fornecedores">
-          <h2 id="materiais-fornecedores" className="border-b border-slate-100 px-4 py-3 text-base font-bold text-slate-900">Fornecedores</h2>
-          <ul className="divide-y divide-slate-100">
-            {resumo.suppliers.slice(0, 8).map(item => (
-              <li key={item.fornecedor}>
-                <button type="button" onClick={() => { setFiltros({ ...filtros, fornecedor: item.fornecedor }); setMaisFiltros(true); }} className={`grid w-full grid-cols-[1fr_auto] gap-3 px-4 py-3 text-left transition duration-200 hover:bg-slate-50 ${FOCO}`}>
-                  <span className="min-w-0">
-                    <strong className="block truncate text-sm text-slate-900">{item.fornecedor}</strong>
-                    <span className="text-xs text-slate-500">{item.viagens.toLocaleString('pt-BR')} viagem(ns)</span>
-                  </span>
-                  <span className="text-right">
-                    <strong className="block text-sm tabular-nums text-slate-900">{numero(item.quantidade)}</strong>
-                    <span className="text-xs font-semibold text-[#176b4d]">{moeda(item.valorTotal)}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {resumo.suppliers.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhum fornecedor no período.</p>}
-        </section>
+        <BarrasRanking
+          id="materiais-fornecedores"
+          titulo="Fornecedores"
+          subtitulo="Lançamentos no período. Toque para filtrar."
+          linhas={porFornecedor}
+          vazio="Nenhum fornecedor no período."
+          escolhido={filtros.fornecedor}
+          onEscolher={fornecedor => setFiltros({ ...filtros, fornecedor })}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <section data-materiais-reveal className={`${CARTAO} overflow-hidden`} aria-labelledby="materiais-por-local">
-          <h2 id="materiais-por-local" className="border-b border-slate-100 px-4 py-3 text-base font-bold text-slate-900">Por local</h2>
-          <ul className="divide-y divide-slate-100">
-            {resumo.locations.slice(0, 14).map(item => (
-              <li key={`${item.local}-${item.material}`} className="grid grid-cols-[1fr_auto] gap-3 px-4 py-2.5">
-                <span className="min-w-0">
-                  <strong className="block truncate text-sm text-slate-800">{item.local}</strong>
-                  <span className="block truncate text-xs text-slate-500">{item.material}</span>
-                </span>
-                <span className="text-right">
-                  <strong className="block text-sm tabular-nums text-slate-900">{numero(item.quantidade)} {item.unidade}</strong>
-                  <span className="text-xs font-semibold text-[#176b4d]">{moeda(item.valorTotal)}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          {resumo.locations.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhum local no período.</p>}
-        </section>
+        <BarrasRanking
+          id="materiais-por-local"
+          titulo="Por local"
+          subtitulo="Onde mais chegou ou saiu material no período. Toque para filtrar."
+          linhas={porLocal}
+          vazio="Nenhum local no período."
+          escolhido={filtros.local}
+          onEscolher={local => setFiltros({ ...filtros, local })}
+        />
 
         <section data-materiais-reveal className={`${CARTAO} overflow-hidden`} aria-labelledby="materiais-viagens">
           <h2 id="materiais-viagens" className="border-b border-slate-100 px-4 py-3 text-base font-bold text-slate-900">Viagens de bota-fora e solo</h2>

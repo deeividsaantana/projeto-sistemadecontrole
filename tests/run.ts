@@ -173,3 +173,4 @@ import './reservaArmazenamento.test';
 import './publicPresenceTeamNames.test';
 import './editarEquipeFiltro.test';
 import './lancamentoRapidoMateriais.test';
+import './avisosMateriais.test';
