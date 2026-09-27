@@ -25,6 +25,7 @@ import LancarMateriais from './materiais/LancarMateriais';
 import FichaMaterial from './materiais/FichaMaterial';
 import LocaisMateriais from './materiais/LocaisMateriais';
 import GraficosMateriais from './materiais/GraficosMateriais';
+import RelatoriosMateriais from './materiais/RelatoriosMateriais';
 import PrevistoMateriais from './materiais/PrevistoMateriais';
 import BotaForaMateriais from './materiais/BotaForaMateriais';
 import { viagensDeBotaFora } from '../modules/materials/botaFora';
@@ -70,7 +71,7 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
 ];
 
 // Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['lancar', 'resumo', 'graficos', 'previsto', 'utilizacao', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
+const ORDEM_SECOES: readonly SecaoMateriais[] = ['lancar', 'resumo', 'graficos', 'relatorios', 'previsto', 'utilizacao', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
@@ -497,6 +498,10 @@ export default function MateriaisTab({
               onEditar={movimento => abrirLancamento(movimento)}
               onVerMovimentos={() => escolherSecao('movimentos')}
             />
+          )}
+
+          {aba === 'relatorios' && (
+            <RelatoriosMateriais hoje={hoje} materiais={materiais} movimentos={movimentosVigentes} etapas={etapas} />
           )}
 
           {aba === 'graficos' && (

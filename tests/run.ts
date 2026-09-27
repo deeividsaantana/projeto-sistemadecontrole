@@ -179,3 +179,4 @@ import './locaisSge.test';
 import './previstoMateriais.test';
 import './botaFora.test';
 import './graficosMateriais.test';
+import './relatoriosMateriais.test';
