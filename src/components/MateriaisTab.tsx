@@ -24,6 +24,8 @@ import GradeViagens from './materiais/GradeViagens';
 import FichaMaterial from './materiais/FichaMaterial';
 import LocaisMateriais from './materiais/LocaisMateriais';
 import PrevistoMateriais from './materiais/PrevistoMateriais';
+import BotaForaMateriais from './materiais/BotaForaMateriais';
+import { viagensDeBotaFora } from '../modules/materials/botaFora';
 import { SITUACAO_PREVISTO, acompanharMes } from '../modules/materials/previstoMateriais';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from './cadastros/estilos';
 import './materiais/Materiais.css';
@@ -66,14 +68,14 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
 ];
 
 // Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'previsto', 'utilizacao', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
+const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'previsto', 'utilizacao', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
   { teclas: 'V', oQueFaz: 'Várias viagens de uma vez', editar: true },
   { teclas: 'M', oQueFaz: 'Novo material', editar: true },
   { teclas: '/', oQueFaz: 'Buscar movimento' },
-  { teclas: '1 a 8', oQueFaz: 'Ir para cada parte do menu' },
+  { teclas: '1 a 9', oQueFaz: 'Ir para cada parte do menu' },
   { teclas: 'Shift+Enter', oQueFaz: 'Na janela de lançamento: salvar e lançar outro', editar: true },
   { teclas: 'Enter', oQueFaz: 'Na grade de viagens: descer para a linha de baixo', editar: true },
   { teclas: '?', oQueFaz: 'Mostrar esta lista' },
@@ -134,6 +136,7 @@ export default function MateriaisTab({
     () => acompanharMes({ mes: hoje.slice(0, 7), hoje, previstos, movimentos, etapas, materiais }).linhas,
     [etapas, hoje, materiais, movimentos, previstos],
   );
+  const viagensBotaFora = useMemo(() => viagensDeBotaFora(movimentos, etapas).length, [etapas, movimentos]);
   const previstosEmAtencao = previstoDoMes.filter(linha => SITUACAO_PREVISTO[linha.situacao].tom === 'alerta').length;
   // A busca olha os 11 mil movimentos: a digitação vem primeiro, a lista acompanha.
   const termo = normalizeComparable(useDeferredValue(busca)).trim();
@@ -366,9 +369,10 @@ export default function MateriaisTab({
     if (secao === 'movimentos') return movimentos.length;
     if (secao === 'locais') return etapas.filter(item => item.tipoLocal !== 'Serviço').length;
     if (secao === 'previsto') return previstoDoMes.length;
+    if (secao === 'botafora') return viagensBotaFora;
     return null;
   };
-  const comBusca = aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro' || aba === 'locais';
+  const comBusca = aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro' || aba === 'locais' || aba === 'botafora';
 
   // Entrada do cabeçalho, do menu e dos blocos, no passo do Painel e de Cadastros.
   useGSAP(() => {
@@ -435,7 +439,7 @@ export default function MateriaisTab({
                     aria-keyshortcuts="/"
                     value={busca}
                     onChange={event => setBusca(event.target.value)}
-                    placeholder={aba === 'movimentos' ? 'Material, local, fornecedor, nota ou placa' : aba === 'locais' ? 'Buscar local ou código SGE' : `Buscar em ${nomeDaSecao(aba).toLocaleLowerCase('pt-BR')}`}
+                    placeholder={aba === 'movimentos' ? 'Material, local, fornecedor, nota ou placa' : aba === 'locais' ? 'Buscar local ou código SGE' : aba === 'botafora' ? 'Placa, nota, origem ou destino' : `Buscar em ${nomeDaSecao(aba).toLocaleLowerCase('pt-BR')}`}
                     className={`${CAMPO} pl-11`}
                   />
                 </label>
@@ -466,6 +470,8 @@ export default function MateriaisTab({
               materiais={materiais}
               movimentos={movimentos}
               movimentosVigentes={movimentosVigentes}
+              etapas={etapas}
+              onVerBotaFora={() => escolherSecao('botafora')}
               posicoes={posicoes}
               podeEditar={podeEditar}
               avisos={avisos}
@@ -486,6 +492,10 @@ export default function MateriaisTab({
               onSavePrevistos={onSavePrevistos}
               onIrParaLocais={() => escolherSecao('locais')}
             />
+          )}
+
+          {aba === 'botafora' && (
+            <BotaForaMateriais movimentos={movimentos} etapas={etapas} termo={termo} onIrParaLocais={() => escolherSecao('locais')} />
           )}
 
           {aba === 'utilizacao' && (

@@ -177,3 +177,4 @@ import './avisosMateriais.test';
 import './fichaMaterial.test';
 import './locaisSge.test';
 import './previstoMateriais.test';
+import './botaFora.test';
