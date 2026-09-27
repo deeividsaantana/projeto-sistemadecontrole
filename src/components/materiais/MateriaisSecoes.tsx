@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Boxes, ChartPie, ClipboardPen, FileBarChart, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, type LucideIcon } from 'lucide-react';
+import { Boxes, ChartPie, ClipboardPen, FileBarChart, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, UserRoundCheck, type LucideIcon } from 'lucide-react';
 import { FOCO, reduzMovimento } from '../cadastros/estilos';
 
-export type SecaoMateriais = 'lancar' | 'resumo' | 'graficos' | 'relatorios' | 'previsto' | 'utilizacao' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
+export type SecaoMateriais = 'lancar' | 'resumo' | 'graficos' | 'relatorios' | 'previsto' | 'utilizacao' | 'apontadores' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
 
 interface Secao {
   id: SecaoMateriais;
@@ -37,6 +37,7 @@ const GRUPOS: ReadonlyArray<{ id: string; nome: string; secoes: readonly Secao[]
     secoes: [
       { id: 'previsto', nome: 'Previsto do mês', ajuda: 'Meta de cada ramo e o que já chegou', Icone: Target },
       { id: 'utilizacao', nome: 'Uso por ramo', ajuda: 'Quanto cada ramo recebeu e usou', Icone: Route },
+      { id: 'apontadores', nome: 'Apontadores', ajuda: 'Envios do campo, fotos e o link', Icone: UserRoundCheck },
       { id: 'botafora', nome: 'Bota-fora', ajuda: 'Viagens para Itaquareia, Lara e São Bento', Icone: Truck },
     ],
   },

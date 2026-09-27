@@ -26,6 +26,8 @@ import FichaMaterial from './materiais/FichaMaterial';
 import LocaisMateriais from './materiais/LocaisMateriais';
 import GraficosMateriais from './materiais/GraficosMateriais';
 import RelatoriosMateriais from './materiais/RelatoriosMateriais';
+import ApontadoresMateriais from './materiais/ApontadoresMateriais';
+import { enviosDoCampo } from '../modules/materials/apontadores';
 import PrevistoMateriais from './materiais/PrevistoMateriais';
 import BotaForaMateriais from './materiais/BotaForaMateriais';
 import { viagensDeBotaFora } from '../modules/materials/botaFora';
@@ -71,7 +73,7 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
 ];
 
 // Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['lancar', 'resumo', 'graficos', 'relatorios', 'previsto', 'utilizacao', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
+const ORDEM_SECOES: readonly SecaoMateriais[] = ['lancar', 'resumo', 'graficos', 'relatorios', 'previsto', 'utilizacao', 'apontadores', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
@@ -369,12 +371,14 @@ export default function MateriaisTab({
     });
   }
 
+  const enviosDoLink = useMemo(() => enviosDoCampo(movimentos).length, [movimentos]);
   const contar = (secao: SecaoMateriais) => {
     if (secao === 'estoque' || secao === 'cadastro') return ativos.length;
     if (secao === 'movimentos') return movimentos.length;
     if (secao === 'locais') return etapas.filter(item => item.tipoLocal !== 'Serviço').length;
     if (secao === 'previsto') return previstoDoMes.length;
     if (secao === 'botafora') return viagensBotaFora;
+    if (secao === 'apontadores') return enviosDoLink;
     return null;
   };
   const comBusca = aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro' || aba === 'locais' || aba === 'botafora';
@@ -538,6 +542,17 @@ export default function MateriaisTab({
 
           {aba === 'botafora' && (
             <BotaForaMateriais movimentos={movimentos} etapas={etapas} termo={termo} onIrParaLocais={() => escolherSecao('locais')} />
+          )}
+
+          {aba === 'apontadores' && (
+            <ApontadoresMateriais
+              hoje={hoje}
+              movimentos={movimentos}
+              responsavel={responsavel}
+              podeEditar={podeEditar}
+              onUpdateMovimentos={onUpdateMovimentos}
+              onIrParaUso={() => escolherSecao('utilizacao')}
+            />
           )}
 
           {aba === 'utilizacao' && (
