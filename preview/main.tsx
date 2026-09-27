@@ -1,4 +1,4 @@
-import type { EtapaServico } from '../src/types';
+import type { EtapaServico, PrevistoMaterial } from '../src/types';
 import { planoCargaSge } from '../src/modules/materials/locaisSge';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
@@ -235,6 +235,7 @@ function MateriaisPreview() {
   const [materiais, setMateriais] = React.useState(() => [...fx.materiaisObra]);
   const [movimentos, setMovimentos] = React.useState(() => [...fx.movimentosMateriaisObra]);
   const [etapas, setEtapas] = React.useState<EtapaServico[]>([]);
+  const [previstos, setPrevistos] = React.useState<PrevistoMaterial[]>([]);
   const juntar = <T extends { id: string }>(atuais: T[], novos: T[]) => {
     const porId = new Map(novos.map(item => [item.id, item]));
     const ids = new Set(atuais.map(item => item.id));
@@ -254,6 +255,8 @@ function MateriaisPreview() {
       onUpdateMovimentos={alterados => setMovimentos(atual => juntar(atual, alterados))}
       onApplyImport={(novosMateriais, novosMovimentos) => { setMateriais(atual => juntar(atual, novosMateriais)); setMovimentos(atual => juntar(atual, novosMovimentos)); }}
       onSaveEtapas={itens => setEtapas(atual => juntar(atual, itens))}
+      previstos={previstos}
+      onSavePrevistos={itens => setPrevistos(atual => juntar(atual, itens))}
     />
   );
 }

@@ -7,7 +7,7 @@ import { locaisParaEscolher, rotuloDoLocal } from '../modules/materials/locaisSg
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { CheckCircle2, Keyboard, Layers, MapPin, PackagePlus, Plus, Search, Undo2, X } from 'lucide-react';
-import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../types';
+import type { Empresa, EtapaServico, Material, MovimentoMaterial, PrevistoMaterial, TipoMovimentoMaterial } from '../types';
 import { posicaoEstoque, type PosicaoEstoque } from '../utils/estoque';
 import { cancelMaterialMovement } from '../modules/materials/materialFieldUse';
 import { filtrarOpcoes } from '../modules/materials/lancamentoRapido';
@@ -23,6 +23,8 @@ import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
 import FichaMaterial from './materiais/FichaMaterial';
 import LocaisMateriais from './materiais/LocaisMateriais';
+import PrevistoMateriais from './materiais/PrevistoMateriais';
+import { SITUACAO_PREVISTO, acompanharMes } from '../modules/materials/previstoMateriais';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from './cadastros/estilos';
 import './materiais/Materiais.css';
 import {
@@ -49,6 +51,8 @@ interface MateriaisTabProps {
   onUpdateMovimentos: (movimentos: MovimentoMaterial[], descricao: string, acao?: 'Editou' | 'Excluiu') => void;
   onApplyImport: (materials: Material[], movements: MovimentoMaterial[]) => void;
   onSaveEtapas: (etapas: EtapaServico[], descricao: string) => void;
+  previstos: PrevistoMaterial[];
+  onSavePrevistos: (previstos: PrevistoMaterial[], descricao: string) => void;
 }
 
 type FiltroTipo = 'todos' | TipoMovimentoMaterial | 'desfeitos';
@@ -62,14 +66,14 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
 ];
 
 // Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'utilizacao', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
+const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'previsto', 'utilizacao', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
   { teclas: 'V', oQueFaz: 'Várias viagens de uma vez', editar: true },
   { teclas: 'M', oQueFaz: 'Novo material', editar: true },
   { teclas: '/', oQueFaz: 'Buscar movimento' },
-  { teclas: '1 a 7', oQueFaz: 'Ir para cada parte do menu' },
+  { teclas: '1 a 8', oQueFaz: 'Ir para cada parte do menu' },
   { teclas: 'Shift+Enter', oQueFaz: 'Na janela de lançamento: salvar e lançar outro', editar: true },
   { teclas: 'Enter', oQueFaz: 'Na grade de viagens: descer para a linha de baixo', editar: true },
   { teclas: '?', oQueFaz: 'Mostrar esta lista' },
@@ -94,6 +98,8 @@ export default function MateriaisTab({
   onUpdateMovimentos,
   onApplyImport,
   onSaveEtapas,
+  previstos,
+  onSavePrevistos,
 }: MateriaisTabProps) {
   const hoje = isoDay(new Date());
   const [aba, setAba] = useState<SecaoMateriais>('resumo');
@@ -123,6 +129,12 @@ export default function MateriaisTab({
   const movimentosVigentes = useMemo(() => movimentos.filter(item => !item.canceladoEm), [movimentos]);
   const posicoes = useMemo(() => posicaoEstoque(ativos, movimentos), [ativos, movimentos]);
   const avisos = useMemo(() => avisosDeMateriais(posicoes, movimentos, hoje), [hoje, movimentos, posicoes]);
+  // Previsto deste mês: quantos existem e quantos pedem atenção aparecem no menu.
+  const previstoDoMes = useMemo(
+    () => acompanharMes({ mes: hoje.slice(0, 7), hoje, previstos, movimentos, etapas, materiais }).linhas,
+    [etapas, hoje, materiais, movimentos, previstos],
+  );
+  const previstosEmAtencao = previstoDoMes.filter(linha => SITUACAO_PREVISTO[linha.situacao].tom === 'alerta').length;
   // A busca olha os 11 mil movimentos: a digitação vem primeiro, a lista acompanha.
   const termo = normalizeComparable(useDeferredValue(busca)).trim();
   const posicoesFiltradas = posicoes.filter(item => !termo
@@ -353,6 +365,7 @@ export default function MateriaisTab({
     if (secao === 'estoque' || secao === 'cadastro') return ativos.length;
     if (secao === 'movimentos') return movimentos.length;
     if (secao === 'locais') return etapas.filter(item => item.tipoLocal !== 'Serviço').length;
+    if (secao === 'previsto') return previstoDoMes.length;
     return null;
   };
   const comBusca = aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro' || aba === 'locais';
@@ -407,7 +420,7 @@ export default function MateriaisTab({
       )}
 
       <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
-        <MateriaisSecoes value={aba} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : 0)} onSelect={escolherSecao} />
+        <MateriaisSecoes value={aba} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : secao === 'previsto' ? previstosEmAtencao : 0)} onSelect={escolherSecao} />
 
         <div className="min-w-0 space-y-3">
           {comBusca && (
@@ -458,6 +471,20 @@ export default function MateriaisTab({
               avisos={avisos}
               onEditarMaterial={abrirCadastro}
               onVerMovimentos={termoAviso => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoAviso); }}
+            />
+          )}
+
+          {aba === 'previsto' && (
+            <PrevistoMateriais
+              hoje={hoje}
+              materiais={materiais}
+              movimentos={movimentos}
+              etapas={etapas}
+              previstos={previstos}
+              responsavel={responsavel}
+              podeEditar={podeEditar}
+              onSavePrevistos={onSavePrevistos}
+              onIrParaLocais={() => escolherSecao('locais')}
             />
           )}
 

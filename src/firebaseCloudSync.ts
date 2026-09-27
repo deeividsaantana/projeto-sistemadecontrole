@@ -44,6 +44,7 @@ export const INTERMEDIATE_TABLE_IDS = [
   'apontamentoRamoRegistros',
   'materiaisCadastro',
   'materiaisMovimentos',
+  'materiaisPrevistos',
   'frentesServico',
   'diariosObra',
   'servicosObra',
