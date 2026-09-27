@@ -1,4 +1,5 @@
 import type { EtapaServico } from '../src/types';
+import { planoCargaSge } from '../src/modules/materials/locaisSge';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -71,6 +72,7 @@ const previewNotifications = [
 // em lançamentos, para conferir a janela que trava a exclusão; com
 // ?emUso=alguns só um em cada três fica travado, para conferir o lote misto.
 const algunsEmUso = new URLSearchParams(location.search).get('emUso') === 'alguns';
+const comListaSge = new URLSearchParams(location.search).get('sge') === '1';
 function CadastrosPreview() {
   const [listas, setListas] = React.useState<Record<string, Array<{ id: string } & Record<string, unknown>>>>(() => ({
     empresas: [...fx.empresas],
@@ -80,7 +82,8 @@ function CadastrosPreview() {
     comboios: [...fx.comboios],
     combustiveis: [...fx.combustiveis],
     lubrificantes: [...fx.lubrificantes],
-    etapas: [...fx.etapasRamos],
+    // Com ?sge=1 os ramos vêm com a lista SGE carregada, para conferir classes e códigos.
+    etapas: comListaSge ? [...fx.etapasRamos, ...planoCargaSge(fx.etapasRamos).novas] : [...fx.etapasRamos],
   } as never));
   const [exclusoes, setExclusoes] = React.useState<ExclusaoRegistro[]>([]);
   const salvar = (tabela: string) => (item: { id: string }) => setListas(atual => ({

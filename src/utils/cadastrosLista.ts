@@ -134,7 +134,12 @@ export const COLUNAS: Record<CadastroCategoriaId, ColunaCadastro[]> = {
     { id: 'endereco', label: 'Endereço' },
     { id: 'responsavel', label: 'Responsável' },
   ],
-  etapas: [{ id: 'nome', label: 'Ramo/trecho' }],
+  etapas: [
+    { id: 'codigo', label: 'SGE', codigo: true },
+    { id: 'nome', label: 'Ramo ou local', larga: true },
+    { id: 'classe', label: 'Classe' },
+    { id: 'ramo', label: 'Ramo' },
+  ],
   combustiveis: [{ id: 'nome', label: 'Combustível' }],
   lubrificantes: [{ id: 'nome', label: 'Lubrificante' }],
 };
@@ -165,7 +170,10 @@ export const FILTROS: Record<CadastroCategoriaId, FiltroCadastro[]> = {
   ],
   comboios: [],
   obras: [{ id: 'situacao', label: 'Situação' }],
-  etapas: [],
+  etapas: [
+    { id: 'classe', label: 'Classe' },
+    { id: 'ramo', label: 'Ramo' },
+  ],
   combustiveis: [],
   lubrificantes: [],
 };
@@ -307,7 +315,24 @@ export const montarLinhas = (categoria: CadastroCategoriaId, dados: DadosCadastr
     }));
   }
 
-  const simples = dados[tabela] as readonly (TipoCombustivel | ProdutoLubrificacao | EtapaServico)[];
+  // Ramos e locais servem o site inteiro (materiais, apontamentos, horas):
+  // cada um tem a sua classe e o código SGE de apropriação.
+  if (tabela === 'etapas') {
+    return dados.etapas.map(item => ({
+      id: item.id,
+      titulo: item.codigoSge ? `${item.codigoSge} · ${item.nome}` : item.nome,
+      detalhe: [item.tipoLocal, item.ramo && item.ramo !== item.nome ? item.ramo : ''].filter(Boolean).join(' · '),
+      ativo: true,
+      situacao: 'Ativo',
+      tom: 'ok',
+      colunas: { codigo: item.codigoSge || '', nome: item.nome, classe: item.tipoLocal || '', ramo: item.ramo || '' },
+      filtros: { classe: item.tipoLocal || 'Sem classe', ramo: item.ramo || 'Sem ramo' },
+      busca: juntar(item.nome, item.codigoSge, item.tipoLocal, item.ramo, ...(item.apelidos || [])),
+      registro: item,
+    }));
+  }
+
+  const simples = dados[tabela] as readonly (TipoCombustivel | ProdutoLubrificacao)[];
   return simples.map(item => ({
     id: item.id,
     titulo: item.nome,
