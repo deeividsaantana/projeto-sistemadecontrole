@@ -181,3 +181,4 @@ import './botaFora.test';
 import './graficosMateriais.test';
 import './relatoriosMateriais.test';
 import './apontadores.test';
+import './rotinaDiaria.test';

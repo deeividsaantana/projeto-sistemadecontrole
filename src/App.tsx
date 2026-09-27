@@ -32,6 +32,9 @@ import {
   RegistroProducao,
   PlanejamentoItem,
   PrevistoMaterial,
+  RotinaDiaria,
+  PendenciaRotina,
+  ModeloRotina,
   ModeloFvs,
   FichaVerificacaoServico,
   Inspecao,
@@ -114,6 +117,7 @@ const EquipesTab = lazy(() => import('./components/EquipesTab'));
 const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
 const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
+const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const FrentesTab = lazy(() => import('./components/FrentesTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
@@ -379,6 +383,9 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['materiaisCadastro', STORAGE_KEYS.materiaisCadastro],
   ['materiaisMovimentos', STORAGE_KEYS.materiaisMovimentos],
   ['materiaisPrevistos', STORAGE_KEYS.materiaisPrevistos],
+  ['rotinasDiarias', STORAGE_KEYS.rotinasDiarias],
+  ['pendenciasRotina', STORAGE_KEYS.pendenciasRotina],
+  ['modelosRotina', STORAGE_KEYS.modelosRotina],
   ['frentesServico', STORAGE_KEYS.frentesServico],
   ['diariosObra', STORAGE_KEYS.diariosObra],
   ['servicosObra', STORAGE_KEYS.servicosObra],
@@ -544,6 +551,9 @@ export default function App() {
   // tela soma ele: só a aba Materiais mostra o registro, marcado como desfeito.
   const materiaisMovimentosVigentes = useMemo(() => materiaisMovimentos.filter(item => !item.canceladoEm), [materiaisMovimentos]);
   const [materiaisPrevistos, setMateriaisPrevistos] = useState<PrevistoMaterial[]>([]);
+  const [rotinasDiarias, setRotinasDiarias] = useState<RotinaDiaria[]>([]);
+  const [pendenciasRotina, setPendenciasRotina] = useState<PendenciaRotina[]>([]);
+  const [modelosRotina, setModelosRotina] = useState<ModeloRotina[]>([]);
   const [frentesServico, setFrentesServico] = useState<FrenteServico[]>([]);
   const [diariosObra, setDiariosObra] = useState<DiarioObra[]>([]);
   const [servicosObra, setServicosObra] = useState<ServicoObra[]>([]);
@@ -780,6 +790,9 @@ export default function App() {
       setMateriaisCadastro(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisCadastro), STORAGE_KEYS.materiaisCadastro, [] as Material[]));
       setMateriaisMovimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]));
       setMateriaisPrevistos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisPrevistos), STORAGE_KEYS.materiaisPrevistos, [] as PrevistoMaterial[]));
+      setRotinasDiarias(parseStoredJson(localStorage.getItem(STORAGE_KEYS.rotinasDiarias), STORAGE_KEYS.rotinasDiarias, [] as RotinaDiaria[]));
+      setPendenciasRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.pendenciasRotina), STORAGE_KEYS.pendenciasRotina, [] as PendenciaRotina[]));
+      setModelosRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosRotina), STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]));
       setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, INITIAL_FRENTES_SERVICO));
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
       setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
@@ -1008,6 +1021,9 @@ export default function App() {
     materiaisCadastro: readTable(STORAGE_KEYS.materiaisCadastro, [] as Material[]),
     materiaisMovimentos: readTable(STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]),
     materiaisPrevistos: readTable(STORAGE_KEYS.materiaisPrevistos, [] as PrevistoMaterial[]),
+    rotinasDiarias: readTable(STORAGE_KEYS.rotinasDiarias, [] as RotinaDiaria[]),
+    pendenciasRotina: readTable(STORAGE_KEYS.pendenciasRotina, [] as PendenciaRotina[]),
+    modelosRotina: readTable(STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]),
     frentesServico: readTable(STORAGE_KEYS.frentesServico, [] as FrenteServico[]),
     diariosObra: readTable(STORAGE_KEYS.diariosObra, [] as DiarioObra[]),
     servicosObra: readTable(STORAGE_KEYS.servicosObra, [] as ServicoObra[]),
@@ -1243,6 +1259,15 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'materiaisPrevistos')) {
           setMateriaisPrevistos(normalizeRuntimeCollection<PrevistoMaterial>(data.materiaisPrevistos));
+        }
+        if (Object.hasOwn(data, 'rotinasDiarias')) {
+          setRotinasDiarias(normalizeRuntimeCollection<RotinaDiaria>(data.rotinasDiarias));
+        }
+        if (Object.hasOwn(data, 'pendenciasRotina')) {
+          setPendenciasRotina(normalizeRuntimeCollection<PendenciaRotina>(data.pendenciasRotina));
+        }
+        if (Object.hasOwn(data, 'modelosRotina')) {
+          setModelosRotina(normalizeRuntimeCollection<ModeloRotina>(data.modelosRotina));
         }
         if (Object.hasOwn(data, 'frentesServico')) {
           setFrentesServico(normalizeRuntimeCollection<FrenteServico>(data.frentesServico));
@@ -2250,6 +2275,38 @@ export default function App() {
     saveAndLog('Materiais', acao, descricao, historyLogs, () => {
       setMateriaisPrevistos(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.materiaisPrevistos, JSON.stringify(updated));
+    });
+  };
+
+  // Rotina do assistente (Meu dia): o dia de cada pessoa e as pendências que
+  // passam de um dia para o outro. Marcar o checklist não entra no histórico
+  // para não encher a auditoria com um registro por clique.
+  const handleSaveRotinaDiaria = (rotina: RotinaDiaria) => {
+    const updated = rotinasDiarias.some(item => item.id === rotina.id)
+      ? rotinasDiarias.map(item => (item.id === rotina.id ? rotina : item))
+      : [...rotinasDiarias, rotina];
+    setRotinasDiarias(updated);
+    writeStorageValue(localStorage, STORAGE_KEYS.rotinasDiarias, JSON.stringify(updated));
+  };
+
+  // Excluir uma pendência marca excluidaEm (a nuvem não traz de volta) e só
+  // acontece quando a própria pessoa confirma na tela.
+  const handleSavePendenciaRotina = (pendencia: PendenciaRotina, descricao: string, acao: HistoryLog['acao']) => {
+    const updated = pendenciasRotina.some(item => item.id === pendencia.id)
+      ? pendenciasRotina.map(item => (item.id === pendencia.id ? pendencia : item))
+      : [...pendenciasRotina, pendencia];
+    saveAndLog('Meu dia', acao, descricao, historyLogs, () => {
+      setPendenciasRotina(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.pendenciasRotina, JSON.stringify(updated));
+    });
+  };
+
+  // O checklist do jeito de cada pessoa (um modelo por pessoa).
+  const handleSaveModeloRotina = (modelo: ModeloRotina, descricao: string) => {
+    const updated = [...modelosRotina.filter(item => item.id !== modelo.id), modelo];
+    saveAndLog('Meu dia', 'Editou', descricao, historyLogs, () => {
+      setModelosRotina(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.modelosRotina, JSON.stringify(updated));
     });
   };
 
@@ -5403,6 +5460,18 @@ export default function App() {
                 ticketsJazida={ticketsJazidaAtivos}
                 podeEditar={pode(currentUserRole, 'frentes', 'editar')}
                 onSave={handleSaveFrente}
+              />
+            )}
+
+            {activeTab === 'meu-dia' && (
+              <MeuDiaTab
+                responsavel={activeUserName}
+                rotinas={rotinasDiarias}
+                pendencias={pendenciasRotina}
+                modelos={modelosRotina}
+                onSaveRotina={handleSaveRotinaDiaria}
+                onSavePendencia={handleSavePendenciaRotina}
+                onSaveModelo={handleSaveModeloRotina}
               />
             )}
 
