@@ -22,6 +22,8 @@ import {
 } from '../../modules/materials/relatoriosMateriais';
 import { nomeDoMes, ramosDaObra } from '../../modules/materials/previstoMateriais';
 import { formatarData, moeda, numero } from '../../utils/formato';
+import { CountUp } from '../../shared/ui';
+import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '../cadastros/estilos';
 
 type Relatorio = 'material' | 'fornecedor' | 'ramo' | 'mes' | 'dia';
@@ -79,6 +81,8 @@ interface Props {
 export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapas }: Props) {
   const [filtro, setFiltro] = useState<FiltroRelatorio>(() => ({ de: primeiroDoMes(hoje), ate: hoje, tipo: 'Entrada', materialId: '', fornecedor: '', ramo: '' }));
   const [relatorio, setRelatorio] = useState<Relatorio>('material');
+  // As 20 primeiras linhas entram em cascata ao trocar de relatório ou filtro.
+  const tabela = useEntradaDeLista<HTMLElement>([relatorio, filtro]);
   const mudar = (parte: Partial<FiltroRelatorio>) => setFiltro(atual => ({ ...atual, ...parte }));
 
   const ramoDe = useMemo(() => ramoDoMovimento(etapas), [etapas]);
@@ -204,9 +208,11 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
           return (
             <article key={item.chave} className={`${CARTAO} p-4`}>
               <p className="text-sm font-semibold text-slate-600">{INDICADOR[item.chave].nome}</p>
-              <strong className="mt-1 block truncate text-2xl font-black tabular-nums text-slate-950" title={item.chave === 'valor' ? moeda(item.valor) : INDICADOR[item.chave].formatar(item.valor)}>{INDICADOR[item.chave].formatar(item.valor)}</strong>
+              <strong className="mt-1 block truncate text-2xl font-black tabular-nums text-slate-950" title={item.chave === 'valor' ? moeda(item.valor) : INDICADOR[item.chave].formatar(item.valor)}>
+                <CountUp value={item.valor} format={INDICADOR[item.chave].formatar} />
+              </strong>
               <span className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                <Seta className="size-3.5 shrink-0" aria-hidden="true" />
+                <Seta className={`size-3.5 shrink-0 ${item.variacao ? (item.variacao > 0 ? 'text-[#176b4d]' : 'text-[#f26a2e]') : ''}`} aria-hidden="true" />
                 {item.variacao === null ? 'nada no período anterior' : `${item.variacao > 0 ? '+' : ''}${item.variacao}% sobre o anterior`}
               </span>
             </article>
@@ -215,7 +221,7 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
       </section>
       <p className="-mt-2 px-1 text-xs text-slate-500 print:hidden">Período anterior comparado: {formatarData(anterior.de)} a {formatarData(anterior.ate)}.</p>
 
-      <section id="materiais-relatorio-impressao" data-materiais-reveal aria-labelledby="materiais-relatorio-titulo" className={`${CARTAO} overflow-hidden`}>
+      <section ref={tabela} id="materiais-relatorio-impressao" data-materiais-reveal aria-labelledby="materiais-relatorio-titulo" className={`${CARTAO} overflow-hidden`}>
         <div role="tablist" aria-label="Relatórios" className="flex flex-wrap gap-1 border-b border-slate-100 p-2 print:hidden">
           {RELATORIOS.map(({ id, nome, Icone }) => {
             const ativo = relatorio === id;
@@ -260,9 +266,9 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {matriz.linhas.map(linha => (
-                  <tr key={linha.chave}>
-                    <th scope="row" className="sticky left-0 z-10 max-w-[12rem] bg-white p-3 font-semibold text-slate-800">
+                {matriz.linhas.map((linha, posicao) => (
+                  <tr key={linha.chave} data-linha-lista={posicao < 20 ? '' : undefined} className="group transition-colors duration-150 hover:bg-emerald-50/50">
+                    <th scope="row" className="sticky left-0 z-10 max-w-[12rem] bg-white p-3 font-semibold text-slate-800 group-hover:bg-[#f3faf6]">
                       <span className="block truncate" title={linha.nome}>{linha.nome}</span>
                       <span className="text-xs font-normal text-slate-500">{linha.unidade}</span>
                     </th>
@@ -290,8 +296,8 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {linhas.map(linha => (
-                    <tr key={linha.chave}>
+                  {linhas.map((linha, posicao) => (
+                    <tr key={linha.chave} data-linha-lista={posicao < 20 ? '' : undefined} className="transition-colors duration-150 hover:bg-emerald-50/50">
                       <th scope="row" className="p-3 font-semibold text-slate-800">
                         {nomeDaLinha(linha)}
                         {linha.detalhe && <span className="ml-1 text-xs font-normal text-slate-500">({linha.detalhe})</span>}
@@ -301,7 +307,16 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
                       <td className="whitespace-nowrap p-3 text-right tabular-nums text-slate-700">{linha.metrosCubicos ? numero(linha.metrosCubicos, 1) : '-'}</td>
                       <td className="p-3 text-right tabular-nums text-slate-700">{outrasEmTexto(linha.outras) || '-'}</td>
                       <td className="whitespace-nowrap p-3 text-right tabular-nums text-slate-900">{linha.valor ? moeda(linha.valor) : '-'}</td>
-                      <td className="p-3 text-right font-bold tabular-nums text-slate-900">{total.valor ? `${Math.round((linha.valor / total.valor) * 100)}%` : '-'}</td>
+                      <td className="p-3 text-right font-bold tabular-nums text-slate-900">
+                        {total.valor ? (
+                          <span className="inline-flex items-center justify-end gap-2">
+                            <span className="hidden h-1.5 w-14 overflow-hidden rounded-full bg-slate-200 lg:block print:hidden" aria-hidden="true">
+                              <span className="block h-full rounded-full bg-[#176b4d]" style={{ width: `${Math.max(2, (linha.valor / total.valor) * 100)}%` }} />
+                            </span>
+                            {Math.round((linha.valor / total.valor) * 100)}%
+                          </span>
+                        ) : '-'}
+                      </td>
                       {relatorio !== 'dia' && <td className="whitespace-nowrap p-3 text-right tabular-nums text-slate-500">{linha.ultima ? formatarData(linha.ultima) : '-'}</td>}
                     </tr>
                   ))}
@@ -322,8 +337,8 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
             </div>
 
             <ul className="divide-y divide-slate-100 border-t border-slate-100 sm:hidden print:hidden">
-              {linhas.map(linha => (
-                <li key={linha.chave} className="p-4">
+              {linhas.map((linha, posicao) => (
+                <li key={linha.chave} data-linha-lista={posicao < 20 ? '' : undefined} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <strong className="min-w-0 text-base text-slate-900">{nomeDaLinha(linha)}{linha.detalhe ? <span className="ml-1 text-sm font-normal text-slate-500">({linha.detalhe})</span> : null}</strong>
                     <span className="shrink-0 text-base font-black tabular-nums text-slate-950">{linha.valor ? moeda(linha.valor) : `${linha.lancamentos.toLocaleString('pt-BR')} lanç.`}</span>

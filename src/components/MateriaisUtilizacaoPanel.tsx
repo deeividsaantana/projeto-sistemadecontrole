@@ -225,7 +225,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
             {semRamo.slice(0, 8).map(grupo => {
               const escolhido = vinculos[grupo.destino] ?? grupo.suggestedBranchId ?? '';
               return (
-                <li key={grupo.destino} className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-center">
+                <li key={grupo.destino} className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-center">
                   <div className="min-w-0">
                     <strong className="block truncate text-sm text-slate-900">{grupo.destino}</strong>
                     <span className="text-xs text-slate-500">{grupo.movementIds.length} entrada(s)</span>
@@ -234,7 +234,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                     value={escolhido}
                     onChange={event => setVinculos(atual => ({ ...atual, [grupo.destino]: event.target.value }))}
                     aria-label={`Ramo para ${grupo.destino}`}
-                    className={`min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 ${focusRing}`}
+                    className={`min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 ${focusRing}`}
                   >
                     <option value="">Escolha o ramo</option>
                     {etapas.map(etapa => <option key={etapa.id} value={etapa.id}>{etapa.nome}</option>)}

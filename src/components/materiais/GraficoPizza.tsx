@@ -123,20 +123,23 @@ export default function GraficoPizza({ id, titulo, subtitulo, pizza, formatar, f
             <svg viewBox="0 0 200 200" className="size-44 overflow-visible" onMouseLeave={() => setSobre(null)} role="img" aria-label={`${titulo}: ${descricao}`}>
               {pedacos.map(({ item, inicio, fim }) => {
                 const escolhida = item.chave === ativa;
+                // A fatia escolhida sai um pouco da rosca, na direção do meio dela.
+                const meio = (((inicio + fim) / 2 - 90) * Math.PI) / 180;
                 return (
-                  <path
-                    key={item.chave}
-                    data-fatia
-                    d={arco(inicio, fim, escolhida ? RAIO_FORA + DESTAQUE : RAIO_FORA)}
-                    fill={item.cor}
-                    stroke="#ffffff"
-                    strokeWidth={2}
-                    strokeLinejoin="round"
-                    opacity={ativa && !escolhida ? 0.45 : 1}
-                    className="cursor-pointer transition-opacity duration-200"
-                    onMouseEnter={() => setSobre(item.chave)}
-                    onClick={() => alternar(item.chave)}
-                  />
+                  <g key={item.chave} data-fatia>
+                    <path
+                      d={arco(inicio, fim, RAIO_FORA)}
+                      fill={item.cor}
+                      stroke="#ffffff"
+                      strokeWidth={2}
+                      strokeLinejoin="round"
+                      opacity={ativa && !escolhida ? 0.45 : 1}
+                      style={{ transform: escolhida ? `translate(${(Math.cos(meio) * DESTAQUE).toFixed(2)}px, ${(Math.sin(meio) * DESTAQUE).toFixed(2)}px)` : undefined }}
+                      className="cursor-pointer transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none"
+                      onMouseEnter={() => setSobre(item.chave)}
+                      onClick={() => alternar(item.chave)}
+                    />
+                  </g>
                 );
               })}
             </svg>
@@ -170,7 +173,7 @@ export default function GraficoPizza({ id, titulo, subtitulo, pizza, formatar, f
                       onClick={() => alternar(item.chave)}
                       className={`flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2 text-left transition duration-200 ${escolhida ? 'bg-slate-100' : 'hover:bg-slate-50'} ${FOCO}`}
                     >
-                      <span className="size-3.5 shrink-0 rounded-[4px]" style={{ backgroundColor: item.cor }} aria-hidden="true" />
+                      <span className={`size-3.5 shrink-0 rounded-[4px] transition-transform duration-200 motion-reduce:transition-none ${escolhida ? 'scale-125' : ''}`} style={{ backgroundColor: item.cor }} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-slate-800" title={item.nome}>{item.nome}</span>
                         <span className="block text-xs tabular-nums text-slate-500">{formatar(item.valor)}</span>

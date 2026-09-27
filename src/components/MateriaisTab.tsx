@@ -110,6 +110,7 @@ export default function MateriaisTab({
   const [aba, setAba] = useState<SecaoMateriais>('resumo');
   const [busca, setBusca] = useState('');
   const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca, aba]);
+  const jaEntrou = useRef(false);
   const [erro, setErro] = useState('');
   const [formMaterial, setFormMaterial] = useState<Material | null>(null);
   const [materialAberto, setMaterialAberto] = useState(false);
@@ -382,7 +383,12 @@ export default function MateriaisTab({
   useGSAP(() => {
     const raiz = escopoMotion.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    gsap.fromTo(raiz.querySelectorAll('[data-materiais-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' });
+    // Na primeira vez entra tudo; ao trocar de parte só o conteúdo muda, sem
+    // o cabeçalho e o menu piscarem de novo.
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = primeira ? raiz.querySelectorAll('[data-materiais-reveal]') : raiz.querySelectorAll('#materiais-conteudo [data-materiais-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 10 }, { opacity: 1, y: 0, duration: primeira ? 0.5 : 0.35, stagger: primeira ? 0.05 : 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
   }, { scope: escopoMotion, dependencies: [aba] });
 
 
@@ -431,7 +437,7 @@ export default function MateriaisTab({
       <div className={`grid gap-4 lg:items-start ${aba === 'lancar' ? '' : 'lg:grid-cols-[14rem_minmax(0,1fr)]'}`}>
         <MateriaisSecoes value={aba} compacto={aba === 'lancar'} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : secao === 'previsto' ? previstosEmAtencao : 0)} onSelect={escolherSecao} />
 
-        <div className="min-w-0 space-y-3">
+        <div id="materiais-conteudo" className="min-w-0 space-y-3">
           {comBusca && (
             <div data-materiais-reveal className="lg:sticky lg:top-0 lg:z-20 lg:-mt-2 lg:bg-white lg:pb-2 lg:pt-2">
               <FilterBar label="Filtros de materiais" className="rounded-2xl border border-slate-200 bg-white p-3">
@@ -477,6 +483,7 @@ export default function MateriaisTab({
               movimentosVigentes={movimentosVigentes}
               etapas={etapas}
               onVerBotaFora={() => escolherSecao('botafora')}
+              onIr={escolherSecao}
               posicoes={posicoes}
               podeEditar={podeEditar}
               avisos={avisos}

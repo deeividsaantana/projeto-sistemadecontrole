@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardList, Rows3, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import { numero } from '../../utils/formato';
-import { CARTAO, FOCO } from '../cadastros/estilos';
+import { CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
 import FormLancamento from './FormLancamento';
 import GradeViagens from './GradeViagens';
 
@@ -57,8 +59,26 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
     return contagem;
   }, [deHoje]);
 
+  const raiz = useRef<HTMLDivElement>(null);
+  const trocou = useRef(false);
+  // Trocar de aba desliza o conteúdo novo; a primeira entrada é da tela toda.
+  useGSAP(() => {
+    if (!trocou.current) { trocou.current = true; return; }
+    if (reduzMovimento()) return;
+    gsap.fromTo('[data-lancar-conteudo]', { opacity: 0, x: aba === 'varios' ? 16 : -16 }, { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out', clearProps: 'transform,opacity' });
+  }, { scope: raiz, dependencies: [aba] });
+
+  // O que acabou de ser lançado pisca verde na lista: a pessoa vê que foi.
+  const ultimo = deHoje[0]?.id;
+  const primeiraLista = useRef(true);
+  useGSAP(() => {
+    if (primeiraLista.current) { primeiraLista.current = false; return; }
+    if (!ultimo || reduzMovimento()) return;
+    gsap.fromTo('[data-lancado-agora]', { backgroundColor: '#d1fae5' }, { backgroundColor: 'rgba(209, 250, 229, 0)', duration: 1.6, ease: 'power2.out', clearProps: 'backgroundColor' });
+  }, { scope: raiz, dependencies: [ultimo] });
+
   return (
-    <div className="space-y-4">
+    <div ref={raiz} className="space-y-4">
       <div role="tablist" aria-label="Como lançar" data-materiais-reveal className="grid grid-cols-2 gap-2">
         {ABAS.map(({ id, nome, ajuda, Icone }) => {
           const ativa = aba === id;
@@ -85,7 +105,7 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
       </div>
 
       {aba === 'um' ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div data-lancar-conteudo className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <FormLancamento
             modo="pagina"
             aberto
@@ -111,17 +131,17 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
             </header>
             {deHoje.length > 0 && (
               <ol className="max-h-[28rem] divide-y divide-slate-100 overflow-y-auto" aria-live="polite">
-                {deHoje.slice(0, 30).map(item => {
+                {deHoje.slice(0, 30).map((item, posicao) => {
                   const Icone = ICONE_TIPO[item.tipo];
                   return (
-                    <li key={item.id}>
+                    <li key={item.id} data-lancado-agora={posicao === 0 ? '' : undefined}>
                       <button
                         type="button"
                         onClick={() => onEditar(item)}
-                        className={`flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition duration-200 hover:bg-slate-50 ${FOCO}`}
+                        className={`group flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition duration-200 hover:bg-emerald-50/60 ${FOCO}`}
                         title="Tocar para corrigir"
                       >
-                        <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${item.tipo === 'Entrada' ? 'bg-emerald-50 text-[#176b4d]' : item.tipo === 'Saída' ? 'bg-orange-50 text-[#f26a2e]' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`grid size-8 shrink-0 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-110 motion-reduce:transition-none ${item.tipo === 'Entrada' ? 'bg-emerald-50 text-[#176b4d]' : item.tipo === 'Saída' ? 'bg-orange-50 text-[#f26a2e]' : 'bg-slate-100 text-slate-600'}`}>
                           <Icone className="size-4" aria-hidden="true" />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -143,17 +163,19 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
           </aside>
         </div>
       ) : (
-        <GradeViagens
-          modo="pagina"
-          aberto
-          hoje={hoje}
-          materiais={materiais}
-          movimentos={movimentos}
-          empresas={empresas}
-          responsavel={responsavel}
-          onSalvar={onSalvarVarios}
-          onFechar={() => undefined}
-        />
+        <div data-lancar-conteudo>
+          <GradeViagens
+            modo="pagina"
+            aberto
+            hoje={hoje}
+            materiais={materiais}
+            movimentos={movimentos}
+            empresas={empresas}
+            responsavel={responsavel}
+            onSalvar={onSalvarVarios}
+            onFechar={() => undefined}
+          />
+        </div>
       )}
     </div>
   );
