@@ -174,3 +174,4 @@ import './publicPresenceTeamNames.test';
 import './editarEquipeFiltro.test';
 import './lancamentoRapidoMateriais.test';
 import './avisosMateriais.test';
+import './fichaMaterial.test';
