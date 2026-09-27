@@ -1,3 +1,4 @@
+import type { EtapaServico } from '../src/types';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -224,6 +225,35 @@ const fotosPorEnvio: Record<string, string[]> = {
   u7: [fotoPrevia('#bcd0dd', '#80603f'), fotoPrevia('#cfdde6', '#8f6b48'), fotoPrevia('#c4d6e2', '#7d5a3b')],
 };
 const movimentosComFotos = fx.movimentosUtilizacao.map(item => ({ ...item, fotos: fotosPorEnvio[item.id] }));
+
+// Materiais com estado: importar, lançar e ligar local mudam a tela como no
+// app. Os ramos começam vazios para conferir a carga da lista SGE.
+function MateriaisPreview() {
+  const [materiais, setMateriais] = React.useState(() => [...fx.materiaisObra]);
+  const [movimentos, setMovimentos] = React.useState(() => [...fx.movimentosMateriaisObra]);
+  const [etapas, setEtapas] = React.useState<EtapaServico[]>([]);
+  const juntar = <T extends { id: string }>(atuais: T[], novos: T[]) => {
+    const porId = new Map(novos.map(item => [item.id, item]));
+    const ids = new Set(atuais.map(item => item.id));
+    return [...atuais.map(item => porId.get(item.id) ?? item), ...novos.filter(item => !ids.has(item.id))];
+  };
+  return (
+    <MateriaisTab
+      materiais={materiais}
+      movimentos={movimentos}
+      empresas={fx.empresas}
+      etapas={etapas}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSaveMaterial={material => setMateriais(atual => juntar(atual, [material]))}
+      onSaveMovimento={movimento => setMovimentos(atual => [movimento, ...atual])}
+      onSaveMovimentos={novos => setMovimentos(atual => [...novos, ...atual])}
+      onUpdateMovimentos={alterados => setMovimentos(atual => juntar(atual, alterados))}
+      onApplyImport={(novosMateriais, novosMovimentos) => { setMateriais(atual => juntar(atual, novosMateriais)); setMovimentos(atual => juntar(atual, novosMovimentos)); }}
+      onSaveEtapas={itens => setEtapas(atual => juntar(atual, itens))}
+    />
+  );
+}
 
 const screens: Record<string, React.ReactNode> = {
   sidebar: (
@@ -567,21 +597,7 @@ const screens: Record<string, React.ReactNode> = {
       onSave={noop}
     />
   ),
-  materiais: (
-    <MateriaisTab
-      materiais={fx.materiaisObra}
-      movimentos={fx.movimentosMateriaisObra}
-      empresas={fx.empresas}
-      etapas={[]}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSaveMaterial={noop}
-      onSaveMovimento={noop}
-      onSaveMovimentos={noop}
-      onUpdateMovimentos={noop}
-      onApplyImport={noop}
-    />
-  ),
+  materiais: <MateriaisPreview />,
   'materiais-utilizacao': (
     <MateriaisUtilizacaoPanel
       materiais={fx.materiaisUtilizacao}

@@ -1,4 +1,5 @@
-import type { Material, MovimentoMaterial } from '../types';
+import type { EtapaServico, Material, MovimentoMaterial } from '../types';
+import { indiceDeLocais, resolverLocal } from '../modules/materials/locaisSge';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import type { ImportPreview } from './types';
 import { stableId } from './stableId';
@@ -56,8 +57,9 @@ export const buildMaterialImportApplication = (
   currentMaterials: readonly Material[],
   currentMovements: readonly MovimentoMaterial[],
   responsible: string,
-  branches: ReadonlyArray<{ id: string; nome: string }> = [],
+  branches: readonly EtapaServico[] = [],
 ) => {
+  const locais = indiceDeLocais(branches);
   const materials: Material[] = [], movements: MovimentoMaterial[] = [];
   const skipped = { duplicate: 0, review: 0, other: 0 };
   const knownIds = new Set(currentMovements.map(item => item.id));
@@ -94,10 +96,11 @@ export const buildMaterialImportApplication = (
     const id = stableId('mov-import', `${preview.sourceHash}-${item.row.lineage.sourceSheet}-${item.row.lineage.sourceRow}`);
     if (knownIds.has(id)) return;
     knownIds.add(id);
-    // O ramo só é vinculado quando o local da planilha tem exatamente o nome de
-    // um ramo cadastrado; o resto fica como texto para quem confere vincular.
+    // O ramo só é vinculado quando o local da planilha é o nome, um apelido ou
+    // o código SGE de um ramo cadastrado; o resto fica como texto para quem
+    // confere ligar em Ramos e locais.
     const local = receipt ? value.localAplicacao || '' : '';
-    const branch = local ? branches.find(entry => normalizeComparable(entry.nome) === normalizeComparable(local)) : undefined;
+    const branch = local ? resolverLocal(local, locais) : undefined;
     // Agregado chega com fornecedor, nota, placa e valor da viagem; antes tudo
     // isso ficava só na planilha.
     const trip = receipt ? {} : {

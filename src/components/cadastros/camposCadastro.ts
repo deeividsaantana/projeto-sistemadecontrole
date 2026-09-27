@@ -12,6 +12,7 @@ import type { Comboio, Empresa, Equipamento, EtapaServico, Funcionario, ObraLoca
 import { EMPRESA_CLASSES, isSubSupplier, isSupplier, nextMasterId, type EmpresaTipo } from '../../masterData/centralRegistry';
 import { validateEquipmentMasterRecord } from '../../utils/equipmentOperations';
 import { TIPOS_POR_CATEGORIA_EMPRESA, isCategoriaEmpresa, type CadastroCategoriaId } from '../../utils/cadastrosCategorias';
+import { EXPLICA_TIPO, TIPOS_LOCAL } from '../../modules/materials/locaisSge';
 import { TABELA_DA_CATEGORIA, type DadosCadastros, type RegistroCadastro } from '../../utils/cadastrosLista';
 
 export type ValorCampo = string | boolean | string[];
@@ -140,7 +141,12 @@ export const CAMPOS: Record<CadastroCategoriaId, CampoCadastro[]> = {
     { id: 'status', label: 'Situação', tipo: 'selecao', opcoes: fixas('Ativa', 'Planejada', 'Concluída') },
     { id: 'responsavel', label: 'Responsável', tipo: 'texto' },
   ],
-  etapas: [{ id: 'nome', label: 'Nome do ramo ou trecho', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Ramo 1400' }],
+  etapas: [
+    { id: 'nome', label: 'Nome do ramo ou local', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Ramo 1400' },
+    { id: 'codigoSge', label: 'Código SGE', tipo: 'texto', placeholder: 'Ex.: 123' },
+    { id: 'tipoLocal', label: 'O que é', tipo: 'selecao', opcoes: () => TIPOS_LOCAL.map(tipo => ({ valor: tipo, label: `${tipo}: ${EXPLICA_TIPO[tipo].toLocaleLowerCase('pt-BR')}` })) },
+    { id: 'ramo', label: 'Ramo a que pertence', tipo: 'texto', placeholder: 'Ex.: Ramo 900', extra: true },
+  ],
   combustiveis: [{ id: 'nome', label: 'Nome do combustível', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Diesel S10' }],
   lubrificantes: [{ id: 'nome', label: 'Nome do produto', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: 15W40' }],
 };
@@ -367,7 +373,21 @@ export const montarRegistro = (
     return { ok: true, registro };
   }
 
-  const registro: TipoCombustivel | ProdutoLubrificacao | EtapaServico = {
+  if (categoria === 'etapas') {
+    const codigo = str(valores, 'codigoSge');
+    if (codigo && !/^\d{1,4}$/.test(codigo)) return { ok: false, erro: 'O código SGE é só número, por exemplo 102.' };
+    const registro: EtapaServico = {
+      ...(anterior as EtapaServico | undefined),
+      id,
+      nome: str(valores, 'nome'),
+      codigoSge: codigo || undefined,
+      tipoLocal: (str(valores, 'tipoLocal') || undefined) as EtapaServico['tipoLocal'],
+      ramo: opcional(valores, 'ramo'),
+    };
+    return { ok: true, registro };
+  }
+
+  const registro: TipoCombustivel | ProdutoLubrificacao = {
     ...(anterior as TipoCombustivel | undefined),
     id,
     nome: str(valores, 'nome'),

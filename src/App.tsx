@@ -2218,6 +2218,19 @@ export default function App() {
     );
   };
 
+  // Materiais grava ramos em lote (lista SGE, apelidos da planilha): um só
+  // registro no histórico e uma só gravação, sem apagar nenhum ramo.
+  const handleSaveEtapasServico = (itens: EtapaServico[], descricao: string) => {
+    if (!itens.length) return;
+    const porId = new Map(itens.map(item => [item.id, item]));
+    const existentes = new Set(etapas.map(item => item.id));
+    const updated = [...etapas.map(item => porId.get(item.id) ?? item), ...itens.filter(item => !existentes.has(item.id))];
+    saveAndLog('Etapas de Serviço', itens.some(item => !existentes.has(item.id)) ? 'Criou' : 'Editou', descricao, historyLogs, () => {
+      setEtapas(updated);
+      writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
+    });
+  };
+
   const handleImportCadastros = (target: CadastroImportTarget, rows: CadastroImportRow[]) => {
     const validRows = rows.filter(row => Object.values(row).some(value => String(value || '').trim()));
     if (validRows.length === 0) {
@@ -5384,6 +5397,7 @@ export default function App() {
                 onSaveMovimentos={handleSaveMovimentosMaterial}
                 onUpdateMovimentos={handleUpdateMovimentosMaterial}
                 onApplyImport={handleApplyMaterialImport}
+                onSaveEtapas={handleSaveEtapasServico}
               />
             )}
 
