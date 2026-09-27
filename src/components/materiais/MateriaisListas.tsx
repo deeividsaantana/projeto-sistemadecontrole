@@ -197,10 +197,12 @@ interface CartoesProps {
   podeEditar: boolean;
   onEditar: (posicao: PosicaoEstoque) => void;
   onExcluir: (posicao: PosicaoEstoque) => void;
+  /** Tocar no nome do material abre a ficha com histórico e fornecedores. */
+  onAbrirFicha: (posicao: PosicaoEstoque) => void;
 }
 
 /** No celular, estoque e cadastro de materiais viram cartões em vez de tabela larga. */
-export function CartoesMateriais({ posicoes, modo, fornecedorDe, podeEditar, onEditar, onExcluir }: CartoesProps) {
+export function CartoesMateriais({ posicoes, modo, fornecedorDe, podeEditar, onEditar, onExcluir, onAbrirFicha }: CartoesProps) {
   if (posicoes.length === 0) {
     return <EmptyState icon={Package} title="Nenhum material cadastrado" description="Use Novo material para cadastrar o que a obra usa." />;
   }
@@ -209,10 +211,10 @@ export function CartoesMateriais({ posicoes, modo, fornecedorDe, podeEditar, onE
       {posicoes.map((item, indice) => (
         <li key={item.material.id} {...animada(indice)} className="space-y-1 p-4">
           <div className="flex items-start justify-between gap-3">
-            <span className="min-w-0">
-              <strong className="block text-base text-slate-900">{item.material.descricao}</strong>
+            <button type="button" onClick={() => onAbrirFicha(item)} className={`min-w-0 rounded-lg text-left ${FOCO}`}>
+              <strong className="block text-base text-slate-900 underline decoration-slate-300 decoration-dashed underline-offset-4">{item.material.descricao}</strong>
               <span className="block text-sm text-slate-500">{[item.material.codigo, item.material.categoria].filter(Boolean).join(' · ') || 'Sem código'}</span>
-            </span>
+            </button>
             {modo === 'estoque' && (
               <strong className={`shrink-0 text-base tabular-nums ${item.abaixoDoMinimo ? 'text-amber-700' : 'text-slate-900'}`}>{numero(item.saldo)} {item.material.unidade}</strong>
             )}

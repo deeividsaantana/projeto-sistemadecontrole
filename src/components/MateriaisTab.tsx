@@ -20,6 +20,7 @@ import MateriaisVisaoGeral from './materiais/MateriaisVisaoGeral';
 import { CartoesMateriais, ListaMovimentos } from './materiais/MateriaisListas';
 import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
+import FichaMaterial from './materiais/FichaMaterial';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from './cadastros/estilos';
 import './materiais/Materiais.css';
 import {
@@ -108,6 +109,7 @@ export default function MateriaisTab({
   const [trocaRamo, setTrocaRamo] = useState({ etapaServicoId: '', destino: '' });
   const [desfazerAberto, setDesfazerAberto] = useState(false);
   const [atalhosAberto, setAtalhosAberto] = useState(false);
+  const [fichaMaterialId, setFichaMaterialId] = useState<string | null>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   const descricaoRef = useRef<HTMLInputElement>(null);
   const focarBusca = useRef(false);
@@ -155,7 +157,7 @@ export default function MateriaisTab({
     setErro('');
     setViagensAberto(true);
   };
-  const algumaJanela = materialAberto || lancamentoAberto || viagensAberto || trocarRamoAberto || desfazerAberto || atalhosAberto;
+  const algumaJanela = materialAberto || lancamentoAberto || viagensAberto || trocarRamoAberto || desfazerAberto || atalhosAberto || Boolean(fichaMaterialId);
   const secoes: SecaoMateriais[] = podeEditar ? [...ORDEM_SECOES] : ORDEM_SECOES.filter(secao => secao !== 'importacoes');
   const escolherSecao = (secao: SecaoMateriais) => {
     setAba(secao);
@@ -308,7 +310,16 @@ export default function MateriaisTab({
   const empresasPorId = new Map(empresas.map(empresa => [empresa.id, empresa.nome]));
   const posicaoColumns: DataTableColumn<PosicaoEstoque>[] = [
     { id: 'codigo', label: 'Código', sortValue: item => item.material.codigo, cell: item => <span className="font-mono text-slate-600">{item.material.codigo || '—'}</span> },
-    { id: 'material', label: 'Material', sortValue: item => item.material.descricao, cell: item => <strong className="text-slate-800">{item.material.descricao}</strong> },
+    {
+      id: 'material',
+      label: 'Material',
+      sortValue: item => item.material.descricao,
+      cell: item => (
+        <button type="button" onClick={() => setFichaMaterialId(item.material.id)} className={`rounded-lg text-left font-bold text-slate-800 underline decoration-slate-300 decoration-dashed underline-offset-4 hover:text-[#176b4d] ${FOCO}`}>
+          {item.material.descricao}
+        </button>
+      ),
+    },
     { id: 'categoria', label: 'Categoria', sortValue: item => item.material.categoria, cell: item => <span className="text-slate-600">{item.material.categoria || '—'}</span> },
   ];
   if (aba === 'estoque') {
@@ -511,6 +522,7 @@ export default function MateriaisTab({
                   podeEditar={podeEditar}
                   onEditar={item => abrirCadastro(item.material)}
                   onExcluir={item => excluirMaterial(item.material)}
+                  onAbrirFicha={item => setFichaMaterialId(item.material.id)}
                 />
               </div>
             </div>
@@ -667,6 +679,23 @@ export default function MateriaisTab({
           ))}
         </dl>
       </Modal>
+
+      <FichaMaterial
+        aberto={Boolean(fichaMaterialId)}
+        material={materiais.find(item => item.id === fichaMaterialId) || null}
+        posicao={posicoes.find(item => item.material.id === fichaMaterialId)}
+        movimentos={movimentos}
+        hoje={hoje}
+        podeEditar={podeEditar}
+        onFechar={() => setFichaMaterialId(null)}
+        onEditar={item => { setFichaMaterialId(null); abrirCadastro(item); }}
+        onVerMovimentos={termoAviso => {
+          setFichaMaterialId(null);
+          escolherSecao('movimentos');
+          setFiltroTipo('todos');
+          setBusca(termoAviso);
+        }}
+      />
     </div>
   );
 }
