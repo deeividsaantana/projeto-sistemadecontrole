@@ -103,9 +103,19 @@ export interface ProdutoLubrificacao {
   nome: string; // ex: Graxa, 68T, 15W40, etc.
 }
 
+/** O que o lugar é na obra: decide onde ele aparece e como soma. */
+export type TipoLocalObra = 'Ramo' | 'Frente' | 'Origem' | 'Bota-fora' | 'Bota-espera' | 'Estoque' | 'Canteiro' | 'Serviço';
+
 export interface EtapaServico {
   id: string;
-  nome: string; // ex: Terraplenagem, Drenagem, Pavimentação, etc.
+  nome: string; // ex: Ramo 900, Espinha Ramo 900, Pedreira Contern
+  /** Código de apropriação de horas e serviços no SGE (100 a 160). */
+  codigoSge?: string;
+  tipoLocal?: TipoLocalObra;
+  /** Ramo a que a frente pertence ("Ramo 900"): é por ele que o previsto soma. */
+  ramo?: string;
+  /** Como a planilha e o campo escrevem este lugar ("CS RAMO 900"). */
+  apelidos?: string[];
 }
 
 export type StatusRegistroCombustivel =

@@ -51,7 +51,7 @@ export const CADASTRO_CATEGORIAS: readonly CadastroCategoria[] = [
   { id: 'veiculos', grupo: 'frota', label: 'Veículos', acaoNovo: 'Novo veículo' },
   { id: 'comboios', grupo: 'frota', label: 'Comboios', acaoNovo: 'Novo comboio' },
   { id: 'obras', grupo: 'obra', label: 'Locais', acaoNovo: 'Novo local' },
-  { id: 'etapas', grupo: 'obra', label: 'Ramos/Trechos', acaoNovo: 'Novo ramo/trecho' },
+  { id: 'etapas', grupo: 'obra', label: 'Ramos e locais', acaoNovo: 'Novo ramo ou local' },
   { id: 'combustiveis', grupo: 'insumos', label: 'Combustíveis', acaoNovo: 'Novo combustível' },
   { id: 'lubrificantes', grupo: 'insumos', label: 'Lubrificantes', acaoNovo: 'Novo lubrificante' },
 ];

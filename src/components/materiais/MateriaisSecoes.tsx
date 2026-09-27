@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Boxes, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, Package, Route, type LucideIcon } from 'lucide-react';
+import { Boxes, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, type LucideIcon } from 'lucide-react';
 import { FOCO, reduzMovimento } from '../cadastros/estilos';
 
-export type SecaoMateriais = 'resumo' | 'utilizacao' | 'estoque' | 'movimentos' | 'cadastro' | 'importacoes';
+export type SecaoMateriais = 'resumo' | 'utilizacao' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
 
 interface Secao {
   id: SecaoMateriais;
@@ -30,6 +30,7 @@ const GRUPOS: ReadonlyArray<{ id: string; nome: string; secoes: readonly Secao[]
     nome: 'Cadastrar',
     secoes: [
       { id: 'cadastro', nome: 'Materiais', ajuda: 'Cadastro, unidade e mínimo', Icone: Package },
+      { id: 'locais', nome: 'Ramos e locais', ajuda: 'Códigos SGE e nomes da planilha', Icone: MapPinned },
       { id: 'importacoes', nome: 'Importar planilha', ajuda: 'Trazer viagens do Excel', Icone: FileSpreadsheet },
     ],
   },

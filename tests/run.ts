@@ -175,3 +175,4 @@ import './editarEquipeFiltro.test';
 import './lancamentoRapidoMateriais.test';
 import './avisosMateriais.test';
 import './fichaMaterial.test';
+import './locaisSge.test';

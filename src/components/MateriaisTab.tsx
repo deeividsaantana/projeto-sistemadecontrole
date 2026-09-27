@@ -3,6 +3,7 @@
  * movimentos — não existe contador guardado para divergir do histórico.
  */
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { locaisParaEscolher, rotuloDoLocal } from '../modules/materials/locaisSge';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { CheckCircle2, Keyboard, Layers, MapPin, PackagePlus, Plus, Search, Undo2, X } from 'lucide-react';
@@ -21,6 +22,7 @@ import { CartoesMateriais, ListaMovimentos } from './materiais/MateriaisListas';
 import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
 import FichaMaterial from './materiais/FichaMaterial';
+import LocaisMateriais from './materiais/LocaisMateriais';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from './cadastros/estilos';
 import './materiais/Materiais.css';
 import {
@@ -46,6 +48,7 @@ interface MateriaisTabProps {
   onSaveMovimentos: (movimentos: MovimentoMaterial[], descricao: string) => void;
   onUpdateMovimentos: (movimentos: MovimentoMaterial[], descricao: string, acao?: 'Editou' | 'Excluiu') => void;
   onApplyImport: (materials: Material[], movements: MovimentoMaterial[]) => void;
+  onSaveEtapas: (etapas: EtapaServico[], descricao: string) => void;
 }
 
 type FiltroTipo = 'todos' | TipoMovimentoMaterial | 'desfeitos';
@@ -59,14 +62,14 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
 ];
 
 // Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'utilizacao', 'estoque', 'movimentos', 'cadastro', 'importacoes'];
+const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'utilizacao', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
   { teclas: 'V', oQueFaz: 'Várias viagens de uma vez', editar: true },
   { teclas: 'M', oQueFaz: 'Novo material', editar: true },
   { teclas: '/', oQueFaz: 'Buscar movimento' },
-  { teclas: '1 a 6', oQueFaz: 'Ir para cada parte do menu' },
+  { teclas: '1 a 7', oQueFaz: 'Ir para cada parte do menu' },
   { teclas: 'Shift+Enter', oQueFaz: 'Na janela de lançamento: salvar e lançar outro', editar: true },
   { teclas: 'Enter', oQueFaz: 'Na grade de viagens: descer para a linha de baixo', editar: true },
   { teclas: '?', oQueFaz: 'Mostrar esta lista' },
@@ -90,6 +93,7 @@ export default function MateriaisTab({
   onSaveMovimentos,
   onUpdateMovimentos,
   onApplyImport,
+  onSaveEtapas,
 }: MateriaisTabProps) {
   const hoje = isoDay(new Date());
   const [aba, setAba] = useState<SecaoMateriais>('resumo');
@@ -179,7 +183,7 @@ export default function MateriaisTab({
       } else if (tecla === '/') {
         event.preventDefault();
         focarBusca.current = true;
-        if (aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro') buscaRef.current?.focus();
+        if (comBusca) buscaRef.current?.focus();
         else escolherSecao('movimentos');
       } else if (tecla === '?') {
         event.preventDefault();
@@ -348,9 +352,10 @@ export default function MateriaisTab({
   const contar = (secao: SecaoMateriais) => {
     if (secao === 'estoque' || secao === 'cadastro') return ativos.length;
     if (secao === 'movimentos') return movimentos.length;
+    if (secao === 'locais') return etapas.filter(item => item.tipoLocal !== 'Serviço').length;
     return null;
   };
-  const comBusca = aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro';
+  const comBusca = aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro' || aba === 'locais';
 
   // Entrada do cabeçalho, do menu e dos blocos, no passo do Painel e de Cadastros.
   useGSAP(() => {
@@ -417,7 +422,7 @@ export default function MateriaisTab({
                     aria-keyshortcuts="/"
                     value={busca}
                     onChange={event => setBusca(event.target.value)}
-                    placeholder={aba === 'movimentos' ? 'Material, local, fornecedor, nota ou placa' : `Buscar em ${nomeDaSecao(aba).toLocaleLowerCase('pt-BR')}`}
+                    placeholder={aba === 'movimentos' ? 'Material, local, fornecedor, nota ou placa' : aba === 'locais' ? 'Buscar local ou código SGE' : `Buscar em ${nomeDaSecao(aba).toLocaleLowerCase('pt-BR')}`}
                     className={`${CAMPO} pl-11`}
                   />
                 </label>
@@ -525,6 +530,12 @@ export default function MateriaisTab({
                   onAbrirFicha={item => setFichaMaterialId(item.material.id)}
                 />
               </div>
+            </div>
+          )}
+
+          {aba === 'locais' && (
+            <div data-materiais-reveal>
+              <LocaisMateriais etapas={etapas} movimentos={movimentos} termo={termo} podeEditar={podeEditar} onSaveEtapas={onSaveEtapas} />
             </div>
           )}
 
@@ -649,7 +660,9 @@ export default function MateriaisTab({
             Ramo ou trecho
             <select value={trocaRamo.etapaServicoId} onChange={event => setTrocaRamo({ ...trocaRamo, etapaServicoId: event.target.value })} className={`mt-1 ${CAMPO}`}>
               <option value="">Manter o que está</option>
-              {etapas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+              {locaisParaEscolher(etapas, trocaRamo.etapaServicoId).map(([grupo, itens]) => (
+                    <optgroup key={grupo} label={grupo}>{itens.map(item => <option key={item.id} value={item.id}>{rotuloDoLocal(item)}</option>)}</optgroup>
+                  ))}
             </select>
           </label>
           <label className="block text-sm font-semibold text-slate-700">

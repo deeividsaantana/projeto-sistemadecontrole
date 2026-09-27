@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { locaisParaEscolher, rotuloDoLocal } from '../../modules/materials/locaisSge';
 import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, CheckCircle2, RotateCcw, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import { saldoDoMaterial, validarMovimento } from '../../utils/estoque';
@@ -387,7 +388,9 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
                   className={`mt-1 ${CAMPO}`}
                 >
                   <option value="">Sem ramo</option>
-                  {etapas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                  {locaisParaEscolher(etapas, form.etapaServicoId).map(([grupo, itens]) => (
+                    <optgroup key={grupo} label={grupo}>{itens.map(item => <option key={item.id} value={item.id}>{rotuloDoLocal(item)}</option>)}</optgroup>
+                  ))}
                 </select>
               </label>
             </>
