@@ -215,6 +215,10 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   body * { visibility: hidden !important; }
   #fleet-print-report, #fleet-print-report * { visibility: visible !important; }
   #fleet-print-report { display: block !important; position: absolute; inset: 0; width: 100%; background: #fff; color: #222; }
+  #materiais-relatorio-impressao, #materiais-relatorio-impressao * { visibility: visible !important; }
+  #materiais-relatorio-impressao { position: absolute; top: 0; left: 0; width: 100%; border: 0; }
+  #materiais-relatorio-impressao thead { display: table-header-group; }
+  #materiais-relatorio-impressao tr { break-inside: avoid; page-break-inside: avoid; }
   .fleet-report-page { display: flex; min-height: 190mm; flex-direction: column; break-after: page; page-break-after: always; }
   .fleet-report-page:last-child { break-after: auto; page-break-after: auto; }
   .fleet-report-page table { break-inside: auto; page-break-inside: auto; }

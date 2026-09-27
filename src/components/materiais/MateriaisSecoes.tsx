@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Boxes, ChartPie, ClipboardPen, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, type LucideIcon } from 'lucide-react';
+import { Boxes, ChartPie, ClipboardPen, FileBarChart, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, type LucideIcon } from 'lucide-react';
 import { FOCO, reduzMovimento } from '../cadastros/estilos';
 
-export type SecaoMateriais = 'lancar' | 'resumo' | 'graficos' | 'previsto' | 'utilizacao' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
+export type SecaoMateriais = 'lancar' | 'resumo' | 'graficos' | 'relatorios' | 'previsto' | 'utilizacao' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
 
 interface Secao {
   id: SecaoMateriais;
@@ -28,6 +28,7 @@ const GRUPOS: ReadonlyArray<{ id: string; nome: string; secoes: readonly Secao[]
     secoes: [
       { id: 'resumo', nome: 'Visão geral', ajuda: 'Avisos, estoque e o período', Icone: LayoutDashboard },
       { id: 'graficos', nome: 'Gráficos', ajuda: 'Pizzas com a porcentagem de cada parte', Icone: ChartPie },
+      { id: 'relatorios', nome: 'Relatórios', ajuda: 'Tabelas por material, fornecedor, ramo e mês', Icone: FileBarChart },
     ],
   },
   {
