@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Boxes, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, type LucideIcon } from 'lucide-react';
+import { Boxes, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, type LucideIcon } from 'lucide-react';
 import { FOCO, reduzMovimento } from '../cadastros/estilos';
 
-export type SecaoMateriais = 'resumo' | 'utilizacao' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
+export type SecaoMateriais = 'resumo' | 'previsto' | 'utilizacao' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
 
 interface Secao {
   id: SecaoMateriais;
@@ -20,6 +20,7 @@ const GRUPOS: ReadonlyArray<{ id: string; nome: string; secoes: readonly Secao[]
     nome: 'Acompanhar',
     secoes: [
       { id: 'resumo', nome: 'Visão geral', ajuda: 'Avisos, gráficos e o período', Icone: LayoutDashboard },
+      { id: 'previsto', nome: 'Previsto do mês', ajuda: 'Meta de cada ramo e o que já chegou', Icone: Target },
       { id: 'utilizacao', nome: 'Uso por ramo', ajuda: 'Quanto cada ramo recebeu e usou', Icone: Route },
       { id: 'estoque', nome: 'Estoque', ajuda: 'Quanto sobra de cada material', Icone: Boxes },
       { id: 'movimentos', nome: 'Movimentos', ajuda: 'Tudo que entrou, saiu ou mudou de lugar', Icone: ListOrdered },

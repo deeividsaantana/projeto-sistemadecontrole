@@ -31,6 +31,7 @@ import {
   ServicoObra,
   RegistroProducao,
   PlanejamentoItem,
+  PrevistoMaterial,
   ModeloFvs,
   FichaVerificacaoServico,
   Inspecao,
@@ -377,6 +378,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['treinamentos', STORAGE_KEYS.treinamentos],
   ['materiaisCadastro', STORAGE_KEYS.materiaisCadastro],
   ['materiaisMovimentos', STORAGE_KEYS.materiaisMovimentos],
+  ['materiaisPrevistos', STORAGE_KEYS.materiaisPrevistos],
   ['frentesServico', STORAGE_KEYS.frentesServico],
   ['diariosObra', STORAGE_KEYS.diariosObra],
   ['servicosObra', STORAGE_KEYS.servicosObra],
@@ -541,6 +543,7 @@ export default function App() {
   // Lançamento desfeito continua guardado para o histórico, mas nenhuma outra
   // tela soma ele: só a aba Materiais mostra o registro, marcado como desfeito.
   const materiaisMovimentosVigentes = useMemo(() => materiaisMovimentos.filter(item => !item.canceladoEm), [materiaisMovimentos]);
+  const [materiaisPrevistos, setMateriaisPrevistos] = useState<PrevistoMaterial[]>([]);
   const [frentesServico, setFrentesServico] = useState<FrenteServico[]>([]);
   const [diariosObra, setDiariosObra] = useState<DiarioObra[]>([]);
   const [servicosObra, setServicosObra] = useState<ServicoObra[]>([]);
@@ -776,6 +779,7 @@ export default function App() {
       setTreinamentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.treinamentos), STORAGE_KEYS.treinamentos, [] as Treinamento[]));
       setMateriaisCadastro(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisCadastro), STORAGE_KEYS.materiaisCadastro, [] as Material[]));
       setMateriaisMovimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]));
+      setMateriaisPrevistos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisPrevistos), STORAGE_KEYS.materiaisPrevistos, [] as PrevistoMaterial[]));
       setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, INITIAL_FRENTES_SERVICO));
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
       setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
@@ -1003,6 +1007,7 @@ export default function App() {
     treinamentos: readTable(STORAGE_KEYS.treinamentos, [] as Treinamento[]),
     materiaisCadastro: readTable(STORAGE_KEYS.materiaisCadastro, [] as Material[]),
     materiaisMovimentos: readTable(STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]),
+    materiaisPrevistos: readTable(STORAGE_KEYS.materiaisPrevistos, [] as PrevistoMaterial[]),
     frentesServico: readTable(STORAGE_KEYS.frentesServico, [] as FrenteServico[]),
     diariosObra: readTable(STORAGE_KEYS.diariosObra, [] as DiarioObra[]),
     servicosObra: readTable(STORAGE_KEYS.servicosObra, [] as ServicoObra[]),
@@ -1235,6 +1240,9 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'materiaisMovimentos')) {
           setMateriaisMovimentos(normalizeRuntimeCollection<MovimentoMaterial>(data.materiaisMovimentos));
+        }
+        if (Object.hasOwn(data, 'materiaisPrevistos')) {
+          setMateriaisPrevistos(normalizeRuntimeCollection<PrevistoMaterial>(data.materiaisPrevistos));
         }
         if (Object.hasOwn(data, 'frentesServico')) {
           setFrentesServico(normalizeRuntimeCollection<FrenteServico>(data.frentesServico));
@@ -2228,6 +2236,20 @@ export default function App() {
     saveAndLog('Etapas de Serviço', itens.some(item => !existentes.has(item.id)) ? 'Criou' : 'Editou', descricao, historyLogs, () => {
       setEtapas(updated);
       writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
+    });
+  };
+
+  // Previsto de material por ramo e mês: grava em lote (copiar do mês anterior)
+  // com um registro só no histórico. Tirar um previsto só desliga, não apaga.
+  const handleSaveMateriaisPrevistos = (itens: PrevistoMaterial[], descricao: string) => {
+    if (!itens.length) return;
+    const porId = new Map(itens.map(item => [item.id, item]));
+    const existentes = new Set(materiaisPrevistos.map(item => item.id));
+    const updated = [...materiaisPrevistos.map(item => porId.get(item.id) ?? item), ...itens.filter(item => !existentes.has(item.id))];
+    const acao = itens.some(item => !existentes.has(item.id)) ? 'Criou' : itens.every(item => item.ativo === false) ? 'Excluiu' : 'Editou';
+    saveAndLog('Materiais', acao, descricao, historyLogs, () => {
+      setMateriaisPrevistos(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisPrevistos, JSON.stringify(updated));
     });
   };
 
@@ -5398,6 +5420,8 @@ export default function App() {
                 onUpdateMovimentos={handleUpdateMovimentosMaterial}
                 onApplyImport={handleApplyMaterialImport}
                 onSaveEtapas={handleSaveEtapasServico}
+                previstos={materiaisPrevistos}
+                onSavePrevistos={handleSaveMateriaisPrevistos}
               />
             )}
 

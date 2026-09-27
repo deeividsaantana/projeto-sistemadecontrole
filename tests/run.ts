@@ -176,3 +176,4 @@ import './lancamentoRapidoMateriais.test';
 import './avisosMateriais.test';
 import './fichaMaterial.test';
 import './locaisSge.test';
+import './previstoMateriais.test';

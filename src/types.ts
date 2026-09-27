@@ -633,6 +633,28 @@ export interface MovimentoMaterial {
   criadoEm: string;
 }
 
+/**
+ * Quanto de um material um ramo deve receber num mês ("40 t de rachão no
+ * Ramo 900 em setembro"). O realizado nunca é digitado aqui: vem dos
+ * movimentos que chegaram a algum local daquele ramo no mesmo mês.
+ */
+export interface PrevistoMaterial {
+  id: string;
+  mes: string; // YYYY-MM
+  /** Nome do ramo ("Ramo 900"): soma todas as frentes que pertencem a ele. */
+  ramo: string;
+  materialId: string;
+  materialDescricao: string;
+  unidade: string;
+  quantidade: number;
+  observacao?: string;
+  responsavel: string;
+  /** Previsto tirado continua guardado: o histórico do mês não some. */
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type SituacaoFrente = 'Planejada' | 'Em execução' | 'Paralisada' | 'Concluída';
 
 export interface FrenteServico {
