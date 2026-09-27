@@ -655,6 +655,87 @@ export interface PrevistoMaterial {
   atualizadoEm: string;
 }
 
+/** Prioridade da rotina do assistente: 🔴 crítico, 🟠 importante, 🟡 acompanhar, 🟢 rotina. */
+export type PrioridadeRotina = 'critico' | 'importante' | 'acompanhar' | 'rotina';
+
+/** Para onde a pendência leva: cobrar alguém, ir ao campo, abrir o projeto... */
+export type TipoPendenciaRotina = 'cobrar' | 'campo' | 'projeto' | 'planilha' | 'sistema' | 'rdo' | 'medicao' | 'email' | 'outro';
+
+/**
+ * Uma coisa a fazer ou cobrar na rotina do assistente de engenharia. Fica
+ * aberta de um dia para o outro até ser concluída; concluir não apaga.
+ */
+export interface PendenciaRotina {
+  id: string;
+  titulo: string;
+  prioridade: PrioridadeRotina;
+  tipo: TipoPendenciaRotina;
+  /** Quem precisa responder ou entregar (encarregado, fornecedor, topografia...). */
+  dependeDe?: string;
+  /** Ramo ou frente, em texto livre. */
+  frente?: string;
+  /** Dia em que entrou na lista (YYYY-MM-DD). */
+  dia: string;
+  prazo?: string;
+  observacao?: string;
+  concluidaEm?: string;
+  /** Apagada pela própria pessoa; fica marcada para a nuvem não trazer de volta. */
+  excluidaEm?: string;
+  responsavel: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/**
+ * O dia de uma pessoa na rotina: o que já marcou no checklist, as anotações
+ * e as prioridades para amanhã. Um registro por pessoa e por dia.
+ */
+export interface RotinaDiaria {
+  /** `${dia}:${responsavel}` */
+  id: string;
+  dia: string;
+  responsavel: string;
+  /** Itens do checklist já feitos (ids do ModeloRotina da pessoa ou do modelo padrão). */
+  feitos: string[];
+  levantar: string;
+  duvida: string;
+  aprendi: string;
+  /** Até três prioridades para o dia seguinte. */
+  amanha: string[];
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/** Um item do checklist de uma pessoa. O id fica gravado em RotinaDiaria.feitos. */
+export interface ItemRotina {
+  id: string;
+  texto: string;
+}
+
+export type MomentoRotina = 'manha' | 'durante' | 'fechamento';
+
+export interface BlocoRotina {
+  id: string;
+  titulo: string;
+  momento: MomentoRotina;
+  /** Uma linha dizendo para que serve o bloco. */
+  ajuda: string;
+  itens: ItemRotina[];
+}
+
+/**
+ * O checklist do jeito de cada pessoa: quem nunca mexeu usa o modelo padrão;
+ * quem cria, edita ou apaga blocos e itens passa a ter o seu. Um por pessoa.
+ */
+export interface ModeloRotina {
+  /** O nome do responsável. */
+  id: string;
+  responsavel: string;
+  blocos: BlocoRotina[];
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type SituacaoFrente = 'Planejada' | 'Em execução' | 'Paralisada' | 'Concluída';
 
 export interface FrenteServico {

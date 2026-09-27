@@ -7,6 +7,7 @@ import {
   Hammer,
   HardHat,
   LayoutDashboard,
+  SunMedium,
   MapPin,
   Package,
   Radio,
@@ -53,6 +54,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Visão geral',
     items: [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
+      { id: 'meu-dia', label: 'Meu dia', icon: SunMedium },
       { id: 'consulta-geral', label: 'Consulta Geral', icon: Search },
       { id: 'periodo', label: 'Registros por Período', icon: CalendarRange },
       { id: 'pendencias', label: 'Pendências', icon: ListChecks },
@@ -134,6 +136,9 @@ export const NAVIGATION_GROUPS = [
  */
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
+  // Rotina do assistente de engenharia, pedida em 2026-09-27: checklist do
+  // dia, pendências com prioridade e fechamento do dia.
+  'meu-dia',
   'modo-campo',
   'central-operacional',
   'planejamento',
