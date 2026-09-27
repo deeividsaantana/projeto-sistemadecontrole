@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { FileSpreadsheet, Package, PackageX, SlidersHorizontal } from 'lucide-react';
-import type { Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
+import type { EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import type { PosicaoEstoque } from '../../utils/estoque';
 import { pendenciasDeRecebimento, resumoDeRecebimento } from '../../utils/recebimentoMaterial';
 import { buildMaterialsOperationalSummary, getDefaultMaterialsPeriod } from '../../utils/materialsAnalytics';
 import { summarizeMaterialsStock } from '../../utils/materialsDashboard';
 import { rankingPor, type AvisoMaterial } from '../../modules/materials/avisosMateriais';
+import { resumirBotaFora, viagensDeBotaFora } from '../../modules/materials/botaFora';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../../utils/formato';
 import { EmptyState } from '../../shared/ui';
@@ -22,11 +23,13 @@ interface Props {
   materiais: Material[];
   movimentos: MovimentoMaterial[];
   movimentosVigentes: MovimentoMaterial[];
+  etapas: EtapaServico[];
   posicoes: PosicaoEstoque[];
   podeEditar: boolean;
   avisos: readonly AvisoMaterial[];
   onEditarMaterial: (material: Material) => void;
   onVerMovimentos: (busca: string) => void;
+  onVerBotaFora: () => void;
 }
 
 /**
@@ -34,7 +37,7 @@ interface Props {
  * como o estoque está e o que se mexeu no período. O que pede ação vem antes
  * dos números de acompanhamento.
  */
-export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movimentosVigentes, posicoes, podeEditar, avisos, onEditarMaterial, onVerMovimentos }: Props) {
+export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movimentosVigentes, etapas, posicoes, podeEditar, avisos, onEditarMaterial, onVerMovimentos, onVerBotaFora }: Props) {
   const [periodo, setPeriodo] = useState(() => getDefaultMaterialsPeriod(hoje));
   const [filtros, setFiltros] = useState(FILTROS_VAZIOS);
   const [maisFiltros, setMaisFiltros] = useState(false);
@@ -54,6 +57,7 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
   const filtrosAtivos = Object.values(filtros).filter(Boolean).length;
   const porFornecedor = useMemo(() => rankingPor(resumo.filteredMovements, item => item.fornecedorNome), [resumo.filteredMovements]);
   const porLocal = useMemo(() => rankingPor(resumo.filteredMovements, item => item.destino || item.origem, 10), [resumo.filteredMovements]);
+  const botaFora = useMemo(() => resumirBotaFora(viagensDeBotaFora(resumo.filteredMovements, etapas)), [etapas, resumo.filteredMovements]);
 
   const exportarCsv = () => {
     const cabecalho = ['Data', 'Tipo', 'Material', 'Unidade', 'Quantidade', 'Fator', 'Fornecedor', 'Placa', 'Ticket', 'Local', 'Valor unitario', 'Valor total'];
@@ -295,24 +299,27 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
           onEscolher={local => setFiltros({ ...filtros, local })}
         />
 
-        <section data-materiais-reveal className={`${CARTAO} overflow-hidden`} aria-labelledby="materiais-viagens">
-          <h2 id="materiais-viagens" className="border-b border-slate-100 px-4 py-3 text-base font-bold text-slate-900">Viagens de bota-fora e solo</h2>
-          {resumo.trips.length > 0 && (
-            <div className="grid grid-cols-[1fr_repeat(3,4.5rem)] gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500 sm:grid-cols-[1fr_repeat(3,6rem)]">
-              <span>Local</span><span className="text-right">Lixo</span><span className="text-right">Solo cont.</span><span className="text-right">Solo</span>
-            </div>
-          )}
-          <ul className="divide-y divide-slate-100">
-            {resumo.trips.slice(0, 12).map(item => (
-              <li key={item.local} className="grid grid-cols-[1fr_repeat(3,4.5rem)] items-center gap-2 px-4 py-2.5 text-sm sm:grid-cols-[1fr_repeat(3,6rem)]">
-                <strong className="min-w-0 truncate text-slate-800">{item.local}</strong>
-                <span className="text-right tabular-nums text-slate-900">{numero(item.lixo)}</span>
-                <span className="text-right tabular-nums text-slate-900">{numero(item.soloContaminado)}</span>
-                <span className="text-right tabular-nums text-slate-900">{numero(item.solo)}</span>
-              </li>
-            ))}
-          </ul>
-          {resumo.trips.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhuma viagem de bota-fora ou solo no período.</p>}
+        <section data-materiais-reveal className={`${CARTAO} flex flex-col overflow-hidden`} aria-labelledby="materiais-viagens">
+          <h2 id="materiais-viagens" className="border-b border-slate-100 px-4 py-3 text-base font-bold text-slate-900">Bota-fora no período</h2>
+          {botaFora.porDestino.length ? (
+            <ul className="divide-y divide-slate-100">
+              {botaFora.porDestino.map(item => (
+                <li key={item.destino.id} className="flex min-h-12 items-center gap-3 px-4 py-2.5 text-sm">
+                  <span className="min-w-0 flex-1">
+                    <strong className="block text-slate-800">{item.destino.nome}</strong>
+                    <span className="text-xs text-slate-500">{item.residuos.map(parte => parte.residuo).join(' e ')}</span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <strong className="block tabular-nums text-slate-900">{numero(item.viagens, 0)} {item.viagens === 1 ? 'viagem' : 'viagens'}</strong>
+                    <span className="text-xs tabular-nums text-slate-500">{moeda(item.custo)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="p-6 text-center text-sm text-slate-500">Nenhuma viagem de bota-fora no período.</p>}
+          <div className="mt-auto border-t border-slate-100 p-3">
+            <button type="button" onClick={onVerBotaFora} className={`${BOTAO_SECUNDARIO} w-full`}>Ver bota-fora completo</button>
+          </div>
         </section>
       </div>
     </div>

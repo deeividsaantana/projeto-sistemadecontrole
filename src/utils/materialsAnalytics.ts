@@ -40,15 +40,6 @@ export interface MaterialSupplierSummaryRow {
   viagens: number;
 }
 
-export interface MaterialTripSummaryRow {
-  local: string;
-  lixo: number;
-  soloContaminado: number;
-  solo: number;
-}
-
-type MaterialTripKind = 'lixo' | 'soloContaminado' | 'solo';
-
 const asNumber = (value: number | undefined): number => Number.isFinite(value) ? Number(value) : 0;
 
 const normalize = (value: string | undefined): string => normalizeComparable(value || '').trim();
@@ -65,15 +56,6 @@ const addToMap = <T>(map: Map<string, T>, key: string, create: () => T, update: 
   const current = map.get(key) || create();
   update(current);
   map.set(key, current);
-};
-
-const destinationKind = (movement: MovimentoMaterial): MaterialTripKind | null => {
-  const text = normalize(`${movement.materialDescricao} ${movement.destino || ''} ${movement.observacao || ''}`);
-  if (!text.includes('bota fora')) return null;
-  if (text.includes('lixo')) return 'lixo';
-  if (text.includes('contamin')) return 'soloContaminado';
-  if (/\bsolo\b/.test(text)) return 'solo';
-  return null;
 };
 
 export function getDefaultMaterialsPeriod(referenceDate: string): MaterialsPeriod {
@@ -102,7 +84,6 @@ export function buildMaterialsOperationalSummary(
   const materials = new Map<string, MaterialSummaryRow>();
   const locations = new Map<string, MaterialLocationSummaryRow>();
   const suppliers = new Map<string, MaterialSupplierSummaryRow>();
-  const trips = new Map<string, MaterialTripSummaryRow>();
 
   filteredMovements.forEach(item => {
     const quantidade = Math.abs(asNumber(item.quantidade));
@@ -155,12 +136,6 @@ export function buildMaterialsOperationalSummary(
       row.viagens += 1;
     });
 
-    const kind = destinationKind(item);
-    if (kind) {
-      addToMap(trips, normalize(local), () => ({ local, lixo: 0, soloContaminado: 0, solo: 0 }), row => {
-        row[kind] += quantidade;
-      });
-    }
   });
 
   const totals = filteredMovements.reduce((total, item) => {
@@ -179,6 +154,5 @@ export function buildMaterialsOperationalSummary(
     materials: [...materials.values()].sort((a, b) => b.quantidade - a.quantidade),
     locations: [...locations.values()].sort((a, b) => b.quantidade - a.quantidade),
     suppliers: [...suppliers.values()].sort((a, b) => b.quantidade - a.quantidade),
-    trips: [...trips.values()].sort((a, b) => a.local.localeCompare(b.local, 'pt-BR')),
   };
 }

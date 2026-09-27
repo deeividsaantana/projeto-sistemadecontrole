@@ -41,21 +41,6 @@ test('resumo operacional filtra por periodo, material, fornecedor e local', () =
   assert.equal(summary.suppliers[0].fornecedor, 'PEDRA FORTE');
 });
 
-test('resumo operacional agrupa viagens por local e categoria de destino', () => {
-  const summary = buildMaterialsOperationalSummary([
-    movimento({ id: 'a', destino: 'BOTA FORA LARA', materialDescricao: 'LIXO', quantidade: 352 }),
-    movimento({ id: 'b', destino: 'BOTA FORA ITAQUAREIA', materialDescricao: 'SOLO CONTAMINADO', quantidade: 802 }),
-    movimento({ id: 'c', destino: 'BOTA FORA SAO BENTO', materialDescricao: 'SOLO', quantidade: 53 }),
-    movimento({ id: 'd', destino: 'BOTA FORA SAO BENTO', materialDescricao: 'RACHAO PRIMARIO', quantidade: 20 }),
-  ], { from: '2026-09-01', to: '2026-09-30' });
-
-  assert.deepEqual(summary.trips.map(item => [item.local, item.lixo, item.soloContaminado, item.solo]), [
-    ['BOTA FORA ITAQUAREIA', 0, 802, 0],
-    ['BOTA FORA LARA', 352, 0, 0],
-    ['BOTA FORA SAO BENTO', 0, 0, 53],
-  ]);
-});
-
 test('periodo padrao cobre o mes do dia informado', () => {
   assert.deepEqual(getDefaultMaterialsPeriod('2026-09-23'), {
     from: '2026-09-01',
