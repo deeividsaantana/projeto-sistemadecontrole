@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Boxes, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, type LucideIcon } from 'lucide-react';
+import { Boxes, ChartPie, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, type LucideIcon } from 'lucide-react';
 import { FOCO, reduzMovimento } from '../cadastros/estilos';
 
-export type SecaoMateriais = 'resumo' | 'previsto' | 'utilizacao' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
+export type SecaoMateriais = 'resumo' | 'graficos' | 'previsto' | 'utilizacao' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
 
 interface Secao {
   id: SecaoMateriais;
@@ -16,13 +16,26 @@ interface Secao {
 
 const GRUPOS: ReadonlyArray<{ id: string; nome: string; secoes: readonly Secao[] }> = [
   {
-    id: 'acompanhar',
-    nome: 'Acompanhar',
+    id: 'painel',
+    nome: 'Painel',
     secoes: [
-      { id: 'resumo', nome: 'Visão geral', ajuda: 'Avisos, gráficos e o período', Icone: LayoutDashboard },
+      { id: 'resumo', nome: 'Visão geral', ajuda: 'Avisos, estoque e o período', Icone: LayoutDashboard },
+      { id: 'graficos', nome: 'Gráficos', ajuda: 'Pizzas com a porcentagem de cada parte', Icone: ChartPie },
+    ],
+  },
+  {
+    id: 'obra',
+    nome: 'Na obra',
+    secoes: [
       { id: 'previsto', nome: 'Previsto do mês', ajuda: 'Meta de cada ramo e o que já chegou', Icone: Target },
       { id: 'utilizacao', nome: 'Uso por ramo', ajuda: 'Quanto cada ramo recebeu e usou', Icone: Route },
       { id: 'botafora', nome: 'Bota-fora', ajuda: 'Viagens para Itaquareia, Lara e São Bento', Icone: Truck },
+    ],
+  },
+  {
+    id: 'controle',
+    nome: 'Controle',
+    secoes: [
       { id: 'estoque', nome: 'Estoque', ajuda: 'Quanto sobra de cada material', Icone: Boxes },
       { id: 'movimentos', nome: 'Movimentos', ajuda: 'Tudo que entrou, saiu ou mudou de lugar', Icone: ListOrdered },
     ],

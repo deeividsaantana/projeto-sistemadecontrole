@@ -23,6 +23,7 @@ import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
 import FichaMaterial from './materiais/FichaMaterial';
 import LocaisMateriais from './materiais/LocaisMateriais';
+import GraficosMateriais from './materiais/GraficosMateriais';
 import PrevistoMateriais from './materiais/PrevistoMateriais';
 import BotaForaMateriais from './materiais/BotaForaMateriais';
 import { viagensDeBotaFora } from '../modules/materials/botaFora';
@@ -68,14 +69,14 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
 ];
 
 // Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'previsto', 'utilizacao', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
+const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'graficos', 'previsto', 'utilizacao', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
   { teclas: 'V', oQueFaz: 'Várias viagens de uma vez', editar: true },
   { teclas: 'M', oQueFaz: 'Novo material', editar: true },
   { teclas: '/', oQueFaz: 'Buscar movimento' },
-  { teclas: '1 a 9', oQueFaz: 'Ir para cada parte do menu' },
+  { teclas: '1 a 9 e 0', oQueFaz: 'Ir para cada parte do menu' },
   { teclas: 'Shift+Enter', oQueFaz: 'Na janela de lançamento: salvar e lançar outro', editar: true },
   { teclas: 'Enter', oQueFaz: 'Na grade de viagens: descer para a linha de baixo', editar: true },
   { teclas: '?', oQueFaz: 'Mostrar esta lista' },
@@ -191,8 +192,9 @@ export default function MateriaisTab({
       const alvo = event.target as HTMLElement | null;
       if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey) return;
       const tecla = event.key.toLocaleLowerCase('pt-BR');
-      const secao = secoes[Number(tecla) - 1];
-      if (/^[1-9]$/.test(tecla) && secao) {
+      // O 0 fica depois do 9, como no teclado: é a décima parte.
+      const secao = /^[0-9]$/.test(tecla) ? secoes[(Number(tecla) + 9) % 10] : undefined;
+      if (secao) {
         event.preventDefault();
         escolherSecao(secao);
       } else if (tecla === '/') {
@@ -477,6 +479,17 @@ export default function MateriaisTab({
               avisos={avisos}
               onEditarMaterial={abrirCadastro}
               onVerMovimentos={termoAviso => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoAviso); }}
+            />
+          )}
+
+          {aba === 'graficos' && (
+            <GraficosMateriais
+              hoje={hoje}
+              movimentos={movimentosVigentes}
+              etapas={etapas}
+              onVerMovimentos={termoGrafico => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoGrafico); }}
+              onVerBotaFora={() => escolherSecao('botafora')}
+              onIrParaLocais={() => escolherSecao('locais')}
             />
           )}
 
