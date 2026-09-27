@@ -86,6 +86,11 @@ interface Props {
   responsavel: string;
   onSalvar: (movimento: MovimentoMaterial, novo: boolean) => void;
   onFechar: () => void;
+  /**
+   * "pagina" desenha o lançamento na própria tela, sem janela: registrar
+   * limpa o que muda de uma viagem para outra e deixa pronto para a próxima.
+   */
+  modo?: 'janela' | 'pagina';
 }
 
 /**
@@ -93,7 +98,10 @@ interface Props {
  * saldo antes e depois na hora, e "Salvar e lançar outro" para quem lança uma
  * viagem atrás da outra sem ter que preencher tudo de novo.
  */
-export default function FormLancamento({ aberto, editando, hoje, materiais, movimentos, empresas, etapas, responsavel, onSalvar, onFechar }: Props) {
+export default function FormLancamento({ aberto, editando, hoje, materiais, movimentos, empresas, etapas, responsavel, onSalvar, onFechar, modo = 'janela' }: Props) {
+  const pagina = modo === 'pagina';
+  // A tela de lançar e a janela de corrigir podem estar abertas juntas: ids diferentes.
+  const prefixo = pagina ? 'lancar' : 'lancamento';
   const [form, setForm] = useState<Formulario>(() => formularioNovo(hoje));
   const [voltarAValer, setVoltarAValer] = useState(false);
   const [maisCampos, setMaisCampos] = useState(false);
@@ -207,8 +215,10 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
   };
 
   // Shift+Enter salva e já deixa pronto para a próxima viagem.
+  // Na tela de lançar, o Enter sozinho já registra e deixa pronto para a próxima.
   const teclar = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' && event.shiftKey && !editando && (event.target as HTMLElement).tagName !== 'TEXTAREA') {
+    const alvo = (event.target as HTMLElement).tagName;
+    if (event.key === 'Enter' && (event.shiftKey || pagina) && !editando && alvo !== 'TEXTAREA' && alvo !== 'BUTTON' && alvo !== 'SUMMARY') {
       event.preventDefault();
       event.stopPropagation();
       registrarEOutro();
@@ -216,6 +226,253 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
   };
 
   const tomSaldo = saldoDepois < 0 ? 'text-rose-700' : minimo > 0 && saldoDepois < minimo ? 'text-amber-700' : 'text-slate-900';
+
+  const limpar = () => {
+    setForm(formularioNovo(hoje));
+    setErro('');
+    setLancado('');
+  };
+
+  const rodape = pagina ? (
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+      <button type="button" onClick={limpar} className={BOTAO_SECUNDARIO}>
+        <RotateCcw className="size-4" aria-hidden="true" />
+        Começar de novo
+      </button>
+      <button type="button" onClick={registrarEOutro} className={`${BOTAO_PRIMARIO} px-6 text-base`} data-testid="materiais-registrar">
+        <CheckCircle2 className="size-5" aria-hidden="true" />
+        Registrar
+        <kbd className="hidden rounded border border-white/40 px-1.5 text-xs font-semibold text-white/80 lg:inline">Enter</kbd>
+      </button>
+    </div>
+  ) : (
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button type="button" onClick={onFechar} className={BOTAO_SECUNDARIO}>Cancelar</button>
+      {!editando && (
+        <button type="button" onClick={registrarEOutro} className={BOTAO_SECUNDARIO} data-testid="materiais-lancar-outro">
+          Salvar e lançar outro
+          <kbd className="hidden rounded border border-slate-200 px-1.5 text-xs font-semibold text-slate-500 lg:inline">Shift+Enter</kbd>
+        </button>
+      )}
+      <button type="button" onClick={registrar} className={`${BOTAO_PRIMARIO} px-5`} data-testid="materiais-registrar">
+        {editando ? 'Salvar alteração' : 'Registrar'}
+      </button>
+    </div>
+  );
+
+  const corpo = (
+    <div className="space-y-4" onKeyDown={teclar}>
+      {lancado && (
+        <p role="status" className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
+          {lancado}
+        </p>
+      )}
+
+      {editando?.canceladoEm && (
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            {voltarAValer
+              ? 'Ao salvar, este lançamento volta a contar no saldo.'
+              : `Desfeito em ${formatarData(editando.canceladoEm.slice(0, 10))}${editando.canceladoPor ? ` por ${editando.canceladoPor}` : ''}. Não conta no saldo.`}
+          </p>
+          {!voltarAValer && (
+            <button type="button" onClick={() => setVoltarAValer(true)} className={`${BOTAO_SECUNDARIO} shrink-0`}>
+              <RotateCcw className="size-4" aria-hidden="true" />
+              Voltar a valer
+            </button>
+          )}
+        </div>
+      )}
+
+      <fieldset>
+        <legend className={ROTULO}>O que aconteceu?</legend>
+        <div role="radiogroup" className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {TIPOS.map(({ id, nome, ajuda, Icone }) => {
+            const ativo = form.tipo === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={ativo}
+                onClick={() => setForm(atual => ({ ...atual, tipo: id, consumo: id === 'Saída' ? atual.consumo : false }))}
+                className={`flex ${pagina ? 'min-h-20 px-4' : 'min-h-16 px-3'} flex-col items-start justify-center gap-0.5 rounded-xl border py-2 text-left transition duration-200 ${FOCO} ${ativo
+                  ? 'border-[#176b4d] bg-[#176b4d] text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
+              >
+                <span className={`flex items-center gap-1.5 font-bold ${pagina ? 'text-base' : 'text-sm'}`}><Icone className={pagina ? 'size-5' : 'size-4'} aria-hidden="true" />{nome}</span>
+                <span className={`text-xs ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{ajuda}</span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <div>
+        <label htmlFor={`${prefixo}-material`} className={ROTULO}>Material</label>
+        <div className="mt-1">
+          <CampoEscolha
+            id={`${prefixo}-material`}
+            testId="lancamento-material"
+            opcoes={opcoesMaterial}
+            recentes={materiaisRecentes}
+            valor={form.materialId}
+            onEscolher={escolherMaterial}
+            placeholder="Digite o nome ou o código"
+            onEnter={() => quantidadeRef.current?.focus()}
+          />
+        </div>
+        {material && (
+          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600" aria-live="polite">
+            <span>Saldo agora: <strong className="tabular-nums text-slate-900">{numero(saldoAgora)} {material.unidade}</strong></span>
+            {quantidade !== 0 && form.tipo !== 'Transferência' && (
+              <span>Depois deste lançamento: <strong className={`tabular-nums ${tomSaldo}`}>{numero(saldoDepois)} {material.unidade}</strong></span>
+            )}
+            {minimo > 0 && <span>Mínimo: <span className="tabular-nums">{numero(minimo)}</span></span>}
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className={`block ${ROTULO}`}>
+          Quantidade{material ? ` (${material.unidade})` : ''}
+          <input
+            ref={quantidadeRef}
+            inputMode="decimal"
+            value={form.quantidade}
+            onChange={event => mudar('quantidade', event.target.value)}
+            placeholder={form.tipo === 'Ajuste' ? 'Use - para baixar' : 'Ex: 12,5'}
+            data-testid="lancamento-quantidade"
+            className={`mt-1 ${CAMPO} text-lg font-bold tabular-nums`}
+          />
+        </label>
+        <label className={`block ${ROTULO}`}>
+          Data
+          <input type="date" value={form.data} onChange={event => mudar('data', event.target.value)} className={`mt-1 ${CAMPO}`} />
+        </label>
+
+        {form.tipo === 'Entrada' && (
+          <>
+            <div className="sm:col-span-2">
+              <label htmlFor={`${prefixo}-fornecedor`} className={ROTULO}>Fornecedor</label>
+              <div className="mt-1">
+                <CampoEscolha id={`${prefixo}-fornecedor`} opcoes={opcoesFornecedor} recentes={fornecedoresRecentes} valor={form.fornecedorId} onEscolher={id => mudar('fornecedorId', id)} vazio="Sem fornecedor informado" placeholder="Digite o nome do fornecedor" />
+              </div>
+            </div>
+            <label className={`block ${ROTULO}`}>
+              Nota fiscal
+              <input value={form.notaFiscal} onChange={event => mudar('notaFiscal', event.target.value)} inputMode="numeric" className={`mt-1 ${CAMPO}`} />
+            </label>
+            <label className={`block ${ROTULO}`}>
+              Quantidade na nota
+              <input inputMode="decimal" value={form.quantidadeNota} onChange={event => mudar('quantidadeNota', event.target.value)} placeholder="Se for diferente do que chegou" className={`mt-1 ${CAMPO}`} />
+            </label>
+          </>
+        )}
+
+        {form.tipo !== 'Ajuste' && (
+          <>
+            <label className={`block ${ROTULO}`}>
+              Placa
+              <input value={form.placa} onChange={event => mudar('placa', event.target.value.toUpperCase())} placeholder="ABC1D23" className={`mt-1 ${CAMPO} uppercase`} />
+            </label>
+            <label className={`block ${ROTULO}`}>
+              Ticket ou vale
+              <input value={form.ticket} onChange={event => mudar('ticket', event.target.value)} className={`mt-1 ${CAMPO}`} />
+            </label>
+          </>
+        )}
+
+        {form.tipo === 'Transferência' && (
+          <label className={`block ${ROTULO} sm:col-span-2`}>
+            De onde saiu
+            <input value={form.origem} onChange={event => mudar('origem', event.target.value)} list={`${prefixo}-destinos`} className={`mt-1 ${CAMPO}`} />
+          </label>
+        )}
+
+        {form.tipo !== 'Ajuste' && (
+          <>
+            <label className={`block ${ROTULO}`}>
+              {form.tipo === 'Transferência' ? 'Para onde foi' : 'Local ou frente'}
+              <input value={form.destino} onChange={event => mudar('destino', event.target.value)} list={`${prefixo}-destinos`} placeholder="Ex: Ramo 700" className={`mt-1 ${CAMPO}`} />
+              <datalist id={`${prefixo}-destinos`}>{destinosRecentes.map(item => <option key={item} value={item} />)}</datalist>
+            </label>
+            <label className={`block ${ROTULO}`}>
+              Ramo ou trecho
+              <select
+                value={form.etapaServicoId}
+                onChange={event => {
+                  const etapa = etapas.find(item => item.id === event.target.value);
+                  setForm(atual => ({ ...atual, etapaServicoId: event.target.value, destino: atual.destino || etapa?.nome || '' }));
+                }}
+                className={`mt-1 ${CAMPO}`}
+              >
+                <option value="">Sem ramo</option>
+                {locaisParaEscolher(etapas, form.etapaServicoId).map(([grupo, itens]) => (
+                  <optgroup key={grupo} label={grupo}>{itens.map(item => <option key={item.id} value={item.id}>{rotuloDoLocal(item)}</option>)}</optgroup>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+
+        {form.tipo === 'Saída' && (
+          <>
+            <label className={`block ${ROTULO}`}>
+              Serviço
+              <input value={form.servico} onChange={event => mudar('servico', event.target.value)} className={`mt-1 ${CAMPO}`} />
+            </label>
+            <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
+              <input type="checkbox" checked={form.consumo} onChange={event => mudar('consumo', event.target.checked)} className="size-5 accent-[#176b4d]" />
+              Conta como uso do ramo
+            </label>
+          </>
+        )}
+      </div>
+
+      <details open={maisCampos} onToggle={event => setMaisCampos(event.currentTarget.open)} className="rounded-xl border border-slate-200">
+        <summary className={`min-h-11 cursor-pointer rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 ${FOCO}`}>
+          Mais campos: valor, fator, solicitação de compra e observação
+        </summary>
+        <div className="grid gap-3 border-t border-slate-200 p-3 sm:grid-cols-2">
+          <label className={`block ${ROTULO}`}>
+            Valor unitário (R$)
+            <input inputMode="decimal" value={form.valorUnitario} onChange={event => mudar('valorUnitario', event.target.value)} className={`mt-1 ${CAMPO}`} />
+          </label>
+          <label className={`block ${ROTULO}`}>
+            Valor total (R$)
+            <input inputMode="decimal" value={form.valorTotal} onChange={event => mudar('valorTotal', event.target.value)} placeholder={totalCalculado ? totalCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} className={`mt-1 ${CAMPO}`} />
+          </label>
+          <label className={`block ${ROTULO}`}>
+            Fator ou densidade
+            <input inputMode="decimal" value={form.fatorConversao} onChange={event => mudar('fatorConversao', event.target.value)} placeholder="Ex: 1,6" className={`mt-1 ${CAMPO}`} />
+          </label>
+          {form.tipo === 'Entrada' && (
+            <label className={`block ${ROTULO}`}>
+              Solicitação de compra
+              <input value={form.solicitacaoCompra} onChange={event => mudar('solicitacaoCompra', event.target.value)} placeholder="SC 93011249" className={`mt-1 ${CAMPO}`} />
+            </label>
+          )}
+          <label className={`block ${ROTULO} sm:col-span-2`}>
+            Observação
+            <textarea value={form.observacao} onChange={event => mudar('observacao', event.target.value)} rows={2} className={`mt-1 ${CAMPO} py-2`} />
+          </label>
+        </div>
+      </details>
+
+      {erro && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{erro}</p>}
+    </div>
+  );
+
+  if (pagina) {
+    return (
+      <section data-materiais-reveal aria-label="Lançar" className="rounded-2xl border border-slate-200 bg-white">
+        <div className="p-4 sm:p-5">{corpo}</div>
+        <div className="sticky bottom-0 rounded-b-2xl border-t border-slate-200 bg-white p-3 sm:px-5">{rodape}</div>
+      </section>
+    );
+  }
 
   return (
     <Modal
@@ -225,223 +482,9 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
       telaCheia="materiais-lancamento"
       onSubmit={registrar}
       onClose={onFechar}
-      footer={(
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onFechar} className={BOTAO_SECUNDARIO}>Cancelar</button>
-          {!editando && (
-            <button type="button" onClick={registrarEOutro} className={BOTAO_SECUNDARIO} data-testid="materiais-lancar-outro">
-              Salvar e lançar outro
-              <kbd className="hidden rounded border border-slate-200 px-1.5 text-xs font-semibold text-slate-500 lg:inline">Shift+Enter</kbd>
-            </button>
-          )}
-          <button type="button" onClick={registrar} className={`${BOTAO_PRIMARIO} px-5`} data-testid="materiais-registrar">
-            {editando ? 'Salvar alteração' : 'Registrar'}
-          </button>
-        </div>
-      )}
+      footer={rodape}
     >
-      <div className="space-y-4" onKeyDown={teclar}>
-        {lancado && (
-          <p role="status" className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
-            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
-            {lancado}
-          </p>
-        )}
-
-        {editando?.canceladoEm && (
-          <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              {voltarAValer
-                ? 'Ao salvar, este lançamento volta a contar no saldo.'
-                : `Desfeito em ${formatarData(editando.canceladoEm.slice(0, 10))}${editando.canceladoPor ? ` por ${editando.canceladoPor}` : ''}. Não conta no saldo.`}
-            </p>
-            {!voltarAValer && (
-              <button type="button" onClick={() => setVoltarAValer(true)} className={`${BOTAO_SECUNDARIO} shrink-0`}>
-                <RotateCcw className="size-4" aria-hidden="true" />
-                Voltar a valer
-              </button>
-            )}
-          </div>
-        )}
-
-        <fieldset>
-          <legend className={ROTULO}>O que aconteceu?</legend>
-          <div role="radiogroup" className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {TIPOS.map(({ id, nome, ajuda, Icone }) => {
-              const ativo = form.tipo === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={ativo}
-                  onClick={() => setForm(atual => ({ ...atual, tipo: id, consumo: id === 'Saída' ? atual.consumo : false }))}
-                  className={`flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-xl border px-3 py-2 text-left transition duration-200 ${FOCO} ${ativo
-                    ? 'border-[#176b4d] bg-[#176b4d] text-white'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
-                >
-                  <span className="flex items-center gap-1.5 text-sm font-bold"><Icone className="size-4" aria-hidden="true" />{nome}</span>
-                  <span className={`text-xs ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{ajuda}</span>
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-
-        <div>
-          <label htmlFor="lancamento-material" className={ROTULO}>Material</label>
-          <div className="mt-1">
-            <CampoEscolha
-              id="lancamento-material"
-              testId="lancamento-material"
-              opcoes={opcoesMaterial}
-              recentes={materiaisRecentes}
-              valor={form.materialId}
-              onEscolher={escolherMaterial}
-              placeholder="Digite o nome ou o código"
-              onEnter={() => quantidadeRef.current?.focus()}
-            />
-          </div>
-          {material && (
-            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600" aria-live="polite">
-              <span>Saldo agora: <strong className="tabular-nums text-slate-900">{numero(saldoAgora)} {material.unidade}</strong></span>
-              {quantidade !== 0 && form.tipo !== 'Transferência' && (
-                <span>Depois deste lançamento: <strong className={`tabular-nums ${tomSaldo}`}>{numero(saldoDepois)} {material.unidade}</strong></span>
-              )}
-              {minimo > 0 && <span>Mínimo: <span className="tabular-nums">{numero(minimo)}</span></span>}
-            </p>
-          )}
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className={`block ${ROTULO}`}>
-            Quantidade{material ? ` (${material.unidade})` : ''}
-            <input
-              ref={quantidadeRef}
-              inputMode="decimal"
-              value={form.quantidade}
-              onChange={event => mudar('quantidade', event.target.value)}
-              placeholder={form.tipo === 'Ajuste' ? 'Use - para baixar' : 'Ex: 12,5'}
-              data-testid="lancamento-quantidade"
-              className={`mt-1 ${CAMPO} text-lg font-bold tabular-nums`}
-            />
-          </label>
-          <label className={`block ${ROTULO}`}>
-            Data
-            <input type="date" value={form.data} onChange={event => mudar('data', event.target.value)} className={`mt-1 ${CAMPO}`} />
-          </label>
-
-          {form.tipo === 'Entrada' && (
-            <>
-              <div className="sm:col-span-2">
-                <label htmlFor="lancamento-fornecedor" className={ROTULO}>Fornecedor</label>
-                <div className="mt-1">
-                  <CampoEscolha id="lancamento-fornecedor" opcoes={opcoesFornecedor} recentes={fornecedoresRecentes} valor={form.fornecedorId} onEscolher={id => mudar('fornecedorId', id)} vazio="Sem fornecedor informado" placeholder="Digite o nome do fornecedor" />
-                </div>
-              </div>
-              <label className={`block ${ROTULO}`}>
-                Nota fiscal
-                <input value={form.notaFiscal} onChange={event => mudar('notaFiscal', event.target.value)} inputMode="numeric" className={`mt-1 ${CAMPO}`} />
-              </label>
-              <label className={`block ${ROTULO}`}>
-                Quantidade na nota
-                <input inputMode="decimal" value={form.quantidadeNota} onChange={event => mudar('quantidadeNota', event.target.value)} placeholder="Se for diferente do que chegou" className={`mt-1 ${CAMPO}`} />
-              </label>
-            </>
-          )}
-
-          {form.tipo !== 'Ajuste' && (
-            <>
-              <label className={`block ${ROTULO}`}>
-                Placa
-                <input value={form.placa} onChange={event => mudar('placa', event.target.value.toUpperCase())} placeholder="ABC1D23" className={`mt-1 ${CAMPO} uppercase`} />
-              </label>
-              <label className={`block ${ROTULO}`}>
-                Ticket ou vale
-                <input value={form.ticket} onChange={event => mudar('ticket', event.target.value)} className={`mt-1 ${CAMPO}`} />
-              </label>
-            </>
-          )}
-
-          {form.tipo === 'Transferência' && (
-            <label className={`block ${ROTULO} sm:col-span-2`}>
-              De onde saiu
-              <input value={form.origem} onChange={event => mudar('origem', event.target.value)} list="lancamento-destinos" className={`mt-1 ${CAMPO}`} />
-            </label>
-          )}
-
-          {form.tipo !== 'Ajuste' && (
-            <>
-              <label className={`block ${ROTULO}`}>
-                {form.tipo === 'Transferência' ? 'Para onde foi' : 'Local ou frente'}
-                <input value={form.destino} onChange={event => mudar('destino', event.target.value)} list="lancamento-destinos" placeholder="Ex: Ramo 700" className={`mt-1 ${CAMPO}`} />
-                <datalist id="lancamento-destinos">{destinosRecentes.map(item => <option key={item} value={item} />)}</datalist>
-              </label>
-              <label className={`block ${ROTULO}`}>
-                Ramo ou trecho
-                <select
-                  value={form.etapaServicoId}
-                  onChange={event => {
-                    const etapa = etapas.find(item => item.id === event.target.value);
-                    setForm(atual => ({ ...atual, etapaServicoId: event.target.value, destino: atual.destino || etapa?.nome || '' }));
-                  }}
-                  className={`mt-1 ${CAMPO}`}
-                >
-                  <option value="">Sem ramo</option>
-                  {locaisParaEscolher(etapas, form.etapaServicoId).map(([grupo, itens]) => (
-                    <optgroup key={grupo} label={grupo}>{itens.map(item => <option key={item.id} value={item.id}>{rotuloDoLocal(item)}</option>)}</optgroup>
-                  ))}
-                </select>
-              </label>
-            </>
-          )}
-
-          {form.tipo === 'Saída' && (
-            <>
-              <label className={`block ${ROTULO}`}>
-                Serviço
-                <input value={form.servico} onChange={event => mudar('servico', event.target.value)} className={`mt-1 ${CAMPO}`} />
-              </label>
-              <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
-                <input type="checkbox" checked={form.consumo} onChange={event => mudar('consumo', event.target.checked)} className="size-5 accent-[#176b4d]" />
-                Conta como uso do ramo
-              </label>
-            </>
-          )}
-        </div>
-
-        <details open={maisCampos} onToggle={event => setMaisCampos(event.currentTarget.open)} className="rounded-xl border border-slate-200">
-          <summary className={`min-h-11 cursor-pointer rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 ${FOCO}`}>
-            Mais campos: valor, fator, solicitação de compra e observação
-          </summary>
-          <div className="grid gap-3 border-t border-slate-200 p-3 sm:grid-cols-2">
-            <label className={`block ${ROTULO}`}>
-              Valor unitário (R$)
-              <input inputMode="decimal" value={form.valorUnitario} onChange={event => mudar('valorUnitario', event.target.value)} className={`mt-1 ${CAMPO}`} />
-            </label>
-            <label className={`block ${ROTULO}`}>
-              Valor total (R$)
-              <input inputMode="decimal" value={form.valorTotal} onChange={event => mudar('valorTotal', event.target.value)} placeholder={totalCalculado ? totalCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} className={`mt-1 ${CAMPO}`} />
-            </label>
-            <label className={`block ${ROTULO}`}>
-              Fator ou densidade
-              <input inputMode="decimal" value={form.fatorConversao} onChange={event => mudar('fatorConversao', event.target.value)} placeholder="Ex: 1,6" className={`mt-1 ${CAMPO}`} />
-            </label>
-            {form.tipo === 'Entrada' && (
-              <label className={`block ${ROTULO}`}>
-                Solicitação de compra
-                <input value={form.solicitacaoCompra} onChange={event => mudar('solicitacaoCompra', event.target.value)} placeholder="SC 93011249" className={`mt-1 ${CAMPO}`} />
-              </label>
-            )}
-            <label className={`block ${ROTULO} sm:col-span-2`}>
-              Observação
-              <textarea value={form.observacao} onChange={event => mudar('observacao', event.target.value)} rows={2} className={`mt-1 ${CAMPO} py-2`} />
-            </label>
-          </div>
-        </details>
-
-        {erro && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{erro}</p>}
-      </div>
+      {corpo}
     </Modal>
   );
 }

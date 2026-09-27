@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Boxes, ChartPie, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, type LucideIcon } from 'lucide-react';
+import { Boxes, ChartPie, ClipboardPen, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, type LucideIcon } from 'lucide-react';
 import { FOCO, reduzMovimento } from '../cadastros/estilos';
 
-export type SecaoMateriais = 'resumo' | 'graficos' | 'previsto' | 'utilizacao' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
+export type SecaoMateriais = 'lancar' | 'resumo' | 'graficos' | 'previsto' | 'utilizacao' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
 
 interface Secao {
   id: SecaoMateriais;
@@ -15,6 +15,13 @@ interface Secao {
 }
 
 const GRUPOS: ReadonlyArray<{ id: string; nome: string; secoes: readonly Secao[] }> = [
+  {
+    id: 'lancar',
+    nome: 'Lançar',
+    secoes: [
+      { id: 'lancar', nome: 'Lançar', ajuda: 'Chegou, saiu, transporte ou várias viagens, na tela toda', Icone: ClipboardPen },
+    ],
+  },
   {
     id: 'painel',
     nome: 'Painel',
@@ -62,6 +69,8 @@ interface Props {
   /** Avisos abertos de cada parte: aparecem em laranja no lugar da contagem. */
   avisos?: (id: SecaoMateriais) => number;
   onSelect: (id: SecaoMateriais) => void;
+  /** Sem a coluna do computador: o seletor de cima vale em qualquer tela. */
+  compacto?: boolean;
 }
 
 /**
@@ -69,7 +78,7 @@ interface Props {
  * é uma coluna fixa com as partes e a quantidade de cada uma; no celular vira
  * um seletor grande que abre a lista de baixo para cima.
  */
-export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 0, onSelect }: Props) {
+export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 0, onSelect, compacto = false }: Props) {
   const [aberto, setAberto] = useState(false);
   const folha = useRef<HTMLDivElement>(null);
   const atual = TODAS.find(secao => secao.id === value) ?? TODAS[0];
@@ -157,11 +166,11 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
 
   return (
     <>
-      <nav aria-label="Partes de materiais" data-materiais-reveal className="hidden self-start rounded-2xl border border-slate-200 bg-white p-2 py-3 lg:sticky lg:top-4 lg:block">
+      <nav aria-label="Partes de materiais" data-materiais-reveal className={`${compacto ? 'hidden' : 'hidden lg:block'} self-start rounded-2xl border border-slate-200 bg-white p-2 py-3 lg:sticky lg:top-4`}>
         {lista(false)}
       </nav>
 
-      <div className="lg:hidden" data-materiais-reveal>
+      <div className={compacto ? 'lg:max-w-md' : 'lg:hidden'} data-materiais-reveal>
         <button
           type="button"
           aria-haspopup="dialog"
@@ -178,8 +187,8 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
       </div>
 
       {aberto && createPortal(
-        <div className="fixed inset-0 z-[125] flex items-end bg-black/40 lg:hidden" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setAberto(false); }}>
-          <div ref={folha} role="dialog" aria-modal="true" aria-label="Escolher parte de materiais" className="max-h-[85dvh] w-full overflow-y-auto rounded-t-3xl bg-white px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl">
+        <div className={`fixed inset-0 z-[125] flex items-end bg-black/40 ${compacto ? 'lg:items-center lg:justify-center' : 'lg:hidden'}`} role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setAberto(false); }}>
+          <div ref={folha} role="dialog" aria-modal="true" aria-label="Escolher parte de materiais" className="max-h-[85dvh] w-full overflow-y-auto rounded-t-3xl bg-white lg:max-w-md lg:rounded-3xl px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" aria-hidden="true" />
             <nav aria-label="Partes de materiais no celular">{lista(true)}</nav>
           </div>

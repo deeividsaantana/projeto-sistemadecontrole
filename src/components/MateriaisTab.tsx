@@ -21,6 +21,7 @@ import MateriaisVisaoGeral from './materiais/MateriaisVisaoGeral';
 import { CartoesMateriais, ListaMovimentos } from './materiais/MateriaisListas';
 import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
+import LancarMateriais from './materiais/LancarMateriais';
 import FichaMaterial from './materiais/FichaMaterial';
 import LocaisMateriais from './materiais/LocaisMateriais';
 import GraficosMateriais from './materiais/GraficosMateriais';
@@ -69,7 +70,7 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
 ];
 
 // Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['resumo', 'graficos', 'previsto', 'utilizacao', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
+const ORDEM_SECOES: readonly SecaoMateriais[] = ['lancar', 'resumo', 'graficos', 'previsto', 'utilizacao', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
@@ -178,7 +179,7 @@ export default function MateriaisTab({
     setViagensAberto(true);
   };
   const algumaJanela = materialAberto || lancamentoAberto || viagensAberto || trocarRamoAberto || desfazerAberto || atalhosAberto || Boolean(fichaMaterialId);
-  const secoes: SecaoMateriais[] = podeEditar ? [...ORDEM_SECOES] : ORDEM_SECOES.filter(secao => secao !== 'importacoes');
+  const secoes: SecaoMateriais[] = podeEditar ? [...ORDEM_SECOES] : ORDEM_SECOES.filter(secao => secao !== 'importacoes' && secao !== 'lancar');
   const escolherSecao = (secao: SecaoMateriais) => {
     setAba(secao);
     setBusca('');
@@ -425,8 +426,9 @@ export default function MateriaisTab({
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
-        <MateriaisSecoes value={aba} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : secao === 'previsto' ? previstosEmAtencao : 0)} onSelect={escolherSecao} />
+      {/* Lançar usa a tela toda: o menu vira o seletor de cima, como no celular. */}
+      <div className={`grid gap-4 lg:items-start ${aba === 'lancar' ? '' : 'lg:grid-cols-[14rem_minmax(0,1fr)]'}`}>
+        <MateriaisSecoes value={aba} compacto={aba === 'lancar'} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : secao === 'previsto' ? previstosEmAtencao : 0)} onSelect={escolherSecao} />
 
         <div className="min-w-0 space-y-3">
           {comBusca && (
@@ -479,6 +481,21 @@ export default function MateriaisTab({
               avisos={avisos}
               onEditarMaterial={abrirCadastro}
               onVerMovimentos={termoAviso => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoAviso); }}
+            />
+          )}
+
+          {aba === 'lancar' && podeEditar && (
+            <LancarMateriais
+              hoje={hoje}
+              materiais={materiais}
+              movimentos={movimentos}
+              empresas={empresas}
+              etapas={etapas}
+              responsavel={responsavel}
+              onSalvar={salvarLancamento}
+              onSalvarVarios={onSaveMovimentos}
+              onEditar={movimento => abrirLancamento(movimento)}
+              onVerMovimentos={() => escolherSecao('movimentos')}
             />
           )}
 

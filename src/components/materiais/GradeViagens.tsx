@@ -37,6 +37,8 @@ interface Props {
   responsavel: string;
   onSalvar: (movimentos: MovimentoMaterial[], descricao: string) => void;
   onFechar: () => void;
+  /** "pagina" desenha a grade na própria tela; salvar limpa e deixa pronta para as próximas. */
+  modo?: 'janela' | 'pagina';
 }
 
 /**
@@ -44,7 +46,9 @@ interface Props {
  * baixo, a linha nova já vem com data, material, fornecedor e local da de
  * cima, e dá para colar direto do Excel. No celular cada viagem é um cartão.
  */
-export default function GradeViagens({ aberto, hoje, materiais, movimentos, empresas, responsavel, onSalvar, onFechar }: Props) {
+export default function GradeViagens({ aberto, hoje, materiais, movimentos, empresas, responsavel, onSalvar, onFechar, modo = 'janela' }: Props) {
+  const pagina = modo === 'pagina';
+  const [salvas, setSalvas] = useState('');
   const [linhas, setLinhas] = useState<LinhaViagem[]>(() => [proximaLinha(undefined, hoje)]);
   const [erro, setErro] = useState('');
   const [linhaComErro, setLinhaComErro] = useState<number | null>(null);
@@ -80,6 +84,7 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
   const mudar = (indice: number, campo: keyof LinhaViagem, valor: string) => {
     setLinhas(atuais => atuais.map((linha, posicao) => (posicao === indice ? { ...linha, [campo]: valor } : linha)));
     if (linhaComErro === indice) { setErro(''); setLinhaComErro(null); }
+    setSalvas('');
   };
 
   const adicionar = () => setLinhas(atuais => [...atuais, proximaLinha(atuais[atuais.length - 1], hoje)]);
@@ -134,6 +139,13 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
       return;
     }
     onSalvar(novos, `Lançou ${novos.length} viagem(ns) de material de uma vez.`);
+    if (pagina) {
+      // Na tela de lançar a grade fica: volta limpa, com as linhas de sempre.
+      setSalvas(`${novos.length.toLocaleString('pt-BR')} viagem(ns) salvas. A grade está limpa para as próximas.`);
+      setErro('');
+      setLinhas(Array.from({ length: INICIAIS }, () => proximaLinha(undefined, hoje)));
+      return;
+    }
     setLinhas([proximaLinha(undefined, hoje)]);
     onFechar();
   };
@@ -196,139 +208,160 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
     </div>
   );
 
+  const explicacao = telaLarga
+    ? 'Uma linha por viagem. Enter desce para a linha de baixo, e a linha nova já vem com o material e o fornecedor da de cima. Dá para colar do Excel.'
+    : 'Um cartão por viagem. O próximo já vem com o material e o fornecedor do anterior.';
+
+  const rodape = (
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <p className="text-sm text-slate-600" aria-live="polite">
+        <strong className="text-slate-900">{preenchidas.length.toLocaleString('pt-BR')} viagem(ns)</strong>
+        {totaisPorMaterial.map(item => <span key={item.nome}> · {numero(item.total)} {item.unidade} de {item.nome}</span>)}
+      </p>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        {!pagina && <button type="button" onClick={onFechar} className={BOTAO_SECUNDARIO}>Cancelar</button>}
+        <button type="button" onClick={adicionar} className={BOTAO_SECUNDARIO}>
+          <Plus className="size-4" aria-hidden="true" />
+          Mais uma viagem
+        </button>
+        <button type="button" onClick={salvar} disabled={!preenchidas.length} className={`${BOTAO_PRIMARIO} px-5`} data-testid="viagens-salvar">
+          {preenchidas.length ? `Salvar ${preenchidas.length.toLocaleString('pt-BR')} viagem(ns)` : 'Salvar viagens'}
+        </button>
+      </div>
+    </div>
+  );
+
+  const corpo = (
+    <div ref={gradeRef} onPaste={colar} className="space-y-3">
+      {telaLarga && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-sm text-slate-500">
+            <ClipboardPaste className="size-4 shrink-0" aria-hidden="true" />
+            Para colar do Excel, copie as colunas na ordem da grade e cole na primeira célula.
+          </p>
+          <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
+            <input type="checkbox" checked={comValores} onChange={event => setComValores(event.target.checked)} className="size-5 accent-[#176b4d]" />
+            Mostrar valor (R$)
+          </label>
+        </div>
+      )}
+
+      {avisosColagem.length > 0 && (
+        <ul role="status" className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          {avisosColagem.map(aviso => <li key={aviso}>{aviso}</li>)}
+        </ul>
+      )}
+
+      <datalist id="viagens-destinos">{destinosRecentes.map(item => <option key={item} value={item} />)}</datalist>
+
+      {telaLarga ? (
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className={`w-full border-collapse text-left text-sm ${comValores ? 'min-w-[1260px]' : 'min-w-[1040px]'}`} data-testid="viagens-grade">
+            <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th scope="col" className="w-10 px-2 py-2 text-center">#</th>
+                <th scope="col" className="w-36 px-1 py-2">Data</th>
+                <th scope="col" className="w-32 px-1 py-2">Tipo</th>
+                <th scope="col" className="min-w-48 px-1 py-2">Material</th>
+                <th scope="col" className="w-28 px-1 py-2">Quantidade</th>
+                <th scope="col" className="w-44 px-1 py-2">Fornecedor</th>
+                <th scope="col" className="w-24 px-1 py-2">Placa</th>
+                <th scope="col" className="w-24 px-1 py-2">Ticket</th>
+                <th scope="col" className="w-40 px-1 py-2">Local</th>
+                {comValores && <th scope="col" className="w-28 px-1 py-2">Valor unit.</th>}
+                {comValores && <th scope="col" className="w-28 px-1 py-2">Valor total</th>}
+                <th scope="col" className="w-24 px-2 py-2"><span className="sr-only">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {linhas.map((linha, indice) => (
+                <tr key={indice} className={linhaComErro === indice ? 'bg-rose-50' : ''}>
+                  <td className="px-2 text-center text-xs font-bold tabular-nums text-slate-400">{indice + 1}</td>
+                  <td className="p-1"><input type="date" value={linha.data} onChange={event => mudar(indice, 'data', event.target.value)} aria-label={`Data da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'data')} /></td>
+                  <td className="p-1">
+                    <select value={linha.tipo} onChange={event => mudar(indice, 'tipo', event.target.value)} aria-label={`Tipo da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'tipo')}>
+                      {TIPOS.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                    </select>
+                  </td>
+                  <td className="p-1">{campoMaterial(linha, indice)}</td>
+                  <td className="p-1">
+                    <div className="relative">
+                      <input inputMode="decimal" value={linha.quantidade} onChange={event => mudar(indice, 'quantidade', event.target.value)} aria-label={`Quantidade da viagem ${indice + 1}`} className={`${CELULA} pr-9 font-semibold tabular-nums`} {...celula(indice, 'quantidade')} />
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">{unidadeDa(linha)}</span>
+                    </div>
+                  </td>
+                  <td className="p-1">{campoFornecedor(linha, indice)}</td>
+                  <td className="p-1"><input value={linha.placa} onChange={event => mudar(indice, 'placa', event.target.value.toUpperCase())} aria-label={`Placa da viagem ${indice + 1}`} className={`${CELULA} uppercase`} {...celula(indice, 'placa')} /></td>
+                  <td className="p-1"><input value={linha.ticket} onChange={event => mudar(indice, 'ticket', event.target.value)} aria-label={`Ticket da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'ticket')} /></td>
+                  <td className="p-1"><input value={linha.destino} onChange={event => mudar(indice, 'destino', event.target.value)} list="viagens-destinos" aria-label={`Local da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'destino')} /></td>
+                  {comValores && <td className="p-1"><input inputMode="decimal" value={linha.valorUnitario} onChange={event => mudar(indice, 'valorUnitario', event.target.value)} aria-label={`Valor unitário da viagem ${indice + 1}`} className={`${CELULA} tabular-nums`} {...celula(indice, 'valorUnitario')} /></td>}
+                  {comValores && <td className="p-1"><input inputMode="decimal" value={linha.valorTotal} onChange={event => mudar(indice, 'valorTotal', event.target.value)} placeholder={totalDa(linha) ? totalDa(linha).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} aria-label={`Valor total da viagem ${indice + 1}`} className={`${CELULA} tabular-nums`} {...celula(indice, 'valorTotal')} /></td>}
+                  <td className="px-1">{botoesLinha(indice)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <ol className="space-y-3" data-testid="viagens-cartoes">
+          {linhas.map((linha, indice) => (
+            <li key={indice} className={`space-y-2 rounded-2xl border p-3 ${linhaComErro === indice ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white'}`}>
+              <div className="flex items-center justify-between">
+                <strong className="text-sm text-slate-700">Viagem {indice + 1}</strong>
+                {botoesLinha(indice)}
+              </div>
+              {campoMaterial(linha, indice)}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative">
+                  <input inputMode="decimal" value={linha.quantidade} onChange={event => mudar(indice, 'quantidade', event.target.value)} placeholder="Quantidade" aria-label={`Quantidade da viagem ${indice + 1}`} className={`${CELULA} min-h-11 pr-9 text-base font-semibold`} {...celula(indice, 'quantidade')} />
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">{unidadeDa(linha)}</span>
+                </div>
+                <select value={linha.tipo} onChange={event => mudar(indice, 'tipo', event.target.value)} aria-label={`Tipo da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`}>
+                  {TIPOS.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                </select>
+                <input type="date" value={linha.data} onChange={event => mudar(indice, 'data', event.target.value)} aria-label={`Data da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`} />
+                <input value={linha.placa} onChange={event => mudar(indice, 'placa', event.target.value.toUpperCase())} placeholder="Placa" aria-label={`Placa da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base uppercase`} />
+              </div>
+              {campoFornecedor(linha, indice)}
+              <div className="grid grid-cols-2 gap-2">
+                <input value={linha.ticket} onChange={event => mudar(indice, 'ticket', event.target.value)} placeholder="Ticket" aria-label={`Ticket da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`} />
+                <input value={linha.destino} onChange={event => mudar(indice, 'destino', event.target.value)} list="viagens-destinos" placeholder="Local" aria-label={`Local da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`} />
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {erro && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{erro}</p>}
+    </div>
+  );
+
+  if (pagina) {
+    return (
+      <section data-materiais-reveal aria-label="Várias viagens" className="rounded-2xl border border-slate-200 bg-white">
+        <div className="space-y-3 p-4 sm:p-5">
+          <p className="text-sm text-slate-600">{explicacao}</p>
+          {salvas && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">{salvas}</p>}
+          {corpo}
+        </div>
+        <div className="sticky bottom-0 rounded-b-2xl border-t border-slate-200 bg-white p-3 sm:px-5">{rodape}</div>
+      </section>
+    );
+  }
+
   return (
     <Modal
       open={aberto}
       title="Lançar várias viagens"
-      description={telaLarga
-        ? 'Uma linha por viagem. Enter desce para a linha de baixo, e a linha nova já vem com o material e o fornecedor da de cima. Dá para colar do Excel.'
-        : 'Um cartão por viagem. O próximo já vem com o material e o fornecedor do anterior.'}
+      description={explicacao}
       size="xl"
       className="sm:!max-w-[min(96vw,88rem)]"
       telaCheia="materiais-viagens"
       onSubmit={salvar}
       onClose={onFechar}
-      footer={(
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <p className="text-sm text-slate-600" aria-live="polite">
-            <strong className="text-slate-900">{preenchidas.length.toLocaleString('pt-BR')} viagem(ns)</strong>
-            {totaisPorMaterial.map(item => <span key={item.nome}> · {numero(item.total)} {item.unidade} de {item.nome}</span>)}
-          </p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onFechar} className={BOTAO_SECUNDARIO}>Cancelar</button>
-            <button type="button" onClick={adicionar} className={BOTAO_SECUNDARIO}>
-              <Plus className="size-4" aria-hidden="true" />
-              Mais uma viagem
-            </button>
-            <button type="button" onClick={salvar} disabled={!preenchidas.length} className={`${BOTAO_PRIMARIO} px-5`} data-testid="viagens-salvar">
-              {preenchidas.length ? `Salvar ${preenchidas.length.toLocaleString('pt-BR')} viagem(ns)` : 'Salvar viagens'}
-            </button>
-          </div>
-        </div>
-      )}
+      footer={rodape}
     >
-      <div ref={gradeRef} onPaste={colar} className="space-y-3">
-        {telaLarga && (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="flex items-center gap-2 text-sm text-slate-500">
-              <ClipboardPaste className="size-4 shrink-0" aria-hidden="true" />
-              Para colar do Excel, copie as colunas na ordem da grade e cole na primeira célula.
-            </p>
-            <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
-              <input type="checkbox" checked={comValores} onChange={event => setComValores(event.target.checked)} className="size-5 accent-[#176b4d]" />
-              Mostrar valor (R$)
-            </label>
-          </div>
-        )}
-
-        {avisosColagem.length > 0 && (
-          <ul role="status" className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            {avisosColagem.map(aviso => <li key={aviso}>{aviso}</li>)}
-          </ul>
-        )}
-
-        <datalist id="viagens-destinos">{destinosRecentes.map(item => <option key={item} value={item} />)}</datalist>
-
-        {telaLarga ? (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className={`w-full border-collapse text-left text-sm ${comValores ? 'min-w-[1260px]' : 'min-w-[1040px]'}`} data-testid="viagens-grade">
-              <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th scope="col" className="w-10 px-2 py-2 text-center">#</th>
-                  <th scope="col" className="w-36 px-1 py-2">Data</th>
-                  <th scope="col" className="w-32 px-1 py-2">Tipo</th>
-                  <th scope="col" className="px-1 py-2">Material</th>
-                  <th scope="col" className="w-28 px-1 py-2">Quantidade</th>
-                  <th scope="col" className="w-44 px-1 py-2">Fornecedor</th>
-                  <th scope="col" className="w-24 px-1 py-2">Placa</th>
-                  <th scope="col" className="w-24 px-1 py-2">Ticket</th>
-                  <th scope="col" className="w-40 px-1 py-2">Local</th>
-                  {comValores && <th scope="col" className="w-28 px-1 py-2">Valor unit.</th>}
-                  {comValores && <th scope="col" className="w-28 px-1 py-2">Valor total</th>}
-                  <th scope="col" className="w-24 px-2 py-2"><span className="sr-only">Ações</span></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {linhas.map((linha, indice) => (
-                  <tr key={indice} className={linhaComErro === indice ? 'bg-rose-50' : ''}>
-                    <td className="px-2 text-center text-xs font-bold tabular-nums text-slate-400">{indice + 1}</td>
-                    <td className="p-1"><input type="date" value={linha.data} onChange={event => mudar(indice, 'data', event.target.value)} aria-label={`Data da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'data')} /></td>
-                    <td className="p-1">
-                      <select value={linha.tipo} onChange={event => mudar(indice, 'tipo', event.target.value)} aria-label={`Tipo da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'tipo')}>
-                        {TIPOS.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                      </select>
-                    </td>
-                    <td className="p-1">{campoMaterial(linha, indice)}</td>
-                    <td className="p-1">
-                      <div className="relative">
-                        <input inputMode="decimal" value={linha.quantidade} onChange={event => mudar(indice, 'quantidade', event.target.value)} aria-label={`Quantidade da viagem ${indice + 1}`} className={`${CELULA} pr-9 font-semibold tabular-nums`} {...celula(indice, 'quantidade')} />
-                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">{unidadeDa(linha)}</span>
-                      </div>
-                    </td>
-                    <td className="p-1">{campoFornecedor(linha, indice)}</td>
-                    <td className="p-1"><input value={linha.placa} onChange={event => mudar(indice, 'placa', event.target.value.toUpperCase())} aria-label={`Placa da viagem ${indice + 1}`} className={`${CELULA} uppercase`} {...celula(indice, 'placa')} /></td>
-                    <td className="p-1"><input value={linha.ticket} onChange={event => mudar(indice, 'ticket', event.target.value)} aria-label={`Ticket da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'ticket')} /></td>
-                    <td className="p-1"><input value={linha.destino} onChange={event => mudar(indice, 'destino', event.target.value)} list="viagens-destinos" aria-label={`Local da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'destino')} /></td>
-                    {comValores && <td className="p-1"><input inputMode="decimal" value={linha.valorUnitario} onChange={event => mudar(indice, 'valorUnitario', event.target.value)} aria-label={`Valor unitário da viagem ${indice + 1}`} className={`${CELULA} tabular-nums`} {...celula(indice, 'valorUnitario')} /></td>}
-                    {comValores && <td className="p-1"><input inputMode="decimal" value={linha.valorTotal} onChange={event => mudar(indice, 'valorTotal', event.target.value)} placeholder={totalDa(linha) ? totalDa(linha).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} aria-label={`Valor total da viagem ${indice + 1}`} className={`${CELULA} tabular-nums`} {...celula(indice, 'valorTotal')} /></td>}
-                    <td className="px-1">{botoesLinha(indice)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <ol className="space-y-3" data-testid="viagens-cartoes">
-            {linhas.map((linha, indice) => (
-              <li key={indice} className={`space-y-2 rounded-2xl border p-3 ${linhaComErro === indice ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white'}`}>
-                <div className="flex items-center justify-between">
-                  <strong className="text-sm text-slate-700">Viagem {indice + 1}</strong>
-                  {botoesLinha(indice)}
-                </div>
-                {campoMaterial(linha, indice)}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="relative">
-                    <input inputMode="decimal" value={linha.quantidade} onChange={event => mudar(indice, 'quantidade', event.target.value)} placeholder="Quantidade" aria-label={`Quantidade da viagem ${indice + 1}`} className={`${CELULA} min-h-11 pr-9 text-base font-semibold`} {...celula(indice, 'quantidade')} />
-                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">{unidadeDa(linha)}</span>
-                  </div>
-                  <select value={linha.tipo} onChange={event => mudar(indice, 'tipo', event.target.value)} aria-label={`Tipo da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`}>
-                    {TIPOS.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                  </select>
-                  <input type="date" value={linha.data} onChange={event => mudar(indice, 'data', event.target.value)} aria-label={`Data da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`} />
-                  <input value={linha.placa} onChange={event => mudar(indice, 'placa', event.target.value.toUpperCase())} placeholder="Placa" aria-label={`Placa da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base uppercase`} />
-                </div>
-                {campoFornecedor(linha, indice)}
-                <div className="grid grid-cols-2 gap-2">
-                  <input value={linha.ticket} onChange={event => mudar(indice, 'ticket', event.target.value)} placeholder="Ticket" aria-label={`Ticket da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`} />
-                  <input value={linha.destino} onChange={event => mudar(indice, 'destino', event.target.value)} list="viagens-destinos" placeholder="Local" aria-label={`Local da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`} />
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-
-        {erro && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{erro}</p>}
-      </div>
+      {corpo}
     </Modal>
   );
 }
