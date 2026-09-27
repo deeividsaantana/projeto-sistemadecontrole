@@ -233,7 +233,8 @@ const movimentosComFotos = fx.movimentosUtilizacao.map(item => ({ ...item, fotos
 // app. Os ramos começam vazios para conferir a carga da lista SGE.
 function MateriaisPreview() {
   const [materiais, setMateriais] = React.useState(() => [...fx.materiaisObra]);
-  const [movimentos, setMovimentos] = React.useState(() => [...fx.movimentosMateriaisObra]);
+  // Os usos do link entram junto para a parte Apontadores ter envios e fotos.
+  const [movimentos, setMovimentos] = React.useState(() => [...fx.movimentosMateriaisObra, ...movimentosComFotos.filter(item => item.origemApontamentoId)]);
   const [etapas, setEtapas] = React.useState<EtapaServico[]>([]);
   const [previstos, setPrevistos] = React.useState<PrevistoMaterial[]>([]);
   const juntar = <T extends { id: string }>(atuais: T[], novos: T[]) => {

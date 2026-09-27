@@ -3,25 +3,19 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ArrowUpRight, Camera, ImageOff, MapPin } from 'lucide-react';
 import { fieldReportTime, type FieldReport } from '../../utils/fieldReports';
+import { enderecoDaFoto } from '../../utils/fotoDoCampo';
 import './FieldReports.css';
 
 gsap.registerPlugin(useGSAP);
 
 const formatDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
-/** As fotos ficam no Storage, que só a equipe logada lê. O pacote do Storage só carrega quando há foto. */
-const loadPhotoUrl = async (path: string) => {
-  if (/^(data:|https?:)/.test(path)) return path;
-  const [{ getDownloadURL, ref }, { storage }] = await Promise.all([import('firebase/storage'), import('../../firebaseStorage')]);
-  return getDownloadURL(ref(storage, path));
-};
-
 function PhotoThumb({ path, index, ramo }: { path: string; index: number; ramo: string }) {
   const [url, setUrl] = useState('');
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let active = true;
-    loadPhotoUrl(path).then(value => { if (active) setUrl(value); }).catch(() => { if (active) setFailed(true); });
+    enderecoDaFoto(path).then(value => { if (active) setUrl(value); }).catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
   }, [path]);
   if (failed) return <span className="dashboard-field__thumb dashboard-field__thumb--off" title="Foto indisponível"><ImageOff size={16} aria-label="Foto indisponível" /></span>;
