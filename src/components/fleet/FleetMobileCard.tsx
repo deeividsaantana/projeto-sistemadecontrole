@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { MoreVertical } from 'lucide-react';
+import { Check, Eye, Pencil, Trash2, X } from 'lucide-react';
 import type { FleetCurrentState } from '../../fleet/domain';
 import FleetStatusBadge from './FleetStatusBadge';
+import { BOTAO_SECUNDARIO, FOCO } from '../cadastros/estilos';
 
 interface Props {
   state: FleetCurrentState;
@@ -10,8 +10,11 @@ interface Props {
   onEdit: () => void;
   onDetails: () => void;
   onDelete: () => void;
+  canApprove?: boolean;
+  onApprove?: (status: 'APROVADO' | 'REJEITADO') => void;
 }
 
+/** Lançamento no celular: tudo à vista e os botões com nome, sem menu escondido. */
 export default function FleetMobileCard({
   state,
   selected,
@@ -19,92 +22,57 @@ export default function FleetMobileCard({
   onEdit,
   onDetails,
   onDelete,
+  canApprove = false,
+  onApprove,
 }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const observacao = [state.maintenanceReason, state.note].filter(Boolean).join('. ');
+  const fatos: Array<[string, string]> = [
+    ['Saída', state.departureTime || '—'],
+    ['Parado', state.stoppedDurationLabel],
+    ['Local', state.location || 'Não informado'],
+  ];
   return (
-    <article className={`rounded-lg border bg-white p-3 ${selected ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-slate-200'}`}>
+    <article className={`rounded-2xl border bg-white p-3 transition duration-200 ${selected ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : 'border-slate-200'}`}>
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
           checked={selected}
           onChange={event => onSelect(event.target.checked)}
           aria-label={`Selecionar ${state.equipment.prefix}`}
-          className="mt-1 size-5 shrink-0 accent-emerald-600"
+          className="mt-1 size-5 shrink-0 accent-[#176b4d]"
         />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <strong className="block text-base font-black text-slate-950">
-                {state.equipment.prefix}
-              </strong>
-              <span className="block truncate text-sm font-bold text-slate-700">
-                {state.driver?.employeeName || 'Sem motorista'}
-              </span>
-              <span className="text-[11px] text-slate-500">
-                Matrícula {state.driver?.employeeCode || 'não informada'}
-              </span>
-            </div>
+        <button type="button" onClick={onDetails} className={`min-w-0 flex-1 rounded-lg text-left ${FOCO}`}>
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <strong className="font-mono text-base font-bold text-slate-950">{state.equipment.prefix}</strong>
             <FleetStatusBadge status={state.operationalStatus} compact />
-          </div>
-          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-md bg-slate-50 p-2 text-xs">
-            <div>
-              <dt className="text-[9px] font-black uppercase text-slate-400">Grupo</dt>
-              <dd className="mt-0.5 truncate font-bold text-slate-800">{state.equipment.family || 'Não informado'}</dd>
-            </div>
-            <div>
-              <dt className="text-[9px] font-black uppercase text-slate-400">Tipo</dt>
-              <dd className="mt-0.5 truncate font-bold text-slate-800">{state.equipment.equipmentType || 'Não informado'}</dd>
-            </div>
-            <div>
-              <dt className="text-[9px] font-black uppercase text-slate-400">Saída</dt>
-              <dd className="mt-0.5 font-bold text-slate-800">{state.departureTime || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-[9px] font-black uppercase text-slate-400">Tempo parado</dt>
-              <dd className="mt-0.5 font-bold text-slate-800">{state.stoppedDurationLabel}</dd>
-            </div>
-            <div>
-              <dt className="text-[9px] font-black uppercase text-slate-400">Local</dt>
-              <dd className="mt-0.5 truncate font-bold text-slate-800">{state.location || 'Não informado'}</dd>
-            </div>
-            <div>
-              <dt className="text-[9px] font-black uppercase text-slate-400">Liberação</dt>
-              <dd className="mt-0.5 font-bold text-slate-800">{state.releaseTime || '—'}</dd>
-            </div>
-          </dl>
-          {(state.note || state.maintenanceReason) && (
-            <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">
-              {state.maintenanceReason ? `${state.maintenanceReason}. ` : ''}
-              {state.note}
-            </p>
-          )}
-        </div>
-        <div className="relative">
-          <button
-            type="button"
-            aria-label={`Ações de ${state.equipment.prefix}`}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(open => !open)}
-            className="flex size-10 items-center justify-center rounded-md border border-slate-200 text-slate-600"
-          >
-            <MoreVertical size={18} />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 z-20 mt-1 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-xl">
-              <button type="button" onClick={() => { setMenuOpen(false); onDetails(); }} className="block w-full px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50">Ver detalhes</button>
-              <button type="button" onClick={() => { setMenuOpen(false); onEdit(); }} className="block w-full px-3 py-2 text-left text-xs font-bold text-emerald-700 hover:bg-emerald-50">Editar</button>
-              <button type="button" onClick={() => { setMenuOpen(false); onDelete(); }} className="block w-full px-3 py-2 text-left text-xs font-bold text-rose-700 hover:bg-rose-50">Excluir</button>
-            </div>
-          )}
-        </div>
+          </span>
+          <span className="block truncate text-xs uppercase text-slate-500">{state.equipment.equipmentType || state.equipment.family || 'Sem tipo'}</span>
+          <span className="mt-1 block truncate text-sm font-semibold text-slate-800">
+            {state.driver?.employeeName || 'Sem motorista'}
+            {state.driver?.employeeCode && <span className="ml-1 font-mono text-xs font-normal text-slate-500">{state.driver.employeeCode}</span>}
+          </span>
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onDetails}
-        className="mt-3 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700"
-      >
-        Detalhes e histórico
-      </button>
+      <dl className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-[#f7f8f6] p-2 text-xs">
+        {fatos.map(([rotulo, valor]) => (
+          <div key={rotulo} className="min-w-0">
+            <dt className="text-[11px] font-semibold text-slate-500">{rotulo}</dt>
+            <dd className="mt-0.5 truncate font-bold text-slate-800">{valor}</dd>
+          </div>
+        ))}
+      </dl>
+      {observacao && <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{observacao}</p>}
+      {canApprove && state.approvalStatus === 'PENDENTE' && onApprove && (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => onApprove('APROVADO')} className={`${BOTAO_SECUNDARIO} text-[#176b4d]`}><Check className="size-4" aria-hidden="true" />Aprovar</button>
+          <button type="button" onClick={() => onApprove('REJEITADO')} className={`${BOTAO_SECUNDARIO} text-rose-700`}><X className="size-4" aria-hidden="true" />Rejeitar</button>
+        </div>
+      )}
+      <div className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
+        <button type="button" onClick={onDetails} className={BOTAO_SECUNDARIO}><Eye className="size-4" aria-hidden="true" />Detalhes</button>
+        <button type="button" onClick={onEdit} className={BOTAO_SECUNDARIO}><Pencil className="size-4" aria-hidden="true" />Editar</button>
+        <button type="button" onClick={onDelete} aria-label={`Excluir ${state.equipment.prefix}`} className={`${BOTAO_SECUNDARIO} px-3 text-slate-500 hover:border-rose-300 hover:text-rose-700`}><Trash2 className="size-4" aria-hidden="true" /></button>
+      </div>
     </article>
   );
 }
