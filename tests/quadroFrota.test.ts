@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, GrupoEquipe } from '../src/types';
+import { abastecidasSemLancamento, avisosDoAbastecimento, contextoDoAbastecimento, lerNumero, operandoSemAbastecer } from '../src/modules/frota/combustivelDoDia';
 import { FILTROS_VAZIOS, SEM_CANTEIRO, SEM_FRENTE, agruparPorCanteiro, calcularIndicadores, etiquetasDosFiltros, filtrarCartoes, lancarEmLote, montarQuadro, rascunhosDoUltimoDia, registroDaEdicao, silhuetaDo } from '../src/modules/frota/quadroFrota';
 
 const dia = '2026-09-28';
@@ -191,4 +192,51 @@ test('repetir último dia copia o lançamento anterior mais recente, sem os excl
   assert.equal(r1.canteiro, 'Pátio Aracaré');
   assert.equal(r1.operador, 'Bia');
   assert.equal(r1.motivoManutencao, 'Pneu');
+});
+
+test('combustível do dia: leitura, avisos e listas de quem falta lançar', () => {
+  const dia0 = '2026-09-28';
+  const cartoes = montarQuadro({
+    dia: dia0,
+    equipamentos: [equipamento('K1'), equipamento('K2'), equipamento('K3'), equipamento('K4')],
+    registros: [
+      registro('K1', 'Em operação', { nomeMotorista: 'Ana', local: 'IBAR', frenteServico: 'Ramo 900' }),
+      registro('K2', 'Em manutenção', { motivoManutencao: 'Pneu' }),
+      registro('K3', 'Em operação', { nomeMotorista: 'Bia' }),
+    ],
+    gruposEquipe: [],
+    abastecimentos: [],
+  });
+  const abast = (equipamentoId: string, data: string, hora: string, horimetroInicial: number, kmInicial = 0, extra: Record<string, unknown> = {}) =>
+    ({ id: `${equipamentoId}${data}${hora}`, equipamentoId, data, hora, horimetroInicial, kmInicial, quantidadeLitros: 100, ...extra }) as unknown as Abastecimento;
+  const lista = [abast('K1', '2026-09-20', '07:00', 1200), abast('K1', '2026-09-27', '07:00', 1250, 90), abast('K1', dia0, '06:00', 1260), abast('K1', '2026-09-26', '07:00', 9999, 0, { inativoEm: '2026-09-26' }), abast('K2', dia0, '08:00', 50)];
+  const k1 = cartoes.find(item => item.prefixo === 'K1')!;
+
+  const contexto = contextoDoAbastecimento({ dia: dia0, hora: '10:00', cartao: k1, abastecimentos: lista });
+  assert.equal(contexto.operador, 'Ana');
+  assert.equal(contexto.canteiro, 'IBAR');
+  assert.equal(contexto.frente, 'Ramo 900');
+  assert.equal(contexto.ultimoHorimetro?.valor, 1260, 'o de hoje às 06:00 vale, o inativo não');
+  assert.equal(contexto.ultimoKm?.valor, 90);
+  assert.equal(contexto.litrosNoDia, 100);
+  assert.equal(contextoDoAbastecimento({ dia: dia0, hora: '05:00', cartao: k1, abastecimentos: lista }).ultimoHorimetro?.valor, 1250, 'não olha leitura de hora posterior');
+
+  const textos = (h?: number, km?: number, c = contexto) => avisosDoAbastecimento({ contexto: c, horimetro: h, km }).map(item => item.texto);
+  assert.ok(textos(1000).some(texto => texto.startsWith('Horímetro menor')));
+  assert.ok(!textos(1300).some(texto => texto.startsWith('Horímetro menor')));
+  assert.ok(textos(undefined, 10).some(texto => texto.startsWith('Km menor')));
+  const k2 = cartoes.find(item => item.prefixo === 'K2')!;
+  assert.ok(textos(undefined, undefined, contextoDoAbastecimento({ dia: dia0, hora: '10:00', cartao: k2, abastecimentos: [] })).some(texto => texto.includes('manutenção')));
+  const k4 = cartoes.find(item => item.prefixo === 'K4')!;
+  assert.ok(textos(undefined, undefined, contextoDoAbastecimento({ dia: dia0, hora: '10:00', cartao: k4, abastecimentos: [] })).some(texto => texto.includes('não tem lançamento')));
+
+  assert.deepEqual(operandoSemAbastecer(cartoes, lista, dia0).map(item => item.prefixo), ['K3'], 'K1 já abasteceu; K2 está em manutenção');
+  assert.deepEqual(abastecidasSemLancamento(cartoes, [abast('K4', dia0, '09:00', 0)], dia0).map(item => item.prefixo), ['K4']);
+
+  assert.equal(lerNumero('1.250,5'), 1250.5);
+  assert.equal(lerNumero('1250,5'), 1250.5);
+  assert.equal(lerNumero('1.250'), 1250, 'ponto seguido de três dígitos é milhar');
+  assert.equal(lerNumero('12.5'), 12.5);
+  assert.equal(lerNumero('  '), undefined);
+  assert.equal(lerNumero('abc'), undefined);
 });

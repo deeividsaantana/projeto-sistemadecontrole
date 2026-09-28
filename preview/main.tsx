@@ -524,12 +524,15 @@ const screens: Record<string, React.ReactNode> = {
   combustivel: (
     <LancamentosTab
       empresas={fx.empresas}
-      equipamentos={fx.equipamentos}
       comboios={fx.comboios}
       combustiveis={fx.combustiveis}
       lubrificantes={fx.lubrificantes}
-      abastecimentos={fx.abastecimentos}
+      abastecimentos={[...fx.abastecimentos, ...fx.abastecimentosQuadro as never[]]}
       lubrificacoes={fx.lubrificacoes}
+      equipamentos={[...fx.equipamentos, ...fx.equipamentosQuadro]}
+      registrosFrota={fx.controlesQuadro}
+      usuario="Deivid"
+      onOpenControle={noop}
       onSaveAbastecimento={noop}
       onDeleteAbastecimento={noop}
       onDeleteAbastecimentos={noop}
