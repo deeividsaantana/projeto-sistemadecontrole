@@ -40,6 +40,7 @@ import { useFleetReport } from '../fleet/useFleetReport';
 import { calculateFleetMetrics } from '../fleet/reportService';
 import { toLegacyDailyStatus } from '../fleet/status';
 import { previewFleetImport } from '../fleet/importService';
+import { preverImportacaoSge, registrosParaAplicar, type LinhaBrutaSge, type PreviaImportacaoSge } from '../fleet/sgeApontamentos';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import { generateFleetPdf } from '../fleet/pdfReport';
 import { exportFleetExcel } from '../fleet/excelExport';
@@ -180,6 +181,8 @@ export default function ControleEquipamentosDiarioTab({
   const [confirmationBusy, setConfirmationBusy] = useState(false);
   const [importPreview, setImportPreview] = useState<FleetImportPreview>();
   const [importFileName, setImportFileName] = useState('');
+  const [sgePreview, setSgePreview] = useState<PreviaImportacaoSge>();
+  const [sgeFileName, setSgeFileName] = useState('');
   const [message, setMessage] = useState('');
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>('info');
   const [exporting, setExporting] = useState<'pdf' | 'excel' | 'weekly-pdf' | 'weekly-excel' | ''>('');
@@ -189,6 +192,7 @@ export default function ControleEquipamentosDiarioTab({
   const [driverErro, setDriverErro] = useState('');
   const [driverExclusao, setDriverExclusao] = useState<Funcionario | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sgeInputRef = useRef<HTMLInputElement>(null);
   useGSAP(() => {
     const root = pageRef.current;
     if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -434,6 +438,84 @@ export default function ControleEquipamentosDiarioTab({
       setMessage(error instanceof Error ? error.message : 'Falha ao validar o arquivo.');
     }
   };
+  const readSgeImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setMessageTone('info');
+    setMessage('Lendo o apontamento do SGE...');
+    try {
+      const workbook = await loadValidatedWorkbook(file);
+      const sheet = workbook.worksheets.find(item => /apontad/i.test(item.name)) || workbook.worksheets[0];
+      if (!sheet) throw new Error('Nenhuma aba com dados foi encontrada.');
+      // Colunas identificadas pelo texto do cabeçalho, não pela posição: a planilha do
+      // SGE muda de layout entre exportações, mas os nomes das colunas se mantêm.
+      const ALVOS: Record<string, RegExp> = {
+        data: /^data$/i,
+        uaEquipamento: /ua\s*equipamento/i,
+        horimetroInicial: /hor[ií]metro\s*inicial/i,
+        horimetroFinal: /hor[ií]metro\s*final/i,
+        horasHorimetro: /horas\s*hor[ií]metro/i,
+        matriculaOperador: /matr[ií]cula.*operador/i,
+        nomeOperador: /nome.*operador/i,
+        observacoes: /observa/i,
+      };
+      let colunas: Record<string, number> = {};
+      let headerRow = 0;
+      for (let numero = 1; numero <= 20 && !headerRow; numero += 1) {
+        const linhaCabecalho = sheet.getRow(numero);
+        const achadas: Record<string, number> = {};
+        for (let indice = 1; indice <= 15; indice += 1) {
+          const texto = asText(linhaCabecalho.getCell(indice).value);
+          if (!texto) continue;
+          Object.entries(ALVOS).forEach(([chave, regex]) => {
+            if (!achadas[chave] && regex.test(texto)) achadas[chave] = indice;
+          });
+        }
+        if (achadas.data && achadas.uaEquipamento) {
+          headerRow = numero;
+          colunas = achadas;
+        }
+      }
+      if (!headerRow) throw new Error('Não encontrei as colunas "Data" e "UA Equipamento" nesta planilha.');
+      const linhas: LinhaBrutaSge[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber <= headerRow) return;
+        const valores = Object.values(colunas).map(indice => asText(getImportCell(row, indice)));
+        if (!valores.some(Boolean) || valores.join(' ').toLocaleLowerCase('pt-BR').includes('total geral')) return;
+        linhas.push({
+          linha: rowNumber,
+          data: getImportCell(row, colunas.data),
+          uaEquipamento: getImportCell(row, colunas.uaEquipamento),
+          descricaoEquipamento: '',
+          horimetroInicial: colunas.horimetroInicial ? getImportCell(row, colunas.horimetroInicial) : '',
+          horimetroFinal: colunas.horimetroFinal ? getImportCell(row, colunas.horimetroFinal) : '',
+          horasHorimetro: colunas.horasHorimetro ? getImportCell(row, colunas.horasHorimetro) : '',
+          matriculaOperador: colunas.matriculaOperador ? getImportCell(row, colunas.matriculaOperador) : '',
+          nomeOperador: colunas.nomeOperador ? getImportCell(row, colunas.nomeOperador) : '',
+          observacoes: colunas.observacoes ? getImportCell(row, colunas.observacoes) : '',
+        });
+      });
+      if (!linhas.length) throw new Error('Nenhuma linha de apontamento encontrada nesta planilha.');
+      const preview = preverImportacaoSge({ linhas, equipamentos, registros, motoristas: operationalDrivers });
+      setSgeFileName(file.name);
+      setSgePreview(preview);
+      setMessage('');
+    } catch (error) {
+      setMessageTone('error');
+      setMessage(error instanceof Error ? error.message : 'Falha ao validar o apontamento do SGE.');
+    }
+  };
+  const applySgePreview = () => {
+    if (!sgePreview?.podeAplicar) return;
+    onImport(registrosParaAplicar(sgePreview));
+    setMessageTone('success');
+    setMessage(
+      `Apontamento do SGE importado · ${sgePreview.novos} novo(s) · ${sgePreview.atualizados} atualizado(s) · ${sgePreview.protegidos} protegido(s) por lançamento manual · ${sgePreview.duplicados} duplicado(s) no arquivo · ${sgePreview.comErro} com erro.`,
+    );
+    setSgePreview(undefined);
+    setSgeFileName('');
+  };
   const applyImportPreview = () => {
     if (!importPreview?.canApply) return;
     const applicable = importPreview.rows
@@ -523,6 +605,7 @@ export default function ControleEquipamentosDiarioTab({
               </button>
             )}
             <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
+            <input ref={sgeInputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readSgeImport}/>
             <details className="group relative w-full sm:w-auto" data-testid="frota-relatorios">
               <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer px-3 list-none sm:w-auto [&::-webkit-details-marker]:hidden`}>
                 <FileSpreadsheet className="size-4" aria-hidden="true" />
@@ -533,6 +616,7 @@ export default function ControleEquipamentosDiarioTab({
                 <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
                 <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
                 <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
+                <button type="button" onClick={() => sgeInputRef.current?.click()} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>
                 <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
                 {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
               </div>
@@ -711,6 +795,35 @@ export default function ControleEquipamentosDiarioTab({
                 <span className="font-bold text-slate-800">{({ NEW: 'Novo', UPDATE: 'Atualiza', DUPLICATE: 'Já existe', IGNORED: 'Ignorado', ERROR: 'Erro' } as Record<string, string>)[row.disposition] || row.disposition}</span>
                 <span className="truncate"><span className="font-mono font-bold">{row.record?.prefixo || '—'}</span> · {row.record?.nomeMotorista || 'Sem motorista'} · {row.record?.data || '—'}</span>
                 <span className="text-xs text-slate-600">{row.messages.join(' ') || 'Sem divergências.'}</span>
+              </li>
+            ))}
+          </ul>
+        </>}
+      </Modal>
+      <Modal
+        open={Boolean(sgePreview)}
+        title={`Conferir o apontamento do SGE${sgeFileName ? `: ${sgeFileName}` : ''}`}
+        description="Nada entra no sistema antes de você confirmar. Lançamentos manuais e máquinas em manutenção nunca são sobrescritos."
+        size="xl"
+        onClose={() => { setSgePreview(undefined); setSgeFileName(''); }}
+        footer={<>
+          <button type="button" onClick={() => { setSgePreview(undefined); setSgeFileName(''); }} className={BOTAO_SECUNDARIO}>Cancelar</button>
+          <button type="button" disabled={!sgePreview?.podeAplicar} onClick={applySgePreview} className={BOTAO_PRIMARIO}><FileDown className="size-4" aria-hidden="true"/>Importar {(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)} lançamento(s)</button>
+        </>}
+      >
+        {sgePreview && <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {([['Novos', sgePreview.novos, TOM_SITUACAO.ok], ['Atualizações', sgePreview.atualizados, 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200'], ['Protegidos', sgePreview.protegidos, TOM_SITUACAO.inativo], ['Duplicados no dia', sgePreview.duplicados, TOM_SITUACAO.alerta], ['Com erro', sgePreview.comErro, 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200']] as const).map(([label, value, tone]) => (
+              <div key={label} className={`rounded-xl p-3 ${tone}`}><span className="text-[11px] font-bold uppercase">{label}</span><strong className="block text-2xl font-bold tabular-nums">{value}</strong></div>
+            ))}
+          </div>
+          <ul className="mt-3 max-h-[45vh] divide-y divide-slate-100 overflow-auto rounded-xl border border-slate-200">
+            {sgePreview.linhas.slice(0, 500).map(item => (
+              <li key={`${item.linha}-${item.chave}`} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[4rem_7rem_minmax(0,1fr)_minmax(0,1.4fr)] sm:items-center">
+                <span className="font-mono text-xs text-slate-500">linha {item.linha}</span>
+                <span className="font-bold text-slate-800">{({ NOVO: 'Novo', ATUALIZA: 'Atualiza', PROTEGIDO: 'Protegido', DUPLICADO: 'Duplicado', ERRO: 'Erro' } as Record<string, string>)[item.disposicao] || item.disposicao}</span>
+                <span className="truncate"><span className="font-mono font-bold">{item.registro?.prefixo || '—'}</span> · {item.registro?.nomeMotorista || 'Sem operador'} · {item.registro?.data || '—'}</span>
+                <span className="text-xs text-slate-600">{item.mensagens.join(' ') || 'Sem divergências.'}</span>
               </li>
             ))}
           </ul>
