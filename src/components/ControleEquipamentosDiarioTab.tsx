@@ -872,6 +872,35 @@ export default function ControleEquipamentosDiarioTab({
           ))}
         </dl>
       </Modal>
+      <Modal
+        open={Boolean(sgePreview)}
+        title={`Conferir o apontamento do SGE${sgeFileName ? `: ${sgeFileName}` : ''}`}
+        description="Nada entra no sistema antes de você confirmar. Lançamentos manuais e máquinas em manutenção nunca são sobrescritos."
+        size="xl"
+        onClose={() => { setSgePreview(undefined); setSgeFileName(''); }}
+        footer={<>
+          <button type="button" onClick={() => { setSgePreview(undefined); setSgeFileName(''); }} className={BOTAO_SECUNDARIO}>Cancelar</button>
+          <button type="button" disabled={!sgePreview?.podeAplicar} onClick={applySgePreview} className={BOTAO_PRIMARIO}><FileDown className="size-4" aria-hidden="true"/>Importar {(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)} lançamento(s)</button>
+        </>}
+      >
+        {sgePreview && <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {([['Novos', sgePreview.novos, TOM_SITUACAO.ok], ['Atualizações', sgePreview.atualizados, 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200'], ['Protegidos', sgePreview.protegidos, TOM_SITUACAO.inativo], ['Duplicados no dia', sgePreview.duplicados, TOM_SITUACAO.alerta], ['Com erro', sgePreview.comErro, 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200']] as const).map(([label, value, tone]) => (
+              <div key={label} className={`rounded-xl p-3 ${tone}`}><span className="text-[11px] font-bold uppercase">{label}</span><strong className="block text-2xl font-bold tabular-nums">{value}</strong></div>
+            ))}
+          </div>
+          <ul className="mt-3 max-h-[45vh] divide-y divide-slate-100 overflow-auto rounded-xl border border-slate-200">
+            {sgePreview.linhas.slice(0, 500).map(item => (
+              <li key={`${item.linha}-${item.chave}`} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[4rem_7rem_minmax(0,1fr)_minmax(0,1.4fr)] sm:items-center">
+                <span className="font-mono text-xs text-slate-500">linha {item.linha}</span>
+                <span className="font-bold text-slate-800">{({ NOVO: 'Novo', ATUALIZA: 'Atualiza', PROTEGIDO: 'Protegido', DUPLICADO: 'Duplicado', ERRO: 'Erro' } as Record<string, string>)[item.disposicao] || item.disposicao}</span>
+                <span className="truncate"><span className="font-mono font-bold">{item.registro?.prefixo || '—'}</span> · {item.registro?.nomeMotorista || 'Sem operador'} · {item.registro?.data || '—'}</span>
+                <span className="text-xs text-slate-600">{item.mensagens.join(' ') || 'Sem divergências.'}</span>
+              </li>
+            ))}
+          </ul>
+        </>}
+      </Modal>
     </main>
   );
 }
