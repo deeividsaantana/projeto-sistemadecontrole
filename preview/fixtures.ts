@@ -315,3 +315,61 @@ export const controleEstacas: import('../src/types').ControleEstacas = {
     ...Array.from({ length: 36 }, (_, indice) => cravacaoFixture('Ramo 900 lado esquerdo', indice + 1, indice < 9, 4 - Math.floor(indice / 3))),
   ],
 };
+
+/**
+ * Frota de demonstração do Quadro da Frota: 30 máquinas em quatro frentes,
+ * lançadas no Controle de Frotas de hoje, com algumas paradas, em manutenção,
+ * sem operador e sem lançamento. Vive só no preview.
+ */
+const FROTA_QUADRO: Array<[string, string, string, string, string, string | null, ControleEquipamentoDiario['status'] | null]> = [
+  ['LO279', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'PADRE EUSTÁQUIO', 'CARLOS ALBERTO', 'Em operação'],
+  ['RC041', 'Rolo compactador', 'DYNAPAC', 'CA250', 'PADRE EUSTÁQUIO', 'MARCOS VINICIUS', 'Em operação'],
+  ['TE030', 'Trator de esteira', 'CATERPILLAR', 'D6N XL', 'PADRE EUSTÁQUIO', 'ANDERSON', 'Em operação'],
+  ['TE007', 'Trator de esteira', 'KOMATSU', 'D61EX', 'PADRE EUSTÁQUIO', 'RONALDO', 'Em operação'],
+  ['TE037', 'Trator de esteira', 'CATERPILLAR', 'D6T XL', 'PADRE EUSTÁQUIO', 'EDSON', 'Em operação'],
+  ['LO278', 'Retroescavadeira', 'JCB', '3CX', 'PADRE EUSTÁQUIO', 'WELLINGTON', 'Em operação'],
+  ['CP076', 'Caminhão pipa', 'VW', '31.320', 'PADRE EUSTÁQUIO', 'GILMAR', 'Em operação'],
+  ['EC013', 'Escavadeira hidráulica', 'VOLVO', 'EC210', 'PADRE EUSTÁQUIO', 'FABIO', 'Em operação'],
+  ['EC010', 'Escavadeira hidráulica', 'VOLVO', 'EC210', 'PADRE EUSTÁQUIO', null, 'Aguardando motorista'],
+  ['MT032', 'Motoniveladora', 'CATERPILLAR', '120K', 'PADRE EUSTÁQUIO', 'SERGIO', 'Em manutenção'],
+  ['EC079', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'PADRE EUSTÁQUIO', null, 'Disponível'],
+  ['MC071', 'Trator agrícola', 'VALTRA', 'BH145', 'PADRE EUSTÁQUIO', 'PAULO', 'Em operação'],
+  ['GH016', 'Grade aradora', 'TATU', 'GAPCR', 'PADRE EUSTÁQUIO', null, 'Reserva'],
+  ['EC081', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'MARGINAL', 'CARLOS', 'Em operação'],
+  ['EC063', 'Escavadeira hidráulica', 'VOLVO', 'EC210', 'MARGINAL', 'JOSE', 'Em operação'],
+  ['EC023', 'Escavadeira hidráulica', 'VOLVO', 'EC210', 'MARGINAL', 'JOCELIO', 'Em operação'],
+  ['LO318', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'MARGINAL', 'HERNANDES', 'Em operação'],
+  ['RC025', 'Rolo compactador', 'DYNAPAC', 'CA250', 'MARGINAL', 'RAFAEL', 'Em operação'],
+  ['RC042', 'Rolo compactador', 'DYNAPAC', 'CA250', 'MARGINAL', null, 'Em operação'],
+  ['RT021', 'Retroescavadeira', 'CATERPILLAR', '416E', 'MARGINAL', 'SAMUEL', 'Em operação'],
+  ['RT030', 'Retroescavadeira', 'CATERPILLAR', '416E', 'MARGINAL', 'LUAN', 'Em operação'],
+  ['CP079', 'Caminhão pipa', 'MERCEDES', 'ATEGO 2426', 'MARGINAL', 'JEAM', 'Em operação'],
+  ['CB1012', 'Caminhão basculante', 'VOLVO', 'FMX 500', 'MARGINAL', 'ROBERSON', 'Em manutenção'],
+  ['EC077', 'Escavadeira hidráulica', 'KOMATSU', 'PC210', 'IBAR', 'FRANCISCO', 'Em operação'],
+  ['LO361', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'IBAR', 'JULIO', 'Em operação'],
+  ['PC044', 'Pá carregadeira', 'CATERPILLAR', '924K', 'IBAR', 'NELSON', 'Em operação'],
+  ['EC053', 'Escavadeira hidráulica', 'VOLVO', 'EC360', 'PEDREIRA', 'JOSE', 'Em operação'],
+  ['CB1020', 'Caminhão basculante', 'SCANIA', 'G440', 'PEDREIRA', 'RENILSON', 'Em operação'],
+  ['VL002', 'Caminhonete', 'TOYOTA', 'HILUX', 'PEDREIRA', 'ENG. RICARDO', 'Em operação'],
+  ['RC050', 'Rolo compactador', 'HAMM', '3411', 'PEDREIRA', null, null],
+];
+
+export const equipamentosQuadro: Equipamento[] = FROTA_QUADRO.map(([prefixo, tipo, marca, modelo], i) => ({
+  id: `qf-${i + 1}`, prefixo, nome: tipo, tipo, marca, modelo, seriePlaca: '', empresaId: 'emp-1', status: 'Ativo', observacao: '',
+  localAtualId: 'obr-1', categoriaFrota: tipo === 'Caminhonete' ? 'Veículo' : 'Equipamento',
+} as Equipamento));
+
+const hojeQuadro = new Date().toLocaleDateString('sv-SE');
+
+export const controlesQuadro = FROTA_QUADRO.flatMap(([prefixo, tipo, , , frente, operador, status], i) => (status ? [{
+  id: `qd-${i + 1}`, chave: `qd-${i + 1}`, data: hojeQuadro, funcionarioId: operador ? `op-${i}` : '', codigoFuncionario: '',
+  nomeMotorista: operador || '', equipamentoId: `qf-${i + 1}`, prefixo, familia: tipo, status,
+  horaSaida: '07:00', horaEntradaManutencao: '', horaLiberacao: '', observacao: '', origem: 'SISTEMA', revisao: [],
+  motivoManutencao: status === 'Em manutenção' ? 'Vazamento na mangueira do hidráulico' : undefined,
+  frenteServico: frente, criadoEm: `${hojeQuadro}T10:00:00.000Z`, atualizadoEm: `${hojeQuadro}T10:00:00.000Z`,
+} as ControleEquipamentoDiario] : []));
+
+export const abastecimentosQuadro = FROTA_QUADRO.map((_, i) => ({
+  id: `qa-${i + 1}`, data: hojeQuadro, hora: '06:30', equipamentoId: `qf-${i + 1}`, horimetroInicial: i % 5 === 4 ? 0 : 1200 + ((i * 3457) % 17000),
+  kmInicial: 0, bombaInicial: 0, quantidadeLitros: 120, bombaFinal: 0, tipoCombustivelId: '', comboioId: '', responsavel: '', observacao: '',
+}));

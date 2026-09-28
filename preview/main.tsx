@@ -16,6 +16,7 @@ import EstacasTab from '../src/components/EstacasTab';
 import CadastrosTab from '../src/components/CadastrosTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
+import QuadroFrotaTab from '../src/components/QuadroFrotaTab';
 import FrotaTab from '../src/components/FrotaTab';
 import ManutencaoTab from '../src/components/ManutencaoTab';
 import HorasParadasTab from '../src/components/HorasParadasTab';
@@ -431,6 +432,16 @@ const screens: Record<string, React.ReactNode> = {
       onImportTickets={noop}
       onReserveTicketNumber={async () => '2400'}
       onReserveTicketNumbers={async count => Array.from({ length: count }, (_, i) => String(2400 + i))}
+    />
+  ),
+  'quadro-frota': (
+    <QuadroFrotaTab
+      equipamentos={fx.equipamentosQuadro}
+      registros={fx.controlesQuadro}
+      gruposEquipe={[fx.grupo]}
+      abastecimentos={fx.abastecimentosQuadro as never}
+      frentes={[{ id: 'fr-av', nome: 'AV. BRASIL', situacao: 'Em execução', ativo: true, criadoEm: '', atualizadoEm: '' }]}
+      onNavigate={noop}
     />
   ),
   frotas: (
