@@ -3878,6 +3878,38 @@ export default function App() {
     );
   };
 
+  // Vários lançamentos de uma vez (aba Lançar do Quadro da Frota): uma gravação só,
+  // para um não sobrescrever o outro, com a OS automática de cada manutenção.
+  const handleSaveControleEquipamentosEmLote = (itens: Array<{ registro: ControleEquipamentoDiario; novo: boolean }>) => {
+    if (!itens.length) return;
+    let ordens = ordensServico;
+    let abertas = 0;
+    const porId = new Map(controleEquipamentosDiario.map(item => [item.id, item]));
+    const novos: ControleEquipamentoDiario[] = [];
+    itens.forEach(({ registro, novo }) => {
+      const maintenance = garantirOrdemAutomaticaDaFrota(registro, ordens, activeUserName);
+      ordens = maintenance.ordens;
+      if (maintenance.criada) abertas += 1;
+      if (novo && !porId.has(maintenance.registro.id)) novos.push(maintenance.registro);
+      else porId.set(maintenance.registro.id, maintenance.registro);
+    });
+    const updated = [...novos, ...controleEquipamentosDiario.map(item => porId.get(item.id) || item)];
+    saveAndLog(
+      'Controle Diário de Equipamentos',
+      'Editou',
+      `Lançou ${itens.length} equipamento(s) pelo Quadro da Frota.${abertas ? ` Abriu ${abertas} OS automática(s).` : ''}`,
+      historyLogs,
+      () => {
+        setControleEquipamentosDiario(updated);
+        writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
+        if (ordens !== ordensServico) {
+          setOrdensServico(ordens);
+          writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordens));
+        }
+      },
+    );
+  };
+
   // Reconcilia lançamentos antigos de manutenção com a oficina ao carregar a base.
   // Assim, registros históricos não dependem de serem editados novamente para gerar OS.
   const maintenanceBackfillKey = useRef('');
@@ -3941,9 +3973,9 @@ export default function App() {
     );
   };
 
-  const handleDeleteControleEquipamentosDiario = (ids: string[]) => {
+  const handleDeleteControleEquipamentosDiario = (ids: string[], jaConfirmado = false) => {
     const uniqueIds = Array.from(new Set(ids));
-    if (!uniqueIds.length || !confirm(`Você está prestes a excluir ${uniqueIds.length} registro(s) do controle de basculantes. Continuar?`)) return;
+    if (!uniqueIds.length || (!jaConfirmado && !confirm(`Você está prestes a excluir ${uniqueIds.length} registro(s) do controle de basculantes. Continuar?`))) return;
     const updated = controleEquipamentosDiario.filter(item => !uniqueIds.includes(item.id));
     saveAndLog('Controle Diário de Equipamentos', 'Excluiu', `Excluiu ${uniqueIds.length} registro(s) em uma única operação.`, historyLogs, () => {
       setControleEquipamentosDiario(updated);
@@ -5426,6 +5458,8 @@ export default function App() {
                 podeEditar={pode(currentUserRole, 'controle-equipamentos', 'editar')}
                 usuario={activeUserName}
                 onSave={handleSaveControleEquipamentoDiario}
+                onSaveMany={handleSaveControleEquipamentosEmLote}
+                onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
                 onNavigate={navigateTo}
               />
             )}

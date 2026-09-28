@@ -350,13 +350,14 @@ const FROTA_QUADRO: Array<[string, string, string, string, string, string | null
   ['PC044', 'Pá carregadeira', 'CATERPILLAR', '924K', 'IBAR', 'NELSON', 'Em operação'],
   ['EC053', 'Escavadeira hidráulica', 'VOLVO', 'EC360', 'PEDREIRA', 'JOSE', 'Em operação'],
   ['CB1020', 'Caminhão basculante', 'SCANIA', 'G440', 'PEDREIRA', 'RENILSON', 'Em operação'],
+  ['CV012', 'Cavalo mecânico', 'SCANIA', 'R450', 'MARGINAL', 'EDMILSON', 'Em operação'],
   ['VL002', 'Caminhonete', 'TOYOTA', 'HILUX', 'PEDREIRA', 'ENG. RICARDO', 'Em operação'],
   ['RC050', 'Rolo compactador', 'HAMM', '3411', 'PEDREIRA', null, null],
 ];
 
 export const equipamentosQuadro: Equipamento[] = FROTA_QUADRO.map(([prefixo, tipo, marca, modelo], i) => ({
   id: `qf-${i + 1}`, prefixo, nome: tipo, tipo, marca, modelo, seriePlaca: '', empresaId: 'emp-1', status: 'Ativo', observacao: '',
-  localAtualId: 'obr-1', categoriaFrota: tipo === 'Caminhonete' ? 'Veículo' : 'Equipamento',
+  localAtualId: 'obr-1', categoriaFrota: tipo === 'Caminhonete' || tipo === 'Cavalo mecânico' ? 'Veículo' : 'Equipamento',
 } as Equipamento));
 
 const hojeQuadro = new Date().toLocaleDateString('sv-SE');

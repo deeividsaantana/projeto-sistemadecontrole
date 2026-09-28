@@ -36,7 +36,7 @@ const GRUPO_DO_STATUS: Record<StatusControleEquipamentoDiario, GrupoStatus> = {
 };
 
 /** Desenho que o cartão mostra quando o equipamento não tem foto. */
-export type Silhueta = 'escavadeira' | 'rolo' | 'trator' | 'retro' | 'caminhao' | 'pipa' | 'motoniveladora' | 'carregadeira' | 'agricola' | 'implemento' | 'veiculo' | 'outro';
+export type Silhueta = 'escavadeira' | 'rolo' | 'trator' | 'retro' | 'caminhao' | 'cavalo' | 'pipa' | 'motoniveladora' | 'carregadeira' | 'agricola' | 'implemento' | 'veiculo' | 'outro';
 
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -55,6 +55,9 @@ const SILHUETAS: ReadonlyArray<[Silhueta, RegExp]> = [
 ];
 
 export const silhuetaDo = (equipamento: Pick<Equipamento, 'tipo' | 'nome' | 'familia' | 'categoriaFrota'>): Silhueta => {
+  // Cavalo mecânico costuma vir cadastrado com tipo "Veículo"; o nome decide antes.
+  const tudo = semAcento([equipamento.tipo, equipamento.familia, equipamento.nome].filter(Boolean).join(' '));
+  if (/cavalo|cavalinho|trator rodoviario/.test(tudo)) return 'cavalo';
   // O tipo manda; família e nome só entram quando o tipo não diz nada.
   for (const campo of [equipamento.tipo, equipamento.familia, equipamento.nome]) {
     if (!campo) continue;
@@ -102,10 +105,16 @@ export interface IndicadoresFrota {
 type RegistroDoDia = ControleEquipamentoDiario & { frenteServico?: string; local?: string; equipeId?: string; excluido?: unknown };
 
 /** Primeiro canteiro ativo citado nos textos, na ordem em que vêm. */
+/** Outros jeitos de escrever o canteiro que aparecem nos lançamentos e nas equipes. */
+const APELIDOS: Record<string, readonly string[]> = {
+  'SP-066': ['SP066', 'SP66', 'SP-66'],
+  'Pátio Aracaré': ['Aracaré', 'Aracare', 'Pátio de Vigas Aracaré', 'Pátio para Viga Aracaré'],
+};
+
 const canteiroNoTexto = (...textos: Array<string | undefined>): string | undefined => {
   for (const texto of textos) {
     if (!texto) continue;
-    const achado = CANTEIROS.find(canteiro => contemTermo(texto, canteiro) || contemTermo(texto, canteiro.replace('-0', '0')) || contemTermo(texto, canteiro.replace('-', '')));
+    const achado = CANTEIROS.find(canteiro => [canteiro, ...(APELIDOS[canteiro] || [])].some(nome => contemTermo(texto, nome)));
     if (achado) return achado;
   }
   return undefined;
@@ -392,4 +401,73 @@ export const registroDaEdicao = ({ dia, hora, agora, usuario, equipamento, regis
     atualizadoPor: usuario,
   };
   return { ok: true, registro, novo: !existente };
+};
+
+/** Rascunho da edição na tela: a situação pode ficar em branco até a pessoa escolher. */
+export type RascunhoQuadro = Omit<EdicaoQuadro, 'status'> & { status: StatusControleEquipamentoDiario | '' };
+
+/** O que já está gravado para a máquina no dia; sem lançamento, a situação começa em branco. */
+export const rascunhoDoCartao = (cartao: CartaoFrota): RascunhoQuadro => ({
+  status: cartao.status === 'Sem lançamento' || cartao.status === 'A confirmar' || cartao.status === 'Desmobilizado' ? '' : cartao.status,
+  canteiro: cartao.canteiro === SEM_CANTEIRO ? '' : cartao.canteiro,
+  frente: cartao.frente === SEM_FRENTE ? '' : cartao.frente,
+  operador: cartao.operador || '',
+  motivoManutencao: cartao.motivoManutencao || '',
+  observacao: cartao.observacao || '',
+});
+
+export const rascunhoMudou = (a: RascunhoQuadro, b: RascunhoQuadro) =>
+  (Object.keys(a) as Array<keyof RascunhoQuadro>).some(chave => a[chave].trim() !== b[chave].trim());
+
+export interface EntradaLote extends Omit<EntradaEdicao, 'equipamento' | 'edicao'> {
+  equipamentos: readonly Equipamento[];
+  rascunhos: ReadonlyArray<{ equipamentoId: string; rascunho: RascunhoQuadro }>;
+}
+
+/**
+ * Monta os lançamentos de várias máquinas de uma vez. O que tem problema
+ * (sem situação, sem operador, sem motivo) volta em `erros` e não é gravado;
+ * o resto segue.
+ */
+export const lancarEmLote = ({ equipamentos, rascunhos, ...resto }: EntradaLote) => {
+  const porId = new Map(equipamentos.map(item => [item.id, item]));
+  const prontos: Array<{ registro: FleetPersistedRecord; novo: boolean }> = [];
+  const erros = new Map<string, string>();
+  rascunhos.forEach(({ equipamentoId, rascunho }) => {
+    const equipamento = porId.get(equipamentoId);
+    if (!equipamento) return erros.set(equipamentoId, 'Esta máquina não está mais no cadastro.');
+    if (!rascunho.status) return erros.set(equipamentoId, 'Escolha a situação.');
+    const resultado = registroDaEdicao({ ...resto, equipamento, edicao: { ...rascunho, status: rascunho.status } });
+    if ('erro' in resultado) return erros.set(equipamentoId, resultado.erro);
+    prontos.push({ registro: resultado.registro, novo: resultado.novo });
+    return undefined;
+  });
+  return { prontos, erros };
+};
+
+/**
+ * Rascunho copiado do último dia lançado antes de `dia`, para cada máquina
+ * pedida. Serve ao botão "Repetir último dia": a pessoa confere e salva.
+ * Máquina sem nenhum lançamento anterior fica de fora.
+ */
+export const rascunhosDoUltimoDia = (registros: readonly ControleEquipamentoDiario[], equipamentoIds: readonly string[], dia: string) => {
+  const pedidos = new Set(equipamentoIds);
+  const ultimo = new Map<string, RegistroDoDia>();
+  (registros as readonly RegistroDoDia[]).forEach(registro => {
+    if (registro.excluido || registro.data >= dia || !pedidos.has(registro.equipamentoId)) return;
+    const atual = ultimo.get(registro.equipamentoId);
+    if (!atual || registro.data > atual.data || (registro.data === atual.data && (registro.atualizadoEm || '') > (atual.atualizadoEm || ''))) ultimo.set(registro.equipamentoId, registro);
+  });
+  const saida = new Map<string, RascunhoQuadro>();
+  ultimo.forEach((registro, equipamentoId) => {
+    saida.set(equipamentoId, {
+      status: SITUACOES_EDITAVEIS.includes(registro.status) ? registro.status : '',
+      canteiro: canteiroNoTexto(registro.local, registro.frenteServico) || '',
+      frente: (registro.frenteServico || '').trim(),
+      operador: (registro.nomeMotorista || '').trim(),
+      motivoManutencao: registro.motivoManutencao || '',
+      observacao: '',
+    });
+  });
+  return saida;
 };

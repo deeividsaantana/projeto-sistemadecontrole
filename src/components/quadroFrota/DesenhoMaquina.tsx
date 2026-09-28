@@ -191,6 +191,25 @@ const DESENHOS: Record<Silhueta, (t: Tinta) => ReactElement> = {
       <Escape x={30} y={12} />
     </>
   ),
+  cavalo: t => (
+    <>
+      <Roda x={24} y={46} r={7.5} />
+      <Roda x={62} y={46} r={7.5} />
+      <Roda x={78} y={46} r={7.5} />
+      <rect x={30} y={39} width={56} height={3} className={DETALHE} />
+      <rect x={56} y={34} width={28} height={5} rx={1.5} className={ESCURO} />
+      <ellipse cx={70} cy={33.5} rx={9} ry={2.2} className={ARO} />
+      <path d="M40 42 L40 30 L56 30 L56 42 Z" fill={t.sombra} />
+      <path d="M9 42 L9 17 Q9 10 16 10 L36 10 Q42 10 42 16 L42 42 Z" fill={t.corpo} />
+      <path d="M9 34 L42 34 L42 42 L9 42 Z" fill={t.sombra} />
+      <Brilho x={12} y={11.5} w={26} />
+      <path d="M12 15 L28 15 L28 26 L12 26 Z" fill={t.vidro} />
+      <path d="M13 16 L20 16 L13 23 Z" className="fill-white/50" />
+      <rect x={31} y={16} width={7} height={10} rx={1.5} className="fill-slate-800/15" />
+      <Farol x={10} y={38} />
+      <Escape x={44} y={6} />
+    </>
+  ),
   pipa: t => (
     <>
       <Roda x={22} y={46} r={7.5} />

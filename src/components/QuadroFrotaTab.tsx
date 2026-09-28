@@ -3,13 +3,16 @@
  * atualizar na hora. Tocar no cartão abre o painel que lança situação,
  * canteiro, frente e operador no mesmo formato do Controle de Frotas.
  *
+ * A vista Lançar mostra as mesmas máquinas em lista, uma por linha, para
+ * lançar, mover de canteiro e excluir o lançamento do dia de várias de uma vez.
+ *
  * Teclas, fora de campo de texto: / busca, ? atalhos, A atualizar pendentes,
- * 1 a 4 filtram a situação, L limpa os filtros.
+ * V troca Quadro e Lançar, 1 a 4 filtram a situação, L limpa os filtros.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Gauge, Keyboard, ListFilter, PauseCircle, PlayCircle, Search, SlidersHorizontal, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, PauseCircle, PlayCircle, Search, SlidersHorizontal, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../types';
 import { CountUp, Modal, PageHeader, isoDay } from '../shared/ui';
 import {
@@ -31,6 +34,7 @@ import {
   type Ordem,
 } from '../modules/frota/quadroFrota';
 import { CartaoEquipamento } from './quadroFrota/CartaoEquipamento';
+import { LancarFrota } from './quadroFrota/LancarFrota';
 import { PainelEquipamento } from './quadroFrota/PainelEquipamento';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from './cadastros/estilos';
 
@@ -44,6 +48,8 @@ interface Props {
   podeEditar: boolean;
   usuario: string;
   onSave: (registro: ControleEquipamentoDiario, novo: boolean) => void;
+  onSaveMany: (itens: Array<{ registro: ControleEquipamentoDiario; novo: boolean }>) => void;
+  onDeleteMany: (ids: string[]) => void;
   onNavigate: (aba: string) => void;
 }
 
@@ -52,6 +58,7 @@ const horaAgora = () => new Date().toTimeString().slice(0, 5);
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'A', oQueFaz: 'Atualizar as máquinas sem lançamento, uma atrás da outra', editar: true },
+  { teclas: 'V', oQueFaz: 'Trocar entre o quadro e a lista de lançamento', editar: true },
   { teclas: '/', oQueFaz: 'Buscar máquina' },
   { teclas: '1 a 4', oQueFaz: 'Mostrar só operando, manutenção, parados ou sem lançamento' },
   { teclas: 'L', oQueFaz: 'Limpar os filtros' },
@@ -59,6 +66,16 @@ const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean
   { teclas: 'Shift+Enter', oQueFaz: 'No painel da máquina: salvar e abrir a próxima', editar: true },
   { teclas: '?', oQueFaz: 'Mostrar esta lista' },
 ];
+
+type Vista = 'quadro' | 'lancar';
+const CHAVE_VISTA = 'renea_quadro_frota_vista';
+const vistaGuardada = (): Vista => {
+  try {
+    return window.localStorage.getItem(CHAVE_VISTA) === 'lancar' ? 'lancar' : 'quadro';
+  } catch {
+    return 'quadro';
+  }
+};
 
 const GRUPO_DA_TECLA: Record<string, GrupoStatus> = { 1: 'operando', 2: 'manutencao', 3: 'parado', 4: 'sem-lancamento' };
 
@@ -73,7 +90,7 @@ interface Indicador {
   filtro?: Partial<FiltrosQuadro>;
 }
 
-export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, frentes, funcionarios, podeEditar, usuario, onSave, onNavigate }: Props) {
+export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, frentes, funcionarios, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, onNavigate }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   const [dia, setDia] = useState(() => isoDay(new Date()));
@@ -84,6 +101,16 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [atalhosAberto, setAtalhosAberto] = useState(false);
   const [aviso, setAviso] = useState('');
+  const [vistaEscolhida, setVistaEscolhida] = useState<Vista>(vistaGuardada);
+  const vista: Vista = podeEditar ? vistaEscolhida : 'quadro';
+  const trocarVista = (nova: Vista) => {
+    setVistaEscolhida(nova);
+    try {
+      window.localStorage.setItem(CHAVE_VISTA, nova);
+    } catch {
+      // Sem memória do aparelho a escolha vale só nesta visita.
+    }
+  };
 
   const cartoes = useMemo(
     () => montarQuadro({ dia, equipamentos, registros, gruposEquipe, abastecimentos }),
@@ -173,6 +200,9 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
       } else if (tecla === 'l') {
         event.preventDefault();
         setFiltros(FILTROS_VAZIOS);
+      } else if (tecla === 'v' && podeEditar) {
+        event.preventDefault();
+        trocarVista(vista === 'quadro' ? 'lancar' : 'quadro');
       } else if (tecla === 'a' && podeEditar) {
         event.preventDefault();
         atualizarPendentes();
@@ -187,7 +217,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(raiz.querySelectorAll('[data-quadro-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
     gsap.fromTo(raiz.querySelectorAll('[data-quadro-cartao]'), { opacity: 0, y: 10, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: { each: 0.01, from: 'start' }, ease: 'power2.out', delay: 0.12, clearProps: 'transform,opacity' });
-  }, { scope: escopo, dependencies: [dia, filtros, ordem] });
+  }, { scope: escopo, dependencies: [dia, filtros, ordem, vista] });
 
   const chipCanteiro = (nome: string, rotulo: string, total: number) => {
     const ligado = filtros.canteiro === nome;
@@ -264,6 +294,23 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
       </section>
 
       <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
+        {podeEditar && (
+          <div role="group" aria-label="Como ver as máquinas" className="grid grid-cols-2 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:inline-grid" data-testid="quadro-vista">
+            {([['quadro', 'Quadro', LayoutGrid], ['lancar', 'Lançar', ListChecks]] as const).map(([valor, rotulo, Icone]) => (
+              <button
+                key={valor}
+                type="button"
+                aria-pressed={vista === valor}
+                onClick={() => trocarVista(valor)}
+                data-testid={`quadro-vista-${valor}`}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${vista === valor ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
+              >
+                <Icone className="size-4" aria-hidden="true" />
+                {rotulo}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
           {chipCanteiro('', 'Todos', cartoes.length)}
           {CANTEIROS.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
@@ -350,11 +397,25 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
           <p className="max-w-md text-sm text-slate-500">Cadastre as máquinas em Cadastros. Elas aparecem aqui assim que entram na obra.</p>
           <button type="button" onClick={() => onNavigate('cadastros')} className={`${BOTAO_SECUNDARIO} mt-2`}>Abrir Cadastros</button>
         </div>
-      ) : grupos.length === 0 ? (
+      ) : filtrados.length === 0 ? (
         <div data-quadro-reveal className={`${CARTAO} grid place-items-center gap-2 px-6 py-12 text-center`}>
           <p className="text-base font-bold text-slate-800">Nenhuma máquina com esses filtros</p>
           <button type="button" onClick={() => setFiltros(FILTROS_VAZIOS)} className={BOTAO_SECUNDARIO}>Limpar filtros</button>
         </div>
+      ) : vista === 'lancar' ? (
+        <LancarFrota
+          cartoes={filtrados}
+          dia={dia}
+          equipamentos={equipamentos}
+          registros={registros}
+          funcionarios={funcionarios}
+          frentes={opcoesFrente}
+          operadores={operadores}
+          usuario={usuario}
+          onSaveMany={onSaveMany}
+          onDeleteMany={onDeleteMany}
+          onAviso={setAviso}
+        />
       ) : (
         <div className="space-y-4" data-testid="quadro-colunas">
           {grupos.map(grupo => {
