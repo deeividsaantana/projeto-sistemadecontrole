@@ -576,6 +576,14 @@ export interface Material {
 
 export type TipoMovimentoMaterial = 'Entrada' | 'Saída' | 'Transferência' | 'Ajuste';
 
+/** Posição do GPS do celular, com a precisão em metros e a hora da leitura. */
+export interface LocalGps {
+  lat: number;
+  lng: number;
+  precisaoM: number;
+  em: string;
+}
+
 export interface MovimentoMaterial {
   id: string;
   data: string; // YYYY-MM-DD
@@ -593,6 +601,8 @@ export interface MovimentoMaterial {
   /** Envio público aprovado que originou este movimento, quando aplicável. */
   origemApontamentoId?: string;
   /** Fotos do envio do apontador: caminhos no Storage, que só a equipe logada lê. */
+  /** Onde o celular estava ao apontar pelo link (GPS no momento do envio). */
+  localGps?: LocalGps;
   fotos?: string[];
   /** Obra operacional informada na origem; migração SaaS exige mapeamento para project_id. */
   obraId?: string;

@@ -3,7 +3,7 @@
  * e as fotos, e o resumo por apontador. Só lê os movimentos: o envio já virou
  * saída de consumo quando o ERP incorporou a fila.
  */
-import type { MovimentoMaterial } from '../../types';
+import type { LocalGps, MovimentoMaterial } from '../../types';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 
 export const SEM_NOME = 'Sem nome';
@@ -24,6 +24,8 @@ export interface EnvioCampo {
   itens: ItemEnvio[];
   fotos: string[];
   observacao: string;
+  /** Onde o celular estava ao enviar, quando o GPS foi liberado. */
+  local?: LocalGps;
   /** Todos os movimentos do envio, inclusive os já desfeitos (para não desfazer duas vezes). */
   movimentos: MovimentoMaterial[];
 }
@@ -55,6 +57,7 @@ export const enviosDoCampo = (movimentos: readonly MovimentoMaterial[], filtro?:
       envios.set(id, envio);
     }
     envio.movimentos.push(item);
+    if (!envio.local && item.localGps) envio.local = item.localGps;
     if (item.canceladoEm) continue;
     envio.itens.push({ movimentoId: item.id, material: item.materialDescricao.trim() || 'Sem material', quantidade: Math.abs(Number(item.quantidade) || 0), unidade: item.unidade.trim() });
     for (const foto of item.fotos || []) if (!envio.fotos.includes(foto)) envio.fotos.push(foto);
