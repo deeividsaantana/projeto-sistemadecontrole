@@ -5481,6 +5481,12 @@ export default function App() {
                 planos={planejamentoItens}
                 onSaveProducao={pode(currentUserRole, 'producao', 'editar') ? handleSaveProducao : undefined}
                 onSavePlano={pode(currentUserRole, 'planejamento', 'editar') ? handleSavePlanejamento : undefined}
+                materiais={materiaisCadastro}
+                movimentosMaterial={materiaisMovimentos}
+                abastecimentos={abastecimentos}
+                controlesFrota={controleEquipamentosDiario}
+                equipamentos={equipamentos}
+                onIrPara={aba => { if (allowedTabs.includes(aba)) navigateTo(aba); }}
               />
             )}
 
