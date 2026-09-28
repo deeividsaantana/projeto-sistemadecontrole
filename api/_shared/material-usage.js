@@ -188,7 +188,27 @@ export const sanitizeMaterialUse = (body, view, { today, yesterday }) => {
       apontador,
       itens,
       observacao: clean(body?.observacao, 500) || undefined,
+      local: sanitizeLocation(body?.local),
     },
+  };
+};
+
+/**
+ * GPS é opcional: o celular pode negar. Leitura fora do mapa ou sem precisão
+ * é descartada em silêncio, sem recusar o uso do material.
+ */
+export const sanitizeLocation = raw => {
+  const lat = Number(raw?.lat);
+  const lng = Number(raw?.lng);
+  const precisaoM = Number(raw?.precisaoM);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return undefined;
+  if (!Number.isFinite(precisaoM) || precisaoM < 0 || precisaoM > 100_000) return undefined;
+  const em = new Date(String(raw?.em || ''));
+  return {
+    lat: Number(lat.toFixed(6)),
+    lng: Number(lng.toFixed(6)),
+    precisaoM: Math.round(precisaoM),
+    em: Number.isNaN(em.getTime()) ? new Date().toISOString() : em.toISOString(),
   };
 };
 

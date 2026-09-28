@@ -19,8 +19,10 @@ import {
   materialUsePhotoPath,
   resolveMaterialLinkToken,
   sanitizeMaterialPhotos,
+  sanitizeLocation,
   sanitizeMaterialUse,
 } from '../api/_shared/material-usage.js';
+import { enviosDoCampo } from '../src/modules/materials/apontadores';
 import { fieldReportTime, fieldReportsFromMovements } from '../src/utils/fieldReports';
 
 const tubo: Material = {
@@ -236,4 +238,27 @@ test('fotos do envio seguem para o movimento e o Painel agrupa o envio com local
   assert.equal(fieldReportTime(reports[0].enviadoEm), '12:00');
   assert.equal(fieldReportsFromMovements(movimentos, { from: '2026-10-01' }).length, 0);
   assert.equal(fieldReportsFromMovements(movimentos.map(item => cancelMaterialMovement(item, 'Escritório'))).length, 0);
+});
+
+test('GPS do celular: leitura válida é arredondada e leitura fora do mapa é descartada', () => {
+  const ok = sanitizeLocation({ lat: -23.9876543219, lng: -46.3012345678, precisaoM: 12.6, em: '2026-09-24T15:00:00Z' });
+  assert.deepEqual(ok, { lat: -23.987654, lng: -46.301235, precisaoM: 13, em: '2026-09-24T15:00:00.000Z' });
+  assert.equal(sanitizeLocation(undefined), undefined);
+  assert.equal(sanitizeLocation({ lat: 91, lng: 0, precisaoM: 5 }), undefined);
+  assert.equal(sanitizeLocation({ lat: -23, lng: -46 }), undefined);
+  assert.equal(sanitizeLocation({ lat: 'x', lng: -46, precisaoM: 5 }), undefined);
+});
+
+test('uso com GPS chega no movimento e no envio do campo; sem GPS o uso vale igual', () => {
+  const view = fieldView();
+  const dates = { today: '2026-09-24', yesterday: '2026-09-23' };
+  const body = { envioId: 'abc123abc123abc123', data: '2026-09-24', apontador: 'Jonas', etapaServicoId: 'ramo-1400', itens: [{ materialId: tubo.id, quantidade: 10 }] };
+  assert.equal(sanitizeMaterialUse(body, view, dates).payload.local, undefined);
+  assert.equal(sanitizeMaterialUse({ ...body, local: { lat: 999, lng: 0, precisaoM: 1 } }, view, dates).payload.local, undefined);
+  const local = { lat: -23.98, lng: -46.3, precisaoM: 8, em: '2026-09-24T15:00:00.000Z' };
+  assert.deepEqual(sanitizeMaterialUse({ ...body, local }, view, dates).payload.local, local);
+  const movimentos = movementsFromMaterialUse(submission({ local }));
+  assert.deepEqual(movimentos[0].localGps, local);
+  assert.deepEqual(enviosDoCampo(movimentos)[0].local, local);
+  assert.equal(movementsFromMaterialUse(submission())[0].localGps, undefined);
 });

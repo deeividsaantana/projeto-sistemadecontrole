@@ -327,6 +327,8 @@ export interface PublicMaterialUseInput {
   observacao?: string;
   /** Fotos em data URL JPEG, já reduzidas no celular. */
   fotos?: string[];
+  /** Última leitura do GPS antes de salvar. */
+  local?: { lat: number; lng: number; precisaoM: number; em: string };
 }
 
 const materialAccessHeaders = (accessToken: string) => ({

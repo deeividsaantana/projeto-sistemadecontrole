@@ -1,4 +1,4 @@
-import type { MovimentoMaterial } from '../../types';
+import type { LocalGps, MovimentoMaterial } from '../../types';
 
 /** Um item apontado: material e quantidade já na unidade do cadastro (metro, peça). */
 export interface MaterialUseItem {
@@ -21,6 +21,7 @@ export interface MaterialUseSubmission {
     observacao?: string;
     /** Caminhos no Storage das fotos tiradas no link. */
     fotos?: string[];
+    local?: LocalGps;
   };
 }
 
@@ -51,6 +52,7 @@ export const movementsFromMaterialUse = (submission: MaterialUseSubmission): Mov
       responsavel: submission.payload.apontador || 'Link do apontador',
       observacao: submission.payload.observacao || undefined,
       fotos: submission.payload.fotos?.length ? [...submission.payload.fotos] : undefined,
+      localGps: submission.payload.local ? { ...submission.payload.local } : undefined,
       criadoEm: submission.createdAtIso || new Date().toISOString(),
     }));
 

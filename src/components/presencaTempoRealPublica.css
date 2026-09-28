@@ -16,11 +16,14 @@
   box-sizing: border-box;
 }
 
-.presence-public button,
-.presence-public input,
-.presence-public select,
-.presence-public textarea {
-  font: inherit;
+/* Em camada base: as classes utilitárias (font-bold, text-base) dos links continuam valendo. */
+@layer base {
+  .presence-public button,
+  .presence-public input,
+  .presence-public select,
+  .presence-public textarea {
+    font: inherit;
+  }
 }
 
 .presence-public button {

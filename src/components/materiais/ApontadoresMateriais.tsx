@@ -242,6 +242,18 @@ export default function ApontadoresMateriais({ hoje, movimentos, responsavel, po
                       </div>
                     )}
                   </div>
+                  {envio.local && (
+                    <a
+                      href={`https://www.google.com/maps?q=${envio.local.lat},${envio.local.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex min-h-11 items-center gap-2 border-t border-slate-100 px-4 py-2 text-sm font-semibold text-[#176b4d] hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
+                    >
+                      <MapPin className="size-4 shrink-0" aria-hidden="true" />
+                      Ver no mapa onde foi apontado
+                      <span className="font-normal text-slate-500">(precisão de {envio.local.precisaoM.toLocaleString('pt-BR')} m)</span>
+                    </a>
+                  )}
                   {envio.observacao && <p className="border-t border-slate-100 px-4 py-2 text-sm text-slate-600">Observação: {envio.observacao}</p>}
                 </article>
               );
