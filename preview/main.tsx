@@ -338,6 +338,16 @@ function MeuDiaPreview() {
       planos={planos}
       onSaveProducao={registro => setProducao(atual => [registro, ...atual])}
       onSavePlano={plano => setPlanos(atual => [plano, ...atual])}
+      materiais={fx.materiaisObra}
+      movimentosMaterial={[
+        ...fx.movimentosMateriaisObra.map((item, posicao) => (posicao < 6 ? { ...item, data: hoje } : item)),
+        ...movimentosComFotos.filter(item => item.origemApontamentoId).map(item => ({ ...item, data: hoje })),
+        { ...fx.movimentosMateriaisObra[0], id: 'envio-ontem', data: ontem, origemApontamentoId: 'envio-ontem', apontadoPor: 'Ricardo', tipo: 'Saída' as const },
+      ]}
+      abastecimentos={fx.abastecimentos.map(item => ({ ...item, data: hoje }))}
+      controlesFrota={[...fx.controlesEquipamentos.map(item => ({ ...item, data: hoje })), { ...fx.controlesEquipamentos[0], id: 'sem-motivo', prefixo: 'RE-03', status: 'Aguardando motorista' as const, motivoManutencao: undefined, observacao: '', data: hoje }]}
+      equipamentos={fx.equipamentos}
+      onIrPara={() => undefined}
     />
   );
 }

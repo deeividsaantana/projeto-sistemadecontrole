@@ -183,3 +183,4 @@ import './relatoriosMateriais.test';
 import './apontadores.test';
 import './rotinaDiaria.test';
 import './avancoFrentes.test';
+import './resumoDoDia.test';
