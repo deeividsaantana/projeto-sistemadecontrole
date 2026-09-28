@@ -6,6 +6,7 @@ import {
   calcularHorasParadas,
   garantirOrdemAutomaticaDaFrota,
   isOrdemEncerrada,
+  liberarMaquinasDaOrdemConcluida,
   proximoStatusManutencao,
   reconciliarHistoricoManutencaoDaFrota,
 } from '../src/utils/manutencao';
@@ -148,6 +149,61 @@ test('histórico de frota com vínculo de OS órfão volta a aparecer na manuten
   assert.equal(result.ordens.length, 1);
   assert.equal(result.registros[0].ordemServicoId, result.ordens[0].id);
   assert.equal(result.criadas, 1);
+});
+
+test('OS concluída libera a máquina que ficou marcada em manutenção por causa dela', () => {
+  const ordem: OrdemServico = {
+    id: 'os-frota-controle-cb-770', numero: 'OS-0007', equipamentoId: 'equipamento-cb-770',
+    tipo: 'Corretiva', prioridade: 'Alta', descricao: 'Reparo hidráulico', status: 'Concluída',
+    dataAbertura: '2026-09-18', horaAbertura: '08:15', dataConclusao: '2026-09-18', horaConclusao: '15:40',
+    responsavel: 'Oficina', observacao: '',
+  };
+  const registro = registroBasculante({ ordemServicoId: ordem.id });
+
+  const resultado = liberarMaquinasDaOrdemConcluida(ordem, [registro], 'Encarregado da frota', '2026-09-18T15:40:00.000Z');
+
+  assert.equal(resultado.liberados, 1);
+  assert.equal(resultado.registros[0].status, 'Disponível');
+  assert.equal(resultado.registros[0].horaLiberacao, '15:40');
+  assert.equal(resultado.registros[0].ordemServicoId, ordem.id);
+  const ultimoEvento = resultado.registros[0].eventos?.at(-1);
+  assert.equal(ultimoEvento?.tipo, 'LIBERACAO_MANUTENCAO');
+  assert.equal(ultimoEvento?.statusAnterior, 'Em manutenção');
+  assert.match(ultimoEvento?.observacao || '', /OS-0007/);
+});
+
+test('OS cancelada também libera a máquina', () => {
+  const ordem: OrdemServico = {
+    id: 'os-frota-controle-cb-770', numero: 'OS-0008', equipamentoId: 'equipamento-cb-770',
+    tipo: 'Corretiva', prioridade: 'Baixa', descricao: 'Chamado duplicado', status: 'Cancelada',
+    dataAbertura: '2026-09-18', responsavel: 'Oficina', observacao: '',
+  };
+  const registro = registroBasculante({ status: 'Aguardando manutenção', ordemServicoId: ordem.id });
+
+  const resultado = liberarMaquinasDaOrdemConcluida(ordem, [registro], 'Encarregado da frota');
+
+  assert.equal(resultado.liberados, 1);
+  assert.equal(resultado.registros[0].status, 'Disponível');
+});
+
+test('OS ainda aberta não mexe no lançamento, e outro equipamento não é afetado', () => {
+  const ordem: OrdemServico = {
+    id: 'os-frota-controle-cb-770', numero: 'OS-0009', equipamentoId: 'equipamento-cb-770',
+    tipo: 'Corretiva', prioridade: 'Alta', descricao: 'Em andamento', status: 'Em Andamento',
+    dataAbertura: '2026-09-18', responsavel: 'Oficina', observacao: '',
+  };
+  const registro = registroBasculante({ ordemServicoId: ordem.id });
+  const registros = [registro];
+
+  const emAndamento = liberarMaquinasDaOrdemConcluida(ordem, registros, 'Encarregado da frota');
+  assert.equal(emAndamento.liberados, 0);
+  assert.equal(emAndamento.registros, registros);
+
+  const concluida: OrdemServico = { ...ordem, status: 'Concluída' };
+  const outroEquipamento = registroBasculante({ id: 'controle-es-101', equipamentoId: 'equipamento-es-101', ordemServicoId: 'outra-os' });
+  const resultado = liberarMaquinasDaOrdemConcluida(concluida, [registro, outroEquipamento], 'Encarregado da frota');
+  assert.equal(resultado.liberados, 1);
+  assert.equal(resultado.registros[1], outroEquipamento);
 });
 
 test('a tela de manutenção está ligada aos handlers do App', () => {

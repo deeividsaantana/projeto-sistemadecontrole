@@ -1,4 +1,4 @@
-import type { ControleEquipamentoDiario, OrdemServico } from '../types';
+import type { ControleEquipamentoDiario, EventoControleEquipamentoDiario, OrdemServico } from '../types';
 
 /** Fluxo oficial da ordem de serviço. Cancelada sai do fluxo a qualquer momento. */
 export const FLUXO_MANUTENCAO: OrdemServico['status'][] = [
@@ -104,6 +104,50 @@ export const reconciliarHistoricoManutencaoDaFrota = (
   });
 
   return { registros: registrosReconciliados, ordens: proximasOrdens, criadas };
+};
+
+export interface LiberacaoMaquinasDaOrdem {
+  registros: ControleEquipamentoDiario[];
+  liberados: number;
+}
+
+const EM_MANUTENCAO_OS: ReadonlyArray<ControleEquipamentoDiario['status']> = ['Em manutenção', 'Aguardando manutenção'];
+
+/**
+ * Quando a oficina conclui ou cancela a OS, a máquina que ficou marcada em
+ * manutenção por causa dela volta a ficar disponível sozinha, sem esperar um
+ * novo lançamento manual no Controle de Frotas ou no Quadro.
+ */
+export const liberarMaquinasDaOrdemConcluida = (
+  ordem: OrdemServico,
+  registros: ControleEquipamentoDiario[],
+  responsavel: string,
+  agora: string = new Date().toISOString(),
+): LiberacaoMaquinasDaOrdem => {
+  if (!isOrdemEncerrada(ordem.status)) return { registros, liberados: 0 };
+  let liberados = 0;
+  const hora = agora.slice(11, 16);
+  const registrosAtualizados = registros.map(registro => {
+    if (registro.ordemServicoId !== ordem.id || !EM_MANUTENCAO_OS.includes(registro.status)) return registro;
+    liberados += 1;
+    const evento: EventoControleEquipamentoDiario = {
+      id: `evt-${agora}-${registro.equipamentoId}`,
+      ocorridoEm: agora,
+      tipo: 'LIBERACAO_MANUTENCAO',
+      statusAnterior: registro.status,
+      statusNovo: 'Disponível',
+      observacao: `Liberada pela conclusão da ${ordem.numero}.`,
+      responsavel,
+    };
+    return {
+      ...registro,
+      status: 'Disponível' as const,
+      horaLiberacao: registro.horaLiberacao || hora,
+      eventos: [...(registro.eventos || []), evento],
+      atualizadoEm: agora,
+    };
+  });
+  return { registros: liberados ? registrosAtualizados : registros, liberados };
 };
 
 /** Próxima etapa do fluxo, ou undefined quando a OS já está encerrada. */
