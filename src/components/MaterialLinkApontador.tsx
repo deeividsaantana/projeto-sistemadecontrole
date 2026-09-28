@@ -688,7 +688,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           )}
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 sm:px-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white px-4 sm:px-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
           <div className="mx-auto flex w-full max-w-xl items-center gap-3 sm:px-6">
             <p className="min-w-0 flex-1 text-sm text-slate-600">
               <strong className="block text-base text-slate-950">{itensMarcados.length === 0 ? 'Nada escolhido' : `${itensMarcados.length} ${itensMarcados.length === 1 ? 'material' : 'materiais'}`}</strong>
@@ -801,7 +801,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
 
         {erroEnvio && <div role="alert" className="mt-3 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-base font-semibold text-rose-800"><AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> {erroEnvio}</div>}
 
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 sm:px-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white px-4 sm:px-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
           <div className="mx-auto flex w-full max-w-xl items-center gap-3 sm:px-6">
             <p className="min-w-0 flex-1 text-sm text-slate-600">
               <strong className="block text-base text-slate-950">{itensMarcados.length} {itensMarcados.length === 1 ? 'material' : 'materiais'}</strong>
