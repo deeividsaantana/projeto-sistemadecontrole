@@ -95,6 +95,7 @@ import {
   LOCAL_FUEL_RESET_VERSION,
   shouldResetLocalFuel,
 } from './utils/localFuelReset';
+import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -465,6 +466,8 @@ export default function App() {
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // Parte de Materiais pedida por outro lugar (aviso, busca); a vez remonta a tela na parte certa.
+  const [materiaisPedido, setMateriaisPedido] = useState<{ secao?: SecaoMateriais; vez: number }>({ vez: 0 });
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
   // o controle é renderizado na barra superior, ao lado do estado da nuvem.
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -4718,11 +4721,16 @@ export default function App() {
   const SUB_TAB_MAPPING: Record<string, string> = {
     frentes: 'meu-dia',
     producao: 'meu-dia',
+    // Os tickets da jazida moraram numa aba própria até 28/09/2026; agora são
+    // a parte Viagens da jazida dentro de Materiais.
+    'tickets-jazida': 'materiais',
   };
 
   const navigateTo = (tab: string, closeMobile = false) => {
     // Check if it's a primary module (top-level tab)
     let targetTab = tab;
+    if (tab === 'tickets-jazida') setMateriaisPedido(atual => ({ secao: 'viagens', vez: atual.vez + 1 }));
+    else if (tab === 'materiais') setMateriaisPedido(atual => (atual.secao ? { secao: undefined, vez: atual.vez } : atual));
     if (!allowedTabs.includes(tab)) {
       // Check if it's a sub-tab that should route to a parent module
       const parentTab = SUB_TAB_MAPPING[tab];
@@ -5265,6 +5273,24 @@ export default function App() {
 
             {activeTab === 'materiais' && (
               <MateriaisTab
+                key={materiaisPedido.vez}
+                secaoInicial={materiaisPedido.secao}
+                viagensJazida={(
+                  <TicketsJazidaTab
+                    tickets={ticketsJazida}
+                    equipamentos={equipamentos}
+                    controlesEquipamentos={controleEquipamentosDiario}
+                    obras={obras}
+                    responsavel={activeUserName}
+                    onSaveTicket={handleSaveTicketJazida}
+                    onDeleteTicket={handleDeleteTicketJazida}
+                    onDeleteTickets={handleDeleteTicketsJazida}
+                    onImportTickets={handleImportTicketsJazida}
+                    onReserveTicketNumber={handleReserveTicketNumber}
+                    onReserveTicketNumbers={handleReserveTicketNumbers}
+                  />
+                )}
+                totalViagensJazida={ticketsJazida.length}
                 materiais={materiaisCadastro}
                 movimentos={materiaisMovimentos}
                 empresas={empresas}
@@ -5439,22 +5465,6 @@ export default function App() {
                 onDeletePresencaLink={handleDeletePresencaLink}
                 onResetPresencaDia={handleResetPresencaDia}
                 onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
-              />
-            )}
-
-            {activeTab === 'tickets-jazida' && (
-              <TicketsJazidaTab
-                tickets={ticketsJazida}
-                equipamentos={equipamentos}
-                controlesEquipamentos={controleEquipamentosDiario}
-                obras={obras}
-                responsavel={activeUserName}
-                onSaveTicket={handleSaveTicketJazida}
-                onDeleteTicket={handleDeleteTicketJazida}
-                onDeleteTickets={handleDeleteTicketsJazida}
-                onImportTickets={handleImportTicketsJazida}
-                onReserveTicketNumber={handleReserveTicketNumber}
-                onReserveTicketNumbers={handleReserveTicketNumbers}
               />
             )}
 

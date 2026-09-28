@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { BrickWall, Cylinder, Hammer, Mountain, TreePine, Boxes, ChartPie, ClipboardPen, FileBarChart, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, UserRoundCheck, type LucideIcon } from 'lucide-react';
+import { BrickWall, Cylinder, Hammer, Mountain, TreePine, Boxes, ChartPie, ClipboardPen, FileBarChart, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Ticket, Truck, UserRoundCheck, type LucideIcon } from 'lucide-react';
 import { FOCO, reduzMovimento } from '../cadastros/estilos';
 import type { ClasseMaterial } from '../../modules/materials/classesMateriais';
 
@@ -15,7 +15,7 @@ const ICONE_DA_CLASSE: Record<ClasseMaterial, LucideIcon> = {
   Outros: Package,
 };
 
-export type SecaoMateriais = 'lancar' | 'resumo' | 'graficos' | 'relatorios' | 'previsto' | 'utilizacao' | 'apontadores' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
+export type SecaoMateriais = 'lancar' | 'resumo' | 'graficos' | 'relatorios' | 'previsto' | 'utilizacao' | 'apontadores' | 'botafora' | 'viagens' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
 
 interface Secao {
   id: SecaoMateriais;
@@ -50,6 +50,7 @@ const GRUPOS: ReadonlyArray<{ id: string; nome: string; secoes: readonly Secao[]
       { id: 'utilizacao', nome: 'Uso por ramo', ajuda: 'Quanto cada ramo recebeu e usou', Icone: Route },
       { id: 'apontadores', nome: 'Apontadores', ajuda: 'Envios do campo, fotos e o link', Icone: UserRoundCheck },
       { id: 'botafora', nome: 'Bota-fora', ajuda: 'Viagens para Itaquareia, Lara e São Bento', Icone: Truck },
+      { id: 'viagens', nome: 'Viagens da jazida', ajuda: 'Tickets de liberação e recebimento', Icone: Ticket },
     ],
   },
   {

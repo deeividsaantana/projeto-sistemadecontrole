@@ -6,17 +6,16 @@ import {
   isPrimaryModule,
 } from '../src/app/navigation/navigation';
 
-test('sidebar expõe os 17 módulos primários do ERP', () => {
+test('sidebar expõe os 16 módulos primários do ERP', () => {
   const rendered = SIDEBAR_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id));
   assert.deepEqual(rendered, [...PRIMARY_MODULE_IDS]);
-  assert.equal(rendered.length, 17);
+  assert.equal(rendered.length, 16);
   assert.equal(isPrimaryModule('manutencao'), true);
   assert.equal(isPrimaryModule('central-operacional'), false);
-  // Tickets Jazida e Controle de Estacas voltaram à navegação principal em
-  // 2026-09-22: eram tecnicamente inalcançáveis (nenhum link renderizado
-  // dava acesso a essas telas) e é lá que vivem as novas importações com
-  // prévia/lote/lineage.
-  assert.equal(isPrimaryModule('tickets-jazida'), true);
+  // Controle de Estacas voltou à navegação principal em 2026-09-22. Os
+  // tickets da jazida saíram do menu em 2026-09-28: são a parte Viagens da
+  // jazida dentro de Materiais.
+  assert.equal(isPrimaryModule('tickets-jazida'), false);
   assert.equal(isPrimaryModule('estacas'), true);
   assert.equal(isPrimaryModule('frota'), false);
   assert.equal(isPrimaryModule('modo-campo'), true);

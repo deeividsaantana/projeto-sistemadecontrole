@@ -1730,10 +1730,10 @@ export default function TicketsJazidaTab({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8e4] pb-4">
         <div>
-          <h1 className="text-xl font-extrabold text-[#14231e] flex items-center gap-2">
+          <h2 className="text-xl font-extrabold text-[#14231e] flex items-center gap-2">
             <Truck className="w-5 h-5 text-emerald-500" />
             Jazida • Controle diário
-          </h1>
+          </h2>
           <p className="text-xs text-[#65716b] mt-1">Impressão, devolução das duas vias e fechamento do dia em um único fluxo.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1778,7 +1778,7 @@ export default function TicketsJazidaTab({
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
-            Novo lançamento
+            Novo ticket
           </button>
           <button
             type="button"

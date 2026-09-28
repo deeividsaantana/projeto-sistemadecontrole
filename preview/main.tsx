@@ -26,6 +26,7 @@ import EquipesTab from '../src/components/EquipesTab';
 import ApontamentosTab from '../src/components/ApontamentosTab';
 import DdsTreinamentosTab from '../src/components/DdsTreinamentosTab';
 import MateriaisTab from '../src/components/MateriaisTab';
+import type { SecaoMateriais } from '../src/components/materiais/MateriaisSecoes';
 import MateriaisUtilizacaoPanel from '../src/components/MateriaisUtilizacaoPanel';
 import MaterialLinkApontador from '../src/components/MaterialLinkApontador';
 import { buildFieldView } from '../api/_shared/material-usage.js';
@@ -286,6 +287,22 @@ function MateriaisPreview() {
         if (volta) { setEtapas(atual => [...atual, volta]); setApagados(atual => new Set([...atual].filter(id => id !== volta.id))); }
         return { ok: Boolean(volta), mensagem: volta ? `${volta.nome} voltou para a lista.` : 'Já foi restaurado.' };
       }}
+      secaoInicial={(new URLSearchParams(window.location.search).get('secao') || undefined) as SecaoMateriais | undefined}
+      totalViagensJazida={fx.ticketsJazida.length}
+      viagensJazida={(
+        <TicketsJazidaTab
+          tickets={fx.ticketsJazida}
+          equipamentos={fx.equipamentos}
+          controlesEquipamentos={fx.controlesEquipamentos}
+          obras={fx.obras}
+          onSaveTicket={noop}
+          onDeleteTicket={noop}
+          onDeleteTickets={noop}
+          onImportTickets={noop}
+          onReserveTicketNumber={async () => '2400'}
+          onReserveTicketNumbers={async count => Array.from({ length: count }, (_, i) => String(2400 + i))}
+        />
+      )}
       previstos={previstos}
       onSavePrevistos={itens => setPrevistos(atual => juntar(atual, itens))}
     />

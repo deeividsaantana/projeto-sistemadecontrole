@@ -60,7 +60,6 @@ export const NAVIGATION_GROUPS = [
       { id: 'modo-campo', label: 'Modo Campo', icon: Smartphone },
       { id: 'planejamento', label: 'Planejamento', icon: CalendarRange },
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
-      { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
   },
@@ -125,10 +124,10 @@ export const PRIMARY_MODULE_IDS = [
   'modo-campo',
   'planejamento',
   'diario-obra',
-  // Tickets Jazida e Controle de Estacas ficam no menu como abas próprias:
-  // as importações com prévia/lote/lineage vivem dentro dessas duas telas
-  // (decisão confirmada com o usuário em 2026-09-22).
-  'tickets-jazida',
+  // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
+  // vive dentro dela (decisão confirmada com o usuário em 2026-09-22). Os
+  // tickets da jazida viraram a parte Viagens da jazida de Materiais em
+  // 2026-09-28.
   'estacas',
   'controle-equipamentos',
   // Pedido em 2026-09-28: todos os equipamentos do dia em cartões, por frente.
@@ -157,6 +156,7 @@ export const AUXILIARY_MODULE_DESTINATIONS: Readonly<Record<string, string>> = {
   pendencias: 'dashboard',
   notificacoes: 'dashboard',
   assistente: 'dashboard',
+  'tickets-jazida': 'materiais',
   frota: 'controle-equipamentos',
   'horas-paradas': 'controle-equipamentos',
   checklist: 'controle-equipamentos',
