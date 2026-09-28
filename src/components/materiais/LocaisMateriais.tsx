@@ -2,12 +2,13 @@
  * Ramos e locais de Materiais: a lista única de lugares da obra com o código
  * SGE, os nomes que a planilha usa para cada um e a tabela de códigos de
  * viagem. Tudo o que se grava aqui é o cadastro de ramos; os movimentos
- * continuam como vieram e acham o local pelo nome.
+ * continuam como vieram e acham o local pelo nome. Qualquer lugar entra, com
+ * ou sem código SGE, e apagar leva o local para a Lixeira de Cadastros.
  */
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { AlertTriangle, CheckCircle2, ChevronDown, Link2, ListChecks, MapPin, Pencil, Plus, Route, Truck, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Link2, ListChecks, MapPin, Pencil, Plus, Route, Trash2, Truck, Undo2, X } from 'lucide-react';
 import type { EtapaServico, MovimentoMaterial, TipoLocalObra } from '../../types';
 import {
   EXPLICA_TIPO,
@@ -18,18 +19,23 @@ import {
   indiceDeLocais,
   ligarNome,
   localDoMovimento,
+  localDoNome,
   locaisParaEscolher,
   nomesSemLocal,
+  type NomeSemLocal,
   ordemDoGrupo,
   ordemDoRamo,
   planoCargaSge,
   resolverLocal,
   rotuloDoLocal,
 } from '../../modules/materials/locaisSge';
-import { EmptyState, Modal } from '../../shared/ui';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
+import { ConfirmDialog, EmptyState, Modal } from '../../shared/ui';
+import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
 
 type Vista = 'locais' | 'sem-local' | 'viagens';
+
+/** Mesmo retorno da exclusão de Cadastros: vai para a Lixeira ou diz onde está em uso. */
+export type ExcluirLocal = (id: string, rotulo: string) => { ok: true; exclusaoId: string } | { ok: false; usos: Array<{ collection: string; count: number }>; mensagem?: string };
 
 interface Props {
   etapas: EtapaServico[];
@@ -38,6 +44,10 @@ interface Props {
   termo: string;
   podeEditar: boolean;
   onSaveEtapas: (etapas: EtapaServico[], descricao: string) => void;
+  onExcluirLocal?: ExcluirLocal;
+  onRestaurarLocal?: (exclusaoId: string) => { ok: boolean; mensagem: string };
+  /** Ids de locais na Lixeira, que a lista SGE não oferece de novo. */
+  locaisApagados?: ReadonlySet<string>;
 }
 
 interface Edicao {
@@ -59,7 +69,7 @@ const Codigo = ({ codigo }: { codigo?: string }) => (codigo
   ? <span className="inline-flex min-w-12 shrink-0 self-start justify-center rounded-lg bg-emerald-50 px-2 py-1 font-mono text-sm font-bold tabular-nums text-[#176b4d] ring-1 ring-inset ring-emerald-200">{codigo}</span>
   : <span className="inline-flex min-w-12 shrink-0 self-start justify-center rounded-lg bg-slate-50 px-2 py-1 text-sm font-semibold text-slate-400 ring-1 ring-inset ring-slate-200" title="Sem código SGE">—</span>);
 
-export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar, onSaveEtapas }: Props) {
+export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar, onSaveEtapas, onExcluirLocal, onRestaurarLocal, locaisApagados }: Props) {
   const raiz = useRef<HTMLDivElement>(null);
   const [vista, setVista] = useState<Vista>('locais');
   const [cargaAberta, setCargaAberta] = useState(false);
@@ -69,8 +79,11 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
   const [escolhas, setEscolhas] = useState<Record<string, string>>({});
   const [limite, setLimite] = useState(POR_PAGINA);
   const [servicosAbertos, setServicosAbertos] = useState(false);
+  const [apagando, setApagando] = useState<EtapaServico | null>(null);
+  const [desfazer, setDesfazer] = useState('');
+  const [todosAberto, setTodosAberto] = useState(false);
 
-  const plano = useMemo(() => planoCargaSge(etapas), [etapas]);
+  const plano = useMemo(() => planoCargaSge(etapas, undefined, locaisApagados), [etapas, locaisApagados]);
   const indice = useMemo(() => indiceDeLocais(etapas), [etapas]);
   const faltando = useMemo(() => nomesSemLocal(movimentos, etapas), [movimentos, etapas]);
   const movimentosSemLocal = faltando.reduce((soma, item) => soma + item.movimentos, 0);
@@ -129,7 +142,12 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
   const escolherVista = (proxima: Vista) => {
     setVista(proxima);
     setLimite(POR_PAGINA);
-    setAviso('');
+    avisar('');
+  };
+
+  const avisar = (texto: string, exclusaoId = '') => {
+    setAviso(texto);
+    setDesfazer(exclusaoId);
   };
 
   const carregarLista = () => {
@@ -137,14 +155,46 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
     onSaveEtapas(itens, `Carregou a lista de códigos SGE: ${plano.novas.length} local(is) novo(s) e ${plano.completadas.length} completado(s) com código, tipo e nomes da planilha.`);
     setCargaAberta(false);
     const partes = [plano.novas.length && plural(plano.novas.length, 'local novo', 'locais novos'), plano.completadas.length && plural(plano.completadas.length, 'completado', 'completados')].filter(Boolean);
-    setAviso(`Lista carregada: ${partes.join(' e ')}. Nada foi apagado.`);
+    avisar(`Lista carregada: ${partes.join(' e ')}. Nada foi apagado.`);
   };
 
   const ligar = (texto: string, sugestaoId?: string) => {
     const escolhido = etapas.find(item => item.id === (escolhas[texto] ?? sugestaoId));
     if (!escolhido) return;
     onSaveEtapas([ligarNome(escolhido, texto)], `Ligou o nome "${texto}" da planilha ao local ${escolhido.nome}.`);
-    setAviso(`"${texto}" agora conta em ${escolhido.nome}.`);
+    avisar(`"${texto}" agora conta em ${escolhido.nome}.`);
+  };
+
+  // Um nome da planilha vira local próprio, sem código SGE.
+  const criarDoNome = (item: NomeSemLocal) => {
+    const novo = localDoNome(item, novoId());
+    setErro('');
+    setEdicao({ id: null, nome: novo.nome, codigoSge: '', tipoLocal: novo.tipoLocal || 'Frente', ramo: novo.ramo || '', apelidos: [], novoApelido: '' });
+  };
+
+  const criarTodos = () => {
+    const novos = faltando.map(item => localDoNome(item, novoId()));
+    onSaveEtapas(novos, `Criou ${novos.length} local(is) a partir dos nomes da planilha, sem código SGE.`);
+    setTodosAberto(false);
+    avisar(`${plural(novos.length, 'local novo entrou', 'locais novos entraram')} na lista, sem código SGE. Toque em cada um para ajustar o tipo e o ramo.`);
+  };
+
+  const confirmarApagar = () => {
+    if (!apagando || !onExcluirLocal) return;
+    const resultado = onExcluirLocal(apagando.id, apagando.nome);
+    setApagando(null);
+    if ('exclusaoId' in resultado) {
+      setEdicao(null);
+      avisar(`${apagando.nome} foi para a Lixeira de Cadastros.`, resultado.exclusaoId);
+      return;
+    }
+    setErro(resultado.mensagem || `Não dá para apagar: ${apagando.nome} está em uso (${resultado.usos.map(uso => `${uso.collection}: ${uso.count.toLocaleString('pt-BR')}`).join(', ')}).`);
+  };
+
+  const desfazerApagar = () => {
+    if (!desfazer || !onRestaurarLocal) return;
+    const resultado = onRestaurarLocal(desfazer);
+    avisar(resultado.mensagem);
   };
 
   const abrirEdicao = (etapa?: EtapaServico) => {
@@ -198,7 +248,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
     };
     onSaveEtapas([registro], `${anterior ? 'Editou' : 'Cadastrou'} o local ${nome}${codigo ? ` (SGE ${codigo})` : ''}.`);
     setEdicao(null);
-    setAviso(`${anterior ? 'Salvo' : 'Cadastrado'}: ${nome}.`);
+    avisar(`${anterior ? 'Salvo' : 'Cadastrado'}: ${nome}.`);
   };
 
   const indicadores = [
@@ -301,13 +351,19 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
             <AlertTriangle className="size-5 shrink-0 text-[#f26a2e]" aria-hidden="true" />
             {plural(faltando.length, 'nome da planilha ainda não conta em nenhum local', 'nomes da planilha ainda não contam em nenhum local')}
           </h3>
-          <p className="mt-0.5 text-sm text-amber-900">Escolha o local de cada um e toque em Ligar. O nome passa a valer para as viagens que já estão aqui e para as próximas importações.</p>
+          <p className="mt-0.5 text-sm text-amber-900">Escolha o local de cada um e toque em Ligar, ou crie o nome como um local novo, mesmo sem código SGE. Vale para as viagens que já estão aqui e para as próximas importações.</p>
+          {podeEditar && (
+            <button type="button" onClick={() => setTodosAberto(true)} className={`${BOTAO_SECUNDARIO} mt-3 max-sm:w-full`} data-testid="locais-criar-todos">
+              <Plus className="size-5" aria-hidden="true" />
+              Criar todos como locais ({faltando.length.toLocaleString('pt-BR')})
+            </button>
+          )}
         </header>
         <ul className="divide-y divide-slate-100">
           {faltandoFiltrados.slice(0, limite).map(item => {
             const escolhido = escolhas[item.texto] ?? item.sugestao?.id ?? '';
             return (
-              <li key={item.texto} className="grid gap-2 p-4 md:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)_auto] md:items-center md:gap-3 md:py-3">
+              <li key={item.texto} className="grid gap-2 p-4 md:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)_auto_auto] md:items-center md:gap-3 md:py-3">
                 <div className="min-w-0">
                   <strong className="block break-words text-base font-bold text-slate-900 sm:text-sm">{item.texto}</strong>
                   <span className="text-sm tabular-nums text-slate-500">{plural(item.movimentos, 'movimento', 'movimentos')}{item.sugestao ? ' · sugestão pelo número do ramo' : ''}</span>
@@ -325,10 +381,16 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
                         ))}
                       </select>
                     </label>
-                    <button type="button" disabled={!escolhido} onClick={() => ligar(item.texto, item.sugestao?.id)} className={`${BOTAO_PRIMARIO} w-full md:w-auto`}>
-                      <Link2 className="size-4" aria-hidden="true" />
-                      Ligar
-                    </button>
+                    <div className="grid grid-cols-2 gap-2 md:contents">
+                      <button type="button" disabled={!escolhido} onClick={() => ligar(item.texto, item.sugestao?.id)} className={`${BOTAO_PRIMARIO} w-full md:w-auto`}>
+                        <Link2 className="size-4" aria-hidden="true" />
+                        Ligar
+                      </button>
+                      <button type="button" onClick={() => criarDoNome(item)} className={`${BOTAO_SECUNDARIO} w-full md:w-auto`} aria-label={`Criar local ${item.texto}`}>
+                        <Plus className="size-4" aria-hidden="true" />
+                        Criar local
+                      </button>
+                    </div>
                   </>
                 )}
               </li>
@@ -440,7 +502,13 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
       {aviso && (
         <p role="status" className="flex items-start justify-between gap-2 rounded-2xl border border-emerald-200 bg-white p-3 text-sm font-semibold text-emerald-900">
           <span className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />{aviso}</span>
-          <button type="button" onClick={() => setAviso('')} className={`shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 ${FOCO}`} aria-label="Fechar aviso"><X className="size-4" aria-hidden="true" /></button>
+          {desfazer && onRestaurarLocal && (
+            <button type="button" onClick={desfazerApagar} className={`inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-bold text-[#176b4d] hover:bg-emerald-50 ${FOCO}`}>
+              <Undo2 className="size-4" aria-hidden="true" />
+              Desfazer
+            </button>
+          )}
+          <button type="button" onClick={() => avisar('')} className={`shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 ${FOCO}`} aria-label="Fechar aviso"><X className="size-4" aria-hidden="true" /></button>
         </p>
       )}
 
@@ -510,6 +578,12 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
         onClose={() => setEdicao(null)}
         footer={(
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {edicao?.id && onExcluirLocal && (
+              <button type="button" onClick={() => setApagando(etapas.find(item => item.id === edicao.id) || null)} className={`${BOTAO_PERIGO_LEVE} sm:mr-auto`} data-testid="locais-apagar">
+                <Trash2 className="size-4" aria-hidden="true" />
+                Apagar local
+              </button>
+            )}
             <button type="button" onClick={() => setEdicao(null)} className={BOTAO_SECUNDARIO}>Cancelar</button>
             <button type="button" onClick={salvarEdicao} className={BOTAO_PRIMARIO}>Salvar local</button>
           </div>
@@ -566,6 +640,38 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
             {erro && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700 sm:col-span-2">{erro}</p>}
           </div>
         )}
+      </Modal>
+
+      <ConfirmDialog
+        open={Boolean(apagando)}
+        title={`Apagar ${apagando?.nome || 'o local'}?`}
+        description={apagando ? [
+          'O local vai para a Lixeira de Cadastros e dá para desfazer.',
+          (usoPorLocal.get(apagando.id) || 0) > 0 ? `${plural(usoPorLocal.get(apagando.id) || 0, 'movimento conta', 'movimentos contam')} nele pelo nome: nenhum é apagado, eles voltam para Nomes sem local.` : 'Nenhum movimento conta nele.',
+        ].join(' ') : ''}
+        confirmLabel="Apagar local"
+        onCancel={() => setApagando(null)}
+        onConfirm={confirmarApagar}
+      />
+
+      <Modal
+        open={todosAberto}
+        title="Criar todos os nomes como locais?"
+        size="sm"
+        onSubmit={criarTodos}
+        onClose={() => setTodosAberto(false)}
+        footer={(
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" onClick={() => setTodosAberto(false)} className={BOTAO_SECUNDARIO}>Cancelar</button>
+            <button type="button" onClick={criarTodos} className={BOTAO_PRIMARIO} data-testid="locais-confirmar-todos">Criar {plural(faltando.length, 'local', 'locais')}</button>
+          </div>
+        )}
+      >
+        <ul className="space-y-2 text-sm text-slate-700">
+          <li className="flex gap-2"><Plus className="mt-0.5 size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />Cada nome sem local vira um local com o mesmo nome, sem código SGE.</li>
+          <li className="flex gap-2"><Pencil className="mt-0.5 size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />O tipo e o ramo saem do próprio nome (bota-fora, estoque, número do ramo). Dá para corrigir cada um depois.</li>
+          <li className="flex gap-2"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />Se um nome é só outro jeito de escrever um local que já existe, prefira Ligar: assim ele soma no local certo.</li>
+        </ul>
       </Modal>
     </div>
   );

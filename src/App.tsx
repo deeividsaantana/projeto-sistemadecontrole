@@ -1989,6 +1989,9 @@ export default function App() {
 
   const handleRestaurarCadastro = (exclusaoId: string) => handleRestaurarCadastros([exclusaoId]);
 
+  // Locais na Lixeira: a lista SGE de Materiais não oferece de novo o que foi apagado.
+  const locaisApagados = useMemo(() => new Set(exclusoes.filter(item => item.tabela === 'etapas' && !item.restauradoEm).map(item => item.registroId)), [exclusoes]);
+
   /**
    * Tira da Lixeira e joga fora a cópia guardada. A marca de exclusão fica,
    * para nenhum aparelho publicar o cadastro de volta. Não tem desfazer.
@@ -5489,6 +5492,9 @@ export default function App() {
                 onUpdateMovimentos={handleUpdateMovimentosMaterial}
                 onApplyImport={handleApplyMaterialImport}
                 onSaveEtapas={handleSaveEtapasServico}
+                onExcluirLocal={pode(currentUserRole, 'cadastros', 'excluir') ? (id, rotulo) => handleExcluirCadastro('etapas', id, rotulo) : undefined}
+                onRestaurarLocal={handleRestaurarCadastro}
+                locaisApagados={locaisApagados}
                 previstos={materiaisPrevistos}
                 onSavePrevistos={handleSaveMateriaisPrevistos}
               />

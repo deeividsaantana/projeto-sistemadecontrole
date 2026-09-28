@@ -23,7 +23,7 @@ import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
 import LancarMateriais from './materiais/LancarMateriais';
 import FichaMaterial from './materiais/FichaMaterial';
-import LocaisMateriais from './materiais/LocaisMateriais';
+import LocaisMateriais, { type ExcluirLocal } from './materiais/LocaisMateriais';
 import GraficosMateriais from './materiais/GraficosMateriais';
 import RelatoriosMateriais from './materiais/RelatoriosMateriais';
 import ApontadoresMateriais from './materiais/ApontadoresMateriais';
@@ -58,6 +58,10 @@ interface MateriaisTabProps {
   onUpdateMovimentos: (movimentos: MovimentoMaterial[], descricao: string, acao?: 'Editou' | 'Excluiu') => void;
   onApplyImport: (materials: Material[], movements: MovimentoMaterial[]) => void;
   onSaveEtapas: (etapas: EtapaServico[], descricao: string) => void;
+  /** Só para quem pode excluir cadastros: o local vai para a Lixeira de Cadastros. */
+  onExcluirLocal?: ExcluirLocal;
+  onRestaurarLocal?: (exclusaoId: string) => { ok: boolean; mensagem: string };
+  locaisApagados?: ReadonlySet<string>;
   previstos: PrevistoMaterial[];
   onSavePrevistos: (previstos: PrevistoMaterial[], descricao: string) => void;
 }
@@ -105,6 +109,9 @@ export default function MateriaisTab({
   onUpdateMovimentos,
   onApplyImport,
   onSaveEtapas,
+  onExcluirLocal,
+  onRestaurarLocal,
+  locaisApagados,
   previstos,
   onSavePrevistos,
 }: MateriaisTabProps) {
@@ -629,7 +636,7 @@ export default function MateriaisTab({
 
           {aba === 'locais' && (
             <div data-materiais-reveal>
-              <LocaisMateriais etapas={etapas} movimentos={movimentos} termo={termo} podeEditar={podeEditar} onSaveEtapas={onSaveEtapas} />
+              <LocaisMateriais etapas={etapas} movimentos={movimentos} termo={termo} podeEditar={podeEditar} onSaveEtapas={onSaveEtapas} onExcluirLocal={onExcluirLocal} onRestaurarLocal={onRestaurarLocal} locaisApagados={locaisApagados} />
             </div>
           )}
 
