@@ -53,6 +53,25 @@ import * as fx from './fixtures';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
+
+/** Quadro com estado: o que se salva no painel volta para o quadro, como no app. */
+function QuadroFrotaPreview() {
+  const [registros, setRegistros] = React.useState(fx.controlesQuadro);
+  return (
+    <QuadroFrotaTab
+      equipamentos={fx.equipamentosQuadro}
+      registros={registros}
+      gruposEquipe={[fx.grupo]}
+      abastecimentos={fx.abastecimentosQuadro as never}
+      frentes={[{ id: 'fr-av', nome: 'AV. BRASIL', situacao: 'Em execução', ativo: true, criadoEm: '', atualizadoEm: '' }]}
+      funcionarios={fx.funcionarios}
+      podeEditar
+      usuario="Deivid"
+      onSave={(registro, novo) => setRegistros(atual => (novo ? [registro, ...atual] : atual.map(item => (item.id === registro.id ? registro : item))))}
+      onNavigate={noop}
+    />
+  );
+}
 const blockRegistryDeletion = new URLSearchParams(location.search).get('blockedRegistry') === '1';
 const previewGroups = NAVIGATION_GROUPS.map(g => ({ label: g.label, items: [...g.items] }));
 const previewNotifications = [
@@ -451,16 +470,7 @@ const screens: Record<string, React.ReactNode> = {
       onReserveTicketNumbers={async count => Array.from({ length: count }, (_, i) => String(2400 + i))}
     />
   ),
-  'quadro-frota': (
-    <QuadroFrotaTab
-      equipamentos={fx.equipamentosQuadro}
-      registros={fx.controlesQuadro}
-      gruposEquipe={[fx.grupo]}
-      abastecimentos={fx.abastecimentosQuadro as never}
-      frentes={[{ id: 'fr-av', nome: 'AV. BRASIL', situacao: 'Em execução', ativo: true, criadoEm: '', atualizadoEm: '' }]}
-      onNavigate={noop}
-    />
-  ),
+  'quadro-frota': <QuadroFrotaPreview />,
   frotas: (
     <ControleEquipamentosDiarioTab
       registros={fx.controlesEquipamentos}

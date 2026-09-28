@@ -1,163 +1,290 @@
 /**
  * Desenho de perfil de cada tipo de máquina, para o cartão do quadro quando o
- * equipamento não tem foto. Corpo em âmbar, rodas e esteiras em grafite: dá
- * para bater o olho e saber o que é, sem depender de imagem da internet.
+ * equipamento não tem foto. Pintura amarela com degradê e brilho, vidro
+ * azulado, rodas e esteiras em grafite com aro claro: dá para bater o olho e
+ * saber o que é, sem depender de imagem da internet.
+ *
+ * As cores vêm das variáveis do Tailwind, com o mesmo tom em oklch se a
+ * variável não existir (sem hex solto), e cada desenho tem
+ * ids próprios para os degradês não se misturarem entre cartões.
  */
-import type { ReactElement } from 'react';
+import { useId, type ReactElement } from 'react';
 import type { Silhueta } from '../../modules/frota/quadroFrota';
 
-const CORPO = 'fill-amber-400';
-const SOMBRA = 'fill-amber-500';
-const ESCURO = 'fill-slate-700';
-const VIDRO = 'fill-sky-100';
+interface Tinta {
+  corpo: string;
+  sombra: string;
+  vidro: string;
+  metal: string;
+  tanque: string;
+}
+
+const ESCURO = 'fill-slate-800';
 const ARO = 'fill-slate-300';
+const DETALHE = 'fill-slate-700';
 
 const Roda = ({ x, y, r }: { x: number; y: number; r: number }) => (
   <g>
     <circle cx={x} cy={y} r={r} className={ESCURO} />
-    <circle cx={x} cy={y} r={r * 0.45} className={ARO} />
+    <circle cx={x} cy={y} r={r * 0.78} className="fill-slate-700" />
+    <circle cx={x} cy={y} r={r * 0.46} className={ARO} />
+    <circle cx={x} cy={y} r={r * 0.16} className={DETALHE} />
   </g>
 );
 
 const Esteira = ({ x, y, largura }: { x: number; y: number; largura: number }) => (
   <g>
-    <rect x={x} y={y} width={largura} height={10} rx={5} className={ESCURO} />
-    {Array.from({ length: Math.floor(largura / 9) }, (_, i) => (
-      <circle key={i} cx={x + 6 + i * 9} cy={y + 5} r={2.2} className={ARO} />
+    <rect x={x} y={y} width={largura} height={11} rx={5.5} className={ESCURO} />
+    <rect x={x + 2} y={y + 2} width={largura - 4} height={7} rx={3.5} className="fill-slate-600" />
+    {Array.from({ length: Math.floor((largura - 6) / 8) }, (_, i) => (
+      <circle key={i} cx={x + 7 + i * 8} cy={y + 5.5} r={2.3} className={ARO} />
+    ))}
+    {Array.from({ length: Math.floor(largura / 4) }, (_, i) => (
+      <rect key={`g${i}`} x={x + 2 + i * 4} y={y + 9.6} width={2} height={1.4} className={DETALHE} />
     ))}
   </g>
 );
 
-const Cabine = ({ x, y, w, h }: { x: number; y: number; w: number; h: number }) => (
+const Cabine = ({ x, y, w, h, t }: { x: number; y: number; w: number; h: number; t: Tinta }) => (
   <g>
-    <rect x={x} y={y} width={w} height={h} rx={2} className={SOMBRA} />
-    <rect x={x + 2} y={y + 2} width={w - 4} height={h * 0.55} rx={1.5} className={VIDRO} />
+    <rect x={x} y={y} width={w} height={h} rx={2.5} fill={t.sombra} />
+    <rect x={x + 2} y={y + 2} width={w - 4} height={h * 0.56} rx={1.5} fill={t.vidro} />
+    <path d={`M${x + 3} ${y + 3} L${x + w * 0.45} ${y + 3} L${x + 3} ${y + h * 0.5} Z`} className="fill-white/50" />
+    <rect x={x - 1} y={y - 1.5} width={w + 2} height={2.5} rx={1} className={DETALHE} />
   </g>
 );
 
-const DESENHOS: Record<Silhueta, () => ReactElement> = {
-  escavadeira: () => (
+/** Faixa de brilho em cima da carroceria, para dar volume. */
+const Brilho = ({ x, y, w }: { x: number; y: number; w: number }) => (
+  <rect x={x} y={y} width={w} height={1.6} rx={0.8} className="fill-white/45" />
+);
+
+const Escape = ({ x, y }: { x: number; y: number }) => (
+  <g>
+    <rect x={x} y={y} width={2.4} height={8} rx={1} className={DETALHE} />
+    <rect x={x - 0.4} y={y - 1} width={3.2} height={1.6} rx={0.6} className={ESCURO} />
+  </g>
+);
+
+const Farol = ({ x, y }: { x: number; y: number }) => <circle cx={x} cy={y} r={1.4} className="fill-amber-100" />;
+
+const DESENHOS: Record<Silhueta, (t: Tinta) => ReactElement> = {
+  escavadeira: t => (
     <>
-      <Esteira x={14} y={42} largura={46} />
-      <rect x={18} y={34} width={40} height={9} rx={2} className={CORPO} />
-      <Cabine x={20} y={20} w={14} h={15} />
-      <path d="M56 36 L70 12 L76 14 L64 38 Z" className={CORPO} />
-      <path d="M70 12 L86 22 L83 26 L70 18 Z" className={CORPO} />
-      <path d="M82 24 L90 34 L80 38 L78 30 Z" className={ESCURO} />
+      <Esteira x={12} y={42} largura={48} />
+      <rect x={14} y={39} width={44} height={4} rx={1} className={DETALHE} />
+      <path d="M16 38 L16 30 Q16 27 19 27 L56 27 Q58 27 58 30 L58 38 Z" fill={t.corpo} />
+      <rect x={16} y={34} width={42} height={4} fill={t.sombra} />
+      <Brilho x={19} y={28.5} w={36} />
+      <Cabine x={34} y={13} w={16} h={15} t={t} />
+      <rect x={17} y={29} width={10} height={5} rx={1} className="fill-slate-800/25" />
+      <Escape x={22} y={19} />
+      <path d="M52 30 L69 9 L75 11 L60 33 Z" fill={t.corpo} />
+      <path d="M69 9 L86 20 L83 25 L70 16 Z" fill={t.sombra} />
+      <rect x={60} y={17} width={10} height={2} rx={1} transform="rotate(-52 65 18)" fill={t.metal} />
+      <path d="M82 23 L91 33 L89 37 L79 38 L77 31 Z" className={ESCURO} />
+      <path d="M79 38 L81 40 M83 38 L85 40 M87 37 L89 39" className="stroke-slate-800" strokeWidth={1.4} strokeLinecap="round" />
     </>
   ),
-  retro: () => (
+  retro: t => (
     <>
-      <Roda x={24} y={44} r={9} />
-      <Roda x={62} y={46} r={7} />
-      <rect x={16} y={30} width={52} height={12} rx={3} className={CORPO} />
-      <Cabine x={34} y={14} w={18} h={17} />
-      <path d="M68 34 L84 38 L86 46 L72 44 Z" className={ESCURO} />
-      <path d="M16 32 L6 18 L10 14 L20 28 Z" className={CORPO} />
-      <path d="M6 18 L2 30 L8 32 L10 22 Z" className={ESCURO} />
+      <Roda x={24} y={44} r={9.5} />
+      <Roda x={63} y={46} r={7.5} />
+      <path d="M14 42 L14 32 Q14 29 17 29 L66 29 Q69 29 69 32 L69 42 Z" fill={t.corpo} />
+      <rect x={14} y={38} width={55} height={4} fill={t.sombra} />
+      <Brilho x={17} y={30.5} w={48} />
+      <Cabine x={33} y={12} w={19} h={18} t={t} />
+      <Escape x={58} y={20} />
+      <Farol x={67} y={33} />
+      <path d="M69 34 L82 36 L86 46 L73 45 Z" className={ESCURO} />
+      <path d="M14 33 L5 19 L9 15 L19 29 Z" fill={t.corpo} />
+      <path d="M5 19 L1 31 L7 34 L10 23 Z" className={ESCURO} />
     </>
   ),
-  rolo: () => (
+  rolo: t => (
     <>
-      <circle cx={70} cy={40} r={13} className={ESCURO} />
-      <circle cx={70} cy={40} r={9} className={SOMBRA} />
-      <Roda x={24} y={44} r={9} />
-      <rect x={14} y={28} width={46} height={12} rx={3} className={CORPO} />
-      <path d="M58 30 L74 26 L80 30 L60 38 Z" className={CORPO} />
-      <Cabine x={24} y={12} w={18} h={17} />
+      <circle cx={70} cy={40} r={13.5} className={ESCURO} />
+      <circle cx={70} cy={40} r={10.5} fill={t.metal} />
+      <circle cx={70} cy={40} r={4} className={DETALHE} />
+      <path d="M58 26 L78 23 L84 28 L62 37 Z" fill={t.sombra} />
+      <Roda x={24} y={44} r={9.5} />
+      <path d="M12 41 L12 30 Q12 27 15 27 L58 27 Q61 27 61 30 L61 41 Z" fill={t.corpo} />
+      <rect x={12} y={37} width={49} height={4} fill={t.sombra} />
+      <Brilho x={15} y={28.5} w={42} />
+      <Cabine x={22} y={10} w={19} h={18} t={t} />
+      <Escape x={48} y={18} />
     </>
   ),
-  trator: () => (
+  trator: t => (
     <>
-      <Esteira x={16} y={42} largura={54} />
-      <rect x={20} y={28} width={46} height={15} rx={3} className={CORPO} />
-      <Cabine x={24} y={12} w={18} h={17} />
-      <path d="M72 22 L80 22 L82 50 L72 50 Z" className={ESCURO} />
-      <path d="M66 34 L74 34 L74 38 L66 38 Z" className={CORPO} />
+      <Esteira x={14} y={42} largura={56} />
+      <path d="M18 42 L18 30 Q18 26 22 26 L64 26 Q67 26 67 30 L67 42 Z" fill={t.corpo} />
+      <rect x={18} y={38} width={49} height={4} fill={t.sombra} />
+      <Brilho x={21} y={27.5} w={42} />
+      <rect x={46} y={29} width={16} height={6} rx={1} className="fill-slate-800/25" />
+      <Cabine x={22} y={10} w={19} h={17} t={t} />
+      <Escape x={52} y={16} />
+      <path d="M71 18 L80 18 Q83 34 80 51 L71 51 Z" className={ESCURO} />
+      <path d="M72 20 L78 20 Q80 34 78 49 L72 49 Z" fill={t.metal} />
+      <rect x={66} y={34} width={6} height={4} fill={t.corpo} />
+      <path d="M14 44 L6 49 L10 52 L16 48 Z" className={DETALHE} />
     </>
   ),
-  motoniveladora: () => (
+  motoniveladora: t => (
     <>
-      <Roda x={16} y={46} r={6} />
-      <Roda x={28} y={46} r={6} />
-      <Roda x={82} y={46} r={6} />
-      <rect x={10} y={32} width={26} height={9} rx={2} className={CORPO} />
-      <rect x={34} y={30} width={50} height={5} rx={2} className={CORPO} />
-      <Cabine x={22} y={16} w={14} h={17} />
-      <path d="M44 40 L64 40 L66 46 L42 46 Z" className={ESCURO} />
+      <Roda x={15} y={46} r={6.5} />
+      <Roda x={28} y={46} r={6.5} />
+      <Roda x={83} y={46} r={6.5} />
+      <path d="M8 41 L8 32 Q8 30 10 30 L37 30 L37 41 Z" fill={t.corpo} />
+      <rect x={8} y={38} width={29} height={3} fill={t.sombra} />
+      <path d="M35 28 L86 28 Q88 28 88 31 L88 35 L35 35 Z" fill={t.corpo} />
+      <Brilho x={38} y={29} w={46} />
+      <Cabine x={22} y={13} w={15} h={18} t={t} />
+      <Escape x={12} y={22} />
+      <path d="M43 40 L66 40 L68 47 L41 47 Z" fill={t.metal} />
+      <path d="M41 47 L68 47" className="stroke-slate-800" strokeWidth={1.4} />
+      <rect x={52} y={35} width={3} height={5} className={DETALHE} />
     </>
   ),
-  carregadeira: () => (
+  carregadeira: t => (
     <>
-      <Roda x={26} y={44} r={10} />
-      <Roda x={60} y={44} r={10} />
-      <rect x={16} y={28} width={50} height={12} rx={3} className={CORPO} />
-      <Cabine x={34} y={12} w={18} h={17} />
-      <path d="M66 30 L78 34 L78 40 L68 38 Z" className={CORPO} />
-      <path d="M76 24 L90 30 L88 46 L76 44 Z" className={ESCURO} />
+      <Roda x={25} y={43} r={11} />
+      <Roda x={60} y={43} r={11} />
+      <path d="M13 38 L13 28 Q13 25 16 25 L65 25 Q68 25 68 28 L68 38 Z" fill={t.corpo} />
+      <rect x={13} y={34} width={55} height={4} fill={t.sombra} />
+      <Brilho x={16} y={26.5} w={48} />
+      <Cabine x={34} y={8} w={19} h={18} t={t} />
+      <Escape x={20} y={15} />
+      <Farol x={66} y={29} />
+      <path d="M66 28 L78 32 L78 38 L68 37 Z" fill={t.sombra} />
+      <path d="M75 21 Q91 22 91 31 L89 47 L75 45 Z" className={ESCURO} />
+      <path d="M77 23 Q88 24 88 31 L87 44 L77 43 Z" fill={t.metal} />
     </>
   ),
-  agricola: () => (
+  agricola: t => (
     <>
-      <Roda x={28} y={40} r={14} />
-      <Roda x={70} y={46} r={8} />
-      <rect x={36} y={30} width={40} height={10} rx={3} className={CORPO} />
-      <Cabine x={24} y={10} w={20} h={20} />
-      <rect x={64} y={24} width={3} height={7} className={ESCURO} />
+      <Roda x={27} y={39} r={15} />
+      <Roda x={72} y={46} r={8.5} />
+      <path d="M36 38 L36 30 Q36 27 39 27 L79 27 Q82 27 82 30 L82 38 Z" fill={t.corpo} />
+      <rect x={36} y={35} width={46} height={3} fill={t.sombra} />
+      <Brilho x={39} y={28.5} w={40} />
+      <Cabine x={20} y={6} w={22} h={22} t={t} />
+      <Escape x={64} y={18} />
+      <Farol x={80} y={31} />
+      <path d="M14 30 Q27 21 40 30" className="fill-none stroke-slate-800" strokeWidth={2.4} />
     </>
   ),
-  caminhao: () => (
+  caminhao: t => (
     <>
-      <Roda x={22} y={46} r={7} />
-      <Roda x={58} y={46} r={7} />
-      <Roda x={74} y={46} r={7} />
-      <path d="M36 20 L86 20 L82 40 L36 40 Z" className={CORPO} />
-      <rect x={10} y={22} width={24} height={20} rx={3} className={SOMBRA} />
-      <rect x={13} y={25} width={12} height={8} rx={1.5} className={VIDRO} />
+      <Roda x={22} y={46} r={7.5} />
+      <Roda x={58} y={46} r={7.5} />
+      <Roda x={75} y={46} r={7.5} />
+      <rect x={32} y={39} width={56} height={3} className={DETALHE} />
+      <path d="M36 18 L88 18 L85 39 L36 39 Z" fill={t.corpo} />
+      <path d="M36 32 L86.4 32 L85 39 L36 39 Z" fill={t.sombra} />
+      <Brilho x={38} y={19.5} w={46} />
+      <path d="M44 22 L44 36 M56 22 L56 36 M68 22 L68 36 M80 22 L80 36" className="stroke-slate-800/15" strokeWidth={1.6} />
+      <path d="M9 42 L9 27 Q9 21 15 21 L31 21 Q34 21 34 24 L34 42 Z" fill={t.sombra} />
+      <path d="M12 24 L25 24 L25 33 L12 33 Z" fill={t.vidro} />
+      <path d="M13 25 L19 25 L13 31 Z" className="fill-white/50" />
+      <Farol x={10} y={38} />
+      <Escape x={30} y={12} />
     </>
   ),
-  pipa: () => (
+  pipa: t => (
     <>
-      <Roda x={22} y={46} r={7} />
-      <Roda x={58} y={46} r={7} />
-      <Roda x={74} y={46} r={7} />
-      <rect x={36} y={20} width={50} height={20} rx={10} className="fill-slate-200" />
-      <rect x={36} y={28} width={50} height={3} className={ARO} />
-      <rect x={10} y={22} width={24} height={20} rx={3} className={CORPO} />
-      <rect x={13} y={25} width={12} height={8} rx={1.5} className={VIDRO} />
+      <Roda x={22} y={46} r={7.5} />
+      <Roda x={58} y={46} r={7.5} />
+      <Roda x={75} y={46} r={7.5} />
+      <rect x={32} y={39} width={56} height={3} className={DETALHE} />
+      <rect x={36} y={18} width={52} height={21} rx={10.5} fill={t.tanque} />
+      <rect x={36} y={30} width={52} height={9} rx={4.5} className="fill-slate-400/40" />
+      <rect x={40} y={20} width={44} height={2} rx={1} className="fill-white/60" />
+      <rect x={52} y={18} width={2} height={21} className="fill-slate-400/50" />
+      <rect x={70} y={18} width={2} height={21} className="fill-slate-400/50" />
+      <path d="M9 42 L9 27 Q9 21 15 21 L31 21 Q34 21 34 24 L34 42 Z" fill={t.corpo} />
+      <path d="M12 24 L25 24 L25 33 L12 33 Z" fill={t.vidro} />
+      <path d="M13 25 L19 25 L13 31 Z" className="fill-white/50" />
+      <Farol x={10} y={38} />
+      <path d="M86 40 L91 44" className="stroke-sky-500" strokeWidth={1.6} strokeLinecap="round" />
     </>
   ),
-  implemento: () => (
+  implemento: t => (
     <>
-      <path d="M10 30 L30 30 L34 34 L10 34 Z" className={ESCURO} />
-      <rect x={30} y={26} width={54} height={8} rx={2} className={CORPO} />
-      {[38, 50, 62, 74].map(x => <circle key={x} cx={x} cy={42} r={6} className={ESCURO} />)}
+      <path d="M6 30 L30 30 L34 34 L6 34 Z" className={DETALHE} />
+      <rect x={28} y={24} width={58} height={9} rx={2.5} fill={t.corpo} />
+      <rect x={28} y={29.5} width={58} height={3.5} fill={t.sombra} />
+      <Brilho x={30} y={25.5} w={54} />
+      {[38, 50, 62, 74].map(x => (
+        <g key={x}>
+          <circle cx={x} cy={42} r={7} className={ESCURO} />
+          <circle cx={x} cy={42} r={4.5} fill={t.metal} />
+        </g>
+      ))}
     </>
   ),
-  veiculo: () => (
+  veiculo: t => (
     <>
-      <Roda x={26} y={44} r={7} />
-      <Roda x={70} y={44} r={7} />
-      <path d="M12 38 L14 28 L30 26 L40 16 L62 16 L68 26 L86 28 L86 40 L12 40 Z" className="fill-slate-200" />
-      <path d="M42 19 L60 19 L64 26 L36 26 Z" className={VIDRO} />
+      <Roda x={25} y={44} r={7.5} />
+      <Roda x={71} y={44} r={7.5} />
+      <path d="M10 40 L12 29 Q13 27 16 26.5 L30 25 L40 15 Q41 14 43 14 L62 14 Q64 14 65 16 L69 25 L84 27 Q88 28 88 32 L88 40 Z" fill={t.tanque} />
+      <path d="M10 36 L88 36 L88 40 L10 40 Z" className="fill-slate-400/50" />
+      <path d="M43 17 L61 17 L65 25 L35 25 Z" fill={t.vidro} />
+      <path d="M44 18 L51 18 L44 24 Z" className="fill-white/60" />
+      <rect x={50} y={17} width={1.6} height={8} className="fill-slate-400/60" />
+      <Farol x={86} y={31} />
+      <rect x={10} y={30} width={3} height={2} rx={0.8} className="fill-rose-400" />
     </>
   ),
-  outro: () => (
+  outro: t => (
     <>
-      <Roda x={28} y={44} r={8} />
-      <Roda x={66} y={44} r={8} />
-      <rect x={16} y={24} width={62} height={16} rx={4} className={CORPO} />
-      <Cabine x={24} y={10} w={18} h={15} />
+      <Roda x={28} y={44} r={8.5} />
+      <Roda x={66} y={44} r={8.5} />
+      <path d="M14 40 L14 27 Q14 23 18 23 L74 23 Q78 23 78 27 L78 40 Z" fill={t.corpo} />
+      <rect x={14} y={35} width={64} height={5} fill={t.sombra} />
+      <Brilho x={17} y={24.5} w={58} />
+      <Cabine x={24} y={7} w={19} h={17} t={t} />
+      <Escape x={66} y={14} />
     </>
   ),
 };
 
 export function DesenhoMaquina({ tipo, className }: { tipo: Silhueta; className?: string }) {
+  const id = useId().replace(/:/g, '');
+  const tinta: Tinta = {
+    corpo: `url(#${id}c)`,
+    sombra: `url(#${id}s)`,
+    vidro: `url(#${id}v)`,
+    metal: `url(#${id}m)`,
+    tanque: `url(#${id}t)`,
+  };
   const Desenho = DESENHOS[tipo];
   return (
     <svg viewBox="0 0 96 56" className={className} aria-hidden="true" focusable="false">
-      <ellipse cx={48} cy={54} rx={40} ry={2} className="fill-slate-200" />
-      <Desenho />
+      <defs>
+        <linearGradient id={`${id}c`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style={{ stopColor: 'var(--color-amber-300, oklch(87.9% 0.169 91.605))' }} />
+          <stop offset="1" style={{ stopColor: 'var(--color-amber-500, oklch(76.9% 0.188 70.08))' }} />
+        </linearGradient>
+        <linearGradient id={`${id}s`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style={{ stopColor: 'var(--color-amber-500, oklch(76.9% 0.188 70.08))' }} />
+          <stop offset="1" style={{ stopColor: 'var(--color-amber-600, oklch(66.6% 0.179 58.318))' }} />
+        </linearGradient>
+        <linearGradient id={`${id}v`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" style={{ stopColor: 'var(--color-sky-100, oklch(95.1% 0.026 236.824))' }} />
+          <stop offset="1" style={{ stopColor: 'var(--color-sky-300, oklch(82.8% 0.111 230.318))' }} />
+        </linearGradient>
+        <linearGradient id={`${id}m`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style={{ stopColor: 'var(--color-slate-300, oklch(86.9% 0.022 252.894))' }} />
+          <stop offset="1" style={{ stopColor: 'var(--color-slate-500, oklch(55.4% 0.046 257.417))' }} />
+        </linearGradient>
+        <linearGradient id={`${id}t`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style={{ stopColor: 'var(--color-slate-100, oklch(96.8% 0.007 247.896))' }} />
+          <stop offset="1" style={{ stopColor: 'var(--color-slate-300, oklch(86.9% 0.022 252.894))' }} />
+        </linearGradient>
+      </defs>
+      <ellipse cx={48} cy={54} rx={42} ry={2.2} className="fill-slate-900/10" />
+      {Desenho(tinta)}
     </svg>
   );
 }
