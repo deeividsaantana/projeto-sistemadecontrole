@@ -4,13 +4,16 @@ import type {
   ControleEquipamentoDiario,
   Empresa,
   Equipamento,
+  FrenteServico,
   Funcionario,
   GrupoEquipe,
   ListaPresenca,
   Lubrificacao,
   MovimentoMaterial,
   OrdemServico,
+  PlanejamentoItem,
   PresencaApontamento,
+  RegistroProducao,
 } from '../types';
 
 type RegistryKind = 'comboio' | 'combustivel' | 'lubrificante' | 'etapa';
@@ -71,6 +74,9 @@ export interface CadastroUsage extends RegistryUsage {
   gruposEquipe: readonly Pick<GrupoEquipe, 'funcionarioIds'>[];
   controleEquipamentosDiario: readonly Pick<ControleEquipamentoDiario, 'equipamentoId' | 'funcionarioId'>[];
   materiaisMovimentos: readonly Pick<MovimentoMaterial, 'etapaServicoId'>[];
+  frentesServico: readonly Pick<FrenteServico, 'id' | 'nome'>[];
+  producao: readonly Pick<RegistroProducao, 'servicoId' | 'frente'>[];
+  planejamento: readonly Pick<PlanejamentoItem, 'servicoId' | 'frente'>[];
   /** Coleções da obra que guardam `obraId` (presenças, diários, produção...). */
   colecoesDaObra: Record<string, readonly { obraId?: string }[]>;
 }
@@ -116,6 +122,16 @@ export const usosDoCadastro = (tabela: string, id: string, uso: CadastroUsage): 
   } else if (tabela === 'etapas') {
     usos.push(...registryDependencies('etapa', id, uso));
     incluir('Movimentos de material', uso.materiaisMovimentos.filter(item => item.etapaServicoId === id).length);
+  } else if (tabela === 'frentesServico') {
+    // Produção e planejamento guardam a frente pelo nome, não pelo id.
+    const nome = uso.frentesServico.find(item => item.id === id)?.nome;
+    if (nome) {
+      incluir('Produção', uso.producao.filter(item => item.frente === nome).length);
+      incluir('Planejamento', uso.planejamento.filter(item => item.frente === nome).length);
+    }
+  } else if (tabela === 'servicosObra') {
+    incluir('Produção', uso.producao.filter(item => item.servicoId === id).length);
+    incluir('Planejamento', uso.planejamento.filter(item => item.servicoId === id).length);
   }
   return usos;
 };

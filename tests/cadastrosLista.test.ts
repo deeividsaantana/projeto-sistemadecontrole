@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { Empresa, Equipamento, Funcionario, ObraLocal } from '../src/types';
+import type { Empresa, Equipamento, FrenteServico, Funcionario, ObraLocal, ServicoObra } from '../src/types';
 import {
   contarSituacoes,
   filtrarLinhas,
@@ -31,6 +31,7 @@ const obras: ObraLocal[] = [{ id: 'obr-1', nome: 'Complexo do Alto Tietê', ende
 
 const dados: DadosCadastros = {
   empresas, funcionarios, equipamentos, obras, comboios: [], combustiveis: [], lubrificantes: [], etapas: [],
+  frentesServico: [], servicosObra: [],
 };
 
 test('lista de colaboradores resolve empresa e líder e marca férias como alerta', () => {
@@ -90,6 +91,7 @@ const usoVazio = (): CadastroUsage => ({
   abastecimentos: [], equipamentos: [], lubrificacoes: [], apontamentos: [],
   empresas: [], funcionarios: [], ordensServico: [], listasPresenca: [], presencasLink: [],
   gruposEquipe: [], controleEquipamentosDiario: [], materiaisMovimentos: [], colecoesDaObra: {},
+  frentesServico: [], producao: [], planejamento: [],
 });
 
 test('cadastro sem uso pode ser excluído de verdade', () => {
@@ -149,4 +151,42 @@ test('editar mantém o que a tela não mostra', () => {
   const pessoa = (montado as { registro: Funcionario & { codigoSge?: string } }).registro;
   assert.equal(pessoa.cargo, 'ENCARREGADO');
   assert.equal(pessoa.codigoSge, 'SGE-77');
+});
+
+test('frente e serviço nascem em execução, sem previsto inventado, e não repetem nome', () => {
+  const frente = montarRegistro('frentes', { ...valoresIniciais('frentes', undefined, dados), nome: 'Aterro Ramo 900' }, undefined, 'FRE-1', dados);
+  assert.equal(frente.ok, true);
+  const gravada = (frente as { registro: FrenteServico }).registro;
+  assert.equal(gravada.situacao, 'Em execução');
+  assert.equal(gravada.ativo, true);
+  assert.equal(gravada.ramoLocal, undefined);
+
+  const servico = montarRegistro('servicos', { ...valoresIniciais('servicos', undefined, dados), descricao: 'Aterro compactado', unidade: 'm³' }, undefined, 'SER-1', dados);
+  assert.equal(servico.ok, true);
+  assert.equal((servico as { registro: ServicoObra }).registro.quantidadePrevista, undefined);
+  assert.equal(montarRegistro('servicos', valoresIniciais('servicos', undefined, dados), undefined, 'SER-2', dados).ok, false);
+
+  const comFrente = { ...dados, frentesServico: [gravada] };
+  const repetida = montarRegistro('frentes', { ...valoresIniciais('frentes', undefined, comFrente), nome: 'aterro ramo 900' }, undefined, 'FRE-2', comFrente);
+  assert.equal(repetida.ok, false);
+});
+
+test('frente concluída sai dos ativos e serviço mostra o previsto com unidade', () => {
+  const frentesServico = [
+    { id: 'fr-1', nome: 'Corte Ramo 100', situacao: 'Em execução', ativo: true, criadoEm: '', atualizadoEm: '' },
+    { id: 'fr-2', nome: 'Aterro Ramo 200', situacao: 'Concluída', ativo: true, criadoEm: '', atualizadoEm: '' },
+  ] as FrenteServico[];
+  const servicosObra = [{ id: 'sv-1', descricao: 'Escavação', unidade: 'm³', quantidadePrevista: 12000, situacao: 'Ativo', ativo: true, criadoEm: '', atualizadoEm: '' }] as ServicoObra[];
+  const comObra = { ...dados, frentesServico, servicosObra };
+  assert.deepEqual(montarLinhas('frentes', comObra).map(linha => linha.ativo), [true, false]);
+  assert.equal(montarLinhas('servicos', comObra)[0].colunas.previsto, '12.000 m³');
+});
+
+test('frente e serviço usados na produção ficam travados', () => {
+  const uso = usoVazio();
+  uso.frentesServico = [{ id: 'fr-1', nome: 'Corte Ramo 100' }];
+  uso.producao = [{ servicoId: 'sv-1', frente: 'Corte Ramo 100' }];
+  assert.deepEqual(usosDoCadastro('frentesServico', 'fr-1', uso), [{ collection: 'Produção', count: 1 }]);
+  assert.deepEqual(usosDoCadastro('servicosObra', 'sv-1', uso), [{ collection: 'Produção', count: 1 }]);
+  assert.deepEqual(usosDoCadastro('servicosObra', 'sv-9', uso), []);
 });

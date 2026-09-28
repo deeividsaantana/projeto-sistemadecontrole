@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Building2, ChevronDown, Construction, Droplets, Fuel, GitBranch, HardHat, MapPin, Package, Route, Trash2, Truck, Users, type LucideIcon } from 'lucide-react';
+import { Building2, ChevronDown, ClipboardList, Construction, Droplets, Fuel, GitBranch, HardHat, MapPin, Package, Route, Trash2, Truck, Users, type LucideIcon } from 'lucide-react';
 import { CADASTRO_GRUPOS, categoriaCadastro, categoriasDoGrupo, type CadastroCategoriaId } from '../../utils/cadastrosCategorias';
 import { FOCO, reduzMovimento } from './estilos';
 
@@ -20,6 +20,8 @@ const ICONES: Record<VistaCadastros, LucideIcon> = {
   comboios: Fuel,
   obras: MapPin,
   etapas: Route,
+  frentes: HardHat,
+  servicos: ClipboardList,
   combustiveis: Fuel,
   lubrificantes: Droplets,
   lixeira: Trash2,
