@@ -5,7 +5,7 @@
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
-import { PeriodFilter, RouteMotion, buildPeriod, type PeriodValue } from './shared/ui';
+import { RouteMotion } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -476,7 +476,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
   // o controle é renderizado na barra superior, ao lado do estado da nuvem.
-  const [periodoPainel, setPeriodoPainel] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [menuSearch, setMenuSearch] = useState<string>('');
   // Preferência de notificação é do dispositivo: fica no navegador e não sobe
@@ -4952,9 +4951,6 @@ export default function App() {
           alertas={alertasDoSino}
           isCloudConnected={isCloudConnected}
           lastCloudSync={lastCloudSync}
-          filtroDaTela={activeTab === 'dashboard'
-            ? <PeriodFilter value={periodoPainel} onChange={setPeriodoPainel} />
-            : undefined}
           pendingCount={pendingCount}
           isRetryingPending={isRetryingPending}
           onRetryPending={() => void handleRetryPending()}
@@ -4972,7 +4968,6 @@ export default function App() {
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (
               <Dashboard
-                periodo={{ from: periodoPainel.from, to: periodoPainel.to }}
                 empresas={empresas}
                 obras={obras}
                 equipamentos={equipamentos}

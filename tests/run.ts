@@ -95,6 +95,7 @@ import './navigationSubtabs.test';
 import './dashboardGeneral.test';
 import './dashboardKpiCalculations.test';
 import './dashboardUsability.test';
+import './painelFiltroUnico.test';
 import './manutencaoHistorico.test';
 import './navigationCleanup.test';
 import './presencaStatus.test';

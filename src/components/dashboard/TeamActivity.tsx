@@ -1,13 +1,14 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowUpRight, Fuel, HardHat, Users } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, Fuel, HardHat, Users } from 'lucide-react';
 import type { DashboardGeneralViewModel, DashboardMeasure } from '../../utils/dashboardGeneral';
 import './TeamActivity.css';
 
 gsap.registerPlugin(useGSAP);
 
 const formatNumber = (value: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value);
+const PRIMEIRAS_EQUIPES = 5;
 const formatDate = (value: string | null) => value ? `${value.slice(8, 10)}/${value.slice(5, 7)}` : 'Sem apontamento';
 
 function ActivityLink({ title, measure, target, onNavigate, icon: Icon }: {
@@ -24,6 +25,9 @@ function ActivityLink({ title, measure, target, onNavigate, icon: Icon }: {
 
 export function TeamActivity({ view, onNavigate }: { view: DashboardGeneralViewModel; onNavigate: (target: string) => void }) {
   const scope = useRef<HTMLDivElement>(null);
+  const [todasEquipes, setTodasEquipes] = useState(false);
+  const equipesVisiveis = todasEquipes ? view.teams.items : view.teams.items.slice(0, PRIMEIRAS_EQUIPES);
+  const equipesEscondidas = view.teams.items.length - PRIMEIRAS_EQUIPES;
   const maxRecords = Math.max(1, ...view.teams.items.map(team => team.reported));
   const lastDate = view.teams.items.map(team => team.lastDate).filter((date): date is string => Boolean(date)).sort().at(-1) ?? null;
 
@@ -33,16 +37,26 @@ export function TeamActivity({ view, onNavigate }: { view: DashboardGeneralViewM
     gsap.fromTo(scope.current.querySelectorAll('.dashboard-team__bar-fill'), { scaleX: 0, transformOrigin: 'left center' }, { scaleX: 1, duration: .9, stagger: .06, ease: 'power3.out' });
   }, { scope, dependencies: [view.teams] });
 
+  // Ao abrir a lista inteira, só as equipes que acabaram de aparecer entram animadas.
+  useGSAP(() => {
+    if (!todasEquipes || !scope.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const novas = [...scope.current.querySelectorAll('[data-team-row]')].filter(row => row.hasAttribute('data-team-extra'));
+    gsap.fromTo(novas, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .45, stagger: .035, ease: 'power2.out', clearProps: 'transform' });
+  }, { scope, dependencies: [todasEquipes] });
+
   return <div ref={scope} className="dashboard-detail-grid">
     <section className="dashboard-detail-panel" aria-labelledby="dashboard-teams-title" data-dashboard-reveal>
       <div className="dashboard-detail-panel__head"><div><p className="dashboard-detail-panel__kicker">Pessoas em campo</p><h2 id="dashboard-teams-title">Equipes e apontamentos</h2></div><button type="button" className="dashboard-detail-panel__open" onClick={() => onNavigate('Equipes')} aria-label="Abrir equipes"><ArrowUpRight size={18} /></button></div>
       <div className="dashboard-team-summary"><div><strong>{view.teams.withRecords}<span> / {view.teams.total}</span></strong><p>equipes com registro no período</p></div><div className="dashboard-team-summary__date"><span>Último envio</span><strong>{formatDate(lastDate)}</strong></div></div>
-      {view.teams.items.length ? <div className="dashboard-team-list">{view.teams.items.slice(0, 5).map(team => <button key={team.id} type="button" className="dashboard-team" onClick={() => onNavigate('Equipes')} data-team-row>
+      {view.teams.items.length ? <div className="dashboard-team-list">{equipesVisiveis.map((team, index) => <button key={team.id} type="button" className="dashboard-team" onClick={() => onNavigate('Equipes')} data-team-row data-team-extra={index >= PRIMEIRAS_EQUIPES || undefined}>
         <span className="dashboard-team__badge"><Users size={17} /></span>
         <span className="dashboard-team__main"><span className="dashboard-team__top"><strong>{team.name}</strong><small>{formatDate(team.lastDate)}</small></span><span className="dashboard-team__front">{team.front}</span><span className="dashboard-team__bar"><span className="dashboard-team__bar-fill" style={{ width: `${team.reported / maxRecords * 100}%` }} /></span></span>
         <span className="dashboard-team__count"><strong>{team.reported ? team.present : '—'}</strong><small>{team.reported ? 'presenças' : 'sem registro'}</small></span>
       </button>)}</div> : <div className="dashboard-detail-panel__empty">Nenhuma equipe ativa cadastrada nesta obra.</div>}
-      {view.teams.items.length > 5 && <button type="button" className="dashboard-detail-panel__all" onClick={() => onNavigate('Equipes')}>Ver todas as {view.teams.total} equipes <ArrowUpRight size={15} /></button>}
+      {equipesEscondidas > 0 && <button type="button" className="dashboard-detail-panel__all" aria-expanded={todasEquipes} onClick={() => setTodasEquipes(aberto => !aberto)}>
+        {todasEquipes ? 'Mostrar menos equipes' : `Mostrar mais equipes (+${equipesEscondidas})`}
+        <ChevronDown size={16} className={todasEquipes ? 'dashboard-detail-panel__all-icon is-open' : 'dashboard-detail-panel__all-icon'} aria-hidden="true" />
+      </button>}
     </section>
 
     <section className="dashboard-detail-panel dashboard-detail-panel--activity" aria-labelledby="dashboard-activity-title" data-dashboard-reveal>

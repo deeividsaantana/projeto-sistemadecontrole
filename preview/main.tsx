@@ -352,6 +352,12 @@ function MeuDiaPreview() {
   );
 }
 
+// Mais de cinco equipes, para o preview mostrar o "Mostrar mais equipes" do painel.
+const equipesPainel = [fx.grupo, ...fx.equipesPresenca,
+  ...['Terraplenagem Norte', 'Drenagem', 'Pavimentação', 'Topografia', 'Obras de arte'].map((nome, i) => ({
+    ...fx.grupo, id: `painel-extra-${i}`, nome: `Equipe ${nome}`, frenteServico: `Ramo ${(i + 3) * 100}`, token: `painel-extra-${i}`,
+  }))];
+
 const screens: Record<string, React.ReactNode> = {
   'meu-dia': <MeuDiaPreview />,
   sidebar: (
@@ -835,7 +841,7 @@ const screens: Record<string, React.ReactNode> = {
       ticketsJazida={fx.ticketsJazida}
       presencasLink={fx.registrosEnviados}
       controlesEquipamentos={fx.controlesEquipamentos}
-      gruposEquipe={[fx.grupo]}
+      gruposEquipe={equipesPainel}
       movimentosMaterial={movimentosComFotos}
       onNavigate={noop}
     />
