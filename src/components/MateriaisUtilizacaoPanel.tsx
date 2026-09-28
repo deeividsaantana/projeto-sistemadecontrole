@@ -23,6 +23,9 @@ interface Props {
   etapas: EtapaServico[];
   responsavel: string;
   podeEditar: boolean;
+  /** Classe escolhida no menu ou nas subabas; vazio mostra todas. */
+  classe: ClasseMaterial | '';
+  onClasse: (classe: ClasseMaterial | '') => void;
   onSaveMovimentos: (movimentos: MovimentoMaterial[], descricao: string) => void;
   onUpdateMovimentos: (movimentos: MovimentoMaterial[], descricao: string, acao?: 'Editou' | 'Excluiu') => void;
 }
@@ -37,7 +40,7 @@ const inCountUnit = (material: Material | undefined, quantity: number) => toPiec
 
 const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
 
-export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas, responsavel, podeEditar, onSaveMovimentos, onUpdateMovimentos }: Props) {
+export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas, responsavel, podeEditar, classe, onClasse, onSaveMovimentos, onUpdateMovimentos }: Props) {
   const escopo = useRef<HTMLElement>(null);
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState('');
@@ -45,7 +48,6 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
   const [vinculos, setVinculos] = useState<Record<string, string>>({});
   const [apontar, setApontar] = useState<{ ramoId: string; data: string; quantidades: Record<string, string> } | null>(null);
   const [confirmarDesfazer, setConfirmarDesfazer] = useState('');
-  const [classe, setClasse] = useState<ClasseMaterial | ''>('');
 
   const catalogo = useMemo(() => new Map(materiais.map(item => [item.id, item])), [materiais]);
   const ramoDe = useMemo(() => resolvedorDeRamo(etapas, movimentos), [etapas, movimentos]);
@@ -59,8 +61,8 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
   }, [catalogo]);
   // Subabas: só as classes que têm material em algum ramo, na ordem fixa.
   const classes = useMemo(() => CLASSES_MATERIAL
-    .map(nome => ({ nome, materiais: new Set(todasLinhas.filter(item => classeDaLinha(item) === nome).map(item => item.materialId)).size }))
-    .filter(item => item.materiais > 0), [todasLinhas, classeDaLinha]);
+    .filter(nome => todasLinhas.some(item => classeDaLinha(item) === nome))
+    .map(nome => ({ nome })), [todasLinhas, classeDaLinha]);
   const linhas = useMemo(() => (classe ? todasLinhas.filter(item => classeDaLinha(item) === classe) : todasLinhas), [todasLinhas, classe, classeDaLinha]);
   const porTipo = useMemo(() => (classe ? resumoPorTipo(linhas, catalogo) : []), [classe, linhas, catalogo]);
   const termo = normalizeComparable(busca).trim();
@@ -212,18 +214,17 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
 
       {classes.length > 1 && (
         <nav data-uso-reveal aria-label="Classes de material" className="flex gap-2 overflow-x-auto pb-1">
-          {[{ nome: '' as const, materiais: new Set(todasLinhas.map(item => item.materialId)).size }, ...classes].map(item => {
+          {[{ nome: '' as const }, ...classes].map(item => {
             const ativo = classe === item.nome;
             return (
               <button
                 key={item.nome || 'todas'}
                 type="button"
                 aria-pressed={ativo}
-                onClick={() => { setClasse(item.nome); setAberto(''); }}
+                onClick={() => { onClasse(item.nome); setAberto(''); }}
                 className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-bold transition-colors active:scale-[0.98] ${ativo ? 'border-[#176b4d] bg-[#176b4d] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-[#176b4d]'} ${focusRing}`}
               >
                 {item.nome || 'Todas'}
-                <span className={`rounded-full px-1.5 text-xs tabular-nums ${ativo ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>{item.materiais}</span>
               </button>
             );
           })}
@@ -234,7 +235,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
         <article data-uso-reveal className="overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-labelledby="uso-classe-titulo">
           <header className="border-b border-slate-100 px-4 pb-3 pt-4">
             <h2 id="uso-classe-titulo" className="text-base font-black text-slate-950">{classe}: quanto chegou e quanto foi usado</h2>
-            <p className="mt-0.5 text-xs text-slate-500">Soma de todos os ramos{porTipo.some(item => item.unidade === 'pç') ? '. Tubo conta em peças' : ''}.</p>
+            <p className="mt-0.5 text-xs text-slate-500">Soma de todos os ramos{classe.startsWith('Tubo') && porTipo.some(item => item.unidade === 'pç') ? '. Tubo conta em peças' : ''}.</p>
           </header>
           <ul className="divide-y divide-slate-100">
             {porTipo.map(item => {
