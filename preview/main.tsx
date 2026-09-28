@@ -74,6 +74,12 @@ const previewNotifications = [
 // ?emUso=alguns só um em cada três fica travado, para conferir o lote misto.
 const algunsEmUso = new URLSearchParams(location.search).get('emUso') === 'alguns';
 const comListaSge = new URLSearchParams(location.search).get('sge') === '1';
+// Com ?vazio=1 abre sem nenhuma estaca, para conferir o primeiro uso.
+function EstacasPreview() {
+  const [controle, setControle] = React.useState(() => (new URLSearchParams(window.location.search).get('vazio') ? { lotes: [], cravacoes: [] } : fx.controleEstacas));
+  return <EstacasTab controle={controle} obras={fx.obras} onChange={setControle} responsavel="Deivid" />;
+}
+
 function CadastrosPreview() {
   const [listas, setListas] = React.useState<Record<string, Array<{ id: string } & Record<string, unknown>>>>(() => ({
     empresas: [...fx.empresas],
@@ -392,13 +398,7 @@ const screens: Record<string, React.ReactNode> = {
   ),
   usuarios: <UsuariosTab />,
   cadastros: <CadastrosPreview />,
-  estacas: (
-    <EstacasTab
-      controle={{ lotes: [], cravacoes: [] }}
-      obras={fx.obras}
-      onChange={noop}
-    />
-  ),
+  estacas: <EstacasPreview />,
   configuracoes: (
     <ConfiguracoesTab
       historyLogs={[]}

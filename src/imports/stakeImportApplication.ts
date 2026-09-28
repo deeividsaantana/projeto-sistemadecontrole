@@ -9,7 +9,8 @@ import type { ImportPreview } from './types';
 
 /**
  * Extração dos campos por aba replica EXATAMENTE as regras já em produção em
- * EstacasTab.tsx (`importWorkbook`): mesma ordem/nome de coluna, mesmo regex
+ * o importador direto que existia em EstacasTab.tsx (`importWorkbook`,
+ * removido em 28/09/2026 quando a aba foi refeita): mesma ordem/nome de coluna, mesmo regex
  * de perfil, mesma fórmula de sobra. Isso não é redescoberto aqui — é
  * reaproveitado, só embrulhado no formato novo de lineage/lote/dry-run.
  */
@@ -39,7 +40,7 @@ const buildLote = (raw: Record<string, unknown>): Omit<LoteEstaca, 'id' | 'criad
   const notaFiscal = getImportValue(raw, LOTE_ALIASES.notaFiscal);
   const descricao = getImportValue(raw, LOTE_ALIASES.descricao);
   const comprimentoM = normalizeImportDecimalOrNull(getImportValue(raw, LOTE_ALIASES.comprimentoM));
-  // Mesmo gate de EstacasTab.importWorkbook: sem NF, descrição ou comprimento
+  // Mesmo gate do antigo EstacasTab.importWorkbook: sem NF, descrição ou comprimento
   // válido, a linha não vira lote — fica em conferência, nunca com zero
   // inventado no comprimento.
   if (!notaFiscal || !descricao || !comprimentoM || comprimentoM <= 0) return undefined;
@@ -79,7 +80,7 @@ const buildLote = (raw: Record<string, unknown>): Omit<LoteEstaca, 'id' | 'criad
 const buildCravacao = (raw: Record<string, unknown>): Omit<CravacaoEstaca, 'id' | 'criadoEm' | 'loteId'> | undefined => {
   const identificacao = getImportValue(raw, CRAVACAO_ALIASES.identificacao);
   const comprimentoM = normalizeImportDecimalOrNull(getImportValue(raw, CRAVACAO_ALIASES.comprimentoM));
-  // Mesmo gate de EstacasTab.saveDriving/importWorkbook: sem identificação ou
+  // Mesmo gate do antigo EstacasTab.saveDriving/importWorkbook: sem identificação ou
   // comprimento válido, fica em conferência.
   if (!identificacao || !comprimentoM || comprimentoM <= 0) return undefined;
   const comprimentoCravadoM = normalizeImportDecimalOrNull(getImportValue(raw, CRAVACAO_ALIASES.comprimentoCravadoM)) || 0;

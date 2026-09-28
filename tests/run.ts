@@ -179,6 +179,7 @@ import './fichaMaterial.test';
 import './locaisSge.test';
 import './previstoMateriais.test';
 import './botaFora.test';
+import './avancoEstacas.test';
 import './graficosMateriais.test';
 import './relatoriosMateriais.test';
 import './apontadores.test';

@@ -277,3 +277,41 @@ export const movimentosUtilizacao: MovimentoMaterial[] = [
   { id: 'm1', data: '2026-08-26', tipo: 'Entrada', materialId: 'chapa-18', materialDescricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', quantidade: 50, unidade: 'UN', notaFiscal: '5453', destino: 'Drenagem Ramo 1400 / 1300', responsavel: 'Importação', criadoEm: '2026-08-26T08:00:00.000Z' } as MovimentoMaterial,
   { id: 'm2', data: '2026-07-02', tipo: 'Entrada', materialId: 'chapa-18', materialDescricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', quantidade: 400, unidade: 'UN', notaFiscal: '4789', destino: 'Ramo 1400', responsavel: 'Importação', criadoEm: '2026-07-02T08:00:00.000Z' } as MovimentoMaterial,
 ];
+
+// Estacas prancha no formato da planilha de agosto (frente em "identificação",
+// nome da estaca em "perfil"), com as a cravar como profundidade zero.
+const diaAtras = (dias: number) => {
+  const data = new Date();
+  data.setDate(data.getDate() - dias);
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+};
+const cravacaoFixture = (frente: string, numero: number, cravada: boolean, dias: number): import('../src/types').CravacaoEstaca => {
+  const comprimento = [12, 10.5, 11, 9.5, 12][numero % 5];
+  const cravado = cravada ? comprimento - [1.4, 1.8, 1.5, 2][numero % 4] : 0;
+  return {
+    id: `fx-estaca-${frente}-${numero}`,
+    data: diaAtras(dias),
+    item: String(numero),
+    servico: 'Cravação de estaca prancha',
+    identificacao: frente,
+    perfil: `Estaca ${numero}`,
+    comprimentoM: comprimento,
+    comprimentoCravadoM: cravado,
+    sobraM: cravada ? Math.round((comprimento - cravado) * 100) / 100 : 0,
+    perdaM: cravada && numero % 17 === 0 ? 0.5 : 0,
+    responsavel: 'Deivid',
+    observacao: '',
+    origem: 'Manual',
+    criadoEm: '2026-09-01T00:00:00Z',
+  };
+};
+export const controleEstacas: import('../src/types').ControleEstacas = {
+  lotes: [
+    { id: 'fx-lote-1', data: diaAtras(20), hora: '08:10', movimento: 'Entrada', notaFiscal: '45872', materialCodigo: 'EP-AZ18', descricao: 'Estaca prancha AZ 18-700 12 m', tipo: 'ESTACA PRANCHA', perfilModelo: 'AZ 18-700', comprimentoM: 12, unidade: 'UN', pesoKg: 18400, quantidadeFisica: 40, valorUnitario: 7.2, valorTotal: 132480, placaCavalo: 'FTR4E21', placaCarreta: 'GHJ1B22', transportadora: 'Rodomais', destino: 'AP 12', tipoCarregamento: 'Feixe central', status: 'Pendente', nfConferida: true, divergenciaNF: '', responsavel: 'Deivid', observacao: '', origem: 'Manual', criadoEm: '2026-09-01T00:00:00Z' },
+    { id: 'fx-lote-2', data: diaAtras(6), hora: '14:30', movimento: 'Entrada', notaFiscal: '46011', materialCodigo: 'EP-AZ18', descricao: 'Estaca prancha AZ 18-700 10,5 m', tipo: 'ESTACA PRANCHA', perfilModelo: 'AZ 18-700', comprimentoM: 10.5, unidade: 'UN', pesoKg: 12100, quantidadeFisica: 30, valorUnitario: 7.2, valorTotal: 87120, placaCavalo: 'FTR4E21', placaCarreta: 'GHJ1B22', transportadora: 'Rodomais', destino: 'Ramo 900', tipoCarregamento: 'Feixe central', status: 'Pendente', nfConferida: false, divergenciaNF: '', responsavel: 'Deivid', observacao: '', origem: 'Manual', criadoEm: '2026-09-01T00:00:00Z' },
+  ],
+  cravacoes: [
+    ...Array.from({ length: 64 }, (_, indice) => cravacaoFixture('AP 12 ferradura', indice + 1, indice < 41, 13 - Math.floor(indice / 3.5))),
+    ...Array.from({ length: 36 }, (_, indice) => cravacaoFixture('Ramo 900 lado esquerdo', indice + 1, indice < 9, 4 - Math.floor(indice / 3))),
+  ],
+};
