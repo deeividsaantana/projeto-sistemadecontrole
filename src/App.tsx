@@ -5475,6 +5475,12 @@ export default function App() {
                 onSaveRotina={handleSaveRotinaDiaria}
                 onSavePendencia={handleSavePendenciaRotina}
                 onSaveModelo={handleSaveModeloRotina}
+                frentes={frentesServico}
+                servicos={servicosObra}
+                producao={producaoRegistros}
+                planos={planejamentoItens}
+                onSaveProducao={pode(currentUserRole, 'producao', 'editar') ? handleSaveProducao : undefined}
+                onSavePlano={pode(currentUserRole, 'planejamento', 'editar') ? handleSavePlanejamento : undefined}
               />
             )}
 

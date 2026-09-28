@@ -1,4 +1,4 @@
-import type { EtapaServico, ModeloRotina, PendenciaRotina, PrevistoMaterial, RotinaDiaria } from '../src/types';
+import type { EtapaServico, FrenteServico, ModeloRotina, PendenciaRotina, PlanejamentoItem, PrevistoMaterial, RegistroProducao, RotinaDiaria, ServicoObra } from '../src/types';
 import MeuDiaTab from '../src/components/MeuDiaTab';
 import { planoCargaSge } from '../src/modules/materials/locaisSge';
 import React from 'react';
@@ -299,6 +299,29 @@ function MeuDiaPreview() {
     { ...base, id: 'p5', titulo: 'Organizar as fotos da semana por ramo', prioridade: 'rotina', tipo: 'outro', dia: hoje },
   ]);
   const [modelos, setModelos] = React.useState<ModeloRotina[]>([]);
+  const carimbo = { criadoEm: `${ontem}T10:00:00Z`, atualizadoEm: `${ontem}T10:00:00Z`, ativo: true };
+  const inicioMes = `${hoje.slice(0, 8)}01`;
+  const fimMes = new Date(Date.UTC(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)), 0)).toISOString().slice(0, 10);
+  const frentes: FrenteServico[] = [
+    { ...carimbo, id: 'f900', nome: 'Ramo 900', servico: 'Aterro e espinha', responsavel: 'Carlos', situacao: 'Em execução' },
+    { ...carimbo, id: 'f700', nome: 'Ramo 700', servico: 'Corte', responsavel: 'Marcos', situacao: 'Em execução' },
+    { ...carimbo, id: 'f1400', nome: 'Ramo 1400', servico: 'Base de reforço', situacao: 'Em execução' },
+  ];
+  const servicos: ServicoObra[] = [
+    { ...carimbo, id: 'aterro', descricao: 'Aterro compactado', unidade: 'm³', situacao: 'Ativo' },
+    { ...carimbo, id: 'corte', descricao: 'Corte e carga', unidade: 'm³', situacao: 'Ativo' },
+    { ...carimbo, id: 'brita', descricao: 'Coluna de brita', unidade: 'm', situacao: 'Ativo' },
+  ];
+  const [producao, setProducao] = React.useState<RegistroProducao[]>(() => [
+    { ...carimbo, id: 'r1', data: inicioMes, servicoId: 'aterro', servicoDescricao: 'Aterro compactado', unidade: 'm³', quantidade: 3200, frente: 'Ramo 900', responsavel: 'Deivid Santana' },
+    { ...carimbo, id: 'r2', data: hoje, servicoId: 'aterro', servicoDescricao: 'Aterro compactado', unidade: 'm³', quantidade: 480, frente: 'Ramo 900', responsavel: 'Deivid Santana' },
+    { ...carimbo, id: 'r3', data: hoje, servicoId: 'brita', servicoDescricao: 'Coluna de brita', unidade: 'm', quantidade: 96, frente: 'Ramo 900', responsavel: 'Deivid Santana' },
+    { ...carimbo, id: 'r4', data: ontem, servicoId: 'corte', servicoDescricao: 'Corte e carga', unidade: 'm³', quantidade: 1500, frente: 'Ramo 700', responsavel: 'Deivid Santana' },
+  ]);
+  const [planos, setPlanos] = React.useState<PlanejamentoItem[]>(() => [
+    { ...carimbo, id: 'p1', dataInicio: inicioMes, dataFim: fimMes, servicoId: 'aterro', servicoDescricao: 'Aterro compactado', unidade: 'm³', quantidadePlanejada: 12000, frente: 'Ramo 900', responsavel: 'Deivid Santana', situacao: 'Em execução' },
+    { ...carimbo, id: 'p2', dataInicio: inicioMes, dataFim: fimMes, servicoId: 'corte', servicoDescricao: 'Corte e carga', unidade: 'm³', quantidadePlanejada: 6000, frente: 'Ramo 700', responsavel: 'Deivid Santana', situacao: 'Em execução' },
+  ]);
   const trocar = <T extends { id: string }>(lista: T[], item: T) => (lista.some(atual => atual.id === item.id) ? lista.map(atual => (atual.id === item.id ? item : atual)) : [...lista, item]);
   return (
     <MeuDiaTab
@@ -309,6 +332,12 @@ function MeuDiaPreview() {
       onSaveRotina={rotina => setRotinas(atual => trocar(atual, rotina))}
       onSavePendencia={pendencia => setPendencias(atual => trocar(atual, pendencia))}
       onSaveModelo={modelo => setModelos(atual => trocar(atual, modelo))}
+      frentes={frentes}
+      servicos={servicos}
+      producao={producao}
+      planos={planos}
+      onSaveProducao={registro => setProducao(atual => [registro, ...atual])}
+      onSavePlano={plano => setPlanos(atual => [plano, ...atual])}
     />
   );
 }
