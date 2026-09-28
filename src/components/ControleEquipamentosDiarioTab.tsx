@@ -7,9 +7,9 @@ import {
   Database,
   CheckCircle2,
   ChevronDown,
-  FileDown,
   FileSpreadsheet,
   History,
+  Keyboard,
   LayoutGrid,
   Pencil,
   Plus,
@@ -57,6 +57,7 @@ import FleetBulkActions from './fleet/FleetBulkActions';
 import FleetDetailDrawer from './fleet/FleetDetailDrawer';
 import DailyRecordForm from './fleet/DailyRecordForm';
 import FleetReportLayout from './fleet/FleetReportLayout';
+import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/FleetImportPreviewModal';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from './cadastros/estilos';
@@ -90,6 +91,21 @@ type ConfirmationState =
   | { kind: 'status'; ids: string[]; status: FleetOperationalStatus };
 
 type FleetView = 'today' | 'history' | 'registry';
+
+const CHAVE_VISTA = 'renea_frota_vista';
+const vistaGuardada = (): FleetView => {
+  try {
+    const salva = window.localStorage.getItem(CHAVE_VISTA);
+    return salva === 'history' || salva === 'registry' ? salva : 'today';
+  } catch {
+    return 'today';
+  }
+};
+
+const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string }> = [
+  { teclas: 'N', oQueFaz: 'Novo lançamento' },
+  { teclas: '?', oQueFaz: 'Mostrar esta lista' },
+];
 
 const dataLonga = (dia: string) => /^\d{4}-\d{2}-\d{2}$/.test(dia)
   ? new Date(`${dia}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -186,7 +202,16 @@ export default function ControleEquipamentosDiarioTab({
   const [message, setMessage] = useState('');
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>('info');
   const [exporting, setExporting] = useState<'pdf' | 'excel' | 'weekly-pdf' | 'weekly-excel' | ''>('');
-  const [activeView, setActiveView] = useState<FleetView>('today');
+  const [activeView, setActiveViewState] = useState<FleetView>(vistaGuardada);
+  const setActiveView = (view: FleetView) => {
+    setActiveViewState(view);
+    try {
+      window.localStorage.setItem(CHAVE_VISTA, view);
+    } catch {
+      // Sem memória do aparelho a escolha vale só nesta visita.
+    }
+  };
+  const [atalhosAberto, setAtalhosAberto] = useState(false);
   const [driverSearch, setDriverSearch] = useState('');
   const [driverEditor, setDriverEditor] = useState<Partial<Funcionario> | null>(null);
   const [driverErro, setDriverErro] = useState('');
@@ -288,21 +313,27 @@ export default function ControleEquipamentosDiarioTab({
     setFormOpen(true);
   };
   useEffect(() => {
+    if (atalhosAberto) return undefined;
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isTyping = target?.matches('input, textarea, select, [contenteditable="true"]');
       if (event.altKey && event.key.toLocaleLowerCase('pt-BR') === 'n') {
         event.preventDefault();
         openNewRecord();
+        return;
       }
-      if (!isTyping && event.key === 'n' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (isTyping || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key === 'n') {
         event.preventDefault();
         openNewRecord();
+      } else if (event.key === '?') {
+        event.preventDefault();
+        setAtalhosAberto(true);
       }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, []);
+  }, [atalhosAberto]);
   const openEdit = (state: FleetCurrentState) => {
     const raw = registros.find(record => record.id === state.recordId) as FleetPersistedRecord | undefined;
     if (!raw) {
@@ -577,6 +608,7 @@ export default function ControleEquipamentosDiarioTab({
     ['registry', 'Motoristas', Database],
   ] as const;
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
+  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400';
   const aviso = message && (
     <p role={messageTone === 'error' ? 'alert' : 'status'} data-testid="frota-aviso" className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 ring-inset ${messageTone === 'success' ? 'bg-emerald-50 text-emerald-900 ring-emerald-200' : messageTone === 'error' ? 'bg-rose-50 text-rose-800 ring-rose-200' : 'bg-[#f7f8f6] text-slate-700 ring-slate-200'}`}>
       {messageTone === 'success' ? <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" /> : messageTone === 'error' ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <RefreshCw className="size-4 shrink-0" aria-hidden="true" />}
@@ -606,17 +638,26 @@ export default function ControleEquipamentosDiarioTab({
             )}
             <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
             <input ref={sgeInputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readSgeImport}/>
+            <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
+              <Keyboard className="size-4" aria-hidden="true" />
+              <kbd className="text-xs">?</kbd>
+            </button>
             <details className="group relative w-full sm:w-auto" data-testid="frota-relatorios">
               <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer px-3 list-none sm:w-auto [&::-webkit-details-marker]:hidden`}>
                 <FileSpreadsheet className="size-4" aria-hidden="true" />
-                Relatórios
+                Mais ações
                 <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
               </summary>
               <div className="absolute right-0 z-30 mt-2 w-full min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)] sm:w-64">
+                <p className={ROTULO_GRUPO_MENU}>Exportar</p>
                 <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
                 <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
+                <hr className="my-1 border-slate-100" />
+                <p className={ROTULO_GRUPO_MENU}>Importar</p>
                 <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
                 <button type="button" onClick={() => sgeInputRef.current?.click()} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>
+                <hr className="my-1 border-slate-100" />
+                <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
                 <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
                 {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
               </div>
@@ -771,63 +812,65 @@ export default function ControleEquipamentosDiarioTab({
       {formOpen && <DailyRecordForm record={editingRecord} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} registeredBy={registeredBy} onSave={handleSaved} onClose={() => { setFormOpen(false); setEditingRecord(undefined); }} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenDriverRegistry={() => { setFormOpen(false); setEditingRecord(undefined); setActiveView('registry'); }} onOpenEquipmentRegistry={() => { setFormOpen(false); setEditingRecord(undefined); onOpenEquipmentRegistration?.(); }} onOpenMaintenance={onOpenMaintenance}/>}
       <FleetDetailDrawer state={detailState} onClose={() => setDetailState(undefined)} onEdit={openEdit}/>
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.kind === 'delete' ? `Excluir ${confirmation.ids.length} lançamento(s)?` : `Mudar ${confirmation?.ids.length || 0} lançamento(s)?`} description={confirmation?.kind === 'delete' ? 'Some só o lançamento deste dia. A máquina continua cadastrada e o histórico de alterações fica registrado.' : `A situação passa para "${confirmation?.status}" e cada lançamento ganha um registro no histórico.`} confirmLabel={confirmation?.kind === 'delete' ? 'Excluir lançamentos' : 'Mudar situação'} tone={confirmation?.kind === 'delete' ? 'danger' : 'warning'} busy={confirmationBusy} onCancel={() => setConfirmation(undefined)} onConfirm={executeConfirmation}/>
-      <Modal
+      <FleetImportPreviewModal
         open={Boolean(importPreview)}
         title={`Conferir a planilha${importFileName ? `: ${importFileName}` : ''}`}
         description="Nada entra no sistema antes de você confirmar. Linhas com erro ficam de fora."
-        size="xl"
+        stats={importPreview ? [
+          { label: 'Novos', value: importPreview.newCount, tone: TOM_SITUACAO.ok },
+          { label: 'Atualizações', value: importPreview.updateCount, tone: 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200' },
+          { label: 'Já existentes', value: importPreview.duplicateCount, tone: TOM_SITUACAO.inativo },
+          { label: 'Ignorados', value: importPreview.ignoredCount, tone: TOM_SITUACAO.alerta },
+          { label: 'Com erro', value: importPreview.errorCount, tone: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200' },
+        ] : []}
+        rows={(importPreview?.rows || []).map((row): FleetImportPreviewRow => ({
+          key: `${row.rowNumber}-${row.key}`,
+          rowNumber: row.rowNumber,
+          dispositionLabel: ({ NEW: 'Novo', UPDATE: 'Atualiza', DUPLICATE: 'Já existe', IGNORED: 'Ignorado', ERROR: 'Erro' } as Record<string, string>)[row.disposition] || row.disposition,
+          prefixo: row.record?.prefixo || '',
+          pessoa: row.record?.nomeMotorista || '',
+          data: row.record?.data || '',
+          messages: row.messages.join(' '),
+        }))}
+        applyCount={(importPreview?.newCount || 0) + (importPreview?.updateCount || 0)}
+        canApply={Boolean(importPreview?.canApply)}
         onClose={() => { setImportPreview(undefined); setImportFileName(''); }}
-        footer={<>
-          <button type="button" onClick={() => { setImportPreview(undefined); setImportFileName(''); }} className={BOTAO_SECUNDARIO}>Cancelar</button>
-          <button type="button" disabled={!importPreview?.canApply} onClick={applyImportPreview} className={BOTAO_PRIMARIO}><FileDown className="size-4" aria-hidden="true"/>Importar {(importPreview?.newCount || 0) + (importPreview?.updateCount || 0)} lançamento(s)</button>
-        </>}
-      >
-        {importPreview && <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {([['Novos', importPreview.newCount, TOM_SITUACAO.ok], ['Atualizações', importPreview.updateCount, 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200'], ['Já existentes', importPreview.duplicateCount, TOM_SITUACAO.inativo], ['Ignorados', importPreview.ignoredCount, TOM_SITUACAO.alerta], ['Com erro', importPreview.errorCount, 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200']] as const).map(([label, value, tone]) => (
-              <div key={label} className={`rounded-xl p-3 ${tone}`}><span className="text-[11px] font-bold uppercase">{label}</span><strong className="block text-2xl font-bold tabular-nums">{value}</strong></div>
-            ))}
-          </div>
-          <ul className="mt-3 max-h-[45vh] divide-y divide-slate-100 overflow-auto rounded-xl border border-slate-200">
-            {importPreview.rows.slice(0, 500).map(row => (
-              <li key={`${row.rowNumber}-${row.key}`} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[4rem_7rem_minmax(0,1fr)_minmax(0,1.4fr)] sm:items-center">
-                <span className="font-mono text-xs text-slate-500">linha {row.rowNumber}</span>
-                <span className="font-bold text-slate-800">{({ NEW: 'Novo', UPDATE: 'Atualiza', DUPLICATE: 'Já existe', IGNORED: 'Ignorado', ERROR: 'Erro' } as Record<string, string>)[row.disposition] || row.disposition}</span>
-                <span className="truncate"><span className="font-mono font-bold">{row.record?.prefixo || '—'}</span> · {row.record?.nomeMotorista || 'Sem motorista'} · {row.record?.data || '—'}</span>
-                <span className="text-xs text-slate-600">{row.messages.join(' ') || 'Sem divergências.'}</span>
-              </li>
-            ))}
-          </ul>
-        </>}
-      </Modal>
-      <Modal
+        onApply={applyImportPreview}
+      />
+      <FleetImportPreviewModal
         open={Boolean(sgePreview)}
         title={`Conferir o apontamento do SGE${sgeFileName ? `: ${sgeFileName}` : ''}`}
         description="Nada entra no sistema antes de você confirmar. Lançamentos manuais e máquinas em manutenção nunca são sobrescritos."
-        size="xl"
+        stats={sgePreview ? [
+          { label: 'Novos', value: sgePreview.novos, tone: TOM_SITUACAO.ok },
+          { label: 'Atualizações', value: sgePreview.atualizados, tone: 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200' },
+          { label: 'Protegidos', value: sgePreview.protegidos, tone: TOM_SITUACAO.inativo },
+          { label: 'Duplicados no dia', value: sgePreview.duplicados, tone: TOM_SITUACAO.alerta },
+          { label: 'Com erro', value: sgePreview.comErro, tone: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200' },
+        ] : []}
+        rows={(sgePreview?.linhas || []).map((item): FleetImportPreviewRow => ({
+          key: `${item.linha}-${item.chave}`,
+          rowNumber: item.linha,
+          dispositionLabel: ({ NOVO: 'Novo', ATUALIZA: 'Atualiza', PROTEGIDO: 'Protegido', DUPLICADO: 'Duplicado', ERRO: 'Erro' } as Record<string, string>)[item.disposicao] || item.disposicao,
+          prefixo: item.registro?.prefixo || '',
+          pessoa: item.registro?.nomeMotorista || '',
+          data: item.registro?.data || '',
+          messages: item.mensagens.join(' '),
+        }))}
+        applyCount={(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)}
+        canApply={Boolean(sgePreview?.podeAplicar)}
         onClose={() => { setSgePreview(undefined); setSgeFileName(''); }}
-        footer={<>
-          <button type="button" onClick={() => { setSgePreview(undefined); setSgeFileName(''); }} className={BOTAO_SECUNDARIO}>Cancelar</button>
-          <button type="button" disabled={!sgePreview?.podeAplicar} onClick={applySgePreview} className={BOTAO_PRIMARIO}><FileDown className="size-4" aria-hidden="true"/>Importar {(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)} lançamento(s)</button>
-        </>}
-      >
-        {sgePreview && <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {([['Novos', sgePreview.novos, TOM_SITUACAO.ok], ['Atualizações', sgePreview.atualizados, 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200'], ['Protegidos', sgePreview.protegidos, TOM_SITUACAO.inativo], ['Duplicados no dia', sgePreview.duplicados, TOM_SITUACAO.alerta], ['Com erro', sgePreview.comErro, 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200']] as const).map(([label, value, tone]) => (
-              <div key={label} className={`rounded-xl p-3 ${tone}`}><span className="text-[11px] font-bold uppercase">{label}</span><strong className="block text-2xl font-bold tabular-nums">{value}</strong></div>
-            ))}
-          </div>
-          <ul className="mt-3 max-h-[45vh] divide-y divide-slate-100 overflow-auto rounded-xl border border-slate-200">
-            {sgePreview.linhas.slice(0, 500).map(item => (
-              <li key={`${item.linha}-${item.chave}`} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[4rem_7rem_minmax(0,1fr)_minmax(0,1.4fr)] sm:items-center">
-                <span className="font-mono text-xs text-slate-500">linha {item.linha}</span>
-                <span className="font-bold text-slate-800">{({ NOVO: 'Novo', ATUALIZA: 'Atualiza', PROTEGIDO: 'Protegido', DUPLICADO: 'Duplicado', ERRO: 'Erro' } as Record<string, string>)[item.disposicao] || item.disposicao}</span>
-                <span className="truncate"><span className="font-mono font-bold">{item.registro?.prefixo || '—'}</span> · {item.registro?.nomeMotorista || 'Sem operador'} · {item.registro?.data || '—'}</span>
-                <span className="text-xs text-slate-600">{item.mensagens.join(' ') || 'Sem divergências.'}</span>
-              </li>
-            ))}
-          </ul>
-        </>}
+        onApply={applySgePreview}
+      />
+      <Modal open={atalhosAberto} title="Atalhos do teclado" size="sm" onClose={() => setAtalhosAberto(false)}>
+        <dl className="divide-y divide-slate-100">
+          {ATALHOS.map(atalho => (
+            <div key={atalho.teclas} className="flex items-center justify-between gap-4 py-2.5">
+              <dt className="text-sm text-slate-700">{atalho.oQueFaz}</dt>
+              <dd><kbd className="whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm font-bold text-slate-700">{atalho.teclas}</kbd></dd>
+            </div>
+          ))}
+        </dl>
       </Modal>
     </main>
   );
