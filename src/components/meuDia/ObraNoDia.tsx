@@ -36,8 +36,8 @@ function Bloco({ titulo, Icone, numeros, alerta, aba, rotuloAba, onIrPara, child
       </header>
       <dl className="grid grid-cols-3 gap-2 px-4 pt-3">
         {numeros.map(item => (
-          <div key={item.rotulo} className="min-w-0">
-            <dt className="text-xs font-semibold leading-tight text-slate-500">{item.rotulo}</dt>
+          <div key={item.rotulo} className="flex min-w-0 flex-col justify-between">
+            <dt className="break-words text-xs font-semibold leading-tight text-slate-500 hyphens-auto">{item.rotulo}</dt>
             <dd className={`text-xl font-black tabular-nums ${item.tom === 'alerta' ? 'text-[#f26a2e]' : 'text-slate-900'}`}>{item.valor}</dd>
           </div>
         ))}
@@ -144,6 +144,7 @@ export function ObraNoDia({ dia, materiais, movimentos, abastecimentos, controle
                 <span className="shrink-0 text-slate-500">{envio.itens.length} {envio.itens.length === 1 ? 'item' : 'itens'}</span>
               </li>
             ))}
+            {apontadores.envios.length > MOSTRAR && <li className="text-xs text-slate-500">e mais {apontadores.envios.length - MOSTRAR}</li>}
           </ul>
         ) : <Vazio texto="Nenhum envio do link neste dia." />}
       </Bloco>
@@ -183,7 +184,7 @@ export function ObraNoDia({ dia, materiais, movimentos, abastecimentos, controle
         Icone={Fuel}
         numeros={[
           { rotulo: 'Litros', valor: numero(diesel.litros, 0) },
-          { rotulo: 'Abastecimentos', valor: String(diesel.abastecimentos) },
+          { rotulo: 'Abasteci\u00admentos', valor: String(diesel.abastecimentos) },
           { rotulo: 'A conferir', valor: String(diesel.aConferir), tom: diesel.aConferir ? 'alerta' : undefined },
         ]}
         aba="lancamentos"
