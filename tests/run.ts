@@ -182,3 +182,4 @@ import './graficosMateriais.test';
 import './relatoriosMateriais.test';
 import './apontadores.test';
 import './rotinaDiaria.test';
+import './avancoFrentes.test';
