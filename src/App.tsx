@@ -5044,6 +5044,10 @@ export default function App() {
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onOpenCadastros={allowedTabs.includes('cadastros') ? () => navigateTo('cadastros') : undefined}
+                registrosFrota={controleEquipamentosDiario}
+                gruposEquipe={gruposEquipe}
+                usuario={activeUserName}
+                onOpenControle={allowedTabs.includes('controle-equipamentos') ? () => navigateTo('controle-equipamentos') : undefined}
               />
             )}
 

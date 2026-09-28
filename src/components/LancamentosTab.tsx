@@ -13,6 +13,8 @@ import {
   Abastecimento,
   Lubrificacao,
   StatusRegistroCombustivel,
+  ControleEquipamentoDiario,
+  GrupoEquipe,
 } from '../types';
 
 import { 
@@ -59,6 +61,11 @@ interface LancamentosTabProps {
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
   onDeleteLubrificacao: (id: string) => void;
   onOpenCadastros?: () => void;
+  /** Lançamentos do Controle de Frotas: dão operador, canteiro e situação ao abastecimento. */
+  registrosFrota?: ControleEquipamentoDiario[];
+  gruposEquipe?: GrupoEquipe[];
+  usuario?: string;
+  onOpenControle?: () => void;
 }
 
 type Mode = 'abastecimentos' | 'lubrificacoes';
@@ -78,6 +85,10 @@ export default function LancamentosTab({
   onSaveLubrificacao,
   onDeleteLubrificacao,
   onOpenCadastros,
+  registrosFrota,
+  gruposEquipe,
+  usuario,
+  onOpenControle,
 }: LancamentosTabProps) {
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
@@ -1138,6 +1149,10 @@ export default function LancamentosTab({
             resetFormFields();
           }}
           onOpenCadastros={onOpenCadastros}
+          onOpenControle={onOpenControle}
+          registros={registrosFrota}
+          gruposEquipe={gruposEquipe}
+          usuario={usuario}
           onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
           isParsingSpreadsheet={isParsingImport}
         />
