@@ -5,9 +5,14 @@
  * Nada aqui inventa estado: equipamento sem lançamento no Controle de Frotas
  * naquele dia aparece como "Sem lançamento", na coluna "Sem frente".
  */
-import type { Abastecimento, ControleEquipamentoDiario, Equipamento, GrupoEquipe, StatusControleEquipamentoDiario } from '../../types';
+import type { Abastecimento, ControleEquipamentoDiario, EventoControleEquipamentoDiario, Equipamento, Funcionario, GrupoEquipe, StatusControleEquipamentoDiario } from '../../types';
+import type { FleetPersistedRecord } from '../../fleet/domain';
+import { classifyOperationalFleet } from '../../fleet/reconciliation';
+import { CANTEIROS_ATIVOS, contemTermo } from '../../utils/frenteServico';
 
 export const SEM_FRENTE = 'Sem frente';
+export const SEM_CANTEIRO = 'Sem canteiro';
+export const CANTEIROS: readonly string[] = CANTEIROS_ATIVOS;
 
 export type GrupoStatus = 'operando' | 'manutencao' | 'parado' | 'sem-lancamento';
 
@@ -62,11 +67,15 @@ export const silhuetaDo = (equipamento: Pick<Equipamento, 'tipo' | 'nome' | 'fam
 
 export interface CartaoFrota {
   equipamentoId: string;
+  /** Lançamento do dia que o cartão mostra; vazio quando não houve lançamento. */
+  registroId?: string;
   prefixo: string;
   modelo: string;
+  marca: string;
   tipo: string;
   foto?: string;
   silhueta: Silhueta;
+  canteiro: string;
   frente: string;
   status: StatusControleEquipamentoDiario | 'Sem lançamento';
   grupo: GrupoStatus;
@@ -76,12 +85,6 @@ export interface CartaoFrota {
   observacao?: string;
   motivoManutencao?: string;
   atualizadoEm?: string;
-}
-
-export interface ColunaFrota {
-  frente: string;
-  cartoes: CartaoFrota[];
-  operando: number;
 }
 
 export interface IndicadoresFrota {
@@ -96,7 +99,17 @@ export interface IndicadoresFrota {
   semOperador: number;
 }
 
-type RegistroDoDia = ControleEquipamentoDiario & { frenteServico?: string; equipeId?: string; excluido?: unknown };
+type RegistroDoDia = ControleEquipamentoDiario & { frenteServico?: string; local?: string; equipeId?: string; excluido?: unknown };
+
+/** Primeiro canteiro ativo citado nos textos, na ordem em que vêm. */
+const canteiroNoTexto = (...textos: Array<string | undefined>): string | undefined => {
+  for (const texto of textos) {
+    if (!texto) continue;
+    const achado = CANTEIROS.find(canteiro => contemTermo(texto, canteiro) || contemTermo(texto, canteiro.replace('-0', '0')) || contemTermo(texto, canteiro.replace('-', '')));
+    if (achado) return achado;
+  }
+  return undefined;
+};
 
 export interface EntradaQuadro {
   dia: string;
@@ -117,28 +130,41 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
     if (!atual || (registro.atualizadoEm || '') > (atual.atualizadoEm || '')) doDia.set(registro.equipamentoId, registro);
   });
 
+  // Canteiro escolhido à mão num dia vale para os dias seguintes, até mudar.
+  const ultimoLocal = new Map<string, { data: string; local: string }>();
+  (registros as readonly RegistroDoDia[]).forEach(registro => {
+    if (registro.excluido || !registro.local || registro.data > dia) return;
+    const atual = ultimoLocal.get(registro.equipamentoId);
+    if (!atual || registro.data > atual.data) ultimoLocal.set(registro.equipamentoId, { data: registro.data, local: registro.local });
+  });
+
   const horimetros = new Map<string, number>();
   abastecimentos.forEach(item => {
     if (!item.equipamentoId || item.data > dia || !Number.isFinite(item.horimetroInicial) || item.horimetroInicial <= 0) return;
     horimetros.set(item.equipamentoId, Math.max(horimetros.get(item.equipamentoId) ?? 0, item.horimetroInicial));
   });
 
-  const frenteDaEquipe = new Map(gruposEquipe.map(grupo => [grupo.id, grupo.frenteServico]));
+  const equipes = new Map(gruposEquipe.map(grupo => [grupo.id, grupo]));
 
   return equipamentos
     // Desmobilizado sem lançamento no dia não está mais na obra.
     .filter(item => item.status !== 'Desmobilizado' || doDia.has(item.id))
     .map((item): CartaoFrota => {
       const registro = doDia.get(item.id);
-      const frente = (registro?.frenteServico || (registro?.equipeId && frenteDaEquipe.get(registro.equipeId)) || '').trim() || SEM_FRENTE;
+      const equipe = registro?.equipeId ? equipes.get(registro.equipeId) : undefined;
+      const frente = (registro?.frenteServico || equipe?.frenteServico || '').trim() || SEM_FRENTE;
+      const canteiro = canteiroNoTexto(registro?.local, ultimoLocal.get(item.id)?.local, registro?.frenteServico, equipe?.frenteServico, equipe?.nome) || SEM_CANTEIRO;
       const operador = (registro?.nomeMotorista || item.operadorResponsavelNome || '').trim() || undefined;
       return {
         equipamentoId: item.id,
+        registroId: registro?.id,
         prefixo: item.prefixo,
         modelo: [item.marca, item.modelo].filter(Boolean).join(' ') || item.nome,
+        marca: (item.marca || '').trim(),
         tipo: item.tipo || 'Outro',
         foto: item.foto || undefined,
         silhueta: silhuetaDo(item),
+        canteiro,
         frente,
         status: registro ? registro.status : 'Sem lançamento',
         grupo: registro ? GRUPO_DO_STATUS[registro.status] ?? 'parado' : 'sem-lancamento',
@@ -170,44 +196,200 @@ export const calcularIndicadores = (cartoes: readonly CartaoFrota[]): Indicadore
   };
 };
 
-/** Colunas por frente, com mais equipamentos primeiro e "Sem frente" no fim. */
-export const agruparPorFrente = (cartoes: readonly CartaoFrota[], frentesCadastradas: readonly string[] = []): ColunaFrota[] => {
-  const colunas = new Map<string, CartaoFrota[]>();
-  frentesCadastradas.forEach(frente => { if (frente.trim()) colunas.set(frente.trim(), []); });
-  cartoes.forEach(cartao => {
-    const lista = colunas.get(cartao.frente) || [];
-    lista.push(cartao);
-    colunas.set(cartao.frente, lista);
-  });
-  return Array.from(colunas, ([frente, lista]) => ({ frente, cartoes: lista, operando: lista.filter(item => item.grupo === 'operando').length }))
-    .filter(coluna => coluna.frente !== SEM_FRENTE || coluna.cartoes.length > 0)
-    .sort((a, b) => {
-      if (a.frente === SEM_FRENTE) return 1;
-      if (b.frente === SEM_FRENTE) return -1;
-      return b.cartoes.length - a.cartoes.length || comparar(a.frente, b.frente);
-    });
+export interface GrupoCanteiro {
+  canteiro: string;
+  cartoes: CartaoFrota[];
+  operando: number;
+  manutencao: number;
+}
+
+/** Um bloco por canteiro ativo, na ordem da obra, e "Sem canteiro" no fim quando tiver máquina. */
+export const agruparPorCanteiro = (cartoes: readonly CartaoFrota[], mostrarVazios = true): GrupoCanteiro[] => {
+  const grupos = new Map<string, CartaoFrota[]>([...CANTEIROS, SEM_CANTEIRO].map(nome => [nome, []]));
+  cartoes.forEach(cartao => (grupos.get(cartao.canteiro) || grupos.get(SEM_CANTEIRO))!.push(cartao));
+  return Array.from(grupos, ([canteiro, lista]) => ({
+    canteiro,
+    cartoes: lista,
+    operando: lista.filter(item => item.grupo === 'operando').length,
+    manutencao: lista.filter(item => item.grupo === 'manutencao').length,
+  })).filter(grupo => grupo.cartoes.length > 0 || (mostrarVazios && grupo.canteiro !== SEM_CANTEIRO));
+};
+
+export type Ordem = 'prefixo' | 'situacao' | 'horimetro-maior' | 'horimetro-menor' | 'operador';
+
+export const ROTULO_ORDEM: Record<Ordem, string> = {
+  prefixo: 'Prefixo',
+  situacao: 'Situação',
+  'horimetro-maior': 'Maior horímetro',
+  'horimetro-menor': 'Menor horímetro',
+  operador: 'Operador',
 };
 
 export interface FiltrosQuadro {
+  canteiro: string;
   frente: string;
   grupo: GrupoStatus | '';
   tipo: string;
+  marca: string;
   operador: '' | 'com' | 'sem';
+  foto: '' | 'com' | 'sem';
+  horimetro: '' | 'com' | 'sem';
   busca: string;
 }
 
-export const FILTROS_VAZIOS: FiltrosQuadro = { frente: '', grupo: '', tipo: '', operador: '', busca: '' };
+export const FILTROS_VAZIOS: FiltrosQuadro = { canteiro: '', frente: '', grupo: '', tipo: '', marca: '', operador: '', foto: '', horimetro: '', busca: '' };
 
-export const filtrarCartoes = (cartoes: readonly CartaoFrota[], filtros: FiltrosQuadro): CartaoFrota[] => {
+const ORDEM_GRUPO: Record<GrupoStatus, number> = { manutencao: 0, parado: 1, 'sem-lancamento': 2, operando: 3 };
+
+const comOuSem = (filtro: '' | 'com' | 'sem', tem: boolean) => !filtro || (filtro === 'com') === tem;
+
+export const filtrarCartoes = (cartoes: readonly CartaoFrota[], filtros: FiltrosQuadro, ordem: Ordem = 'prefixo'): CartaoFrota[] => {
   const termos = semAcento(filtros.busca).split(/\s+/).filter(Boolean);
-  return cartoes.filter(cartao => {
+  const lista = cartoes.filter(cartao => {
+    if (filtros.canteiro && cartao.canteiro !== filtros.canteiro) return false;
     if (filtros.frente && cartao.frente !== filtros.frente) return false;
     if (filtros.grupo && cartao.grupo !== filtros.grupo) return false;
     if (filtros.tipo && cartao.tipo !== filtros.tipo) return false;
-    if (filtros.operador === 'com' && !cartao.operador) return false;
-    if (filtros.operador === 'sem' && cartao.operador) return false;
+    if (filtros.marca && cartao.marca !== filtros.marca) return false;
+    if (!comOuSem(filtros.operador, Boolean(cartao.operador))) return false;
+    if (!comOuSem(filtros.foto, Boolean(cartao.foto))) return false;
+    if (!comOuSem(filtros.horimetro, Boolean(cartao.horimetro))) return false;
     if (termos.length === 0) return true;
-    const texto = semAcento([cartao.prefixo, cartao.modelo, cartao.tipo, cartao.operador, cartao.frente].filter(Boolean).join(' '));
+    const texto = semAcento([cartao.prefixo, cartao.modelo, cartao.tipo, cartao.operador, cartao.frente, cartao.canteiro].filter(Boolean).join(' '));
     return termos.every(termo => texto.includes(termo));
   });
+  if (ordem === 'prefixo') return lista;
+  // Sem horímetro vai para o fim nas duas ordens de horímetro: não é zero, é falta de dado.
+  const horas = (item: CartaoFrota, sinal: number) => (item.horimetro === undefined ? Number.POSITIVE_INFINITY : sinal * item.horimetro);
+  const criterio: Record<Exclude<Ordem, 'prefixo'>, (a: CartaoFrota, b: CartaoFrota) => number> = {
+    situacao: (a, b) => ORDEM_GRUPO[a.grupo] - ORDEM_GRUPO[b.grupo],
+    'horimetro-maior': (a, b) => horas(a, -1) - horas(b, -1),
+    'horimetro-menor': (a, b) => horas(a, 1) - horas(b, 1),
+    operador: (a, b) => (a.operador ? 0 : 1) - (b.operador ? 0 : 1) || comparar(a.operador || '', b.operador || ''),
+  };
+  return [...lista].sort((a, b) => criterio[ordem](a, b) || comparar(a.prefixo, b.prefixo));
+};
+
+/** Etiquetas dos filtros ligados, para mostrar e tirar um por um. */
+export const etiquetasDosFiltros = (filtros: FiltrosQuadro): Array<{ chave: keyof FiltrosQuadro; texto: string }> => {
+  const saida: Array<{ chave: keyof FiltrosQuadro; texto: string }> = [];
+  if (filtros.busca.trim()) saida.push({ chave: 'busca', texto: `Busca: ${filtros.busca.trim()}` });
+  if (filtros.canteiro) saida.push({ chave: 'canteiro', texto: `Canteiro: ${filtros.canteiro}` });
+  if (filtros.frente) saida.push({ chave: 'frente', texto: `Frente: ${filtros.frente}` });
+  if (filtros.grupo) saida.push({ chave: 'grupo', texto: ROTULO_GRUPO[filtros.grupo] });
+  if (filtros.tipo) saida.push({ chave: 'tipo', texto: `Tipo: ${filtros.tipo}` });
+  if (filtros.marca) saida.push({ chave: 'marca', texto: `Marca: ${filtros.marca}` });
+  if (filtros.operador) saida.push({ chave: 'operador', texto: filtros.operador === 'com' ? 'Com operador' : 'Sem operador' });
+  if (filtros.foto) saida.push({ chave: 'foto', texto: filtros.foto === 'com' ? 'Com foto' : 'Sem foto' });
+  if (filtros.horimetro) saida.push({ chave: 'horimetro', texto: filtros.horimetro === 'com' ? 'Com horímetro' : 'Sem horímetro' });
+  return saida;
+};
+
+/** Situações que o quadro deixa escolher, na ordem em que aparecem no detalhe. */
+export const SITUACOES_EDITAVEIS: readonly StatusControleEquipamentoDiario[] = [
+  'Em operação',
+  'Disponível',
+  'Aguardando motorista',
+  'Aguardando equipamento',
+  'Reserva',
+  'Em manutenção',
+  'Aguardando manutenção',
+];
+
+const EM_MANUTENCAO: ReadonlySet<StatusControleEquipamentoDiario> = new Set(['Em manutenção', 'Aguardando manutenção']);
+
+export interface EdicaoQuadro {
+  status: StatusControleEquipamentoDiario;
+  /** Um dos canteiros ativos, ou vazio. Grava em `local` do lançamento. */
+  canteiro: string;
+  frente: string;
+  operador: string;
+  motivoManutencao: string;
+  observacao: string;
+}
+
+export interface EntradaEdicao {
+  dia: string;
+  /** Hora local HH:MM de agora, para preencher saída, entrada e liberação da manutenção. */
+  hora: string;
+  agora: string;
+  usuario: string;
+  equipamento: Equipamento;
+  registros: readonly ControleEquipamentoDiario[];
+  funcionarios: readonly Funcionario[];
+  edicao: EdicaoQuadro;
+}
+
+export type ResultadoEdicao =
+  | { ok: true; registro: FleetPersistedRecord; novo: boolean }
+  | { ok: false; erro: string };
+
+/**
+ * Monta o lançamento do dia a partir do que foi mudado no quadro, no mesmo
+ * formato que o Controle de Frotas grava: mesma chave, histórico de eventos e
+ * aprovação pendente. Operador digitado que não bate com um colaborador fica
+ * como motorista temporário, igual ao formulário da frota.
+ */
+export const registroDaEdicao = ({ dia, hora, agora, usuario, equipamento, registros, funcionarios, edicao }: EntradaEdicao): ResultadoEdicao => {
+  const operador = edicao.operador.trim();
+  const motivo = edicao.motivoManutencao.trim();
+  if (edicao.status === 'Em operação' && !operador) return { ok: false, erro: 'Para ficar Em operação, informe o operador.' };
+  if (EM_MANUTENCAO.has(edicao.status) && !motivo) return { ok: false, erro: 'Informe o motivo da manutenção.' };
+
+  const chave = `${dia}|${equipamento.id}`;
+  const existente = (registros as readonly FleetPersistedRecord[])
+    .filter(item => !item.excluido && (item.chave === chave || (item.data === dia && item.equipamentoId === equipamento.id)))
+    .sort((a, b) => (b.atualizadoEm || '').localeCompare(a.atualizadoEm || ''))[0];
+
+  const alvo = semAcento(operador);
+  const funcionario = operador ? funcionarios.find(item => item.ativo !== false && semAcento(item.nome.trim()) === alvo) : undefined;
+  const temporario = Boolean(operador && !funcionario);
+  const anterior = existente?.status;
+  const entrouNaManutencao = EM_MANUTENCAO.has(edicao.status);
+  const saiuDaManutencao = Boolean(anterior && EM_MANUTENCAO.has(anterior) && !entrouNaManutencao);
+  const tipo: EventoControleEquipamentoDiario['tipo'] = entrouNaManutencao
+    ? 'ENTRADA_MANUTENCAO'
+    : saiuDaManutencao ? 'LIBERACAO_MANUTENCAO' : edicao.status === 'Em operação' ? 'SAIDA_OPERACAO' : 'ALTERACAO_STATUS';
+  const classificacao = classifyOperationalFleet(equipamento);
+
+  const registro: FleetPersistedRecord = {
+    ...existente,
+    id: existente?.id || `cfd-${dia}-${equipamento.id}`,
+    chave: existente?.chave || chave,
+    data: dia,
+    funcionarioId: funcionario?.id || '',
+    codigoFuncionario: funcionario?.matricula || '',
+    nomeMotorista: funcionario?.nome || operador,
+    equipamentoId: equipamento.id,
+    prefixo: equipamento.prefixo,
+    familia: existente?.familia || classificacao.group,
+    tipoEquipamento: existente?.tipoEquipamento || classificacao.equipmentType,
+    status: edicao.status,
+    horaSaida: existente?.horaSaida || (edicao.status === 'Em operação' ? hora : ''),
+    horaEntradaManutencao: entrouNaManutencao ? existente?.horaEntradaManutencao || hora : existente?.horaEntradaManutencao || '',
+    horaLiberacao: saiuDaManutencao ? hora : existente?.horaLiberacao || '',
+    motivoManutencao: entrouNaManutencao ? motivo : existente?.motivoManutencao,
+    observacao: edicao.observacao.trim(),
+    frenteServico: edicao.frente.trim() || undefined,
+    local: edicao.canteiro.trim() || undefined,
+    origem: existente?.origem || 'SISTEMA',
+    revisao: temporario ? ['Motorista temporário requer cadastro/vínculo.'] : [],
+    motoristaTemporario: temporario,
+    aprovacao: existente?.aprovacao || { status: 'PENDENTE', solicitadoEm: agora, solicitadoPor: usuario },
+    eventos: [...(existente?.eventos || []), {
+      id: `evt-${agora}-${equipamento.id}`,
+      ocorridoEm: agora,
+      tipo,
+      statusAnterior: anterior,
+      statusNovo: edicao.status,
+      motivo: entrouNaManutencao ? motivo : undefined,
+      observacao: edicao.observacao.trim() || undefined,
+      responsavel: usuario,
+    }],
+    criadoEm: existente?.criadoEm || agora,
+    atualizadoEm: agora,
+    criadoPor: existente?.criadoPor || usuario,
+    atualizadoPor: usuario,
+  };
+  return { ok: true, registro, novo: !existente };
 };

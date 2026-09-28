@@ -5396,6 +5396,10 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 abastecimentos={abastecimentosAtivos}
                 frentes={frentesServico}
+                funcionarios={funcionarios}
+                podeEditar={pode(currentUserRole, 'controle-equipamentos', 'editar')}
+                usuario={activeUserName}
+                onSave={handleSaveControleEquipamentoDiario}
                 onNavigate={navigateTo}
               />
             )}
