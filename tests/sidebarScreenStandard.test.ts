@@ -10,7 +10,6 @@ const primaryScreens = [
   ['modo-campo', 'src/components/ModoCampoTab.tsx'],
   ['planejamento', 'src/components/PlanejamentoTab.tsx'],
   ['diario-obra', 'src/components/DiarioObraTab.tsx'],
-  ['tickets-jazida', 'src/components/TicketsJazidaTab.tsx'],
   ['estacas', 'src/components/EstacasTab.tsx'],
   ['controle-equipamentos', 'src/components/ControleEquipamentosDiarioTab.tsx'],
   ['quadro-frota', 'src/components/QuadroFrotaTab.tsx'],

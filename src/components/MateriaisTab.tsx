@@ -2,7 +2,7 @@
  * Materiais: cadastro, movimentação e estoque. O saldo é sempre a soma dos
  * movimentos — não existe contador guardado para divergir do histórico.
  */
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { locaisParaEscolher, rotuloDoLocal } from '../modules/materials/locaisSge';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -65,6 +65,11 @@ interface MateriaisTabProps {
   locaisApagados?: ReadonlySet<string>;
   previstos: PrevistoMaterial[];
   onSavePrevistos: (previstos: PrevistoMaterial[], descricao: string) => void;
+  /** Tickets da jazida, montados pelo App; sem permissão a parte Viagens da jazida não aparece. */
+  viagensJazida?: ReactNode;
+  totalViagensJazida?: number;
+  /** Parte que abre ao entrar, por exemplo quando alguém vem de um aviso de ticket. */
+  secaoInicial?: SecaoMateriais;
 }
 
 type FiltroTipo = 'todos' | TipoMovimentoMaterial | 'desfeitos';
@@ -78,7 +83,7 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
 ];
 
 // Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['lancar', 'resumo', 'graficos', 'relatorios', 'previsto', 'utilizacao', 'apontadores', 'botafora', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
+const ORDEM_SECOES: readonly SecaoMateriais[] = ['lancar', 'resumo', 'graficos', 'relatorios', 'previsto', 'utilizacao', 'apontadores', 'botafora', 'viagens', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
 
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
@@ -115,9 +120,12 @@ export default function MateriaisTab({
   locaisApagados,
   previstos,
   onSavePrevistos,
+  viagensJazida,
+  totalViagensJazida = 0,
+  secaoInicial,
 }: MateriaisTabProps) {
   const hoje = isoDay(new Date());
-  const [aba, setAba] = useState<SecaoMateriais>('resumo');
+  const [aba, setAba] = useState<SecaoMateriais>(secaoInicial ?? 'resumo');
   const [classe, setClasse] = useState<ClasseMaterial | ''>('');
   const [busca, setBusca] = useState('');
   const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca, aba]);
@@ -192,7 +200,7 @@ export default function MateriaisTab({
     setViagensAberto(true);
   };
   const algumaJanela = materialAberto || lancamentoAberto || viagensAberto || trocarRamoAberto || desfazerAberto || atalhosAberto || Boolean(fichaMaterialId);
-  const secoes: SecaoMateriais[] = podeEditar ? [...ORDEM_SECOES] : ORDEM_SECOES.filter(secao => secao !== 'importacoes' && secao !== 'lancar');
+  const secoes: SecaoMateriais[] = ORDEM_SECOES.filter(secao => (podeEditar || (secao !== 'importacoes' && secao !== 'lancar')) && (secao !== 'viagens' || Boolean(viagensJazida)));
   // Classes do menu "Por classe": materiais do cadastro e os que só aparecem nos movimentos.
   const classesDoMenu = useMemo(() => {
     const porClasse = new Map<ClasseMaterial, Set<string>>();
@@ -403,6 +411,7 @@ export default function MateriaisTab({
   const contar = (secao: SecaoMateriais) => {
     if (secao === 'estoque' || secao === 'cadastro') return ativos.length;
     if (secao === 'movimentos') return movimentos.length;
+    if (secao === 'viagens') return totalViagensJazida;
     if (secao === 'locais') return etapas.filter(item => item.tipoLocal !== 'Serviço').length;
     if (secao === 'previsto') return previstoDoMes.length;
     if (secao === 'botafora') return viagensBotaFora;
@@ -571,6 +580,8 @@ export default function MateriaisTab({
           {aba === 'botafora' && (
             <BotaForaMateriais movimentos={movimentos} etapas={etapas} termo={termo} onIrParaLocais={() => escolherSecao('locais')} />
           )}
+
+          {aba === 'viagens' && viagensJazida}
 
           {aba === 'apontadores' && (
             <ApontadoresMateriais
