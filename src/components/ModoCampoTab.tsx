@@ -10,7 +10,6 @@ import {
   BarChart3,
   ClipboardCheck,
   CloudOff,
-  Megaphone,
   NotebookPen,
   PackageCheck,
   Users,
@@ -35,11 +34,10 @@ interface ModoCampoTabProps {
 }
 
 const ACOES: Array<{ tab: string; rotulo: string; icone: typeof Activity }> = [
-  { tab: 'central-operacional', rotulo: 'Frota do dia', icone: Activity },
+  { tab: 'controle-equipamentos', rotulo: 'Frota do dia', icone: Activity },
   { tab: 'presenca', rotulo: 'Presença', icone: Users },
-  { tab: 'producao', rotulo: 'Lançar produção', icone: BarChart3 },
+  { tab: 'meu-dia', rotulo: 'Lançar produção', icone: BarChart3 },
   { tab: 'checklist', rotulo: 'Checklist', icone: ClipboardCheck },
-  { tab: 'ocorrencias', rotulo: 'Ocorrência', icone: Megaphone },
   { tab: 'diario-obra', rotulo: 'Diário de obra', icone: NotebookPen },
   { tab: 'materiais', rotulo: 'Materiais', icone: PackageCheck },
 ];

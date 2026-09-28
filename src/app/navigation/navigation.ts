@@ -8,9 +8,7 @@ import {
   HardHat,
   LayoutDashboard,
   SunMedium,
-  MapPin,
   Package,
-  Radio,
   TimerOff,
   UserRound,
   Wrench,
@@ -31,13 +29,6 @@ import {
   KeyRound,
   Database,
   Scale,
-  CalendarClock,
-  ShieldAlert,
-  Megaphone,
-  AlertOctagon,
-  FileSpreadsheet,
-  FileText,
-  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -66,18 +57,8 @@ export const NAVIGATION_GROUPS = [
     label: 'Operação',
     items: [
       { id: 'modo-campo', label: 'Modo Campo', icon: Smartphone },
-      { id: 'central-operacional', label: 'Central Operacional', icon: Radio },
-      { id: 'frentes', label: 'Frentes de Serviço', icon: MapPin },
-      { id: 'producao', label: 'Produção', icon: BarChart3 },
       { id: 'planejamento', label: 'Planejamento', icon: CalendarRange },
-      { id: 'cronograma', label: 'Cronograma', icon: CalendarClock },
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
-      { id: 'fvs', label: 'FVS', icon: ClipboardCheck },
-      { id: 'inspecoes', label: 'Inspeções', icon: ShieldAlert },
-      { id: 'nao-conformidades', label: 'Não Conformidades', icon: AlertOctagon },
-      { id: 'medicoes', label: 'Medições', icon: FileSpreadsheet },
-      { id: 'documentos', label: 'Documentos', icon: FileText },
-      { id: 'ocorrencias', label: 'Ocorrências', icon: Megaphone },
       { id: 'tickets-jazida', label: 'Tickets Jazida', icon: Truck },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
@@ -140,18 +121,11 @@ export const PRIMARY_MODULE_IDS = [
   // dia, pendências com prioridade e fechamento do dia.
   'meu-dia',
   'modo-campo',
-  'central-operacional',
   'planejamento',
   'diario-obra',
-  // Tickets Jazida e Controle de Estacas não tinham nenhum caminho de
-  // navegação alcançável na versão "enxuta": o atalho deles dentro de
-  // Central Operacional só marca a subtela como ativa, sem render próprio
-  // (CentralOperacionalTab só implementa 'frentes'/'producao'/'ocorrencias'),
-  // e AUXILIARY_MODULE_DESTINATIONS nunca chega a ser lido em nenhum lugar
-  // do app. As duas telas ficavam prontas e com permissão liberada, mas sem
-  // link para abrir. Decisão confirmada com o usuário em 2026-09-22 para
-  // destravar as novas importações com prévia/lote/lineage, que vivem
-  // dentro dessas duas telas.
+  // Tickets Jazida e Controle de Estacas ficam no menu como abas próprias:
+  // as importações com prévia/lote/lineage vivem dentro dessas duas telas
+  // (decisão confirmada com o usuário em 2026-09-22).
   'tickets-jazida',
   'estacas',
   'controle-equipamentos',
@@ -179,17 +153,6 @@ export const AUXILIARY_MODULE_DESTINATIONS: Readonly<Record<string, string>> = {
   pendencias: 'dashboard',
   notificacoes: 'dashboard',
   assistente: 'dashboard',
-  frentes: 'central-operacional',
-  producao: 'central-operacional',
-  cronograma: 'central-operacional',
-  fvs: 'central-operacional',
-  inspecoes: 'central-operacional',
-  'nao-conformidades': 'central-operacional',
-  medicoes: 'central-operacional',
-  documentos: 'central-operacional',
-  ocorrencias: 'central-operacional',
-  'tickets-jazida': 'central-operacional',
-  estacas: 'central-operacional',
   frota: 'controle-equipamentos',
   'horas-paradas': 'controle-equipamentos',
   checklist: 'controle-equipamentos',
