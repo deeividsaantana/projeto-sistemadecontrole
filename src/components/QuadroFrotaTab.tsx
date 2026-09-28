@@ -6,6 +6,7 @@
  * o botão principal leva para lá.
  */
 import { useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { AlertTriangle, CalendarDays, ChevronDown, Gauge, PauseCircle, PlayCircle, Search, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
@@ -271,7 +272,8 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
         </div>
       )}
 
-      <Drawer
+      {/* Portal: a animação de entrada da aba deixa transform na raiz, e o painel fixo ficaria preso a ela. */}
+      {createPortal(<Drawer
         open={Boolean(aberto)}
         onClose={() => setAberto(null)}
         title={aberto ? `${aberto.prefixo} · ${aberto.modelo}` : ''}
@@ -311,7 +313,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
             )}
           </div>
         )}
-      </Drawer>
+      </Drawer>, document.body)}
     </div>
   );
 }
