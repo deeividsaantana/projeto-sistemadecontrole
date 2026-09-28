@@ -1,9 +1,9 @@
-import { RotateCcw, Search } from 'lucide-react';
+import { useState } from 'react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import type { Empresa } from '../../types';
-import {
-  FLEET_STATUS_DEFINITIONS,
-} from '../../fleet/status';
+import { FLEET_STATUS_DEFINITIONS } from '../../fleet/status';
 import type { FleetReportFilters } from '../../fleet/domain';
+import { BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from '../cadastros/estilos';
 
 interface Props {
   filters: FleetReportFilters;
@@ -18,6 +18,11 @@ interface Props {
   onClear: () => void;
 }
 
+/**
+ * Busca, situação e tipo sempre à vista; empresa e grupo em "Mais filtros".
+ * O dia fica no topo da tela, junto do botão de lançar. Cada filtro ligado
+ * vira uma etiqueta que sai com um toque.
+ */
 export default function FleetFilterBar({
   filters,
   companies,
@@ -27,86 +32,88 @@ export default function FleetFilterBar({
   onChange,
   onClear,
 }: Props) {
+  const [mais, setMais] = useState(false);
+  const empresas = companies
+    .filter(company => company.status !== 'INATIVO')
+    .sort((left, right) => left.nome.localeCompare(right.nome, 'pt-BR'));
+  const etiquetas: Array<{ chave: keyof FleetReportFilters; texto: string; vazio: string }> = [
+    filters.search.trim() ? { chave: 'search', texto: `Busca: ${filters.search.trim()}`, vazio: '' } : null,
+    filters.status !== 'Todos' ? { chave: 'status', texto: filters.status, vazio: 'Todos' } : null,
+    filters.equipmentType && filters.equipmentType !== 'Todos' ? { chave: 'equipmentType', texto: filters.equipmentType, vazio: 'Todos' } : null,
+    filters.group && filters.group !== 'Todos' ? { chave: 'group', texto: `Grupo: ${filters.group}`, vazio: 'Todos' } : null,
+    filters.companyId !== 'Todos' ? { chave: 'companyId', texto: empresas.find(item => item.id === filters.companyId)?.nome || 'Empresa', vazio: 'Todos' } : null,
+  ].filter((item): item is { chave: keyof FleetReportFilters; texto: string; vazio: string } => item !== null);
+
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-3">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[145px_1fr_150px_180px_180px_auto]">
-        <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">
-          Data
+    <section aria-label="Filtros da frota" data-fleet-enter className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative min-w-0 flex-[1_1_16rem]">
+          <span className="sr-only">Buscar prefixo, motorista, matrícula ou local</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
           <input
-            type="date"
-            value={filters.date}
-            onChange={event => onChange('date', event.target.value)}
-            className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-bold text-slate-800"
+            value={filters.search}
+            onChange={event => onChange('search', event.target.value)}
+            placeholder="Buscar prefixo, motorista, matrícula ou local"
+            className={`${CAMPO} pl-9`}
+            data-testid="frota-busca"
           />
         </label>
-        <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">
-          Empresa
-          <select
-            value={filters.companyId}
-            onChange={event => onChange('companyId', event.target.value)}
-            className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-bold text-slate-800"
-          >
+        <select
+          value={filters.status}
+          onChange={event => onChange('status', event.target.value as FleetReportFilters['status'])}
+          aria-label="Situação"
+          className={`${CAMPO} min-w-0 flex-[1_1_10rem] sm:w-auto`}
+        >
+          <option value="Todos">Todas as situações</option>
+          {FLEET_STATUS_DEFINITIONS.map(definition => (
+            <option key={definition.value} value={definition.value}>{definition.value}</option>
+          ))}
+        </select>
+        <select
+          value={filters.equipmentType ?? 'Todos'}
+          onChange={event => onChange('equipmentType', event.target.value)}
+          aria-label="Tipo"
+          className={`${CAMPO} min-w-0 flex-[1_1_10rem] sm:w-auto`}
+        >
+          <option value="Todos">Todos os tipos</option>
+          {equipmentTypes.map(type => <option key={type} value={type}>{type}</option>)}
+        </select>
+        <button type="button" onClick={() => setMais(atual => !atual)} aria-expanded={mais} className={`${BOTAO_SECUNDARIO} flex-none`} data-testid="frota-mais-filtros">
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
+          Mais filtros
+        </button>
+      </div>
+      {mais && (
+        <div className="grid gap-2 sm:grid-cols-2" data-testid="frota-painel-filtros">
+          <select value={filters.companyId} onChange={event => onChange('companyId', event.target.value)} aria-label="Empresa" className={CAMPO}>
             <option value="Todos">Todas as empresas</option>
-            {companies
-              .filter(company => company.status !== 'INATIVO')
-              .sort((left, right) => left.nome.localeCompare(right.nome, 'pt-BR'))
-              .map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}
+            {empresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}
           </select>
-        </label>
-        <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">
-          Grupo
-          <select value={filters.group ?? 'Todos'} onChange={event => onChange('group', event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-bold text-slate-800">
+          <select value={filters.group ?? 'Todos'} onChange={event => onChange('group', event.target.value)} aria-label="Grupo" className={CAMPO}>
             <option value="Todos">Todos os grupos</option>
             {groups.map(group => <option key={group} value={group}>{group}</option>)}
           </select>
-        </label>
-        <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">
-          Tipo
-          <select value={filters.equipmentType ?? 'Todos'} onChange={event => onChange('equipmentType', event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-bold text-slate-800">
-            <option value="Todos">Todos os tipos</option>
-            {equipmentTypes.map(type => <option key={type} value={type}>{type}</option>)}
-          </select>
-        </label>
-        <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">
-          Situação
-          <select
-            value={filters.status}
-            onChange={event => onChange(
-              'status',
-              event.target.value as FleetReportFilters['status'],
-            )}
-            className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-bold text-slate-800"
-          >
-            <option value="Todos">Todos os status</option>
-            {FLEET_STATUS_DEFINITIONS.map(definition => (
-              <option key={definition.value} value={definition.value}>{definition.value}</option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={onClear}
-          className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 text-xs font-black text-slate-700 hover:bg-slate-100"
-        >
-          <RotateCcw size={14} />
-          Limpar
-        </button>
-      </div>
-      <label className="relative mt-2 block">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-          size={16}
-        />
-        <input
-          value={filters.search}
-          onChange={event => onChange('search', event.target.value)}
-          placeholder="Buscar prefixo, matrícula, motorista, grupo, tipo, local ou observação..."
-          className="h-10 w-full rounded-md border border-slate-300 bg-slate-50 pl-9 pr-24 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/10"
-        />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase text-emerald-700">
-          {activeFilterCount ? `${activeFilterCount} filtro${activeFilterCount > 1 ? 's' : ''}` : 'Sem filtros'}
-        </span>
-      </label>
+        </div>
+      )}
+      {activeFilterCount > 0 && etiquetas.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5" data-testid="frota-etiquetas">
+          {etiquetas.map(etiqueta => (
+            <button
+              key={etiqueta.chave}
+              type="button"
+              onClick={() => onChange(etiqueta.chave, etiqueta.vazio as never)}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full bg-emerald-50 pl-3 pr-2 text-xs font-bold text-[#176b4d] ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100 ${FOCO}`}
+              aria-label={`Tirar filtro ${etiqueta.texto}`}
+            >
+              {etiqueta.texto}
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
+          ))}
+          <button type="button" onClick={onClear} className="min-h-9 px-2 text-xs font-semibold text-slate-500 underline-offset-4 hover:text-[#176b4d] hover:underline" data-testid="frota-limpar">
+            Limpar tudo
+          </button>
+        </div>
+      )}
     </section>
   );
 }

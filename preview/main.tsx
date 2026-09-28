@@ -478,8 +478,8 @@ const screens: Record<string, React.ReactNode> = {
   'quadro-frota': <QuadroFrotaPreview />,
   frotas: (
     <ControleEquipamentosDiarioTab
-      registros={fx.controlesEquipamentos}
-      equipamentos={fx.equipamentos}
+      registros={[...fx.controlesEquipamentos, ...fx.controlesQuadro]}
+      equipamentos={[...fx.equipamentos, ...fx.equipamentosQuadro]}
       empresas={fx.empresas}
       funcionarios={fx.funcionarios}
       gruposEquipe={[fx.grupo]}
@@ -490,6 +490,8 @@ const screens: Record<string, React.ReactNode> = {
       onDeleteMany={noop}
       onOpenEmployeeRegistration={noop}
       onOpenEquipmentRegistration={noop}
+      canApproveFleet
+      onNavigate={noop}
     />
   ),
   consulta: (

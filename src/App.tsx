@@ -5475,7 +5475,8 @@ export default function App() {
                 ordensServico={ordensServico}
                 onSave={handleSaveControleEquipamentoDiario}
                 onImport={handleImportControleEquipamentosDiario}
-                onDeleteMany={handleDeleteControleEquipamentosDiario}
+                onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
+                onOpenMaintenance={() => navigateTo('manutencao')}
                 onOpenEmployeeRegistration={() => navigateTo('cadastros')}
                 onOpenEquipmentRegistration={() => navigateTo('cadastros')}
                 onSaveOperationalDriver={handleSaveOperationalDriver}
@@ -5483,6 +5484,7 @@ export default function App() {
                 canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
                 registeredBy={activeUserName}
                 onApproveFleetRecord={handleApproveControleEquipamentoDiario}
+                onNavigate={navigateTo}
               />
             )}
 

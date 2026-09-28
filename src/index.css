@@ -471,8 +471,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__user { border-left-color: #dce5df; }
 .erp-topbar__avatar { border-color: #b8d9c8; background: #eff8f2; color: #087345; }
 
-.fleet-control > header button { box-shadow: none; }
-.fleet-control > header button:first-child { box-shadow: none; }
 
 /* Single white workspace: legacy utility colors stay neutral outside the sidebar. */
 #main-tab-viewport [class~="bg-[#fffefa]"],
@@ -723,8 +721,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .renea-page-header { padding-top: .5rem; }
   .renea-page-actions { display: flex; flex-wrap: wrap; width: 100%; }
   .renea-page-actions > * { max-width: 100%; }
-  .fleet-control .renea-page-actions > button:first-child { width: 100%; }
-  .fleet-control .fleet-quick-launch { display: none; }
   .renea-button { min-height: 3rem; }
   .dashboard-hero { min-height: auto; }
   .dashboard-hero__content { width: 100%; padding-top: 2rem; padding-bottom: 1.5rem; }
@@ -873,7 +869,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   background-color: #fff !important;
   color: #10211c !important;
 }
-.fleet-control .fleet-quick-launch,
 .fleet-entry-dialog form > aside,
 .fleet-entry-dialog form > aside > footer {
   border-color: #d5dfda;

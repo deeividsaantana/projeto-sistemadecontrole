@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import {
+  AlertTriangle,
   CalendarDays,
   Database,
   CheckCircle2,
@@ -9,11 +10,15 @@ import {
   FileDown,
   FileSpreadsheet,
   History,
+  LayoutGrid,
+  Pencil,
   Plus,
   Printer,
   RefreshCw,
   Search,
+  Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
@@ -51,10 +56,9 @@ import FleetBulkActions from './fleet/FleetBulkActions';
 import FleetDetailDrawer from './fleet/FleetDetailDrawer';
 import DailyRecordForm from './fleet/DailyRecordForm';
 import FleetReportLayout from './fleet/FleetReportLayout';
-import { ConfirmDialog } from '../shared/ui';
+import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
-import { PageHeader } from '../shared/ui';
-import { OBRA } from '../config/obra';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from './cadastros/estilos';
 
 interface Props {
   registros: ControleEquipamentoDiario[];
@@ -76,6 +80,8 @@ interface Props {
   /** Nome de quem está usando o sistema; grava a autoria do lançamento. */
   registeredBy?: string;
   onApproveFleetRecord?: (id: string, status: 'APROVADO' | 'REJEITADO') => void;
+  /** Abre outra aba do sistema (Quadro da Frota). */
+  onNavigate?: (aba: string) => void;
 }
 
 type ConfirmationState =
@@ -83,6 +89,10 @@ type ConfirmationState =
   | { kind: 'status'; ids: string[]; status: FleetOperationalStatus };
 
 type FleetView = 'today' | 'history' | 'registry';
+
+const dataLonga = (dia: string) => /^\d{4}-\d{2}-\d{2}$/.test(dia)
+  ? new Date(`${dia}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+  : dia;
 
 const asText = (value: unknown): string => String(value ?? '').trim();
 
@@ -136,6 +146,7 @@ export default function ControleEquipamentosDiarioTab({
   canApproveFleet = false,
   registeredBy = 'Operação',
   onApproveFleetRecord,
+  onNavigate,
 }: Props) {
   const pageRef = useRef<HTMLElement>(null);
   const operationalDrivers = useMemo(() => [...(operationalDriversProp || OPERATIONAL_DRIVERS)], [operationalDriversProp]);
@@ -175,6 +186,8 @@ export default function ControleEquipamentosDiarioTab({
   const [activeView, setActiveView] = useState<FleetView>('today');
   const [driverSearch, setDriverSearch] = useState('');
   const [driverEditor, setDriverEditor] = useState<Partial<Funcionario> | null>(null);
+  const [driverErro, setDriverErro] = useState('');
+  const [driverExclusao, setDriverExclusao] = useState<Funcionario | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   useGSAP(() => {
     const root = pageRef.current;
@@ -242,6 +255,30 @@ export default function ControleEquipamentosDiarioTab({
     () => viewModel.allRows.filter(state => selectedIds.includes(state.recordId)),
     [selectedIds, viewModel.allRows],
   );
+  const salvarMotorista = () => {
+    if (!driverEditor) return;
+    const nome = String(driverEditor.nome || '').trim();
+    const matricula = String(driverEditor.matricula || '').trim();
+    if (!nome || !matricula) {
+      setDriverErro('Informe o nome e a matrícula do motorista.');
+      return;
+    }
+    onSaveOperationalDriver?.({
+      ...driverEditor,
+      id: String(driverEditor.id),
+      nome,
+      matricula,
+      cargo: String(driverEditor.cargo || 'OPERADOR'),
+      empresaId: String(driverEditor.empresaId || empresas[0]?.id || ''),
+      telefone: String(driverEditor.telefone || ''),
+      ativo: true,
+      status: 'ATIVO',
+    } as Funcionario, !operationalDrivers.some(item => item.id === driverEditor.id));
+    setDriverEditor(null);
+    setDriverErro('');
+    setMessageTone('success');
+    setMessage(`${nome} salvo na lista de motoristas.`);
+  };
   const openNewRecord = () => {
     setEditingRecord(undefined);
     setFormOpen(true);
@@ -452,81 +489,233 @@ export default function ControleEquipamentosDiarioTab({
       setConfirmationBusy(false);
     }
   };
+  const vistas = [
+    ['today', 'Situação do dia', CalendarDays],
+    ['history', 'Histórico', History],
+    ['registry', 'Motoristas', Database],
+  ] as const;
+  const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
+  const aviso = message && (
+    <p role={messageTone === 'error' ? 'alert' : 'status'} data-testid="frota-aviso" className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 ring-inset ${messageTone === 'success' ? 'bg-emerald-50 text-emerald-900 ring-emerald-200' : messageTone === 'error' ? 'bg-rose-50 text-rose-800 ring-rose-200' : 'bg-[#f7f8f6] text-slate-700 ring-slate-200'}`}>
+      {messageTone === 'success' ? <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" /> : messageTone === 'error' ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <RefreshCw className="size-4 shrink-0" aria-hidden="true" />}
+      {message}
+      <button type="button" onClick={() => setMessage('')} aria-label="Fechar aviso" className={`ml-auto grid size-8 shrink-0 place-items-center rounded-lg text-current/70 hover:bg-white/60 ${FOCO}`}><X className="size-4" aria-hidden="true" /></button>
+    </p>
+  );
   return (
-    <main id="controle-equipamentos-tab" ref={pageRef} className="fleet-control mx-auto max-w-[1760px] space-y-5 text-slate-800">
+    <main id="controle-equipamentos-tab" ref={pageRef} className="mx-auto max-w-[1760px] space-y-4 pb-24 text-slate-800">
       <div data-fleet-enter>
         <PageHeader
-          title="Controle Operacional de Frota"
-          description={`${OBRA.nome} · lançamentos diários, disponibilidade e pendências em uma visão operacional.`}
-          actions={<>
-            <nav className="mr-auto flex gap-1 overflow-x-auto" aria-label="Visões do controle de frotas">
-              {([
-                ['today', 'Situação do dia', CalendarDays],
-                ['history', 'Histórico semanal', History],
-                ['registry', 'Cadastros vinculados', Database],
-              ] as const).map(([id, label, Icon]) => (
-                <button key={id} type="button" onClick={() => setActiveView(id)} className={`inline-flex min-h-10 shrink-0 items-center gap-2 border-b-2 px-3 text-xs font-black transition-colors ${activeView === id ? 'border-emerald-700 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
-                  <Icon size={15}/>{label}
+          eyebrow="Frota"
+          title="Controle de Frotas"
+          description="Lançamento do dia de cada frota: quem saiu, quem está em manutenção e o que falta informar."
+          actions={<div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <label className="relative flex w-full min-w-0 items-center sm:inline-flex sm:w-auto">
+              <span className="sr-only">Dia dos lançamentos</span>
+              <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
+              <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
+            </label>
+            <div className="grid grid-cols-2 gap-2 sm:contents">
+            {onNavigate && (
+              <button type="button" onClick={() => onNavigate('quadro-frota')} className={`${BOTAO_SECUNDARIO} w-full px-3 sm:w-auto`} data-testid="frota-abrir-quadro">
+                <LayoutGrid className="size-4" aria-hidden="true" />
+                Quadro
+              </button>
+            )}
+            <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
+            <details className="group relative w-full sm:w-auto" data-testid="frota-relatorios">
+              <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer px-3 list-none sm:w-auto [&::-webkit-details-marker]:hidden`}>
+                <FileSpreadsheet className="size-4" aria-hidden="true" />
+                Relatórios
+                <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="absolute right-0 z-30 mt-2 w-full min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)] sm:w-64">
+                <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
+                <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
+                <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
+                <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
+                {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
+              </div>
+            </details>
+            </div>
+            <button type="button" onClick={openNewRecord} className={`${BOTAO_PRIMARIO} w-full px-5 max-sm:order-first sm:w-auto`} data-testid="frota-novo">
+              <Plus className="size-5" aria-hidden="true" />
+              Novo lançamento
+              <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
+            </button>
+            <nav className="grid w-full grid-cols-[1.3fr_1fr_1fr] gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:order-first sm:mr-auto sm:inline-grid sm:w-auto" aria-label="Visões do controle de frotas">
+              {vistas.map(([id, label, Icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={activeView === id}
+                  onClick={() => setActiveView(id)}
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] sm:px-3 ${activeView === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
+                >
+                  <Icon className="size-4 max-sm:hidden" aria-hidden="true"/>{label}
                 </button>
               ))}
             </nav>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <button type="button" onClick={openNewRecord} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] bg-emerald-700 px-4 text-xs font-black text-[#ffffff] transition hover:bg-emerald-800 active:translate-y-px"><Plus size={16}/>Novo lançamento <span className="hidden border border-white/30 px-1.5 py-0.5 font-mono text-[9px] xl:inline">N</span></button>
-              <button type="button" onClick={handleRefresh} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[2px] border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50"><RefreshCw size={15}/>Atualizar</button>
-              <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-              <details className="group relative"><summary className="flex h-11 cursor-pointer list-none items-center gap-2 rounded-[2px] border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 hover:bg-slate-50">Relatórios e dados <ChevronDown size={14} className="transition group-open:rotate-180"/></summary><div className="absolute right-0 z-30 mt-2 w-56 space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"><button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Printer size={15}/>Relatório PDF</button><button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><FileSpreadsheet size={15}/>Exportar Excel</button><button type="button" onClick={() => inputRef.current?.click()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"><Upload size={15}/>Importar planilha</button>{onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"><Plus size={15}/>Cadastrar equipamento</button>}</div></details>
-            </div>
-          </>}
+          </div>}
         />
+        <p className="-mt-1 text-sm font-semibold text-slate-500 first-letter:uppercase">{dataLonga(filters.date)}</p>
       </div>
-      {message && <div role={messageTone==='error'?'alert':'status'} className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-bold shadow-sm ${messageTone==='success'?'border-emerald-200 bg-emerald-50 text-emerald-900':messageTone==='error'?'border-rose-200 bg-rose-50 text-rose-800':'border-sky-200 bg-sky-50 text-sky-800'}`}>{messageTone==='success'&&<CheckCircle2 size={19} className="shrink-0 text-emerald-600"/>}{message}</div>}
+      {aviso}
       {activeView === 'today' && <>
-      <div data-fleet-enter><FleetKpiStrip metrics={viewModel.metrics}/></div>
-      <div data-fleet-enter><FleetDailyReference records={registros} date={filters.date}/></div>
-      {viewModel.integrityWarnings.length>0 && <details className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"><summary className="cursor-pointer text-xs font-black text-amber-900">Conferência pendente: {viewModel.integrityWarnings.length} aviso(s) nos dados filtrados</summary><ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-amber-900">{viewModel.integrityWarnings.map(warning=><li key={warning}>{warning}</li>)}</ul></details>}
-      <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
-      <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state=>setConfirmation({kind:'delete',ids:[state.recordId]})} canApprove={canApproveFleet} onApprove={(state,status)=>onApproveFleetRecord?.(state.recordId,status)}/>
+        <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
+        <div data-fleet-enter><FleetDailyReference records={registros} date={filters.date}/></div>
+        {viewModel.integrityWarnings.length > 0 && (
+          <details className="group rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3" data-testid="frota-conferencia">
+            <summary className={`flex min-h-8 cursor-pointer list-none items-center gap-2 text-sm font-bold text-amber-900 [&::-webkit-details-marker]:hidden ${FOCO}`}>
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              {viewModel.integrityWarnings.length} ponto(s) para conferir nos lançamentos
+              <ChevronDown className="ml-auto size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-sm text-amber-900">{viewModel.integrityWarnings.map(warning => <li key={warning}>{warning}</li>)}</ul>
+          </details>
+        )}
+        <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
+        <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state => setConfirmation({ kind: 'delete', ids: [state.recordId] })} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
       </>}
-      {activeView === 'history' && <section className="overflow-hidden rounded-lg border border-slate-200 bg-white"><header className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-black text-slate-950">Fechamentos por data</h2><p className="text-xs text-slate-500">Comparativo dos registros operacionais e exportação dos últimos sete dias.</p></div><div className="flex flex-wrap gap-2"><button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyPdf()} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-40"><Printer size={15}/>{exporting==='weekly-pdf'?'Gerando...':'Semanal PDF'}</button><button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyExcel()} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-black text-slate-700 disabled:opacity-40"><FileSpreadsheet size={15}/>{exporting==='weekly-excel'?'Gerando...':'Semanal Excel'}</button></div></header><div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left text-sm"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr>{['Data','Total de frotas','Em operação','Em manutenção','À disposição','A confirmar','Disponibilidade'].map(label=><th key={label} className="border-b border-slate-200 px-4 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{historyByDate.map(item=><tr key={item.date}><td className="px-4 py-3 font-black">{new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3">{item.total}</td><td className="px-4 py-3 font-bold text-emerald-700">{item.operating}</td><td className="px-4 py-3 font-bold text-rose-700">{item.maintenance}</td><td className="px-4 py-3 font-bold text-sky-700">{item.available}</td><td className="px-4 py-3 font-bold text-amber-700">{item.pending}</td><td className="px-4 py-3 font-black">{item.total ? `${(((item.operating + item.available) / item.total) * 100).toFixed(1).replace('.', ',')}%` : '—'}</td></tr>)}</tbody></table></div>{!historyByDate.length&&<p className="p-10 text-center text-sm text-slate-500">Nenhum fechamento disponível.</p>}</section>}
+      {activeView === 'history' && (
+        <section data-fleet-enter className={`${CARTAO} overflow-hidden`} aria-labelledby="frota-historico-titulo">
+          <header className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 id="frota-historico-titulo" className="text-lg font-bold text-slate-950">Fechamento por dia</h2>
+              <p className="text-sm text-slate-500">Quantas frotas trabalharam, pararam ou ficaram sem informar em cada dia. Toque no dia para abrir.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyPdf()} className={BOTAO_SECUNDARIO}><Printer className="size-4" aria-hidden="true"/>{exporting === 'weekly-pdf' ? 'Gerando…' : 'Semana em PDF'}</button>
+              <button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyExcel()} className={BOTAO_SECUNDARIO}><FileSpreadsheet className="size-4" aria-hidden="true"/>{exporting === 'weekly-excel' ? 'Gerando…' : 'Semana em Excel'}</button>
+            </div>
+          </header>
+          <ul className="divide-y divide-slate-100">
+            {historyByDate.map(item => {
+              const disponibilidade = item.total ? Math.round(((item.operating + item.available) / item.total) * 100) : 0;
+              return (
+                <li key={item.date}>
+                  <button type="button" onClick={() => { updateFilter('date', item.date); setActiveView('today'); }} className={`grid w-full gap-2 px-4 py-3 text-left transition hover:bg-emerald-50/40 sm:grid-cols-[11rem_minmax(0,1fr)_7rem] sm:items-center ${FOCO}`}>
+                    <span>
+                      <span className="block font-bold text-slate-900 first-letter:uppercase">{new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                      <span className="text-xs text-slate-500">{item.total} frota(s) lançada(s)</span>
+                    </span>
+                    <span className="flex flex-wrap gap-1.5 text-xs font-bold">
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[#176b4d] ring-1 ring-inset ring-emerald-200">{item.operating} operando</span>
+                      {item.maintenance > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200">{item.maintenance} manutenção</span>}
+                      {item.available > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-inset ring-amber-200">{item.available} à disposição</span>}
+                      {item.pending > 0 && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[#f26a2e] ring-1 ring-inset ring-orange-200">{item.pending} a confirmar</span>}
+                    </span>
+                    <span className="sm:text-right">
+                      <span className="block text-lg font-bold tabular-nums text-slate-900">{item.total ? `${disponibilidade}%` : '—'}</span>
+                      <span className="block h-1.5 overflow-hidden rounded-full bg-slate-100"><span className="block h-full rounded-full bg-[#176b4d]" style={{ width: `${disponibilidade}%` }} /></span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {!historyByDate.length && <p className="p-10 text-center text-sm text-slate-500">Nenhum dia lançado ainda.</p>}
+        </section>
+      )}
       {activeView === 'registry' && <section className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-        <article data-fleet-lift className="rounded-lg border border-slate-200 bg-white p-4 transition-shadow duration-200 hover:shadow-[0_1px_2px_rgb(7_17_14/.04),0_10px_28px_-14px_rgb(7_17_14/.18)]">
-          <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Frotas cadastradas</p>
-          <strong className="mt-2 block text-3xl text-slate-950">{equipamentos.length}</strong>
-          <p className="mt-1 text-xs text-slate-500">Equipamentos disponíveis para vínculo nos lançamentos.</p>
-          <div className="mt-4 flex flex-wrap gap-2">{equipmentTypes.slice(0,8).map(type=><span key={type} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">{type}</span>)}</div>
+        <article data-fleet-enter data-fleet-lift className={`${CARTAO} p-4`}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
+          <CountUp value={equipamentos.length} className="mt-1 block text-3xl font-bold tabular-nums text-slate-950" />
+          <p className="mt-1 text-sm text-slate-500">Equipamentos que podem ser escolhidos no lançamento.</p>
+          <div className="mt-4 flex flex-wrap gap-1.5">{equipmentTypes.slice(0, 8).map(type => <span key={type} className="rounded-full bg-[#f7f8f6] px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">{type}</span>)}</div>
+          {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={`${BOTAO_SECUNDARIO} mt-4 w-full`}><Plus className="size-4" aria-hidden="true"/>Novo equipamento</button>}
         </article>
-        <article className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <header className="border-b border-slate-200 p-4">
+        <article data-fleet-enter className={`${CARTAO} overflow-hidden`}>
+          <header className="border-b border-slate-100 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Mini lista independente</p>
-                <h2 className="mt-1 text-lg font-black text-slate-950">Motoristas e operadores <span className="text-emerald-700">{operationalDrivers.length}</span></h2>
-                <p className="mt-1 text-xs text-slate-500">Cadastro exclusivo das frotas, separado dos colaboradores gerais.</p>
+                <h2 className="text-lg font-bold text-slate-950">Motoristas e operadores <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 font-mono text-sm text-slate-700">{operationalDrivers.length}</span></h2>
+                <p className="mt-1 text-sm text-slate-500">Lista usada no lançamento da frota.</p>
               </div>
-              <div className="flex flex-wrap gap-2 sm:items-center"><button type="button" onClick={()=>setDriverEditor({ id: `motorista-operacional-${Date.now()}`, nome: '', matricula: '', cargo: 'OPERADOR DE CAMINHAO BASCULANTE', empresaId: empresas[0]?.id || '', telefone: '', ativo: true, status: 'ATIVO', area: 'FROTAS OPERACIONAIS', divisao: 'OPERAÇÃO' })} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-emerald-700 px-3 text-xs font-black text-white"><Plus size={14}/>Novo motorista</button>{onOpenEquipmentRegistration&&<button type="button" onClick={onOpenEquipmentRegistration} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-emerald-700 px-3 text-xs font-black text-emerald-800"><Plus size={14}/>Novo equipamento / prefixo</button>}<label className="relative block sm:w-72">
-                <span className="sr-only">Buscar motorista</span>
-                <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-                <input value={driverSearch} onChange={event=>setDriverSearch(event.target.value)} placeholder="Matrícula, nome ou função" className="h-10 w-full rounded-md border border-slate-300 pl-9 pr-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"/>
-              </label></div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="relative block sm:w-72">
+                  <span className="sr-only">Buscar motorista</span>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true"/>
+                  <input value={driverSearch} onChange={event => setDriverSearch(event.target.value)} placeholder="Matrícula, nome ou função" className={`${CAMPO} pl-9`}/>
+                </label>
+                <button type="button" onClick={() => setDriverEditor({ id: `motorista-operacional-${Date.now()}`, nome: '', matricula: '', cargo: 'OPERADOR DE CAMINHAO BASCULANTE', empresaId: empresas[0]?.id || '', telefone: '', ativo: true, status: 'ATIVO', area: 'FROTAS OPERACIONAIS', divisao: 'OPERAÇÃO' })} className={BOTAO_PRIMARIO}><Plus className="size-4" aria-hidden="true"/>Novo motorista</button>
+              </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">{Object.entries(driverRoleCounts).sort((a,b)=>b[1]-a[1]).map(([role,count])=><span key={role} className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-800">{count} · {role}</span>)}</div>
+            <div className="mt-3 flex flex-wrap gap-1.5">{Object.entries(driverRoleCounts).sort((a, b) => b[1] - a[1]).map(([role, count]) => <span key={role} className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200">{count} · {role}</span>)}</div>
           </header>
-          <div className="max-h-[430px] overflow-auto">
-            <table className="w-full min-w-[620px] text-left text-xs">
-              <thead className="sticky top-0 z-[1] bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="border-b border-slate-200 px-4 py-3">Matrícula</th><th className="border-b border-slate-200 px-4 py-3">Motorista / operador</th><th className="border-b border-slate-200 px-4 py-3">Função</th><th className="border-b border-slate-200 px-4 py-3">Status</th><th className="border-b border-slate-200 px-4 py-3 text-right">Ações</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">{filteredOperationalDrivers.map(driver=><tr key={driver.id} className="hover:bg-emerald-50/50"><td className="px-4 py-3 font-mono font-black text-slate-800">{driver.matricula}</td><td className="px-4 py-3 font-bold text-slate-950">{driver.nome}</td><td className="px-4 py-3 text-slate-600">{driver.cargo}</td><td className="px-4 py-3"><span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-800">Ativo</span></td><td className="px-4 py-3 text-right"><button type="button" onClick={()=>setDriverEditor(driver)} className="mr-2 text-xs font-bold text-emerald-700">Editar</button>{onDeleteOperationalDriver&&<button type="button" onClick={()=>onDeleteOperationalDriver(driver.id)} className="text-xs font-bold text-rose-700">Excluir</button>}</td></tr>)}</tbody>
-            </table>
-            {!filteredOperationalDrivers.length&&<p className="p-8 text-center text-sm text-slate-500">Nenhum motorista encontrado para “{driverSearch}”.</p>}
-          </div>
+          <ul className="max-h-[430px] divide-y divide-slate-100 overflow-auto">
+            {filteredOperationalDrivers.map(driver => (
+              <li key={driver.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 hover:bg-emerald-50/40">
+                <span className="w-16 shrink-0 font-mono text-sm font-bold text-slate-700">{driver.matricula}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-slate-950">{driver.nome}</span>
+                  <span className="block truncate text-xs text-slate-500">{driver.cargo}</span>
+                </span>
+                <span className="flex gap-1">
+                  <button type="button" onClick={() => setDriverEditor(driver)} aria-label={`Editar ${driver.nome}`} className={`grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}><Pencil className="size-4" aria-hidden="true"/></button>
+                  {onDeleteOperationalDriver && <button type="button" onClick={() => setDriverExclusao(driver)} aria-label={`Excluir ${driver.nome}`} className={`grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true"/></button>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {!filteredOperationalDrivers.length && <p className="p-8 text-center text-sm text-slate-500">Nenhum motorista encontrado para “{driverSearch}”.</p>}
         </article>
       </section>}
-      {driverEditor && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-white p-4"><form onSubmit={event=>{event.preventDefault(); const nome=String(driverEditor.nome||'').trim(); const matricula=String(driverEditor.matricula||'').trim(); if(!nome||!matricula){setMessage('Informe nome e matrícula do motorista.');setMessageTone('error');return;} onSaveOperationalDriver?.({...driverEditor, id: String(driverEditor.id), nome, matricula, cargo: String(driverEditor.cargo||'OPERADOR'), empresaId: String(driverEditor.empresaId||empresas[0]?.id||''), telefone: String(driverEditor.telefone||''), ativo: true, status: 'ATIVO'} as Funcionario, !operationalDrivers.some(item=>item.id===driverEditor.id)); setDriverEditor(null);}} className="w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl"><h2 className="text-lg font-black text-slate-950">{operationalDrivers.some(item=>item.id===driverEditor.id)?'Editar motorista':'Novo motorista'}</h2><div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold">Matrícula<input required value={String(driverEditor.matricula||'')} onChange={e=>setDriverEditor({...driverEditor,matricula:e.target.value})} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label><label className="text-xs font-bold">Nome<input required value={String(driverEditor.nome||'')} onChange={e=>setDriverEditor({...driverEditor,nome:e.target.value.toUpperCase()})} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label><label className="text-xs font-bold sm:col-span-2">Função<input value={String(driverEditor.cargo||'')} onChange={e=>setDriverEditor({...driverEditor,cargo:e.target.value.toUpperCase()})} className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3"/></label></div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={()=>setDriverEditor(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-bold">Cancelar</button><button type="submit" className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-black text-white">Salvar motorista</button></div></form></div>}
-      <FleetBulkActions count={selectedIds.length} onClear={()=>setSelectedIds([])} onDelete={()=>setConfirmation({kind:'delete',ids:selectedIds})} onExport={()=>void handleExcel(true)} onChangeStatus={status=>setConfirmation({kind:'status',ids:selectedIds,status})}/>
+      <Modal
+        open={Boolean(driverEditor)}
+        title={driverEditor && operationalDrivers.some(item => item.id === driverEditor.id) ? 'Editar motorista' : 'Novo motorista'}
+        size="sm"
+        onClose={() => setDriverEditor(null)}
+        onSubmit={salvarMotorista}
+        footer={<>
+          <button type="button" onClick={() => setDriverEditor(null)} className={BOTAO_SECUNDARIO}>Cancelar</button>
+          <button type="button" onClick={salvarMotorista} className={BOTAO_PRIMARIO}>Salvar motorista</button>
+        </>}
+      >
+        {driverEditor && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={ROTULO}>Matrícula<input required value={String(driverEditor.matricula || '')} onChange={event => setDriverEditor({ ...driverEditor, matricula: event.target.value })} className={`${CAMPO} mt-1`}/></label>
+            <label className={ROTULO}>Nome<input required value={String(driverEditor.nome || '')} onChange={event => setDriverEditor({ ...driverEditor, nome: event.target.value.toUpperCase() })} className={`${CAMPO} mt-1`}/></label>
+            <label className={`${ROTULO} sm:col-span-2`}>Função<input value={String(driverEditor.cargo || '')} onChange={event => setDriverEditor({ ...driverEditor, cargo: event.target.value.toUpperCase() })} className={`${CAMPO} mt-1`}/></label>
+            {driverErro && <p role="alert" className="text-sm font-semibold text-rose-700 sm:col-span-2">{driverErro}</p>}
+          </div>
+        )}
+      </Modal>
+      <ConfirmDialog open={Boolean(driverExclusao)} title={`Excluir ${driverExclusao?.nome || 'motorista'}?`} description="Ele sai da lista de motoristas da frota. Os lançamentos já feitos com ele continuam como estão." confirmLabel="Excluir motorista" tone="danger" onCancel={() => setDriverExclusao(null)} onConfirm={() => { if (driverExclusao) onDeleteOperationalDriver?.(driverExclusao.id); setDriverExclusao(null); }}/>
+      <FleetBulkActions count={selectedIds.length} onClear={() => setSelectedIds([])} onDelete={() => setConfirmation({ kind: 'delete', ids: selectedIds })} onExport={() => void handleExcel(true)} onChangeStatus={status => setConfirmation({ kind: 'status', ids: selectedIds, status })}/>
       <FleetReportLayout viewModel={viewModel}/>
-      {formOpen && <DailyRecordForm record={editingRecord} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} registeredBy={registeredBy} onSave={handleSaved} onClose={()=>{setFormOpen(false);setEditingRecord(undefined)}} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenDriverRegistry={()=>{setFormOpen(false);setEditingRecord(undefined);setActiveView('registry')}} onOpenEquipmentRegistry={()=>{setFormOpen(false);setEditingRecord(undefined);onOpenEquipmentRegistration?.()}} onOpenMaintenance={onOpenMaintenance}/>}
-      <FleetDetailDrawer state={detailState} onClose={()=>setDetailState(undefined)} onEdit={openEdit}/>
-      <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.kind==='delete'?`Excluir ${confirmation.ids.length} registro(s)?`:`Alterar ${confirmation?.ids.length||0} registro(s)?`} description={confirmation?.kind==='delete'?'Os registros serão removidos da visão operacional. O histórico de alteração permanecerá registrado pelo sistema.':`O status será alterado para "${confirmation?.status}" e um evento será incluído em cada histórico.`} confirmLabel={confirmation?.kind==='delete'?'Excluir registros':'Alterar status'} tone={confirmation?.kind==='delete'?'danger':'warning'} busy={confirmationBusy} onCancel={()=>setConfirmation(undefined)} onConfirm={executeConfirmation}/>
-      {importPreview && <div className="fixed inset-0 z-[105] flex items-end justify-center bg-white sm:items-center sm:p-4"><section role="dialog" aria-modal="true" aria-labelledby="import-preview-title" className="max-h-[95dvh] w-full overflow-hidden bg-white sm:max-w-4xl sm:rounded-xl"><header className="border-b border-slate-200 p-4"><p className="text-[9px] font-black uppercase tracking-wider text-emerald-700">Pré-visualização da importação</p><h2 id="import-preview-title" className="text-lg font-black text-slate-950">{importFileName}</h2></header><div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-5">{[['Novos',importPreview.newCount,'bg-emerald-50 text-emerald-800'],['Atualizações',importPreview.updateCount,'bg-sky-50 text-sky-800'],['Duplicados',importPreview.duplicateCount,'bg-slate-100 text-slate-800'],['Ignorados',importPreview.ignoredCount,'bg-amber-50 text-amber-800'],['Com erro',importPreview.errorCount,'bg-rose-50 text-rose-800']].map(([label,value,tone])=><article key={String(label)} className={`rounded-md border border-slate-200 p-3 ${tone}`}><span className="text-[9px] font-black uppercase">{label}</span><strong className="block text-2xl">{value}</strong></article>)}</div><div className="max-h-[50vh] overflow-auto border-y border-slate-200"><table className="w-full min-w-[800px] text-left text-xs"><thead className="sticky top-0 bg-slate-200"><tr><th className="p-2">Linha</th><th>Resultado</th><th>Prefixo</th><th>Motorista</th><th>Data</th><th>Mensagens</th></tr></thead><tbody className="divide-y divide-slate-100">{importPreview.rows.slice(0,500).map(row=><tr key={`${row.rowNumber}-${row.key}`}><td className="p-2 font-mono">{row.rowNumber}</td><td className="font-black">{row.disposition}</td><td>{row.record?.prefixo||'—'}</td><td>{row.record?.nomeMotorista||'—'}</td><td>{row.record?.data||'—'}</td><td className="max-w-md py-2 pr-2 text-slate-600">{row.messages.join(' ')||'Sem divergências.'}</td></tr>)}</tbody></table></div><footer className="flex flex-col-reverse gap-2 p-4 sm:flex-row sm:justify-end"><button type="button" onClick={()=>{setImportPreview(undefined);setImportFileName('')}} className="min-h-11 rounded-md border border-slate-300 bg-white px-5 text-sm font-black text-slate-700">Cancelar</button><button type="button" disabled={!importPreview.canApply} onClick={applyImportPreview} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 text-sm font-black text-white disabled:opacity-40"><FileDown size={16}/>Aplicar importação em uma etapa</button></footer></section></div>}
+      {formOpen && <DailyRecordForm record={editingRecord} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} registeredBy={registeredBy} onSave={handleSaved} onClose={() => { setFormOpen(false); setEditingRecord(undefined); }} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenDriverRegistry={() => { setFormOpen(false); setEditingRecord(undefined); setActiveView('registry'); }} onOpenEquipmentRegistry={() => { setFormOpen(false); setEditingRecord(undefined); onOpenEquipmentRegistration?.(); }} onOpenMaintenance={onOpenMaintenance}/>}
+      <FleetDetailDrawer state={detailState} onClose={() => setDetailState(undefined)} onEdit={openEdit}/>
+      <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.kind === 'delete' ? `Excluir ${confirmation.ids.length} lançamento(s)?` : `Mudar ${confirmation?.ids.length || 0} lançamento(s)?`} description={confirmation?.kind === 'delete' ? 'Some só o lançamento deste dia. A máquina continua cadastrada e o histórico de alterações fica registrado.' : `A situação passa para "${confirmation?.status}" e cada lançamento ganha um registro no histórico.`} confirmLabel={confirmation?.kind === 'delete' ? 'Excluir lançamentos' : 'Mudar situação'} tone={confirmation?.kind === 'delete' ? 'danger' : 'warning'} busy={confirmationBusy} onCancel={() => setConfirmation(undefined)} onConfirm={executeConfirmation}/>
+      <Modal
+        open={Boolean(importPreview)}
+        title={`Conferir a planilha${importFileName ? `: ${importFileName}` : ''}`}
+        description="Nada entra no sistema antes de você confirmar. Linhas com erro ficam de fora."
+        size="xl"
+        onClose={() => { setImportPreview(undefined); setImportFileName(''); }}
+        footer={<>
+          <button type="button" onClick={() => { setImportPreview(undefined); setImportFileName(''); }} className={BOTAO_SECUNDARIO}>Cancelar</button>
+          <button type="button" disabled={!importPreview?.canApply} onClick={applyImportPreview} className={BOTAO_PRIMARIO}><FileDown className="size-4" aria-hidden="true"/>Importar {(importPreview?.newCount || 0) + (importPreview?.updateCount || 0)} lançamento(s)</button>
+        </>}
+      >
+        {importPreview && <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {([['Novos', importPreview.newCount, TOM_SITUACAO.ok], ['Atualizações', importPreview.updateCount, 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200'], ['Já existentes', importPreview.duplicateCount, TOM_SITUACAO.inativo], ['Ignorados', importPreview.ignoredCount, TOM_SITUACAO.alerta], ['Com erro', importPreview.errorCount, 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200']] as const).map(([label, value, tone]) => (
+              <div key={label} className={`rounded-xl p-3 ${tone}`}><span className="text-[11px] font-bold uppercase">{label}</span><strong className="block text-2xl font-bold tabular-nums">{value}</strong></div>
+            ))}
+          </div>
+          <ul className="mt-3 max-h-[45vh] divide-y divide-slate-100 overflow-auto rounded-xl border border-slate-200">
+            {importPreview.rows.slice(0, 500).map(row => (
+              <li key={`${row.rowNumber}-${row.key}`} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[4rem_7rem_minmax(0,1fr)_minmax(0,1.4fr)] sm:items-center">
+                <span className="font-mono text-xs text-slate-500">linha {row.rowNumber}</span>
+                <span className="font-bold text-slate-800">{({ NEW: 'Novo', UPDATE: 'Atualiza', DUPLICATE: 'Já existe', IGNORED: 'Ignorado', ERROR: 'Erro' } as Record<string, string>)[row.disposition] || row.disposition}</span>
+                <span className="truncate"><span className="font-mono font-bold">{row.record?.prefixo || '—'}</span> · {row.record?.nomeMotorista || 'Sem motorista'} · {row.record?.data || '—'}</span>
+                <span className="text-xs text-slate-600">{row.messages.join(' ') || 'Sem divergências.'}</span>
+              </li>
+            ))}
+          </ul>
+        </>}
+      </Modal>
     </main>
   );
 }
