@@ -107,7 +107,6 @@ const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
-const CentralOperacionalTab = lazy(() => import('./components/CentralOperacionalTab'));
 const FrotaTab = lazy(() => import('./components/FrotaTab'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const HorasParadasTab = lazy(() => import('./components/HorasParadasTab'));
@@ -118,21 +117,12 @@ const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
 const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
-const FrentesTab = lazy(() => import('./components/FrentesTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
-const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
 const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
-const FvsTab = lazy(() => import('./components/FvsTab'));
-const InspecoesTab = lazy(() => import('./components/InspecoesTab'));
-const NaoConformidadesTab = lazy(() => import('./components/NaoConformidadesTab'));
-const MedicoesTab = lazy(() => import('./components/MedicoesTab'));
-const DocumentosTab = lazy(() => import('./components/DocumentosTab'));
-const OcorrenciasTab = lazy(() => import('./components/OcorrenciasTab'));
 const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
 const IndicadoresTab = lazy(() => import('./components/IndicadoresTab'));
 const CustosTab = lazy(() => import('./components/CustosTab'));
 const OrcamentoTab = lazy(() => import('./components/OrcamentoTab'));
-const CronogramaTab = lazy(() => import('./components/CronogramaTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const TimelineTab = lazy(() => import('./components/TimelineTab'));
 const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
@@ -3648,14 +3638,6 @@ export default function App() {
     );
   };
 
-  const handleSaveFrente = (frente: FrenteServico, isNew: boolean) => {
-    const updated = isNew ? [frente, ...frentesServico] : frentesServico.map(item => item.id === frente.id ? frente : item);
-    saveAndLog('Frentes de Serviço', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} a frente ${frente.nome} (${frente.situacao}).`, historyLogs, () => {
-      setFrentesServico(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.frentesServico, JSON.stringify(updated));
-    });
-  };
-
   // Alertas do sino: derivados dos mesmos registros das pendências, filtrando só
   // gravidade alta. Não são salvos, então nunca sobra alerta de algo resolvido.
   const alertasSistema = useMemo(() => alertasDoSistema({
@@ -3709,90 +3691,11 @@ export default function App() {
     salvarPreferencias(localStorage, preferencias);
   };
 
-  const handleSaveOcorrencia = (ocorrencia: Ocorrencia, isNew: boolean) => {
-    const updated = isNew ? [ocorrencia, ...ocorrencias] : ocorrencias.map(item => item.id === ocorrencia.id ? ocorrencia : item);
-    saveAndLog('Ocorrências', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Atualizou'} a ocorrência ${ocorrencia.numero} (${ocorrencia.tipo}) em ${ocorrencia.data}.`, historyLogs, () => {
-      setOcorrencias(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.ocorrencias, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveDocumento = (documento: DocumentoArquivo, isNew: boolean) => {
-    const updated = isNew ? [documento, ...documentos] : documentos.map(item => item.id === documento.id ? documento : item);
-    saveAndLog('Documentos', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o documento ${documento.titulo} (${documento.tipo}).`, historyLogs, () => {
-      setDocumentos(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.documentos, JSON.stringify(updated));
-    });
-  };
-
-  // Sobe o arquivo pelo mesmo caminho validado dos anexos operacionais e guarda
-  // só a referência no documento — o binário nunca entra no estado nem no backup.
-  const handleUploadDocumento = async (documento: DocumentoArquivo, arquivo: File) => {
-    const { uploadOperationalAttachment } = await import('./services/operationalAttachments');
-    const anexo = await uploadOperationalAttachment(
-      { obraId: documento.obraId || 'geral', module: 'documentos', recordId: documento.id },
-      arquivo,
-    );
-    handleSaveDocumento({
-      ...documento,
-      anexo: { path: anexo.path, name: anexo.name, contentType: anexo.contentType, size: anexo.size },
-      atualizadoEm: new Date().toISOString(),
-    }, false);
-  };
-
-  const handleSaveMedicao = (medicao: Medicao, isNew: boolean) => {
-    const updated = isNew ? [medicao, ...medicoes] : medicoes.map(item => item.id === medicao.id ? medicao : item);
-    saveAndLog('Medições', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a medição ${medicao.numero} (${medicao.periodoInicio} a ${medicao.periodoFim}) — ${medicao.situacao}.`, historyLogs, () => {
-      setMedicoes(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.medicoes, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveNaoConformidade = (registro: NaoConformidade, isNew: boolean) => {
-    const updated = isNew ? [registro, ...naoConformidades] : naoConformidades.map(item => item.id === registro.id ? registro : item);
-    saveAndLog('Não Conformidades', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a NC ${registro.numero} (${registro.origem}) — ${registro.situacao}.`, historyLogs, () => {
-      setNaoConformidades(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.naoConformidades, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveInspecao = (inspecao: Inspecao, isNew: boolean) => {
-    const updated = isNew ? [inspecao, ...inspecoes] : inspecoes.map(item => item.id === inspecao.id ? inspecao : item);
-    saveAndLog('Inspeções', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a inspeção ${inspecao.numero} em ${inspecao.local} — ${inspecao.situacao}.`, historyLogs, () => {
-      setInspecoes(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.inspecoes, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveModeloFvs = (modelo: ModeloFvs, isNew: boolean) => {
-    const updated = isNew ? [modelo, ...modelosFvs] : modelosFvs.map(item => item.id === modelo.id ? modelo : item);
-    saveAndLog('FVS', isNew ? 'Criou' : 'Editou', `${isNew ? 'Criou' : 'Editou'} o modelo de FVS ${modelo.nome}.`, historyLogs, () => {
-      setModelosFvs(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.modelosFvs, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveFichaFvs = (ficha: FichaVerificacaoServico, isNew: boolean) => {
-    const updated = isNew ? [ficha, ...fichasFvs] : fichasFvs.map(item => item.id === ficha.id ? ficha : item);
-    saveAndLog('FVS', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a ficha ${ficha.numero} (${ficha.local}) — ${ficha.situacao}.`, historyLogs, () => {
-      setFichasFvs(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.fichasFvs, JSON.stringify(updated));
-    });
-  };
-
   const handleSavePlanejamento = (plano: PlanejamentoItem, isNew: boolean) => {
     const updated = isNew ? [plano, ...planejamentoItens] : planejamentoItens.map(item => item.id === plano.id ? plano : item);
     saveAndLog('Planejamento', isNew ? 'Criou' : 'Editou', `${isNew ? 'Planejou' : 'Editou'} ${plano.quantidadePlanejada} ${plano.unidade} de ${plano.servicoDescricao} entre ${plano.dataInicio} e ${plano.dataFim}.`, historyLogs, () => {
       setPlanejamentoItens(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.planejamentoItens, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveServicoObra = (servico: ServicoObra, isNew: boolean) => {
-    const updated = isNew ? [servico, ...servicosObra] : servicosObra.map(item => item.id === servico.id ? servico : item);
-    saveAndLog('Produção', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o serviço ${servico.descricao}.`, historyLogs, () => {
-      setServicosObra(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.servicosObra, JSON.stringify(updated));
     });
   };
 
@@ -4789,18 +4692,11 @@ export default function App() {
     }))
     .filter(group => group.items.length > 0);
 
-  // Mapping of sub-tab IDs to their parent primary modules
+  // Frentes e produção vivem na parte Frentes do Meu dia: links da busca, da
+  // timeline e das pendências que apontam para elas abrem ali.
   const SUB_TAB_MAPPING: Record<string, string> = {
-    // Central Operacional sub-tabs
-    'frentes': 'central-operacional',
-    'producao': 'central-operacional',
-    'cronograma': 'central-operacional',
-    'fvs': 'central-operacional',
-    'inspecoes': 'central-operacional',
-    'nao-conformidades': 'central-operacional',
-    'medicoes': 'central-operacional',
-    'documentos': 'central-operacional',
-    'ocorrencias': 'central-operacional',
+    frentes: 'meu-dia',
+    producao: 'meu-dia',
   };
 
   const navigateTo = (tab: string, closeMobile = false) => {
@@ -5090,33 +4986,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'central-operacional' && (
-              <CentralOperacionalTab
-                equipamentos={equipamentos}
-                controlesEquipamentos={controleEquipamentosDiario}
-                gruposEquipe={gruposEquipe}
-                presencasLink={presencasLinkAtivas}
-                ordensServico={ordensServico}
-                ticketsJazida={ticketsJazidaAtivos}
-                obras={obras}
-                frentes={frentesServico}
-                apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentosVigentes}
-                servicos={servicosObra}
-                producao={producaoRegistros}
-                ocorrencias={ocorrencias}
-                funcionarios={funcionarios}
-                podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
-                responsavel={activeUserName}
-                onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
-                onSaveFrente={handleSaveFrente}
-                onSaveServico={handleSaveServicoObra}
-                onSaveProducao={handleSaveProducao}
-                onSaveOcorrencia={handleSaveOcorrencia}
-                onNavigate={navigateTo}
-              />
-            )}
-
             {activeTab === 'modo-campo' && (
               <ModoCampoTab
                 presencasLink={presencasLinkAtivas}
@@ -5238,14 +5107,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'cronograma' && (
-              <CronogramaTab
-                planos={planejamentoItens}
-                producao={producaoRegistros}
-                frentes={frentesServico}
-              />
-            )}
-
             {activeTab === 'orcamento' && (
               <OrcamentoTab
                 orcamentos={orcamentoItens}
@@ -5327,86 +5188,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'ocorrencias' && (
-              <OcorrenciasTab
-                ocorrencias={ocorrencias}
-                obras={obras}
-                frentes={frentesServico}
-                equipamentos={equipamentos}
-                funcionarios={funcionarios}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'ocorrencias', 'editar')}
-                onSave={handleSaveOcorrencia}
-              />
-            )}
-
-            {activeTab === 'documentos' && (
-              <DocumentosTab
-                documentos={documentos}
-                funcionarios={funcionarios}
-                equipamentos={equipamentos}
-                obras={obras}
-                fichasFvs={fichasFvs}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'documentos', 'editar')}
-                onSave={handleSaveDocumento}
-                onUpload={handleUploadDocumento}
-              />
-            )}
-
-            {activeTab === 'medicoes' && (
-              <MedicoesTab
-                medicoes={medicoes}
-                servicos={servicosObra}
-                producao={producaoRegistros}
-                obras={obras}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'medicoes', 'editar')}
-                podeAprovar={pode(currentUserRole, 'medicoes', 'aprovar')}
-                onSave={handleSaveMedicao}
-              />
-            )}
-
-            {activeTab === 'nao-conformidades' && (
-              <NaoConformidadesTab
-                registros={naoConformidades}
-                fichasFvs={fichasFvs}
-                inspecoes={inspecoes}
-                obras={obras}
-                frentes={frentesServico}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'nao-conformidades', 'editar')}
-                onSave={handleSaveNaoConformidade}
-              />
-            )}
-
-            {activeTab === 'inspecoes' && (
-              <InspecoesTab
-                inspecoes={inspecoes}
-                obras={obras}
-                frentes={frentesServico}
-                equipamentos={equipamentos}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'inspecoes', 'editar')}
-                onSave={handleSaveInspecao}
-              />
-            )}
-
-            {activeTab === 'fvs' && (
-              <FvsTab
-                fichas={fichasFvs}
-                modelos={modelosFvs}
-                servicos={servicosObra}
-                obras={obras}
-                frentes={frentesServico}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'fvs', 'editar')}
-                podeAprovar={pode(currentUserRole, 'fvs', 'aprovar')}
-                onSaveFicha={handleSaveFichaFvs}
-                onSaveModelo={handleSaveModeloFvs}
-              />
-            )}
-
             {activeTab === 'planejamento' && (
               <PlanejamentoTab
                 planos={planejamentoItens}
@@ -5418,20 +5199,6 @@ export default function App() {
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'planejamento', 'editar')}
                 onSave={handleSavePlanejamento}
-              />
-            )}
-
-            {activeTab === 'producao' && (
-              <ProducaoTab
-                servicos={servicosObra}
-                registros={producaoRegistros}
-                obras={obras}
-                frentes={frentesServico}
-                gruposEquipe={gruposEquipe}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'producao', 'editar')}
-                onSaveServico={handleSaveServicoObra}
-                onSaveRegistro={handleSaveProducao}
               />
             )}
 
@@ -5448,21 +5215,6 @@ export default function App() {
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
                 onSave={handleSaveDiarioObra}
-              />
-            )}
-
-            {activeTab === 'frentes' && (
-              <FrentesTab
-                frentes={frentesServico}
-                obras={obras}
-                gruposEquipe={gruposEquipe}
-                presencasLink={presencasLinkAtivas}
-                controlesEquipamentos={controleEquipamentosDiario}
-                apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentosVigentes}
-                ticketsJazida={ticketsJazidaAtivos}
-                podeEditar={pode(currentUserRole, 'frentes', 'editar')}
-                onSave={handleSaveFrente}
               />
             )}
 

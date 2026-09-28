@@ -40,10 +40,9 @@ test('perfis preservam restrições e não expõem módulos removidos', () => {
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'configuracoes'), false);
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'reports'), false);
 
-  // Central Operacional é tela de campo: operação usa, leitura não
-  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'central-operacional'), true);
-  assert.equal(ROLE_ACCESS.operador.includes('central-operacional'), true);
-  assert.equal(ROLE_ACCESS.leitura.includes('central-operacional'), false);
+  // Central Operacional saiu do app a pedido do usuário em 2026-09-28
+  assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'central-operacional'), false);
+  assert.equal(ROLE_ACCESS.admin.includes('central-operacional'), false);
 
   // Módulos primários estão em ALL_NAVIGATION_ITEMS
   assert.equal(ALL_NAVIGATION_ITEMS.some(item => item.id === 'colaboradores'), true);

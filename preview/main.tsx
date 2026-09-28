@@ -16,7 +16,6 @@ import EstacasTab from '../src/components/EstacasTab';
 import CadastrosTab from '../src/components/CadastrosTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
-import CentralOperacionalTab from '../src/components/CentralOperacionalTab';
 import FrotaTab from '../src/components/FrotaTab';
 import ManutencaoTab from '../src/components/ManutencaoTab';
 import HorasParadasTab from '../src/components/HorasParadasTab';
@@ -29,21 +28,12 @@ import MateriaisTab from '../src/components/MateriaisTab';
 import MateriaisUtilizacaoPanel from '../src/components/MateriaisUtilizacaoPanel';
 import MaterialLinkApontador from '../src/components/MaterialLinkApontador';
 import { buildFieldView } from '../api/_shared/material-usage.js';
-import FrentesTab from '../src/components/FrentesTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
-import ProducaoTab from '../src/components/ProducaoTab';
 import PlanejamentoTab from '../src/components/PlanejamentoTab';
-import FvsTab from '../src/components/FvsTab';
-import InspecoesTab from '../src/components/InspecoesTab';
-import NaoConformidadesTab from '../src/components/NaoConformidadesTab';
-import MedicoesTab from '../src/components/MedicoesTab';
-import DocumentosTab from '../src/components/DocumentosTab';
-import OcorrenciasTab from '../src/components/OcorrenciasTab';
 import PendenciasTab from '../src/components/PendenciasTab';
 import IndicadoresTab from '../src/components/IndicadoresTab';
 import CustosTab from '../src/components/CustosTab';
 import OrcamentoTab from '../src/components/OrcamentoTab';
-import CronogramaTab from '../src/components/CronogramaTab';
 import RelatoriosTab from '../src/components/RelatoriosTab';
 import TimelineTab from '../src/components/TimelineTab';
 import AuditoriaTab from '../src/components/AuditoriaTab';
@@ -527,9 +517,6 @@ const screens: Record<string, React.ReactNode> = {
   relatorios: (
     <RelatoriosTab dados={{ equipamentos: fx.equipamentos, obras: fx.obras, abastecimentos: fx.abastecimentos, ordensServico: fx.ordensServico }} />
   ),
-  cronograma: (
-    <CronogramaTab planos={[]} producao={[]} frentes={[]} />
-  ),
   orcamento: (
     <OrcamentoTab
       orcamentos={[]}
@@ -567,79 +554,6 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
-  ocorrencias: (
-    <OcorrenciasTab
-      ocorrencias={[]}
-      obras={fx.obras}
-      frentes={[]}
-      equipamentos={fx.equipamentos}
-      funcionarios={fx.funcionarios}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-    />
-  ),
-  documentos: (
-    <DocumentosTab
-      documentos={[]}
-      funcionarios={fx.funcionarios}
-      equipamentos={fx.equipamentos}
-      obras={fx.obras}
-      fichasFvs={[]}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-    />
-  ),
-  medicoes: (
-    <MedicoesTab
-      medicoes={[]}
-      servicos={[]}
-      producao={[]}
-      obras={fx.obras}
-      responsavel="Deivid Santana"
-      podeEditar
-      podeAprovar
-      onSave={noop}
-    />
-  ),
-  'nao-conformidades': (
-    <NaoConformidadesTab
-      registros={[]}
-      fichasFvs={[]}
-      inspecoes={[]}
-      obras={fx.obras}
-      frentes={[]}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-    />
-  ),
-  inspecoes: (
-    <InspecoesTab
-      inspecoes={[]}
-      obras={fx.obras}
-      frentes={[]}
-      equipamentos={fx.equipamentos}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-    />
-  ),
-  fvs: (
-    <FvsTab
-      fichas={[]}
-      modelos={[]}
-      servicos={[]}
-      obras={fx.obras}
-      frentes={[]}
-      responsavel="Deivid Santana"
-      podeEditar
-      podeAprovar
-      onSaveFicha={noop}
-      onSaveModelo={noop}
-    />
-  ),
   planejamento: (
     <PlanejamentoTab
       planos={[]}
@@ -653,19 +567,6 @@ const screens: Record<string, React.ReactNode> = {
       onSave={noop}
     />
   ),
-  producao: (
-    <ProducaoTab
-      servicos={[]}
-      registros={[]}
-      obras={fx.obras}
-      frentes={[]}
-      gruposEquipe={[fx.grupo]}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSaveServico={noop}
-      onSaveRegistro={noop}
-    />
-  ),
   'diario-obra': (
     <DiarioObraTab
       diarios={fx.diariosChuva}
@@ -677,20 +578,6 @@ const screens: Record<string, React.ReactNode> = {
       movimentosMaterial={[]}
       ticketsJazida={fx.ticketsJazida}
       responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-    />
-  ),
-  frentes: (
-    <FrentesTab
-      frentes={[]}
-      obras={fx.obras}
-      gruposEquipe={[fx.grupo]}
-      presencasLink={fx.presencasHistorico}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      apontamentos={[]}
-      movimentosMaterial={[]}
-      ticketsJazida={fx.ticketsJazida}
       podeEditar
       onSave={noop}
     />
@@ -801,21 +688,6 @@ const screens: Record<string, React.ReactNode> = {
       ordensServico={fx.ordensServico}
       abastecimentos={fx.abastecimentos}
       ticketsJazida={fx.ticketsJazida}
-      onNavigate={noop}
-    />
-  ),
-  'central-operacional': (
-    <CentralOperacionalTab
-      equipamentos={fx.equipamentos}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      gruposEquipe={[fx.grupo]}
-      presencasLink={fx.registrosEnviados}
-      ordensServico={fx.ordensServico}
-      ticketsJazida={fx.ticketsJazida}
-      obras={fx.obras}
-      podeAtualizar
-      responsavel="Deivid Santana"
-      onSaveControleEquipamento={noop}
       onNavigate={noop}
     />
   ),
