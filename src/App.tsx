@@ -107,6 +107,7 @@ const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
+const QuadroFrotaTab = lazy(() => import('./components/QuadroFrotaTab'));
 const FrotaTab = lazy(() => import('./components/FrotaTab'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const HorasParadasTab = lazy(() => import('./components/HorasParadasTab'));
@@ -5384,6 +5385,17 @@ export default function App() {
                 ordensServico={ordensServico}
                 abastecimentos={abastecimentosAtivos}
                 ticketsJazida={ticketsJazidaAtivos}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {activeTab === 'quadro-frota' && (
+              <QuadroFrotaTab
+                equipamentos={equipamentos}
+                registros={controleEquipamentosDiario}
+                gruposEquipe={gruposEquipe}
+                abastecimentos={abastecimentosAtivos}
+                frentes={frentesServico}
                 onNavigate={navigateTo}
               />
             )}
