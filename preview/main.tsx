@@ -703,6 +703,8 @@ const screens: Record<string, React.ReactNode> = {
       etapas={fx.etapasRamos}
       responsavel="Deivid Santana"
       podeEditar
+      classe=""
+      onClasse={noop}
       onSaveMovimentos={noop}
       onUpdateMovimentos={noop}
     />

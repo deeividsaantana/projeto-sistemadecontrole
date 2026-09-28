@@ -4967,7 +4967,7 @@ export default function App() {
           onLogout={() => void handleLogout()}
         />
         {/* Dynamic Inner Tab Viewport */}
-        <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
+        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (

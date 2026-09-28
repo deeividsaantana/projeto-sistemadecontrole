@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Boxes, ChartPie, ClipboardPen, FileBarChart, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, UserRoundCheck, type LucideIcon } from 'lucide-react';
+import { BrickWall, Cylinder, Hammer, Mountain, TreePine, Boxes, ChartPie, ClipboardPen, FileBarChart, ChevronDown, FileSpreadsheet, LayoutDashboard, ListOrdered, MapPinned, Package, Route, Target, Truck, UserRoundCheck, type LucideIcon } from 'lucide-react';
 import { FOCO, reduzMovimento } from '../cadastros/estilos';
+import type { ClasseMaterial } from '../../modules/materials/classesMateriais';
+
+const ICONE_DA_CLASSE: Record<ClasseMaterial, LucideIcon> = {
+  'Tubo de concreto': Cylinder,
+  'Tubo PEAD e PVC': Cylinder,
+  Madeira: TreePine,
+  Aço: Hammer,
+  Agregados: Mountain,
+  'Concreto e argamassa': BrickWall,
+  Outros: Package,
+};
 
 export type SecaoMateriais = 'lancar' | 'resumo' | 'graficos' | 'relatorios' | 'previsto' | 'utilizacao' | 'apontadores' | 'botafora' | 'estoque' | 'movimentos' | 'cadastro' | 'locais' | 'importacoes';
 
@@ -73,6 +84,10 @@ interface Props {
   onSelect: (id: SecaoMateriais) => void;
   /** Sem a coluna do computador: o seletor de cima vale em qualquer tela. */
   compacto?: boolean;
+  /** Classes com material cadastrado: cada uma abre o Uso por ramo daquela classe. */
+  classes?: ReadonlyArray<{ nome: ClasseMaterial; materiais: number }>;
+  classeAtiva?: ClasseMaterial | '';
+  onClasse?: (classe: ClasseMaterial) => void;
 }
 
 /**
@@ -80,11 +95,13 @@ interface Props {
  * é uma coluna fixa com as partes e a quantidade de cada uma; no celular vira
  * um seletor grande que abre a lista de baixo para cima.
  */
-export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 0, onSelect, compacto = false }: Props) {
+export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 0, onSelect, compacto = false, classes = [], classeAtiva = '', onClasse }: Props) {
   const [aberto, setAberto] = useState(false);
   const folha = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const atual = TODAS.find(secao => secao.id === value) ?? TODAS[0];
+  const secaoAtual = TODAS.find(secao => secao.id === value) ?? TODAS[0];
+  const naClasse = value === 'utilizacao' && classeAtiva ? classeAtiva : '';
+  const atual = naClasse ? { nome: naClasse, Icone: ICONE_DA_CLASSE[naClasse] } : secaoAtual;
   const IconeAtual = atual.Icone;
 
   useEffect(() => {
@@ -134,7 +151,7 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
   };
 
   const item = ({ id, nome, ajuda, Icone }: Secao, grande: boolean) => {
-    const ativo = value === id;
+    const ativo = value === id && !(id === 'utilizacao' && classeAtiva);
     return (
       <li key={id}>
         <button
@@ -162,17 +179,49 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
     );
   };
 
+  const itemDaClasse = ({ nome, materiais }: { nome: ClasseMaterial; materiais: number }, grande: boolean) => {
+    const ativo = value === 'utilizacao' && classeAtiva === nome;
+    const Icone = ICONE_DA_CLASSE[nome];
+    return (
+      <li key={nome}>
+        <button
+          type="button"
+          aria-current={ativo ? 'true' : undefined}
+          onClick={() => { setAberto(false); onClasse?.(nome); }}
+          className={`group flex w-full min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-left font-semibold transition duration-200 ${FOCO} ${grande ? 'min-h-14 text-base' : 'min-h-11 text-sm'} ${ativo
+            ? 'is-active bg-[#176b4d] text-white'
+            : 'text-slate-700 hover:bg-emerald-50 hover:text-[#176b4d]'}`}
+        >
+          <Icone className={`size-[18px] shrink-0 transition-transform duration-200 motion-reduce:transition-none ${ativo ? 'opacity-100' : 'opacity-80 group-hover:scale-110 group-hover:text-[#176b4d]'}`} aria-hidden="true" />
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <span className="min-w-0 break-words">{nome}</span>
+            <span className={`shrink-0 text-xs font-bold tabular-nums ${ativo ? 'text-white/80' : 'text-slate-400'}`}>{materiais.toLocaleString('pt-BR')}</span>
+          </span>
+        </button>
+      </li>
+    );
+  };
+
+  const grupoDeClasses = (grande: boolean) => (onClasse && classes.length > 0 && secoes.includes('utilizacao') ? (
+    <section key="classes" aria-labelledby={`materiais-grupo-classes-${grande ? 'm' : 'd'}`}>
+      <h2 id={`materiais-grupo-classes-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#718087]">Por classe</h2>
+      <ul className="space-y-0.5">{classes.map(classe => itemDaClasse(classe, grande))}</ul>
+    </section>
+  ) : null);
+
   const lista = (grande: boolean) => (
     <div className="space-y-3">
       {GRUPOS.map(grupo => {
         const visiveis = grupo.secoes.filter(secao => secoes.includes(secao.id));
         if (!visiveis.length) return null;
-        return (
+        return [
           <section key={grupo.id} aria-labelledby={`materiais-grupo-${grupo.id}-${grande ? 'm' : 'd'}`}>
             <h2 id={`materiais-grupo-${grupo.id}-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#718087]">{grupo.nome}</h2>
             <ul className="space-y-0.5">{visiveis.map(secao => item(secao, grande))}</ul>
-          </section>
-        );
+          </section>,
+          // Tubos, madeira e o resto logo depois de "Na obra": é lá que se vê o uso.
+          grupo.id === 'obra' ? grupoDeClasses(grande) : null,
+        ];
       })}
     </div>
   );

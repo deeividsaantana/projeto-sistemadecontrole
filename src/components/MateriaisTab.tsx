@@ -34,6 +34,7 @@ import { viagensDeBotaFora } from '../modules/materials/botaFora';
 import { SITUACAO_PREVISTO, acompanharMes } from '../modules/materials/previstoMateriais';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from './cadastros/estilos';
 import './materiais/Materiais.css';
+import { CLASSES_MATERIAL, classeDoMaterial, type ClasseMaterial } from '../modules/materials/classesMateriais';
 import {
   ConfirmDialog,
   DataTable,
@@ -117,6 +118,7 @@ export default function MateriaisTab({
 }: MateriaisTabProps) {
   const hoje = isoDay(new Date());
   const [aba, setAba] = useState<SecaoMateriais>('resumo');
+  const [classe, setClasse] = useState<ClasseMaterial | ''>('');
   const [busca, setBusca] = useState('');
   const escopoMotion = useEntradaDeLista<HTMLDivElement>([busca, aba]);
   const jaEntrou = useRef(false);
@@ -191,8 +193,27 @@ export default function MateriaisTab({
   };
   const algumaJanela = materialAberto || lancamentoAberto || viagensAberto || trocarRamoAberto || desfazerAberto || atalhosAberto || Boolean(fichaMaterialId);
   const secoes: SecaoMateriais[] = podeEditar ? [...ORDEM_SECOES] : ORDEM_SECOES.filter(secao => secao !== 'importacoes' && secao !== 'lancar');
+  // Classes do menu "Por classe": materiais do cadastro e os que só aparecem nos movimentos.
+  const classesDoMenu = useMemo(() => {
+    const porClasse = new Map<ClasseMaterial, Set<string>>();
+    const contar = (chave: string, material: Pick<Material, 'descricao' | 'categoria'>) => {
+      const nome = classeDoMaterial(material);
+      porClasse.set(nome, (porClasse.get(nome) ?? new Set<string>()).add(chave));
+    };
+    ativos.forEach(item => contar(item.id, item));
+    const cadastrados = new Set(ativos.map(item => item.id));
+    movimentos.forEach(item => { if (item.materialId && !cadastrados.has(item.materialId) && !item.canceladoEm) contar(item.materialId, { descricao: item.materialDescricao, categoria: '' }); });
+    return CLASSES_MATERIAL.filter(nome => porClasse.has(nome)).map(nome => ({ nome, materiais: porClasse.get(nome)?.size || 0 }));
+  }, [ativos, movimentos]);
+  const escolherClasse = (nome: ClasseMaterial) => {
+    setAba('utilizacao');
+    setClasse(nome);
+    setBusca('');
+    setMarcados(new Set());
+  };
   const escolherSecao = (secao: SecaoMateriais) => {
     setAba(secao);
+    setClasse('');
     setBusca('');
     setMarcados(new Set());
   };
@@ -446,7 +467,7 @@ export default function MateriaisTab({
 
       {/* Lançar usa a tela toda: o menu vira o seletor de cima, como no celular. */}
       <div className={`grid gap-4 lg:items-start ${aba === 'lancar' ? '' : 'lg:grid-cols-[14rem_minmax(0,1fr)]'}`}>
-        <MateriaisSecoes value={aba} compacto={aba === 'lancar'} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : secao === 'previsto' ? previstosEmAtencao : 0)} onSelect={escolherSecao} />
+        <MateriaisSecoes value={aba} compacto={aba === 'lancar'} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : secao === 'previsto' ? previstosEmAtencao : 0)} onSelect={escolherSecao} classes={classesDoMenu} classeAtiva={classe} onClasse={escolherClasse} />
 
         <div id="materiais-conteudo" className="min-w-0 space-y-3">
           {comBusca && (
@@ -570,6 +591,8 @@ export default function MateriaisTab({
                 etapas={etapas}
                 responsavel={responsavel}
                 podeEditar={podeEditar}
+                classe={classe}
+                onClasse={setClasse}
                 onSaveMovimentos={onSaveMovimentos}
                 onUpdateMovimentos={onUpdateMovimentos}
               />
