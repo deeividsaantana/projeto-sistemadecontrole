@@ -222,7 +222,11 @@ export interface PlanoCargaSge {
  * renomeado: local que já existe só ganha o que falta (código, tipo, ramo e
  * apelidos); o que não existe entra novo.
  */
-export const planoCargaSge = (etapas: readonly EtapaServico[], catalogo: readonly LocalSge[] = CATALOGO_LOCAIS_SGE): PlanoCargaSge => {
+/**
+ * `apagados` são os ids que alguém mandou para a Lixeira: a lista SGE não
+ * traz de volta o local que a pessoa apagou de propósito.
+ */
+export const planoCargaSge = (etapas: readonly EtapaServico[], catalogo: readonly LocalSge[] = CATALOGO_LOCAIS_SGE, apagados: ReadonlySet<string> = new Set()): PlanoCargaSge => {
   const novas: EtapaServico[] = [];
   const completadas = new Map<string, EtapaServico>();
   const conflitos: PlanoCargaSge['conflitos'] = [];
@@ -234,6 +238,7 @@ export const planoCargaSge = (etapas: readonly EtapaServico[], catalogo: readonl
     const existente = (local.codigo ? porCodigo.get(local.codigo) : undefined)
       ?? [local.nome, ...(local.apelidos || [])].map(texto => resolverLocal(texto, indice)).find(item => item && !usados.has(item.id));
     if (!existente) {
+      if (apagados.has(idDoCatalogo(local))) continue;
       novas.push({
         id: idDoCatalogo(local),
         nome: local.nome,
@@ -269,6 +274,8 @@ export const planoCargaSge = (etapas: readonly EtapaServico[], catalogo: readonl
 export interface NomeSemLocal {
   texto: string;
   movimentos: number;
+  /** Em quantos movimentos o nome veio como origem (de onde saiu). */
+  comoOrigem: number;
   /** Local provável pelo número do ramo ("BASE DE REFORÇO RAMO 1400" → Ramo 1400). */
   sugestao?: EtapaServico;
 }
@@ -293,11 +300,12 @@ export const nomesSemLocal = (movimentos: readonly MovimentoMaterial[], etapas: 
   const grupos = new Map<string, NomeSemLocal>();
   for (const movimento of movimentos) {
     if (movimento.canceladoEm || movimento.etapaServicoId) continue;
-    for (const texto of [movimento.destino, movimento.origem]) {
+    for (const [texto, origem] of [[movimento.destino, false], [movimento.origem, true]] as const) {
       if (!texto?.trim() || resolverLocal(texto, indice)) continue;
       const chave = chaveLocal(texto);
-      const grupo = grupos.get(chave) ?? { texto: texto.trim(), movimentos: 0 };
+      const grupo = grupos.get(chave) ?? { texto: texto.trim(), movimentos: 0, comoOrigem: 0 };
       grupo.movimentos += 1;
+      if (origem) grupo.comoOrigem += 1;
       grupos.set(chave, grupo);
     }
   }
@@ -309,6 +317,23 @@ export const nomesSemLocal = (movimentos: readonly MovimentoMaterial[], etapas: 
       return sugestao ? { ...grupo, sugestao } : grupo;
     })
     .sort((a, b) => b.movimentos - a.movimentos || a.texto.localeCompare(b.texto, 'pt-BR'));
+};
+
+/**
+ * Local novo a partir de um nome da planilha, sem código SGE: o tipo sai do
+ * próprio nome (bota-fora, estoque, canteiro) ou de ter vindo só como origem,
+ * e o ramo, do número citado. A pessoa corrige depois, se precisar.
+ */
+export const localDoNome = (nome: NomeSemLocal, id: string): EtapaServico => {
+  const chave = chaveLocal(nome.texto);
+  const tipoLocal: TipoLocalObra = /\bbota fora\b/.test(chave) ? 'Bota-fora'
+    : /\bbota espera\b/.test(chave) ? 'Bota-espera'
+      : /\b(estoque|almoxarifado|patio)\b/.test(chave) ? 'Estoque'
+        : /\bcanteiro\b/.test(chave) ? 'Canteiro'
+          : nome.comoOrigem === nome.movimentos ? 'Origem'
+            : 'Frente';
+  const ramo = ramoCitado(nome.texto);
+  return { id, nome: nome.texto.trim(), tipoLocal, ...(ramo ? { ramo } : {}) };
 };
 
 /** Guarda o nome da planilha como apelido do local escolhido. */

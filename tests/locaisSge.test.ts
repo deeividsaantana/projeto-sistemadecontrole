@@ -9,6 +9,7 @@ import {
   indiceDeLocais,
   ligarNome,
   localDoMovimento,
+  localDoNome,
   nomesSemLocal,
   planoCargaSge,
   resolverLocal,
@@ -130,4 +131,34 @@ test('o código da viagem sai do par origem e destino, em qualquer grafia', () =
   assert.equal(codigoDaViagem('Bota Espera Ramo 600', 'BOTA FORA LARA', indice), '9');
   assert.equal(codigoDaViagem('IBAR', 'RAMO 700', indice), '40', 'código repetido fica com o primeiro');
   assert.equal(codigoDaViagem('LUGAR NENHUM', 'Ibar', indice), undefined);
+});
+
+test('nome da planilha vira local próprio, sem código SGE, com tipo e ramo tirados do nome', () => {
+  const etapas = carregado();
+  const movimentos = [
+    mov('a', 'BOTA-FORA ESTRADA VELHA'),
+    mov('b', 'ATERRO RAMO 1300'),
+    mov('c', 'PÁTIO CENTRAL'),
+    mov('d', 'ATERRO RAMO 1300', { origem: 'PEDREIRA NOVA' }),
+  ];
+  const faltando = nomesSemLocal(movimentos, etapas);
+  const pedreira = faltando.find(item => item.texto === 'PEDREIRA NOVA')!;
+  assert.equal(pedreira.comoOrigem, 1);
+  const novos = Object.fromEntries(faltando.map(item => [item.texto, localDoNome(item, `id-${item.texto}`)]));
+  assert.deepEqual(novos['BOTA-FORA ESTRADA VELHA'], { id: 'id-BOTA-FORA ESTRADA VELHA', nome: 'BOTA-FORA ESTRADA VELHA', tipoLocal: 'Bota-fora' });
+  assert.equal(novos['ATERRO RAMO 1300'].tipoLocal, 'Frente');
+  assert.equal(novos['ATERRO RAMO 1300'].ramo, 'Ramo 1300');
+  assert.equal(novos['ATERRO RAMO 1300'].codigoSge, undefined);
+  assert.equal(novos['PÁTIO CENTRAL'].tipoLocal, 'Estoque');
+  assert.equal(novos['PEDREIRA NOVA'].tipoLocal, 'Origem', 'só veio como origem');
+  const depois = [...etapas, ...Object.values(novos)];
+  assert.deepEqual(nomesSemLocal(movimentos, depois), [], 'depois de criados, todos contam em algum local');
+});
+
+test('a lista SGE não traz de volta o local que foi para a Lixeira', () => {
+  const plano = planoCargaSge([]);
+  const primeiro = plano.novas[0];
+  const semEle = planoCargaSge([], undefined, new Set([primeiro.id]));
+  assert.equal(semEle.novas.length, plano.novas.length - 1);
+  assert.ok(!semEle.novas.some(item => item.id === primeiro.id));
 });

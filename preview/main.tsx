@@ -235,9 +235,16 @@ const movimentosComFotos = fx.movimentosUtilizacao.map(item => ({ ...item, fotos
 function MateriaisPreview() {
   const [materiais, setMateriais] = React.useState(() => [...fx.materiaisObra]);
   // Os usos do link entram junto para a parte Apontadores ter envios e fotos.
-  const [movimentos, setMovimentos] = React.useState(() => [...fx.movimentosMateriaisObra, ...movimentosComFotos.filter(item => item.origemApontamentoId)]);
+  const [movimentos, setMovimentos] = React.useState(() => [
+    ...fx.movimentosMateriaisObra,
+    ...movimentosComFotos.filter(item => item.origemApontamentoId),
+    // Nomes que nenhum local conhece, para a parte Ramos e locais ter o que criar.
+    ...['BOTA-FORA ESTRADA VELHA', 'ATERRO RAMO 1300', 'PÁTIO CENTRAL'].map((destino, posicao) => ({ ...fx.movimentosMateriaisObra[0], id: `sem-local-${posicao}`, destino, etapaServicoId: undefined, etapaServicoNome: undefined })),
+  ]);
   const [etapas, setEtapas] = React.useState<EtapaServico[]>([]);
   const [previstos, setPrevistos] = React.useState<PrevistoMaterial[]>([]);
+  const lixeira = React.useRef(new Map<string, EtapaServico>());
+  const [apagados, setApagados] = React.useState<Set<string>>(new Set());
   const juntar = <T extends { id: string }>(atuais: T[], novos: T[]) => {
     const porId = new Map(novos.map(item => [item.id, item]));
     const ids = new Set(atuais.map(item => item.id));
@@ -257,6 +264,19 @@ function MateriaisPreview() {
       onUpdateMovimentos={alterados => setMovimentos(atual => juntar(atual, alterados))}
       onApplyImport={(novosMateriais, novosMovimentos) => { setMateriais(atual => juntar(atual, novosMateriais)); setMovimentos(atual => juntar(atual, novosMovimentos)); }}
       onSaveEtapas={itens => setEtapas(atual => juntar(atual, itens))}
+      onExcluirLocal={id => {
+        const alvo = etapas.find(item => item.id === id);
+        if (alvo) lixeira.current.set(`lixo-${id}`, alvo);
+        setApagados(atual => new Set([...atual, id]));
+        setEtapas(atual => atual.filter(item => item.id !== id));
+        return { ok: true, exclusaoId: `lixo-${id}` };
+      }}
+      locaisApagados={apagados}
+      onRestaurarLocal={exclusaoId => {
+        const volta = lixeira.current.get(exclusaoId);
+        if (volta) { setEtapas(atual => [...atual, volta]); setApagados(atual => new Set([...atual].filter(id => id !== volta.id))); }
+        return { ok: Boolean(volta), mensagem: volta ? `${volta.nome} voltou para a lista.` : 'Já foi restaurado.' };
+      }}
       previstos={previstos}
       onSavePrevistos={itens => setPrevistos(atual => juntar(atual, itens))}
     />
