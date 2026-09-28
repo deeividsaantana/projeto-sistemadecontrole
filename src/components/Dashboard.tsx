@@ -31,7 +31,6 @@ interface DashboardProps {
   inspecoes?: Inspecao[]; naoConformidades?: NaoConformidade[];
   lancamentosCusto?: LancamentoCusto[]; orcamento?: OrcamentoItem[];
   frentes?: FrenteServico[]; onNavigate: (tab: string) => void;
-  periodo?: { from: string; to: string };
 }
 
 function ExecutiveCard({ label, value, detail, tone, icon: Icon, onClick }: { label: string; value: string | number; detail: string; tone: 'green' | 'blue' | 'orange' | 'slate'; icon: typeof Activity; onClick?: () => void }) {

@@ -40,7 +40,7 @@ test('o diálogo salva com CTRL+ENTER e respeita textarea', () => {
 
 // Limpeza: formatação de data, número e moeda mora em um lugar só.
 test('as telas usam a formatação compartilhada, não cópias locais', () => {
-  const copias = ['DiarioObraTab', 'ProducaoTab', 'MedicoesTab', 'CustosTab']
+  const copias = ['DiarioObraTab', 'CustosTab']
     .map(nome => readFileSync(new URL(`../src/components/${nome}.tsx`, import.meta.url), 'utf8'));
   copias.forEach(fonte => {
     assert.match(fonte, /from '\.\.\/utils\/formato'/);

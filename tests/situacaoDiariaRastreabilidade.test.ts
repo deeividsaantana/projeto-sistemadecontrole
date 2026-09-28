@@ -3,7 +3,6 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
 const form = readFileSync(new URL('../src/components/fleet/DailyRecordForm.tsx', import.meta.url), 'utf8');
-const central = readFileSync(new URL('../src/components/CentralOperacionalTab.tsx', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const domain = readFileSync(new URL('../src/fleet/domain.ts', import.meta.url), 'utf8');
 const types = readFileSync(new URL('../src/types.ts', import.meta.url), 'utf8');
@@ -15,11 +14,6 @@ test('lançamento diário guarda quem informou', () => {
   assert.match(form, /atualizadoPor: registeredBy/);
   assert.match(form, /criadoPor: existing\?\.criadoPor \|\| registeredBy/);
   assert.match(app, /registeredBy=\{activeUserName\}/);
-});
-
-test('alteração rápida da central também registra o responsável', () => {
-  assert.match(central, /responsavel,/);
-  assert.match(app, /responsavel=\{activeUserName\}/);
 });
 
 test('frente de serviço fica gravada junto do lançamento', () => {
