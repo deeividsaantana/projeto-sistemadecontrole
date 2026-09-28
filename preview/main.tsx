@@ -81,6 +81,14 @@ function CadastrosPreview() {
     lubrificantes: [...fx.lubrificantes],
     // Com ?sge=1 os ramos vêm com a lista SGE carregada, para conferir classes e códigos.
     etapas: comListaSge ? [...fx.etapasRamos, ...planoCargaSge(fx.etapasRamos).novas] : [...fx.etapasRamos],
+    frentesServico: [
+      { id: 'FRE-1', nome: 'Aterro Ramo 900', ramoLocal: 'Ramo 900', servico: 'Aterro compactado', responsavel: 'Encarregado Paulo', situacao: 'Em execução', ativo: true, criadoEm: '', atualizadoEm: '' },
+      { id: 'FRE-2', nome: 'Corte Ramo 1400', ramoLocal: 'Ramo 1400', servico: 'Escavação e carga', situacao: 'Paralisada', ativo: true, criadoEm: '', atualizadoEm: '' },
+    ],
+    servicosObra: [
+      { id: 'SER-1', codigo: '3.1', descricao: 'Aterro compactado', unidade: 'm³', quantidadePrevista: 48000, situacao: 'Ativo', ativo: true, criadoEm: '', atualizadoEm: '' },
+      { id: 'SER-2', codigo: '2.4', descricao: 'Escavação e carga', unidade: 'm³', quantidadePrevista: 62500, situacao: 'Ativo', ativo: true, criadoEm: '', atualizadoEm: '' },
+    ],
   } as never));
   const [exclusoes, setExclusoes] = React.useState<ExclusaoRegistro[]>([]);
   const salvar = (tabela: string) => (item: { id: string }) => setListas(atual => ({
@@ -131,6 +139,8 @@ function CadastrosPreview() {
       combustiveis={listas.combustiveis as never}
       lubrificantes={listas.lubrificantes as never}
       etapas={listas.etapas as never}
+      frentesServico={listas.frentesServico as never}
+      servicosObra={listas.servicosObra as never}
       historyLogs={[]}
       exclusoes={exclusoes}
       podeEditar
@@ -143,6 +153,8 @@ function CadastrosPreview() {
       onSaveTipoCombustivel={salvar('combustiveis')}
       onSaveProdutoLubrificacao={salvar('lubrificantes')}
       onSaveEtapaServico={salvar('etapas')}
+      onSaveFrente={salvar('frentesServico')}
+      onSaveServico={salvar('servicosObra')}
       onInativar={(tabela, id) => setListas(atual => ({
         ...atual,
         [tabela]: atual[tabela].map(registro => (registro.id === id ? { ...registro, ativo: false, status: tabela === 'equipamentos' ? 'Desmobilizado' : 'INATIVO' } : registro)),

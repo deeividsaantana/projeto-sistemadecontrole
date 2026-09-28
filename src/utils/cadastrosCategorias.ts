@@ -19,6 +19,8 @@ export type CadastroCategoriaId =
   | 'comboios'
   | 'obras'
   | 'etapas'
+  | 'frentes'
+  | 'servicos'
   | 'combustiveis'
   | 'lubrificantes';
 
@@ -52,6 +54,8 @@ export const CADASTRO_CATEGORIAS: readonly CadastroCategoria[] = [
   { id: 'comboios', grupo: 'frota', label: 'Comboios', acaoNovo: 'Novo comboio' },
   { id: 'obras', grupo: 'obra', label: 'Locais', acaoNovo: 'Novo local' },
   { id: 'etapas', grupo: 'obra', label: 'Ramos e locais', acaoNovo: 'Novo ramo ou local' },
+  { id: 'frentes', grupo: 'obra', label: 'Frentes de serviço', acaoNovo: 'Nova frente' },
+  { id: 'servicos', grupo: 'obra', label: 'Serviços da obra', acaoNovo: 'Novo serviço' },
   { id: 'combustiveis', grupo: 'insumos', label: 'Combustíveis', acaoNovo: 'Novo combustível' },
   { id: 'lubrificantes', grupo: 'insumos', label: 'Lubrificantes', acaoNovo: 'Novo lubrificante' },
 ];

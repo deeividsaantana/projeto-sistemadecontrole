@@ -8,7 +8,8 @@
  * Salvar parte sempre do registro anterior: campo que a tela não mostra
  * (vínculos, datas de criação, classes da planilha mestre) continua igual.
  */
-import type { Comboio, Empresa, Equipamento, EtapaServico, Funcionario, ObraLocal, ProdutoLubrificacao, TipoCombustivel } from '../../types';
+import type { Comboio, Empresa, Equipamento, EtapaServico, FrenteServico, Funcionario, ObraLocal, ProdutoLubrificacao, ServicoObra, TipoCombustivel } from '../../types';
+import { normalizarBusca } from '../../utils/cadastrosLista';
 import { EMPRESA_CLASSES, isSubSupplier, isSupplier, nextMasterId, type EmpresaTipo } from '../../masterData/centralRegistry';
 import { validateEquipmentMasterRecord } from '../../utils/equipmentOperations';
 import { TIPOS_POR_CATEGORIA_EMPRESA, isCategoriaEmpresa, type CadastroCategoriaId } from '../../utils/cadastrosCategorias';
@@ -48,6 +49,9 @@ const opcoesEmpresas = (dados: DadosCadastros) => dados.empresas
   .map(item => ({ valor: item.id, label: item.nome }));
 const opcoesObras = (dados: DadosCadastros) => dados.obras.map(item => ({ valor: item.id, label: item.nome }));
 const fixas = (...valores: string[]) => () => valores.map(valor => ({ valor, label: valor }));
+const nomesUnicos = (nomes: string[]) => Array.from(new Set(nomes.filter(Boolean)))
+  .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }))
+  .map(valor => ({ valor, label: valor }));
 
 const CAMPOS_EMPRESA: CampoCadastro[] = [
   { id: 'nome', label: 'Nome ou razão social', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Pedraforte Mineração' },
@@ -147,6 +151,26 @@ export const CAMPOS: Record<CadastroCategoriaId, CampoCadastro[]> = {
     { id: 'tipoLocal', label: 'O que é', tipo: 'selecao', opcoes: () => TIPOS_LOCAL.map(tipo => ({ valor: tipo, label: `${tipo}: ${EXPLICA_TIPO[tipo].toLocaleLowerCase('pt-BR')}` })) },
     { id: 'ramo', label: 'Ramo a que pertence', tipo: 'texto', placeholder: 'Ex.: Ramo 900', extra: true },
   ],
+  frentes: [
+    { id: 'nome', label: 'Nome da frente', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Aterro Ramo 900' },
+    { id: 'ramoLocal', label: 'Ramo ou local', tipo: 'selecao', ajuda: 'A lista vem de Ramos e locais.', opcoes: dados => nomesUnicos(dados.etapas.map(item => item.nome)) },
+    { id: 'servico', label: 'Serviço principal', tipo: 'selecao', ajuda: 'A lista vem de Serviços da obra.', opcoes: dados => nomesUnicos(dados.servicosObra.filter(item => item.ativo !== false).map(item => item.descricao)) },
+    { id: 'situacao', label: 'Situação', tipo: 'selecao', opcoes: fixas('Em execução', 'Planejada', 'Paralisada', 'Concluída') },
+    { id: 'responsavel', label: 'Responsável', tipo: 'texto', placeholder: 'Ex.: Encarregado João' },
+    { id: 'obraId', label: 'Obra', tipo: 'selecao', extra: true, opcoes: opcoesObras },
+    { id: 'dataInicio', label: 'Início', tipo: 'data', extra: true },
+    { id: 'dataTerminoPrevisto', label: 'Término previsto', tipo: 'data', extra: true },
+    { id: 'observacao', label: 'Observação', tipo: 'texto', extra: true },
+  ],
+  servicos: [
+    { id: 'descricao', label: 'Nome do serviço', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Aterro compactado' },
+    { id: 'unidade', label: 'Unidade', tipo: 'selecao', obrigatorio: true, opcoes: fixas('m³', 'm²', 'm', 't', 'un', 'h', 'viagem') },
+    { id: 'quantidadePrevista', label: 'Quantidade prevista no contrato', tipo: 'numero', placeholder: 'Ex.: 12000' },
+    { id: 'situacao', label: 'Situação', tipo: 'selecao', opcoes: fixas('Ativo', 'Suspenso', 'Concluído') },
+    { id: 'codigo', label: 'Código', tipo: 'texto', extra: true, placeholder: 'Ex.: 3.1.2' },
+    { id: 'obraId', label: 'Obra', tipo: 'selecao', extra: true, opcoes: opcoesObras },
+    { id: 'observacao', label: 'Observação', tipo: 'texto', extra: true },
+  ],
   combustiveis: [{ id: 'nome', label: 'Nome do combustível', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Diesel S10' }],
   lubrificantes: [{ id: 'nome', label: 'Nome do produto', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: 15W40' }],
 };
@@ -191,6 +215,8 @@ export const valoresIniciais = (
     }
   }
   if (categoria === 'obras' && !registro) valores.status = 'Ativa';
+  if (categoria === 'frentes' && !registro) valores.situacao = 'Em execução';
+  if (categoria === 'servicos' && !registro) valores.situacao = 'Ativo';
   if (categoria === 'comboios' && !registro) valores.capacidadeLitros = '3000';
   return valores;
 };
@@ -383,6 +409,58 @@ export const montarRegistro = (
       codigoSge: codigo || undefined,
       tipoLocal: (str(valores, 'tipoLocal') || undefined) as EtapaServico['tipoLocal'],
       ramo: opcional(valores, 'ramo'),
+    };
+    return { ok: true, registro };
+  }
+
+  if (categoria === 'frentes') {
+    const nome = str(valores, 'nome');
+    if (dados.frentesServico.some(item => item.id !== id && normalizarBusca(item.nome) === normalizarBusca(nome))) {
+      return { ok: false, erro: `Já existe a frente ${nome}.` };
+    }
+    const agora = new Date().toISOString();
+    const frente = anterior as FrenteServico | undefined;
+    const registro: FrenteServico = {
+      ...frente,
+      id,
+      nome,
+      ramoLocal: opcional(valores, 'ramoLocal'),
+      servico: opcional(valores, 'servico'),
+      responsavel: opcional(valores, 'responsavel'),
+      situacao: (str(valores, 'situacao') || 'Em execução') as FrenteServico['situacao'],
+      obraId: opcional(valores, 'obraId'),
+      dataInicio: opcional(valores, 'dataInicio'),
+      dataTerminoPrevisto: opcional(valores, 'dataTerminoPrevisto'),
+      observacao: opcional(valores, 'observacao'),
+      ativo: frente?.ativo ?? true,
+      criadoEm: frente?.criadoEm || agora,
+      atualizadoEm: agora,
+    };
+    return { ok: true, registro };
+  }
+
+  if (categoria === 'servicos') {
+    const descricao = str(valores, 'descricao');
+    if (dados.servicosObra.some(item => item.id !== id && normalizarBusca(item.descricao) === normalizarBusca(descricao))) {
+      return { ok: false, erro: `Já existe o serviço ${descricao}.` };
+    }
+    const previsto = numero(valores, 'quantidadePrevista');
+    if (previsto !== undefined && previsto < 0) return { ok: false, erro: 'A quantidade prevista não pode ser negativa.' };
+    const agora = new Date().toISOString();
+    const servico = anterior as ServicoObra | undefined;
+    const registro: ServicoObra = {
+      ...servico,
+      id,
+      descricao,
+      unidade: str(valores, 'unidade'),
+      quantidadePrevista: previsto,
+      situacao: (str(valores, 'situacao') || 'Ativo') as ServicoObra['situacao'],
+      codigo: opcional(valores, 'codigo'),
+      obraId: opcional(valores, 'obraId'),
+      observacao: opcional(valores, 'observacao'),
+      ativo: servico?.ativo ?? true,
+      criadoEm: servico?.criadoEm || agora,
+      atualizadoEm: agora,
     };
     return { ok: true, registro };
   }

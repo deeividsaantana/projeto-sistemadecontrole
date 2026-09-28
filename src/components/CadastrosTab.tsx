@@ -13,6 +13,8 @@ import type {
   Empresa,
   Equipamento,
   EtapaServico,
+  FrenteServico,
+  ServicoObra,
   Funcionario,
   HistoryLog,
   ObraLocal,
@@ -65,6 +67,8 @@ interface CadastrosTabProps {
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
   etapas: EtapaServico[];
+  frentesServico: FrenteServico[];
+  servicosObra: ServicoObra[];
   historyLogs: HistoryLog[];
   exclusoes: ExclusaoRegistro[];
   podeEditar: boolean;
@@ -78,6 +82,8 @@ interface CadastrosTabProps {
   onSaveTipoCombustivel: (item: TipoCombustivel, isNew: boolean) => void;
   onSaveProdutoLubrificacao: (item: ProdutoLubrificacao, isNew: boolean) => void;
   onSaveEtapaServico: (item: EtapaServico, isNew: boolean) => void;
+  onSaveFrente: (item: FrenteServico, isNew: boolean) => void;
+  onSaveServico: (item: ServicoObra, isNew: boolean) => void;
   /** Inativa empresa, colaborador ou equipamento, mantendo o histórico. */
   onInativar: (tabela: string, id: string) => void;
   usosDoCadastro: (tabela: string, id: string) => UsoCadastro[];
@@ -103,14 +109,14 @@ const TEMPO_DO_AVISO_MS = 10_000;
 
 export default function CadastrosTab(props: CadastrosTabProps) {
   const {
-    empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas,
+    empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas, frentesServico, servicosObra,
     historyLogs, exclusoes, podeEditar, podeExcluir,
     onInativar, usosDoCadastro, onExcluir, onRestaurar, onApagarDeVez, onImportCadastros,
   } = props;
 
   const dados: DadosCadastros = useMemo(
-    () => ({ empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas }),
-    [empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas],
+    () => ({ empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas, frentesServico, servicosObra }),
+    [empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas, frentesServico, servicosObra],
   );
 
   // O tipo escolhido fica guardado mesmo com a Lixeira aberta: é ele que o
@@ -149,6 +155,9 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const categoriaAtual = categoriaCadastro(categoria);
   const tabela = TABELA_DA_CATEGORIA[categoria];
   const comSituacao = temSituacao(categoria);
+  // Frentes e serviços ainda não têm leitura de planilha: o botão não aparece
+  // para não cair na importação de outro tipo.
+  const importaPlanilha = categoria !== 'frentes' && categoria !== 'servicos';
 
   const todasAsLinhas = useMemo(() => montarLinhas(categoria, dados), [categoria, dados]);
   const contagem = useMemo(() => contarSituacoes(todasAsLinhas), [todasAsLinhas]);
@@ -259,6 +268,8 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     else if (tabela === 'comboios') props.onSaveComboio(registro as Comboio, novo);
     else if (tabela === 'combustiveis') props.onSaveTipoCombustivel(registro as TipoCombustivel, novo);
     else if (tabela === 'lubrificantes') props.onSaveProdutoLubrificacao(registro as ProdutoLubrificacao, novo);
+    else if (tabela === 'frentesServico') props.onSaveFrente(registro as FrenteServico, novo);
+    else if (tabela === 'servicosObra') props.onSaveServico(registro as ServicoObra, novo);
     else props.onSaveEtapaServico(registro as EtapaServico, novo);
   };
 
@@ -314,11 +325,19 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     if (tabela === 'empresas') return { ...(registro as Empresa), status: ativo ? 'ATIVO' : 'INATIVO', atualizadoEm: new Date().toISOString() };
     if (tabela === 'funcionarios') return { ...(registro as Funcionario), status: ativo ? 'ATIVO' : 'DESMOBILIZADO', ativo };
     if (tabela === 'equipamentos') return { ...(registro as Equipamento), status: ativo ? 'Ativo' : 'Desmobilizado', mobilizado: ativo ? (registro as Equipamento).mobilizado : false };
+    if (tabela === 'frentesServico') {
+      const frente = registro as FrenteServico;
+      return { ...frente, ativo, situacao: ativo && frente.situacao === 'Concluída' ? 'Em execução' : frente.situacao, atualizadoEm: new Date().toISOString() };
+    }
+    if (tabela === 'servicosObra') {
+      const servico = registro as ServicoObra;
+      return { ...servico, ativo, situacao: ativo && servico.situacao === 'Concluído' ? 'Ativo' : servico.situacao, atualizadoEm: new Date().toISOString() };
+    }
     return { ...(registro as ObraLocal), status: ativo ? 'Ativa' : 'Concluída' };
   };
 
   const inativar = (linha: LinhaCadastro) => {
-    if (tabela === 'obras') gravar(registroComSituacao(linha, false), false);
+    if (['obras', 'frentesServico', 'servicosObra'].includes(tabela)) gravar(registroComSituacao(linha, false), false);
     else onInativar(tabela, linha.id);
     const original = linha.registro;
     const tabelaDoRegistro = tabela;
@@ -512,7 +531,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                 {exportando ? 'Gerando…' : 'Exportar lista'}
               </button>
             )}
-            {podeEditar && (
+            {podeEditar && importaPlanilha && (
               <button type="button" onClick={() => arquivoRef.current?.click()} className={BOTAO_SECUNDARIO}>
                 <Upload className="size-5" aria-hidden="true" />
                 Importar planilha

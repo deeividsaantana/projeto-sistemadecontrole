@@ -86,7 +86,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
   if (!avanco.length) {
     return (
       <div data-meu-dia-reveal className={`${CARTAO} p-4`}>
-        <EmptyState icon={HardHat} title="Nenhuma frente em andamento" description="Quando houver frente com serviço em andamento, a produção lançada aparece aqui com o avanço." />
+        <EmptyState icon={HardHat} title="Nenhuma frente em andamento" description="Cadastre as frentes e os serviços em Cadastros, no grupo Obra. A produção lançada aparece aqui com o avanço." />
       </div>
     );
   }

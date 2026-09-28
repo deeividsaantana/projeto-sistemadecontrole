@@ -5,7 +5,7 @@
  * Todo tipo vira a mesma `LinhaCadastro`, então a tabela do computador, os
  * cartões do celular e o painel de detalhe desenham qualquer tipo igual.
  */
-import type { Comboio, Empresa, Equipamento, EtapaServico, Funcionario, ObraLocal, ProdutoLubrificacao, TipoCombustivel } from '../types';
+import type { Comboio, Empresa, Equipamento, EtapaServico, FrenteServico, Funcionario, ObraLocal, ProdutoLubrificacao, ServicoObra, TipoCombustivel } from '../types';
 import {
   empresaTipoLabel,
   isActiveCollaborator,
@@ -27,9 +27,12 @@ export interface DadosCadastros {
   combustiveis: readonly TipoCombustivel[];
   lubrificantes: readonly ProdutoLubrificacao[];
   etapas: readonly EtapaServico[];
+  /** Mesmo nome da coleção na nuvem, para a Lixeira valer em todo aparelho. */
+  frentesServico: readonly FrenteServico[];
+  servicosObra: readonly ServicoObra[];
 }
 
-export type RegistroCadastro = Empresa | ObraLocal | Equipamento | Funcionario | Comboio | TipoCombustivel | ProdutoLubrificacao | EtapaServico;
+export type RegistroCadastro = Empresa | ObraLocal | Equipamento | Funcionario | Comboio | TipoCombustivel | ProdutoLubrificacao | EtapaServico | FrenteServico | ServicoObra;
 
 export type TomSituacao = 'ok' | 'alerta' | 'inativo';
 
@@ -79,13 +82,15 @@ export const TABELA_DA_CATEGORIA: Record<CadastroCategoriaId, keyof DadosCadastr
   comboios: 'comboios',
   obras: 'obras',
   etapas: 'etapas',
+  frentes: 'frentesServico',
+  servicos: 'servicosObra',
   combustiveis: 'combustiveis',
   lubrificantes: 'lubrificantes',
 };
 
 /** Tipos em que o cadastro pode ficar inativo sem ser excluído. */
 export const temSituacao = (categoria: CadastroCategoriaId): boolean => (
-  ['funcionarios', 'empresas', 'equipamentos', 'obras'].includes(TABELA_DA_CATEGORIA[categoria])
+  ['funcionarios', 'empresas', 'equipamentos', 'obras', 'frentesServico', 'servicosObra'].includes(TABELA_DA_CATEGORIA[categoria])
 );
 
 const COLUNAS_EMPRESA: ColunaCadastro[] = [
@@ -140,6 +145,18 @@ export const COLUNAS: Record<CadastroCategoriaId, ColunaCadastro[]> = {
     { id: 'classe', label: 'Classe' },
     { id: 'ramo', label: 'Ramo' },
   ],
+  frentes: [
+    { id: 'nome', label: 'Frente', larga: true },
+    { id: 'ramo', label: 'Ramo ou local' },
+    { id: 'servico', label: 'Serviço' },
+    { id: 'responsavel', label: 'Responsável', secundaria: true },
+  ],
+  servicos: [
+    { id: 'codigo', label: 'Código', codigo: true },
+    { id: 'descricao', label: 'Serviço', larga: true },
+    { id: 'unidade', label: 'Unidade', codigo: true },
+    { id: 'previsto', label: 'Previsto', codigo: true },
+  ],
   combustiveis: [{ id: 'nome', label: 'Combustível' }],
   lubrificantes: [{ id: 'nome', label: 'Lubrificante' }],
 };
@@ -173,6 +190,14 @@ export const FILTROS: Record<CadastroCategoriaId, FiltroCadastro[]> = {
   etapas: [
     { id: 'classe', label: 'Classe' },
     { id: 'ramo', label: 'Ramo' },
+  ],
+  frentes: [
+    { id: 'situacao', label: 'Situação' },
+    { id: 'ramo', label: 'Ramo ou local' },
+  ],
+  servicos: [
+    { id: 'situacao', label: 'Situação' },
+    { id: 'unidade', label: 'Unidade' },
   ],
   combustiveis: [],
   lubrificantes: [],
@@ -330,6 +355,48 @@ export const montarLinhas = (categoria: CadastroCategoriaId, dados: DadosCadastr
       busca: juntar(item.nome, item.codigoSge, item.tipoLocal, item.ramo, ...(item.apelidos || [])),
       registro: item,
     }));
+  }
+
+  // Frentes e serviços alimentam o Meu dia: a produção lançada lá escolhe
+  // daqui. Encerrar (Concluída/Concluído ou inativa) tira da operação sem
+  // apagar o histórico.
+  if (tabela === 'frentesServico') {
+    return dados.frentesServico.map(item => {
+      const ativo = item.ativo !== false && item.situacao !== 'Concluída';
+      const situacao = item.ativo === false ? 'Inativa' : item.situacao;
+      return {
+        id: item.id,
+        titulo: item.nome,
+        detalhe: [item.ramoLocal, item.servico].filter(Boolean).join(' · '),
+        ativo,
+        situacao,
+        tom: !ativo ? 'inativo' : item.situacao === 'Em execução' ? 'ok' : 'alerta',
+        colunas: { nome: item.nome, ramo: item.ramoLocal || '', servico: item.servico || '', responsavel: item.responsavel || '' },
+        filtros: { situacao, ramo: item.ramoLocal || 'Sem ramo' },
+        busca: juntar(item.nome, item.ramoLocal, item.servico, item.responsavel, item.observacao),
+        registro: item,
+      };
+    });
+  }
+
+  if (tabela === 'servicosObra') {
+    return dados.servicosObra.map(item => {
+      const ativo = item.ativo !== false && item.situacao !== 'Concluído';
+      const situacao = item.ativo === false ? 'Inativo' : item.situacao;
+      const previsto = Number.isFinite(item.quantidadePrevista) ? `${(item.quantidadePrevista as number).toLocaleString('pt-BR')} ${item.unidade}` : '';
+      return {
+        id: item.id,
+        titulo: item.codigo ? `${item.codigo} · ${item.descricao}` : item.descricao,
+        detalhe: [item.unidade, previsto && `previsto ${previsto}`].filter(Boolean).join(' · '),
+        ativo,
+        situacao,
+        tom: !ativo ? 'inativo' : item.situacao === 'Ativo' ? 'ok' : 'alerta',
+        colunas: { codigo: item.codigo || '', descricao: item.descricao, unidade: item.unidade, previsto },
+        filtros: { situacao, unidade: item.unidade || 'Sem unidade' },
+        busca: juntar(item.codigo, item.descricao, item.unidade, item.observacao),
+        registro: item,
+      };
+    });
   }
 
   const simples = dados[tabela] as readonly (TipoCombustivel | ProdutoLubrificacao)[];

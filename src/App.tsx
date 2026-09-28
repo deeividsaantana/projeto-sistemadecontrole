@@ -1837,6 +1837,8 @@ export default function App() {
     combustiveis: { lista: combustiveis, setLista: setCombustiveis as (next: never[]) => void, storageKey: 'renea_combustiveis', tela: 'Combustíveis' },
     lubrificantes: { lista: lubrificantes, setLista: setLubrificantes as (next: never[]) => void, storageKey: 'renea_lubrificantes', tela: 'Produtos Lubrificação' },
     etapas: { lista: etapas, setLista: setEtapas as (next: never[]) => void, storageKey: 'renea_etapas', tela: 'Etapas de Serviço' },
+    frentesServico: { lista: frentesServico, setLista: setFrentesServico as (next: never[]) => void, storageKey: STORAGE_KEYS.frentesServico, tela: 'Frentes de Serviço' },
+    servicosObra: { lista: servicosObra, setLista: setServicosObra as (next: never[]) => void, storageKey: STORAGE_KEYS.servicosObra, tela: 'Serviços da obra' },
   });
 
   const usosDoCadastroAtual = (tabela: string, id: string) => usosDoCadastro(tabela, id, {
@@ -1852,6 +1854,9 @@ export default function App() {
     gruposEquipe,
     controleEquipamentosDiario,
     materiaisMovimentos,
+    frentesServico,
+    producao: producaoRegistros,
+    planejamento: planejamentoItens,
     colecoesDaObra: {
       Presenças: listasPresenca,
       Equipes: gruposEquipe,
@@ -3698,6 +3703,22 @@ export default function App() {
     });
   };
 
+  const handleSaveFrente = (frente: FrenteServico, isNew: boolean) => {
+    const updated = isNew ? [frente, ...frentesServico] : frentesServico.map(item => item.id === frente.id ? frente : item);
+    saveAndLog('Frentes de Serviço', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} a frente ${frente.nome} (${frente.situacao}).`, historyLogs, () => {
+      setFrentesServico(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.frentesServico, JSON.stringify(updated));
+    });
+  };
+
+  const handleSaveServicoObra = (servico: ServicoObra, isNew: boolean) => {
+    const updated = isNew ? [servico, ...servicosObra] : servicosObra.map(item => item.id === servico.id ? servico : item);
+    saveAndLog('Produção', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o serviço ${servico.descricao}.`, historyLogs, () => {
+      setServicosObra(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.servicosObra, JSON.stringify(updated));
+    });
+  };
+
   const handleSaveProducao = (registro: RegistroProducao, isNew: boolean) => {
     const updated = isNew ? [registro, ...producaoRegistros] : producaoRegistros.map(item => item.id === registro.id ? registro : item);
     saveAndLog('Produção', isNew ? 'Criou' : 'Editou', `${isNew ? 'Lançou' : 'Editou'} ${registro.quantidade} ${registro.unidade} de ${registro.servicoDescricao} em ${registro.data}.`, historyLogs, () => {
@@ -4947,6 +4968,10 @@ export default function App() {
                 onSaveTipoCombustivel={handleSaveTipoCombustivel}
                 onSaveProdutoLubrificacao={handleSaveProdutoLubrificacao}
                 onSaveEtapaServico={handleSaveEtapaServico}
+                frentesServico={frentesServico}
+                servicosObra={servicosObra}
+                onSaveFrente={handleSaveFrente}
+                onSaveServico={handleSaveServicoObra}
                 onInativar={(tabela, id) => {
                   if (tabela === 'empresas') handleDeleteEmpresa(id);
                   else if (tabela === 'funcionarios') handleDeleteFuncionario(id);
