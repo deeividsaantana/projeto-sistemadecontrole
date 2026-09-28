@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { Material, MovimentoMaterial } from '../src/types';
-import { materialUsageByBranch } from '../src/modules/materials/materialUsage';
+import type { EtapaServico, Material, MovimentoMaterial } from '../src/types';
+import { groupUsageByBranch, materialUsageByBranch } from '../src/modules/materials/materialUsage';
 
 const material = (id: string, descricao: string): Material => ({ id, codigo: id, descricao, categoria: '', unidade: 'un', ativo: true, criadoEm: '', atualizadoEm: '' });
 const movement = (id: string, tipo: MovimentoMaterial['tipo'], quantidade: number, materialId = 'tubo', etapaServicoId = 'ramo-1400'): MovimentoMaterial => ({
@@ -39,7 +39,41 @@ test('sem entrada vinculada percentual é desconhecido, e excesso continua visí
   assert.equal(excess[0].remaining, -1);
 });
 
-test('histórico sem ramo não é atribuído pelo nome textual do destino', () => {
-  const legacy = { ...movement('e1', 'Entrada', 60), etapaServicoId: undefined, etapaServicoNome: undefined, destino: 'Ramo 1400' };
-  assert.deepEqual(materialUsageByBranch([material('tubo', 'Tubo')], [legacy]), []);
+test('lançamento sem vínculo entra no ramo pelo número escrito no local', () => {
+  const semVinculo = (id: string, tipo: MovimentoMaterial['tipo'], quantidade: number, destino: string) => ({ ...movement(id, tipo, quantidade), etapaServicoId: undefined, etapaServicoNome: undefined, destino });
+  const rows = materialUsageByBranch([material('tubo', 'Tubo')], [
+    semVinculo('e1', 'Entrada', 60, 'ATERRO RAMO 1400'),
+    semVinculo('s1', 'Saída', 50, 'Ramo 1400'),
+    semVinculo('e2', 'Entrada', 10, 'Ramo 600/700'),
+    semVinculo('e3', 'Entrada', 10, 'Pátio central'),
+  ]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].branchName, 'Ramo 1400');
+  assert.equal(rows[0].percent, 83.3);
+  assert.equal(rows[0].linkedByText, 2);
+});
+
+test('frente soma no ramo a que pertence e o ramo cadastrado dá o id', () => {
+  const etapas: EtapaServico[] = [
+    { id: 'r1300', nome: 'Ramo 1300', tipoLocal: 'Ramo' },
+    { id: 'f1', nome: 'Espinha Ramo 1300', tipoLocal: 'Frente', ramo: 'Ramo 1300' },
+  ];
+  const rows = materialUsageByBranch([material('tubo', 'Tubo')], [
+    { ...movement('e1', 'Entrada', 30), etapaServicoId: 'f1', etapaServicoNome: 'Espinha Ramo 1300' },
+    { ...movement('s1', 'Saída', 15), etapaServicoId: undefined, etapaServicoNome: undefined, destino: 'Espinha Ramo 1300' },
+  ], etapas);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].branchId, 'r1300');
+  assert.equal(rows[0].percent, 50);
+});
+
+test('uso sem entrada no ramo não infla o percentual do ramo, e o link grava o mesmo ramo do texto', () => {
+  const rows = materialUsageByBranch([material('tubo', 'Tubo'), material('outro', 'Outro')], [
+    movement('e1', 'Entrada', 6),
+    movement('s1', 'Saída', 90, 'outro'),
+    { ...movement('s2', 'Saída', 3), etapaServicoId: undefined, etapaServicoNome: undefined, destino: 'Ramo 1400 lado direito' },
+  ]);
+  assert.deepEqual(rows.map(row => row.branchId), ['ramo-1400', 'ramo-1400']);
+  const [grupo] = groupUsageByBranch(rows);
+  assert.equal(grupo.percent, 50);
 });

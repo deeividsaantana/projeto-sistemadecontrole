@@ -281,7 +281,7 @@ export interface NomeSemLocal {
 }
 
 /** Ramo principal citado no texto: "Ramo 1400", "ramo1300", "Marginal". */
-const ramoCitado = (texto: string) => {
+export const ramoCitado = (texto: string) => {
   const chave = chaveLocal(texto);
   // "Ramo 600/700" fala de dois ramos: aí quem escolhe é a pessoa.
   if (/\bramo \d{3,4} \d{3,4}\b/.test(chave)) return undefined;
