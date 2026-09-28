@@ -28,5 +28,5 @@ export const RAMOS_ATIVOS = [
 
 /** Canteiros e locais de apoio ativos da obra. */
 export const CANTEIROS_ATIVOS = [
-  'SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica',
+  'SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica', 'Pátio Aracaré',
 ] as const;

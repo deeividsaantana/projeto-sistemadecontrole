@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, GrupoEquipe } from '../src/types';
-import { FILTROS_VAZIOS, SEM_CANTEIRO, SEM_FRENTE, agruparPorCanteiro, calcularIndicadores, etiquetasDosFiltros, filtrarCartoes, montarQuadro, registroDaEdicao, silhuetaDo } from '../src/modules/frota/quadroFrota';
+import { FILTROS_VAZIOS, SEM_CANTEIRO, SEM_FRENTE, agruparPorCanteiro, calcularIndicadores, etiquetasDosFiltros, filtrarCartoes, lancarEmLote, montarQuadro, rascunhosDoUltimoDia, registroDaEdicao, silhuetaDo } from '../src/modules/frota/quadroFrota';
 
 const dia = '2026-09-28';
 const equipamento = (id: string, extra: Partial<Equipamento> = {}) => ({ id, prefixo: id, nome: 'Escavadeira', tipo: 'Escavadeira', marca: 'Volvo', modelo: 'EC210', status: 'Ativo', ...extra }) as unknown as Equipamento;
@@ -57,7 +57,7 @@ test('indicadores, colunas e filtros do quadro', () => {
   assert.equal(calcularIndicadores([]).disponibilidade, null);
 
   const grupos = agruparPorCanteiro(cartoes);
-  assert.deepEqual(grupos.map(item => item.canteiro), ['SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica', SEM_CANTEIRO]);
+  assert.deepEqual(grupos.map(item => item.canteiro), ['SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica', 'Pátio Aracaré', SEM_CANTEIRO]);
   assert.equal(grupos[1].cartoes.length, 2, 'IBAR vem do nome da frente');
   assert.equal(grupos[1].operando, 2);
   assert.equal(grupos[3].manutencao, 1);
@@ -73,6 +73,8 @@ test('desenho do cartão reconhece o tipo da máquina', () => {
   assert.equal(tipo('Retroescavadeira'), 'retro');
   assert.equal(tipo('Motoniveladora'), 'motoniveladora');
   assert.equal(tipo('Caminhão basculante'), 'caminhao');
+  assert.equal(tipo('Cavalo Mecânico'), 'cavalo');
+  assert.equal(silhuetaDo({ tipo: 'Veículo', nome: 'Cavalo mecânico Scania', familia: undefined, categoriaFrota: 'Veículo' } as never), 'cavalo');
   assert.equal(tipo('Trator de esteira'), 'trator');
   assert.equal(tipo('Coisa estranha'), 'outro');
 });
@@ -111,6 +113,8 @@ test('canteiro escolhido num dia continua nos dias seguintes', () => {
     abastecimentos: [],
   });
   assert.equal(cartao.canteiro, 'Fábrica');
+  const [aracare] = montarQuadro({ dia, equipamentos: [equipamento('C2')], registros: [registro('C2', 'Em operação', { frenteServico: 'Pátio de Vigas Aracaré' })], gruposEquipe: [], abastecimentos: [] });
+  assert.equal(aracare.canteiro, 'Pátio Aracaré', 'apelido do pátio acha o canteiro');
   assert.equal(cartao.grupo, 'sem-lancamento', 'o canteiro vem junto, a situação não');
 });
 
@@ -151,4 +155,40 @@ test('lançar no quadro grava o dia no formato do Controle de Frotas', () => {
   assert.equal(liberada.registro.eventos?.[2].tipo, 'LIBERACAO_MANUTENCAO');
   assert.equal(liberada.registro.motoristaTemporario, true, 'nome fora da lista vira temporário');
   assert.equal(liberada.registro.funcionarioId, '');
+});
+
+test('lançamento em lote grava as prontas e aponta o erro de cada linha', () => {
+  const base = { dia, hora: '07:00', agora: `${dia}T10:00:00.000Z`, usuario: 'Deivid', registros: [] as ControleEquipamentoDiario[], funcionarios: [] };
+  const vazio = { canteiro: 'IBAR', frente: '', operador: 'Ana', motivoManutencao: '', observacao: '' };
+  const { prontos, erros } = lancarEmLote({
+    ...base,
+    equipamentos: [equipamento('L1'), equipamento('L2'), equipamento('L3')],
+    rascunhos: [
+      { equipamentoId: 'L1', rascunho: { ...vazio, status: 'Em operação' } },
+      { equipamentoId: 'L2', rascunho: { ...vazio, status: '' } },
+      { equipamentoId: 'L3', rascunho: { ...vazio, status: 'Em manutenção' } },
+      { equipamentoId: 'SUMIU', rascunho: { ...vazio, status: 'Disponível' } },
+    ],
+  });
+  assert.deepEqual(prontos.map(item => item.registro.equipamentoId), ['L1']);
+  assert.equal(prontos[0].novo, true);
+  assert.equal(erros.get('L2'), 'Escolha a situação.');
+  assert.ok(erros.get('L3'), 'manutenção sem motivo não passa');
+  assert.ok(erros.get('SUMIU'));
+});
+
+test('repetir último dia copia o lançamento anterior mais recente, sem os excluídos', () => {
+  const rascunhos = rascunhosDoUltimoDia([
+    registro('R1', 'Em operação', { data: '2026-09-25', local: 'IBAR', nomeMotorista: 'Ana' }),
+    registro('R1', 'Em manutenção', { data: '2026-09-27', local: 'Pátio Aracaré', motivoManutencao: 'Pneu', nomeMotorista: 'Bia' }),
+    registro('R1', 'Em operação', { data: dia, local: 'SP-066' }),
+    registro('R2', 'Disponível', { data: '2026-09-27', excluido: true }),
+    registro('R3', 'Disponível', { data: '2026-09-27', local: 'Marginal' }),
+  ], ['R1', 'R2'], dia);
+  assert.deepEqual([...rascunhos.keys()], ['R1'], 'R2 só tem excluído e R3 não foi pedido');
+  const r1 = rascunhos.get('R1')!;
+  assert.equal(r1.status, 'Em manutenção');
+  assert.equal(r1.canteiro, 'Pátio Aracaré');
+  assert.equal(r1.operador, 'Bia');
+  assert.equal(r1.motivoManutencao, 'Pneu');
 });

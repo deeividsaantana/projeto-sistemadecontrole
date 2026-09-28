@@ -10,7 +10,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowRight, Check, PauseCircle, PlayCircle, Wrench } from 'lucide-react';
 import type { StatusControleEquipamentoDiario } from '../../types';
-import { CANTEIROS, SEM_CANTEIRO, SEM_FRENTE, SITUACOES_EDITAVEIS, type CartaoFrota, type EdicaoQuadro } from '../../modules/frota/quadroFrota';
+import { CANTEIROS, SITUACOES_EDITAVEIS, rascunhoDoCartao, type CartaoFrota, type EdicaoQuadro, type RascunhoQuadro } from '../../modules/frota/quadroFrota';
 import { Drawer } from '../../shared/ui';
 import { DesenhoMaquina } from './DesenhoMaquina';
 import { TOM, numero } from './CartaoEquipamento';
@@ -23,18 +23,6 @@ const RAPIDAS: ReadonlyArray<{ status: StatusControleEquipamentoDiario; rotulo: 
 ];
 
 const EM_MANUTENCAO = new Set<StatusControleEquipamentoDiario>(['Em manutenção', 'Aguardando manutenção']);
-
-/** No painel a situação pode ficar em branco: máquina sem lançamento não começa com uma situação escolhida por nós. */
-type Rascunho = Omit<EdicaoQuadro, 'status'> & { status: StatusControleEquipamentoDiario | '' };
-
-const inicial = (cartao: CartaoFrota): Rascunho => ({
-  status: cartao.status === 'Sem lançamento' || cartao.status === 'A confirmar' || cartao.status === 'Desmobilizado' ? '' : cartao.status,
-  canteiro: cartao.canteiro === SEM_CANTEIRO ? '' : cartao.canteiro,
-  frente: cartao.frente === SEM_FRENTE ? '' : cartao.frente,
-  operador: cartao.operador || '',
-  motivoManutencao: cartao.motivoManutencao || '',
-  observacao: cartao.observacao || '',
-});
 
 interface Props {
   cartao: CartaoFrota | null;
@@ -49,14 +37,14 @@ interface Props {
 }
 
 export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, operadores, onFechar, onSalvar, onAbrirControle }: Props) {
-  const [edicao, setEdicao] = useState<Rascunho | null>(null);
+  const [edicao, setEdicao] = useState<RascunhoQuadro | null>(null);
   const [erro, setErro] = useState('');
   const idLista = useId();
   const motivoRef = useRef<HTMLInputElement>(null);
 
   // Cada máquina aberta começa do que está gravado para ela.
   useEffect(() => {
-    setEdicao(cartao ? inicial(cartao) : null);
+    setEdicao(cartao ? rascunhoDoCartao(cartao) : null);
     setErro('');
   }, [cartao?.equipamentoId, cartao?.registroId, cartao?.status]);
 
@@ -65,7 +53,7 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
     [frentes, edicao?.frente],
   );
 
-  const mudar = (parcial: Partial<Rascunho>) => setEdicao(atual => (atual ? { ...atual, ...parcial } : atual));
+  const mudar = (parcial: Partial<RascunhoQuadro>) => setEdicao(atual => (atual ? { ...atual, ...parcial } : atual));
   const escolherSituacao = (status: StatusControleEquipamentoDiario) => {
     mudar({ status });
     if (EM_MANUTENCAO.has(status)) window.setTimeout(() => motivoRef.current?.focus(), 0);

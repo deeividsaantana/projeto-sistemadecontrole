@@ -68,6 +68,11 @@ function QuadroFrotaPreview() {
       podeEditar
       usuario="Deivid"
       onSave={(registro, novo) => setRegistros(atual => (novo ? [registro, ...atual] : atual.map(item => (item.id === registro.id ? registro : item))))}
+      onSaveMany={itens => setRegistros(atual => {
+        const trocados = new Map(itens.filter(item => !item.novo).map(item => [item.registro.id, item.registro]));
+        return [...itens.filter(item => item.novo).map(item => item.registro), ...atual.map(item => trocados.get(item.id) ?? item)];
+      })}
+      onDeleteMany={ids => setRegistros(atual => atual.filter(item => !ids.includes(item.id)))}
       onNavigate={noop}
     />
   );
