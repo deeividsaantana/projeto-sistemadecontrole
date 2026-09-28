@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, PauseCircle, PlayCircle, Search, SlidersHorizontal, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, PauseCircle, PlayCircle, Search, SlidersHorizontal, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../types';
 import { CountUp, Modal, PageHeader, isoDay } from '../shared/ui';
 import {
@@ -33,6 +33,8 @@ import {
   type GrupoStatus,
   type Ordem,
 } from '../modules/frota/quadroFrota';
+import { abastecidasSemLancamento } from '../modules/frota/combustivelDoDia';
+import { OPERATIONAL_DRIVERS } from '../fleet/operationalDrivers';
 import { CartaoEquipamento } from './quadroFrota/CartaoEquipamento';
 import { LancarFrota } from './quadroFrota/LancarFrota';
 import { PainelEquipamento } from './quadroFrota/PainelEquipamento';
@@ -45,6 +47,8 @@ interface Props {
   abastecimentos: readonly Abastecimento[];
   frentes: readonly FrenteServico[];
   funcionarios: readonly Funcionario[];
+  /** Motoristas e operadores cadastrados no Controle de Frotas; mesma lista das três abas. */
+  operationalDrivers?: readonly Funcionario[];
   podeEditar: boolean;
   usuario: string;
   onSave: (registro: ControleEquipamentoDiario, novo: boolean) => void;
@@ -88,11 +92,15 @@ interface Indicador {
   Icone: LucideIcon;
   tom: string;
   filtro?: Partial<FiltrosQuadro>;
+  aoClicar?: () => void;
 }
 
-export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, frentes, funcionarios, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, onNavigate }: Props) {
+export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, onNavigate }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
+  // Mesma lista de motoristas e operadores do Controle de Frotas, para o operador
+  // sugerido aqui ser sempre o mesmo cadastro, sem duplicar em colaboradores.
+  const motoristas = useMemo(() => operationalDrivers || funcionarios || OPERATIONAL_DRIVERS, [operationalDrivers, funcionarios]);
   const [dia, setDia] = useState(() => isoDay(new Date()));
   const [filtros, setFiltros] = useState<FiltrosQuadro>(FILTROS_VAZIOS);
   const [ordem, setOrdem] = useState<Ordem>('prefixo');
@@ -128,6 +136,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
     return mapa;
   }, [cartoes]);
   const pendentes = useMemo(() => filtrados.filter(item => item.grupo === 'sem-lancamento'), [filtrados]);
+  const abastecidasSemLancar = useMemo(() => abastecidasSemLancamento(cartoes, abastecimentos, dia), [cartoes, abastecimentos, dia]);
   const aberto = abertoId ? cartoes.find(item => item.equipamentoId === abertoId) || null : null;
   const indiceAberto = aberto ? naTela.findIndex(item => item.equipamentoId === aberto.equipamentoId) : -1;
   const proximo = indiceAberto >= 0 ? naTela[indiceAberto + 1] : undefined;
@@ -136,7 +145,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   const opcoesFrente = useMemo(() => Array.from(new Set([...frentesAtivas, ...cartoes.map(item => item.frente)])).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR')), [cartoes, frentesAtivas]);
   const opcoesTipo = useMemo(() => Array.from(new Set(cartoes.map(item => item.tipo))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [cartoes]);
   const opcoesMarca = useMemo(() => Array.from(new Set(cartoes.map(item => item.marca).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [cartoes]);
-  const operadores = useMemo(() => Array.from(new Set(funcionarios.filter(item => item.ativo !== false).map(item => item.nome.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [funcionarios]);
+  const operadores = useMemo(() => Array.from(new Set(motoristas.filter(item => item.ativo !== false).map(item => item.nome.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [motoristas]);
   const etiquetas = etiquetasDosFiltros(filtros);
 
   const lista: Indicador[] = [
@@ -148,6 +157,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
     { id: 'disponibilidade', titulo: 'Disponibilidade', valor: indicadores.disponibilidade ?? 0, sufixo: indicadores.disponibilidade === null ? '' : '%', detalhe: indicadores.disponibilidade === null ? 'nada lançado no dia' : 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
     { id: 'com-operador', titulo: 'Com operador', valor: indicadores.comOperador, detalhe: 'operadores no dia', Icone: UserCheck, tom: 'bg-emerald-50 text-[#176b4d]', filtro: { operador: 'com' } },
     { id: 'sem-operador', titulo: 'Sem operador', valor: indicadores.semOperador, detalhe: 'aguardando', Icone: UserX, tom: 'bg-orange-50 text-[#f26a2e]', filtro: { operador: 'sem' } },
+    { id: 'abasteceu-sem-lancar', titulo: 'Abasteceu sem lançar', valor: abastecidasSemLancar.length, detalhe: 'confira no Combustível', Icone: Fuel, tom: 'bg-amber-50 text-amber-700', aoClicar: abastecidasSemLancar.length ? () => onNavigate('lancamentos') : undefined },
   ];
 
   const mudar = (parcial: Partial<FiltrosQuadro>) => setFiltros(atual => ({ ...atual, ...parcial }));
@@ -166,7 +176,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   const salvar = (cartao: CartaoFrota, edicao: EdicaoQuadro, irParaProximo: boolean): string | undefined => {
     const equipamento = equipamentos.find(item => item.id === cartao.equipamentoId);
     if (!equipamento) return 'Esta máquina não está mais no cadastro.';
-    const resultado = registroDaEdicao({ dia, hora: horaAgora(), agora: new Date().toISOString(), usuario, equipamento, registros, funcionarios, edicao });
+    const resultado = registroDaEdicao({ dia, hora: horaAgora(), agora: new Date().toISOString(), usuario, equipamento, registros, funcionarios: motoristas, edicao });
     if ('erro' in resultado) return resultado.erro;
     // Escolhe a próxima antes de gravar: depois de gravar a máquina pode sair do filtro.
     const seguinte = irParaProximo ? proximo : undefined;
@@ -285,6 +295,10 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
           const classe = `${CARTAO} flex min-h-24 flex-col p-3 text-left sm:min-h-28 sm:p-3.5 transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
           return item.filtro ? (
             <button key={item.id} type="button" data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} aria-pressed={ativo || undefined} onClick={() => setFiltros(ativo ? { ...filtros, ...Object.fromEntries(Object.keys(item.filtro!).map(chave => [chave, ''])) } : item.id === 'total' ? FILTROS_VAZIOS : { ...filtros, ...item.filtro })} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>
+              {conteudo}
+            </button>
+          ) : item.aoClicar ? (
+            <button key={item.id} type="button" data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} onClick={item.aoClicar} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>
               {conteudo}
             </button>
           ) : (
@@ -408,7 +422,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
           dia={dia}
           equipamentos={equipamentos}
           registros={registros}
-          funcionarios={funcionarios}
+          funcionarios={motoristas}
           frentes={opcoesFrente}
           operadores={operadores}
           usuario={usuario}

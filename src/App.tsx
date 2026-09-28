@@ -89,7 +89,7 @@ import {
 } from './utils/equipmentOperations';
 import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 import { mergeImportedRecords } from './utils/importMerge';
-import { garantirOrdemAutomaticaDaFrota, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
+import { garantirOrdemAutomaticaDaFrota, liberarMaquinasDaOrdemConcluida, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
 import {
   LOCAL_FUEL_RESET_STORAGE_KEY,
   LOCAL_FUEL_RESET_VERSION,
@@ -3829,14 +3829,19 @@ export default function App() {
   const handleSaveOrdemServico = (ordem: OrdemServico, isNew: boolean) => {
     const updated = isNew ? [ordem, ...ordensServico] : ordensServico.map(item => item.id === ordem.id ? ordem : item);
     const equipamento = equipamentos.find(item => item.id === ordem.equipamentoId);
+    const liberacao = liberarMaquinasDaOrdemConcluida(ordem, controleEquipamentosDiario, activeUserName);
     saveAndLog(
       'Manutenção',
       isNew ? 'Criou' : 'Editou',
-      `${isNew ? 'Abriu' : 'Atualizou'} a ${ordem.numero} de ${equipamento?.prefixo || 'frota não localizada'} — ${ordem.status}.`,
+      `${isNew ? 'Abriu' : 'Atualizou'} a ${ordem.numero} de ${equipamento?.prefixo || 'frota não localizada'} — ${ordem.status}.${liberacao.liberados ? ` Liberou ${liberacao.liberados} lançamento(s) da frota.` : ''}`,
       historyLogs,
       () => {
         setOrdensServico(updated);
         writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(updated));
+        if (liberacao.liberados) {
+          setControleEquipamentosDiario(liberacao.registros);
+          writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(liberacao.registros));
+        }
       },
     );
   };
@@ -5459,6 +5464,7 @@ export default function App() {
                 abastecimentos={abastecimentosAtivos}
                 frentes={frentesServico}
                 funcionarios={funcionarios}
+                operationalDrivers={motoristasOperacionais}
                 podeEditar={pode(currentUserRole, 'controle-equipamentos', 'editar')}
                 usuario={activeUserName}
                 onSave={handleSaveControleEquipamentoDiario}
