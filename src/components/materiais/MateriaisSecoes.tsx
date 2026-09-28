@@ -83,7 +83,7 @@ interface Props {
 export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 0, onSelect, compacto = false }: Props) {
   const [aberto, setAberto] = useState(false);
   const folha = useRef<HTMLDivElement>(null);
-  const menu = useRef<HTMLElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   const atual = TODAS.find(secao => secao.id === value) ?? TODAS[0];
   const IconeAtual = atual.Icone;
 
@@ -179,8 +179,9 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
 
   return (
     <>
-      <nav ref={menu} aria-label="Partes de materiais" data-materiais-reveal className={`${compacto ? 'hidden' : 'hidden lg:block'} materiais-menu self-start rounded-2xl border border-slate-200 bg-white p-2 py-3 lg:sticky lg:top-4`}>
-        {lista(false)}
+      {/* O cartão ocupa a coluna inteira, sem sobrar faixa em branco; a lista fica parada ao rolar. */}
+      <nav aria-label="Partes de materiais" data-materiais-reveal className={`${compacto ? 'hidden' : 'hidden lg:block'} self-stretch rounded-2xl border border-slate-200 bg-white`}>
+        <div ref={menu} className="materiais-menu p-2 py-3 lg:sticky lg:top-4">{lista(false)}</div>
       </nav>
 
       <div className={compacto ? 'lg:max-w-md' : 'lg:hidden'} data-materiais-reveal>
