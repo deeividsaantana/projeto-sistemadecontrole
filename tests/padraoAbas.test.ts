@@ -36,7 +36,6 @@ const PENDENCIAS: Record<string, readonly Regra[]> = {
   DdsTreinamentosTab: ['gsap', 'movimentoReduzido'],
   DiarioObraTab: ['gsap', 'movimentoReduzido'],
   EquipesTab: ['gsap', 'movimentoReduzido'],
-  EstacasTab: ['gsap', 'movimentoReduzido'],
   FrotaTab: ['gsap', 'movimentoReduzido'],
   HorasParadasTab: ['gsap', 'movimentoReduzido'],
   IndicadoresTab: ['gsap', 'movimentoReduzido', 'corForaDaPaleta'],

@@ -26,9 +26,8 @@ const STATUS_LABELS: Record<ImportDisposition, string> = {
 
 /**
  * Mesmo fluxo de MateriaisImportacoesPanel.tsx, para o domínio "stakes"
- * (Lançamentos → lotes, Cravações → cravações). Não substitui o botão de
- * importação já existente em EstacasTab (importWorkbook) — fica ao lado,
- * como o caminho com dry-run/lote/lineage/idempotência.
+ * (Lançamentos → lotes, Cravações → cravações), com prévia, lote rastreável
+ * e idempotência. É o único caminho de importação da aba Estacas prancha.
  */
 export default function EstacasImportacoesPanel({ controle, responsavel, onApply, onError }: Props) {
   const [fileName, setFileName] = useState('');

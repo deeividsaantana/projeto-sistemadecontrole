@@ -1,462 +1,215 @@
-import React, { useMemo, useState } from 'react';
-import type ExcelJS from 'exceljs';
-import { createCorporateWorkbook } from '../utils/excelCorporate';
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Hammer, PackagePlus, Pencil, Trash2, X } from 'lucide-react';
+/**
+ * Estacas prancha: quantas a obra precisa cravar, quantas já foram, quantas
+ * faltam e a porcentagem, com a cortina desenhada por frente, os relatórios
+ * e o recebimento pela nota fiscal.
+ */
+import { useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
+import { CheckCircle2, Hammer, Target, X } from 'lucide-react';
 import type { ControleEstacas, CravacaoEstaca, LoteEstaca, ObraLocal } from '../types';
-import { buildStakeBalances, buildStakeSummary, reconcileStakeInvoice, suggestStakeLot } from '../utils/stakeOperations';
-import { uploadOperationalAttachment } from '../services/operationalAttachments';
-import StakeDrivingMap from './StakeDrivingMap';
-import EstacasImportacoesPanel from './EstacasImportacoesPanel';
-import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
+import { estacasPorFrente, estaCravada, frenteDaEstaca, nomeDaEstaca, resumirEstacas } from '../modules/estacas/avancoEstacas';
+import { reconcileStakeInvoice } from '../utils/stakeOperations';
 import { inativar, somenteAtivos } from '../utils/inativacao';
+import { PageHeader, isoDay } from '../shared/ui';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, FOCO } from './cadastros/estilos';
+import EstacasSecoes, { type SecaoEstacas } from './estacas/EstacasSecoes';
+import VisaoEstacas from './estacas/VisaoEstacas';
+import FormCravacao, { type PedidoDeCravacao } from './estacas/FormCravacao';
+import ListaEstacas from './estacas/ListaEstacas';
+import RelatoriosEstacas from './estacas/RelatoriosEstacas';
+import RecebimentosEstacas from './estacas/RecebimentosEstacas';
+import PlanejarFrente from './estacas/PlanejarFrente';
+import EstacasImportacoesPanel from './EstacasImportacoesPanel';
+import './estacas/Estacas.css';
 
 type Props = {
   controle: ControleEstacas;
   obras: ObraLocal[];
   onChange: (next: ControleEstacas, description: string) => void;
-  /** Quem fica registrado na inativação. */
+  /** Quem fica registrado no lançamento e na inativação. */
   responsavel?: string;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
-const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const numberValue = (value: unknown) => {
-  const parsed = Number(String(value ?? '').replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-const excelDate = (value: unknown) => {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  if (typeof value === 'number') return new Date(Date.UTC(1899, 11, 30) + value * 86400000).toISOString().slice(0, 10);
-  const text = String(value ?? '').trim();
-  const match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-  if (match) return `${match[3].length === 2 ? `20${match[3]}` : match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
-  return text.slice(0, 10);
-};
-const excelTime = (value: unknown) => {
-  if (value instanceof Date) return value.toTimeString().slice(0, 5);
-  if (typeof value === 'number') {
-    const minutes = Math.round((value - Math.floor(value)) * 1440) % 1440;
-    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-  }
-  return String(value || '').slice(0, 5);
-};
-const cellText = (value: ExcelJS.CellValue) => {
-  if (value === null || value === undefined) return '';
-  if (value instanceof Date) return value;
-  if (typeof value === 'object') {
-    if ('result' in value && value.result !== undefined) return value.result as string | number | Date;
-    if ('text' in value) return value.text;
-    if ('richText' in value) return value.richText.map(item => item.text).join('');
-  }
-  return value as string | number;
-};
-
-const emptyLot = (): Omit<LoteEstaca, 'id' | 'criadoEm'> => ({
-  data: today(), hora: '', movimento: 'Entrada', notaFiscal: '', materialCodigo: '', descricao: '',
-  tipo: 'ESTACA PRANCHA', perfilModelo: '', comprimentoM: 0, unidade: 'UN', pesoKg: 0,
-  quantidadeFisica: 1, valorUnitario: 0, valorTotal: 0, placaCavalo: '', placaCarreta: '',
-  transportadora: '', destino: '', tipoCarregamento: 'Feixe central', status: 'Pendente',
-  nfConferida: false, divergenciaNF: '', responsavel: '', observacao: '', origem: 'Manual',
-});
-
-const emptyDriving = (): Omit<CravacaoEstaca, 'id' | 'criadoEm'> => ({
-  data: today(), item: '', servico: 'Cravação de estaca prancha', identificacao: '', perfil: '',
-  comprimentoM: 0, comprimentoCravadoM: 0, sobraM: 0, perdaM: 0, responsavel: '',
-  observacao: '', origem: 'Manual',
-});
-
 export default function EstacasTab({ controle, obras, onChange, responsavel = 'Sistema' }: Props) {
-  const responsavelAcao = responsavel;
-  const [mode, setMode] = useState<'lotes' | 'cravacoes' | 'notas' | 'importacoes'>('lotes');
+  const hoje = isoDay(new Date());
+  const [secao, setSecao] = useState<SecaoEstacas>('visao');
+  const [pedido, setPedido] = useState<PedidoDeCravacao>({});
+  const [frenteAtual, setFrenteAtual] = useState('');
+  const [planejando, setPlanejando] = useState<{ frente?: string } | null>(null);
+  const [aviso, setAviso] = useState('');
+  const [erro, setErro] = useState('');
+
+  // Estaca e lote inativados saem das contas, do desenho e das listas, mas
+  // continuam no arquivo.
+  const estacas = useMemo(() => somenteAtivos(controle.cravacoes), [controle.cravacoes]);
+  const lotes = useMemo(() => somenteAtivos(controle.lotes), [controle.lotes]);
+  const frentes = useMemo(() => estacasPorFrente(estacas), [estacas]);
+  const total = useMemo(() => resumirEstacas(estacas), [estacas]);
+  const notasPendentes = useMemo(
+    () => Array.from(new Set(lotes.map(item => item.notaFiscal).filter(Boolean))).filter(nota => reconcileStakeInvoice(lotes, nota).status !== 'Conforme').length,
+    [lotes],
+  );
+
+  const escolherSecao = (proxima: SecaoEstacas) => {
+    setSecao(proxima);
+    setErro('');
+  };
+
+  const abrirCravacao = (estaca?: CravacaoEstaca, frente?: string) => {
+    setPedido({ estacaId: estaca?.id, frente: frente ?? (estaca ? frenteDaEstaca(estaca) : frenteAtual || frentes[0]?.frente) });
+    escolherSecao('cravar');
+  };
+
+  const salvarCravacao = (estaca: CravacaoEstaca, anteriorId?: string) => {
+    const anterior = anteriorId ? controle.cravacoes.find(item => item.id === anteriorId) : undefined;
+    const cravacoes = anterior
+      ? controle.cravacoes.map(item => (item.id === anterior.id ? estaca : item))
+      : [estaca, ...controle.cravacoes];
+    const acao = !anterior ? 'Registrou' : estaCravada(anterior) ? 'Corrigiu' : 'Cravou';
+    onChange({ ...controle, cravacoes }, `${acao} ${nomeDaEstaca(estaca)} (${frenteDaEstaca(estaca)}).`);
+    setFrenteAtual(frenteDaEstaca(estaca));
+    setAviso(`${nomeDaEstaca(estaca)} ${anterior && estaCravada(anterior) ? 'corrigida' : 'cravada'}.`);
+  };
+
+  const inativarEstacas = (ids: string[]) => {
+    onChange({ ...controle, cravacoes: inativar(controle.cravacoes, ids, responsavel) }, ids.length === 1 ? 'Inativou uma estaca.' : `Inativou ${ids.length} estacas.`);
+    setAviso(ids.length === 1 ? 'Estaca tirada da lista. Ela continua guardada.' : `${ids.length} estacas tiradas da lista. Elas continuam guardadas.`);
+  };
+
+  const aplicarPlano = (novas: CravacaoEstaca[], sobrando: string[], frente: string, quantidade: number) => {
+    const cravacoes = sobrando.length ? inativar(controle.cravacoes, sobrando, responsavel) : [...novas, ...controle.cravacoes];
+    onChange({ ...controle, cravacoes }, `Definiu ${quantidade} estacas previstas na frente ${frente}.`);
+    setPlanejando(null);
+    setFrenteAtual(frente);
+    setAviso(`${frente}: total previsto agora é ${quantidade.toLocaleString('pt-BR')} estacas.`);
+    escolherSecao('visao');
+  };
+
   const aplicarImportacao = (novosLotes: LoteEstaca[], novasCravacoes: CravacaoEstaca[]) => {
-    if (novosLotes.length === 0 && novasCravacoes.length === 0) return;
+    if (!novosLotes.length && !novasCravacoes.length) return;
     onChange(
       { lotes: [...novosLotes, ...controle.lotes], cravacoes: [...novasCravacoes, ...controle.cravacoes] },
       `Importou ${novosLotes.length} lote(s) e ${novasCravacoes.length} cravação(ões) por planilha (com prévia e lote rastreável).`,
     );
-    setMessage(`Importação aplicada: ${novosLotes.length} lote(s) e ${novasCravacoes.length} cravação(ões).`);
-  };
-  const [lot, setLot] = useState(emptyLot);
-  const [driving, setDriving] = useState(emptyDriving);
-  const [lotFiles, setLotFiles] = useState<File[]>([]);
-  const [message, setMessage] = useState('');
-  const [isImporting, setIsImporting] = useState(false);
-  const [activeDrivingId, setActiveDrivingId] = useState<string | null>(null);
-  const [editingLotId, setEditingLotId] = useState<string | null>(null);
-  const [editingDrivingId, setEditingDrivingId] = useState<string | null>(null);
-  const [selectedLotIds, setSelectedLotIds] = useState<string[]>([]);
-  const [selectedDrivingIds, setSelectedDrivingIds] = useState<string[]>([]);
-  const [confirmandoLotes, setConfirmandoLotes] = useState(false);
-  const [confirmandoCravacoes, setConfirmandoCravacoes] = useState(false);
-
-  // Um filtro só: lote e cravação inativados somem das tabelas, dos saldos e
-  // dos relatórios desta tela, sem sair do arquivo.
-  const controleVisivel = useMemo<ControleEstacas>(() => ({
-    lotes: somenteAtivos(controle.lotes),
-    cravacoes: somenteAtivos(controle.cravacoes),
-  }), [controle]);
-  const [visibleDrivingIds, setVisibleDrivingIds] = useState<string[]>(controleVisivel.cravacoes.map(item => item.id));
-  const summary = useMemo(() => buildStakeSummary(controle), [controle]);
-  const balances = useMemo(() => buildStakeBalances(controle), [controle]);
-  const invoices = useMemo(
-    () => Array.from(new Set(controleVisivel.lotes.map(item => item.notaFiscal).filter(Boolean))).map(nota => reconcileStakeInvoice(controleVisivel.lotes, nota)),
-    [controleVisivel.lotes]
-  );
-
-  const saveLot = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!lot.notaFiscal || !lot.descricao || lot.comprimentoM <= 0) {
-      setMessage('Informe NF, descrição e comprimento.');
-      return;
-    }
-    if (lotFiles.length > 0 && !lot.obraLocalId) {
-      setMessage('Selecione a obra antes de anexar arquivos ao lote.');
-      return;
-    }
-    const previous = editingLotId ? controle.lotes.find(item => item.id === editingLotId) : undefined;
-    const id = previous?.id || uid('lote-estaca');
-    let anexos: LoteEstaca['anexos'] = [];
-    try {
-      anexos = await Promise.all(lotFiles.map(file => uploadOperationalAttachment({
-        obraId: lot.obraLocalId || 'geral',
-        module: 'estacas-lotes',
-        recordId: id,
-      }, file)));
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Não foi possível enviar os anexos.');
-      return;
-    }
-    const nextLot: LoteEstaca = {
-      ...lot,
-      id,
-      anexos: anexos.length > 0 ? anexos : previous?.anexos,
-      valorTotal: lot.valorTotal || lot.pesoKg * lot.valorUnitario,
-      criadoEm: previous?.criadoEm || new Date().toISOString(),
-      atualizadoEm: new Date().toISOString(),
-    };
-    const nextLots = previous
-      ? controle.lotes.map(item => item.id === previous.id ? nextLot : item)
-      : [nextLot, ...controle.lotes];
-    onChange({ ...controle, lotes: nextLots }, `${previous ? 'Atualizou' : 'Registrou'} lote da NF ${lot.notaFiscal}.`);
-    setLot(emptyLot());
-    setEditingLotId(null);
-    setLotFiles([]);
-    setMessage(previous ? 'Recebimento atualizado.' : 'Recebimento registrado.');
+    setAviso(`Importação aplicada: ${novosLotes.length} lote(s) e ${novasCravacoes.length} cravação(ões).`);
   };
 
-  const editLot = (item: LoteEstaca) => {
-    const { id: _id, criadoEm: _createdAt, atualizadoEm: _updatedAt, ...draft } = item;
-    setLot(draft);
-    setEditingLotId(item.id);
-    setMode('lotes');
-    setMessage(`Editando o lote da NF ${item.notaFiscal}.`);
+  const contar = (id: SecaoEstacas) => {
+    if (id === 'estacas') return estacas.length;
+    if (id === 'recebimentos') return lotes.length;
+    return null;
   };
+  const alerta = (id: SecaoEstacas) => (id === 'visao' ? total.faltam : id === 'recebimentos' ? notasPendentes : 0);
 
-  const cancelLotEdit = () => {
-    setLot(emptyLot());
-    setEditingLotId(null);
-    setLotFiles([]);
-  };
-
-  const saveDriving = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!driving.identificacao || driving.comprimentoM <= 0 || driving.comprimentoCravadoM < 0) {
-      setMessage('Informe identificação, comprimento válido e profundidade cravada maior ou igual a zero.');
-      return;
-    }
-    if (driving.comprimentoCravadoM > driving.comprimentoM) {
-      setMessage('A profundidade cravada informada é superior ao comprimento total da estaca. Verifique a medição.');
-      return;
-    }
-    const suggested = driving.loteId ? undefined : suggestStakeLot(driving, controle);
-    const previous = editingDrivingId ? controle.cravacoes.find(item => item.id === editingDrivingId) : undefined;
-    const nextDriving: CravacaoEstaca = {
-      ...driving,
-      loteId: driving.loteId || suggested?.id,
-      sobraM: Math.max(0, driving.sobraM || driving.comprimentoM - driving.comprimentoCravadoM - driving.perdaM),
-      id: previous?.id || uid('cravacao-estaca'),
-      criadoEm: previous?.criadoEm || new Date().toISOString(),
-    };
-    const nextItems = previous
-      ? controle.cravacoes.map(item => item.id === previous.id ? nextDriving : item)
-      : [nextDriving, ...controle.cravacoes];
-    onChange({ ...controle, cravacoes: nextItems }, `${previous ? 'Atualizou' : 'Registrou'} cravação ${driving.identificacao}.`);
-    setDriving(emptyDriving());
-    setEditingDrivingId(null);
-    setActiveDrivingId(nextDriving.id);
-    setMessage(previous ? 'Cravação atualizada e mapa sincronizado.' : suggested ? `Cravação registrada e associada ao lote da NF ${suggested.notaFiscal}.` : 'Cravação registrada.');
-  };
-
-  const editDriving = (item: CravacaoEstaca) => {
-    const { id: _id, criadoEm: _createdAt, ...draft } = item;
-    setDriving(draft);
-    setEditingDrivingId(item.id);
-    setActiveDrivingId(item.id);
-    setMode('cravacoes');
-    setMessage(`Editando ${item.identificacao}. Salve para atualizar também o mapa.`);
-    requestAnimationFrame(() => document.getElementById('stake-driving-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-  };
-
-  const cancelDrivingEdit = () => {
-    setDriving(emptyDriving());
-    setEditingDrivingId(null);
-    setActiveDrivingId(null);
-    setMessage('Edição cancelada sem alterar o registro.');
-  };
-
-  const importWorkbook = async (file: File) => {
-    setIsImporting(true);
-    setMessage('');
-    try {
-      const workbook = await createCorporateWorkbook();
-      // ExcelJS tipa .load() para o Buffer do Node; no navegador só existe
-      // ArrayBuffer, que a implementação real aceita normalmente.
-      await workbook.xlsx.load((await file.arrayBuffer()) as unknown as Buffer);
-      const importedLots: LoteEstaca[] = [];
-      const importedDrivings: CravacaoEstaca[] = [];
-      const launchSheet = workbook.getWorksheet('Lançamentos');
-      launchSheet?.eachRow((row, rowNumber) => {
-        if (rowNumber <= 5) return;
-        const values = Array.from({ length: 18 }, (_, index) => cellText(row.getCell(index + 1).value));
-        if (!values.some(Boolean)) return;
-        const [data, hora, movimento, nf, codigo, descricao, tipo, comprimento, unidade, peso, valorUnitario, valorTotal, cavalo, carreta, transportadora, destino, carregamento, status] = values;
-        importedLots.push({
-          ...emptyLot(),
-          id: uid(`lote-${rowNumber}`),
-          data: excelDate(data),
-          hora: excelTime(hora),
-          movimento: (String(movimento || 'Entrada') as LoteEstaca['movimento']),
-          notaFiscal: String(nf || ''),
-          materialCodigo: String(codigo || ''),
-          descricao: String(descricao || `Linha ${rowNumber} sem descrição`),
-          tipo: String(tipo || 'OUTROS'),
-          perfilModelo: String(descricao || '').match(/\bAZ[0-9-]+\b/i)?.[0] || '',
-          comprimentoM: numberValue(comprimento),
-          unidade: String(unidade || 'UN'),
-          pesoKg: numberValue(peso),
-          valorUnitario: numberValue(valorUnitario),
-          valorTotal: numberValue(valorTotal),
-          placaCavalo: String(cavalo || ''),
-          placaCarreta: String(carreta || ''),
-          transportadora: String(transportadora || ''),
-          destino: String(destino || ''),
-          tipoCarregamento: String(carregamento || ''),
-          status: (String(status || 'Pendente') as LoteEstaca['status']),
-          origem: 'Planilha',
-          observacao: !nf || !descricao ? 'Importado com campos incompletos; revisar.' : '',
-          criadoEm: new Date().toISOString(),
-        });
-      });
-      const drivingSheet = workbook.getWorksheet('Cravações');
-      drivingSheet?.eachRow((row, rowNumber) => {
-        if (rowNumber <= 1) return;
-        const values = Array.from({ length: 7 }, (_, index) => cellText(row.getCell(index + 1).value));
-        if (!values.some(Boolean)) return;
-        const [data, item, servico, identificacao, perfil, comprimento, cravado] = values;
-        const draft = {
-          ...emptyDriving(),
-          data: excelDate(data),
-          item: String(item || rowNumber - 1),
-          servico: String(servico || 'Cravação de estaca prancha'),
-          identificacao: String(identificacao || `Linha ${rowNumber}`),
-          perfil: String(perfil || ''),
-          comprimentoM: numberValue(comprimento),
-          comprimentoCravadoM: numberValue(cravado),
-          sobraM: Math.max(0, numberValue(comprimento) - numberValue(cravado)),
-          origem: 'Planilha' as const,
-        };
-        importedDrivings.push({
-          ...draft,
-          loteId: suggestStakeLot(draft, { lotes: [...importedLots, ...controleVisivel.lotes], cravacoes: [...importedDrivings, ...controleVisivel.cravacoes] })?.id,
-          id: uid(`cravacao-${rowNumber}`),
-          criadoEm: new Date().toISOString(),
-        });
-      });
-      onChange(
-        { lotes: [...importedLots, ...controle.lotes], cravacoes: [...importedDrivings, ...controle.cravacoes] },
-        `Importou ${importedLots.length} lote(s) e ${importedDrivings.length} cravação(ões) da planilha.`
-      );
-      setMessage(`Importação preservada: ${importedLots.length} lotes e ${importedDrivings.length} cravações. Linhas incompletas ficaram pendentes.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Não foi possível importar a planilha.');
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  // Lote e cravação são registro de obra medido e pago: inativa, não apaga. O
-  // dado sai das telas e dos saldos, mas continua no arquivo e pode voltar.
-  const inativarLotes = (ids: string[], quem: string) => onChange({
-    lotes: inativar(controle.lotes, ids, quem),
-    cravacoes: controle.cravacoes.map(item => item.loteId && ids.includes(item.loteId)
-      ? { ...item, loteId: undefined }
-      : item),
-  }, ids.length === 1
-    ? 'Inativou um lote e preservou as cravações para reassociação.'
-    : `Inativou ${ids.length} lote(s) e preservou as cravações.`);
-
-  const removeLot = (id: string) => inativarLotes([id], responsavelAcao);
-  const removeDriving = (id: string) => {
-    onChange({ ...controle, cravacoes: inativar(controle.cravacoes, [id], responsavelAcao) }, 'Inativou uma cravação.');
-    if (editingDrivingId === id) cancelDrivingEdit();
-  };
-  const confirmarInativacaoLotes = () => {
-    inativarLotes(selectedLotIds, responsavelAcao);
-    setSelectedLotIds([]);
-    setConfirmandoLotes(false);
-  };
-  const confirmarInativacaoCravacoes = () => {
-    onChange(
-      { ...controle, cravacoes: inativar(controle.cravacoes, selectedDrivingIds, responsavelAcao) },
-      `Inativou ${selectedDrivingIds.length} cravação(ões) selecionada(s).`,
-    );
-    setSelectedDrivingIds([]);
-    setConfirmandoCravacoes(false);
-  };
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+  // Entrada do cabeçalho, do menu e dos blocos, no mesmo passo de Materiais.
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = primeira ? raiz.querySelectorAll('[data-estacas-reveal]') : raiz.querySelectorAll('#estacas-conteudo [data-estacas-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 10 }, { opacity: 1, y: 0, duration: primeira ? 0.5 : 0.35, stagger: primeira ? 0.05 : 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [secao] });
 
   return (
-    <div id="estacas-tab" className="space-y-5">
-      <PageHeader
-        eyebrow="Operação"
-        title="Controle de Estacas"
-        description="Recebimento, NF, lote físico, cravação, sobra, perda e saldo confirmado."
-        actions={(
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white hover:bg-emerald-800">
-            <FileSpreadsheet className="h-4 w-4" />
-            {isImporting ? 'Importando...' : 'Importar controle Excel'}
-            <input type="file" accept=".xlsx" className="hidden" disabled={isImporting} onChange={event => {
-              const file = event.target.files?.[0];
-              if (file) void importWorkbook(file);
-              event.target.value = '';
-            }} />
-          </label>
-        )}
-      />
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {[
-          { label: 'Lotes', value: summary.lotes },
-          { label: 'Cravações', value: summary.cravacoes },
-          { label: 'Recebido (m)', text: summary.recebidoM.toLocaleString('pt-BR') },
-          { label: 'Cravado (m)', text: summary.cravadoM.toLocaleString('pt-BR') },
-          { label: 'Saldo (m)', text: summary.sobraM.toLocaleString('pt-BR') },
-          { label: 'NF pendente', value: summary.notasPendentes },
-        ].map(item => (
-          <div key={item.label} className="rounded-xl border border-slate-200 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-            <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{item.label}</p>
-            <p className="mt-1 text-xl font-black tabular-nums text-slate-800">{item.value !== undefined ? <CountUp value={item.value} /> : item.text}</p>
-          </div>
-        ))}
+    <div ref={escopo} id="estacas-tab" data-testid="estacas-tab" className="erp-module space-y-4">
+      <div data-estacas-reveal>
+        <PageHeader
+          className="estacas-header"
+          eyebrow="Operação"
+          title="Estacas prancha"
+          description="Quantas precisa cravar, quantas já foram e quantas faltam, frente por frente."
+          actions={(
+            <>
+              <button type="button" onClick={() => setPlanejando({ frente: frenteAtual || undefined })} className={BOTAO_SECUNDARIO}>
+                <Target className="size-5" aria-hidden="true" /> Total previsto
+              </button>
+              <button type="button" onClick={() => abrirCravacao()} data-testid="estacas-acao-principal" className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
+                <Hammer className="size-5" aria-hidden="true" /> Lançar cravação
+              </button>
+            </>
+          )}
+        />
       </div>
 
-      {message && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-700">{message}</div>}
-
-      <div className="flex gap-2 overflow-auto">
-        {([['lotes', 'Recebimentos'], ['cravacoes', 'Cravações'], ['notas', 'Conferência de NF'], ['importacoes', 'Importações']] as const).map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setMode(id)} className={`rounded-lg px-4 py-2 text-xs font-black ${mode === id ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400'}`}>{label}</button>
-        ))}
-      </div>
-
-      {mode === 'importacoes' && (
-        <EstacasImportacoesPanel controle={controle} responsavel={responsavelAcao} onApply={aplicarImportacao} onError={setMessage} />
+      {/* No lançamento a própria folha já diz o que foi salvo. */}
+      {aviso && secao !== 'cravar' && (
+        <div role="status" className="flex items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">
+          <span className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> {aviso}</span>
+          <button type="button" onClick={() => setAviso('')} className={`shrink-0 rounded-lg p-1 hover:bg-emerald-100 ${FOCO}`} aria-label="Fechar aviso"><X className="size-5" aria-hidden="true" /></button>
+        </div>
       )}
-
-      {mode === 'lotes' && (
-        <>
-          <form onSubmit={saveLot} className="grid min-w-0 gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
-            <input type="date" value={lot.data} onChange={e => setLot({ ...lot, data: e.target.value })} className="input-dark" />
-            <input placeholder="Nota fiscal" value={lot.notaFiscal} onChange={e => setLot({ ...lot, notaFiscal: e.target.value })} className="input-dark" />
-            <input placeholder="Código do material" value={lot.materialCodigo} onChange={e => setLot({ ...lot, materialCodigo: e.target.value })} className="input-dark" />
-            <input placeholder="Perfil / modelo" value={lot.perfilModelo} onChange={e => setLot({ ...lot, perfilModelo: e.target.value })} className="input-dark" />
-            <input placeholder="Descrição" value={lot.descricao} onChange={e => setLot({ ...lot, descricao: e.target.value })} className="input-dark md:col-span-2" />
-            <input type="number" step="0.01" placeholder="Comprimento (m)" value={lot.comprimentoM || ''} onChange={e => setLot({ ...lot, comprimentoM: Number(e.target.value) })} className="input-dark" />
-            <input type="number" step="1" placeholder="Quantidade física" value={lot.quantidadeFisica || ''} onChange={e => setLot({ ...lot, quantidadeFisica: Number(e.target.value) })} className="input-dark" />
-            <input type="number" step="0.01" placeholder="Peso (kg)" value={lot.pesoKg || ''} onChange={e => setLot({ ...lot, pesoKg: Number(e.target.value) })} className="input-dark" />
-            <input type="number" step="0.01" placeholder="Valor unitário" value={lot.valorUnitario || ''} onChange={e => setLot({ ...lot, valorUnitario: Number(e.target.value) })} className="input-dark" />
-            <input placeholder="Placa cavalo" value={lot.placaCavalo} onChange={e => setLot({ ...lot, placaCavalo: e.target.value.toUpperCase() })} className="input-dark" />
-            <input placeholder="Placa carreta" value={lot.placaCarreta} onChange={e => setLot({ ...lot, placaCarreta: e.target.value.toUpperCase() })} className="input-dark" />
-            <select value={lot.obraLocalId || ''} onChange={e => setLot({ ...lot, obraLocalId: e.target.value || undefined })} className="input-dark"><option value="">Obra/local</option>{obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
-            <input placeholder="Destino textual" value={lot.destino} onChange={e => setLot({ ...lot, destino: e.target.value })} className="input-dark md:col-span-2" />
-            <input placeholder="Responsável" value={lot.responsavel} onChange={e => setLot({ ...lot, responsavel: e.target.value })} className="input-dark" />
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 sm:col-span-2">Anexos estão temporariamente indisponíveis. O registro do lote segue normalmente, sem perda dos demais dados.</div>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs text-slate-700"><input type="checkbox" checked={lot.nfConferida} onChange={e => setLot({ ...lot, nfConferida: e.target.checked })} /> NF conferida</label>
-            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><PackagePlus className="h-4 w-4" /> {editingLotId ? 'Salvar alterações' : 'Registrar lote'}</button>
-            {editingLotId && <button type="button" onClick={cancelLotEdit} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700"><X className="h-4 w-4" /> Cancelar edição</button>}
-          </form>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
-            <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={controleVisivel.lotes.length > 0 && selectedLotIds.length === controleVisivel.lotes.length} onChange={e => setSelectedLotIds(e.target.checked ? controleVisivel.lotes.map(item => item.id) : [])} /> Selecionar todos ({selectedLotIds.length})</label>
-            <button type="button" disabled={selectedLotIds.length === 0} onClick={() => setConfirmandoLotes(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionados</button>
-          </div>
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <table className="w-full min-w-[900px] text-left text-xs">
-              <thead className="bg-white text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Sel.</th><th>Data/NF</th><th>Material</th><th>Perfil</th><th>Recebido</th><th>Cravado</th><th>Saldo</th><th>Status</th><th /></tr></thead>
-              <tbody className="divide-y divide-slate-800 bg-white">
-                {controleVisivel.lotes.map(item => {
-                  const balance = balances.find(entry => entry.loteId === item.id);
-                  return <tr key={item.id}><td className="p-3"><input type="checkbox" checked={selectedLotIds.includes(item.id)} onChange={e => setSelectedLotIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /></td><td className="text-slate-700">{item.data}<br /><b className="text-slate-800">NF {item.notaFiscal}</b></td><td className="text-slate-700">{item.descricao}<br /><span className="text-slate-600">{item.materialCodigo}</span></td><td className="text-slate-700">{item.perfilModelo || item.comprimentoM}</td><td className="text-slate-700">{balance?.recebidoM} m</td><td className="text-slate-700">{balance?.cravadoM} m</td><td className={balance?.status === 'Divergente' ? 'font-black text-rose-700' : 'font-black text-emerald-700'}>{balance?.saldoConfirmadoM} m</td><td className="text-slate-400">{item.nfConferida ? 'NF conferida' : item.status}</td><td><button type="button" title="Editar lote" onClick={() => editLot(item)} className="p-2 text-sky-700"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir lote" onClick={() => removeLot(item.id)} className="p-2 text-rose-700"><Trash2 className="h-4 w-4" /></button></td></tr>;
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {mode === 'cravacoes' && (
-        <>
-          <StakeDrivingMap
-            items={controleVisivel.cravacoes}
-            obras={obras}
-            activeId={activeDrivingId}
-            onActiveIdChange={setActiveDrivingId}
-            onVisibleIdsChange={setVisibleDrivingIds}
-          />
-          <form id="stake-driving-form" onSubmit={saveDriving} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
-            <input type="date" value={driving.data} onChange={e => setDriving({ ...driving, data: e.target.value })} className="input-dark" />
-            <input placeholder="Identificação / frente" value={driving.identificacao} onChange={e => setDriving({ ...driving, identificacao: e.target.value })} className="input-dark" />
-            <input placeholder="Perfil" value={driving.perfil} onChange={e => setDriving({ ...driving, perfil: e.target.value })} className="input-dark" />
-            <input placeholder="Item físico" value={driving.item} onChange={e => setDriving({ ...driving, item: e.target.value })} className="input-dark" />
-            <input type="number" step="0.01" placeholder="Comprimento (m)" value={driving.comprimentoM || ''} onChange={e => setDriving({ ...driving, comprimentoM: Number(e.target.value) })} className="input-dark" />
-            <input type="number" step="0.01" placeholder="Cravado (m)" value={driving.comprimentoCravadoM || ''} onChange={e => setDriving({ ...driving, comprimentoCravadoM: Number(e.target.value) })} className="input-dark" />
-            <input type="number" step="0.01" placeholder="Perda (m)" value={driving.perdaM || ''} onChange={e => setDriving({ ...driving, perdaM: Number(e.target.value) })} className="input-dark" />
-            <select value={driving.loteId || ''} onChange={e => setDriving({ ...driving, loteId: e.target.value || undefined })} className="input-dark"><option value="">Associação automática</option>{controleVisivel.lotes.map(item => <option key={item.id} value={item.id}>NF {item.notaFiscal} · {item.perfilModelo || item.descricao}</option>)}</select>
-            <select value={driving.obraLocalId || ''} onChange={e => setDriving({ ...driving, obraLocalId: e.target.value || undefined })} className="input-dark"><option value="">Obra/local</option>{obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>
-            <input placeholder="Responsável" value={driving.responsavel} onChange={e => setDriving({ ...driving, responsavel: e.target.value })} className="input-dark" />
-            <button className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black text-white"><Hammer className="h-4 w-4" /> {editingDrivingId ? 'Salvar alterações' : 'Registrar cravação'}</button>
-            {editingDrivingId && <button type="button" onClick={cancelDrivingEdit} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:border-slate-400"><X className="h-4 w-4" /> Cancelar edição</button>}
-          </form>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
-            <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={visibleDrivingIds.length > 0 && visibleDrivingIds.every(id => selectedDrivingIds.includes(id))} onChange={e => setSelectedDrivingIds(e.target.checked ? visibleDrivingIds : [])} /> Selecionar visíveis ({selectedDrivingIds.length})</label>
-            <button type="button" disabled={selectedDrivingIds.length === 0} onClick={() => setConfirmandoCravacoes(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Excluir selecionadas</button>
-          </div>
-          <div className="grid gap-3">
-            {controleVisivel.cravacoes.filter(item => visibleDrivingIds.includes(item.id)).sort((a, b) => a.identificacao.localeCompare(b.identificacao, 'pt-BR', { numeric: true })).map(item => <div id={`stake-row-${item.id}`} key={item.id} onMouseEnter={() => setActiveDrivingId(item.id)} onMouseLeave={() => editingDrivingId !== item.id && setActiveDrivingId(null)} className={`flex flex-col gap-2 rounded-xl border bg-white p-4 transition md:flex-row md:items-center ${activeDrivingId === item.id ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}><input type="checkbox" checked={selectedDrivingIds.includes(item.id)} onChange={e => setSelectedDrivingIds(current => e.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} /><div className="flex-1"><p className="font-black text-slate-900">{item.identificacao} · {item.perfil || 'Perfil não informado'}</p><p className="text-xs text-slate-500">{item.data} · {item.comprimentoCravadoM} / {item.comprimentoM} m · sobra {item.sobraM} m · perda {item.perdaM} m</p></div><span className={`text-[10px] font-black ${item.loteId ? 'text-emerald-700' : 'text-amber-700'}`}>{item.loteId ? 'LOTE ASSOCIADO' : 'REVISAR LOTE'}</span><button type="button" title="Editar cravação" onClick={() => editDriving(item)} className="p-2 text-sky-600 hover:text-sky-800"><Pencil className="h-4 w-4" /></button><button type="button" title="Excluir cravação" onClick={() => removeDriving(item.id)} className="p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button></div>)}
-          </div>
-        </>
-      )}
-
-      {mode === 'notas' && (
-        <div className="grid gap-3 md:grid-cols-2">
-          {invoices.map(invoice => <div key={invoice.notaFiscal} className="rounded-xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><h3 className="font-black text-slate-800">NF {invoice.notaFiscal}</h3>{invoice.status === 'Conforme' ? <CheckCircle2 className="h-5 w-5 text-emerald-700" /> : <AlertTriangle className="h-5 w-5 text-amber-700" />}</div><div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-400"><span>{invoice.itens} item(ns)</span><span>{invoice.pesoKg.toLocaleString('pt-BR')} kg</span><span>R$ {invoice.valorTotal.toLocaleString('pt-BR')}</span><span>{invoice.conferidos}/{invoice.itens} conferidos</span></div></div>)}
+      {erro && (
+        <div role="alert" className="flex items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+          <span>{erro}</span>
+          <button type="button" onClick={() => setErro('')} className={`shrink-0 rounded-lg p-1 hover:bg-rose-100 ${FOCO}`} aria-label="Fechar aviso"><X className="size-5" aria-hidden="true" /></button>
         </div>
       )}
 
-      <ConfirmDialog
-        open={confirmandoLotes}
-        tone="warning"
-        title={`Inativar ${selectedLotIds.length} lote(s)?`}
-        description="Os lotes saem das tabelas e dos saldos, mas continuam guardados e podem voltar. As cravações são preservadas para reassociação."
-        confirmLabel="Inativar"
-        onConfirm={confirmarInativacaoLotes}
-        onCancel={() => setConfirmandoLotes(false)}
-      />
-      <ConfirmDialog
-        open={confirmandoCravacoes}
-        tone="warning"
-        title={`Inativar ${selectedDrivingIds.length} cravação(ões)?`}
-        description="As cravações saem das tabelas e dos saldos, mas continuam guardadas e podem voltar."
-        confirmLabel="Inativar"
-        onConfirm={confirmarInativacaoCravacoes}
-        onCancel={() => setConfirmandoCravacoes(false)}
+      <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
+        <EstacasSecoes value={secao} contar={contar} alerta={alerta} onSelect={escolherSecao} />
+
+        <div id="estacas-conteudo" className="min-w-0 space-y-3">
+          {secao === 'visao' && (
+            <VisaoEstacas
+              hoje={hoje}
+              estacas={estacas}
+              frentes={frentes}
+              frenteAtual={frenteAtual}
+              onFrente={setFrenteAtual}
+              onCravar={abrirCravacao}
+              onEditar={estaca => abrirCravacao(estaca)}
+              onPlanejar={frente => setPlanejando({ frente })}
+            />
+          )}
+
+          {secao === 'cravar' && (
+            <FormCravacao
+              hoje={hoje}
+              controle={{ lotes, cravacoes: estacas }}
+              obras={obras}
+              responsavel={responsavel}
+              pedido={pedido}
+              onSalvar={salvarCravacao}
+              onCancelar={() => escolherSecao('visao')}
+            />
+          )}
+
+          {secao === 'estacas' && (
+            <ListaEstacas
+              estacas={estacas}
+              frentes={frentes.map(item => item.frente)}
+              onCravar={estaca => abrirCravacao(estaca)}
+              onEditar={estaca => abrirCravacao(estaca)}
+              onInativar={inativarEstacas}
+            />
+          )}
+
+          {secao === 'relatorios' && <RelatoriosEstacas hoje={hoje} estacas={estacas} />}
+
+          {secao === 'recebimentos' && (
+            <RecebimentosEstacas hoje={hoje} controle={controle} obras={obras} responsavel={responsavel} onChange={onChange} />
+          )}
+
+          {secao === 'importar' && (
+            <div data-estacas-reveal>
+              <EstacasImportacoesPanel controle={controle} responsavel={responsavel} onApply={aplicarImportacao} onError={setErro} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <PlanejarFrente
+        aberto={Boolean(planejando)}
+        frenteInicial={planejando?.frente}
+        hoje={hoje}
+        responsavel={responsavel}
+        estacas={estacas}
+        onFechar={() => setPlanejando(null)}
+        onAplicar={aplicarPlano}
       />
     </div>
   );
