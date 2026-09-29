@@ -249,6 +249,17 @@ export default function ControleEquipamentosDiarioTab({
 
     return () => cleanups.forEach(cleanup => cleanup());
   }, { scope: pageRef });
+  // A troca de vista (Situação do dia / Histórico / Motoristas) recriava o
+  // conteúdo sem nenhuma transição — a tela "piscava" de uma vista pra outra.
+  useGSAP(() => {
+    const view = pageRef.current?.querySelector('[data-fleet-view]');
+    if (!view || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(
+      view,
+      { autoAlpha: 0, y: 10 },
+      { autoAlpha: 1, y: 0, duration: 0.32, ease: 'power2.out', clearProps: 'transform,visibility,opacity' },
+    );
+  }, { scope: pageRef, dependencies: [activeView] });
   const filteredOperationalDrivers = useMemo(() => {
     const query = driverSearch.trim().toLocaleUpperCase('pt-BR');
     if (!query) return operationalDrivers;
@@ -636,74 +647,80 @@ export default function ControleEquipamentosDiarioTab({
           eyebrow="Frota"
           title="Controle de Frotas"
           description="Lançamento do dia de cada frota: quem saiu, quem está em manutenção e o que falta informar."
-          actions={<div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-            <label className="relative flex w-full min-w-0 items-center sm:inline-flex sm:w-auto">
-              <span className="sr-only">Dia dos lançamentos</span>
-              <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
-              <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
-            </label>
-            <div className="grid grid-cols-2 gap-2 sm:contents">
-            {onNavigate && (
-              <button type="button" onClick={() => onNavigate('quadro-frota')} className={`${BOTAO_SECUNDARIO} w-full px-3 sm:w-auto`} data-testid="frota-abrir-quadro">
-                <LayoutGrid className="size-4" aria-hidden="true" />
-                Quadro
+          actions={<div className="flex w-full min-w-0 flex-col gap-2.5">
+            {/* Linha principal: escolher a vista e lançar. É o que se usa toda hora. */}
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-between">
+              <nav className="grid w-full grid-cols-[1.3fr_1fr_1fr] gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:inline-grid sm:w-auto" aria-label="Visões do controle de frotas">
+                {vistas.map(([id, label, Icon]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={activeView === id}
+                    onClick={() => setActiveView(id)}
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] sm:px-3 ${activeView === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
+                  >
+                    <Icon className="size-4 max-sm:hidden" aria-hidden="true"/>{label}
+                  </button>
+                ))}
+              </nav>
+              <button type="button" onClick={openNewRecord} className={`${BOTAO_PRIMARIO} w-full px-5 sm:w-auto`} data-testid="frota-novo">
+                <Plus className="size-5" aria-hidden="true" />
+                Novo lançamento
+                <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
               </button>
-            )}
-            <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-            <input ref={sgeInputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readSgeImport}/>
-            <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
-              <Keyboard className="size-4" aria-hidden="true" />
-              <kbd className="text-xs">?</kbd>
-            </button>
-            <details className="group relative w-full sm:w-auto" data-testid="frota-relatorios">
-              <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer px-3 list-none sm:w-auto [&::-webkit-details-marker]:hidden`}>
-                <FileSpreadsheet className="size-4" aria-hidden="true" />
-                Mais ações
-                <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
-              </summary>
-              <div className="absolute right-0 z-30 mt-2 w-full min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)] sm:w-64">
-                <p className={ROTULO_GRUPO_MENU}>Exportar</p>
-                <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
-                <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
-                <hr className="my-1 border-slate-100" />
-                <p className={ROTULO_GRUPO_MENU}>Importar</p>
-                <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
-                <button type="button" onClick={() => sgeInputRef.current?.click()} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>
-                <hr className="my-1 border-slate-100" />
-                <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
-                <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
-                {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
-              </div>
-            </details>
             </div>
-            <button type="button" onClick={openNewRecord} className={`${BOTAO_PRIMARIO} w-full px-5 max-sm:order-first sm:w-auto`} data-testid="frota-novo">
-              <Plus className="size-5" aria-hidden="true" />
-              Novo lançamento
-              <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
-            </button>
-            <nav className="grid w-full grid-cols-[1.3fr_1fr_1fr] gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:order-first sm:mr-auto sm:inline-grid sm:w-auto" aria-label="Visões do controle de frotas">
-              {vistas.map(([id, label, Icon]) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={activeView === id}
-                  onClick={() => setActiveView(id)}
-                  className={`inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] sm:px-3 ${activeView === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
-                >
-                  <Icon className="size-4 max-sm:hidden" aria-hidden="true"/>{label}
+            {/* Linha secundária: dia consultado e utilitários (relatório, importar, cadastro). */}
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+              <label className="relative flex w-full min-w-0 items-center sm:inline-flex sm:w-auto">
+                <span className="sr-only">Dia dos lançamentos</span>
+                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
+                <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
+              </label>
+              <div className="grid grid-cols-2 gap-2 sm:contents">
+              {onNavigate && (
+                <button type="button" onClick={() => onNavigate('quadro-frota')} className={`${BOTAO_SECUNDARIO} w-full px-3 sm:w-auto`} data-testid="frota-abrir-quadro">
+                  <LayoutGrid className="size-4" aria-hidden="true" />
+                  Quadro
                 </button>
-              ))}
-            </nav>
+              )}
+              <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
+              <input ref={sgeInputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readSgeImport}/>
+              <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
+                <Keyboard className="size-4" aria-hidden="true" />
+                <kbd className="text-xs">?</kbd>
+              </button>
+              <details className="erp-fleet-menu group relative w-full sm:w-auto" data-testid="frota-relatorios">
+                <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer px-3 list-none sm:w-auto [&::-webkit-details-marker]:hidden`}>
+                  <FileSpreadsheet className="size-4" aria-hidden="true" />
+                  Mais ações
+                  <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <div className="absolute right-0 z-30 mt-2 w-full min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)] sm:w-64">
+                  <p className={ROTULO_GRUPO_MENU}>Exportar</p>
+                  <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
+                  <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
+                  <hr className="my-1 border-slate-100" />
+                  <p className={ROTULO_GRUPO_MENU}>Importar</p>
+                  <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
+                  <button type="button" onClick={() => sgeInputRef.current?.click()} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>
+                  <hr className="my-1 border-slate-100" />
+                  <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
+                  <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
+                  {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
+                </div>
+              </details>
+              </div>
+            </div>
           </div>}
         />
         <p className="-mt-1 text-sm font-semibold text-slate-500 first-letter:uppercase">{dataLonga(filters.date)}</p>
       </div>
       {aviso}
-      {activeView === 'today' && <>
+      {activeView === 'today' && <div data-fleet-view className="space-y-4">
         <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
-        <div data-fleet-enter><FleetDailyReference records={registros} date={filters.date}/></div>
+        <FleetDailyReference records={registros} date={filters.date}/>
         {viewModel.integrityWarnings.length > 0 && (
-          <details open={viewModel.integrityWarnings.length <= 3} className={`group overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia" data-fleet-enter>
+          <details open={viewModel.integrityWarnings.length <= 3} className={`group overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia">
             <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300"><AlertTriangle className="size-5" aria-hidden="true" /></span>
               <span className="min-w-0">
@@ -724,9 +741,9 @@ export default function ControleEquipamentosDiarioTab({
         )}
         <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} locations={canteirosDoDia} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
         <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state => setConfirmation({ kind: 'delete', ids: [state.recordId] })} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
-      </>}
+      </div>}
       {activeView === 'history' && (
-        <section data-fleet-enter className={`${CARTAO} overflow-hidden`} aria-labelledby="frota-historico-titulo">
+        <section data-fleet-view className={`${CARTAO} overflow-hidden`} aria-labelledby="frota-historico-titulo">
           <header className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 id="frota-historico-titulo" className="text-lg font-bold text-slate-950">Fechamento por dia</h2>
@@ -765,8 +782,8 @@ export default function ControleEquipamentosDiarioTab({
           {!historyByDate.length && <p className="p-10 text-center text-sm text-slate-500">Nenhum dia lançado ainda.</p>}
         </section>
       )}
-      {activeView === 'registry' && <section className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-        <article data-fleet-enter data-fleet-lift className={`${CARTAO} p-4`}>
+      {activeView === 'registry' && <section data-fleet-view className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
+        <article data-fleet-lift className={`${CARTAO} p-4`}>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
           <CountUp value={equipamentos.length} className="mt-1 block text-3xl font-bold tabular-nums text-slate-950" />
           <p className="mt-1 text-sm text-slate-500">Equipamentos que podem ser escolhidos no lançamento.</p>
