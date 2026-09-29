@@ -48,7 +48,7 @@ import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
-import { NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
+import { PRIMARY_MODULE_IDS, SIDEBAR_NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
 import * as fx from './fixtures';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
@@ -78,7 +78,12 @@ function QuadroFrotaPreview() {
   );
 }
 const blockRegistryDeletion = new URLSearchParams(location.search).get('blockedRegistry') === '1';
-const previewGroups = NAVIGATION_GROUPS.map(g => ({ label: g.label, items: [...g.items] }));
+// O menu real de produção mostra só os módulos principais (SIDEBAR_NAVIGATION_GROUPS
+// filtrado por papel), não os 35 itens de NAVIGATION_GROUPS: usar a lista completa aqui
+// fazia o preview do menu parecer bem maior do que ele é de verdade.
+const previewGroups = SIDEBAR_NAVIGATION_GROUPS
+  .map(g => ({ label: g.label, items: g.items.filter(item => (PRIMARY_MODULE_IDS as readonly string[]).includes(item.id)) }))
+  .filter(g => g.items.length > 0);
 const previewNotifications = [
   { id: '1', type: 'success' as const, title: 'Sincronizacao concluida', message: 'Dados do periodo enviados para a nuvem.', timestamp: '08:12', read: false, source: 'Firebase Cloud' as const },
   { id: '2', type: 'warning' as const, title: 'Estoque baixo', message: 'Produto de lubrificacao abaixo do minimo.', timestamp: '07:40', read: true, source: 'Sistema Local' as const },

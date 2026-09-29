@@ -176,11 +176,23 @@ const SIDEBAR_GROUP_LABELS: Record<string, string> = {
   Análise: 'Gestão',
 };
 
+// Nomes mais curtos só para o menu (e as telas que o reaproveitam, como
+// Permissões): o nome completo do módulo continua o mesmo em todo o resto do
+// app. Sem isso "Controle Operacional de Frotas" cortava no meio da palavra
+// com o menu mais estreito.
+const SIDEBAR_ITEM_LABELS: Record<string, string> = {
+  'controle-equipamentos': 'Controle de Frotas',
+};
+
 export const SIDEBAR_NAVIGATION_GROUPS = NAVIGATION_GROUPS
   .map(group => ({
     ...group,
     label: SIDEBAR_GROUP_LABELS[group.label] || group.label,
-    items: group.items.filter(item => SIDEBAR_MODULE_IDS.has(item.id)),
+    items: group.items
+      .filter(item => SIDEBAR_MODULE_IDS.has(item.id))
+      .map(item => (SIDEBAR_ITEM_LABELS[item.id]
+        ? { ...item, label: SIDEBAR_ITEM_LABELS[item.id] }
+        : item)),
   }))
   .filter(group => group.items.length > 0);
 
