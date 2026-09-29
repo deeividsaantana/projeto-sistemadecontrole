@@ -29,6 +29,7 @@ export const filterFleetStates = (
     return false;
   }
   if (filters.status !== 'Todos' && state.operationalStatus !== filters.status) return false;
+  if (filters.location && (state.location || '') !== filters.location) return false;
   if (filters.prefix && !normalizePrefix(state.equipment.prefix).includes(normalizePrefix(filters.prefix))) {
     return false;
   }

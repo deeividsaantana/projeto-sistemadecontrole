@@ -10,6 +10,7 @@ interface Props {
   companies: Empresa[];
   groups: string[];
   equipmentTypes: string[];
+  locations: Array<{ nome: string; total: number }>;
   activeFilterCount: number;
   onChange: <K extends keyof FleetReportFilters>(
     key: K,
@@ -28,6 +29,7 @@ export default function FleetFilterBar({
   companies,
   groups,
   equipmentTypes,
+  locations,
   activeFilterCount,
   onChange,
   onClear,
@@ -42,10 +44,31 @@ export default function FleetFilterBar({
     filters.equipmentType && filters.equipmentType !== 'Todos' ? { chave: 'equipmentType', texto: filters.equipmentType, vazio: 'Todos' } : null,
     filters.group && filters.group !== 'Todos' ? { chave: 'group', texto: `Grupo: ${filters.group}`, vazio: 'Todos' } : null,
     filters.companyId !== 'Todos' ? { chave: 'companyId', texto: empresas.find(item => item.id === filters.companyId)?.nome || 'Empresa', vazio: 'Todos' } : null,
+    filters.location ? { chave: 'location', texto: `Canteiro: ${filters.location}`, vazio: '' } : null,
   ].filter((item): item is { chave: keyof FleetReportFilters; texto: string; vazio: string } => item !== null);
 
   return (
     <section aria-label="Filtros da frota" data-fleet-enter className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
+      {locations.length > 1 && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5" data-testid="frota-canteiros" aria-label="Filtrar por canteiro">
+          {[{ nome: '', total: locations.reduce((sum, item) => sum + item.total, 0) }, ...locations].map(item => {
+            const ligado = (filters.location || '') === item.nome;
+            return (
+              <button
+                key={item.nome || 'todos'}
+                type="button"
+                aria-pressed={ligado}
+                onClick={() => onChange('location', ligado ? '' : item.nome)}
+                data-testid={`frota-canteiro-${item.nome || 'todos'}`}
+                className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white shadow-[0_8px_18px_-10px_rgba(23,107,77,0.8)]' : 'bg-[#f7f8f6] text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
+              >
+                {item.nome || 'Todos os canteiros'}
+                <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/20' : 'bg-white text-slate-500'}`}>{item.total}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative min-w-0 flex-[1_1_16rem]">
           <span className="sr-only">Buscar prefixo, motorista, matrícula ou local</span>

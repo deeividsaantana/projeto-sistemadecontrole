@@ -141,6 +141,7 @@ export interface FleetReportFilters {
   prefix: string;
   driver: string;
   search: string;
+  location?: string;
 }
 
 export interface FleetMetrics {
@@ -350,6 +351,7 @@ export const createEmptyFleetFilters = (date: string): FleetReportFilters => ({
   prefix: '',
   driver: '',
   search: '',
+  location: '',
 });
 
 export const createEmptyFleetMetrics = (): FleetMetrics => ({

@@ -265,6 +265,19 @@ export default function ControleEquipamentosDiarioTab({
     .sort((left, right) => left.localeCompare(right, 'pt-BR')), [registros]);
   const equipmentTypes = useMemo(() => [...new Set(equipamentos.map(item => item.tipo).filter(Boolean))]
     .sort((left, right) => left.localeCompare(right, 'pt-BR')), [equipamentos]);
+  // Canteiros do dia, independente dos outros filtros: cada chip mostra quantas
+  // frotas têm lançamento ali, mesmo se a situação/tipo escolhidos escondem a máquina agora.
+  const canteirosDoDia = useMemo(() => {
+    const contagem = new Map<string, number>();
+    registros.forEach(record => {
+      if (record.data !== filters.date) return;
+      const local = (record as FleetPersistedRecord).local?.trim();
+      if (local) contagem.set(local, (contagem.get(local) || 0) + 1);
+    });
+    return [...contagem.entries()]
+      .map(([nome, total]) => ({ nome, total }))
+      .sort((left, right) => right.total - left.total || left.nome.localeCompare(right.nome, 'pt-BR'));
+  }, [registros, filters.date]);
   const historyByDate = useMemo(() => {
     const dates = [...new Set(registros.map(record => record.data).filter(Boolean))]
       .sort((left, right) => right.localeCompare(left));
@@ -690,16 +703,26 @@ export default function ControleEquipamentosDiarioTab({
         <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
         <div data-fleet-enter><FleetDailyReference records={registros} date={filters.date}/></div>
         {viewModel.integrityWarnings.length > 0 && (
-          <details className="group rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3" data-testid="frota-conferencia">
-            <summary className={`flex min-h-8 cursor-pointer list-none items-center gap-2 text-sm font-bold text-amber-900 [&::-webkit-details-marker]:hidden ${FOCO}`}>
-              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-              {viewModel.integrityWarnings.length} ponto(s) para conferir nos lançamentos
-              <ChevronDown className="ml-auto size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
+          <details open={viewModel.integrityWarnings.length <= 3} className={`group overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia" data-fleet-enter>
+            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300"><AlertTriangle className="size-5" aria-hidden="true" /></span>
+              <span className="min-w-0">
+                <span className="block text-base font-bold text-amber-900">{viewModel.integrityWarnings.length} ponto(s) para conferir nos lançamentos</span>
+                <span className="block text-xs font-semibold text-amber-700">Toque para {viewModel.integrityWarnings.length <= 3 ? 'esconder' : 'ver'} a lista</span>
+              </span>
+              <ChevronDown className="ml-auto size-5 shrink-0 text-amber-700 transition duration-300 group-open:rotate-180" aria-hidden="true" />
             </summary>
-            <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-sm text-amber-900">{viewModel.integrityWarnings.map(warning => <li key={warning}>{warning}</li>)}</ul>
+            <ul className="max-h-48 space-y-1 overflow-y-auto border-t border-amber-200 bg-white/60 px-4 py-3 text-sm text-amber-900">
+              {viewModel.integrityWarnings.map(warning => (
+                <li key={warning} className="flex items-start gap-2">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+                  {warning}
+                </li>
+              ))}
+            </ul>
           </details>
         )}
-        <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
+        <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} locations={canteirosDoDia} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
         <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state => setConfirmation({ kind: 'delete', ids: [state.recordId] })} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
       </>}
       {activeView === 'history' && (
