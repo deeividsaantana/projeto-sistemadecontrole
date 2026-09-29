@@ -193,3 +193,4 @@ import './resumoDoDia.test';
 import './quadroFrota.test';
 import './quadroFrotaPainelSituacao.test';
 import './sgeApontamentos.test';
+import './dailyRecordFormModal.test';
