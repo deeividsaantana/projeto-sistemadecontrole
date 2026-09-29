@@ -36,12 +36,14 @@ const GRUPO_DO_STATUS: Record<StatusControleEquipamentoDiario, GrupoStatus> = {
 };
 
 /** Desenho que o cartão mostra quando o equipamento não tem foto. */
-export type Silhueta = 'escavadeira' | 'rolo' | 'trator' | 'retro' | 'caminhao' | 'cavalo' | 'pipa' | 'motoniveladora' | 'carregadeira' | 'agricola' | 'implemento' | 'veiculo' | 'outro';
+export type Silhueta = 'escavadeira' | 'rolo' | 'trator' | 'retro' | 'caminhao' | 'cavalo' | 'pipa' | 'motoniveladora' | 'carregadeira' | 'agricola' | 'implemento' | 'veiculo' | 'guindaste' | 'gerador' | 'outro';
 
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const SILHUETAS: ReadonlyArray<[Silhueta, RegExp]> = [
   ['pipa', /pipa|tanque|comboio/],
+  ['guindaste', /guindaste|grua|guincho movel/],
+  ['gerador', /\bgerador\b|\bgenset\b|grupo gerador/],
   ['retro', /retro/],
   ['escavadeira', /escavadeira|escavadora|\bpc\d|ec\d/],
   ['rolo', /rolo|compactador/],

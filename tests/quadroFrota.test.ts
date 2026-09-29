@@ -77,6 +77,11 @@ test('desenho do cartão reconhece o tipo da máquina', () => {
   assert.equal(tipo('Cavalo Mecânico'), 'cavalo');
   assert.equal(silhuetaDo({ tipo: 'Veículo', nome: 'Cavalo mecânico Scania', familia: undefined, categoriaFrota: 'Veículo' } as never), 'cavalo');
   assert.equal(tipo('Trator de esteira'), 'trator');
+  assert.equal(tipo('Guindaste'), 'guindaste');
+  assert.equal(tipo('Guindaste sobre pneus'), 'guindaste');
+  assert.equal(tipo('Gerador'), 'gerador');
+  assert.equal(tipo('Grupo Gerador 180kVA'), 'gerador');
+  assert.equal(tipo('Caminhão munck'), 'caminhao', 'munck continua como caminhão, o guindaste é só o implemento embarcado');
   assert.equal(tipo('Coisa estranha'), 'outro');
 });
 
