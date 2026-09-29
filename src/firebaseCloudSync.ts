@@ -24,6 +24,7 @@ export const INTERMEDIATE_TABLE_IDS = [
   'funcionarios',
   'motoristasOperacionais',
   'comboios',
+  'canteiros',
   'combustiveis',
   'lubrificantes',
   'etapas',

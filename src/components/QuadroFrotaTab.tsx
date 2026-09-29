@@ -48,6 +48,8 @@ interface Props {
   registros: readonly ControleEquipamentoDiario[];
   gruposEquipe: readonly GrupoEquipe[];
   abastecimentos: readonly Abastecimento[];
+  /** Canteiros do cadastro; sem isso usa a lista fixa de reserva. */
+  canteiros?: readonly string[];
   frentes: readonly FrenteServico[];
   funcionarios: readonly Funcionario[];
   /** Motoristas e operadores cadastrados no Controle de Frotas; mesma lista das três abas. */
@@ -98,7 +100,7 @@ interface Indicador {
   aoClicar?: () => void;
 }
 
-export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, onNavigate }: Props) {
+export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, onNavigate }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   // Mesma lista de motoristas e operadores do Controle de Frotas, para o operador
@@ -142,13 +144,13 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   }, [dia, vista]);
 
   const cartoes = useMemo(
-    () => montarQuadro({ dia, equipamentos, registros, gruposEquipe, abastecimentos }),
-    [dia, equipamentos, registros, gruposEquipe, abastecimentos],
+    () => montarQuadro({ dia, equipamentos, registros, gruposEquipe, abastecimentos, canteiros }),
+    [dia, equipamentos, registros, gruposEquipe, abastecimentos, canteiros],
   );
   const indicadores = useMemo(() => calcularIndicadores(cartoes), [cartoes]);
   const filtrados = useMemo(() => filtrarCartoes(cartoes, filtros, ordem), [cartoes, filtros, ordem]);
   const filtrando = Object.values(filtros).some(Boolean);
-  const grupos = useMemo(() => agruparPorCanteiro(filtrados, !filtrando), [filtrados, filtrando]);
+  const grupos = useMemo(() => agruparPorCanteiro(filtrados, !filtrando, canteiros), [filtrados, filtrando, canteiros]);
   // Ordem em que a tela mostra as máquinas: é a ordem do "Salvar e próximo".
   const naTela = useMemo(() => grupos.filter(grupo => !fechados.has(grupo.canteiro)).flatMap(grupo => grupo.cartoes), [grupos, fechados]);
   const contagemCanteiro = useMemo(() => {
@@ -405,7 +407,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
         )}
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
           {chipCanteiro('', 'Todos', cartoes.length)}
-          {CANTEIROS.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
+          {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
           {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -506,6 +508,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
           dia={dia}
           equipamentos={equipamentos}
           registros={registros}
+          canteiros={canteiros}
           funcionarios={motoristas}
           frentes={opcoesFrente}
           operadores={operadores}
@@ -523,7 +526,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
               <>
                 <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Mover as selecionadas para o canteiro">
                   <MapPin className="size-4 text-slate-400" aria-hidden="true" />
-                  {CANTEIROS.map(canteiro => (
+                  {canteiros.map(canteiro => (
                     <button key={canteiro} type="button" onClick={() => moverSelecionadosPara(canteiro)} className={`min-h-9 rounded-full bg-[#f7f8f6] px-2.5 text-xs font-bold uppercase text-slate-600 ring-1 ring-slate-200 transition hover:bg-emerald-50 hover:text-[#176b4d] hover:ring-emerald-300 active:scale-[0.97] ${FOCO}`} data-testid={`quadro-mover-sel-${canteiro}`}>
                       {canteiro}
                     </button>
@@ -614,6 +617,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
         cartao={aberto}
         podeEditar={podeEditar}
         temProximo={Boolean(proximo)}
+        canteiros={canteiros}
         frentes={opcoesFrente}
         operadores={operadores}
         onFechar={() => setAbertoId(null)}

@@ -5,7 +5,7 @@
  * Todo tipo vira a mesma `LinhaCadastro`, então a tabela do computador, os
  * cartões do celular e o painel de detalhe desenham qualquer tipo igual.
  */
-import type { Comboio, Empresa, Equipamento, EtapaServico, FrenteServico, Funcionario, ObraLocal, ProdutoLubrificacao, ServicoObra, TipoCombustivel } from '../types';
+import type { Canteiro, Comboio, Empresa, Equipamento, EtapaServico, FrenteServico, Funcionario, ObraLocal, ProdutoLubrificacao, ServicoObra, TipoCombustivel } from '../types';
 import {
   empresaTipoLabel,
   isActiveCollaborator,
@@ -26,13 +26,14 @@ export interface DadosCadastros {
   comboios: readonly Comboio[];
   combustiveis: readonly TipoCombustivel[];
   lubrificantes: readonly ProdutoLubrificacao[];
+  canteiros: readonly Canteiro[];
   etapas: readonly EtapaServico[];
   /** Mesmo nome da coleção na nuvem, para a Lixeira valer em todo aparelho. */
   frentesServico: readonly FrenteServico[];
   servicosObra: readonly ServicoObra[];
 }
 
-export type RegistroCadastro = Empresa | ObraLocal | Equipamento | Funcionario | Comboio | TipoCombustivel | ProdutoLubrificacao | EtapaServico | FrenteServico | ServicoObra;
+export type RegistroCadastro = Empresa | ObraLocal | Equipamento | Funcionario | Comboio | TipoCombustivel | ProdutoLubrificacao | Canteiro | EtapaServico | FrenteServico | ServicoObra;
 
 export type TomSituacao = 'ok' | 'alerta' | 'inativo';
 
@@ -86,6 +87,7 @@ export const TABELA_DA_CATEGORIA: Record<CadastroCategoriaId, keyof DadosCadastr
   servicos: 'servicosObra',
   combustiveis: 'combustiveis',
   lubrificantes: 'lubrificantes',
+  canteiros: 'canteiros',
 };
 
 /** Tipos em que o cadastro pode ficar inativo sem ser excluído. */
@@ -159,6 +161,7 @@ export const COLUNAS: Record<CadastroCategoriaId, ColunaCadastro[]> = {
   ],
   combustiveis: [{ id: 'nome', label: 'Combustível' }],
   lubrificantes: [{ id: 'nome', label: 'Lubrificante' }],
+  canteiros: [{ id: 'nome', label: 'Canteiro' }],
 };
 
 export const FILTROS: Record<CadastroCategoriaId, FiltroCadastro[]> = {
@@ -201,6 +204,7 @@ export const FILTROS: Record<CadastroCategoriaId, FiltroCadastro[]> = {
   ],
   combustiveis: [],
   lubrificantes: [],
+  canteiros: [],
 };
 
 const FILTRO_EMPRESA: Partial<Record<CadastroCategoriaId, (item: Empresa) => boolean>> = {
@@ -399,7 +403,7 @@ export const montarLinhas = (categoria: CadastroCategoriaId, dados: DadosCadastr
     });
   }
 
-  const simples = dados[tabela] as readonly (TipoCombustivel | ProdutoLubrificacao)[];
+  const simples = dados[tabela] as readonly (TipoCombustivel | ProdutoLubrificacao | Canteiro)[];
   return simples.map(item => ({
     id: item.id,
     titulo: item.nome,

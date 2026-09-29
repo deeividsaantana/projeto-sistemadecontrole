@@ -22,6 +22,8 @@ interface Props {
   comboios: Comboio[];
   combustiveis: TipoCombustivel[];
   abastecimentos: Abastecimento[];
+  /** Canteiros do cadastro; sem isso usa a lista fixa de reserva. */
+  canteiros?: readonly string[];
   /** Lançamentos do Controle de Frotas; dão operador, canteiro e situação do dia. */
   registros?: ControleEquipamentoDiario[];
   gruposEquipe?: GrupoEquipe[];
@@ -74,7 +76,7 @@ const vazio = (usuario: string, data = hoje()): Formulario => ({
 });
 
 export default function CombustivelOperacionalTab({
-  equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
+  equipamentos, comboios, combustiveis, abastecimentos, canteiros = CANTEIROS, registros = [], gruposEquipe = [], usuario = '',
   onSaveAbastecimento, onDeleteAbastecimento, onOpenLubrificacao, onOpenCadastros, onOpenControle, onOpenSpreadsheetImport, isParsingSpreadsheet,
 }: Props) {
   const escopo = useRef<HTMLElement>(null);
@@ -393,7 +395,7 @@ export default function CombustivelOperacionalTab({
               </label>
               <label className={ROTULO}>Canteiro / local
                 <input list="combustivel-locais" value={form.local} onChange={event => mudar('local', event.target.value)} placeholder="Onde abasteceu" className={`${CAMPO} mt-1`} data-testid="combustivel-local" />
-                <datalist id="combustivel-locais">{CANTEIROS.map(nome => <option key={nome} value={nome} />)}</datalist>
+                <datalist id="combustivel-locais">{canteiros.map(nome => <option key={nome} value={nome} />)}</datalist>
               </label>
               <label className={ROTULO}>Responsável
                 <input value={form.responsavel} onChange={event => mudar('responsavel', event.target.value)} placeholder="Quem lançou" className={`${CAMPO} mt-1`} />

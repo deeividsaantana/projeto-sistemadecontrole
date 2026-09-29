@@ -104,6 +104,8 @@ interface ControlePresencaTabProps {
   empresas: Empresa[];
   funcionarios: Funcionario[];
   obras: ObraLocal[];
+  /** Canteiros do cadastro; sem isso usa a lista fixa de reserva. */
+  canteiros?: readonly string[];
   gruposEquipe: GrupoEquipe[];
   presencasLink: PresencaApontamento[];
   historicoPresencas: HistoricoPresenca[];
@@ -211,6 +213,7 @@ export default function ControlePresencaTab({
   empresas = [],
   funcionarios = [],
   obras = [],
+  canteiros = ACTIVE_SITES,
   gruposEquipe = [],
   presencasLink = [],
   historicoPresencas = [],
@@ -1020,7 +1023,7 @@ export default function ControlePresencaTab({
             <label><span className="sr-only">Função</span><select value={dashboardRole} onChange={event => setDashboardRole(event.target.value)} className={FIELD}><option value="todas">Todas as funções</option>{roleOptions.map(role => <option key={role}>{role}</option>)}</select></label>
             <label><span className="sr-only">Situação</span><select value={dashboardStatus} onChange={event => setDashboardStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label>
             <label><span className="sr-only">Ramo</span><select value={dashboardBranch} onChange={event => setDashboardBranch(event.target.value)} className={FIELD}><option value="todos">Todos os ramos</option>{ACTIVE_BRANCHES.map(branch => <option key={branch}>{branch}</option>)}</select></label>
-            <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{ACTIVE_SITES.map(site => <option key={site}>{site}</option>)}</select></label>
+            <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{canteiros.map(site => <option key={site}>{site}</option>)}</select></label>
             <label><span className="sr-only">Buscar pessoa</span><input type="search" value={dashboardSearch} onChange={event => setDashboardSearch(event.target.value)} placeholder="Nome ou matrícula" className={FIELD} /></label>
           </div>
         )}

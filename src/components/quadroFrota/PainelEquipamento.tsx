@@ -27,6 +27,8 @@ interface Props {
   cartao: CartaoFrota | null;
   podeEditar: boolean;
   temProximo: boolean;
+  /** Canteiros do cadastro; sem isso usa a lista fixa de reserva. */
+  canteiros?: readonly string[];
   frentes: readonly string[];
   operadores: readonly string[];
   onFechar: () => void;
@@ -35,7 +37,7 @@ interface Props {
   onAbrirControle: () => void;
 }
 
-export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, operadores, onFechar, onSalvar, onAbrirControle }: Props) {
+export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = CANTEIROS, frentes, operadores, onFechar, onSalvar, onAbrirControle }: Props) {
   const [edicao, setEdicao] = useState<RascunhoQuadro | null>(null);
   const [erro, setErro] = useState('');
   const idLista = useId();
@@ -180,7 +182,7 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
               <fieldset>
                 <legend className={ROTULO}>Canteiro</legend>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {CANTEIROS.map(canteiro => {
+                  {canteiros.map(canteiro => {
                     const ligado = edicao.canteiro === canteiro;
                     return (
                       <button

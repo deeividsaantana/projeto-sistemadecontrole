@@ -13,8 +13,9 @@ import {
   VinculoOperadorEquipamento,
   Funcionario, 
   FuncionarioDisponivel,
-  Comboio, 
-  TipoCombustivel, 
+  Comboio,
+  Canteiro,
+  TipoCombustivel,
   ProdutoLubrificacao, 
   EtapaServico, 
   Abastecimento, 
@@ -62,8 +63,9 @@ import {
   INITIAL_OBRAS, 
   INITIAL_EQUIPAMENTOS, 
   INITIAL_FUNCIONARIOS, 
-  INITIAL_COMBOIOS, 
-  INITIAL_TIPOS_COMBUSTIVEL, 
+  INITIAL_COMBOIOS,
+  INITIAL_CANTEIROS,
+  INITIAL_TIPOS_COMBUSTIVEL,
   INITIAL_PRODUTOS_LUBRIFICACAO, 
   INITIAL_ETAPAS_SERVICO, 
   INITIAL_ABASTECIMENTOS, 
@@ -77,6 +79,7 @@ import {
   INITIAL_TICKETS_JAZIDA,
   hydrateInitialOperationalSeedData,
 } from './utils/initialData';
+import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
@@ -356,6 +359,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['funcionarios', 'renea_funcionarios'],
   ['motoristasOperacionais', STORAGE_KEYS.motoristasOperacionais],
   ['comboios', 'renea_comboios'],
+  ['canteiros', 'renea_canteiros'],
   ['combustiveis', 'renea_combustiveis'],
   ['lubrificantes', 'renea_lubrificantes'],
   ['etapas', 'renea_etapas'],
@@ -525,6 +529,7 @@ export default function App() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [motoristasOperacionais, setMotoristasOperacionais] = useState<Funcionario[]>([...OPERATIONAL_DRIVERS]);
   const [comboios, setComboios] = useState<Comboio[]>([]);
+  const [canteiros, setCanteiros] = useState<Canteiro[]>([]);
   const [combustiveis, setCombustiveis] = useState<TipoCombustivel[]>([]);
   const [lubrificantes, setLubrificantes] = useState<ProdutoLubrificacao[]>([]);
   const [etapas, setEtapas] = useState<EtapaServico[]>([]);
@@ -570,6 +575,7 @@ export default function App() {
   // que os cálculos continuem vendo exatamente o mesmo conjunto que viam
   // quando a exclusão era definitiva. O arquivo completo continua no estado,
   // que é o que vai para o armazenamento e para a nuvem.
+  const canteirosNomes = useMemo(() => canteiros.map(item => item.nome), [canteiros]);
   const abastecimentosAtivos = useMemo(() => somenteAtivos(abastecimentos), [abastecimentos]);
   const ticketsJazidaAtivos = useMemo(() => somenteAtivos(ticketsJazida), [ticketsJazida]);
   const presencasLinkAtivas = useMemo(() => somenteAtivos(presencasLink), [presencasLink]);
@@ -643,6 +649,7 @@ export default function App() {
         { key: 'renea_equipamentos', value: JSON.stringify(INITIAL_EQUIPAMENTOS) },
         { key: 'renea_funcionarios', value: JSON.stringify(INITIAL_FUNCIONARIOS) },
         { key: 'renea_comboios', value: JSON.stringify(INITIAL_COMBOIOS) },
+        { key: 'renea_canteiros', value: JSON.stringify(INITIAL_CANTEIROS) },
         { key: 'renea_combustiveis', value: JSON.stringify(INITIAL_TIPOS_COMBUSTIVEL) },
         { key: 'renea_lubrificantes', value: JSON.stringify(INITIAL_PRODUTOS_LUBRIFICACAO) },
         { key: 'renea_etapas', value: JSON.stringify(INITIAL_ETAPAS_SERVICO) },
@@ -678,6 +685,7 @@ export default function App() {
       setFuncionarios(INITIAL_FUNCIONARIOS);
       setMotoristasOperacionais([...OPERATIONAL_DRIVERS]);
       setComboios(INITIAL_COMBOIOS);
+      setCanteiros(INITIAL_CANTEIROS);
       setCombustiveis(INITIAL_TIPOS_COMBUSTIVEL);
       setLubrificantes(INITIAL_PRODUTOS_LUBRIFICACAO);
       setEtapas(INITIAL_ETAPAS_SERVICO);
@@ -702,6 +710,7 @@ export default function App() {
       const savedFuncionarios = localStorage.getItem('renea_funcionarios');
       const savedMotoristasOperacionais = localStorage.getItem(STORAGE_KEYS.motoristasOperacionais);
       const savedComboios = localStorage.getItem('renea_comboios');
+      const savedCanteiros = localStorage.getItem('renea_canteiros');
       const savedCombustiveis = localStorage.getItem('renea_combustiveis');
       const savedLubrificantes = localStorage.getItem('renea_lubrificantes');
       const savedEtapas = localStorage.getItem('renea_etapas');
@@ -776,6 +785,7 @@ export default function App() {
       setFuncionarios(shouldMigratePresencePeople ? INITIAL_FUNCIONARIOS : parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS));
       setMotoristasOperacionais(parseStoredJson(savedMotoristasOperacionais, STORAGE_KEYS.motoristasOperacionais, [...OPERATIONAL_DRIVERS]));
       setComboios(loadedComboios);
+      setCanteiros(parseStoredJson(savedCanteiros, 'renea_canteiros', INITIAL_CANTEIROS));
       setCombustiveis(parseStoredJson(savedCombustiveis, 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL));
       setLubrificantes(parseStoredJson(savedLubrificantes, 'renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO));
       setEtapas(parseStoredJson(savedEtapas, 'renea_etapas', INITIAL_ETAPAS_SERVICO));
@@ -1009,6 +1019,7 @@ export default function App() {
     funcionarios: readTable('renea_funcionarios', INITIAL_FUNCIONARIOS),
     motoristasOperacionais: readTable(STORAGE_KEYS.motoristasOperacionais, motoristasOperacionais),
     comboios: readTable('renea_comboios', INITIAL_COMBOIOS),
+    canteiros: readTable('renea_canteiros', INITIAL_CANTEIROS),
     combustiveis: readTable('renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL),
     lubrificantes: readTable('renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO),
     etapas: readTable('renea_etapas', INITIAL_ETAPAS_SERVICO),
@@ -1215,6 +1226,9 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'comboios')) {
           setComboios(normalizeRuntimeCollection<Comboio>(data.comboios));
+        }
+        if (Object.hasOwn(data, 'canteiros')) {
+          setCanteiros(normalizeRuntimeCollection<Canteiro>(data.canteiros));
         }
         if (Object.hasOwn(data, 'combustiveis')) {
           setCombustiveis(normalizeRuntimeCollection<TipoCombustivel>(data.combustiveis));
@@ -1846,6 +1860,7 @@ export default function App() {
     equipamentos: { lista: equipamentos, setLista: setEquipamentos as (next: never[]) => void, storageKey: 'renea_equipamentos', tela: 'Equipamentos' },
     obras: { lista: obras, setLista: setObras as (next: never[]) => void, storageKey: 'renea_obras', tela: 'Obras/Locais' },
     comboios: { lista: comboios, setLista: setComboios as (next: never[]) => void, storageKey: 'renea_comboios', tela: 'Comboios' },
+    canteiros: { lista: canteiros, setLista: setCanteiros as (next: never[]) => void, storageKey: 'renea_canteiros', tela: 'Canteiros' },
     combustiveis: { lista: combustiveis, setLista: setCombustiveis as (next: never[]) => void, storageKey: 'renea_combustiveis', tela: 'Combustíveis' },
     lubrificantes: { lista: lubrificantes, setLista: setLubrificantes as (next: never[]) => void, storageKey: 'renea_lubrificantes', tela: 'Produtos Lubrificação' },
     etapas: { lista: etapas, setLista: setEtapas as (next: never[]) => void, storageKey: 'renea_etapas', tela: 'Etapas de Serviço' },
@@ -1864,7 +1879,8 @@ export default function App() {
     listasPresenca,
     presencasLink,
     gruposEquipe,
-    controleEquipamentosDiario,
+    controleEquipamentosDiario: controleEquipamentosDiario as ReadonlyArray<ControleEquipamentoDiario & { local?: string }>,
+    canteiros,
     materiaisMovimentos,
     frentesServico,
     producao: producaoRegistros,
@@ -2202,6 +2218,41 @@ export default function App() {
   };
 
 
+
+  const renomearCanteiroNosLancamentos = (nomeAntigo: string, nomeNovo: string) => {
+    const registros = controleEquipamentosDiario as Array<ControleEquipamentoDiario & { local?: string }>;
+    const { afetados, atualizados } = registrosComCanteiroRenomeado(registros, nomeAntigo, nomeNovo);
+    if (!afetados.length) return;
+    const updated = atualizados as ControleEquipamentoDiario[];
+    saveAndLog(
+      'Controle Diário de Equipamentos',
+      'Editou',
+      `Canteiro "${nomeAntigo}" renomeado para "${nomeNovo}": atualizou ${afetados.length} lançamento(s) antigo(s).`,
+      historyLogs,
+      () => {
+        setControleEquipamentosDiario(updated);
+        writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
+      },
+    );
+  };
+
+  const handleSaveCanteiro = (item: Canteiro, isNew: boolean) => {
+    const anterior = isNew ? undefined : canteiros.find(x => x.id === item.id);
+    const updated = isNew ? [...canteiros, item] : canteiros.map(x => (x.id === item.id ? item : x));
+    saveAndLog(
+      'Canteiros',
+      isNew ? 'Criou' : 'Editou',
+      `${isNew ? 'Cadastrou' : 'Editou'} o canteiro "${item.nome}".`,
+      historyLogs,
+      () => {
+        setCanteiros(updated);
+        writeStorageValue(localStorage, 'renea_canteiros', JSON.stringify(updated));
+      }
+    );
+    if (anterior && anterior.nome.trim() !== item.nome.trim()) {
+      renomearCanteiroNosLancamentos(anterior.nome, item.nome);
+    }
+  };
 
   const handleSaveTipoCombustivel = (item: TipoCombustivel, isNew: boolean) => {
     let updated;
@@ -4004,6 +4055,7 @@ export default function App() {
     funcionarios?: Funcionario[];
     motoristasOperacionais?: Funcionario[];
     comboios?: Comboio[];
+    canteiros?: Canteiro[];
     combustiveis?: TipoCombustivel[];
     lubrificantes?: ProdutoLubrificacao[];
     etapas?: EtapaServico[];
@@ -4030,6 +4082,7 @@ export default function App() {
     const nextFuncionarios = imported.funcionarios ?? funcionarios;
     const nextMotoristasOperacionais = imported.motoristasOperacionais ?? motoristasOperacionais;
     const nextComboios = imported.comboios ?? comboios;
+    const nextCanteiros = imported.canteiros ?? canteiros;
     const nextCombustiveis = imported.combustiveis ?? combustiveis;
     const nextLubrificantes = imported.lubrificantes ?? lubrificantes;
     const nextEtapas = imported.etapas ?? etapas;
@@ -4067,6 +4120,7 @@ export default function App() {
       { key: 'renea_funcionarios', value: JSON.stringify(nextFuncionarios) },
       { key: STORAGE_KEYS.motoristasOperacionais, value: JSON.stringify(nextMotoristasOperacionais) },
       { key: 'renea_comboios', value: JSON.stringify(nextComboios) },
+      { key: 'renea_canteiros', value: JSON.stringify(nextCanteiros) },
       { key: 'renea_combustiveis', value: JSON.stringify(nextCombustiveis) },
       { key: 'renea_lubrificantes', value: JSON.stringify(nextLubrificantes) },
       { key: 'renea_etapas', value: JSON.stringify(nextEtapas) },
@@ -4092,6 +4146,7 @@ export default function App() {
     setFuncionarios(nextFuncionarios);
     setMotoristasOperacionais(nextMotoristasOperacionais);
     setComboios(nextComboios);
+    setCanteiros(nextCanteiros);
     setCombustiveis(nextCombustiveis);
     setLubrificantes(nextLubrificantes);
     setEtapas(nextEtapas);
@@ -4126,6 +4181,7 @@ export default function App() {
       funcionarios: 'Funcionários',
       motoristasOperacionais: 'Motoristas operacionais',
       comboios: 'Comboios',
+      canteiros: 'Canteiros',
       combustiveis: 'Tipos de combustível',
       lubrificantes: 'Lubrificantes/Etapas',
       etapas: 'Etapas de serviço',
@@ -4187,6 +4243,9 @@ export default function App() {
             case 'comboios':
               persist('renea_comboios', nextValue(INITIAL_COMBOIOS), setComboios);
               break;
+            case 'canteiros':
+              persist('renea_canteiros', nextValue(INITIAL_CANTEIROS), setCanteiros);
+              break;
             case 'combustiveis':
               persist('renea_combustiveis', nextValue(INITIAL_TIPOS_COMBUSTIVEL), setCombustiveis);
               break;
@@ -4243,7 +4302,7 @@ export default function App() {
 
   const handleDeleteTabData = (tabId: string): { success: boolean; message: string } => {
     const scopesByTab: Record<string, string[]> = {
-      cadastros: ['empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios', 'combustiveis', 'lubrificantes', 'etapas'],
+      cadastros: ['empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios', 'canteiros', 'combustiveis', 'lubrificantes', 'etapas'],
       lancamentos: ['abastecimentos', 'lubrificacoes'],
       'controle-equipamentos': ['controleEquipamentos'],
       'tickets-jazida': ['ticketsJazida'],
@@ -4468,6 +4527,7 @@ export default function App() {
       funcionarios,
       motoristasOperacionais,
       comboios,
+      canteiros,
       combustiveis,
       lubrificantes,
       etapas,
@@ -4549,6 +4609,7 @@ export default function App() {
       const newEquipamentos = mergeById(equipamentos, parsed.equipamentos);
       const newFuncionarios = mergeById(funcionarios, parsed.funcionarios);
       const newComboios = mergeById(comboios, parsed.comboios);
+      const newCanteiros = mergeById(canteiros, parsed.canteiros);
       const newCombustiveis = mergeById(combustiveis, parsed.combustiveis);
       const newLubrificantes = mergeById(lubrificantes, parsed.lubrificantes);
       const newEtapas = mergeById(etapas, parsed.etapas);
@@ -4614,6 +4675,7 @@ export default function App() {
         { key: 'renea_equipamentos', value: JSON.stringify(newEquipamentos) },
         { key: 'renea_funcionarios', value: JSON.stringify(newFuncionarios) },
         { key: 'renea_comboios', value: JSON.stringify(newComboios) },
+        { key: 'renea_canteiros', value: JSON.stringify(newCanteiros) },
         { key: 'renea_combustiveis', value: JSON.stringify(newCombustiveis) },
         { key: 'renea_lubrificantes', value: JSON.stringify(newLubrificantes) },
         { key: 'renea_etapas', value: JSON.stringify(newEtapas) },
@@ -4636,6 +4698,7 @@ export default function App() {
       setEquipamentos(newEquipamentos);
       setFuncionarios(newFuncionarios);
       setComboios(newComboios);
+      setCanteiros(newCanteiros);
       setCombustiveis(newCombustiveis);
       setLubrificantes(newLubrificantes);
       setEtapas(newEtapas);
@@ -5009,6 +5072,7 @@ export default function App() {
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
+                canteiros={canteiros}
                 etapas={etapas}
                 historyLogs={historyLogs}
                 exclusoes={exclusoes}
@@ -5020,6 +5084,7 @@ export default function App() {
                 onSaveFuncionario={handleSaveFuncionario}
                 onSaveComboio={handleSaveComboio}
                 onSaveTipoCombustivel={handleSaveTipoCombustivel}
+                onSaveCanteiro={handleSaveCanteiro}
                 onSaveProdutoLubrificacao={handleSaveProdutoLubrificacao}
                 onSaveEtapaServico={handleSaveEtapaServico}
                 frentesServico={frentesServico}
@@ -5042,11 +5107,12 @@ export default function App() {
             )}
 
             {activeTab === 'lancamentos' && (
-              <LancamentosTab 
+              <LancamentosTab
                 empresas={empresas}
                 equipamentos={equipamentos}
                 comboios={comboios}
                 combustiveis={combustiveis}
+                canteiros={canteirosNomes}
                 lubrificantes={lubrificantes}
                 abastecimentos={abastecimentosAtivos}
                 lubrificacoes={lubrificacoes}
@@ -5470,6 +5536,7 @@ export default function App() {
                 registros={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
                 abastecimentos={abastecimentosAtivos}
+                canteiros={canteirosNomes}
                 frentes={frentesServico}
                 funcionarios={funcionarios}
                 operationalDrivers={motoristasOperacionais}
@@ -5511,6 +5578,7 @@ export default function App() {
                 funcionarios={funcionarios}
                 empresas={empresas}
                 obras={obras}
+                canteiros={canteirosNomes}
                 gruposEquipe={gruposEquipe}
                 presencasLink={presencasLinkAtivas}
                 historicoPresencas={historicoPresencas}

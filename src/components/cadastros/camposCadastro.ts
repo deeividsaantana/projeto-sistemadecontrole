@@ -8,7 +8,7 @@
  * Salvar parte sempre do registro anterior: campo que a tela não mostra
  * (vínculos, datas de criação, classes da planilha mestre) continua igual.
  */
-import type { Comboio, Empresa, Equipamento, EtapaServico, FrenteServico, Funcionario, ObraLocal, ProdutoLubrificacao, ServicoObra, TipoCombustivel } from '../../types';
+import type { Canteiro, Comboio, Empresa, Equipamento, EtapaServico, FrenteServico, Funcionario, ObraLocal, ProdutoLubrificacao, ServicoObra, TipoCombustivel } from '../../types';
 import { normalizarBusca } from '../../utils/cadastrosLista';
 import { EMPRESA_CLASSES, isSubSupplier, isSupplier, nextMasterId, type EmpresaTipo } from '../../masterData/centralRegistry';
 import { validateEquipmentMasterRecord } from '../../utils/equipmentOperations';
@@ -173,6 +173,7 @@ export const CAMPOS: Record<CadastroCategoriaId, CampoCadastro[]> = {
   ],
   combustiveis: [{ id: 'nome', label: 'Nome do combustível', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Diesel S10' }],
   lubrificantes: [{ id: 'nome', label: 'Nome do produto', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: 15W40' }],
+  canteiros: [{ id: 'nome', label: 'Nome do canteiro', tipo: 'texto', obrigatorio: true, placeholder: 'Ex.: Fábrica' }],
 };
 
 export const CLASSES_DA_TELA = EMPRESA_CLASSES;
@@ -462,6 +463,15 @@ export const montarRegistro = (
       criadoEm: servico?.criadoEm || agora,
       atualizadoEm: agora,
     };
+    return { ok: true, registro };
+  }
+
+  if (categoria === 'canteiros') {
+    const nome = str(valores, 'nome');
+    if (dados.canteiros.some(item => item.id !== id && normalizarBusca(item.nome) === normalizarBusca(nome))) {
+      return { ok: false, erro: `Já existe o canteiro ${nome}.` };
+    }
+    const registro: Canteiro = { ...(anterior as Canteiro | undefined), id, nome };
     return { ok: true, registro };
   }
 

@@ -35,7 +35,7 @@ test('botão principal diz o que será criado, nunca "Novo registro"', () => {
 test('os tipos que a aba grava continuam disponíveis, com as subáreas de fornecedor', () => {
   assert.deepEqual(
     CADASTRO_CATEGORIAS.map(item => item.id).sort(),
-    ['comboios', 'combustiveis', 'empresas', 'equipamentos', 'etapas', 'fornecedores', 'fornecedores-locacao', 'fornecedores-materiais', 'frentes', 'funcionarios', 'lubrificantes', 'obras', 'servicos', 'subfornecedores', 'terceiras', 'veiculos'],
+    ['canteiros', 'comboios', 'combustiveis', 'empresas', 'equipamentos', 'etapas', 'fornecedores', 'fornecedores-locacao', 'fornecedores-materiais', 'frentes', 'funcionarios', 'lubrificantes', 'obras', 'servicos', 'subfornecedores', 'terceiras', 'veiculos'],
   );
 });
 
