@@ -892,6 +892,19 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .renea-page-header { animation: none; }
 }
 
+/* Painel "Mais ações" do Controle de Frotas (details/summary nativo): a
+   abertura era instantânea, sem nenhuma transição. O fechamento continua
+   instantâneo (é o próprio <details> que esconde o conteúdo), mas abrir
+   agora aparece com um leve fade + deslize, igual ao resto do sistema. */
+.erp-fleet-menu[open] > div:last-child { animation: erpFleetMenuIn .18s cubic-bezier(0.32, 0.72, 0, 1); }
+@keyframes erpFleetMenuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .erp-fleet-menu[open] > div:last-child { animation: none; }
+}
+
 /* ERP premium foundation v4. Dense, calm and consistent across operational
    screens while keeping the established sidebar untouched. */
 :root {
