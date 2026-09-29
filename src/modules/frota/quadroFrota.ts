@@ -13,6 +13,7 @@ import { inactivateEquipamento } from '../../masterData/registryCommands';
 
 export const SEM_FRENTE = 'Sem frente';
 export const SEM_CANTEIRO = 'Sem canteiro';
+/** Lista fixa de reserva; a tela usa o cadastro de canteiros quando o tem. */
 export const CANTEIROS: readonly string[] = CANTEIROS_ATIVOS;
 
 export type GrupoStatus = 'operando' | 'manutencao' | 'parado' | 'sem-lancamento';
@@ -109,17 +110,17 @@ export interface IndicadoresFrota {
 
 type RegistroDoDia = ControleEquipamentoDiario & { frenteServico?: string; local?: string; equipeId?: string; excluido?: unknown };
 
-/** Primeiro canteiro ativo citado nos textos, na ordem em que vêm. */
-/** Outros jeitos de escrever o canteiro que aparecem nos lançamentos e nas equipes. */
+/** Outros jeitos de escrever um canteiro fixo que aparecem nos lançamentos e nas equipes. */
 const APELIDOS: Record<string, readonly string[]> = {
   'SP-066': ['SP066', 'SP66', 'SP-66'],
   'Pátio Aracaré': ['Aracaré', 'Aracare', 'Pátio de Vigas Aracaré', 'Pátio para Viga Aracaré'],
 };
 
-const canteiroNoTexto = (...textos: Array<string | undefined>): string | undefined => {
+/** Primeiro canteiro citado nos textos, na ordem em que vêm. */
+const canteiroNoTexto = (canteiros: readonly string[], ...textos: Array<string | undefined>): string | undefined => {
   for (const texto of textos) {
     if (!texto) continue;
-    const achado = CANTEIROS.find(canteiro => [canteiro, ...(APELIDOS[canteiro] || [])].some(nome => contemTermo(texto, nome)));
+    const achado = canteiros.find(canteiro => [canteiro, ...(APELIDOS[canteiro] || [])].some(nome => contemTermo(texto, nome)));
     if (achado) return achado;
   }
   return undefined;
@@ -131,11 +132,13 @@ export interface EntradaQuadro {
   registros: readonly ControleEquipamentoDiario[];
   gruposEquipe: readonly GrupoEquipe[];
   abastecimentos: readonly Abastecimento[];
+  /** Canteiros do cadastro; sem isso usa a lista fixa (testes e telas antigas). */
+  canteiros?: readonly string[];
 }
 
 const comparar = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' }).compare;
 
-export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abastecimentos }: EntradaQuadro): CartaoFrota[] => {
+export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS }: EntradaQuadro): CartaoFrota[] => {
   // Último lançamento do dia de cada equipamento (o mais recente vale).
   const doDia = new Map<string, RegistroDoDia>();
   (registros as readonly RegistroDoDia[]).forEach(registro => {
@@ -181,7 +184,7 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
       const base = registro || herdado;
       const equipe = registro?.equipeId ? equipes.get(registro.equipeId) : undefined;
       const frente = (registro?.frenteServico || equipe?.frenteServico || '').trim() || SEM_FRENTE;
-      const canteiro = canteiroNoTexto(registro?.local, ultimoLocal.get(item.id)?.local, registro?.frenteServico, equipe?.frenteServico, equipe?.nome) || SEM_CANTEIRO;
+      const canteiro = canteiroNoTexto(canteiros, registro?.local, ultimoLocal.get(item.id)?.local, registro?.frenteServico, equipe?.frenteServico, equipe?.nome) || SEM_CANTEIRO;
       const operador = (base?.nomeMotorista || item.operadorResponsavelNome || '').trim() || undefined;
       return {
         equipamentoId: item.id,
@@ -233,8 +236,8 @@ export interface GrupoCanteiro {
 }
 
 /** Um bloco por canteiro ativo, na ordem da obra, e "Sem canteiro" no fim quando tiver máquina. */
-export const agruparPorCanteiro = (cartoes: readonly CartaoFrota[], mostrarVazios = true): GrupoCanteiro[] => {
-  const grupos = new Map<string, CartaoFrota[]>([...CANTEIROS, SEM_CANTEIRO].map(nome => [nome, []]));
+export const agruparPorCanteiro = (cartoes: readonly CartaoFrota[], mostrarVazios = true, canteiros: readonly string[] = CANTEIROS): GrupoCanteiro[] => {
+  const grupos = new Map<string, CartaoFrota[]>([...canteiros, SEM_CANTEIRO].map(nome => [nome, []]));
   cartoes.forEach(cartao => (grupos.get(cartao.canteiro) || grupos.get(SEM_CANTEIRO))!.push(cartao));
   return Array.from(grupos, ([canteiro, lista]) => ({
     canteiro,
@@ -470,7 +473,7 @@ export const lancarEmLote = ({ equipamentos, rascunhos, ...resto }: EntradaLote)
  * pedida. Serve ao botão "Repetir último dia": a pessoa confere e salva.
  * Máquina sem nenhum lançamento anterior fica de fora.
  */
-export const rascunhosDoUltimoDia = (registros: readonly ControleEquipamentoDiario[], equipamentoIds: readonly string[], dia: string) => {
+export const rascunhosDoUltimoDia = (registros: readonly ControleEquipamentoDiario[], equipamentoIds: readonly string[], dia: string, canteiros: readonly string[] = CANTEIROS) => {
   const pedidos = new Set(equipamentoIds);
   const ultimo = new Map<string, RegistroDoDia>();
   (registros as readonly RegistroDoDia[]).forEach(registro => {
@@ -482,7 +485,7 @@ export const rascunhosDoUltimoDia = (registros: readonly ControleEquipamentoDiar
   ultimo.forEach((registro, equipamentoId) => {
     saida.set(equipamentoId, {
       status: SITUACOES_EDITAVEIS.includes(registro.status) ? registro.status : '',
-      canteiro: canteiroNoTexto(registro.local, registro.frenteServico) || '',
+      canteiro: canteiroNoTexto(canteiros, registro.local, registro.frenteServico) || '',
       frente: (registro.frenteServico || '').trim(),
       operador: (registro.nomeMotorista || '').trim(),
       motivoManutencao: registro.motivoManutencao || '',

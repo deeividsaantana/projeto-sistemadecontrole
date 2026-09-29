@@ -128,6 +128,10 @@ function CadastrosPreview() {
       { id: 'SER-1', codigo: '3.1', descricao: 'Aterro compactado', unidade: 'm³', quantidadePrevista: 48000, situacao: 'Ativo', ativo: true, criadoEm: '', atualizadoEm: '' },
       { id: 'SER-2', codigo: '2.4', descricao: 'Escavação e carga', unidade: 'm³', quantidadePrevista: 62500, situacao: 'Ativo', ativo: true, criadoEm: '', atualizadoEm: '' },
     ],
+    canteiros: [
+      { id: 'CAN-1', nome: 'Fábrica' },
+      { id: 'CAN-2', nome: 'Pátio Aracaré' },
+    ],
   } as never));
   const [exclusoes, setExclusoes] = React.useState<ExclusaoRegistro[]>([]);
   const salvar = (tabela: string) => (item: { id: string }) => setListas(atual => ({
@@ -177,6 +181,7 @@ function CadastrosPreview() {
       comboios={listas.comboios as never}
       combustiveis={listas.combustiveis as never}
       lubrificantes={listas.lubrificantes as never}
+      canteiros={listas.canteiros as never}
       etapas={listas.etapas as never}
       frentesServico={listas.frentesServico as never}
       servicosObra={listas.servicosObra as never}
@@ -190,6 +195,7 @@ function CadastrosPreview() {
       onSaveFuncionario={salvar('funcionarios')}
       onSaveComboio={salvar('comboios')}
       onSaveTipoCombustivel={salvar('combustiveis')}
+      onSaveCanteiro={salvar('canteiros')}
       onSaveProdutoLubrificacao={salvar('lubrificantes')}
       onSaveEtapaServico={salvar('etapas')}
       onSaveFrente={salvar('frentesServico')}

@@ -40,6 +40,8 @@ interface Props {
   dia: string;
   equipamentos: readonly Equipamento[];
   registros: readonly ControleEquipamentoDiario[];
+  /** Canteiros do cadastro; sem isso usa a lista fixa de reserva. */
+  canteiros?: readonly string[];
   funcionarios: readonly Funcionario[];
   frentes: readonly string[];
   operadores: readonly string[];
@@ -49,7 +51,7 @@ interface Props {
   onAviso: (texto: string) => void;
 }
 
-export function LancarFrota({ cartoes, dia, equipamentos, registros, funcionarios, frentes, operadores, usuario, onSaveMany, onDeleteMany, onAviso }: Props) {
+export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros = CANTEIROS, funcionarios, frentes, operadores, usuario, onSaveMany, onDeleteMany, onAviso }: Props) {
   const idLista = useId();
   const [rascunhos, setRascunhos] = useState<ReadonlyMap<string, RascunhoQuadro>>(() => new Map());
   const [erros, setErros] = useState<ReadonlyMap<string, string>>(() => new Map());
@@ -99,7 +101,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, funcionario
 
   const repetirUltimoDia = () => {
     const base = alvo.length > 0 ? alvo : cartoes.filter(cartao => cartao.grupo === 'sem-lancamento');
-    const copias = rascunhosDoUltimoDia(registros, base.map(cartao => cartao.equipamentoId), dia);
+    const copias = rascunhosDoUltimoDia(registros, base.map(cartao => cartao.equipamentoId), dia, canteiros);
     if (copias.size === 0) {
       onAviso('Nenhuma dessas máquinas tem lançamento anterior para repetir.');
       return;
@@ -194,7 +196,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, funcionario
             </div>
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Mover as selecionadas para o canteiro">
               <MapPin className="size-4 text-slate-400" aria-hidden="true" />
-              {CANTEIROS.map(canteiro => (
+              {canteiros.map(canteiro => (
                 <button key={canteiro} type="button" onClick={() => mudar(idsAlvo(), { canteiro })} className={`min-h-10 rounded-full bg-white px-3 text-xs font-bold uppercase text-slate-600 ring-1 ring-slate-200 transition hover:bg-emerald-50 hover:text-[#176b4d] hover:ring-emerald-300 active:scale-[0.97] ${FOCO}`} data-testid={`lancar-mover-${canteiro}`}>
                   {canteiro}
                 </button>
@@ -272,7 +274,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, funcionario
                   <span className="mb-1 block text-xs font-semibold text-slate-500 lg:sr-only">Canteiro</span>
                   <select value={atual.canteiro} onChange={event => mudar([id], { canteiro: event.target.value })} className={CAMPO_LINHA} data-testid={`lancar-${cartao.prefixo}-canteiro`}>
                     <option value="">Sem canteiro</option>
-                    {CANTEIROS.map(canteiro => <option key={canteiro} value={canteiro}>{canteiro}</option>)}
+                    {canteiros.map(canteiro => <option key={canteiro} value={canteiro}>{canteiro}</option>)}
                   </select>
                 </label>
                 <label className="block">

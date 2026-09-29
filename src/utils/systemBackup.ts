@@ -5,6 +5,7 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'funcionarios',
   'motoristasOperacionais',
   'comboios',
+  'canteiros',
   'combustiveis',
   'lubrificantes',
   'etapas',

@@ -50,6 +50,8 @@ interface LancamentosTabProps {
   comboios: Comboio[];
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
+  /** Canteiros do cadastro; sem isso usa a lista fixa de reserva. */
+  canteiros?: readonly string[];
 
   abastecimentos: Abastecimento[];
   lubrificacoes: Lubrificacao[];
@@ -76,6 +78,7 @@ export default function LancamentosTab({
   comboios,
   combustiveis,
   lubrificantes,
+  canteiros,
   abastecimentos,
   lubrificacoes,
   onSaveAbastecimento,
@@ -1160,6 +1163,7 @@ export default function LancamentosTab({
           equipamentos={equipamentos}
           comboios={comboios}
           combustiveis={combustiveis}
+          canteiros={canteiros}
           abastecimentos={abastecimentos}
           onSaveAbastecimento={onSaveAbastecimento}
           onDeleteAbastecimento={onDeleteAbastecimento}

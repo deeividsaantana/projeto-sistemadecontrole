@@ -103,6 +103,12 @@ export interface ProdutoLubrificacao {
   nome: string; // ex: Graxa, 68T, 15W40, etc.
 }
 
+/** Canteiro ou pátio de apoio onde a frota trabalha (Quadro da Frota). */
+export interface Canteiro {
+  id: string;
+  nome: string;
+}
+
 /** O que o lugar é na obra: decide onde ele aparece e como soma. */
 export type TipoLocalObra = 'Ramo' | 'Frente' | 'Origem' | 'Bota-fora' | 'Bota-espera' | 'Estoque' | 'Canteiro' | 'Serviço';
 

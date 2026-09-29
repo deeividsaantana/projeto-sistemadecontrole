@@ -24,8 +24,8 @@ import {
 } from '../types';
 import { generateSecurePublicToken } from './publicLinkSecurity';
 import { setInitialControleEstacas } from './initialEstacasData';
-import type { FrenteServico } from '../types';
-import { RAMOS_ATIVOS } from './frenteServico';
+import type { Canteiro, FrenteServico } from '../types';
+import { CANTEIROS_ATIVOS, RAMOS_ATIVOS } from './frenteServico';
 
 const mergeByKey = <T,>(base: T[], imported: T[], getKey: (item: T) => string) => {
   const keys = new Set(base.map(item => getKey(item)).filter(Boolean));
@@ -405,6 +405,8 @@ export const INITIAL_TIPOS_COMBUSTIVEL: TipoCombustivel[] = [
   { id: 'tc-4', nome: 'Arla 32' },
   { id: 'tc-5', nome: 'Óleo Lubrificante 15W40' }
 ];
+
+export const INITIAL_CANTEIROS: Canteiro[] = CANTEIROS_ATIVOS.map((nome, indice) => ({ id: `cant-${indice + 1}`, nome }));
 
 export const INITIAL_PRODUTOS_LUBRIFICACAO: ProdutoLubrificacao[] = [
   { id: 'pl-1', nome: 'Graxa de Lítio NLGI 2' },

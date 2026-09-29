@@ -85,6 +85,7 @@ import './lancamentosLubrificacaoAtalhos.test';
 import './lancarMateriaisAtalho.test';
 import './cadastrosCategorias.test';
 import './cadastrosLista.test';
+import './canteirosCadastro.test';
 import './planilhaAbas.test';
 import './equipmentAssetPerformance.test';
 import './firebaseClientConfig.test';

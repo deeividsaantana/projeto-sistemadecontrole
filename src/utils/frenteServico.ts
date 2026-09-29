@@ -30,3 +30,20 @@ export const RAMOS_ATIVOS = [
 export const CANTEIROS_ATIVOS = [
   'SP-066', 'IBAR', 'Padre Eustáquio', 'Marginal', 'Barraca do Coco', 'Fábrica', 'Pátio Aracaré',
 ] as const;
+
+/**
+ * Canteiro vive em texto livre no lançamento (`local`), não por id. Renomear
+ * o cadastro precisa reescrever os lançamentos antigos que citam o nome
+ * velho, senão eles ficam presos a ele para sempre.
+ */
+export const registrosComCanteiroRenomeado = <T extends { id: string; local?: string }>(
+  registros: readonly T[],
+  nomeAntigo: string,
+  nomeNovo: string,
+): { afetados: T[]; atualizados: T[] } => {
+  const afetados = registros.filter(item => item.local && contemTermo(item.local, nomeAntigo));
+  if (!afetados.length) return { afetados: [], atualizados: registros as T[] };
+  const idsAfetados = new Set(afetados.map(item => item.id));
+  const atualizados = registros.map(item => (idsAfetados.has(item.id) ? { ...item, local: nomeNovo } : item));
+  return { afetados, atualizados };
+};

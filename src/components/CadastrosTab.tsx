@@ -9,6 +9,7 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { AlertTriangle, CheckCircle, Download, Network, Plus, Search, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react';
 import type {
+  Canteiro,
   Comboio,
   Empresa,
   Equipamento,
@@ -66,6 +67,7 @@ interface CadastrosTabProps {
   comboios: Comboio[];
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
+  canteiros: Canteiro[];
   etapas: EtapaServico[];
   frentesServico: FrenteServico[];
   servicosObra: ServicoObra[];
@@ -81,6 +83,7 @@ interface CadastrosTabProps {
   onSaveComboio: (item: Comboio, isNew: boolean) => void;
   onSaveTipoCombustivel: (item: TipoCombustivel, isNew: boolean) => void;
   onSaveProdutoLubrificacao: (item: ProdutoLubrificacao, isNew: boolean) => void;
+  onSaveCanteiro: (item: Canteiro, isNew: boolean) => void;
   onSaveEtapaServico: (item: EtapaServico, isNew: boolean) => void;
   onSaveFrente: (item: FrenteServico, isNew: boolean) => void;
   onSaveServico: (item: ServicoObra, isNew: boolean) => void;
@@ -109,14 +112,14 @@ const TEMPO_DO_AVISO_MS = 10_000;
 
 export default function CadastrosTab(props: CadastrosTabProps) {
   const {
-    empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas, frentesServico, servicosObra,
+    empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, canteiros, etapas, frentesServico, servicosObra,
     historyLogs, exclusoes, podeEditar, podeExcluir,
     onInativar, usosDoCadastro, onExcluir, onRestaurar, onApagarDeVez, onImportCadastros,
   } = props;
 
   const dados: DadosCadastros = useMemo(
-    () => ({ empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas, frentesServico, servicosObra }),
-    [empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, etapas, frentesServico, servicosObra],
+    () => ({ empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, canteiros, etapas, frentesServico, servicosObra }),
+    [empresas, obras, equipamentos, funcionarios, comboios, combustiveis, lubrificantes, canteiros, etapas, frentesServico, servicosObra],
   );
 
   // O tipo escolhido fica guardado mesmo com a Lixeira aberta: é ele que o
@@ -158,7 +161,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const comSituacao = temSituacao(categoria);
   // Frentes e serviços ainda não têm leitura de planilha: o botão não aparece
   // para não cair na importação de outro tipo.
-  const importaPlanilha = categoria !== 'frentes' && categoria !== 'servicos';
+  const importaPlanilha = categoria !== 'frentes' && categoria !== 'servicos' && categoria !== 'canteiros';
 
   const todasAsLinhas = useMemo(() => montarLinhas(categoria, dados), [categoria, dados]);
   const contagem = useMemo(() => contarSituacoes(todasAsLinhas), [todasAsLinhas]);
@@ -269,6 +272,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     else if (tabela === 'comboios') props.onSaveComboio(registro as Comboio, novo);
     else if (tabela === 'combustiveis') props.onSaveTipoCombustivel(registro as TipoCombustivel, novo);
     else if (tabela === 'lubrificantes') props.onSaveProdutoLubrificacao(registro as ProdutoLubrificacao, novo);
+    else if (tabela === 'canteiros') props.onSaveCanteiro(registro as Canteiro, novo);
     else if (tabela === 'frentesServico') props.onSaveFrente(registro as FrenteServico, novo);
     else if (tabela === 'servicosObra') props.onSaveServico(registro as ServicoObra, novo);
     else props.onSaveEtapaServico(registro as EtapaServico, novo);

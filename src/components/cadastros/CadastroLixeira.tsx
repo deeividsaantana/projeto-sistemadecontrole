@@ -8,6 +8,7 @@ const NOME_DA_TABELA: Record<string, string> = {
   equipamentos: 'Equipamento',
   obras: 'Local',
   comboios: 'Comboio',
+  canteiros: 'Canteiro',
   combustiveis: 'Combustível',
   lubrificantes: 'Lubrificante',
   etapas: 'Ramo/trecho',

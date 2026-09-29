@@ -22,7 +22,8 @@ export type CadastroCategoriaId =
   | 'frentes'
   | 'servicos'
   | 'combustiveis'
-  | 'lubrificantes';
+  | 'lubrificantes'
+  | 'canteiros';
 
 export type CadastroGrupoId = 'pessoas' | 'fornecedores' | 'frota' | 'obra' | 'insumos';
 
@@ -52,6 +53,7 @@ export const CADASTRO_CATEGORIAS: readonly CadastroCategoria[] = [
   { id: 'equipamentos', grupo: 'frota', label: 'Equipamentos', acaoNovo: 'Novo equipamento' },
   { id: 'veiculos', grupo: 'frota', label: 'Veículos', acaoNovo: 'Novo veículo' },
   { id: 'comboios', grupo: 'frota', label: 'Comboios', acaoNovo: 'Novo comboio' },
+  { id: 'canteiros', grupo: 'frota', label: 'Canteiros', acaoNovo: 'Novo canteiro' },
   { id: 'obras', grupo: 'obra', label: 'Locais', acaoNovo: 'Novo local' },
   { id: 'etapas', grupo: 'obra', label: 'Ramos e locais', acaoNovo: 'Novo ramo ou local' },
   { id: 'frentes', grupo: 'obra', label: 'Frentes de serviço', acaoNovo: 'Nova frente' },

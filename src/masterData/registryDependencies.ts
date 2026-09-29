@@ -1,6 +1,7 @@
 import type {
   Abastecimento,
   ApontamentoOperacional,
+  Canteiro,
   ControleEquipamentoDiario,
   Empresa,
   Equipamento,
@@ -15,6 +16,7 @@ import type {
   PresencaApontamento,
   RegistroProducao,
 } from '../types';
+import { contemTermo } from '../utils/frenteServico';
 
 type RegistryKind = 'comboio' | 'combustivel' | 'lubrificante' | 'etapa';
 
@@ -72,7 +74,8 @@ export interface CadastroUsage extends RegistryUsage {
   listasPresenca: readonly Pick<ListaPresenca, 'funcionarios'>[];
   presencasLink: readonly Pick<PresencaApontamento, 'funcionarioId'>[];
   gruposEquipe: readonly Pick<GrupoEquipe, 'funcionarioIds'>[];
-  controleEquipamentosDiario: readonly Pick<ControleEquipamentoDiario, 'equipamentoId' | 'funcionarioId'>[];
+  controleEquipamentosDiario: readonly (Pick<ControleEquipamentoDiario, 'equipamentoId' | 'funcionarioId'> & { local?: string })[];
+  canteiros: readonly Pick<Canteiro, 'id' | 'nome'>[];
   materiaisMovimentos: readonly Pick<MovimentoMaterial, 'etapaServicoId'>[];
   frentesServico: readonly Pick<FrenteServico, 'id' | 'nome'>[];
   producao: readonly Pick<RegistroProducao, 'servicoId' | 'frente'>[];
@@ -113,6 +116,10 @@ export const usosDoCadastro = (tabela: string, id: string, uso: CadastroUsage): 
     incluir('Equipamentos vinculados', uso.equipamentos.filter(item => item.equipamentoVinculadoId === id).length);
   } else if (tabela === 'obras') {
     usos.push(...obraDependencies(id, { equipamentos: uso.equipamentos, collections: uso.colecoesDaObra }));
+  } else if (tabela === 'canteiros') {
+    // Canteiro vive em texto livre no lançamento (`local`), não por id.
+    const nome = uso.canteiros.find(item => item.id === id)?.nome;
+    if (nome) incluir('Controle diário da frota', uso.controleEquipamentosDiario.filter(item => item.local && contemTermo(item.local, nome)).length);
   } else if (tabela === 'comboios') {
     usos.push(...registryDependencies('comboio', id, uso));
   } else if (tabela === 'combustiveis') {
