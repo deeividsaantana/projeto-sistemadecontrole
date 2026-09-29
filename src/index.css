@@ -481,8 +481,13 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__command { border-color: #42655a; border-radius: 2px; background: #13372e; color: #e9f5ef; }
 .erp-topbar__command:hover { transform: none; border-color: #6d9487; background: #19483b; }
 
-/* Shared surfaces used by every current and future tab. */
-#main-tab-viewport > * { animation: renea-v3-enter 360ms cubic-bezier(.2,.8,.2,1) both; }
+/* Shared surfaces used by every current and future tab. Sem "both": o
+   fill-mode preso trava a barra "position: fixed" de qualquer aba (fica
+   presa dentro da aba, em vez do rodapé da tela), porque o navegador conta
+   a animação da transform como ativa pra sempre enquanto ela segura o
+   valor final. Sem delay, o começo (opacity 0) já pinta a tempo, então a
+   entrada continua igual; só o estado depois do fim volta a ser normal. */
+#main-tab-viewport > * { animation: renea-v3-enter 360ms cubic-bezier(.2,.8,.2,1); }
 .renea-card,
 .renea-stat { box-shadow: none !important; }
 .renea-card:hover { border-color: #aebbb4; }

@@ -7,7 +7,7 @@ const cartao = readFileSync(new URL('../src/components/quadroFrota/CartaoArrasta
 const coluna = readFileSync(new URL('../src/components/quadroFrota/ColunaCanteiro.tsx', import.meta.url), 'utf-8');
 
 test('Quadro da Frota arrasta cartão pra trocar de canteiro (Kanban)', () => {
-  assert.match(tab, /DndContext sensors=\{sensores\} onDragEnd=\{arrastarSoltou\}/, 'a área do quadro precisa estar dentro do DndContext');
+  assert.match(tab, /DndContext sensors=\{sensores\} onDragEnd=\{modoSelecao \? undefined : arrastarSoltou\}/, 'a área do quadro precisa estar dentro do DndContext');
   assert.match(tab, /activationConstraint: \{ distance: 8 \}/, 'só arrasta depois de mover, senão o clique de abrir o painel para de funcionar');
   assert.match(tab, /if \(canteiroAtual === novoCanteiro\) return;/, 'soltar no mesmo canteiro não grava nada');
   assert.match(tab, /status: rascunho\.status \|\| 'Dispon[ií]vel'/, 'arrastar uma máquina sem lançamento não trava sem situação, igual ao painel');
