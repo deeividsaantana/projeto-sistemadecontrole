@@ -7,11 +7,10 @@
  * Shift+Enter salva e abre a próxima máquina da tela.
  */
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { ArrowRight, Check, PauseCircle, PlayCircle, Wrench } from 'lucide-react';
 import type { StatusControleEquipamentoDiario } from '../../types';
 import { CANTEIROS, SITUACOES_EDITAVEIS, rascunhoDoCartao, type CartaoFrota, type EdicaoQuadro, type RascunhoQuadro } from '../../modules/frota/quadroFrota';
-import { Drawer } from '../../shared/ui';
+import { Modal } from '../../shared/ui';
 import { DesenhoMaquina } from './DesenhoMaquina';
 import { TOM, numero } from './CartaoEquipamento';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, ROTULO } from '../cadastros/estilos';
@@ -114,17 +113,19 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
     <button type="button" onClick={onAbrirControle} className={`${BOTAO_PRIMARIO} w-full`}>Abrir no Controle de Frotas</button>
   ));
 
-  return createPortal(
-    <Drawer
+  return (
+    <Modal
       open={Boolean(cartao)}
       onClose={onFechar}
+      size="lg"
+      telaCheia="quadro-frota-painel"
       title={cartao ? `${cartao.prefixo} · ${cartao.modelo}` : ''}
       description={cartao ? `${cartao.tipo}${cartao.horimetro ? ` · ${numero(cartao.horimetro)} h` : ''}` : undefined}
       footer={rodape}
     >
       {cartao && edicao && (
         <div className="space-y-5" data-testid="quadro-painel">
-          <div className={`relative grid h-36 place-items-center overflow-hidden rounded-2xl bg-gradient-to-b ${tom.fundo} ring-1 ring-slate-200`}>
+          <div className={`relative grid h-40 place-items-center overflow-hidden rounded-2xl bg-gradient-to-b ${tom.fundo} ring-1 ring-slate-200`}>
             <span className={`absolute inset-x-0 top-0 h-1.5 ${tom.faixa}`} aria-hidden="true" />
             {cartao.foto
               ? <img src={cartao.foto} alt={`Foto do ${cartao.prefixo}`} className="h-full w-full object-contain" />
@@ -141,7 +142,7 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
             <>
               <fieldset>
                 <legend className={ROTULO}>Situação</legend>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-3 gap-2 sm:max-w-sm">
                   {RAPIDAS.map(item => {
                     const ligado = edicao.status === item.status;
                     return (
@@ -151,7 +152,7 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
                         aria-pressed={ligado}
                         onClick={() => escolherSituacao(item.status)}
                         data-testid={`quadro-situacao-${item.tecla.toLowerCase()}`}
-                        className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border-2 px-1 text-xs font-bold transition duration-200 active:scale-[0.97] ${ligado ? item.ligado : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'} ${FOCO}`}
+                        className={`flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border-2 px-1 text-xs font-bold transition duration-200 active:scale-[0.97] ${ligado ? item.ligado : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'} ${FOCO}`}
                       >
                         <item.Icone className="size-5" aria-hidden="true" />
                         {item.rotulo}
@@ -178,7 +179,7 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
 
               <fieldset>
                 <legend className={ROTULO}>Canteiro</legend>
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {CANTEIROS.map(canteiro => {
                     const ligado = edicao.canteiro === canteiro;
                     return (
@@ -229,7 +230,7 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
               </label>
             </>
           ) : (
-            <dl className="grid grid-cols-2 gap-3 text-sm">
+            <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
               {[
                 ['Situação', cartao.status],
                 ['Canteiro', cartao.canteiro],
@@ -248,7 +249,6 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
           )}
         </div>
       )}
-    </Drawer>,
-    document.body,
+    </Modal>
   );
 }
