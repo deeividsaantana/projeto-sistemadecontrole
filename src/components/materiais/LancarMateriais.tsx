@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardList, Rows3, SlidersHorizontal, type LucideIcon } from 'lucide-react';
@@ -61,6 +61,24 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
 
   const raiz = useRef<HTMLDivElement>(null);
   const trocou = useRef(false);
+
+  // A tela não tinha nenhum atalho de teclado, diferente de Manutenção,
+  // Combustível e Cadastros. N leva direto pro campo de material, trocando
+  // pra aba "Um lançamento" se precisar — não há campo de busca aqui (a
+  // lista "Lançados hoje" não tem filtro), então só N faz sentido por ora.
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+      if (event.key.toLowerCase() !== 'n') return;
+      event.preventDefault();
+      setAba('um');
+      requestAnimationFrame(() => document.getElementById('lancar-material')?.focus());
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
   // Trocar de aba desliza o conteúdo novo; a primeira entrada é da tela toda.
   useGSAP(() => {
     if (!trocou.current) { trocou.current = true; return; }

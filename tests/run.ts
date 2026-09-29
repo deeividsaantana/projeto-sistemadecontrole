@@ -82,6 +82,7 @@ import './sharedUi.test';
 import './cadastrosTabUi.test';
 import './cadastrosAtalhos.test';
 import './lancamentosLubrificacaoAtalhos.test';
+import './lancarMateriaisAtalho.test';
 import './cadastrosCategorias.test';
 import './cadastrosLista.test';
 import './planilhaAbas.test';
