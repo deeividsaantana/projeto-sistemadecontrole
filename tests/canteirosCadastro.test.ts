@@ -35,16 +35,18 @@ test('renomear canteiro reescreve só os lançamentos que citam o nome antigo', 
   const registros = [
     { id: 'r1', local: 'Fábrica' },
     { id: 'r2', local: 'Pátio Fábrica velha' },
-    { id: 'r3', local: 'Marginal' },
-    { id: 'r4', local: undefined },
+    { id: 'r3', local: 'Fabricante Tal' },
+    { id: 'r4', local: 'Marginal' },
+    { id: 'r5', local: undefined },
   ];
   const { afetados, atualizados } = registrosComCanteiroRenomeado(registros, 'Fábrica', 'Fábrica Nova');
-  assert.deepEqual(afetados.map(item => item.id), ['r1']);
+  assert.deepEqual(afetados.map(item => item.id), ['r1', 'r2'], '"Fabricante" não é a palavra inteira "Fábrica"');
   assert.deepEqual(atualizados, [
     { id: 'r1', local: 'Fábrica Nova' },
-    { id: 'r2', local: 'Pátio Fábrica velha' },
-    { id: 'r3', local: 'Marginal' },
-    { id: 'r4', local: undefined },
+    { id: 'r2', local: 'Fábrica Nova' },
+    { id: 'r3', local: 'Fabricante Tal' },
+    { id: 'r4', local: 'Marginal' },
+    { id: 'r5', local: undefined },
   ]);
 });
 
