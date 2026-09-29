@@ -130,7 +130,10 @@ export function DesktopTopBar({
       style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}
       aria-label="Barra de contexto do sistema"
     >
-      <Breadcrumb items={breadcrumbItems} className="hidden shrink-0 xl:flex" />
+      {/* A trilha é o único jeito de saber "onde estou" nesse cabeçalho — não
+          pode sumir antes do resto da barra (o cabeçalho inteiro já se
+          esconde abaixo de lg, ver .erp-topbar em index.css). */}
+      <Breadcrumb items={breadcrumbItems} className="hidden shrink-0 lg:flex" />
       <label className="erp-topbar__searchbox relative block w-full max-w-sm">
         <span className="sr-only">Buscar no sistema</span>
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" strokeWidth={ICON_STROKE} />

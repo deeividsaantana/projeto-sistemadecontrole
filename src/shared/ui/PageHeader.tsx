@@ -15,7 +15,7 @@ export function PageHeader({ title, description, actions, className, eyebrow }: 
   return (
     <header className={cn('renea-page-header', className)}>
       <div className="renea-page-header__copy">
-        {eyebrow && <span>{eyebrow}</span>}
+        {eyebrow && <span className="renea-page-header__eyebrow">{eyebrow}</span>}
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>
