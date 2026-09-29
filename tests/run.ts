@@ -190,4 +190,5 @@ import './rotinaDiaria.test';
 import './avancoFrentes.test';
 import './resumoDoDia.test';
 import './quadroFrota.test';
+import './lancarFrotaAtalho.test';
 import './sgeApontamentos.test';

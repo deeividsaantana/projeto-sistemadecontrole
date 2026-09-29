@@ -142,6 +142,19 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, funcionario
     onAviso(`${excluiveis.length} lançamento(s) do dia excluído(s). As máquinas continuam no cadastro.`);
   };
 
+  // Ctrl/Cmd+Enter salva tudo, mesmo padrão do painel do Quadro e do Modal padrão.
+  useEffect(() => {
+    if (mudadas.length === 0) return undefined;
+    const teclar = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        salvarTudo();
+      }
+    };
+    document.addEventListener('keydown', teclar);
+    return () => document.removeEventListener('keydown', teclar);
+  });
+
   if (cartoes.length === 0) {
     return <p className={`${CARTAO} px-6 py-12 text-center text-sm text-slate-500`}>Nenhuma máquina com esses filtros.</p>;
   }
@@ -306,6 +319,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, funcionario
           <button type="button" onClick={salvarTudo} className={`${BOTAO_PRIMARIO} min-h-11 px-5`} data-testid="lancar-salvar-tudo">
             <Save className="size-4" aria-hidden="true" />
             Salvar tudo
+            <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">Ctrl+Enter</kbd>
           </button>
         </div>
       )}
