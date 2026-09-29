@@ -80,6 +80,7 @@ import './imagem.test';
 import './notificationService.test';
 import './sharedUi.test';
 import './cadastrosTabUi.test';
+import './cadastrosAtalhos.test';
 import './cadastrosCategorias.test';
 import './cadastrosLista.test';
 import './planilhaAbas.test';

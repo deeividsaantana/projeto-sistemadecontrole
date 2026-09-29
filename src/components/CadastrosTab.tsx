@@ -25,7 +25,7 @@ import { validateCentralRecord } from '../masterData/centralRegistry';
 import { exclusoesAtivas, type ExclusaoRegistro } from '../cloud/exclusoes';
 import OrganizationChart from './OrganizationChart';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
-import { FilterBar, PageHeader } from '../shared/ui';
+import { FilterBar, Modal, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import { abaSugerida, type AbaPlanilha } from '../utils/planilhaAbas';
 import { CADASTRO_CATEGORIAS, categoriaCadastro, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
@@ -148,6 +148,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const [exportando, setExportando] = useState(false);
 
   const arquivoRef = useRef<HTMLInputElement>(null);
+  const buscaRef = useRef<HTMLInputElement>(null);
   const [importacao, setImportacao] = useState<{ fileName: string; rows: Record<string, string>[] } | null>(null);
   const [escolhaDeAba, setEscolhaDeAba] = useState<{ fileName: string; abas: AbaPlanilha[]; sugerida: string | null; ocultas: number } | null>(null);
   const [confirmandoImportacao, setConfirmandoImportacao] = useState(false);
@@ -285,6 +286,29 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     setDetalheId(null);
     setFormulario({ editandoId: linha.id, valores: valoresIniciais(categoria, linha.registro, dados) });
   };
+
+  // Sem nenhuma janela aberta: N cadastra, / vai direto pra busca. É a mesma
+  // ideia já usada em Manutenção e Combustível — só falta aqui.
+  const semJanelaAberta = !formulario && !confirmacao && !lote && !apagando && !escolhaDeAba && !importacao;
+  useEffect(() => {
+    if (!semJanelaAberta) return undefined;
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.matches('input, textarea, select, [contenteditable="true"]');
+      if (event.key.toLowerCase() === 'n' && !isTyping && podeEditar) {
+        event.preventDefault();
+        abrirNovo();
+        return;
+      }
+      if (event.key === '/' && !isTyping && vista !== 'lixeira') {
+        event.preventDefault();
+        buscaRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [semJanelaAberta, podeEditar, vista]);
 
   const salvarFormulario = (valores: ValoresCadastro) => {
     if (!formulario) return;
@@ -542,6 +566,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
               <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
                 <Plus className="size-5" aria-hidden="true" />
                 {categoriaAtual.acaoNovo}
+                <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
               </button>
             )}
           </>}
@@ -577,6 +602,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                       <div className="relative min-w-0 flex-1">
                         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                         <input
+                          ref={buscaRef}
                           type="search"
                           aria-label="Buscar cadastros"
                           placeholder={`Buscar em ${categoriaAtual.label.toLowerCase()}`}
@@ -805,23 +831,21 @@ export default function CadastrosTab(props: CadastrosTabProps) {
         />
       )}
 
-      {escolhaDeAba && createPortal(
-        <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="cadastro-aba-titulo">
-          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6" data-testid="cadastro-escolher-aba">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-[#718087]">Importar {categoriaAtual.label.toLowerCase()}</p>
-                <h2 id="cadastro-aba-titulo" className="mt-1 text-xl font-bold text-slate-900">Qual aba da planilha tem os cadastros?</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  {escolhaDeAba.fileName} tem {escolhaDeAba.abas.length} abas com linhas.
-                  {escolhaDeAba.ocultas > 0 && ` ${escolhaDeAba.ocultas} aba${escolhaDeAba.ocultas > 1 ? 's ocultas foram ignoradas' : ' oculta foi ignorada'}.`}
-                </p>
-              </div>
-              <button type="button" onClick={() => setEscolhaDeAba(null)} aria-label="Cancelar importação" className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 ${FOCO}`}>
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="mt-5 grid gap-2">
+      <Modal
+        open={Boolean(escolhaDeAba)}
+        onClose={() => setEscolhaDeAba(null)}
+        title="Qual aba da planilha tem os cadastros?"
+        description={escolhaDeAba ? (
+          <>
+            {escolhaDeAba.fileName} tem {escolhaDeAba.abas.length} abas com linhas.
+            {escolhaDeAba.ocultas > 0 && ` ${escolhaDeAba.ocultas} aba${escolhaDeAba.ocultas > 1 ? 's ocultas foram ignoradas' : ' oculta foi ignorada'}.`}
+          </>
+        ) : undefined}
+        className="sm:max-w-lg"
+      >
+        {escolhaDeAba && (
+          <div data-testid="cadastro-escolher-aba">
+            <div className="grid gap-2">
               {escolhaDeAba.abas.map(aba => {
                 const sugerida = aba.nome === escolhaDeAba.sugerida;
                 return (
@@ -842,9 +866,8 @@ export default function CadastrosTab(props: CadastrosTabProps) {
             </div>
             <p className="mt-4 text-sm text-slate-500">Depois de escolher, você confere a amostra antes de gravar.</p>
           </div>
-        </div>,
-        document.body,
-      )}
+        )}
+      </Modal>
 
       <SpreadsheetImportReview
         open={Boolean(importacao)}
