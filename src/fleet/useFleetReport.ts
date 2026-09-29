@@ -24,6 +24,7 @@ const countActiveFilters = (filters: FleetReportFilters): number => [
   Boolean(filters.prefix),
   Boolean(filters.driver),
   Boolean(filters.search),
+  Boolean(filters.location),
 ].filter(Boolean).length;
 
 export const useFleetReport = (
