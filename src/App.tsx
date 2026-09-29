@@ -619,14 +619,22 @@ export default function App() {
     let cancelled = false;
     const hydrateLocalData = async () => {
       if (externalTicketLink || externalPresenceToken) return;
-      try {
-        await hydrateInitialOperationalSeedData();
-        if (cancelled) return;
-      } catch (error) {
-        console.error('Falha ao carregar a base historica inicial:', error);
-      }
 
-    const isDataLoadedV2 = readStoredFlag(localStorage, STORAGE_KEYS.dataLoadedV2);
+      const isDataLoadedV2 = readStoredFlag(localStorage, STORAGE_KEYS.dataLoadedV2);
+      // A base de exemplo (seed) só é usada na primeira carga do aparelho e na
+      // migração pontual da planilha operacional (shouldMigrateSpreadsheetSeed,
+      // mais abaixo). Com as duas já feitas, baixar e processar esses módulos
+      // (~1,6 MB) a cada abertura do app não tinha efeito nenhum — só custava tempo.
+      const needsSeedData = !isDataLoadedV2
+        || !readStoredFlag(localStorage, STORAGE_KEYS.planilhasOperacionaisV2);
+      if (needsSeedData) {
+        try {
+          await hydrateInitialOperationalSeedData();
+          if (cancelled) return;
+        } catch (error) {
+          console.error('Falha ao carregar a base historica inicial:', error);
+        }
+      }
 
     if (!isDataLoadedV2) {
       const initialStorageEntries = [
