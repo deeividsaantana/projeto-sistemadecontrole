@@ -197,3 +197,4 @@ import './quadroFrotaArrastar.test';
 import './sgeApontamentos.test';
 import './dailyRecordFormModal.test';
 import './quadroFrotaSelecaoMultipla.test';
+import './quadroFrotaPainelModal.test';
