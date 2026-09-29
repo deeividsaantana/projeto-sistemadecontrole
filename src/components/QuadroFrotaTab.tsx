@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, PauseCircle, PlayCircle, Search, SlidersHorizontal, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../types';
 import { CountUp, Modal, PageHeader, isoDay } from '../shared/ui';
 import {
@@ -41,7 +41,7 @@ import { CartaoArrastavel } from './quadroFrota/CartaoArrastavel';
 import { ColunaCanteiro } from './quadroFrota/ColunaCanteiro';
 import { LancarFrota } from './quadroFrota/LancarFrota';
 import { PainelEquipamento } from './quadroFrota/PainelEquipamento';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from './cadastros/estilos';
+import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from './cadastros/estilos';
 
 interface Props {
   equipamentos: readonly Equipamento[];
@@ -106,12 +106,18 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   const motoristas = useMemo(() => operationalDrivers || funcionarios || OPERATIONAL_DRIVERS, [operationalDrivers, funcionarios]);
   const [dia, setDia] = useState(() => isoDay(new Date()));
   const [filtros, setFiltros] = useState<FiltrosQuadro>(FILTROS_VAZIOS);
+  // A caixa de busca mostra o texto na hora; o filtro (que refiltra e reanima
+  // os cartões) só atualiza um instante depois, pra digitar rápido não travar.
+  const [buscaTexto, setBuscaTexto] = useState('');
   const [ordem, setOrdem] = useState<Ordem>('prefixo');
   const [maisFiltros, setMaisFiltros] = useState(false);
   const [fechados, setFechados] = useState<ReadonlySet<string>>(() => new Set());
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [atalhosAberto, setAtalhosAberto] = useState(false);
   const [aviso, setAviso] = useState('');
+  const [modoSelecao, setModoSelecao] = useState(false);
+  const [selecionados, setSelecionados] = useState<ReadonlySet<string>>(() => new Set());
+  const [confirmarExclusaoSelecao, setConfirmarExclusaoSelecao] = useState(false);
   const [vistaEscolhida, setVistaEscolhida] = useState<Vista>(vistaGuardada);
   const vista: Vista = podeEditar ? vistaEscolhida : 'quadro';
   const trocarVista = (nova: Vista) => {
@@ -122,6 +128,18 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
       // Sem memória do aparelho a escolha vale só nesta visita.
     }
   };
+
+  // Espera a pessoa parar de digitar antes de refiltrar e reanimar o quadro.
+  useEffect(() => {
+    const tempo = window.setTimeout(() => setFiltros(atual => (atual.busca === buscaTexto ? atual : { ...atual, busca: buscaTexto })), 220);
+    return () => window.clearTimeout(tempo);
+  }, [buscaTexto]);
+
+  // Trocar de dia ou de vista fecha a seleção: ela é sempre da tela de agora.
+  useEffect(() => {
+    setModoSelecao(false);
+    setSelecionados(new Set());
+  }, [dia, vista]);
 
   const cartoes = useMemo(
     () => montarQuadro({ dia, equipamentos, registros, gruposEquipe, abastecimentos }),
@@ -164,6 +182,50 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   ];
 
   const mudar = (parcial: Partial<FiltrosQuadro>) => setFiltros(atual => ({ ...atual, ...parcial }));
+  const limparFiltros = () => {
+    setBuscaTexto('');
+    setFiltros(FILTROS_VAZIOS);
+  };
+  const alternarModoSelecao = () => {
+    setModoSelecao(atual => !atual);
+    setSelecionados(new Set());
+  };
+  const alternarSelecao = (id: string) => setSelecionados(atual => {
+    const proximo = new Set(atual);
+    if (proximo.has(id)) proximo.delete(id);
+    else proximo.add(id);
+    return proximo;
+  });
+  const cartoesSelecionados = useMemo(() => filtrados.filter(cartao => selecionados.has(cartao.equipamentoId)), [filtrados, selecionados]);
+  const selecionadosExcluiveis = cartoesSelecionados.filter(cartao => cartao.registroId);
+  const moverSelecionadosPara = (canteiro: string) => {
+    if (cartoesSelecionados.length === 0) return;
+    const hora = horaAgora();
+    const agora = new Date().toISOString();
+    const prontos: Array<{ registro: ControleEquipamentoDiario; novo: boolean }> = [];
+    const problemas: string[] = [];
+    cartoesSelecionados.forEach(cartao => {
+      const equipamento = equipamentos.find(item => item.id === cartao.equipamentoId);
+      if (!equipamento) return;
+      const rascunho = rascunhoDoCartao(cartao);
+      const resultado = registroDaEdicao({ dia, hora, agora, usuario, equipamento, registros, funcionarios: motoristas, edicao: { ...rascunho, canteiro: canteiro === SEM_CANTEIRO ? '' : canteiro, status: rascunho.status || 'Disponível' } });
+      if ('erro' in resultado) problemas.push(`${cartao.prefixo}: ${resultado.erro}`);
+      else prontos.push({ registro: resultado.registro, novo: resultado.novo });
+    });
+    if (prontos.length) onSaveMany(prontos);
+    setAviso(problemas.length
+      ? `${prontos.length} movida(s) para ${canteiro}. ${problemas.length} precisam de situação/operador antes: ${problemas.join('; ')}.`
+      : `${prontos.length} máquina(s) movida(s) para ${canteiro}.`);
+    setSelecionados(new Set());
+    setModoSelecao(false);
+  };
+  const excluirSelecionados = () => {
+    onDeleteMany(selecionadosExcluiveis.map(cartao => cartao.registroId!));
+    setAviso(`${selecionadosExcluiveis.length} lançamento(s) do dia excluído(s). As máquinas continuam no cadastro.`);
+    setConfirmarExclusaoSelecao(false);
+    setSelecionados(new Set());
+    setModoSelecao(false);
+  };
   const alternarGrupo = (canteiro: string) => setFechados(atual => {
     const proximoConjunto = new Set(atual);
     if (proximoConjunto.has(canteiro)) proximoConjunto.delete(canteiro);
@@ -209,7 +271,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   }, [aviso]);
 
   useEffect(() => {
-    if (aberto || atalhosAberto) return undefined;
+    if (aberto || atalhosAberto || modoSelecao) return undefined;
     const teclar = (event: KeyboardEvent) => {
       const alvo = event.target as HTMLElement | null;
       if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -225,7 +287,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
         mudar({ grupo: filtros.grupo === GRUPO_DA_TECLA[tecla] ? '' : GRUPO_DA_TECLA[tecla] });
       } else if (tecla === 'l') {
         event.preventDefault();
-        setFiltros(FILTROS_VAZIOS);
+        limparFiltros();
       } else if (tecla === 'v' && podeEditar) {
         event.preventDefault();
         trocarVista(vista === 'quadro' ? 'lancar' : 'quadro');
@@ -243,7 +305,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(raiz.querySelectorAll('[data-quadro-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
     gsap.fromTo(raiz.querySelectorAll('[data-quadro-cartao]'), { opacity: 0, y: 10, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: { each: 0.01, from: 'start' }, ease: 'power2.out', delay: 0.12, clearProps: 'transform,opacity' });
-  }, { scope: escopo, dependencies: [dia, filtros, ordem, vista] });
+  }, { scope: escopo, dependencies: [dia, filtros, ordem, vista, modoSelecao] });
 
   const chipCanteiro = (nome: string, rotulo: string, total: number) => {
     const ligado = filtros.canteiro === nome;
@@ -295,22 +357,22 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
         <p className="-mt-1 text-sm font-semibold text-slate-500 first-letter:uppercase">{dataLonga(dia)}</p>
       </div>
 
-      <section aria-label="Resumo da frota no dia" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 2xl:grid-cols-8">
+      <section aria-label="Resumo da frota no dia" className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-9">
         {lista.map(item => {
           const ativo = item.id !== 'total' && item.filtro && Object.entries(item.filtro).every(([chave, valor]) => filtros[chave as keyof FiltrosQuadro] === valor);
           const conteudo = (
             <>
-              <span className="flex items-start justify-between gap-2">
-                <span className="min-w-0 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 [overflow-wrap:anywhere] sm:tracking-[0.12em]">{item.titulo}</span>
-                <span className={`grid size-8 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-4" aria-hidden="true" /></span>
+              <span className="flex items-start justify-between gap-1.5">
+                <span className="min-w-0 text-[10px] font-bold uppercase tracking-[0.06em] text-slate-500 [overflow-wrap:anywhere]">{item.titulo}</span>
+                <span className={`grid size-6 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
               </span>
-              <CountUp value={item.valor} suffix={item.sufixo} className="mt-1 block text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl" />
-              <span className="block text-xs text-slate-500">{item.detalhe}</span>
+              <CountUp value={item.valor} suffix={item.sufixo} className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900" />
+              <span className="block truncate text-[11px] text-slate-500">{item.detalhe}</span>
             </>
           );
-          const classe = `${CARTAO} flex min-h-24 flex-col p-3 text-left sm:min-h-28 sm:p-3.5 transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
+          const classe = `${CARTAO} flex min-h-[4.5rem] flex-col p-2 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
           return item.filtro ? (
-            <button key={item.id} type="button" data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} aria-pressed={ativo || undefined} onClick={() => setFiltros(ativo ? { ...filtros, ...Object.fromEntries(Object.keys(item.filtro!).map(chave => [chave, ''])) } : item.id === 'total' ? FILTROS_VAZIOS : { ...filtros, ...item.filtro })} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>
+            <button key={item.id} type="button" data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} aria-pressed={ativo || undefined} onClick={() => { if (item.id === 'total') { limparFiltros(); return; } setFiltros(ativo ? { ...filtros, ...Object.fromEntries(Object.keys(item.filtro!).map(chave => [chave, ''])) } : { ...filtros, ...item.filtro }); }} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>
               {conteudo}
             </button>
           ) : item.aoClicar ? (
@@ -350,7 +412,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
           <label className="relative min-w-0 flex-[1_1_14rem]">
             <span className="sr-only">Buscar prefixo, modelo ou operador</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input ref={buscaRef} value={filtros.busca} onChange={event => mudar({ busca: event.target.value })} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9`} data-testid="quadro-busca" />
+            <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9`} data-testid="quadro-busca" />
           </label>
           <select value={filtros.grupo} onChange={event => mudar({ grupo: event.target.value as GrupoStatus | '' })} aria-label="Situação" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:w-auto`}>
             <option value="">Todas as situações</option>
@@ -364,6 +426,12 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
             <SlidersHorizontal className="size-4" aria-hidden="true" />
             Mais filtros
           </button>
+          {podeEditar && vista === 'quadro' && (
+            <button type="button" onClick={alternarModoSelecao} aria-pressed={modoSelecao} className={`${modoSelecao ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} flex-none`} data-testid="quadro-alternar-selecao">
+              <ListChecks className="size-4" aria-hidden="true" />
+              {modoSelecao ? 'Cancelar seleção' : 'Selecionar várias'}
+            </button>
+          )}
         </div>
         {maisFiltros && (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6" data-testid="quadro-painel-filtros">
@@ -402,12 +470,12 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
         {etiquetas.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5" data-testid="quadro-etiquetas">
             {etiquetas.map(etiqueta => (
-              <button key={etiqueta.chave} type="button" onClick={() => mudar({ [etiqueta.chave]: '' })} className={`inline-flex min-h-9 items-center gap-1.5 rounded-full bg-emerald-50 pl-3 pr-2 text-xs font-bold text-[#176b4d] ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100 ${FOCO}`} aria-label={`Tirar filtro ${etiqueta.texto}`}>
+              <button key={etiqueta.chave} type="button" onClick={() => { if (etiqueta.chave === 'busca') setBuscaTexto(''); mudar({ [etiqueta.chave]: '' }); }} className={`inline-flex min-h-9 items-center gap-1.5 rounded-full bg-emerald-50 pl-3 pr-2 text-xs font-bold text-[#176b4d] ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100 ${FOCO}`} aria-label={`Tirar filtro ${etiqueta.texto}`}>
                 {etiqueta.texto}
                 <X className="size-3.5" aria-hidden="true" />
               </button>
             ))}
-            <button type="button" onClick={() => setFiltros(FILTROS_VAZIOS)} className="min-h-9 px-2 text-xs font-semibold text-slate-500 underline-offset-4 hover:text-[#176b4d] hover:underline" data-testid="quadro-limpar">
+            <button type="button" onClick={limparFiltros} className="min-h-9 px-2 text-xs font-semibold text-slate-500 underline-offset-4 hover:text-[#176b4d] hover:underline" data-testid="quadro-limpar">
               Limpar tudo
             </button>
             <span className="ml-auto text-xs font-semibold text-slate-500">{filtrados.length} de {cartoes.length} máquinas</span>
@@ -430,7 +498,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
       ) : filtrados.length === 0 ? (
         <div data-quadro-reveal className={`${CARTAO} grid place-items-center gap-2 px-6 py-12 text-center`}>
           <p className="text-base font-bold text-slate-800">Nenhuma máquina com esses filtros</p>
-          <button type="button" onClick={() => setFiltros(FILTROS_VAZIOS)} className={BOTAO_SECUNDARIO}>Limpar filtros</button>
+          <button type="button" onClick={limparFiltros} className={BOTAO_SECUNDARIO}>Limpar filtros</button>
         </div>
       ) : vista === 'lancar' ? (
         <LancarFrota
@@ -447,7 +515,33 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
           onAviso={setAviso}
         />
       ) : (
-        <DndContext sensors={sensores} onDragEnd={arrastarSoltou}>
+        <>
+        {modoSelecao && (
+          <div className="fixed inset-x-3 bottom-3 z-30 mx-auto flex max-w-3xl flex-wrap items-center gap-2 rounded-2xl bg-white p-2.5 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.45)] ring-1 ring-slate-200" data-testid="quadro-barra-selecao">
+            <span className="px-2 text-sm font-bold text-slate-800">{selecionados.size > 0 ? `${selecionados.size} selecionada(s)` : 'Toque nas máquinas pra selecionar'}</span>
+            {selecionados.size > 0 && (
+              <>
+                <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Mover as selecionadas para o canteiro">
+                  <MapPin className="size-4 text-slate-400" aria-hidden="true" />
+                  {CANTEIROS.map(canteiro => (
+                    <button key={canteiro} type="button" onClick={() => moverSelecionadosPara(canteiro)} className={`min-h-9 rounded-full bg-[#f7f8f6] px-2.5 text-xs font-bold uppercase text-slate-600 ring-1 ring-slate-200 transition hover:bg-emerald-50 hover:text-[#176b4d] hover:ring-emerald-300 active:scale-[0.97] ${FOCO}`} data-testid={`quadro-mover-sel-${canteiro}`}>
+                      {canteiro}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setConfirmarExclusaoSelecao(true)} disabled={selecionadosExcluiveis.length === 0} className={`ml-auto inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="quadro-excluir-sel">
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Excluir lançamento{selecionadosExcluiveis.length ? ` (${selecionadosExcluiveis.length})` : ''}
+                </button>
+              </>
+            )}
+            <button type="button" onClick={alternarModoSelecao} className="inline-flex min-h-9 items-center gap-1 px-2 text-xs font-semibold text-slate-500 hover:text-[#176b4d]">
+              <X className="size-3.5" aria-hidden="true" />
+              Sair da seleção
+            </button>
+          </div>
+        )}
+        <DndContext sensors={sensores} onDragEnd={modoSelecao ? undefined : arrastarSoltou}>
           <div className="space-y-4" data-testid="quadro-colunas">
             {grupos.map(grupo => {
               const fechado = fechados.has(grupo.canteiro);
@@ -480,7 +574,15 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
                   {!fechado && (
                     <ColunaCanteiro canteiro={grupo.canteiro}>
                       {grupo.cartoes.map(cartao => (
-                        <CartaoArrastavel key={cartao.equipamentoId} cartao={cartao} podeArrastar={podeEditar} onAbrir={() => setAbertoId(cartao.equipamentoId)} />
+                        <CartaoArrastavel
+                          key={cartao.equipamentoId}
+                          cartao={cartao}
+                          podeArrastar={podeEditar}
+                          onAbrir={() => setAbertoId(cartao.equipamentoId)}
+                          modoSelecao={modoSelecao}
+                          selecionado={selecionados.has(cartao.equipamentoId)}
+                          onAlternarSelecao={() => alternarSelecao(cartao.equipamentoId)}
+                        />
                       ))}
                     </ColunaCanteiro>
                   )}
@@ -489,7 +591,24 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
             })}
           </div>
         </DndContext>
+        </>
       )}
+
+      <Modal
+        open={confirmarExclusaoSelecao}
+        title={`Excluir ${selecionadosExcluiveis.length} lançamento(s) de hoje?`}
+        size="sm"
+        onClose={() => setConfirmarExclusaoSelecao(false)}
+        footer={(
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setConfirmarExclusaoSelecao(false)} className={BOTAO_SECUNDARIO}>Cancelar</button>
+            <button type="button" onClick={excluirSelecionados} className={BOTAO_PERIGO} data-testid="quadro-confirmar-exclusao-sel">Excluir lançamento</button>
+          </div>
+        )}
+      >
+        <p className="text-sm text-slate-600">Some só o lançamento deste dia. As máquinas continuam no cadastro e voltam para "Sem lançamento".</p>
+        <p className="mt-3 font-mono text-sm font-bold text-slate-800">{selecionadosExcluiveis.map(cartao => cartao.prefixo).join(', ')}</p>
+      </Modal>
 
       <PainelEquipamento
         cartao={aberto}
