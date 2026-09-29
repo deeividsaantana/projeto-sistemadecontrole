@@ -35,9 +35,12 @@ interface Props {
   /** Devolve a mensagem de erro, ou nada quando gravou. */
   onSalvar: (cartao: CartaoFrota, edicao: EdicaoQuadro, irParaProximo: boolean) => string | undefined;
   onAbrirControle: () => void;
+  /** Quem pode desmobilizar a máquina (mesma permissão de excluir em Cadastros). */
+  podeRemover?: boolean;
+  onRemover?: () => void;
 }
 
-export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = CANTEIROS, frentes, operadores, onFechar, onSalvar, onAbrirControle }: Props) {
+export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = CANTEIROS, frentes, operadores, onFechar, onSalvar, onAbrirControle, podeRemover, onRemover }: Props) {
   const [edicao, setEdicao] = useState<RascunhoQuadro | null>(null);
   const [erro, setErro] = useState('');
   const idLista = useId();
@@ -110,6 +113,11 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
       <button type="button" onClick={onAbrirControle} className="min-h-11 text-sm font-semibold text-slate-500 underline-offset-4 hover:text-[#176b4d] hover:underline">
         Ver horários e histórico no Controle de Frotas
       </button>
+      {podeRemover && (
+        <button type="button" onClick={onRemover} className="min-h-9 text-xs font-semibold text-rose-600 underline-offset-4 hover:text-rose-700 hover:underline" data-testid="quadro-remover-cartao">
+          Remover esta máquina do quadro
+        </button>
+      )}
     </div>
   ) : (
     <button type="button" onClick={onAbrirControle} className={`${BOTAO_PRIMARIO} w-full`}>Abrir no Controle de Frotas</button>
@@ -137,6 +145,11 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
           {cartao.grupo === 'sem-lancamento' && (
             <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
               Esta máquina ainda não foi lançada hoje. Escolha a situação e salve para lançar.
+            </p>
+          )}
+          {cartao.situacaoHerdada && (
+            <p className="rounded-xl bg-sky-50 p-3 text-sm text-sky-900 ring-1 ring-inset ring-sky-200">
+              Situação de um lançamento anterior, mantida porque não mudou. Sem lançamento hoje.
             </p>
           )}
 

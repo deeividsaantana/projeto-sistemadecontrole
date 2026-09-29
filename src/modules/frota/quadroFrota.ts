@@ -9,6 +9,7 @@ import type { Abastecimento, ControleEquipamentoDiario, EventoControleEquipament
 import type { FleetPersistedRecord } from '../../fleet/domain';
 import { classifyOperationalFleet } from '../../fleet/reconciliation';
 import { CANTEIROS_ATIVOS, contemTermo } from '../../utils/frenteServico';
+import { inactivateEquipamento } from '../../masterData/registryCommands';
 
 export const SEM_FRENTE = 'Sem frente';
 export const SEM_CANTEIRO = 'Sem canteiro';
@@ -85,6 +86,8 @@ export interface CartaoFrota {
   frente: string;
   status: StatusControleEquipamentoDiario | 'Sem lançamento';
   grupo: GrupoStatus;
+  /** Situação veio de um lançamento de dia anterior, mantida até alguém mudar. */
+  situacaoHerdada?: boolean;
   operador?: string;
   /** Maior horímetro informado nos abastecimentos até o dia do quadro. */
   horimetro?: number;
@@ -152,6 +155,18 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
     if (!atual || registro.data > atual.data) ultimoLocal.set(registro.equipamentoId, { data: registro.data, local: registro.local });
   });
 
+  // Situação lançada à mão também vale para os dias seguintes, até mudar: sem
+  // lançamento novo, a máquina mantém a última situação em vez de voltar para
+  // "Sem lançamento" todo dia.
+  const ultimoRegistro = new Map<string, RegistroDoDia>();
+  (registros as readonly RegistroDoDia[]).forEach(registro => {
+    if (registro.excluido || registro.data > dia) return;
+    const atual = ultimoRegistro.get(registro.equipamentoId);
+    if (!atual || registro.data > atual.data || (registro.data === atual.data && (registro.atualizadoEm || '') > (atual.atualizadoEm || ''))) {
+      ultimoRegistro.set(registro.equipamentoId, registro);
+    }
+  });
+
   const horimetros = new Map<string, number>();
   abastecimentos.forEach(item => {
     if (!item.equipamentoId || item.data > dia || !Number.isFinite(item.horimetroInicial) || item.horimetroInicial <= 0) return;
@@ -165,10 +180,12 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
     .filter(item => item.status !== 'Desmobilizado' || doDia.has(item.id))
     .map((item): CartaoFrota => {
       const registro = doDia.get(item.id);
+      const herdado = registro ? undefined : ultimoRegistro.get(item.id);
+      const base = registro || herdado;
       const equipe = registro?.equipeId ? equipes.get(registro.equipeId) : undefined;
       const frente = (registro?.frenteServico || equipe?.frenteServico || '').trim() || SEM_FRENTE;
       const canteiro = canteiroNoTexto(canteiros, registro?.local, ultimoLocal.get(item.id)?.local, registro?.frenteServico, equipe?.frenteServico, equipe?.nome) || SEM_CANTEIRO;
-      const operador = (registro?.nomeMotorista || item.operadorResponsavelNome || '').trim() || undefined;
+      const operador = (base?.nomeMotorista || item.operadorResponsavelNome || '').trim() || undefined;
       return {
         equipamentoId: item.id,
         registroId: registro?.id,
@@ -180,13 +197,14 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
         silhueta: silhuetaDo(item),
         canteiro,
         frente,
-        status: registro ? registro.status : 'Sem lançamento',
-        grupo: registro ? GRUPO_DO_STATUS[registro.status] ?? 'parado' : 'sem-lancamento',
+        status: base ? base.status : 'Sem lançamento',
+        grupo: base ? GRUPO_DO_STATUS[base.status] ?? 'parado' : 'sem-lancamento',
+        situacaoHerdada: Boolean(herdado),
         operador,
         horimetro: horimetros.get(item.id),
-        observacao: registro?.observacao || undefined,
-        motivoManutencao: registro?.motivoManutencao || undefined,
-        atualizadoEm: registro?.atualizadoEm,
+        observacao: registro?.observacao || herdado?.observacao || undefined,
+        motivoManutencao: base?.motivoManutencao || undefined,
+        atualizadoEm: base?.atualizadoEm,
       };
     })
     .sort((a, b) => comparar(a.prefixo, b.prefixo));
@@ -475,4 +493,29 @@ export const rascunhosDoUltimoDia = (registros: readonly ControleEquipamentoDiar
     });
   });
   return saida;
+};
+
+export interface RemocaoQuadro {
+  /** Equipamentos desmobilizados, para a mensagem/histórico. */
+  alvos: Equipamento[];
+  equipamentosAtualizados: Equipamento[];
+  registrosAtualizados: ControleEquipamentoDiario[];
+}
+
+/**
+ * "Remover do quadro" desmobiliza a máquina (some do quadro pra sempre, mas
+ * fica no cadastro e no histórico) e apaga o lançamento do dia que a
+ * mantinha visível hoje, se tiver algum.
+ */
+export const removerEquipamentosDoQuadro = (
+  equipamentos: readonly Equipamento[],
+  registros: readonly ControleEquipamentoDiario[],
+  itens: ReadonlyArray<{ equipamentoId: string; registroId?: string }>,
+): RemocaoQuadro => {
+  const equipamentoIds = new Set(itens.map(item => item.equipamentoId));
+  const alvos = equipamentos.filter(item => equipamentoIds.has(item.id) && item.status !== 'Desmobilizado');
+  const equipamentosAtualizados = equipamentos.map(item => (equipamentoIds.has(item.id) ? inactivateEquipamento(item) : item));
+  const registroIds = new Set(itens.map(item => item.registroId).filter((id): id is string => Boolean(id)));
+  const registrosAtualizados = registroIds.size ? registros.filter(item => !registroIds.has(item.id)) : [...registros];
+  return { alvos, equipamentosAtualizados, registrosAtualizados };
 };

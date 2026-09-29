@@ -57,9 +57,10 @@ const noop = () => {};
 /** Quadro com estado: o que se salva no painel volta para o quadro, como no app. */
 function QuadroFrotaPreview() {
   const [registros, setRegistros] = React.useState(fx.controlesQuadro);
+  const [equipamentos, setEquipamentos] = React.useState(fx.equipamentosQuadro);
   return (
     <QuadroFrotaTab
-      equipamentos={fx.equipamentosQuadro}
+      equipamentos={equipamentos}
       registros={registros}
       gruposEquipe={[fx.grupo]}
       abastecimentos={fx.abastecimentosQuadro as never}
@@ -73,6 +74,13 @@ function QuadroFrotaPreview() {
         return [...itens.filter(item => item.novo).map(item => item.registro), ...atual.map(item => trocados.get(item.id) ?? item)];
       })}
       onDeleteMany={ids => setRegistros(atual => atual.filter(item => !ids.includes(item.id)))}
+      podeRemover
+      onRemoverEquipamentos={itens => {
+        const ids = new Set(itens.map(item => item.equipamentoId));
+        setEquipamentos(atual => atual.map(item => (ids.has(item.id) ? { ...item, status: 'Desmobilizado' } : item)));
+        const registroIds = new Set(itens.map(item => item.registroId).filter(Boolean));
+        setRegistros(atual => atual.filter(item => !registroIds.has(item.id)));
+      }}
       onNavigate={noop}
     />
   );

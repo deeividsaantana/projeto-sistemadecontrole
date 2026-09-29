@@ -212,6 +212,7 @@ import { describeInvalidBackup, validateSystemBackup } from './utils/systemBacku
 import type { MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
+import { removerEquipamentosDoQuadro } from './modules/frota/quadroFrota';
 import { usosDoCadastro } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
 import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from './utils/cadastrosCategorias';
@@ -4047,6 +4048,31 @@ export default function App() {
     });
   };
 
+  /**
+   * "Remover do quadro" desmobiliza (não apaga) e some com o lançamento de
+   * hoje, se tiver: mesma ação de excluir em Cadastros > Equipamentos, só que
+   * disparada direto do Quadro da Frota, pra sumir da tela na hora.
+   */
+  const handleRemoverEquipamentosDoQuadro = (itens: Array<{ equipamentoId: string; registroId?: string }>) => {
+    const { alvos, equipamentosAtualizados: updatedEquipamentos, registrosAtualizados: updatedControle } = removerEquipamentosDoQuadro(equipamentos, controleEquipamentosDiario, itens);
+    if (!alvos.length) return;
+    const mudouControle = updatedControle.length !== controleEquipamentosDiario.length;
+    saveAndLog(
+      'Quadro da Frota',
+      'Desmobilizou',
+      `Removeu ${alvos.length} equipamento(s) do Quadro da Frota: ${alvos.map(item => item.prefixo).join(', ')}.`,
+      historyLogs,
+      () => {
+        setEquipamentos(updatedEquipamentos);
+        writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(updatedEquipamentos));
+        if (mudouControle) {
+          setControleEquipamentosDiario(updatedControle);
+          writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updatedControle));
+        }
+      },
+    );
+  };
+
   // Administration helpers
   const handleImportData = (imported: {
     empresas?: Empresa[];
@@ -5545,6 +5571,8 @@ export default function App() {
                 onSave={handleSaveControleEquipamentoDiario}
                 onSaveMany={handleSaveControleEquipamentosEmLote}
                 onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
+                podeRemover={pode(currentUserRole, 'cadastros', 'excluir')}
+                onRemoverEquipamentos={handleRemoverEquipamentosDoQuadro}
                 onNavigate={navigateTo}
               />
             )}
