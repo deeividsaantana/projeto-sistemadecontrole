@@ -192,5 +192,6 @@ import './avancoFrentes.test';
 import './resumoDoDia.test';
 import './quadroFrota.test';
 import './quadroFrotaPainelSituacao.test';
+import './quadroFrotaArrastar.test';
 import './sgeApontamentos.test';
 import './dailyRecordFormModal.test';
