@@ -191,6 +191,7 @@ import './rotinaDiaria.test';
 import './avancoFrentes.test';
 import './resumoDoDia.test';
 import './quadroFrota.test';
+import './lancarFrotaAtalho.test';
 import './quadroFrotaPainelSituacao.test';
 import './quadroFrotaArrastar.test';
 import './sgeApontamentos.test';
