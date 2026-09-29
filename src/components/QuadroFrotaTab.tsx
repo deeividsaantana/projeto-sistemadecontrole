@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, PauseCircle, PlayCircle, Search, SlidersHorizontal, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../types';
 import { CountUp, Modal, PageHeader, isoDay } from '../shared/ui';
@@ -26,6 +27,7 @@ import {
   etiquetasDosFiltros,
   filtrarCartoes,
   montarQuadro,
+  rascunhoDoCartao,
   registroDaEdicao,
   type CartaoFrota,
   type EdicaoQuadro,
@@ -35,7 +37,8 @@ import {
 } from '../modules/frota/quadroFrota';
 import { abastecidasSemLancamento } from '../modules/frota/combustivelDoDia';
 import { OPERATIONAL_DRIVERS } from '../fleet/operationalDrivers';
-import { CartaoEquipamento } from './quadroFrota/CartaoEquipamento';
+import { CartaoArrastavel } from './quadroFrota/CartaoArrastavel';
+import { ColunaCanteiro } from './quadroFrota/ColunaCanteiro';
 import { LancarFrota } from './quadroFrota/LancarFrota';
 import { PainelEquipamento } from './quadroFrota/PainelEquipamento';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from './cadastros/estilos';
@@ -184,6 +187,19 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
     setAviso(`${cartao.prefixo} salvo: ${edicao.status}${edicao.canteiro ? `, ${edicao.canteiro}` : ''}.`);
     setAbertoId(seguinte ? seguinte.equipamentoId : null);
     return undefined;
+  };
+
+  // Só começa a arrastar depois de mover 8px: um clique parado continua abrindo o painel.
+  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const arrastarSoltou = ({ active, over }: DragEndEvent) => {
+    if (!over) return;
+    const cartao = cartoes.find(item => item.equipamentoId === active.id);
+    if (!cartao) return;
+    const canteiroAtual = cartao.canteiro === SEM_CANTEIRO ? '' : cartao.canteiro;
+    const novoCanteiro = String(over.id) === SEM_CANTEIRO ? '' : String(over.id);
+    if (canteiroAtual === novoCanteiro) return;
+    const rascunho = rascunhoDoCartao(cartao);
+    salvar(cartao, { ...rascunho, canteiro: novoCanteiro, status: rascunho.status || 'Disponível' }, false);
   };
 
   useEffect(() => {
@@ -431,44 +447,48 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
           onAviso={setAviso}
         />
       ) : (
-        <div className="space-y-4" data-testid="quadro-colunas">
-          {grupos.map(grupo => {
-            const fechado = fechados.has(grupo.canteiro);
-            const semCanteiro = grupo.canteiro === SEM_CANTEIRO;
-            return (
-              <section key={grupo.canteiro} data-quadro-reveal aria-label={`Canteiro ${grupo.canteiro}`} data-testid="quadro-coluna" className="overflow-hidden rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
-                <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
-                  <span className={`size-2.5 shrink-0 rounded-full ${semCanteiro ? 'bg-slate-300' : 'bg-[#176b4d]'}`} aria-hidden="true" />
-                  <h2 className="min-w-0 truncate text-base font-bold uppercase tracking-wide text-slate-900">{grupo.canteiro}</h2>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{grupo.cartoes.length}</span>
-                  {grupo.cartoes.length === 0 && (
-                    <span className="text-xs text-slate-400">Vazio. Abra uma máquina e escolha este canteiro.</span>
+        <DndContext sensors={sensores} onDragEnd={arrastarSoltou}>
+          <div className="space-y-4" data-testid="quadro-colunas">
+            {grupos.map(grupo => {
+              const fechado = fechados.has(grupo.canteiro);
+              const semCanteiro = grupo.canteiro === SEM_CANTEIRO;
+              return (
+                <section key={grupo.canteiro} data-quadro-reveal aria-label={`Canteiro ${grupo.canteiro}`} data-testid="quadro-coluna" className="overflow-hidden rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
+                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
+                    <span className={`size-2.5 shrink-0 rounded-full ${semCanteiro ? 'bg-slate-300' : 'bg-[#176b4d]'}`} aria-hidden="true" />
+                    <h2 className="min-w-0 truncate text-base font-bold uppercase tracking-wide text-slate-900">{grupo.canteiro}</h2>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{grupo.cartoes.length}</span>
+                    {grupo.cartoes.length === 0 && (
+                      <span className="text-xs text-slate-400">Vazio. Arraste uma máquina pra cá, ou abra e escolha este canteiro.</span>
+                    )}
+                    {grupo.cartoes.length > 0 && (
+                      <span className="flex items-center gap-3 text-xs font-semibold text-slate-500">
+                        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />{grupo.operando} operando</span>
+                        {grupo.manutencao > 0 && <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose-500" aria-hidden="true" />{grupo.manutencao} manutenção</span>}
+                      </span>
+                    )}
+                    {grupo.cartoes.length > 0 && <button
+                      type="button"
+                      onClick={() => alternarGrupo(grupo.canteiro)}
+                      aria-expanded={!fechado}
+                      aria-label={fechado ? `Mostrar ${grupo.canteiro}` : `Esconder ${grupo.canteiro}`}
+                      className={`ml-auto grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-500 transition duration-200 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}
+                    >
+                      <ChevronDown className={`size-4 transition duration-300 ${fechado ? '-rotate-90' : ''}`} aria-hidden="true" />
+                    </button>}
+                  </header>
+                  {!fechado && (
+                    <ColunaCanteiro canteiro={grupo.canteiro}>
+                      {grupo.cartoes.map(cartao => (
+                        <CartaoArrastavel key={cartao.equipamentoId} cartao={cartao} podeArrastar={podeEditar} onAbrir={() => setAbertoId(cartao.equipamentoId)} />
+                      ))}
+                    </ColunaCanteiro>
                   )}
-                  {grupo.cartoes.length > 0 && (
-                    <span className="flex items-center gap-3 text-xs font-semibold text-slate-500">
-                      <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />{grupo.operando} operando</span>
-                      {grupo.manutencao > 0 && <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose-500" aria-hidden="true" />{grupo.manutencao} manutenção</span>}
-                    </span>
-                  )}
-                  {grupo.cartoes.length > 0 && <button
-                    type="button"
-                    onClick={() => alternarGrupo(grupo.canteiro)}
-                    aria-expanded={!fechado}
-                    aria-label={fechado ? `Mostrar ${grupo.canteiro}` : `Esconder ${grupo.canteiro}`}
-                    className={`ml-auto grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-500 transition duration-200 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}
-                  >
-                    <ChevronDown className={`size-4 transition duration-300 ${fechado ? '-rotate-90' : ''}`} aria-hidden="true" />
-                  </button>}
-                </header>
-                {!fechado && grupo.cartoes.length > 0 && (
-                  <div className="grid gap-2 p-2 [grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr))]">
-                    {grupo.cartoes.map(cartao => <CartaoEquipamento key={cartao.equipamentoId} cartao={cartao} onAbrir={() => setAbertoId(cartao.equipamentoId)} />)}
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
+                </section>
+              );
+            })}
+          </div>
+        </DndContext>
       )}
 
       <PainelEquipamento
