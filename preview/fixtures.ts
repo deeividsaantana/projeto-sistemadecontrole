@@ -353,6 +353,8 @@ const FROTA_QUADRO: Array<[string, string, string, string, string, string | null
   ['CV012', 'Cavalo mecânico', 'SCANIA', 'R450', 'MARGINAL', 'EDMILSON', 'Em operação'],
   ['VL002', 'Caminhonete', 'TOYOTA', 'HILUX', 'PEDREIRA', 'ENG. RICARDO', 'Em operação'],
   ['RC050', 'Rolo compactador', 'HAMM', '3411', 'PEDREIRA', null, null],
+  ['GD004', 'Guindaste', 'LIEBHERR', 'LTM 1050', 'MARGINAL', 'ADEMIR', 'Em operação'],
+  ['GE009', 'Gerador', 'STEMAC', 'SS180', 'IBAR', null, 'Disponível'],
 ];
 
 export const equipamentosQuadro: Equipamento[] = FROTA_QUADRO.map(([prefixo, tipo, marca, modelo], i) => ({

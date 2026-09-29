@@ -60,11 +60,10 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, frentes, ope
   };
   const salvar = (irParaProximo: boolean) => {
     if (!cartao || !edicao) return;
-    if (!edicao.status) {
-      setErro('Escolha a situação da máquina.');
-      return;
-    }
-    const falha = onSalvar(cartao, { ...edicao, status: edicao.status }, irParaProximo);
+    // Só operador (ou canteiro, frente etc.) preenchido, sem situação escolhida,
+    // não trava o salvamento: a máquina fica Disponível até alguém marcar outra coisa.
+    const status = edicao.status || 'Disponível';
+    const falha = onSalvar(cartao, { ...edicao, status }, irParaProximo);
     setErro(falha || '');
   };
 

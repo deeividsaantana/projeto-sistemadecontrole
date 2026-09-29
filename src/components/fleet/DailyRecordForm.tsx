@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
   AlertCircle,
   Building2,
@@ -13,7 +12,6 @@ import {
   UserRound,
   UserPlus,
   Wrench,
-  X,
   Zap,
 } from 'lucide-react';
 import type {
@@ -34,6 +32,7 @@ import { FLEET_STATUS_DEFINITIONS, normalizeOperationalStatus, toLegacyDailyStat
 import { classifyOperationalFleet, findEmployeeTeam, lookupDriverByCode, lookupEquipmentByPrefix } from '../../fleet/reconciliation';
 import { getOperationalToday } from '../../fleet/time';
 import { normalizeEmployeeCode, normalizePrefix } from '../../utils/canonicalIdentity';
+import { ConfirmDialog, Modal } from '../../shared/ui';
 
 interface Props {
   record?: FleetPersistedRecord;
@@ -161,51 +160,63 @@ export default function DailyRecordForm({
   onOpenEquipmentRegistry,
   onOpenMaintenance,
 }: Props) {
-  const [form, setForm] = useState<FormState>(
-    () => initialForm(record, equipment, employees, companies, teams),
-  );
+  const initialSnapshot = useRef<FormState | null>(null);
+  const [form, setForm] = useState<FormState>(() => {
+    const initial = initialForm(record, equipment, employees, companies, teams);
+    initialSnapshot.current = initial;
+    return initial;
+  });
   const [employeeLookupError, setEmployeeLookupError] = useState('');
   const [equipmentLookupError, setEquipmentLookupError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmarFecharSemSalvar, setConfirmarFecharSemSalvar] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const employeeCodeFieldRef = useRef<HTMLInputElement>(null);
   const prefixFieldRef = useRef<HTMLInputElement>(null);
 
-  // Foco automático na matrícula ao abrir o lançamento: é o campo que inicia
-  // a busca do motorista, o primeiro dado que o operador digita.
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => employeeCodeFieldRef.current?.focus());
-    return () => cancelAnimationFrame(raf);
-  }, []);
+  const temAlteracaoNaoSalva = JSON.stringify(form) !== JSON.stringify(initialSnapshot.current);
 
-  const handleRootKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.nativeEvent.isComposing) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose();
+  // Fechar (X, Esc ou clique fora, todos vindos do Modal padrão) com algo
+  // digitado e não salvo pede confirmação, pra não perder o lançamento à toa.
+  const pedirFechar = () => {
+    if (saving) return;
+    if (temAlteracaoNaoSalva) {
+      setConfirmarFecharSemSalvar(true);
       return;
     }
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-      event.preventDefault();
-      formRef.current?.requestSubmit();
-      return;
-    }
-    if (event.altKey && ['1', '2', '3', '4'].includes(event.key)) {
-      event.preventDefault();
-      const selected = QUICK_STATUSES[Number(event.key) - 1];
-      if (selected) update('operationalStatus', selected.value);
-      return;
-    }
-    if (event.altKey && event.key.toLocaleLowerCase('pt-BR') === 'p') {
-      event.preventDefault();
-      prefixFieldRef.current?.focus();
-    }
-    if (event.altKey && event.key.toLocaleLowerCase('pt-BR') === 'm') {
-      event.preventDefault();
-      employeeCodeFieldRef.current?.focus();
-    }
+    onClose();
   };
+
+  // Atalhos próprios da tela (mesmo padrão do painel do Quadro): Ctrl/Cmd+Enter
+  // salva e Alt+1..4/P/M pulam direto pra situação ou campo certo. Escape e o
+  // travamento de foco já vêm de graça do Modal compartilhado.
+  useEffect(() => {
+    const teclar = (event: KeyboardEvent) => {
+      if (event.isComposing) return;
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        formRef.current?.requestSubmit();
+        return;
+      }
+      if (event.altKey && ['1', '2', '3', '4'].includes(event.key)) {
+        event.preventDefault();
+        const selected = QUICK_STATUSES[Number(event.key) - 1];
+        if (selected) update('operationalStatus', selected.value);
+        return;
+      }
+      if (event.altKey && event.key.toLocaleLowerCase('pt-BR') === 'p') {
+        event.preventDefault();
+        prefixFieldRef.current?.focus();
+      }
+      if (event.altKey && event.key.toLocaleLowerCase('pt-BR') === 'm') {
+        event.preventDefault();
+        employeeCodeFieldRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', teclar);
+    return () => document.removeEventListener('keydown', teclar);
+  });
   const operationalFleet = useMemo(
     () => equipment.filter(item => item.status !== 'Desmobilizado' && Boolean(item.prefixo?.trim())),
     [equipment],
@@ -434,20 +445,32 @@ export default function DailyRecordForm({
       setSaving(false);
     }
   };
-  return createPortal(
-    <div className="fixed inset-0 z-[100] bg-slate-900/10" role="presentation" onKeyDown={handleRootKeyDown}>
-      <section role="dialog" aria-modal="true" aria-labelledby="daily-record-title" className="fleet-entry-dialog ml-auto flex h-[100dvh] w-full flex-col overflow-hidden bg-[#f4f7f5] shadow-2xl">
-        <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700"><Zap size={13}/>Central de lançamento</div>
-            <h2 id="daily-record-title" className="mt-1 truncate text-xl font-black tracking-[-0.025em] text-slate-950 sm:text-2xl">{record ? `Editar lançamento · ${record.prefixo}` : 'Registrar situação da frota'}</h2>
-            <p className="mt-1 hidden text-xs text-slate-500 sm:block">Motorista, equipamento e situação em um único fluxo. Os dados vinculados são preenchidos automaticamente.</p>
+  return (
+    <>
+      <Modal
+        open
+        onClose={pedirFechar}
+        busy={saving}
+        size="xl"
+        telaCheia="fleet-lancamento"
+        initialFocusRef={employeeCodeFieldRef}
+        title={record ? `Editar lançamento · ${record.prefixo}` : 'Registrar situação da frota'}
+        description={(
+          <>
+            <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700"><Zap size={12} aria-hidden="true"/>Central de lançamento</span>
+            <span className="hidden sm:inline">Motorista, equipamento e situação em um único fluxo. Os dados vinculados são preenchidos automaticamente.</span>
+          </>
+        )}
+        footer={(
+          <div>
+            <button type="button" disabled={saving} onClick={() => formRef.current?.requestSubmit()} className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-sm font-black text-slate-950 transition hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"><Save size={17}/>{saving ? 'Salvando lançamento...' : record ? 'Salvar alterações' : 'Confirmar lançamento'}</button>
+            <button type="button" disabled={saving} onClick={pedirFechar} className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50">Cancelar</button>
+            <p className="mt-3 text-center font-mono text-[9px] text-slate-400">Ctrl + Enter salva · Esc fecha</p>
           </div>
-          <button type="button" onClick={onClose} className="ml-3 flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 active:scale-95" aria-label="Fechar formulário"><X size={19} /></button>
-        </header>
-
-        <form ref={formRef} onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:overflow-hidden">
-          <div className="overflow-visible px-4 py-5 sm:px-6 lg:overflow-y-auto lg:px-8">
+        )}
+      >
+        <form ref={formRef} onSubmit={handleSubmit} className="lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-6">
+          <div className="space-y-5">
             <div className="mx-auto max-w-3xl space-y-5">
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.05)] sm:p-5">
                 <div className="mb-4 flex items-start justify-between gap-3">
@@ -494,20 +517,26 @@ export default function DailyRecordForm({
             </div>
           </div>
 
-          <aside className="flex min-h-fit flex-col border-t border-slate-200 bg-white text-slate-800 lg:min-h-0 lg:border-l lg:border-t-0">
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6">
-              <div className="flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Conferência antes de salvar</p><span className={`size-2.5 rounded-full ${readyToSave?'bg-emerald-400':'bg-amber-400'}`}/></div>
-              <h3 className="mt-5 font-mono text-4xl font-black tracking-[-0.06em] text-slate-800">{form.prefix || '—'}</h3>
-              <p className="mt-1 text-sm font-semibold text-slate-700">{selectedEquipment ? classifyOperationalFleet(selectedEquipment).equipmentType : 'Equipamento ainda não selecionado'}</p>
-              <div className={`mt-5 inline-flex rounded-lg border px-3 py-2 text-xs font-black ${statusDefinition?.textClass || 'text-slate-800'} ${statusDefinition?.backgroundClass || 'bg-white'} ${statusDefinition?.borderClass || 'border-slate-200'}`}>{form.operationalStatus}</div>
-              <dl className="mt-6 divide-y divide-white/10 border-y border-white/10 text-sm"><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Motorista</dt><dd className="text-right font-bold text-slate-700">{form.employeeName || 'Não informado'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Horário</dt><dd className="text-right font-mono font-bold text-slate-700">{form.departureTime || form.maintenanceEntryTime || form.availableSince || '—'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Local</dt><dd className="text-right font-bold text-slate-700">{form.location || 'Não informado'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Data</dt><dd className="text-right font-mono font-bold text-slate-700">{form.date ? new Date(`${form.date}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</dd></div></dl>
-              <div className="mt-6"><p className="text-xs font-black text-slate-800">Itens obrigatórios</p><ul className="mt-3 space-y-2">{requiredChecks.map(item=><li key={item.label} className={`flex items-center gap-2 text-xs font-semibold ${item.ok?'text-emerald-700':'text-slate-400'}`}><span className={`flex size-5 items-center justify-center rounded-full ${item.ok?'bg-emerald-400/15':'bg-white/5'}`}>{item.ok?<Check size={12}/>:<span className="size-1.5 rounded-full bg-slate-600"/>}</span>{item.label}</li>)}</ul></div>
-            </div>
-            <footer className="shrink-0 border-t border-white/10 bg-white p-4 sm:p-5"><button type="submit" disabled={saving} className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-sm font-black text-slate-950 transition hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"><Save size={17}/>{saving ? 'Salvando lançamento...' : record ? 'Salvar alterações' : 'Confirmar lançamento'}</button><button type="button" disabled={saving} onClick={onClose} className="mt-2 min-h-10 w-full rounded-lg text-xs font-bold text-slate-400 hover:bg-white/5 hover:text-slate-800">Cancelar</button><p className="mt-3 text-center font-mono text-[9px] text-slate-600">Ctrl + Enter salva · Esc fecha</p></footer>
+          <aside className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 lg:mt-0">
+            <div className="flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Conferência antes de salvar</p><span className={`size-2.5 rounded-full ${readyToSave?'bg-emerald-400':'bg-amber-400'}`}/></div>
+            <h3 className="mt-5 font-mono text-4xl font-black tracking-[-0.06em] text-slate-800">{form.prefix || '—'}</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-700">{selectedEquipment ? classifyOperationalFleet(selectedEquipment).equipmentType : 'Equipamento ainda não selecionado'}</p>
+            <div className={`mt-5 inline-flex rounded-lg border px-3 py-2 text-xs font-black ${statusDefinition?.textClass || 'text-slate-800'} ${statusDefinition?.backgroundClass || 'bg-white'} ${statusDefinition?.borderClass || 'border-slate-200'}`}>{form.operationalStatus}</div>
+            <dl className="mt-6 divide-y divide-slate-100 border-y border-slate-100 text-sm"><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Motorista</dt><dd className="text-right font-bold text-slate-700">{form.employeeName || 'Não informado'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Horário</dt><dd className="text-right font-mono font-bold text-slate-700">{form.departureTime || form.maintenanceEntryTime || form.availableSince || '—'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Local</dt><dd className="text-right font-bold text-slate-700">{form.location || 'Não informado'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Data</dt><dd className="text-right font-mono font-bold text-slate-700">{form.date ? new Date(`${form.date}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</dd></div></dl>
+            <div className="mt-6"><p className="text-xs font-black text-slate-800">Itens obrigatórios</p><ul className="mt-3 space-y-2">{requiredChecks.map(item=><li key={item.label} className={`flex items-center gap-2 text-xs font-semibold ${item.ok?'text-emerald-700':'text-slate-400'}`}><span className={`flex size-5 items-center justify-center rounded-full ${item.ok?'bg-emerald-400/15':'bg-slate-100'}`}>{item.ok?<Check size={12}/>:<span className="size-1.5 rounded-full bg-slate-400"/>}</span>{item.label}</li>)}</ul></div>
           </aside>
         </form>
-      </section>
-    </div>,
-    document.body,
+      </Modal>
+      <ConfirmDialog
+        open={confirmarFecharSemSalvar}
+        tone="warning"
+        title="Fechar sem salvar?"
+        description="O que você preencheu neste lançamento ainda não foi salvo. Se fechar agora, esse preenchimento se perde."
+        confirmLabel="Fechar sem salvar"
+        cancelLabel="Continuar preenchendo"
+        onConfirm={() => { setConfirmarFecharSemSalvar(false); onClose(); }}
+        onCancel={() => setConfirmarFecharSemSalvar(false)}
+      />
+    </>
   );
 }
