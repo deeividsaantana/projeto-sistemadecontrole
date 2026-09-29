@@ -135,6 +135,7 @@ export default function LancamentosTab({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const equipamentoFieldRef = useRef<HTMLSelectElement>(null);
   const moduleRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Foco automático no campo de Frota/Equipamento ao abrir o formulário: data e
   // hora já vêm preenchidas por padrão, então é o próximo campo que o usuário
@@ -700,6 +701,27 @@ export default function LancamentosTab({
     setIsFormOpen(true);
   };
 
+  // Lubrificação usava a tela sem nenhum atalho de teclado, diferente do
+  // Abastecimento (delegado ao CombustivelOperacionalTab, que já tem N e /).
+  // Mesmo padrão aqui: N lança, / busca.
+  useEffect(() => {
+    if (mode !== 'lubrificacoes' || isFormOpen) return undefined;
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+      if (event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        handleOpenCreate();
+      } else if (event.key === '/') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [mode, isFormOpen]);
+
   const handleOpenEdit = (item: Abastecimento | Lubrificacao) => {
     resetFormFields();
     setEditingId(item.id);
@@ -1242,6 +1264,7 @@ export default function LancamentosTab({
           >
             <Plus className="w-4.5 h-4.5" />
             {mode === 'abastecimentos' ? 'Novo Abastecimento' : 'Nova Lubrificação'}
+            {mode === 'lubrificacoes' && <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>}
           </button>
         </>}
       />
@@ -1275,7 +1298,8 @@ export default function LancamentosTab({
       <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white border border-slate-200 p-3 rounded-lg">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
-          <input 
+          <input
+            ref={searchInputRef}
             type="text"
             placeholder={mode === 'abastecimentos' ? 'Filtrar por data, responsável ou prefixo de frota...' : mode === 'lubrificacoes' ? 'Filtrar por data, compartimento ou prefixo...' : 'Filtrar por data, obra ou serviço executado...'}
             value={searchQuery}
