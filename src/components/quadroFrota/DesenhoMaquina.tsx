@@ -242,6 +242,44 @@ const DESENHOS: Record<Silhueta, (t: Tinta) => ReactElement> = {
       ))}
     </>
   ),
+  guindaste: t => (
+    <>
+      <Roda x={20} y={47} r={6.5} />
+      <Roda x={36} y={47} r={6.5} />
+      <Roda x={70} y={47} r={7.5} />
+      <Roda x={84} y={47} r={7.5} />
+      <rect x={12} y={40} width={80} height={3} className={DETALHE} />
+      <path d="M8 40 L8 21 Q8 17 12 17 L27 17 Q31 17 31 21 L31 40 Z" fill={t.corpo} />
+      <path d="M11 23 L24 23 L24 31 L11 31 Z" fill={t.vidro} />
+      <path d="M12 24 L18 24 L12 30 Z" className="fill-white/50" />
+      <Farol x={9} y={36} />
+      <rect x={31} y={31} width={56} height={9} rx={1.5} fill={t.sombra} />
+      <rect x={31} y={31} width={56} height={2.5} className="fill-slate-800/20" />
+      <rect x={31} y={33} width={9} height={8} rx={1} className={ESCURO} />
+      <path d="M42 32 L85 6 L89 8.4 L46 34.4 Z" fill={t.metal} />
+      <path d="M46 11 L46 32.6 M55 9 L55 34 M64 7 L64 35.4 M73 5 L73 36.8" className="stroke-slate-800/30" strokeWidth={1} />
+      <path d="M85 6 L87 2" className="stroke-slate-800" strokeWidth={1.6} strokeLinecap="round" />
+      <path d="M87 2 L87 19" className="stroke-slate-800" strokeWidth={1} strokeDasharray="2 2" />
+      <rect x={84.5} y={19} width={5} height={4} rx={1} className={ESCURO} />
+    </>
+  ),
+  gerador: t => (
+    <>
+      <rect x={14} y={44} width={70} height={3} rx={1} className={DETALHE} />
+      <rect x={10} y={22} width={78} height={23} rx={3} fill={t.corpo} />
+      <rect x={10} y={38} width={78} height={7} rx={2} fill={t.sombra} />
+      <Brilho x={13} y={23.5} w={72} />
+      <rect x={16} y={26} width={22} height={13} rx={2} className="fill-slate-800/25" />
+      <path d="M20 29 L20 36 M25 29 L25 36 M30 29 L30 36 M35 29 L35 36" className="stroke-slate-700/60" strokeWidth={1.6} />
+      <rect x={44} y={27} width={30} height={11} rx={1.5} fill={t.metal} />
+      <circle cx={51} cy={32.5} r={2.6} className={DETALHE} />
+      <circle cx={60} cy={32.5} r={2.6} className={DETALHE} />
+      <rect x={67} y={30} width={5} height={5} rx={0.8} className="fill-amber-300" />
+      <rect x={78} y={14} width={4} height={10} rx={1.4} className={ESCURO} />
+      <rect x={77.2} y={11.5} width={5.6} height={3} rx={1.2} className="fill-slate-700" />
+      <rect x={12} y={20} width={10} height={3} rx={1} className={ARO} />
+    </>
+  ),
   veiculo: t => (
     <>
       <Roda x={25} y={44} r={7.5} />
