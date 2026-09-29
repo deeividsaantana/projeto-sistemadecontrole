@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, GrupoEquipe } from '../src/types';
 import { abastecidasSemLancamento, avisosDoAbastecimento, contextoDoAbastecimento, lerNumero, operandoSemAbastecer } from '../src/modules/frota/combustivelDoDia';
-import { FILTROS_VAZIOS, SEM_CANTEIRO, SEM_FRENTE, agruparPorCanteiro, calcularIndicadores, etiquetasDosFiltros, filtrarCartoes, lancarEmLote, montarQuadro, rascunhosDoUltimoDia, registroDaEdicao, silhuetaDo } from '../src/modules/frota/quadroFrota';
+import { FILTROS_VAZIOS, SEM_CANTEIRO, SEM_FRENTE, agruparPorCanteiro, calcularIndicadores, etiquetasDosFiltros, filtrarCartoes, lancarEmLote, montarQuadro, rascunhosDoUltimoDia, registroDaEdicao, removerEquipamentosDoQuadro, silhuetaDo } from '../src/modules/frota/quadroFrota';
 
 const dia = '2026-09-28';
 const equipamento = (id: string, extra: Partial<Equipamento> = {}) => ({ id, prefixo: id, nome: 'Escavadeira', tipo: 'Escavadeira', marca: 'Volvo', modelo: 'EC210', status: 'Ativo', ...extra }) as unknown as Equipamento;
@@ -31,8 +31,9 @@ test('cada equipamento vai para a frente do lançamento do dia, e sem lançament
   assert.equal(ec01.horimetro, 1250, 'horímetro não usa abastecimento depois do dia');
   assert.equal(ec02.frente, 'PADRE EUSTÁQUIO', 'frente vem da equipe quando o lançamento não traz');
   assert.equal(ec02.grupo, 'manutencao');
-  assert.equal(rc01.frente, SEM_FRENTE, 'lançamento de outro dia não conta');
-  assert.equal(rc01.status, 'Sem lançamento');
+  assert.equal(rc01.frente, SEM_FRENTE, 'lançamento de outro dia não conta pra frente');
+  assert.equal(rc01.status, 'Em operação', 'situação de dia anterior continua até mudar');
+  assert.equal(rc01.situacaoHerdada, true);
   assert.equal(rc01.silhueta, 'rolo');
 });
 
@@ -121,7 +122,39 @@ test('canteiro escolhido num dia continua nos dias seguintes', () => {
   assert.equal(cartao.canteiro, 'Fábrica');
   const [aracare] = montarQuadro({ dia, equipamentos: [equipamento('C2')], registros: [registro('C2', 'Em operação', { frenteServico: 'Pátio de Vigas Aracaré' })], gruposEquipe: [], abastecimentos: [] });
   assert.equal(aracare.canteiro, 'Pátio Aracaré', 'apelido do pátio acha o canteiro');
-  assert.equal(cartao.grupo, 'sem-lancamento', 'o canteiro vem junto, a situação não');
+  assert.equal(cartao.grupo, 'operando', 'a situação também continua até mudar');
+  assert.equal(cartao.situacaoHerdada, true);
+});
+
+test('situação escolhida num dia continua nos seguintes, até um novo lançamento mudar', () => {
+  const [semNovoDia] = montarQuadro({
+    dia,
+    equipamentos: [equipamento('S1')],
+    registros: [registro('S1', 'Em manutenção', { data: '2026-09-25', motivoManutencao: 'Troca de óleo' })],
+    gruposEquipe: [],
+    abastecimentos: [],
+  });
+  assert.equal(semNovoDia.status, 'Em manutenção');
+  assert.equal(semNovoDia.motivoManutencao, 'Troca de óleo');
+  assert.equal(semNovoDia.situacaoHerdada, true);
+
+  const [comNovoDia] = montarQuadro({
+    dia,
+    equipamentos: [equipamento('S2')],
+    registros: [
+      registro('S2', 'Em manutenção', { data: '2026-09-25', motivoManutencao: 'Troca de óleo' }),
+      registro('S2', 'Em operação', { nomeMotorista: 'Marta' }),
+    ],
+    gruposEquipe: [],
+    abastecimentos: [],
+  });
+  assert.equal(comNovoDia.status, 'Em operação', 'lançamento de hoje sempre vale mais que o herdado');
+  assert.equal(comNovoDia.situacaoHerdada, false);
+  assert.equal(comNovoDia.operador, 'Marta');
+
+  const [semNenhumLancamento] = montarQuadro({ dia, equipamentos: [equipamento('S3')], registros: [], gruposEquipe: [], abastecimentos: [] });
+  assert.equal(semNenhumLancamento.status, 'Sem lançamento', 'sem nenhum histórico, continua pendente');
+  assert.equal(semNenhumLancamento.situacaoHerdada, false);
 });
 
 test('lançar no quadro grava o dia no formato do Controle de Frotas', () => {
@@ -244,4 +277,30 @@ test('combustível do dia: leitura, avisos e listas de quem falta lançar', () =
   assert.equal(lerNumero('12.5'), 12.5);
   assert.equal(lerNumero('  '), undefined);
   assert.equal(lerNumero('abc'), undefined);
+});
+
+test('remover do quadro desmobiliza a máquina e apaga só o lançamento de hoje dela', () => {
+  const equipamentos = [equipamento('R1'), equipamento('R2'), equipamento('R3', { status: 'Desmobilizado' })];
+  const registros = [
+    registro('R1', 'Em operação'),
+    registro('R1', 'Em manutenção', { data: '2026-09-20', id: 'R1-antigo' }),
+    registro('R2', 'Disponível'),
+  ];
+  const resultado = removerEquipamentosDoQuadro(equipamentos, registros, [
+    { equipamentoId: 'R1', registroId: 'R1-2026-09-28' },
+    { equipamentoId: 'R2' },
+    { equipamentoId: 'R3' },
+  ]);
+  assert.deepEqual(resultado.alvos.map(item => item.id), ['R1', 'R2'], 'já desmobilizado não entra de novo');
+  assert.equal(resultado.equipamentosAtualizados.find(item => item.id === 'R1')?.status, 'Desmobilizado');
+  assert.equal(resultado.equipamentosAtualizados.find(item => item.id === 'R2')?.status, 'Desmobilizado');
+  assert.deepEqual(resultado.registrosAtualizados.map(item => item.id).sort(), ['R1-antigo', 'R2-2026-09-28'], 'só some o registroId informado; sem ele o lançamento fica, e o histórico sempre fica');
+});
+
+test('remover do quadro sem lançamento de hoje não mexe nos registros', () => {
+  const equipamentos = [equipamento('R4')];
+  const registros = [registro('R4', 'Em operação', { data: '2026-09-20' })];
+  const resultado = removerEquipamentosDoQuadro(equipamentos, registros, [{ equipamentoId: 'R4' }]);
+  assert.equal(resultado.registrosAtualizados.length, 1);
+  assert.deepEqual(resultado.registrosAtualizados, registros);
 });

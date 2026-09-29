@@ -57,6 +57,10 @@ interface Props {
   onSave: (registro: ControleEquipamentoDiario, novo: boolean) => void;
   onSaveMany: (itens: Array<{ registro: ControleEquipamentoDiario; novo: boolean }>) => void;
   onDeleteMany: (ids: string[]) => void;
+  /** Mesma permissão de excluir em Cadastros; quem não tem não desmobiliza pelo quadro. */
+  podeRemover?: boolean;
+  /** Desmobiliza as máquinas (saem do quadro pra sempre) e apaga o lançamento de hoje, se houver. */
+  onRemoverEquipamentos?: (itens: Array<{ equipamentoId: string; registroId?: string }>) => void;
   onNavigate: (aba: string) => void;
 }
 
@@ -98,7 +102,7 @@ interface Indicador {
   aoClicar?: () => void;
 }
 
-export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, onNavigate }: Props) {
+export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   // Mesma lista de motoristas e operadores do Controle de Frotas, para o operador
@@ -118,6 +122,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   const [modoSelecao, setModoSelecao] = useState(false);
   const [selecionados, setSelecionados] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmarExclusaoSelecao, setConfirmarExclusaoSelecao] = useState(false);
+  const [remocaoPendente, setRemocaoPendente] = useState<readonly CartaoFrota[] | null>(null);
   const [vistaEscolhida, setVistaEscolhida] = useState<Vista>(vistaGuardada);
   const vista: Vista = podeEditar ? vistaEscolhida : 'quadro';
   const trocarVista = (nova: Vista) => {
@@ -225,6 +230,15 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
     setConfirmarExclusaoSelecao(false);
     setSelecionados(new Set());
     setModoSelecao(false);
+  };
+  const confirmarRemocao = () => {
+    if (!remocaoPendente || !onRemoverEquipamentos) return;
+    onRemoverEquipamentos(remocaoPendente.map(cartao => ({ equipamentoId: cartao.equipamentoId, registroId: cartao.registroId })));
+    setAviso(`${remocaoPendente.length} máquina(s) removida(s) do quadro. Para trazer de volta, reative em Cadastros > Equipamentos.`);
+    setRemocaoPendente(null);
+    setSelecionados(new Set());
+    setModoSelecao(false);
+    setAbertoId(null);
   };
   const alternarGrupo = (canteiro: string) => setFechados(atual => {
     const proximoConjunto = new Set(atual);
@@ -529,10 +543,16 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => setConfirmarExclusaoSelecao(true)} disabled={selecionadosExcluiveis.length === 0} className={`ml-auto inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="quadro-excluir-sel">
+                <button type="button" onClick={() => setConfirmarExclusaoSelecao(true)} disabled={selecionadosExcluiveis.length === 0} className={`${podeRemover && onRemoverEquipamentos ? '' : 'ml-auto'} inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="quadro-excluir-sel">
                   <Trash2 className="size-4" aria-hidden="true" />
                   Excluir lançamento{selecionadosExcluiveis.length ? ` (${selecionadosExcluiveis.length})` : ''}
                 </button>
+                {podeRemover && onRemoverEquipamentos && (
+                  <button type="button" onClick={() => setRemocaoPendente(cartoesSelecionados)} disabled={cartoesSelecionados.length === 0} className={`ml-auto inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="quadro-remover-sel">
+                    <Trash2 className="size-4" aria-hidden="true" />
+                    Remover do quadro{cartoesSelecionados.length ? ` (${cartoesSelecionados.length})` : ''}
+                  </button>
+                )}
               </>
             )}
             <button type="button" onClick={alternarModoSelecao} className="inline-flex min-h-9 items-center gap-1 px-2 text-xs font-semibold text-slate-500 hover:text-[#176b4d]">
@@ -610,6 +630,22 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
         <p className="mt-3 font-mono text-sm font-bold text-slate-800">{selecionadosExcluiveis.map(cartao => cartao.prefixo).join(', ')}</p>
       </Modal>
 
+      <Modal
+        open={Boolean(remocaoPendente)}
+        title={`Remover ${remocaoPendente?.length || 0} máquina(s) do quadro pra sempre?`}
+        size="sm"
+        onClose={() => setRemocaoPendente(null)}
+        footer={(
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setRemocaoPendente(null)} className={BOTAO_SECUNDARIO}>Cancelar</button>
+            <button type="button" onClick={confirmarRemocao} className={BOTAO_PERIGO} data-testid="quadro-confirmar-remocao">Remover do quadro</button>
+          </div>
+        )}
+      >
+        <p className="text-sm text-slate-600">Sai do Quadro da Frota e do Controle de Frotas até alguém reativar em Cadastros &gt; Equipamentos. O cadastro e o histórico continuam guardados.</p>
+        <p className="mt-3 font-mono text-sm font-bold text-slate-800">{remocaoPendente?.map(cartao => cartao.prefixo).join(', ')}</p>
+      </Modal>
+
       <PainelEquipamento
         cartao={aberto}
         podeEditar={podeEditar}
@@ -619,6 +655,8 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
         onFechar={() => setAbertoId(null)}
         onSalvar={salvar}
         onAbrirControle={() => { setAbertoId(null); onNavigate('controle-equipamentos'); }}
+        podeRemover={podeRemover && Boolean(onRemoverEquipamentos)}
+        onRemover={aberto ? () => setRemocaoPendente([aberto]) : undefined}
       />
 
       <Modal open={atalhosAberto} title="Atalhos do teclado" size="sm" onClose={() => setAtalhosAberto(false)}>
