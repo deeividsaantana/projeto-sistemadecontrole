@@ -191,3 +191,4 @@ import './avancoFrentes.test';
 import './resumoDoDia.test';
 import './quadroFrota.test';
 import './sgeApontamentos.test';
+import './dailyRecordFormModal.test';

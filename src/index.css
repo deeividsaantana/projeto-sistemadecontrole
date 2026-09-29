@@ -617,27 +617,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   to { transform: none; }
 }
 
-/* Portalled entry form shares the system language outside #app-root. */
-.fleet-entry-dialog form > div > div > section {
-  border-radius: 3px;
-  box-shadow: none;
-  border-color: #cdd6d1;
-}
-.fleet-entry-dialog :is(input, select, textarea, button) { border-radius: 3px; }
-.fleet-entry-dialog form > aside,
-.fleet-entry-dialog form > aside > footer { background: #082f25; color: #fff; }
-.fleet-entry-dialog form > aside :is(dt, .text-slate-400, .text-slate-500, .text-slate-600) { color: #b6cbc1; }
-.fleet-entry-dialog form > aside button[type="submit"] { background: #ed5d24; color: #fff; }
-.fleet-entry-dialog form > aside button[type="submit"]:hover { background: #cc4717; }
 #app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #d6e5dd; }
 #app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #fff; }
-
-@media (max-width: 767px) {
-  .fleet-entry-dialog :is(input, select, textarea) { font-size: 16px; }
-  .fleet-entry-dialog form > div { padding: 12px; }
-  .fleet-entry-dialog form > div > div { gap: 12px; }
-  .fleet-entry-dialog form > aside > footer { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
-}
 
 @media (max-width: 1180px) {
   .dashboard-hero__content { width: min(72%, 54rem); }
@@ -802,15 +783,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   background-color: #fff !important;
   color: #10211c !important;
 }
-.fleet-entry-dialog form > aside,
-.fleet-entry-dialog form > aside > footer {
-  border-color: #d5dfda;
-  background: #fff;
-  color: #10211c;
-}
-.fleet-entry-dialog form > aside :is(dt, .text-slate-400, .text-slate-500, .text-slate-600) { color: #64736c; }
-.fleet-entry-dialog form > aside button[type="submit"] { background: #087653; color: #fff; }
-
 /* Clear the remaining legacy dark panels without touching the original
    navigation or colored primary actions. */
 #main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody):is(
