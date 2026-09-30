@@ -47,7 +47,6 @@ const PENDENCIAS: Record<string, readonly Regra[]> = {
   RelatoriosTab: ['gsap', 'movimentoReduzido'],
   TicketsJazidaTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
   TimelineTab: ['gsap', 'movimentoReduzido'],
-  UsuariosTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
 };
 
 const components = new URL('../src/components/', import.meta.url);
