@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { Building2, Eye, Fuel, HardHat, Search, TicketCheck, Truck, Users } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, Funcionario, GrupoEquipe, ObraLocal, OrdemServico, PresencaApontamento, TicketJazida, VinculoOperadorEquipamento } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
@@ -117,12 +119,21 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
     ['Colaboradores', funcionarios.length, Users], ['Combustível', abastecimentos.length, Fuel], ['Tickets', tickets.length, TicketCheck],
   ] as const;
 
-  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>([safePage, filtered.length]);
+
+  // Entrada do cabeçalho, filtros e cartões, no passo do Painel.
+  useGSAP(() => {
+    const raiz = escopoMotion.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-consulta-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopoMotion });
 
   return (
     <div ref={escopoMotion} className="space-y-5" id="consulta-geral-tab">
-      <PageHeader title="Consulta Geral" description="Localize cadastros e movimentos de todo o sistema sem abrir cada módulo." />
-      <section className="rounded-lg border border-slate-200 bg-white p-5 md:p-6">
+      <div data-consulta-reveal>
+        <PageHeader title="Consulta Geral" description="Localize cadastros e movimentos de todo o sistema sem abrir cada módulo." />
+      </div>
+      <section data-consulta-reveal className="rounded-lg border border-slate-200 bg-white p-5 md:p-6">
         <div className="grid gap-3 md:grid-cols-[1fr_220px_220px]">
           <label className="relative min-w-0">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -154,11 +165,11 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
         </details>
       </section>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+      <div data-consulta-reveal className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         {cards.map(([label, value, Icon]) => <button key={label} type="button" onClick={() => setModuleFilter(label)} className="group min-w-0 rounded-lg border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"><Icon className="h-5 w-5 text-emerald-600 transition-transform duration-200 group-hover:scale-110" /><strong className="mt-3 block text-2xl font-black tabular-nums text-slate-900"><CountUp value={value} /></strong><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span></button>)}
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
+      <section data-consulta-reveal className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-sm font-black text-slate-900">Vínculo motorista ↔ equipamento</h2><p className="mt-1 text-xs text-slate-500">Fonte canônica em tempo real; um novo vínculo encerra automaticamente o vínculo anterior do colaborador ou da frota.</p></div><span className="text-xs font-black text-emerald-700">{vinculos.filter(link => link.status === 'ATIVO').length} vínculo(s) ativo(s)</span></div>
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
           <select value={linkEmployee} onChange={event => setLinkEmployee(event.target.value)} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700"><option value="">Selecione o colaborador</option>{funcionarios.filter(item => item.ativo && !['INATIVO', 'DESMOBILIZADO'].includes(item.status || '')).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(item => <option key={item.id} value={item.id}>{item.nome} · {item.matricula || item.cargo}</option>)}</select>
@@ -169,7 +180,7 @@ export default function ConsultaGeralTab({ empresas, obras, equipamentos, funcio
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[850px] text-left text-xs"><thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Colaborador</th><th>Equipamento</th><th>Início</th><th>Fim</th><th>Responsável</th><th>Status</th><th className="pr-3 text-right">Ação</th></tr></thead><tbody className="divide-y divide-slate-100">{vinculos.slice(0,100).map(link => <tr key={link.id}><td className="p-3 font-bold text-slate-900">{link.funcionarioNome}</td><td className="font-mono font-black text-emerald-700">{link.equipamentoPrefixo}</td><td>{new Date(link.inicioEm).toLocaleString('pt-BR')}</td><td>{link.fimEm ? new Date(link.fimEm).toLocaleString('pt-BR') : '—'}</td><td>{link.responsavelAlteracao}</td><td><span className={`rounded-full px-2 py-1 text-[9px] font-black ${link.status === 'ATIVO' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{link.status}</span></td><td className="pr-3 text-right">{link.status === 'ATIVO' && <button type="button" onClick={() => onUnlink(link.id)} className="font-black text-rose-600 hover:underline">Encerrar</button>}</td></tr>)}</tbody></table></div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <section data-consulta-reveal className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div><h2 className="text-sm font-black text-slate-900">Resultados</h2><span className="text-xs font-bold text-emerald-700">{filtered.length} encontrado(s)</span></div>
           <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-600"><option value={10}>10 por página</option><option value={25}>25 por página</option><option value={50}>50 por página</option><option value={100}>100 por página</option></select>
