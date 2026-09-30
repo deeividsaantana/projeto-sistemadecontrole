@@ -3,7 +3,9 @@
  * seis ações grandes — nada de caçar item em menu de quarenta linhas com luva
  * na mão. Todo número aqui é lido dos módulos; a tela não guarda nada próprio.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import {
   Activity,
   AlertTriangle,
@@ -50,6 +52,7 @@ export default function ModoCampoTab({
   nuvemConectada,
   onNavigate,
 }: ModoCampoTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
   const hoje = isoDay(new Date());
   const [pendentes, setPendentes] = useState(0);
   const [online, setOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
@@ -89,14 +92,22 @@ export default function ModoCampoTab({
     };
   }, [hoje, presencasLink, controlesEquipamentos, producao, ocorrencias]);
 
-  return (
-    <div id="modo-campo-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Modo Campo"
-        description={`Resumo de hoje (${hoje.split('-').reverse().join('/')}) e as ações do dia, em botões grandes.`}
-      />
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-campo-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
 
-      <div className={`mt-4 flex flex-wrap items-center gap-2 rounded-lg border px-4 py-3 ${online && nuvemConectada ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+  return (
+    <div ref={escopo} id="modo-campo-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div data-campo-reveal>
+        <PageHeader
+          title="Modo Campo"
+          description={`Resumo de hoje (${hoje.split('-').reverse().join('/')}) e as ações do dia, em botões grandes.`}
+        />
+      </div>
+
+      <div data-campo-reveal className={`mt-4 flex flex-wrap items-center gap-2 rounded-lg border px-4 py-3 ${online && nuvemConectada ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
         {online && nuvemConectada
           ? <Wifi className="h-4 w-4 shrink-0 text-emerald-600" />
           : <CloudOff className="h-4 w-4 shrink-0 text-amber-600" />}
@@ -112,7 +123,7 @@ export default function ModoCampoTab({
         )}
       </div>
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5">
+      <section data-campo-reveal className="mt-4 grid grid-cols-2 gap-2.5">
         {[
           { label: 'Presentes hoje', valor: String(resumo.presentes), alerta: resumo.presentes === 0 },
           { label: 'Ausentes', valor: String(resumo.ausentes), alerta: resumo.ausentes > 0 },
@@ -127,13 +138,13 @@ export default function ModoCampoTab({
       </section>
 
       {resumo.ocorrencias > 0 && (
-        <p className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+        <p data-campo-reveal className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
           {resumo.ocorrencias} ocorrência(s) registrada(s) hoje
         </p>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-2.5">
+      <div data-campo-reveal className="mt-4 grid grid-cols-2 gap-2.5">
         {ACOES.map(acao => (
           <button
             key={acao.tab}
