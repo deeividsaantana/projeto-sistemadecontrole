@@ -2,7 +2,9 @@
  * Colaboradores: o efetivo e a ficha individual, reunindo o que os módulos já
  * registraram sobre a pessoa — equipe, presença, frota operada e viagens.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { ArrowLeft, Building2, ClipboardCheck, Search, Truck, UserRound, UserCog, Users } from 'lucide-react';
 import type {
   ChecklistEquipamento,
@@ -54,6 +56,7 @@ export default function ColaboradoresTab({
   onAlterarSituacao,
   responsavel = '',
 }: ColaboradoresTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
   const [busca, setBusca] = useState('');
   const [situacao, setSituacao] = useState<(typeof SITUACOES)[number]>('Todas');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
@@ -75,6 +78,12 @@ export default function ColaboradoresTab({
   }, [funcionarios, situacao, busca]);
 
   const selecionado = selecionadoId ? funcionarios.find(item => item.id === selecionadoId) : undefined;
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-colaboradores-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [selecionadoId] });
 
   if (selecionado) {
     const situacaoAtual = selecionado.status || (selecionado.ativo ? 'ATIVO' : 'INATIVO');
@@ -109,39 +118,42 @@ export default function ColaboradoresTab({
     ];
 
     return (
-      <div id="colaborador-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div id="colaborador-ficha" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadoId(null)}
+          data-colaboradores-reveal
           className="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Voltar para colaboradores
         </button>
 
-        <PageHeader
-          title={selecionado.nome}
-          description={[selecionado.matricula && `Matrícula ${selecionado.matricula}`, selecionado.cargo, empresa].filter(Boolean).join(' · ')}
-          actions={(
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(situacaoAtual)}`}>{situacaoAtual}</span>
-              {onAlterarSituacao && (
-                <button
-                  type="button"
-                  onClick={() => setMudanca({
-                    situacao: situacaoAtual === 'ATIVO' ? 'FÉRIAS' : 'ATIVO',
-                    data: new Date().toISOString().slice(0, 10),
-                    motivo: '',
-                  })}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-                >
-                  <UserCog className="h-4 w-4" /> Alterar situação
-                </button>
-              )}
-            </div>
-          )}
-        />
+        <div data-colaboradores-reveal>
+          <PageHeader
+            title={selecionado.nome}
+            description={[selecionado.matricula && `Matrícula ${selecionado.matricula}`, selecionado.cargo, empresa].filter(Boolean).join(' · ')}
+            actions={(
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(situacaoAtual)}`}>{situacaoAtual}</span>
+                {onAlterarSituacao && (
+                  <button
+                    type="button"
+                    onClick={() => setMudanca({
+                      situacao: situacaoAtual === 'ATIVO' ? 'FÉRIAS' : 'ATIVO',
+                      data: new Date().toISOString().slice(0, 10),
+                      motivo: '',
+                    })}
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
+                  >
+                    <UserCog className="h-4 w-4" /> Alterar situação
+                  </button>
+                )}
+              </div>
+            )}
+          />
+        </div>
 
-        <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <section data-colaboradores-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           {indicadores.map(item => (
             <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
@@ -151,7 +163,7 @@ export default function ColaboradoresTab({
           ))}
         </section>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div data-colaboradores-reveal className="mt-4 grid gap-4 xl:grid-cols-2">
           <Card className="min-w-0" title="Identificação">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
               {[
@@ -326,14 +338,16 @@ export default function ColaboradoresTab({
   }
 
   return (
-    <div id="colaboradores-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Colaboradores"
-        description="Efetivo da obra. Abra um colaborador para ver a ficha completa."
-        actions={<button type="button" onClick={() => onNavigate('cadastros')} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Cadastrar colaborador</button>}
-      />
+    <div id="colaboradores-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div data-colaboradores-reveal>
+        <PageHeader
+          title="Colaboradores"
+          description="Efetivo da obra. Abra um colaborador para ver a ficha completa."
+          actions={<button type="button" onClick={() => onNavigate('cadastros')} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Cadastrar colaborador</button>}
+        />
+      </div>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div data-colaboradores-reveal className="mt-4 flex flex-col gap-2 sm:flex-row">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Buscar colaborador</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -357,11 +371,11 @@ export default function ColaboradoresTab({
       <p className="mt-3 text-xs font-medium text-slate-500">{lista.length} colaborador(es)</p>
 
       {lista.length === 0 ? (
-        <div className="mt-4 rounded-lg border border-slate-200 bg-white">
+        <div data-colaboradores-reveal className="mt-4 rounded-lg border border-slate-200 bg-white">
           <EmptyState icon={UserRound} title="Nenhum colaborador encontrado" description="Ajuste a busca ou cadastre o efetivo." />
         </div>
       ) : (
-        <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul data-colaboradores-reveal className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {lista.map(item => {
             const equipe = equipePorFuncionario.get(item.id);
             const situacaoItem = item.status || (item.ativo ? 'ATIVO' : 'INATIVO');
