@@ -3,7 +3,9 @@
  * serviço externo e sem palpite: quando não há informação ele diz que não há, em
  * vez de devolver um número que ninguém conseguiria conferir.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { ArrowRight, Bot, Send } from 'lucide-react';
 import {
   responder,
@@ -25,6 +27,7 @@ interface Troca {
 }
 
 export default function AssistenteTab({ dados, onNavigate }: AssistenteTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [pergunta, setPergunta] = useState('');
   const [historico, setHistorico] = useState<Troca[]>([]);
@@ -43,15 +46,23 @@ export default function AssistenteTab({ dados, onNavigate }: AssistenteTabProps)
     setPergunta('');
   };
 
-  return (
-    <div id="assistente-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Assistente"
-        description="Pergunte sobre a obra. A resposta vem dos registros do sistema, nunca de estimativa."
-        actions={<PeriodFilter value={period} onChange={setPeriod} />}
-      />
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-assistente-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
 
-      <section className="mt-4 grid min-h-[31rem] overflow-hidden rounded-[3px] border border-slate-200 bg-white xl:grid-cols-[19rem_minmax(0,1fr)]">
+  return (
+    <div id="assistente-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div data-assistente-reveal>
+        <PageHeader
+          title="Assistente"
+          description="Pergunte sobre a obra. A resposta vem dos registros do sistema, nunca de estimativa."
+          actions={<PeriodFilter value={period} onChange={setPeriod} />}
+        />
+      </div>
+
+      <section data-assistente-reveal className="mt-4 grid min-h-[31rem] overflow-hidden rounded-[3px] border border-slate-200 bg-white xl:grid-cols-[19rem_minmax(0,1fr)]">
         <aside className="border-b border-slate-200 p-4 xl:border-b-0 xl:border-r">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <span className="grid size-10 place-items-center rounded-[3px] border border-emerald-200 bg-emerald-50"><Bot className="h-5 w-5 text-emerald-700" /></span>
