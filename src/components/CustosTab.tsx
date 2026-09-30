@@ -6,6 +6,8 @@
  * previsto — nunca somado ao realizado.
  */
 import { useMemo, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { Coins, Plus, Search } from 'lucide-react';
 import type {
   Abastecimento,
@@ -74,7 +76,7 @@ export default function CustosTab({
 }: CustosTabProps) {
   const hoje = isoDay(new Date());
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
-  const escopoMotion = useEntradaDeLista<HTMLDivElement>();
+  const escopoMotion = useEntradaDeLista<HTMLDivElement>([period.from, period.to]);
   const [busca, setBusca] = useState('');
   const [erro, setErro] = useState('');
   const [aberto, setAberto] = useState(false);
@@ -111,6 +113,12 @@ export default function CustosTab({
     || normalizeComparable(`${item.descricao} ${item.categoria} ${item.origem}`).includes(termo));
 
   const paginacao = usePaginacao(listados);
+
+  useGSAP(() => {
+    const raiz = escopoMotion.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-custos-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopoMotion });
 
   const abrir = (lancamento?: LancamentoCusto) => {
     setEditado(lancamento || null);
@@ -167,22 +175,24 @@ export default function CustosTab({
 
   return (
     <div ref={escopoMotion} id="custos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Custos"
-        description="Consolidado do período: combustível e manutenção vêm dos registros; locação e terceiros são lançados aqui."
-        actions={(
-          <div className="flex flex-wrap items-center gap-2">
-            <PeriodFilter value={period} onChange={setPeriod} />
-            {podeEditar && (
-              <button type="button" onClick={() => abrir()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
-                <Plus className="h-4 w-4" /> Novo lançamento
-              </button>
-            )}
-          </div>
-        )}
-      />
+      <div data-custos-reveal>
+        <PageHeader
+          title="Custos"
+          description="Consolidado do período: combustível e manutenção vêm dos registros; locação e terceiros são lançados aqui."
+          actions={(
+            <div className="flex flex-wrap items-center gap-2">
+              <PeriodFilter value={period} onChange={setPeriod} />
+              {podeEditar && (
+                <button type="button" onClick={() => abrir()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
+                  <Plus className="h-4 w-4" /> Novo lançamento
+                </button>
+              )}
+            </div>
+          )}
+        />
+      </div>
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-custos-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Custo do período', valor: moeda(totalCustos(custos)) },
           { label: 'Lançamentos', valor: String(custos.length) },
@@ -196,7 +206,7 @@ export default function CustosTab({
         ))}
       </section>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div data-custos-reveal className="mt-4 grid gap-3 lg:grid-cols-2">
         <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
           <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">Por categoria</h2>
           {porCategoria.length === 0 ? (
@@ -235,7 +245,7 @@ export default function CustosTab({
         </section>
       </div>
 
-      <label className="relative mt-4 block">
+      <label data-custos-reveal className="relative mt-4 block">
         <span className="sr-only">Buscar custo</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -246,7 +256,7 @@ export default function CustosTab({
         />
       </label>
 
-      <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-custos-reveal className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {listados.length === 0 ? (
           <EmptyState icon={Coins} title="Sem custos no período" description="Combustível e manutenção aparecem quando o custo é informado no registro de origem." />
         ) : (
