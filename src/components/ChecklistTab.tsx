@@ -3,6 +3,8 @@
  * poucos toques por item e foto só quando precisa registrar evidência.
  */
 import { useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { Camera, ClipboardCheck, Plus, Trash2, X } from 'lucide-react';
 import type { ChecklistEquipamento, Equipamento, ItemChecklist, ModeloChecklist, RespostaChecklist } from '../types';
 import { MODELO_CHECKLIST_PADRAO, itensCriticosReprovados, resumoChecklist } from '../utils/checklist';
@@ -48,6 +50,7 @@ export default function ChecklistTab({
   const [novoItem, setNovoItem] = useState('');
   const fotoAlvo = useRef<string | null>(null);
   const inputFoto = useRef<HTMLInputElement>(null);
+  const escopo = useRef<HTMLDivElement>(null);
 
   const itensDoModelo = modelo.itens.length ? modelo.itens : MODELO_CHECKLIST_PADRAO.itens;
 
@@ -130,22 +133,30 @@ export default function ChecklistTab({
 
   const criticosPendentes = itensCriticosReprovados(itens).length;
 
-  return (
-    <div id="checklist-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Checklist"
-        description="Inspeção do equipamento antes da operação. Item crítico reprovado abre ordem de serviço na hora."
-        actions={podeEditar ? (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setEditandoModelo(true)} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Itens do checklist</button>
-            <button type="button" onClick={iniciar} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
-              <Plus className="h-4 w-4" /> Novo checklist
-            </button>
-          </div>
-        ) : undefined}
-      />
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-checklist-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+  return (
+    <div id="checklist-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div data-checklist-reveal>
+        <PageHeader
+          title="Checklist"
+          description="Inspeção do equipamento antes da operação. Item crítico reprovado abre ordem de serviço na hora."
+          actions={podeEditar ? (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setEditandoModelo(true)} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Itens do checklist</button>
+              <button type="button" onClick={iniciar} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
+                <Plus className="h-4 w-4" /> Novo checklist
+              </button>
+            </div>
+          ) : undefined}
+        />
+      </div>
+
+      <div data-checklist-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {historico.length === 0 ? (
           <EmptyState icon={ClipboardCheck} title="Nenhum checklist registrado" description="Comece um checklist antes da saída do equipamento." />
         ) : (
