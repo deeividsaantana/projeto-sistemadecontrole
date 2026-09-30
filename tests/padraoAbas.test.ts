@@ -22,12 +22,7 @@ const PALETA = new Set(['#176b4d', '#f26a2e', '#718087', '#f7f8f6']);
 
 const PENDENCIAS: Record<string, readonly Regra[]> = {
   ConfiguracoesTab: ['pageHeader', 'gsap', 'movimentoReduzido'],
-  AdministracaoTab: ['gsap', 'movimentoReduzido'],
-  ApontamentosTab: ['gsap', 'movimentoReduzido'],
-  AuditoriaTab: ['gsap', 'movimentoReduzido'],
-  ChecklistTab: ['gsap', 'movimentoReduzido'],
   ColaboradoresTab: ['gsap', 'movimentoReduzido'],
-  ConsultaGeralTab: ['gsap', 'movimentoReduzido'],
   CustosTab: ['gsap', 'movimentoReduzido'],
   DdsTreinamentosTab: ['gsap', 'movimentoReduzido'],
   DiarioObraTab: ['gsap', 'movimentoReduzido'],
@@ -46,7 +41,6 @@ const PENDENCIAS: Record<string, readonly Regra[]> = {
   RelatoriosTab: ['gsap', 'movimentoReduzido'],
   TicketsJazidaTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
   TimelineTab: ['gsap', 'movimentoReduzido'],
-  UsuariosTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
 };
 
 const components = new URL('../src/components/', import.meta.url);
