@@ -5565,6 +5565,8 @@ export default function App() {
                 canteiros={canteirosNomes}
                 frentes={frentesServico}
                 funcionarios={funcionarios}
+                empresas={empresas}
+                ordensServico={ordensServico}
                 operationalDrivers={motoristasOperacionais}
                 podeEditar={pode(currentUserRole, 'controle-equipamentos', 'editar')}
                 usuario={activeUserName}

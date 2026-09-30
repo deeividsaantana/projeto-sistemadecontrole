@@ -13,8 +13,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
-import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../types';
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, FileSpreadsheet, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Printer, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
+import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, FrenteServico, Funcionario, GrupoEquipe, OrdemServico } from '../types';
 import { CountUp, Modal, PageHeader, isoDay } from '../shared/ui';
 import {
   CANTEIROS,
@@ -42,6 +42,10 @@ import { ColunaCanteiro } from './quadroFrota/ColunaCanteiro';
 import { LancarFrota } from './quadroFrota/LancarFrota';
 import { PainelEquipamento } from './quadroFrota/PainelEquipamento';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from './cadastros/estilos';
+import { createEmptyFleetFilters } from '../fleet/domain';
+import { createFleetReportViewModel } from '../fleet/reportService';
+import { generateFleetPdf } from '../fleet/pdfReport';
+import { exportFleetExcel } from '../fleet/excelExport';
 
 interface Props {
   equipamentos: readonly Equipamento[];
@@ -52,6 +56,9 @@ interface Props {
   canteiros?: readonly string[];
   frentes: readonly FrenteServico[];
   funcionarios: readonly Funcionario[];
+  /** Empresas e ordens de serviço, só pro relatório do dia (PDF/Excel), igual ao Controle de Frotas. */
+  empresas?: readonly Empresa[];
+  ordensServico?: readonly OrdemServico[];
   /** Motoristas e operadores cadastrados no Controle de Frotas; mesma lista das três abas. */
   operationalDrivers?: readonly Funcionario[];
   podeEditar: boolean;
@@ -104,7 +111,7 @@ interface Indicador {
   aoClicar?: () => void;
 }
 
-export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate }: Props) {
+export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, empresas = [], ordensServico = [], operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   // Mesma lista de motoristas e operadores do Controle de Frotas, para o operador
@@ -156,6 +163,42 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
   const filtrados = useMemo(() => filtrarCartoes(cartoes, filtros, ordem), [cartoes, filtros, ordem]);
   const filtrando = Object.values(filtros).some(Boolean);
   const grupos = useMemo(() => agruparPorCanteiro(filtrados, !filtrando, canteiros), [filtrados, filtrando, canteiros]);
+
+  // Relatório do dia (PDF/Excel): mesmo formato do Controle de Frotas, filtrado pro dia do quadro.
+  const relatorioDoDia = useMemo(
+    () => createFleetReportViewModel(
+      { records: [...registros], equipment: [...equipamentos], employees: [...funcionarios], companies: [...empresas], teams: [...gruposEquipe], maintenanceOrders: [...ordensServico] },
+      createEmptyFleetFilters(dia),
+    ),
+    [registros, equipamentos, funcionarios, empresas, gruposEquipe, ordensServico, dia],
+  );
+  const [exportando, setExportando] = useState('');
+  const gerarPdf = async () => {
+    if (exportando) return;
+    setExportando('pdf');
+    setAviso('Gerando relatório do dia em PDF...');
+    try {
+      const resultado = await generateFleetPdf(relatorioDoDia);
+      setAviso(`${resultado.fileName} gerado com ${resultado.rows} máquina(s) em ${resultado.pages} página(s).`);
+    } catch (erro) {
+      setAviso(erro instanceof Error ? erro.message : 'Não foi possível gerar o PDF.');
+    } finally {
+      setExportando('');
+    }
+  };
+  const gerarExcel = async () => {
+    if (exportando) return;
+    setExportando('excel');
+    setAviso('Gerando relatório do dia em Excel...');
+    try {
+      const resultado = await exportFleetExcel(relatorioDoDia);
+      setAviso(`${resultado.fileName} gerado com as abas ${resultado.sheets.join(', ')}.`);
+    } catch (erro) {
+      setAviso(erro instanceof Error ? erro.message : 'Não foi possível gerar o Excel.');
+    } finally {
+      setExportando('');
+    }
+  };
   // Ordem em que a tela mostra as máquinas: é a ordem do "Salvar e próximo".
   const naTela = useMemo(() => grupos.filter(grupo => !fechados.has(grupo.canteiro)).flatMap(grupo => grupo.cartoes), [grupos, fechados]);
   const contagemCanteiro = useMemo(() => {
@@ -357,6 +400,23 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
               <Keyboard className="size-4" aria-hidden="true" />
               <kbd className="text-xs">?</kbd>
             </button>
+            <details className="erp-fleet-menu group relative w-full sm:w-auto" data-testid="quadro-relatorios">
+              <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer list-none px-3 sm:w-auto [&::-webkit-details-marker]:hidden`}>
+                <FileSpreadsheet className="size-4" aria-hidden="true" />
+                Relatório
+                <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="absolute right-0 z-30 mt-2 w-full min-w-56 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)] sm:w-60">
+                <button type="button" disabled={Boolean(exportando)} onClick={() => void gerarPdf()} className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`} data-testid="quadro-relatorio-pdf">
+                  <Printer className="size-4" aria-hidden="true" />
+                  {exportando === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}
+                </button>
+                <button type="button" disabled={Boolean(exportando)} onClick={() => void gerarExcel()} className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`} data-testid="quadro-relatorio-excel">
+                  <FileSpreadsheet className="size-4" aria-hidden="true" />
+                  {exportando === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}
+                </button>
+              </div>
+            </details>
             {podeEditar ? (
               <button type="button" onClick={atualizarPendentes} disabled={pendentes.length === 0} className={`${BOTAO_PRIMARIO} w-full px-5 max-sm:order-first sm:w-auto`} data-testid="quadro-acao-principal">
                 {pendentes.length === 0 ? <CheckCircle2 className="size-5" aria-hidden="true" /> : <Truck className="size-5" aria-hidden="true" />}
