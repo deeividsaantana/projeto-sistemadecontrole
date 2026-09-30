@@ -4,7 +4,9 @@
  * telas que mudam dinheiro, contrato ou permissão). O log é a única fonte: não
  * existe contador salvo que possa divergir do histórico.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { ShieldCheck } from 'lucide-react';
 import type { HistoryLog } from '../types';
 import {
@@ -48,6 +50,7 @@ const tomDaAcao = (acao: HistoryLog['acao']) => {
 };
 
 export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [usuario, setUsuario] = useState('');
   const [tela, setTela] = useState('');
@@ -70,15 +73,23 @@ export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
   const paginaAtual = Math.min(pagina, Math.max(1, Math.ceil(filtrados.length / POR_PAGINA)));
   const visiveis = filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA);
 
-  return (
-    <div id="auditoria-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Auditoria"
-        description="Quem alterou o quê e quando, com destaque para ações sensíveis."
-        actions={<PeriodFilter value={period} onChange={setPeriod} />}
-      />
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-auditoria-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+  return (
+    <div id="auditoria-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div data-auditoria-reveal>
+        <PageHeader
+          title="Auditoria"
+          description="Quem alterou o quê e quando, com destaque para ações sensíveis."
+          actions={<PeriodFilter value={period} onChange={setPeriod} />}
+        />
+      </div>
+
+      <section data-auditoria-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Ações no período', valor: String(resumo.total) },
           { label: 'Ações sensíveis', valor: String(resumo.sensiveis) },
@@ -92,7 +103,7 @@ export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
         ))}
       </section>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div data-auditoria-reveal className="mt-4 grid gap-3 lg:grid-cols-2">
         {[['Por usuário', porUsuario], ['Por tela', porTela]].map(([titulo, dados]) => (
           <section key={String(titulo)} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
             <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{String(titulo)}</h2>
@@ -112,7 +123,7 @@ export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
         ))}
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-auditoria-reveal className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs font-bold text-slate-600">
           Usuário
           <select value={usuario} onChange={event => { setUsuario(event.target.value); setPagina(1); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
@@ -144,7 +155,7 @@ export default function AuditoriaTab({ logs }: AuditoriaTabProps) {
         </label>
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-auditoria-reveal className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {visiveis.length === 0 ? (
           <EmptyState icon={ShieldCheck} title="Nenhuma ação no período" description="Ajuste o período ou os filtros." />
         ) : (
