@@ -9,7 +9,9 @@
  * criar um acesso pelo sistema. Quem decide se a criação vale é o servidor
  * (assertAdministrator); esta tela é só o caminho até lá.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { AlertTriangle, CheckCircle2, ClipboardCopy, Database, Link2, MessageCircle, Plus, RotateCcw, ShieldCheck } from 'lucide-react';
 import UsuariosTab from './UsuariosTab';
 import { INTERMEDIATE_TABLE_IDS } from '../firebaseCloudSync';
@@ -41,6 +43,7 @@ export default function AdministracaoTab({
   onSaveGrupoEquipe,
   onNavigate,
 }: AdministracaoTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
   const [linkFeedback, setLinkFeedback] = useState('');
   const volumes = useMemo(
     () => typeof localStorage === 'undefined' ? [] : volumePorColecao(localStorage),
@@ -80,14 +83,22 @@ export default function AdministracaoTab({
     setLinkFeedback(generalToken ? 'Link geral renovado.' : 'Link geral criado.');
   };
 
-  return (
-    <div id="administracao-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Administração"
-        description="Saúde do armazenamento, registro das coleções e estado da sincronização."
-      />
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-admin-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
 
-      <section className="mt-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="presence-public-link-title">
+  return (
+    <div id="administracao-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div data-admin-reveal>
+        <PageHeader
+          title="Administração"
+          description="Saúde do armazenamento, registro das coleções e estado da sincronização."
+        />
+      </div>
+
+      <section data-admin-reveal className="mt-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="presence-public-link-title">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><Link2 className="h-5 w-5" /></span>
@@ -111,7 +122,7 @@ export default function AdministracaoTab({
         {linkFeedback && <p role="status" className="mt-2 text-xs font-semibold text-emerald-800">{linkFeedback}</p>}
       </section>
 
-      <div className={`mt-4 rounded-lg border px-4 py-3 ${divergencias.length === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
+      <div data-admin-reveal className={`mt-4 rounded-lg border px-4 py-3 ${divergencias.length === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
         {divergencias.length === 0 ? (
           <p className="flex items-center gap-2 text-xs font-bold text-emerald-900">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
@@ -132,7 +143,7 @@ export default function AdministracaoTab({
         )}
       </div>
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-admin-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Coleções', valor: String(resumo.colecoes) },
           { label: 'Registros', valor: resumo.registros.toLocaleString('pt-BR') },
@@ -146,7 +157,7 @@ export default function AdministracaoTab({
         ))}
       </section>
 
-      <section className="mt-4 grid gap-2.5 sm:grid-cols-3">
+      <section data-admin-reveal className="mt-4 grid gap-2.5 sm:grid-cols-3">
         {[
           { label: 'Versão', valor: APP_VERSION_LABEL },
           { label: 'Nuvem', valor: nuvemConectada ? 'Conectada' : 'Sem conexão' },
@@ -159,7 +170,7 @@ export default function AdministracaoTab({
         ))}
       </section>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div data-admin-reveal className="mt-4 flex flex-wrap gap-2">
         {[
           ['configuracoes', 'Backup, importação e usuários'],
           ['auditoria', 'Histórico de ações'],
@@ -177,7 +188,7 @@ export default function AdministracaoTab({
         ))}
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-admin-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
         <TableShell minWidth={620}>
           <TableHead>
             <tr>
@@ -200,7 +211,7 @@ export default function AdministracaoTab({
         </TableShell>
       </div>
 
-      <section className="mt-6">
+      <section data-admin-reveal className="mt-6">
         <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-700">
           <ShieldCheck className="h-4 w-4 text-emerald-700" /> Acessos ao sistema
         </h2>
