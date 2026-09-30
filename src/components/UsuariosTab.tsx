@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, RefreshCw, ShieldCheck, UserRound } from 'lucide-react';
-import { Button, EmptyState, IconButton, TextInput } from '../shared/ui';
+import React, { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { Plus, RefreshCw, UserRound } from 'lucide-react';
+import { Button, EmptyState, IconButton, PageHeader, TextInput } from '../shared/ui';
 import {
   createManagedUser,
   loadManagedUsers,
@@ -24,6 +26,7 @@ interface UsuariosTabProps {
 }
 
 export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {}) {
+  const escopo = useRef<HTMLElement>(null);
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -84,20 +87,22 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const selectClass = 'h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100';
   const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-500';
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-usuarios-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
+
   return (
-    <section className="space-y-5">
+    <section ref={escopo} className="space-y-5">
       {!embutido && (
-        <header className="flex items-center gap-3">
-          <ShieldCheck className="h-7 w-7 text-emerald-700" />
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Administração</p>
-            <h1 className="text-2xl font-black text-slate-900">Usuários e permissões</h1>
-          </div>
-        </header>
+        <div data-usuarios-reveal>
+          <PageHeader eyebrow="Administração" title="Usuários e permissões" description="Crie acessos e ajuste perfil e status de cada usuário da equipe." />
+        </div>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-        <form onSubmit={createUser} className="space-y-4 rounded-xl border border-[#e2e8e4] bg-white p-5">
+      <div data-usuarios-reveal className="grid gap-5 xl:grid-cols-[420px_1fr]">
+        <form onSubmit={createUser} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-2">
             <Plus className="h-5 w-5 text-emerald-700" />
             <h2 className="font-bold text-slate-900">Novo usuário</h2>
@@ -131,8 +136,8 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
           {error ? <p role="alert" className="text-xs font-semibold text-rose-700">{error}</p> : null}
         </form>
 
-        <article className="overflow-hidden rounded-xl border border-[#e2e8e4] bg-white">
-          <header className="flex items-center justify-between gap-3 border-b border-[#e2e8e4] p-4">
+        <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <header className="flex items-center justify-between gap-3 border-b border-slate-200 p-4">
             <div>
               <h2 className="font-bold text-slate-900">Acessos cadastrados</h2>
               <p className="text-xs text-slate-500">Perfis aplicados no controle de acesso do sistema</p>
@@ -147,12 +152,12 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
           </header>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] text-left text-sm">
-              <thead className="bg-[#fafcfb] text-[10px] uppercase tracking-wider text-slate-500">
+              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
                 <tr><th className="p-3">Usuário</th><th className="p-3">Perfil</th><th className="p-3">Status</th><th className="p-3">Ações</th></tr>
               </thead>
               <tbody>
                 {users.map(user => (
-                  <tr key={user.firebaseUid} className="border-t border-[#e8eeea]">
+                  <tr key={user.firebaseUid} className="border-t border-slate-100">
                     <td className="p-3">
                       <strong className="block text-slate-900">{user.fullName}</strong>
                       <span className="text-xs text-slate-500">{user.email}</span>
