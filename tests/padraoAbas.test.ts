@@ -23,7 +23,6 @@ const PALETA = new Set(['#176b4d', '#f26a2e', '#718087', '#f7f8f6']);
 const PENDENCIAS: Record<string, readonly Regra[]> = {
   ConfiguracoesTab: ['pageHeader', 'gsap', 'movimentoReduzido'],
   AssistenteTab: ['gsap', 'movimentoReduzido'],
-  AuditoriaTab: ['gsap', 'movimentoReduzido'],
   ColaboradoresTab: ['gsap', 'movimentoReduzido'],
   ConsultaGeralTab: ['gsap', 'movimentoReduzido'],
   CustosTab: ['gsap', 'movimentoReduzido'],
