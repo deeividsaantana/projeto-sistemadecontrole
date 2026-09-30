@@ -2,7 +2,9 @@
  * Apontamentos: horas de trabalho por colaborador, serviço e frente. É a base
  * dos indicadores de produtividade.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { ClipboardList, Plus, Search } from 'lucide-react';
 import type { ApontamentoOperacional, EtapaServico, Funcionario, GrupoEquipe } from '../types';
 import { horasNoDia, horasPor, validarApontamento } from '../utils/apontamentos';
@@ -46,6 +48,7 @@ export default function ApontamentosTab({
   onSave,
   onDelete,
 }: ApontamentosTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
   const hoje = isoDay(new Date());
   const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('semana'));
   const [busca, setBusca] = useState('');
@@ -140,24 +143,32 @@ export default function ApontamentosTab({
     ? horasNoDia(apontamentos, form.funcionarioId, form.data, editando?.id)
     : 0;
 
-  return (
-    <div id="apontamentos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Apontamentos"
-        description="Horas por colaborador, serviço e frente — a base da produtividade."
-        actions={podeEditar ? (
-          <button type="button" onClick={abrirNovo} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
-            <Plus className="h-4 w-4" /> Novo apontamento
-          </button>
-        ) : undefined}
-      />
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-apontamentos-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+  return (
+    <div id="apontamentos-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div data-apontamentos-reveal>
+        <PageHeader
+          title="Apontamentos"
+          description="Horas por colaborador, serviço e frente — a base da produtividade."
+          actions={podeEditar ? (
+            <button type="button" onClick={abrirNovo} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800">
+              <Plus className="h-4 w-4" /> Novo apontamento
+            </button>
+          ) : undefined}
+        />
+      </div>
+
+      <div data-apontamentos-reveal className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <PeriodFilter value={periodo} onChange={setPeriodo} />
         <span className="text-xs font-medium text-slate-500">{formatarData(periodo.from)} a {formatarData(periodo.to)}</span>
       </div>
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-apontamentos-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Horas apontadas', valor: horasTexto(totalHoras) },
           { label: 'Lançamentos', valor: String(noPeriodo.length) },
@@ -171,7 +182,7 @@ export default function ApontamentosTab({
         ))}
       </section>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div data-apontamentos-reveal className="mt-4 grid gap-4 xl:grid-cols-2">
         {[{ titulo: 'Horas por serviço', dados: porServico }, { titulo: 'Horas por frente', dados: porFrente }].map(bloco => (
           <Card key={bloco.titulo} className="min-w-0" title={bloco.titulo} flush>
             {bloco.dados.length === 0 ? (
@@ -193,7 +204,7 @@ export default function ApontamentosTab({
         ))}
       </div>
 
-      <label className="relative mt-4 block">
+      <label data-apontamentos-reveal className="relative mt-4 block">
         <span className="sr-only">Buscar apontamento</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -204,7 +215,7 @@ export default function ApontamentosTab({
         />
       </label>
 
-      <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-apontamentos-reveal className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {lista.length === 0 ? (
           <EmptyState icon={ClipboardList} title="Nenhum apontamento no período" description="Lance as horas trabalhadas para alimentar a produtividade." />
         ) : (
