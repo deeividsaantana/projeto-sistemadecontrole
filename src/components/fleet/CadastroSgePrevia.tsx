@@ -33,13 +33,15 @@ export default function CadastroSgePrevia({ previa, marcado, onMarcar }: Props) 
           <span className="block text-xs text-slate-600">
             {total === 0
               ? 'O cadastro já está igual à planilha: nenhum motorista ou horímetro para mudar.'
-              : 'Cada equipamento fica com o motorista e o horímetro do último dia apontado.'}
+              : 'Cada equipamento fica com o motorista e o horímetro do último dia apontado. Máquina do SGE que não existe no site entra cadastrada.'}
           </span>
         </span>
       </label>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
+          { label: 'Novos no cadastro', value: previa.equipamentosNovos, tone: TOM_SITUACAO.ok },
+          { label: 'Voltam ao quadro', value: previa.equipamentosReativados, tone: 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200' },
           { label: 'Motoristas', value: previa.motoristasVinculados, tone: TOM_SITUACAO.ok },
           { label: 'Horímetros', value: previa.horimetrosAtualizados, tone: 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200' },
           { label: 'Para revisar', value: previa.revisao.length, tone: TOM_SITUACAO.alerta },
@@ -54,8 +56,12 @@ export default function CadastroSgePrevia({ previa, marcado, onMarcar }: Props) 
       {total > 0 && (
         <ul className="mt-3 max-h-[30vh] divide-y divide-slate-100 overflow-auto rounded-xl border border-slate-200">
           {previa.alteracoes.map(item => (
-            <li key={item.equipamentoId} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[6rem_minmax(0,1.2fr)_minmax(0,1fr)] sm:items-center">
-              <span className="font-mono font-bold text-slate-800">{item.prefixo}</span>
+            <li key={item.equipamentoId} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[8rem_minmax(0,1.2fr)_minmax(0,1fr)] sm:items-center">
+              <span className="font-mono font-bold text-slate-800">
+                {item.prefixo}
+                {item.novo && <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 font-sans text-[10px] font-bold uppercase text-emerald-800">Novo</span>}
+                {item.reativar && <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 font-sans text-[10px] font-bold uppercase text-sky-800">Volta</span>}
+              </span>
               <span className="min-w-0 text-slate-700">
                 {item.motorista
                   ? <>{item.motorista.antes || 'Sem motorista'} → <strong>{item.motorista.depois || 'Sem motorista'}</strong></>

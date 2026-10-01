@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import type { ControleEquipamentoDiario, Equipamento, Funcionario } from '../../types';
+import type { ControleEquipamentoDiario, Empresa, Equipamento, Funcionario } from '../../types';
 import {
   preverCadastroSge,
   preverImportacaoSge,
@@ -23,6 +23,8 @@ interface Props {
   motoristas: readonly Funcionario[];
   /** Cadastro completo de colaboradores: é com ele que o motorista do equipamento é vinculado. */
   funcionarios: readonly Funcionario[];
+  /** Para cadastrar máquina nova do SGE com a empresa certa. */
+  empresas?: readonly Empresa[];
   onImport: (registros: ControleEquipamentoDiario[]) => void;
   onApplyCadastroSge?: (previa: PreviaCadastroSge) => void;
   /** No Quadro da Frota a planilha serve para atualizar o cadastro; os lançamentos vêm desmarcados. */
@@ -40,6 +42,8 @@ const celula = (row: { getCell: (indice: number) => { value: unknown } }, indice
 const ALVOS: Record<string, RegExp> = {
   data: /^data$/i,
   uaEquipamento: /ua\s*equipamento/i,
+  descricaoEquipamento: /descri[cç][aã]o.*equipamento/i,
+  empresa: /^empresa$/i,
   horimetroInicial: /hor[ií]metro\s*inicial/i,
   horimetroFinal: /hor[ií]metro\s*final/i,
   horasHorimetro: /horas\s*hor[ií]metro/i,
@@ -79,7 +83,8 @@ const lerLinhasSge = async (arquivo: File): Promise<LinhaBrutaSge[]> => {
       linha: rowNumber,
       data: celula(row, colunas.data),
       uaEquipamento: celula(row, colunas.uaEquipamento),
-      descricaoEquipamento: '',
+      descricaoEquipamento: colunas.descricaoEquipamento ? celula(row, colunas.descricaoEquipamento) : '',
+      empresa: colunas.empresa ? celula(row, colunas.empresa) : '',
       horimetroInicial: colunas.horimetroInicial ? celula(row, colunas.horimetroInicial) : '',
       horimetroFinal: colunas.horimetroFinal ? celula(row, colunas.horimetroFinal) : '',
       horasHorimetro: colunas.horasHorimetro ? celula(row, colunas.horasHorimetro) : '',
@@ -102,6 +107,7 @@ export default function ImportacaoSge({
   registros,
   motoristas,
   funcionarios,
+  empresas = [],
   onImport,
   onApplyCadastroSge,
   importarLancamentosPorPadrao = true,
@@ -124,7 +130,7 @@ export default function ImportacaoSge({
       const linhas = await lerLinhasSge(file);
       setArquivo(file.name);
       setPrevia(preverImportacaoSge({ linhas, equipamentos, registros, motoristas }));
-      setCadastro(onApplyCadastroSge ? preverCadastroSge({ linhas, equipamentos, funcionarios }) : undefined);
+      setCadastro(onApplyCadastroSge ? preverCadastroSge({ linhas, equipamentos, funcionarios, empresas }) : undefined);
       setAtualizarCadastro(true);
       setImportarLancamentos(importarLancamentosPorPadrao);
       onMensagem('info', '');
@@ -146,7 +152,7 @@ export default function ImportacaoSge({
     if (cadastroParaAplicar) onApplyCadastroSge?.(cadastroParaAplicar);
     onMensagem('success', [
       lancamentos ? `Apontamento do SGE importado · ${previa.novos} novo(s) · ${previa.atualizados} atualizado(s) · ${previa.protegidos} protegido(s) por lançamento manual · ${previa.duplicados} duplicado(s) no arquivo · ${previa.comErro} com erro.` : '',
-      cadastroParaAplicar ? `Cadastro: ${cadastroParaAplicar.motoristasVinculados} motorista(s) vinculado(s) e ${cadastroParaAplicar.horimetrosAtualizados} horímetro(s) atualizado(s).` : '',
+      cadastroParaAplicar ? `Cadastro: ${cadastroParaAplicar.equipamentosNovos} equipamento(s) novo(s), ${cadastroParaAplicar.equipamentosReativados} de volta ao quadro, ${cadastroParaAplicar.motoristasVinculados} motorista(s) vinculado(s) e ${cadastroParaAplicar.horimetrosAtualizados} horímetro(s) atualizado(s).` : '',
     ].filter(Boolean).join(' '));
     fechar();
   };

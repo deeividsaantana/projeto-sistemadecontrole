@@ -428,6 +428,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
                       registros={registros}
                       motoristas={motoristas}
                       funcionarios={funcionarios}
+                      empresas={empresas}
                       onImport={onImportSge}
                       onApplyCadastroSge={onApplyCadastroSge}
                       importarLancamentosPorPadrao={false}

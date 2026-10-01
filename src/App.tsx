@@ -2139,7 +2139,7 @@ export default function App() {
     saveAndLog(
       'Equipamentos',
       'Editou',
-      `Atualizou pelo apontamento do SGE: ${previa.motoristasVinculados} motorista(s) vinculado(s), ${previa.motoristasRetirados} retirado(s) e ${previa.horimetrosAtualizados} horímetro(s).`,
+      `Atualizou pelo apontamento do SGE: ${previa.equipamentosNovos} equipamento(s) cadastrado(s), ${previa.equipamentosReativados} de volta ao quadro, ${previa.motoristasVinculados} motorista(s) vinculado(s), ${previa.motoristasRetirados} retirado(s) e ${previa.horimetrosAtualizados} horímetro(s).`,
       historyLogs,
       () => {
         setEquipamentos(nextEquipment);
