@@ -40,7 +40,7 @@ import { useFleetReport } from '../fleet/useFleetReport';
 import { calculateFleetMetrics } from '../fleet/reportService';
 import { toLegacyDailyStatus } from '../fleet/status';
 import { previewFleetImport } from '../fleet/importService';
-import { preverCadastroSge, preverImportacaoSge, registrosParaAplicar, type LinhaBrutaSge, type PreviaCadastroSge, type PreviaImportacaoSge } from '../fleet/sgeApontamentos';
+import { preverCadastroSge, preverImportacaoSge, registrosParaAplicar, rotuloImportacaoSge, type LinhaBrutaSge, type PreviaCadastroSge, type PreviaImportacaoSge } from '../fleet/sgeApontamentos';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import { generateFleetPdf } from '../fleet/pdfReport';
 import { exportFleetExcel } from '../fleet/excelExport';
@@ -205,6 +205,7 @@ export default function ControleEquipamentosDiarioTab({
   const [sgeFileName, setSgeFileName] = useState('');
   const [sgeCadastro, setSgeCadastro] = useState<PreviaCadastroSge>();
   const [sgeAtualizarCadastro, setSgeAtualizarCadastro] = useState(true);
+  const [sgeImportarLancamentos, setSgeImportarLancamentos] = useState(true);
   const [message, setMessage] = useState('');
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>('info');
   const [exporting, setExporting] = useState<'pdf' | 'excel' | 'weekly-pdf' | 'weekly-excel' | ''>('');
@@ -563,6 +564,7 @@ export default function ControleEquipamentosDiarioTab({
       setSgePreview(preview);
       setSgeCadastro(onApplyCadastroSge ? preverCadastroSge({ linhas, equipamentos, funcionarios }) : undefined);
       setSgeAtualizarCadastro(true);
+      setSgeImportarLancamentos(true);
       setMessage('');
     } catch (error) {
       setMessageTone('error');
@@ -575,13 +577,14 @@ export default function ControleEquipamentosDiarioTab({
     setSgeFileName('');
   };
   const cadastroParaAplicar = sgeAtualizarCadastro && sgeCadastro?.alteracoes.length ? sgeCadastro : undefined;
+  const lancamentosSge = sgeImportarLancamentos && sgePreview?.podeAplicar ? sgePreview.novos + sgePreview.atualizados : 0;
   const applySgePreview = () => {
-    if (!sgePreview || (!sgePreview.podeAplicar && !cadastroParaAplicar)) return;
-    if (sgePreview.podeAplicar) onImport(registrosParaAplicar(sgePreview));
+    if (!sgePreview || (!lancamentosSge && !cadastroParaAplicar)) return;
+    if (lancamentosSge) onImport(registrosParaAplicar(sgePreview));
     if (cadastroParaAplicar) onApplyCadastroSge?.(cadastroParaAplicar);
     setMessageTone('success');
     setMessage([
-      `Apontamento do SGE importado · ${sgePreview.novos} novo(s) · ${sgePreview.atualizados} atualizado(s) · ${sgePreview.protegidos} protegido(s) por lançamento manual · ${sgePreview.duplicados} duplicado(s) no arquivo · ${sgePreview.comErro} com erro.`,
+      lancamentosSge ? `Apontamento do SGE importado · ${sgePreview.novos} novo(s) · ${sgePreview.atualizados} atualizado(s) · ${sgePreview.protegidos} protegido(s) por lançamento manual · ${sgePreview.duplicados} duplicado(s) no arquivo · ${sgePreview.comErro} com erro.` : '',
       cadastroParaAplicar ? `Cadastro: ${cadastroParaAplicar.motoristasVinculados} motorista(s) vinculado(s) e ${cadastroParaAplicar.horimetrosAtualizados} horímetro(s) atualizado(s).` : '',
     ].filter(Boolean).join(' '));
     fecharSge();
@@ -913,13 +916,30 @@ export default function ControleEquipamentosDiarioTab({
           messages: item.mensagens.join(' '),
         }))}
         applyCount={(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)}
-        applyLabel={cadastroParaAplicar
-          ? `Importar ${(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)} lançamento(s) e atualizar ${cadastroParaAplicar.alteracoes.length} equipamento(s)`
-          : undefined}
-        canApply={Boolean(sgePreview?.podeAplicar || cadastroParaAplicar)}
+        applyLabel={sgeCadastro ? rotuloImportacaoSge(lancamentosSge, cadastroParaAplicar?.alteracoes.length || 0) : undefined}
+        canApply={Boolean(lancamentosSge || cadastroParaAplicar)}
         onClose={fecharSge}
         onApply={applySgePreview}
       >
+        {sgeCadastro && sgePreview && (
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3">
+            <input
+              type="checkbox"
+              checked={sgeImportarLancamentos && sgePreview.podeAplicar}
+              disabled={!sgePreview.podeAplicar}
+              onChange={event => setSgeImportarLancamentos(event.target.checked)}
+              className={`mt-0.5 size-5 shrink-0 rounded accent-emerald-700 ${FOCO}`}
+            />
+            <span>
+              <span className="block text-sm font-bold text-slate-800">Importar os lançamentos do dia</span>
+              <span className="block text-xs text-slate-600">
+                {sgePreview.podeAplicar
+                  ? `Cria ${sgePreview.novos + sgePreview.atualizados} lançamento(s) da lista acima no Controle de Frotas. Desmarque para mexer só no cadastro.`
+                  : 'Nenhum lançamento novo para importar desta planilha.'}
+              </span>
+            </span>
+          </label>
+        )}
         {sgeCadastro && <CadastroSgePrevia previa={sgeCadastro} marcado={sgeAtualizarCadastro} onMarcar={setSgeAtualizarCadastro} />}
       </FleetImportPreviewModal>
       <Modal open={atalhosAberto} title="Atalhos do teclado" size="sm" onClose={() => setAtalhosAberto(false)}>

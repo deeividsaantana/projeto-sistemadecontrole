@@ -89,7 +89,10 @@ export interface CartaoFrota {
   /** Situação veio de um lançamento de dia anterior, mantida até alguém mudar. */
   situacaoHerdada?: boolean;
   operador?: string;
-  /** Maior horímetro informado nos abastecimentos até o dia do quadro. */
+  /**
+   * Horímetro até o dia do quadro: o maior dos abastecimentos, ou o do cadastro
+   * (vindo do apontamento do SGE) quando a leitura dele é mais recente.
+   */
   horimetro?: number;
   observacao?: string;
   motivoManutencao?: string;
@@ -167,11 +170,31 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
     }
   });
 
-  const horimetros = new Map<string, number>();
+  const horimetros = new Map<string, { valor: number; data: string }>();
   abastecimentos.forEach(item => {
     if (!item.equipamentoId || item.data > dia || !Number.isFinite(item.horimetroInicial) || item.horimetroInicial <= 0) return;
-    horimetros.set(item.equipamentoId, Math.max(horimetros.get(item.equipamentoId) ?? 0, item.horimetroInicial));
+    const atual = horimetros.get(item.equipamentoId);
+    horimetros.set(item.equipamentoId, {
+      valor: Math.max(atual?.valor ?? 0, item.horimetroInicial),
+      data: atual && atual.data > item.data ? atual.data : item.data,
+    });
   });
+  // Leitura do cadastro (apontamento do SGE) só vale se for do dia do quadro ou antes,
+  // e só passa na frente do abastecimento quando é mais recente que ele.
+  const horimetroDo = (item: Equipamento) => {
+    const abastecido = horimetros.get(item.id);
+    const cadastro = item.horimetroAtual !== undefined && item.horimetroAtualData && item.horimetroAtualData <= dia ? item.horimetroAtual : undefined;
+    if (cadastro !== undefined && (!abastecido || (item.horimetroAtualData as string) >= abastecido.data)) return cadastro;
+    return abastecido?.valor;
+  };
+  // Motorista do cadastro passa na frente do último lançamento antigo quando foi definido depois dele.
+  const operadorDo = (item: Equipamento, registro?: RegistroDoDia, herdado?: RegistroDoDia) => {
+    const doCadastro = (item.operadorResponsavelNome || '').trim();
+    const desde = item.operadorResponsavelDesde;
+    const cadastroMaisNovo = Boolean(doCadastro && desde && desde <= dia && (!herdado || desde >= herdado.data));
+    const nome = registro?.nomeMotorista || (cadastroMaisNovo ? doCadastro : herdado?.nomeMotorista) || doCadastro;
+    return nome.trim() || undefined;
+  };
 
   const equipes = new Map(gruposEquipe.map(grupo => [grupo.id, grupo]));
 
@@ -185,7 +208,7 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
       const equipe = registro?.equipeId ? equipes.get(registro.equipeId) : undefined;
       const frente = (registro?.frenteServico || equipe?.frenteServico || '').trim() || SEM_FRENTE;
       const canteiro = canteiroNoTexto(canteiros, registro?.local, ultimoLocal.get(item.id)?.local, registro?.frenteServico, equipe?.frenteServico, equipe?.nome) || SEM_CANTEIRO;
-      const operador = (base?.nomeMotorista || item.operadorResponsavelNome || '').trim() || undefined;
+      const operador = operadorDo(item, registro, herdado);
       return {
         equipamentoId: item.id,
         registroId: registro?.id,
@@ -201,7 +224,7 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
         grupo: base ? GRUPO_DO_STATUS[base.status] ?? 'parado' : 'sem-lancamento',
         situacaoHerdada: Boolean(herdado),
         operador,
-        horimetro: horimetros.get(item.id),
+        horimetro: horimetroDo(item),
         observacao: registro?.observacao || herdado?.observacao || undefined,
         motivoManutencao: base?.motivoManutencao || undefined,
         atualizadoEm: base?.atualizadoEm,

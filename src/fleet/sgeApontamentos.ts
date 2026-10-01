@@ -189,7 +189,7 @@ export const registrosParaAplicar = (previa: PreviaImportacaoSge): FleetPersiste
 export interface AlteracaoCadastroSge {
   equipamentoId: string;
   prefixo: string;
-  motorista?: { antes: string; depois: string; funcionarioId?: string };
+  motorista?: { antes: string; depois: string; funcionarioId?: string; data?: string };
   horimetro?: { antes?: number; depois: number; data: string };
   avisos: string[];
 }
@@ -251,6 +251,7 @@ export const preverCadastroSge = ({ linhas, equipamentos, funcionarios }: {
 
   // Último operador de cada equipamento, já casado com o cadastro de colaboradores.
   const candidatos: Array<{ equipamento: Equipamento; funcionario: Funcionario; data: string }> = [];
+  const diaDoOperador = new Map<string, string>();
   for (const equipamento of equipamentos) {
     const leituras = porEquipamento.get(equipamento.id);
     if (!leituras) continue;
@@ -300,19 +301,20 @@ export const preverCadastroSge = ({ linhas, equipamentos, funcionarios }: {
     }
   }
 
+  for (const candidato of candidatos) diaDoOperador.set(candidato.equipamento.id, candidato.data);
   const novoDono = new Map([...vencedores].map(([funcionarioId, equipamento]) => [equipamento.id, funcionarioId]));
   for (const equipamento of equipamentos) {
     const funcionarioId = novoDono.get(equipamento.id);
     if (funcionarioId && funcionarioId !== equipamento.operadorResponsavelId) {
       const funcionario = funcionarios.find(item => item.id === funcionarioId) as Funcionario;
-      alteracaoDe(equipamento).motorista = { antes: equipamento.operadorResponsavelNome || '', depois: funcionario.nome, funcionarioId };
+      alteracaoDe(equipamento).motorista = { antes: equipamento.operadorResponsavelNome || '', depois: funcionario.nome, funcionarioId, data: diaDoOperador.get(equipamento.id) };
       continue;
     }
     // Quem foi para outro equipamento sai deste, como no vínculo feito à mão.
     const foiPara = equipamento.operadorResponsavelId ? vencedores.get(equipamento.operadorResponsavelId) : undefined;
     if (!funcionarioId && foiPara && foiPara.id !== equipamento.id) {
       const alteracao = alteracaoDe(equipamento);
-      alteracao.motorista = { antes: equipamento.operadorResponsavelNome || '', depois: '' };
+      alteracao.motorista = { antes: equipamento.operadorResponsavelNome || '', depois: '', data: diaDoOperador.get(foiPara.id) };
       alteracao.avisos.push(`${equipamento.operadorResponsavelNome || 'O motorista'} passou para o ${foiPara.prefixo}.`);
     }
   }
@@ -338,6 +340,7 @@ export const aplicarCadastroSge = (equipamentos: readonly Equipamento[], previa:
       const funcionario = funcionarios.find(item => item.id === alteracao.motorista?.funcionarioId);
       proximo.operadorResponsavelId = funcionario?.id;
       proximo.operadorResponsavelNome = funcionario?.nome;
+      proximo.operadorResponsavelDesde = funcionario ? alteracao.motorista.data : undefined;
     }
     if (alteracao.horimetro) {
       proximo.horimetroAtual = alteracao.horimetro.depois;
@@ -345,4 +348,15 @@ export const aplicarCadastroSge = (equipamentos: readonly Equipamento[], previa:
     }
     return proximo;
   });
+};
+
+/** Texto do botão da prévia do SGE conforme o que vai ser gravado: lançamentos, cadastro ou os dois. */
+export const rotuloImportacaoSge = (lancamentos: number, equipamentos: number): string => {
+  const partes = [
+    lancamentos > 0 ? `importar ${lancamentos} lançamento(s)` : '',
+    equipamentos > 0 ? `atualizar ${equipamentos} equipamento(s)` : '',
+  ].filter(Boolean);
+  if (!partes.length) return 'Nada para gravar';
+  const texto = partes.join(' e ');
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 };

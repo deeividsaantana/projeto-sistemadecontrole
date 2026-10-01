@@ -367,6 +367,9 @@ export const montarRegistro = (
       dataDesmobilizacao: opcional(valores, 'dataDesmobilizacao'),
       operadorResponsavelId: operador?.id,
       operadorResponsavelNome: operador?.nome,
+      // Trocar o operador à mão vale a partir de hoje; sem troca, mantém o dia anterior.
+      operadorResponsavelDesde: !operador ? undefined
+        : operador.id === equipamento?.operadorResponsavelId ? equipamento?.operadorResponsavelDesde : new Date().toLocaleDateString('sv-SE'),
       combustivelId: opcional(valores, 'combustivelId'),
       capacidadeTanqueLitros: numero(valores, 'capacidadeTanqueLitros'),
       horimetroAtual,

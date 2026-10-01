@@ -304,3 +304,40 @@ test('remover do quadro sem lançamento de hoje não mexe nos registros', () => 
   assert.equal(resultado.registrosAtualizados.length, 1);
   assert.deepEqual(resultado.registrosAtualizados, registros);
 });
+
+test('motorista do cadastro (SGE) aparece no quadro quando é mais novo que o último lançamento', () => {
+  const montar = (desde?: string) => montarQuadro({
+    dia,
+    equipamentos: [equipamento('CB1', { operadorResponsavelNome: 'Novo do SGE', operadorResponsavelDesde: desde })],
+    registros: [registro('CB1', 'Em operação', { data: '2026-09-20', nomeMotorista: 'Antigo' })],
+    gruposEquipe: [], abastecimentos: [],
+  })[0].operador;
+
+  assert.equal(montar('2026-09-27'), 'Novo do SGE');
+  assert.equal(montar('2026-09-10'), 'Antigo', 'lançamento depois do cadastro continua valendo');
+  assert.equal(montar(undefined), 'Antigo', 'cadastro sem dia não passa na frente do lançamento');
+  assert.equal(montar('2026-09-30'), 'Antigo', 'motorista definido depois do dia do quadro não vale para trás');
+});
+
+test('motorista do lançamento do dia sempre vale mais que o do cadastro', () => {
+  const [cartao] = montarQuadro({
+    dia,
+    equipamentos: [equipamento('CB1', { operadorResponsavelNome: 'Do cadastro', operadorResponsavelDesde: dia })],
+    registros: [registro('CB1', 'Em operação', { nomeMotorista: 'Do dia' })],
+    gruposEquipe: [], abastecimentos: [],
+  });
+  assert.equal(cartao.operador, 'Do dia');
+});
+
+test('horímetro do cadastro (SGE) vale quando é mais recente que o último abastecimento', () => {
+  const montar = (data: string) => montarQuadro({
+    dia,
+    equipamentos: [equipamento('CB1', { horimetroAtual: 61, horimetroAtualData: data })],
+    registros: [], gruposEquipe: [],
+    abastecimentos: [abastecimento('CB1', '2026-09-11', 1056)],
+  })[0].horimetro;
+
+  assert.equal(montar('2026-09-27'), 61, 'leitura nova do SGE (horímetro trocado) aparece');
+  assert.equal(montar('2026-09-05'), 1056, 'abastecimento mais novo continua valendo');
+  assert.equal(montar('2026-09-30'), 1056, 'leitura depois do dia do quadro não vale para trás');
+});
