@@ -3,6 +3,7 @@ import { indiceDeLocais, resolverLocal } from '../modules/materials/locaisSge';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import type { ImportPreview } from './types';
 import { stableId } from './stableId';
+import { separarRepetidosDaImportacao } from '../modules/materials/notaDuplicada';
 
 type Receipt = {
   data: string | null; material: string | null; especificacao?: string | null; codigo?: string | null;
@@ -114,5 +115,8 @@ export const buildMaterialImportApplication = (
       ...(receipt && value.solicitacaoCompra ? { solicitacaoCompra: value.solicitacaoCompra } : {}),
       materialId: material.id, materialDescricao: material.descricao, quantidade: quantity, unidade: value.unidade, quantidadeNota: receipt ? value.quantidadeNota ?? undefined : undefined, notaFiscal: value.notaFiscal || undefined, destino: receipt ? value.localAplicacao || undefined : value.destino || undefined, origem: receipt ? undefined : value.origem || undefined, responsavel: responsible, criadoEm: preview.generatedAt, observacao: `Importado de ${preview.sourceFile} · ${item.row.lineage.sourceSheet} · linha ${item.row.lineage.sourceRow}` });
   });
-  return { materials, movements, skipped };
+  // Nota ou ticket já lançado (no app ou numa linha anterior) não entra de novo.
+  const { aceitos, repetidos } = separarRepetidosDaImportacao(currentMovements, movements);
+  skipped.duplicate += repetidos;
+  return { materials, movements: aceitos, skipped };
 };

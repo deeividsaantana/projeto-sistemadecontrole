@@ -218,6 +218,8 @@ import { usosDoCadastro } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
 import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from './utils/cadastrosCategorias';
 import { appendMovement, applyMaterialImport, saveMaterial } from './modules/materials/materialCommands';
+import { desfazerNotasRepetidas } from './modules/materials/notaDuplicada';
+import { ticketsRepetidosParaExcluir } from './utils/ticketDuplicateDetection';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
@@ -1868,6 +1870,8 @@ export default function App() {
     etapas: { lista: etapas, setLista: setEtapas as (next: never[]) => void, storageKey: 'renea_etapas', tela: 'Etapas de Serviço' },
     frentesServico: { lista: frentesServico, setLista: setFrentesServico as (next: never[]) => void, storageKey: STORAGE_KEYS.frentesServico, tela: 'Frentes de Serviço' },
     servicosObra: { lista: servicosObra, setLista: setServicosObra as (next: never[]) => void, storageKey: STORAGE_KEYS.servicosObra, tela: 'Serviços da obra' },
+    // Tickets repetidos vão para a Lixeira sozinhos; daqui eles voltam se restaurados.
+    ticketsJazida: { lista: ticketsJazida as never[], setLista: setTicketsJazida as (next: never[]) => void, storageKey: 'renea_tickets_jazida', tela: 'Tickets Jazida' },
   });
 
   const usosDoCadastroAtual = (tabela: string, id: string) => usosDoCadastro(tabela, id, {
@@ -3863,6 +3867,41 @@ export default function App() {
 
   // Vários itens de uma vez (apontamento do dia no ERP): um único saveAndLog,
   // para o segundo item não sobrescrever o primeiro com um estado antigo.
+  const podeEditarMateriais = pode(currentUserRole, 'materiais', 'editar');
+  // Viagem da jazida com ticket repetido (mesmo número e tipo) vai sozinha para a
+  // Lixeira: fica o primeiro registrado, e o resto pode ser restaurado.
+  useEffect(() => {
+    if (!isLoggedIn || !podeEditarMateriais || ticketsJazida.length === 0) return;
+    const repetidos = ticketsRepetidosParaExcluir(ticketsJazida);
+    if (!repetidos.length) return;
+    excluirCadastros({
+      tabela: 'ticketsJazida',
+      storageKey: 'renea_tickets_jazida',
+      tela: 'Tickets Jazida',
+      itens: repetidos.map(item => ({ item: item as TicketJazida & { nome?: string }, rotulo: `Ticket ${item.tipoTicket || 'Liberação'} Nº ${item.ticketNumero} (repetido)` })),
+      lista: ticketsJazida as Array<TicketJazida & { nome?: string }>,
+      setLista: next => setTicketsJazida(next),
+    });
+    repetidos.forEach(item => {
+      void deletePublicTicket(db, item.id).catch(error => console.warn('Falha ao excluir ticket público repetido:', error));
+    });
+    addNotification('Tickets repetidos excluídos', `${repetidos.length} viagem(ns) da jazida com ticket já lançado foram para a Lixeira. Dá para restaurar de lá.`, 'info', 'Sistema Local');
+  }, [ticketsJazida, isLoggedIn, podeEditarMateriais]);
+
+  // Nota ou ticket repetido no mesmo material é desfeito sozinho, venha de onde
+  // vier (lançamento, link do apontador, importação, nuvem). Fica no histórico.
+  useEffect(() => {
+    if (!isLoggedIn || !podeEditarMateriais || materiaisMovimentos.length === 0) return;
+    const { movimentos, desfeitos } = desfazerNotasRepetidas(materiaisMovimentos, new Date().toISOString());
+    if (!desfeitos.length) return;
+    saveAndLog('Materiais', 'Excluiu', `Desfez automaticamente ${desfeitos.length} lançamento(s) com nota ou ticket repetido.`, historyLogs, () => {
+      setMateriaisMovimentos(movimentos);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(movimentos));
+    });
+    addNotification('Lançamentos repetidos desfeitos', `${desfeitos.length} lançamento(s) de material com nota ou ticket já lançado saíram do saldo. Continuam no histórico.`, 'info', 'Sistema Local');
+  // saveAndLog e historyLogs mudam a cada render; a regra só depende dos movimentos.
+  }, [materiaisMovimentos, isLoggedIn, podeEditarMateriais]);
+
   const handleSaveMovimentosMaterial = (movimentos: MovimentoMaterial[], descricao: string) => {
     if (movimentos.length === 0) return;
     const updated = mergeMaterialUseMovements(materiaisMovimentos, movimentos).movements;
