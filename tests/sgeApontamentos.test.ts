@@ -248,3 +248,14 @@ test('botão da prévia diz só o que vai ser gravado', async () => {
   assert.equal(rotuloImportacaoSge(12, 0), 'Importar 12 lançamento(s)');
   assert.equal(rotuloImportacaoSge(0, 0), 'Nada para gravar');
 });
+
+test('cadastro: motorista gravado pelo SGE sobrevive à mesclagem com a nuvem', async () => {
+  const { mergeCloudTable } = await import('../src/cloudMerge');
+  const naNuvem = equipamentos[0];
+  const previa = preverCadastroSge({ linhas: [linha()], equipamentos, funcionarios: motoristas });
+  const [local] = aplicarCadastroSge(equipamentos, previa, motoristas, '2026-10-01T15:00:00.000Z');
+  assert.equal(local.atualizadoEm, '2026-10-01T15:00:00.000Z');
+
+  const [mesclado] = mergeCloudTable([naNuvem], [local]) as Equipamento[];
+  assert.equal(mesclado.operadorResponsavelNome, 'ADILSON PIRES DA CRUZ', 'sem a data, a versão da nuvem (sem motorista) ganhava');
+});
