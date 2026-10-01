@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { FileDown } from 'lucide-react';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../cadastros/estilos';
 import { Modal } from '../../shared/ui';
@@ -28,6 +29,9 @@ interface Props {
   canApply: boolean;
   onClose: () => void;
   onApply: () => void;
+  /** Texto do botão de confirmar, quando a importação faz mais do que lançamentos. */
+  applyLabel?: string;
+  children?: ReactNode;
 }
 
 /**
@@ -35,7 +39,7 @@ interface Props {
  * pelo apontamento do SGE: mesmo esqueleto visual (cartões de contagem + lista
  * linha a linha) para as duas fontes nunca divergirem sem querer.
  */
-export default function FleetImportPreviewModal({ open, title, description, stats, rows, applyCount, canApply, onClose, onApply }: Props) {
+export default function FleetImportPreviewModal({ open, title, description, stats, rows, applyCount, canApply, onClose, onApply, applyLabel, children }: Props) {
   return (
     <Modal
       open={open}
@@ -47,7 +51,7 @@ export default function FleetImportPreviewModal({ open, title, description, stat
         <button type="button" onClick={onClose} className={BOTAO_SECUNDARIO}>Cancelar</button>
         <button type="button" disabled={!canApply} onClick={onApply} className={BOTAO_PRIMARIO}>
           <FileDown className="size-4" aria-hidden="true" />
-          Importar {applyCount} lançamento(s)
+          {applyLabel || `Importar ${applyCount} lançamento(s)`}
         </button>
       </>}
     >
@@ -69,6 +73,7 @@ export default function FleetImportPreviewModal({ open, title, description, stat
           </li>
         ))}
       </ul>
+      {children}
     </Modal>
   );
 }

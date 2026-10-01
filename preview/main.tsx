@@ -506,6 +506,7 @@ const screens: Record<string, React.ReactNode> = {
       registeredBy="Deivid Santana"
       onSave={noop}
       onImport={noop}
+      onApplyCadastroSge={noop}
       onDeleteMany={noop}
       onOpenEmployeeRegistration={noop}
       onOpenEquipmentRegistration={noop}

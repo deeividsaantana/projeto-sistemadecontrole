@@ -57,6 +57,9 @@ export interface Equipamento {
   dataDesmobilizacao?: string;
   operadorResponsavelId?: string;
   operadorResponsavelNome?: string;
+  /** Última leitura de horímetro conhecida (h) e o dia dela; hoje vem do apontamento do SGE. */
+  horimetroAtual?: number;
+  horimetroAtualData?: string;
   combustivelId?: string;
   capacidadeTanqueLitros?: number;
   equipamentoVinculadoId?: string;

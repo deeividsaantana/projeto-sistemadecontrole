@@ -40,7 +40,7 @@ import { useFleetReport } from '../fleet/useFleetReport';
 import { calculateFleetMetrics } from '../fleet/reportService';
 import { toLegacyDailyStatus } from '../fleet/status';
 import { previewFleetImport } from '../fleet/importService';
-import { preverImportacaoSge, registrosParaAplicar, type LinhaBrutaSge, type PreviaImportacaoSge } from '../fleet/sgeApontamentos';
+import { preverCadastroSge, preverImportacaoSge, registrosParaAplicar, type LinhaBrutaSge, type PreviaCadastroSge, type PreviaImportacaoSge } from '../fleet/sgeApontamentos';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import { generateFleetPdf } from '../fleet/pdfReport';
 import { exportFleetExcel } from '../fleet/excelExport';
@@ -58,6 +58,7 @@ import FleetDetailDrawer from './fleet/FleetDetailDrawer';
 import DailyRecordForm from './fleet/DailyRecordForm';
 import FleetReportLayout from './fleet/FleetReportLayout';
 import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/FleetImportPreviewModal';
+import CadastroSgePrevia from './fleet/CadastroSgePrevia';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from './cadastros/estilos';
@@ -72,6 +73,8 @@ interface Props {
   ordensServico: OrdemServico[];
   onSave: (registro: ControleEquipamentoDiario, isNew: boolean) => void | Promise<void>;
   onImport: (registros: ControleEquipamentoDiario[]) => void;
+  /** Grava motorista e horímetro no cadastro dos equipamentos, a partir do apontamento do SGE. */
+  onApplyCadastroSge?: (previa: PreviaCadastroSge) => void;
   onDeleteMany: (ids: string[]) => void;
   onOpenMaintenance?: () => void;
   onOpenEmployeeRegistration: () => void;
@@ -153,6 +156,7 @@ export default function ControleEquipamentosDiarioTab({
   ordensServico,
   onSave,
   onImport,
+  onApplyCadastroSge,
   onDeleteMany,
   onOpenMaintenance,
   onOpenEmployeeRegistration,
@@ -199,6 +203,8 @@ export default function ControleEquipamentosDiarioTab({
   const [importFileName, setImportFileName] = useState('');
   const [sgePreview, setSgePreview] = useState<PreviaImportacaoSge>();
   const [sgeFileName, setSgeFileName] = useState('');
+  const [sgeCadastro, setSgeCadastro] = useState<PreviaCadastroSge>();
+  const [sgeAtualizarCadastro, setSgeAtualizarCadastro] = useState(true);
   const [message, setMessage] = useState('');
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>('info');
   const [exporting, setExporting] = useState<'pdf' | 'excel' | 'weekly-pdf' | 'weekly-excel' | ''>('');
@@ -555,21 +561,30 @@ export default function ControleEquipamentosDiarioTab({
       const preview = preverImportacaoSge({ linhas, equipamentos, registros, motoristas: operationalDrivers });
       setSgeFileName(file.name);
       setSgePreview(preview);
+      setSgeCadastro(onApplyCadastroSge ? preverCadastroSge({ linhas, equipamentos, funcionarios }) : undefined);
+      setSgeAtualizarCadastro(true);
       setMessage('');
     } catch (error) {
       setMessageTone('error');
       setMessage(error instanceof Error ? error.message : 'Falha ao validar o apontamento do SGE.');
     }
   };
-  const applySgePreview = () => {
-    if (!sgePreview?.podeAplicar) return;
-    onImport(registrosParaAplicar(sgePreview));
-    setMessageTone('success');
-    setMessage(
-      `Apontamento do SGE importado · ${sgePreview.novos} novo(s) · ${sgePreview.atualizados} atualizado(s) · ${sgePreview.protegidos} protegido(s) por lançamento manual · ${sgePreview.duplicados} duplicado(s) no arquivo · ${sgePreview.comErro} com erro.`,
-    );
+  const fecharSge = () => {
     setSgePreview(undefined);
+    setSgeCadastro(undefined);
     setSgeFileName('');
+  };
+  const cadastroParaAplicar = sgeAtualizarCadastro && sgeCadastro?.alteracoes.length ? sgeCadastro : undefined;
+  const applySgePreview = () => {
+    if (!sgePreview || (!sgePreview.podeAplicar && !cadastroParaAplicar)) return;
+    if (sgePreview.podeAplicar) onImport(registrosParaAplicar(sgePreview));
+    if (cadastroParaAplicar) onApplyCadastroSge?.(cadastroParaAplicar);
+    setMessageTone('success');
+    setMessage([
+      `Apontamento do SGE importado · ${sgePreview.novos} novo(s) · ${sgePreview.atualizados} atualizado(s) · ${sgePreview.protegidos} protegido(s) por lançamento manual · ${sgePreview.duplicados} duplicado(s) no arquivo · ${sgePreview.comErro} com erro.`,
+      cadastroParaAplicar ? `Cadastro: ${cadastroParaAplicar.motoristasVinculados} motorista(s) vinculado(s) e ${cadastroParaAplicar.horimetrosAtualizados} horímetro(s) atualizado(s).` : '',
+    ].filter(Boolean).join(' '));
+    fecharSge();
   };
   const applyImportPreview = () => {
     if (!importPreview?.canApply) return;
@@ -898,10 +913,15 @@ export default function ControleEquipamentosDiarioTab({
           messages: item.mensagens.join(' '),
         }))}
         applyCount={(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)}
-        canApply={Boolean(sgePreview?.podeAplicar)}
-        onClose={() => { setSgePreview(undefined); setSgeFileName(''); }}
+        applyLabel={cadastroParaAplicar
+          ? `Importar ${(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)} lançamento(s) e atualizar ${cadastroParaAplicar.alteracoes.length} equipamento(s)`
+          : undefined}
+        canApply={Boolean(sgePreview?.podeAplicar || cadastroParaAplicar)}
+        onClose={fecharSge}
         onApply={applySgePreview}
-      />
+      >
+        {sgeCadastro && <CadastroSgePrevia previa={sgeCadastro} marcado={sgeAtualizarCadastro} onMarcar={setSgeAtualizarCadastro} />}
+      </FleetImportPreviewModal>
       <Modal open={atalhosAberto} title="Atalhos do teclado" size="sm" onClose={() => setAtalhosAberto(false)}>
         <dl className="divide-y divide-slate-100">
           {ATALHOS.map(atalho => (
