@@ -259,3 +259,53 @@ test('cadastro: motorista gravado pelo SGE sobrevive à mesclagem com a nuvem', 
   const [mesclado] = mergeCloudTable([naNuvem], [local]) as Equipamento[];
   assert.equal(mesclado.operadorResponsavelNome, 'ADILSON PIRES DA CRUZ', 'sem a data, a versão da nuvem (sem motorista) ganhava');
 });
+
+test('cadastro: máquina do SGE que não existe no site entra cadastrada, já com motorista e horímetro', () => {
+  const empresas = [{ id: 'emp-renea', nome: 'RENEA ENGENHARIA' }] as never;
+  const previa = preverCadastroSge({
+    linhas: [linha({ uaEquipamento: 'TE099', descricaoEquipamento: 'Trator de Esteira D6', empresa: 'Renea', horimetroFinal: 500 })],
+    equipamentos, funcionarios: motoristas, empresas,
+  });
+  assert.equal(previa.equipamentosNovos, 1);
+  const lista = aplicarCadastroSge(equipamentos, previa, motoristas);
+  const novo = lista.find(item => item.prefixo === 'TE099');
+  assert.ok(novo, 'entrou no cadastro');
+  assert.equal(novo?.nome, 'Trator de Esteira D6');
+  assert.equal(novo?.empresaId, 'emp-renea');
+  assert.equal(novo?.status, 'Ativo');
+  assert.equal(novo?.operadorResponsavelNome, 'ADILSON PIRES DA CRUZ');
+  assert.equal(novo?.horimetroAtual, 500);
+  assert.equal(lista.length, equipamentos.length + 1, 'nenhum equipamento antigo some');
+});
+
+test('cadastro: máquina nova sem empresa conhecida entra e vai para a revisão', () => {
+  const previa = preverCadastroSge({ linhas: [linha({ uaEquipamento: 'TE099', empresa: 'Terceira X' })], equipamentos, funcionarios: motoristas, empresas: [] });
+  assert.equal(previa.equipamentosNovos, 1);
+  assert.match(previa.revisao.join(' '), /TE099 foi cadastrado sem empresa/);
+});
+
+test('cadastro: desmobilizada que trabalhou nos últimos dias volta ao quadro; a parada há semanas não', () => {
+  const frota = [
+    equipamento('eq-a', 'CB701', { status: 'Desmobilizado', mobilizado: false }),
+    equipamento('eq-b', 'CB702', { status: 'Desmobilizado', mobilizado: false }),
+  ];
+  const previa = preverCadastroSge({
+    linhas: [
+      linha({ uaEquipamento: 'CB701', data: '29/09/2026' }),
+      linha({ uaEquipamento: 'CB702', data: '05/09/2026', matriculaOperador: '', nomeOperador: '-' }),
+      linha({ uaEquipamento: 'CB770', data: '30/09/2026', matriculaOperador: '', nomeOperador: '-' }),
+    ],
+    equipamentos: [...frota, ...equipamentos], funcionarios: motoristas,
+  });
+  assert.equal(previa.equipamentosReativados, 1);
+  const lista = aplicarCadastroSge([...frota, ...equipamentos], previa, motoristas);
+  assert.equal(lista.find(item => item.id === 'eq-a')?.status, 'Ativo');
+  assert.equal(lista.find(item => item.id === 'eq-b')?.status, 'Desmobilizado');
+});
+
+test('cadastro: prefixo repetido no cadastro não cria outro nem escolhe, vai para a revisão', () => {
+  const frota = [equipamento('eq-1', 'CB800'), equipamento('eq-2', 'CB800')];
+  const previa = preverCadastroSge({ linhas: [linha({ uaEquipamento: 'CB800' })], equipamentos: frota, funcionarios: motoristas });
+  assert.equal(previa.equipamentosNovos, 0);
+  assert.match(previa.revisao.join(' '), /CB800 aparece 2 vezes/);
+});

@@ -9,12 +9,13 @@
  * equipamento com duas linhas no mesmo dia fica de fora, para alguém decidir
  * qual vale, em vez do import escolher sozinho.
  */
-import type { ControleEquipamentoDiario, Equipamento, Funcionario } from '../types';
+import type { ControleEquipamentoDiario, Empresa, Equipamento, Funcionario } from '../types';
 import type { FleetPersistedRecord } from './domain';
 import { classifyOperationalFleet, reconcileEmployee } from './reconciliation';
 import { normalizeIsoDate } from './time';
 import { normalizePrefix } from '../utils/canonicalIdentity';
 import { lerNumero } from '../modules/frota/combustivelDoDia';
+import { inferFleetCategory } from '../utils/equipmentOperations';
 
 /**
  * Casamento só por prefixo, sem o fallback por placa que `reconcileEquipment`
@@ -38,6 +39,8 @@ export interface LinhaBrutaSge {
   matriculaOperador: unknown;
   nomeOperador: unknown;
   observacoes: unknown;
+  /** Empresa dona da máquina, como vem no SGE ("Renea"); usada só para cadastrar máquina nova. */
+  empresa?: unknown;
 }
 
 export type DisposicaoSge = 'NOVO' | 'ATUALIZA' | 'PROTEGIDO' | 'DUPLICADO' | 'ERRO';
@@ -189,6 +192,10 @@ export const registrosParaAplicar = (previa: PreviaImportacaoSge): FleetPersiste
 export interface AlteracaoCadastroSge {
   equipamentoId: string;
   prefixo: string;
+  /** Máquina que está no SGE e não existia no cadastro: entra cadastrada. */
+  novo?: Equipamento;
+  /** Estava desmobilizada mas trabalhou nos últimos dias da planilha: volta para o quadro. */
+  reativar?: boolean;
   motorista?: { antes: string; depois: string; funcionarioId?: string; data?: string };
   horimetro?: { antes?: number; depois: number; data: string };
   avisos: string[];
@@ -199,8 +206,21 @@ export interface PreviaCadastroSge {
   motoristasVinculados: number;
   motoristasRetirados: number;
   horimetrosAtualizados: number;
+  equipamentosNovos: number;
+  equipamentosReativados: number;
   revisao: string[];
 }
+
+/** Desmobilizada que apontou nestes últimos dias da planilha ainda está rodando: volta ao quadro. */
+const DIAS_PARA_REATIVAR = 3;
+
+const normalizarNome = (valor: unknown) => textoDe(valor).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+const somarDias = (iso: string, dias: number) => {
+  const data = new Date(`${iso}T12:00:00Z`);
+  data.setUTCDate(data.getUTCDate() + dias);
+  return data.toISOString().slice(0, 10);
+};
 
 const numeroDe = (valor: unknown): number | undefined =>
   typeof valor === 'number' ? (Number.isFinite(valor) ? valor : undefined) : lerNumero(textoDe(valor));
@@ -226,11 +246,79 @@ const ultimaLeitura = (leituras: LeituraSge[], filtro: (leitura: LeituraSge) => 
   return undefined;
 };
 
-export const preverCadastroSge = ({ linhas, equipamentos, funcionarios }: {
+export const preverCadastroSge = ({ linhas, equipamentos: cadastrados, funcionarios, empresas = [] }: {
   linhas: readonly LinhaBrutaSge[];
   equipamentos: readonly Equipamento[];
   funcionarios: readonly Funcionario[];
+  empresas?: readonly Empresa[];
 }): PreviaCadastroSge => {
+  const revisao: string[] = [];
+  const alteracoes = new Map<string, AlteracaoCadastroSge>();
+  const alteracaoDe = (equipamento: Equipamento) => {
+    const atual = alteracoes.get(equipamento.id) || { equipamentoId: equipamento.id, prefixo: equipamento.prefixo, avisos: [] };
+    alteracoes.set(equipamento.id, atual);
+    return atual;
+  };
+
+  // Máquina do SGE que não está no cadastro entra cadastrada; desmobilizada que
+  // ainda está apontando volta ao quadro. Daqui para baixo vale a lista completa.
+  const datasValidas = linhas.map(raw => normalizeIsoDate(raw.data)).filter(Boolean).sort();
+  const ultimoDia = datasValidas[datasValidas.length - 1] || '';
+  const desdeReativar = ultimoDia ? somarDias(ultimoDia, -(DIAS_PARA_REATIVAR - 1)) : '';
+  const porUa = new Map<string, LinhaBrutaSge[]>();
+  for (const raw of linhas) {
+    const ua = normalizePrefix(textoDe(raw.uaEquipamento));
+    if (!ua || !normalizeIsoDate(raw.data)) continue;
+    porUa.set(ua, [...(porUa.get(ua) || []), raw]);
+  }
+  const reativados = new Set<string>();
+  const novos: Equipamento[] = [];
+  for (const [ua, doUa] of porUa) {
+    const prefixo = textoDe(doUa[0].uaEquipamento).toUpperCase();
+    const existentes = cadastrados.filter(item => normalizePrefix(item.prefixo) === ua);
+    const ultimaData = doUa.map(raw => normalizeIsoDate(raw.data)).sort().reverse()[0];
+    if (existentes.length > 1) {
+      revisao.push(`${prefixo} aparece ${existentes.length} vezes no cadastro; deixe um só para o SGE atualizar.`);
+      continue;
+    }
+    if (existentes.length === 1) {
+      if (existentes[0].status === 'Desmobilizado' && ultimaData >= desdeReativar) reativados.add(existentes[0].id);
+      continue;
+    }
+    const descricao = textoDe(doUa.find(raw => textoDe(raw.descricaoEquipamento))?.descricaoEquipamento) || prefixo;
+    const nomeEmpresa = normalizarNome(doUa.find(raw => textoDe(raw.empresa))?.empresa);
+    const empresa = nomeEmpresa
+      ? empresas.find(item => normalizarNome(item.nome) === nomeEmpresa) || empresas.find(item => normalizarNome(item.nome).includes(nomeEmpresa))
+      : undefined;
+    if (!empresa) revisao.push(`${prefixo} foi cadastrado sem empresa: "${textoDe(doUa[0].empresa) || 'sem empresa no SGE'}" não está em Cadastros. Escolha a empresa no cadastro do equipamento.`);
+    novos.push({
+      id: `eq-sge-${ua}`,
+      prefixo,
+      nome: descricao,
+      tipo: descricao,
+      marca: '',
+      modelo: '',
+      seriePlaca: '',
+      empresaId: empresa?.id || '',
+      status: 'Ativo',
+      mobilizado: true,
+      localAtualId: '',
+      observacao: 'Cadastrado pelo apontamento do SGE.',
+      categoriaFrota: inferFleetCategory(descricao, '', ''),
+    });
+  }
+  const equipamentos: Equipamento[] = [
+    ...cadastrados.map(item => (reativados.has(item.id) ? { ...item, status: 'Ativo' as const, mobilizado: true } : item)),
+    ...novos,
+  ];
+  for (const item of novos) alteracaoDe(item).novo = item;
+  for (const id of reativados) {
+    const item = equipamentos.find(equipamento => equipamento.id === id) as Equipamento;
+    const alteracao = alteracaoDe(item);
+    alteracao.reativar = true;
+    alteracao.avisos.push(`Estava desmobilizado e trabalhou até ${ultimoDia.split('-').reverse().join('/')}: volta para o quadro.`);
+  }
+
   const porEquipamento = new Map<string, LeituraSge[]>();
   for (const raw of linhas) {
     const data = normalizeIsoDate(raw.data);
@@ -240,14 +328,6 @@ export const preverCadastroSge = ({ linhas, equipamentos, funcionarios }: {
     lista.push({ raw, data, horas: numeroDe(raw.horasHorimetro) ?? 0 });
     porEquipamento.set(equipamento.id, lista);
   }
-
-  const revisao: string[] = [];
-  const alteracoes = new Map<string, AlteracaoCadastroSge>();
-  const alteracaoDe = (equipamento: Equipamento) => {
-    const atual = alteracoes.get(equipamento.id) || { equipamentoId: equipamento.id, prefixo: equipamento.prefixo, avisos: [] };
-    alteracoes.set(equipamento.id, atual);
-    return atual;
-  };
 
   // Último operador de cada equipamento, já casado com o cadastro de colaboradores.
   const candidatos: Array<{ equipamento: Equipamento; funcionario: Funcionario; data: string }> = [];
@@ -325,6 +405,8 @@ export const preverCadastroSge = ({ linhas, equipamentos, funcionarios }: {
     motoristasVinculados: lista.filter(item => item.motorista?.funcionarioId).length,
     motoristasRetirados: lista.filter(item => item.motorista && !item.motorista.funcionarioId).length,
     horimetrosAtualizados: lista.filter(item => item.horimetro).length,
+    equipamentosNovos: lista.filter(item => item.novo).length,
+    equipamentosReativados: lista.filter(item => item.reativar).length,
     revisao,
   };
 };
@@ -332,11 +414,17 @@ export const preverCadastroSge = ({ linhas, equipamentos, funcionarios }: {
 /** Aplica a prévia sobre o cadastro: só os campos de motorista e horímetro mudam. */
 export const aplicarCadastroSge = (equipamentos: readonly Equipamento[], previa: PreviaCadastroSge, funcionarios: readonly Funcionario[], agora = new Date().toISOString()): Equipamento[] => {
   const porId = new Map(previa.alteracoes.map(item => [item.equipamentoId, item]));
-  return equipamentos.map(equipamento => {
+  const existentes = new Set(equipamentos.map(item => item.id));
+  const novos = previa.alteracoes.flatMap(item => (item.novo && !existentes.has(item.novo.id) ? [item.novo] : []));
+  return [...equipamentos, ...novos].map(equipamento => {
     const alteracao = porId.get(equipamento.id);
     if (!alteracao) return equipamento;
     // Com a data, a mesclagem com a nuvem mantém esta versão em vez da antiga.
-    const proximo = { ...equipamento, atualizadoEm: agora };
+    const proximo: Equipamento = { ...equipamento, atualizadoEm: agora };
+    if (alteracao.reativar) {
+      proximo.status = 'Ativo';
+      proximo.mobilizado = true;
+    }
     if (alteracao.motorista) {
       const funcionario = funcionarios.find(item => item.id === alteracao.motorista?.funcionarioId);
       proximo.operadorResponsavelId = funcionario?.id;

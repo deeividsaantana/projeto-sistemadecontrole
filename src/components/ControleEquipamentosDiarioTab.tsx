@@ -629,6 +629,7 @@ export default function ControleEquipamentosDiarioTab({
                     registros={registros}
                     motoristas={operationalDrivers}
                     funcionarios={funcionarios}
+                    empresas={empresas}
                     onImport={onImport}
                     onApplyCadastroSge={onApplyCadastroSge}
                     onMensagem={(tom, texto) => { setMessageTone(tom); setMessage(texto); }}
