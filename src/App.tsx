@@ -5622,6 +5622,8 @@ export default function App() {
                 podeRemover={pode(currentUserRole, 'cadastros', 'excluir')}
                 onRemoverEquipamentos={handleRemoverEquipamentosDoQuadro}
                 onNavigate={navigateTo}
+                onImportSge={handleImportControleEquipamentosDiario}
+                onApplyCadastroSge={handleAplicarCadastroSge}
               />
             )}
 
