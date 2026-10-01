@@ -83,6 +83,7 @@ import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
+import { aplicarCadastroSge, type PreviaCadastroSge } from './fleet/sgeApontamentos';
 import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
 import { useOfflineQueueCount } from './hooks/useOfflineQueue';
@@ -2099,6 +2100,51 @@ export default function App() {
     writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
     writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(nextEquipment));
     addNotification('Vínculo operacional atualizado', `${funcionario.nome} vinculado ao equipamento ${equipamento.prefixo}.`, 'success', 'Sistema Local');
+  };
+
+  const handleAplicarCadastroSge = (previa: PreviaCadastroSge) => {
+    if (!previa.alteracoes.length) return;
+    const now = new Date().toISOString();
+    const nextEquipment = aplicarCadastroSge(equipamentos, previa, funcionarios);
+    const trocas = previa.alteracoes.filter(item => item.motorista);
+    const equipamentosTrocados = new Set(trocas.map(item => item.equipamentoId));
+    const motoristasNovos = new Set(trocas.map(item => item.motorista?.funcionarioId).filter(Boolean));
+    const closedLinks = vinculosOperadorEquipamento.map(link =>
+      link.status === 'ATIVO' && (equipamentosTrocados.has(link.equipamentoId) || motoristasNovos.has(link.funcionarioId))
+        ? { ...link, status: 'ENCERRADO' as const, fimEm: now, atualizadoEm: now }
+        : link,
+    );
+    const newLinks: VinculoOperadorEquipamento[] = trocas.flatMap(item => {
+      const funcionario = funcionarios.find(person => person.id === item.motorista?.funcionarioId);
+      if (!funcionario) return [];
+      return [{
+        id: `vinculo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        funcionarioId: funcionario.id,
+        funcionarioNome: funcionario.nome,
+        equipamentoId: item.equipamentoId,
+        equipamentoPrefixo: item.prefixo,
+        inicioEm: now,
+        status: 'ATIVO' as const,
+        responsavelAlteracao: activeUserName,
+        observacao: 'Último operador no apontamento do SGE.',
+        criadoEm: now,
+        atualizadoEm: now,
+      }];
+    });
+    const nextLinks = [...newLinks, ...closedLinks];
+    saveAndLog(
+      'Equipamentos',
+      'Editou',
+      `Atualizou pelo apontamento do SGE: ${previa.motoristasVinculados} motorista(s) vinculado(s), ${previa.motoristasRetirados} retirado(s) e ${previa.horimetrosAtualizados} horímetro(s).`,
+      historyLogs,
+      () => {
+        setEquipamentos(nextEquipment);
+        setVinculosOperadorEquipamento(nextLinks);
+        writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(nextEquipment));
+        writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
+      },
+      { registroId: 'sge-cadastro', valorAnterior: previa.alteracoes.map(item => ({ prefixo: item.prefixo, motorista: item.motorista?.antes, horimetro: item.horimetro?.antes })), valorNovo: previa.alteracoes.map(item => ({ prefixo: item.prefixo, motorista: item.motorista?.depois, horimetro: item.horimetro?.depois })), tipoOperacao: 'UPDATE' },
+    );
   };
 
   const handleEncerrarVinculoOperadorEquipamento = (vinculoId: string) => {
@@ -5590,6 +5636,7 @@ export default function App() {
                 ordensServico={ordensServico}
                 onSave={handleSaveControleEquipamentoDiario}
                 onImport={handleImportControleEquipamentosDiario}
+                onApplyCadastroSge={handleAplicarCadastroSge}
                 onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
                 onOpenMaintenance={() => navigateTo('manutencao')}
                 onOpenEmployeeRegistration={() => navigateTo('cadastros')}

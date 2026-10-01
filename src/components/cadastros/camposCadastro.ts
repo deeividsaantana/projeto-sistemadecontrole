@@ -88,6 +88,7 @@ const CAMPOS_EQUIPAMENTO: CampoCadastro[] = [
   { id: 'codigoSge', label: 'Código SGE', tipo: 'texto', extra: true },
   { id: 'combustivelId', label: 'Combustível', tipo: 'selecao', extra: true, opcoes: dados => dados.combustiveis.map(item => ({ valor: item.id, label: item.nome })) },
   { id: 'capacidadeTanqueLitros', label: 'Tanque (litros)', tipo: 'numero', extra: true },
+  { id: 'horimetroAtual', label: 'Horímetro atual (h)', tipo: 'numero', extra: true },
   { id: 'metaDisponibilidade', label: 'Meta de disponibilidade (%)', tipo: 'numero', extra: true },
   { id: 'mobilizado', label: 'Está mobilizado na obra', tipo: 'marcar', extra: true },
   { id: 'dataMobilizacao', label: 'Data de mobilização', tipo: 'data', extra: true },
@@ -337,6 +338,7 @@ export const montarRegistro = (
     const equipamento = anterior as Equipamento | undefined;
     const operador = dados.funcionarios.find(item => item.id === str(valores, 'operadorResponsavelId'));
     const status = (str(valores, 'status') || 'Ativo') as Equipamento['status'];
+    const horimetroAtual = numero(valores, 'horimetroAtual');
     const registro: Equipamento = {
       ...equipamento,
       id,
@@ -367,6 +369,10 @@ export const montarRegistro = (
       operadorResponsavelNome: operador?.nome,
       combustivelId: opcional(valores, 'combustivelId'),
       capacidadeTanqueLitros: numero(valores, 'capacidadeTanqueLitros'),
+      horimetroAtual,
+      // Horímetro digitado à mão vale a partir de hoje; sem mudança, mantém o dia da leitura.
+      horimetroAtualData: horimetroAtual === undefined ? undefined
+        : horimetroAtual === equipamento?.horimetroAtual ? equipamento?.horimetroAtualData : new Date().toLocaleDateString('sv-SE'),
       equipamentoVinculadoId: opcional(valores, 'equipamentoVinculadoId'),
     };
     const validacao = validateEquipmentMasterRecord(registro);

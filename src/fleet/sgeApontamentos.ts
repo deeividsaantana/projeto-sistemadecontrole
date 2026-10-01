@@ -176,3 +176,173 @@ export const registrosParaAplicar = (previa: PreviaImportacaoSge): FleetPersiste
   previa.linhas
     .filter(item => (item.disposicao === 'NOVO' || item.disposicao === 'ATUALIZA') && item.registro)
     .map(item => item.registro as FleetPersistedRecord);
+
+/**
+ * Motorista e horímetro do cadastro de cada equipamento, tirados do mesmo
+ * apontamento do SGE. Vale o dia mais recente do equipamento: o operador desse
+ * dia vira o motorista responsável e o horímetro final vira o horímetro atual.
+ *
+ * O site mantém um motorista em um equipamento só. Quando a planilha põe o
+ * mesmo operador como último de vários equipamentos, ele fica no de dia mais
+ * recente e os outros vão para a revisão; empate no dia não escolhe sozinho.
+ */
+export interface AlteracaoCadastroSge {
+  equipamentoId: string;
+  prefixo: string;
+  motorista?: { antes: string; depois: string; funcionarioId?: string };
+  horimetro?: { antes?: number; depois: number; data: string };
+  avisos: string[];
+}
+
+export interface PreviaCadastroSge {
+  alteracoes: AlteracaoCadastroSge[];
+  motoristasVinculados: number;
+  motoristasRetirados: number;
+  horimetrosAtualizados: number;
+  revisao: string[];
+}
+
+const numeroDe = (valor: unknown): number | undefined =>
+  typeof valor === 'number' ? (Number.isFinite(valor) ? valor : undefined) : lerNumero(textoDe(valor));
+
+const temOperador = (raw: LinhaBrutaSge) =>
+  [raw.matriculaOperador, raw.nomeOperador].some(valor => !['', '-'].includes(textoDe(valor)));
+
+interface LeituraSge { raw: LinhaBrutaSge; data: string; horas: number }
+
+/** A linha que vale num dia: a única do dia, ou a de mais horas quando a outra não andou. */
+const linhaDoDia = (doDia: LeituraSge[]): LeituraSge | undefined => {
+  if (doDia.length === 1) return doDia[0];
+  const ordenadas = [...doDia].sort((a, b) => b.horas - a.horas);
+  return ordenadas[0].horas > ordenadas[1].horas ? ordenadas[0] : undefined;
+};
+
+const ultimaLeitura = (leituras: LeituraSge[], filtro: (leitura: LeituraSge) => boolean): LeituraSge | undefined => {
+  const datas = [...new Set(leituras.filter(filtro).map(item => item.data))].sort().reverse();
+  for (const data of datas) {
+    const escolhida = linhaDoDia(leituras.filter(item => item.data === data && filtro(item)));
+    if (escolhida) return escolhida;
+  }
+  return undefined;
+};
+
+export const preverCadastroSge = ({ linhas, equipamentos, funcionarios }: {
+  linhas: readonly LinhaBrutaSge[];
+  equipamentos: readonly Equipamento[];
+  funcionarios: readonly Funcionario[];
+}): PreviaCadastroSge => {
+  const porEquipamento = new Map<string, LeituraSge[]>();
+  for (const raw of linhas) {
+    const data = normalizeIsoDate(raw.data);
+    const equipamento = equipamentoPorPrefixo(textoDe(raw.uaEquipamento), equipamentos);
+    if (!data || !equipamento) continue;
+    const lista = porEquipamento.get(equipamento.id) || [];
+    lista.push({ raw, data, horas: numeroDe(raw.horasHorimetro) ?? 0 });
+    porEquipamento.set(equipamento.id, lista);
+  }
+
+  const revisao: string[] = [];
+  const alteracoes = new Map<string, AlteracaoCadastroSge>();
+  const alteracaoDe = (equipamento: Equipamento) => {
+    const atual = alteracoes.get(equipamento.id) || { equipamentoId: equipamento.id, prefixo: equipamento.prefixo, avisos: [] };
+    alteracoes.set(equipamento.id, atual);
+    return atual;
+  };
+
+  // Último operador de cada equipamento, já casado com o cadastro de colaboradores.
+  const candidatos: Array<{ equipamento: Equipamento; funcionario: Funcionario; data: string }> = [];
+  for (const equipamento of equipamentos) {
+    const leituras = porEquipamento.get(equipamento.id);
+    if (!leituras) continue;
+
+    const comHorimetro = ultimaLeitura(leituras, item => numeroDe(item.raw.horimetroFinal) !== undefined);
+    const horimetro = comHorimetro ? numeroDe(comHorimetro.raw.horimetroFinal) : undefined;
+    if (comHorimetro && horimetro !== undefined && horimetro !== equipamento.horimetroAtual
+      && !(equipamento.horimetroAtualData && equipamento.horimetroAtualData > comHorimetro.data)) {
+      const alteracao = alteracaoDe(equipamento);
+      alteracao.horimetro = { antes: equipamento.horimetroAtual, depois: horimetro, data: comHorimetro.data };
+      if (equipamento.horimetroAtual !== undefined && horimetro < equipamento.horimetroAtual) {
+        alteracao.avisos.push(`Horímetro caiu de ${equipamento.horimetroAtual.toLocaleString('pt-BR')} para ${horimetro.toLocaleString('pt-BR')} h; confira se o horímetro foi trocado.`);
+      }
+    }
+
+    const doOperador = ultimaLeitura(leituras, item => temOperador(item.raw));
+    if (!doOperador) continue;
+    const matricula = textoDe(doOperador.raw.matriculaOperador);
+    const nome = textoDe(doOperador.raw.nomeOperador);
+    const operador = reconcileEmployee({ employeeCode: matricula, employeeName: nome }, [...funcionarios]);
+    if (!operador.value) {
+      revisao.push(`${equipamento.prefixo}: ${nome || matricula}${matricula && nome ? ` (${matricula})` : ''} não está no cadastro de colaboradores; o motorista não foi vinculado.`);
+      continue;
+    }
+    candidatos.push({ equipamento, funcionario: operador.value, data: doOperador.data });
+  }
+
+  // Um motorista em um equipamento só: fica no de dia mais recente.
+  const vencedores = new Map<string, Equipamento>();
+  const porFuncionario = new Map<string, typeof candidatos>();
+  for (const candidato of candidatos) {
+    const lista = porFuncionario.get(candidato.funcionario.id) || [];
+    lista.push(candidato);
+    porFuncionario.set(candidato.funcionario.id, lista);
+  }
+  for (const [funcionarioId, lista] of porFuncionario) {
+    const ordenada = [...lista].sort((a, b) => b.data.localeCompare(a.data));
+    const prefixos = ordenada.map(item => item.equipamento.prefixo).join(', ');
+    if (ordenada.length > 1 && ordenada[0].data === ordenada[1].data) {
+      revisao.push(`${ordenada[0].funcionario.nome} aparece como último operador de ${prefixos} no mesmo dia; escolha o equipamento dele no cadastro.`);
+      continue;
+    }
+    vencedores.set(funcionarioId, ordenada[0].equipamento);
+    if (ordenada.length > 1) {
+      const outros = ordenada.slice(1).map(item => item.equipamento.prefixo);
+      revisao.push(`${ordenada[0].funcionario.nome} ficou no ${ordenada[0].equipamento.prefixo} (operou por último); ${outros.join(', ')} ${outros.length > 1 ? 'ficaram' : 'ficou'} sem trocar de motorista.`);
+    }
+  }
+
+  const novoDono = new Map([...vencedores].map(([funcionarioId, equipamento]) => [equipamento.id, funcionarioId]));
+  for (const equipamento of equipamentos) {
+    const funcionarioId = novoDono.get(equipamento.id);
+    if (funcionarioId && funcionarioId !== equipamento.operadorResponsavelId) {
+      const funcionario = funcionarios.find(item => item.id === funcionarioId) as Funcionario;
+      alteracaoDe(equipamento).motorista = { antes: equipamento.operadorResponsavelNome || '', depois: funcionario.nome, funcionarioId };
+      continue;
+    }
+    // Quem foi para outro equipamento sai deste, como no vínculo feito à mão.
+    const foiPara = equipamento.operadorResponsavelId ? vencedores.get(equipamento.operadorResponsavelId) : undefined;
+    if (!funcionarioId && foiPara && foiPara.id !== equipamento.id) {
+      const alteracao = alteracaoDe(equipamento);
+      alteracao.motorista = { antes: equipamento.operadorResponsavelNome || '', depois: '' };
+      alteracao.avisos.push(`${equipamento.operadorResponsavelNome || 'O motorista'} passou para o ${foiPara.prefixo}.`);
+    }
+  }
+
+  const lista = [...alteracoes.values()].sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR'));
+  return {
+    alteracoes: lista,
+    motoristasVinculados: lista.filter(item => item.motorista?.funcionarioId).length,
+    motoristasRetirados: lista.filter(item => item.motorista && !item.motorista.funcionarioId).length,
+    horimetrosAtualizados: lista.filter(item => item.horimetro).length,
+    revisao,
+  };
+};
+
+/** Aplica a prévia sobre o cadastro: só os campos de motorista e horímetro mudam. */
+export const aplicarCadastroSge = (equipamentos: readonly Equipamento[], previa: PreviaCadastroSge, funcionarios: readonly Funcionario[]): Equipamento[] => {
+  const porId = new Map(previa.alteracoes.map(item => [item.equipamentoId, item]));
+  return equipamentos.map(equipamento => {
+    const alteracao = porId.get(equipamento.id);
+    if (!alteracao) return equipamento;
+    const proximo = { ...equipamento };
+    if (alteracao.motorista) {
+      const funcionario = funcionarios.find(item => item.id === alteracao.motorista?.funcionarioId);
+      proximo.operadorResponsavelId = funcionario?.id;
+      proximo.operadorResponsavelNome = funcionario?.nome;
+    }
+    if (alteracao.horimetro) {
+      proximo.horimetroAtual = alteracao.horimetro.depois;
+      proximo.horimetroAtualData = alteracao.horimetro.data;
+    }
+    return proximo;
+  });
+};
