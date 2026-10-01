@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, FileSpreadsheet, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Printer, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Database, FileSpreadsheet, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Printer, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Empresa, Equipamento, FrenteServico, Funcionario, GrupoEquipe, OrdemServico } from '../types';
 import { CountUp, Modal, PageHeader, isoDay } from '../shared/ui';
 import {
@@ -41,6 +41,8 @@ import { CartaoArrastavel } from './quadroFrota/CartaoArrastavel';
 import { ColunaCanteiro } from './quadroFrota/ColunaCanteiro';
 import { LancarFrota } from './quadroFrota/LancarFrota';
 import { PainelEquipamento } from './quadroFrota/PainelEquipamento';
+import ImportacaoSge from './fleet/ImportacaoSge';
+import type { PreviaCadastroSge } from '../fleet/sgeApontamentos';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from './cadastros/estilos';
 import { createEmptyFleetFilters } from '../fleet/domain';
 import { createFleetReportViewModel } from '../fleet/reportService';
@@ -71,6 +73,9 @@ interface Props {
   /** Desmobiliza as máquinas (saem do quadro pra sempre) e apaga o lançamento de hoje, se houver. */
   onRemoverEquipamentos?: (itens: Array<{ equipamentoId: string; registroId?: string }>) => void;
   onNavigate: (aba: string) => void;
+  /** Importação do apontamento do SGE: lançamentos do dia e cadastro (motorista e horímetro). */
+  onImportSge?: (registros: ControleEquipamentoDiario[]) => void;
+  onApplyCadastroSge?: (previa: PreviaCadastroSge) => void;
 }
 
 const dataLonga = (dia: string) => new Date(`${dia}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -111,7 +116,7 @@ interface Indicador {
   aoClicar?: () => void;
 }
 
-export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, empresas = [], ordensServico = [], operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate }: Props) {
+export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, empresas = [], ordensServico = [], operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate, onImportSge, onApplyCadastroSge }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   // Mesma lista de motoristas e operadores do Controle de Frotas, para o operador
@@ -403,7 +408,7 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
             <details className="erp-fleet-menu group relative w-full sm:w-auto" data-testid="quadro-relatorios">
               <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer list-none px-3 sm:w-auto [&::-webkit-details-marker]:hidden`}>
                 <FileSpreadsheet className="size-4" aria-hidden="true" />
-                Relatório
+                Mais ações
                 <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
               </summary>
               <div className="absolute right-0 z-30 mt-2 w-full min-w-56 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)] sm:w-60">
@@ -415,6 +420,27 @@ export default function QuadroFrotaTab({ equipamentos, registros, gruposEquipe, 
                   <FileSpreadsheet className="size-4" aria-hidden="true" />
                   {exportando === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}
                 </button>
+                {podeEditar && onImportSge && onApplyCadastroSge && (
+                  <>
+                    <hr className="my-1 border-slate-100" />
+                    <ImportacaoSge
+                      equipamentos={equipamentos}
+                      registros={registros}
+                      motoristas={motoristas}
+                      funcionarios={funcionarios}
+                      onImport={onImportSge}
+                      onApplyCadastroSge={onApplyCadastroSge}
+                      importarLancamentosPorPadrao={false}
+                      onMensagem={(_tom, texto) => setAviso(texto)}
+                      gatilho={abrir => (
+                        <button type="button" onClick={abrir} className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`} data-testid="quadro-importar-sge">
+                          <Database className="size-4" aria-hidden="true" />
+                          Atualizar motorista e horímetro (SGE)
+                        </button>
+                      )}
+                    />
+                  </>
+                )}
               </div>
             </details>
             {podeEditar ? (

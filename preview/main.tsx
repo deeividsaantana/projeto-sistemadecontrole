@@ -50,6 +50,7 @@ import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { PRIMARY_MODULE_IDS, SIDEBAR_NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
 import * as fx from './fixtures';
+import { aplicarCadastroSge } from '../src/fleet/sgeApontamentos';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -82,6 +83,8 @@ function QuadroFrotaPreview() {
         setRegistros(atual => atual.filter(item => !registroIds.has(item.id)));
       }}
       onNavigate={noop}
+      onImportSge={novos => setRegistros(atual => [...novos, ...atual])}
+      onApplyCadastroSge={previa => setEquipamentos(atual => aplicarCadastroSge(atual, previa, fx.funcionarios))}
     />
   );
 }

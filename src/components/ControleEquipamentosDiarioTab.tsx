@@ -40,7 +40,7 @@ import { useFleetReport } from '../fleet/useFleetReport';
 import { calculateFleetMetrics } from '../fleet/reportService';
 import { toLegacyDailyStatus } from '../fleet/status';
 import { previewFleetImport } from '../fleet/importService';
-import { preverCadastroSge, preverImportacaoSge, registrosParaAplicar, rotuloImportacaoSge, type LinhaBrutaSge, type PreviaCadastroSge, type PreviaImportacaoSge } from '../fleet/sgeApontamentos';
+import type { PreviaCadastroSge } from '../fleet/sgeApontamentos';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import { generateFleetPdf } from '../fleet/pdfReport';
 import { exportFleetExcel } from '../fleet/excelExport';
@@ -58,7 +58,7 @@ import FleetDetailDrawer from './fleet/FleetDetailDrawer';
 import DailyRecordForm from './fleet/DailyRecordForm';
 import FleetReportLayout from './fleet/FleetReportLayout';
 import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/FleetImportPreviewModal';
-import CadastroSgePrevia from './fleet/CadastroSgePrevia';
+import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from './cadastros/estilos';
@@ -201,11 +201,6 @@ export default function ControleEquipamentosDiarioTab({
   const [confirmationBusy, setConfirmationBusy] = useState(false);
   const [importPreview, setImportPreview] = useState<FleetImportPreview>();
   const [importFileName, setImportFileName] = useState('');
-  const [sgePreview, setSgePreview] = useState<PreviaImportacaoSge>();
-  const [sgeFileName, setSgeFileName] = useState('');
-  const [sgeCadastro, setSgeCadastro] = useState<PreviaCadastroSge>();
-  const [sgeAtualizarCadastro, setSgeAtualizarCadastro] = useState(true);
-  const [sgeImportarLancamentos, setSgeImportarLancamentos] = useState(true);
   const [message, setMessage] = useState('');
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>('info');
   const [exporting, setExporting] = useState<'pdf' | 'excel' | 'weekly-pdf' | 'weekly-excel' | ''>('');
@@ -224,7 +219,6 @@ export default function ControleEquipamentosDiarioTab({
   const [driverErro, setDriverErro] = useState('');
   const [driverExclusao, setDriverExclusao] = useState<Funcionario | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const sgeInputRef = useRef<HTMLInputElement>(null);
   useGSAP(() => {
     const root = pageRef.current;
     if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -500,95 +494,6 @@ export default function ControleEquipamentosDiarioTab({
       setMessage(error instanceof Error ? error.message : 'Falha ao validar o arquivo.');
     }
   };
-  const readSgeImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    setMessageTone('info');
-    setMessage('Lendo o apontamento do SGE...');
-    try {
-      const workbook = await loadValidatedWorkbook(file);
-      const sheet = workbook.worksheets.find(item => /apontad/i.test(item.name)) || workbook.worksheets[0];
-      if (!sheet) throw new Error('Nenhuma aba com dados foi encontrada.');
-      // Colunas identificadas pelo texto do cabeçalho, não pela posição: a planilha do
-      // SGE muda de layout entre exportações, mas os nomes das colunas se mantêm.
-      const ALVOS: Record<string, RegExp> = {
-        data: /^data$/i,
-        uaEquipamento: /ua\s*equipamento/i,
-        horimetroInicial: /hor[ií]metro\s*inicial/i,
-        horimetroFinal: /hor[ií]metro\s*final/i,
-        horasHorimetro: /horas\s*hor[ií]metro/i,
-        matriculaOperador: /matr[ií]cula.*operador/i,
-        nomeOperador: /nome.*operador/i,
-        observacoes: /observa/i,
-      };
-      let colunas: Record<string, number> = {};
-      let headerRow = 0;
-      for (let numero = 1; numero <= 20 && !headerRow; numero += 1) {
-        const linhaCabecalho = sheet.getRow(numero);
-        const achadas: Record<string, number> = {};
-        for (let indice = 1; indice <= 15; indice += 1) {
-          const texto = asText(linhaCabecalho.getCell(indice).value);
-          if (!texto) continue;
-          Object.entries(ALVOS).forEach(([chave, regex]) => {
-            if (!achadas[chave] && regex.test(texto)) achadas[chave] = indice;
-          });
-        }
-        if (achadas.data && achadas.uaEquipamento) {
-          headerRow = numero;
-          colunas = achadas;
-        }
-      }
-      if (!headerRow) throw new Error('Não encontrei as colunas "Data" e "UA Equipamento" nesta planilha.');
-      const linhas: LinhaBrutaSge[] = [];
-      sheet.eachRow((row, rowNumber) => {
-        if (rowNumber <= headerRow) return;
-        const valores = Object.values(colunas).map(indice => asText(getImportCell(row, indice)));
-        if (!valores.some(Boolean) || valores.join(' ').toLocaleLowerCase('pt-BR').includes('total geral')) return;
-        linhas.push({
-          linha: rowNumber,
-          data: getImportCell(row, colunas.data),
-          uaEquipamento: getImportCell(row, colunas.uaEquipamento),
-          descricaoEquipamento: '',
-          horimetroInicial: colunas.horimetroInicial ? getImportCell(row, colunas.horimetroInicial) : '',
-          horimetroFinal: colunas.horimetroFinal ? getImportCell(row, colunas.horimetroFinal) : '',
-          horasHorimetro: colunas.horasHorimetro ? getImportCell(row, colunas.horasHorimetro) : '',
-          matriculaOperador: colunas.matriculaOperador ? getImportCell(row, colunas.matriculaOperador) : '',
-          nomeOperador: colunas.nomeOperador ? getImportCell(row, colunas.nomeOperador) : '',
-          observacoes: colunas.observacoes ? getImportCell(row, colunas.observacoes) : '',
-        });
-      });
-      if (!linhas.length) throw new Error('Nenhuma linha de apontamento encontrada nesta planilha.');
-      const preview = preverImportacaoSge({ linhas, equipamentos, registros, motoristas: operationalDrivers });
-      setSgeFileName(file.name);
-      setSgePreview(preview);
-      setSgeCadastro(onApplyCadastroSge ? preverCadastroSge({ linhas, equipamentos, funcionarios }) : undefined);
-      setSgeAtualizarCadastro(true);
-      setSgeImportarLancamentos(true);
-      setMessage('');
-    } catch (error) {
-      setMessageTone('error');
-      setMessage(error instanceof Error ? error.message : 'Falha ao validar o apontamento do SGE.');
-    }
-  };
-  const fecharSge = () => {
-    setSgePreview(undefined);
-    setSgeCadastro(undefined);
-    setSgeFileName('');
-  };
-  const cadastroParaAplicar = sgeAtualizarCadastro && sgeCadastro?.alteracoes.length ? sgeCadastro : undefined;
-  const lancamentosSge = sgeImportarLancamentos && sgePreview?.podeAplicar ? sgePreview.novos + sgePreview.atualizados : 0;
-  const applySgePreview = () => {
-    if (!sgePreview || (!lancamentosSge && !cadastroParaAplicar)) return;
-    if (lancamentosSge) onImport(registrosParaAplicar(sgePreview));
-    if (cadastroParaAplicar) onApplyCadastroSge?.(cadastroParaAplicar);
-    setMessageTone('success');
-    setMessage([
-      lancamentosSge ? `Apontamento do SGE importado · ${sgePreview.novos} novo(s) · ${sgePreview.atualizados} atualizado(s) · ${sgePreview.protegidos} protegido(s) por lançamento manual · ${sgePreview.duplicados} duplicado(s) no arquivo · ${sgePreview.comErro} com erro.` : '',
-      cadastroParaAplicar ? `Cadastro: ${cadastroParaAplicar.motoristasVinculados} motorista(s) vinculado(s) e ${cadastroParaAplicar.horimetrosAtualizados} horímetro(s) atualizado(s).` : '',
-    ].filter(Boolean).join(' '));
-    fecharSge();
-  };
   const applyImportPreview = () => {
     if (!importPreview?.canApply) return;
     const applicable = importPreview.rows
@@ -702,7 +607,6 @@ export default function ControleEquipamentosDiarioTab({
                 </button>
               )}
               <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-              <input ref={sgeInputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readSgeImport}/>
               <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
                 <Keyboard className="size-4" aria-hidden="true" />
                 <kbd className="text-xs">?</kbd>
@@ -720,7 +624,16 @@ export default function ControleEquipamentosDiarioTab({
                   <hr className="my-1 border-slate-100" />
                   <p className={ROTULO_GRUPO_MENU}>Importar</p>
                   <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
-                  <button type="button" onClick={() => sgeInputRef.current?.click()} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>
+                  <ImportacaoSge
+                    equipamentos={equipamentos}
+                    registros={registros}
+                    motoristas={operationalDrivers}
+                    funcionarios={funcionarios}
+                    onImport={onImport}
+                    onApplyCadastroSge={onApplyCadastroSge}
+                    onMensagem={(tom, texto) => { setMessageTone(tom); setMessage(texto); }}
+                    gatilho={abrir => <button type="button" onClick={abrir} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>}
+                  />
                   <hr className="my-1 border-slate-100" />
                   <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
                   <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
@@ -895,53 +808,6 @@ export default function ControleEquipamentosDiarioTab({
         onClose={() => { setImportPreview(undefined); setImportFileName(''); }}
         onApply={applyImportPreview}
       />
-      <FleetImportPreviewModal
-        open={Boolean(sgePreview)}
-        title={`Conferir o apontamento do SGE${sgeFileName ? `: ${sgeFileName}` : ''}`}
-        description="Nada entra no sistema antes de você confirmar. Lançamentos manuais e máquinas em manutenção nunca são sobrescritos."
-        stats={sgePreview ? [
-          { label: 'Novos', value: sgePreview.novos, tone: TOM_SITUACAO.ok },
-          { label: 'Atualizações', value: sgePreview.atualizados, tone: 'bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200' },
-          { label: 'Protegidos', value: sgePreview.protegidos, tone: TOM_SITUACAO.inativo },
-          { label: 'Duplicados no dia', value: sgePreview.duplicados, tone: TOM_SITUACAO.alerta },
-          { label: 'Com erro', value: sgePreview.comErro, tone: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200' },
-        ] : []}
-        rows={(sgePreview?.linhas || []).map((item): FleetImportPreviewRow => ({
-          key: `${item.linha}-${item.chave}`,
-          rowNumber: item.linha,
-          dispositionLabel: ({ NOVO: 'Novo', ATUALIZA: 'Atualiza', PROTEGIDO: 'Protegido', DUPLICADO: 'Duplicado', ERRO: 'Erro' } as Record<string, string>)[item.disposicao] || item.disposicao,
-          prefixo: item.registro?.prefixo || '',
-          pessoa: item.registro?.nomeMotorista || '',
-          data: item.registro?.data || '',
-          messages: item.mensagens.join(' '),
-        }))}
-        applyCount={(sgePreview?.novos || 0) + (sgePreview?.atualizados || 0)}
-        applyLabel={sgeCadastro ? rotuloImportacaoSge(lancamentosSge, cadastroParaAplicar?.alteracoes.length || 0) : undefined}
-        canApply={Boolean(lancamentosSge || cadastroParaAplicar)}
-        onClose={fecharSge}
-        onApply={applySgePreview}
-      >
-        {sgeCadastro && sgePreview && (
-          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3">
-            <input
-              type="checkbox"
-              checked={sgeImportarLancamentos && sgePreview.podeAplicar}
-              disabled={!sgePreview.podeAplicar}
-              onChange={event => setSgeImportarLancamentos(event.target.checked)}
-              className={`mt-0.5 size-5 shrink-0 rounded accent-emerald-700 ${FOCO}`}
-            />
-            <span>
-              <span className="block text-sm font-bold text-slate-800">Importar os lançamentos do dia</span>
-              <span className="block text-xs text-slate-600">
-                {sgePreview.podeAplicar
-                  ? `Cria ${sgePreview.novos + sgePreview.atualizados} lançamento(s) da lista acima no Controle de Frotas. Desmarque para mexer só no cadastro.`
-                  : 'Nenhum lançamento novo para importar desta planilha.'}
-              </span>
-            </span>
-          </label>
-        )}
-        {sgeCadastro && <CadastroSgePrevia previa={sgeCadastro} marcado={sgeAtualizarCadastro} onMarcar={setSgeAtualizarCadastro} />}
-      </FleetImportPreviewModal>
       <Modal open={atalhosAberto} title="Atalhos do teclado" size="sm" onClose={() => setAtalhosAberto(false)}>
         <dl className="divide-y divide-slate-100">
           {ATALHOS.map(atalho => (
