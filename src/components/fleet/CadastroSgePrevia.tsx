@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import type { PreviaCadastroSge } from '../../fleet/sgeApontamentos';
-import { TOM_SITUACAO } from '../cadastros/estilos';
+import { FOCO, TOM_SITUACAO } from '../cadastros/estilos';
 
 interface Props {
   previa: PreviaCadastroSge;
@@ -26,7 +26,7 @@ export default function CadastroSgePrevia({ previa, marcado, onMarcar }: Props) 
           checked={marcado && total > 0}
           disabled={total === 0}
           onChange={event => onMarcar(event.target.checked)}
-          className="mt-0.5 size-5 shrink-0 accent-emerald-700"
+          className={`mt-0.5 size-5 shrink-0 rounded accent-emerald-700 ${FOCO}`}
         />
         <span>
           <span className="block text-sm font-bold text-slate-800">Atualizar também o cadastro dos equipamentos</span>
