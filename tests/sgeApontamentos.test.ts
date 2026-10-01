@@ -234,3 +234,17 @@ test('cadastro: editar o equipamento à mão mantém o horímetro e o dia da lei
   assert.ok(resultado.ok);
   assert.equal((resultado.registro as Equipamento).horimetroAtualData, '2026-09-30');
 });
+
+test('cadastro: o dia do apontamento vai junto com o motorista, para o quadro saber qual é mais novo', () => {
+  const previa = preverCadastroSge({ linhas: [linha({ data: '29/09/2026' })], equipamentos, funcionarios: motoristas });
+  const [cb770] = aplicarCadastroSge(equipamentos, previa, motoristas);
+  assert.equal(cb770.operadorResponsavelDesde, '2026-09-29');
+});
+
+test('botão da prévia diz só o que vai ser gravado', async () => {
+  const { rotuloImportacaoSge } = await import('../src/fleet/sgeApontamentos');
+  assert.equal(rotuloImportacaoSge(1381, 106), 'Importar 1381 lançamento(s) e atualizar 106 equipamento(s)');
+  assert.equal(rotuloImportacaoSge(0, 106), 'Atualizar 106 equipamento(s)');
+  assert.equal(rotuloImportacaoSge(12, 0), 'Importar 12 lançamento(s)');
+  assert.equal(rotuloImportacaoSge(0, 0), 'Nada para gravar');
+});

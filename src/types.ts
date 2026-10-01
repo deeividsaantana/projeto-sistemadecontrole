@@ -57,6 +57,8 @@ export interface Equipamento {
   dataDesmobilizacao?: string;
   operadorResponsavelId?: string;
   operadorResponsavelNome?: string;
+  /** Dia em que o operador responsável foi definido; no Quadro da Frota vale o mais recente entre ele e o último lançamento. */
+  operadorResponsavelDesde?: string;
   /** Última leitura de horímetro conhecida (h) e o dia dela; hoje vem do apontamento do SGE. */
   horimetroAtual?: number;
   horimetroAtualData?: string;

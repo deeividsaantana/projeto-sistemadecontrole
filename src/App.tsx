@@ -2091,8 +2091,8 @@ export default function App() {
     };
     const nextLinks = [link, ...closedLinks];
     const nextEquipment = equipamentos.map(item => {
-      if (item.id === equipamentoId) return { ...item, operadorResponsavelId: funcionarioId, operadorResponsavelNome: funcionario.nome };
-      if (item.operadorResponsavelId === funcionarioId) return { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined };
+      if (item.id === equipamentoId) return { ...item, operadorResponsavelId: funcionarioId, operadorResponsavelNome: funcionario.nome, operadorResponsavelDesde: new Date().toLocaleDateString('sv-SE') };
+      if (item.operadorResponsavelId === funcionarioId) return { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined, operadorResponsavelDesde: undefined };
       return item;
     });
     setVinculosOperadorEquipamento(nextLinks);
@@ -2152,7 +2152,7 @@ export default function App() {
     if (!current) return;
     const now = new Date().toISOString();
     const nextLinks = vinculosOperadorEquipamento.map(link => link.id === vinculoId ? { ...link, status: 'ENCERRADO' as const, fimEm: now, atualizadoEm: now } : link);
-    const nextEquipment = equipamentos.map(item => item.id === current.equipamentoId ? { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined } : item);
+    const nextEquipment = equipamentos.map(item => item.id === current.equipamentoId ? { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined, operadorResponsavelDesde: undefined } : item);
     setVinculosOperadorEquipamento(nextLinks);
     setEquipamentos(nextEquipment);
     writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
