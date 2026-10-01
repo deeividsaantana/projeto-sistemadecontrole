@@ -65,6 +65,12 @@ export interface Equipamento {
   combustivelId?: string;
   capacidadeTanqueLitros?: number;
   equipamentoVinculadoId?: string;
+  /**
+   * Quando o cadastro mudou pela última vez. A mesclagem com a nuvem usa esta
+   * data para decidir qual versão fica; sem ela, a versão da nuvem sempre ganha
+   * e a mudança feita neste aparelho se perde.
+   */
+  atualizadoEm?: string;
 }
 
 export interface Funcionario {

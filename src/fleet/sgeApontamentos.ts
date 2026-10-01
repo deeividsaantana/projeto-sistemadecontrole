@@ -330,12 +330,13 @@ export const preverCadastroSge = ({ linhas, equipamentos, funcionarios }: {
 };
 
 /** Aplica a prévia sobre o cadastro: só os campos de motorista e horímetro mudam. */
-export const aplicarCadastroSge = (equipamentos: readonly Equipamento[], previa: PreviaCadastroSge, funcionarios: readonly Funcionario[]): Equipamento[] => {
+export const aplicarCadastroSge = (equipamentos: readonly Equipamento[], previa: PreviaCadastroSge, funcionarios: readonly Funcionario[], agora = new Date().toISOString()): Equipamento[] => {
   const porId = new Map(previa.alteracoes.map(item => [item.equipamentoId, item]));
   return equipamentos.map(equipamento => {
     const alteracao = porId.get(equipamento.id);
     if (!alteracao) return equipamento;
-    const proximo = { ...equipamento };
+    // Com a data, a mesclagem com a nuvem mantém esta versão em vez da antiga.
+    const proximo = { ...equipamento, atualizadoEm: agora };
     if (alteracao.motorista) {
       const funcionario = funcionarios.find(item => item.id === alteracao.motorista?.funcionarioId);
       proximo.operadorResponsavelId = funcionario?.id;

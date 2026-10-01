@@ -377,6 +377,7 @@ export const montarRegistro = (
       horimetroAtualData: horimetroAtual === undefined ? undefined
         : horimetroAtual === equipamento?.horimetroAtual ? equipamento?.horimetroAtualData : new Date().toLocaleDateString('sv-SE'),
       equipamentoVinculadoId: opcional(valores, 'equipamentoVinculadoId'),
+      atualizadoEm: new Date().toISOString(),
     };
     const validacao = validateEquipmentMasterRecord(registro);
     if (validacao.errors.length > 0) return { ok: false, erro: validacao.errors.join(' ') };
