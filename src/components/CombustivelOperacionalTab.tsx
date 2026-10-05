@@ -83,7 +83,7 @@ const mesMacro = (dia: string) => mesOperacional(dia).replace(' DE ', ' ');
 const litrosTexto = (valor: number) => `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L`;
 const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const CAMPO_MACRO = 'h-8 w-full rounded-none border border-[#8f9491] bg-white px-3 text-sm font-medium text-slate-950 shadow-[inset_1px_1px_0_rgba(15,23,42,0.18)] outline-none transition focus:border-[#007a5b] focus:ring-2 focus:ring-[#007a5b]/20 disabled:text-slate-500';
+const CAMPO_MACRO = 'h-8 w-full rounded-none border border-[#718087] bg-white px-3 text-sm font-medium text-slate-950 shadow-[inset_1px_1px_0_rgba(15,23,42,0.18)] outline-none transition focus:border-[#176b4d] focus:ring-2 focus:ring-[#176b4d]/20 disabled:text-slate-500';
 const ROTULO_MACRO = 'flex h-8 items-center text-sm font-black text-black';
 
 const vazio = (usuario: string, data = hoje()): Formulario => ({
