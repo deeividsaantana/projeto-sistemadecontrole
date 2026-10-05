@@ -12,6 +12,7 @@ import './funcionariosRepository.test';
 import './p0-03-listener-cleanup.test';
 import './p0-06-offline-recovery.test';
 import './fuelPumpSequence.test';
+import './fuelMasterDataImport.test';
 import './fuelMacroForm.test';
 import './fuelMacroLayout.test';
 import './fuelOperations.test';

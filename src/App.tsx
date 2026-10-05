@@ -100,6 +100,7 @@ import {
   LOCAL_FUEL_RESET_VERSION,
   shouldResetLocalFuel,
 } from './utils/localFuelReset';
+import type { FuelImportedMasterData } from './utils/fuelMasterDataImport';
 import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
 
 // Subcomponents Imports
@@ -504,6 +505,7 @@ export default function App() {
   const lastSyncCheckAtRef = useRef(0);
   const automaticDownloadInFlightRef = useRef(false);
   const pendingRemoteVersionRef = useRef('');
+  const localMutationRevisionRef = useRef(0);
   const publicTicketIdsRef = useRef<Set<string>>(new Set());
   const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
   const currentUserRoleRef = useRef<UserRole>('admin');
@@ -1146,7 +1148,7 @@ export default function App() {
   };
 
   // Download da nuvem pelo provedor autoritativo da fase atual.
-  const handleDownloadFromFirebase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
+  const handleDownloadFromFirebase = async (options: { abortIfLocalMutationSince?: number } = {}): Promise<{ success: boolean; data?: string; message: string }> => {
     try {
       const backup = await downloadCloudBackup(db);
       if (backup.data) {
@@ -1184,6 +1186,16 @@ export default function App() {
         const nowStr = Number.isNaN(syncDate.getTime())
           ? new Date().toLocaleString('pt-BR')
           : syncDate.toLocaleString('pt-BR');
+
+        if (
+          options.abortIfLocalMutationSince !== undefined
+          && localMutationRevisionRef.current !== options.abortIfLocalMutationSince
+        ) {
+          return {
+            success: true,
+            message: 'Atualização automática ignorada porque este aparelho salvou dados mais recentes durante a leitura da nuvem.',
+          };
+        }
         
         // Grava primeiro como um único conjunto recuperável. Se o navegador
         // estiver sem espaço, nenhuma tabela é deixada pela metade.
@@ -1441,7 +1453,8 @@ export default function App() {
           }
         }
 
-        const downloadResult = await handleDownloadFromFirebase();
+        const downloadStartedAtRevision = localMutationRevisionRef.current;
+        const downloadResult = await handleDownloadFromFirebase({ abortIfLocalMutationSince: downloadStartedAtRevision });
         if (!downloadResult.success) {
           pendingRemoteVersionRef.current = requestedVersion;
           retryPendingImmediately = false;
@@ -1645,6 +1658,7 @@ export default function App() {
     audit?: Pick<HistoryLog, 'registroId' | 'valorAnterior' | 'valorNovo' | 'tipoOperacao'>,
     onError?: (error: Error) => void,
   ) => {
+    localMutationRevisionRef.current += 1;
     stateUpdateFn();
     const changeLog: HistoryLog = {
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -2713,7 +2727,11 @@ export default function App() {
   };
 
   // Importação de planilha — Prioridade 3: grava em lote (um único registro de histórico)
-  const handleImportAbastecimentos = (novosItens: Abastecimento[], combustiveisImportados: TipoCombustivel[] = []): ImportAbastecimentosResult => {
+  const handleImportAbastecimentos = (
+    novosItens: Abastecimento[],
+    combustiveisImportados: TipoCombustivel[] = [],
+    cadastrosImportados: Partial<FuelImportedMasterData> = {},
+  ): ImportAbastecimentosResult => {
     const existingWithCanonicalPrefix = abastecimentos.map(item => ({
       ...item,
       prefixoInformado: item.prefixoInformado || equipamentos.find(equipment => equipment.id === item.equipamentoId)?.prefixo || item.equipamentoId,
@@ -2721,24 +2739,59 @@ export default function App() {
     const { accepted: itensIneditos, rejected: itensRejeitados } = filterNovelFuelImports(existingWithCanonicalPrefix, novosItens || []);
     const tiposUtilizados = new Set(itensIneditos.map(item => item.tipoCombustivelId));
     const combustiveisValidos = combustiveisImportados.filter(item => tiposUtilizados.has(item.id));
-    if (itensIneditos.length === 0 && combustiveisValidos.length === 0) {
+    const empresasImportadas = cadastrosImportados.empresas ?? [];
+    const equipamentosImportados = cadastrosImportados.equipamentos ?? [];
+    const comboiosImportados = cadastrosImportados.comboios ?? [];
+
+    const companyMerge = empresasImportadas.length
+      ? mergeImportedRecords(empresas, empresasImportadas, item => normalizeImportText(item.nome), (saved, imported) => mergeEmpresaImport(saved, imported, Boolean(imported.status)))
+      : null;
+    const nextEmpresas = companyMerge?.next ?? empresas;
+    const empresaIdPorNome = new Map(nextEmpresas.map(item => [normalizeImportText(item.nome), item.id]));
+    const empresaIdRemap = new Map(empresasImportadas.map(item => [item.id, empresaIdPorNome.get(normalizeImportText(item.nome)) || item.id]));
+    const equipamentosNormalizados = equipamentosImportados.map(item => ({
+      ...item,
+      empresaId: empresaIdRemap.get(item.empresaId) || item.empresaId,
+    }));
+    const equipmentMerge = equipamentosNormalizados.length
+      ? mergeImportedRecords(equipamentos, equipamentosNormalizados, item => normalizeImportText(item.prefixo), (saved, imported) => mergeEquipamentoImport(saved, imported, Boolean(imported.status), imported.mobilizado !== undefined))
+      : null;
+    const convoyMerge = comboiosImportados.length
+      ? mergeImportedRecords(comboios, comboiosImportados, item => normalizeImportText(item.placa || item.nome))
+      : null;
+    const fuelMerge = combustiveisValidos.length
+      ? mergeImportedRecords(combustiveis, combustiveisValidos, item => normalizeImportText(item.nome))
+      : null;
+    const hasCadastroChanges = Boolean(
+      (companyMerge && (companyMerge.created > 0 || companyMerge.updated > 0)) ||
+      (equipmentMerge && (equipmentMerge.created > 0 || equipmentMerge.updated > 0)) ||
+      (convoyMerge && (convoyMerge.created > 0 || convoyMerge.updated > 0)) ||
+      (fuelMerge && (fuelMerge.created > 0 || fuelMerge.updated > 0))
+    );
+    if (itensIneditos.length === 0 && !hasCadastroChanges) {
       return {
         requested: novosItens.length,
         accepted: 0,
         rejected: novosItens.length,
         totalAfter: abastecimentos.length,
         fuelTypesCreated: 0,
+        companiesCreated: 0,
+        equipmentsCreated: 0,
+        convoysCreated: 0,
       };
     }
-    const fuelMerge = combustiveisValidos.length
-      ? mergeImportedRecords(combustiveis, combustiveisValidos, item => normalizeImportText(item.nome))
-      : null;
     let updated = mergeRecordsById(abastecimentos, itensIneditos);
-    updated = auditarBaseCombustivel(updated);
+    updated = enrichFuelDataset(updated, equipmentMerge?.next ?? equipamentos);
     const origens = new Set(itensIneditos.map(item => item.origem || 'Planilha'));
     const origemDescricao = origens.size === 1 ? [...origens][0] : 'fontes combinadas';
-    const fuelMessage = fuelMerge && fuelMerge.created > 0
-      ? ` Também cadastrou ${fuelMerge.created} tipo(s) de combustível novo(s).`
+    const cadastrosMessage = [
+      companyMerge?.created ? `${companyMerge.created} empresa(s)/locadora(s)` : '',
+      equipmentMerge?.created ? `${equipmentMerge.created} equipamento(s)` : '',
+      convoyMerge?.created ? `${convoyMerge.created} comboio(s)` : '',
+      fuelMerge?.created ? `${fuelMerge.created} tipo(s) de combustível` : '',
+    ].filter(Boolean);
+    const fuelMessage = cadastrosMessage.length
+      ? ` Também cadastrou ${cadastrosMessage.join(', ')}.`
       : '';
     saveAndLog(
       'Abastecimentos',
@@ -2746,6 +2799,18 @@ export default function App() {
       `Importou ${itensIneditos.length} registro(s) inédito(s) de combustível via ${origemDescricao}; ${itensRejeitados.length} inválido(s) ou duplicado(s) foram bloqueados.${fuelMessage}`,
       historyLogs,
       () => {
+        if (companyMerge) {
+          setEmpresas(companyMerge.next);
+          writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(companyMerge.next));
+        }
+        if (equipmentMerge) {
+          setEquipamentos(equipmentMerge.next);
+          writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(equipmentMerge.next));
+        }
+        if (convoyMerge) {
+          setComboios(convoyMerge.next);
+          writeStorageValue(localStorage, 'renea_comboios', JSON.stringify(convoyMerge.next));
+        }
         if (fuelMerge) {
           setCombustiveis(fuelMerge.next);
           writeStorageValue(localStorage, 'renea_combustiveis', JSON.stringify(fuelMerge.next));
@@ -2760,6 +2825,9 @@ export default function App() {
       rejected: itensRejeitados.length,
       totalAfter: updated.length,
       fuelTypesCreated: fuelMerge?.created || 0,
+      companiesCreated: companyMerge?.created || 0,
+      equipmentsCreated: equipmentMerge?.created || 0,
+      convoysCreated: convoyMerge?.created || 0,
     };
   };
 

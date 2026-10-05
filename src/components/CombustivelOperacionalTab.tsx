@@ -10,6 +10,7 @@ import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { AlertTriangle, ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CheckCircle2, Download, Droplets, FileSpreadsheet, FileText, Filter, Fuel, History, Info, PieChart, Plus, RotateCcw, Save, Search, Trash2 } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../types';
+import type { FuelImportedMasterData } from '../utils/fuelMasterDataImport';
 import { ConfirmDialog, isoDay } from '../shared/ui';
 import { PageHeader } from '../shared/ui/PageHeader';
 import { montarQuadro } from '../modules/frota/quadroFrota';
@@ -34,7 +35,7 @@ interface Props {
   usuario?: string;
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
-  onImportAbastecimentos?: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
+  onImportAbastecimentos?: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[], cadastrosImportados?: Partial<FuelImportedMasterData>) => void;
   onOpenLubrificacao: () => void;
   onOpenCadastros?: () => void;
   onOpenControle?: () => void;

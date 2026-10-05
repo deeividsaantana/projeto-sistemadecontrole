@@ -220,6 +220,9 @@ export interface ImportAbastecimentosResult {
   rejected: number;
   totalAfter: number;
   fuelTypesCreated: number;
+  companiesCreated?: number;
+  equipmentsCreated?: number;
+  convoysCreated?: number;
 }
 
 export interface Lubrificacao {
