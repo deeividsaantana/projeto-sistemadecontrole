@@ -72,3 +72,41 @@ test('aceita leitura zero como reinício válido do medidor', async () => {
     await fs.rm(filePath, { force: true });
   }
 });
+
+test('lê todas as abas mensais da macro e o cadastro de equipamentos', async () => {
+  const filePath = path.join(os.tmpdir(), `renea-fuel-reader-macro-${Date.now()}-${Math.random().toString(36).slice(2)}.xlsx`);
+  const workbook = new ExcelJS.Workbook();
+  const addMonthlySheet = (name: string, prefixo: string, comboio: string, litros: number) => {
+    const sheet = workbook.addWorksheet(name);
+    sheet.addRows([
+      [], [], [], [],
+      ['Data', 'Prefixo', 'Descrição do equipamento', 'KM inicial', 'Horímetro', 'Litros', 'Hora', 'Comboio', 'Tipo de combustível', 'Empresa', 'Bomba inicial', 'Bomba final'],
+      [new Date(Date.UTC(2026, 8, 21)), prefixo, 'Caminhão Basculante', 100, 200, litros, 0.5, comboio, 'Óleo Diesel S10 Comum', 'Renea', 5000, 5000 + litros],
+    ]);
+  };
+  addMonthlySheet('SETEMBRO 2026', 'CB790', 'TQC019', 123);
+  addMonthlySheet('OUTUBRO 2026', 'CB791', 'TQC025', 77);
+  const equipamentos = workbook.addWorksheet('Equipamentos');
+  equipamentos.addRows([
+    ['Frota', 'Dpara', 'Equipamento', 'Familia', 'Mobilizado', 'MetaDispMec', 'DataMob', 'DataDesmob', 'Empresa', 'Status'],
+    ['CB790', '790', 'Caminhão Basculante', 'Caminhão', true, 0.8, '', '', 'Renea', 'Ativo'],
+    ['CB791', '791', 'Caminhão Pipa', 'Caminhão', true, 0.8, '', '', 'Locadora X', 'Ativo'],
+  ]);
+  await workbook.xlsx.writeFile(filePath);
+
+  try {
+    const result = await readFuelWorkbook(filePath);
+    assert.equal(result.rows.length, 2);
+    assert.deepEqual(result.sheets.map(sheet => sheet.name), ['SETEMBRO 2026', 'OUTUBRO 2026']);
+    assert.deepEqual(result.rows.map(row => `${row.sheet}:${row.prefixo}:${row.comboio}:${row.competencia}`), [
+      'SETEMBRO 2026:CB790:TQC019:2026-09',
+      'OUTUBRO 2026:CB791:TQC025:2026-10',
+    ]);
+    assert.deepEqual(result.equipamentos.map(item => `${item.prefixo}:${item.nome}:${item.empresa}:${item.status}`), [
+      'CB790:Caminhão Basculante:Renea:Ativo',
+      'CB791:Caminhão Pipa:Locadora X:Ativo',
+    ]);
+  } finally {
+    await fs.rm(filePath, { force: true });
+  }
+});

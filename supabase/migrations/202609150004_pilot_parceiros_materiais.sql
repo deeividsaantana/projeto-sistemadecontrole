@@ -47,36 +47,44 @@ create index if not exists materiais_fornecedor_padrao_idx
 alter table public.parceiros enable row level security;
 alter table public.materiais enable row level security;
 
+drop policy if exists "members can read organization parceiros" on public.parceiros;
 create policy "members can read organization parceiros"
   on public.parceiros for select to authenticated
   using (public.is_organization_member(organization_id));
 
+drop policy if exists "editors can write organization parceiros" on public.parceiros;
 create policy "editors can write organization parceiros"
   on public.parceiros for insert to authenticated
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "editors can update organization parceiros" on public.parceiros;
 create policy "editors can update organization parceiros"
   on public.parceiros for update to authenticated
   using (public.has_organization_role(organization_id, array['admin', 'editor']))
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "admins can delete organization parceiros" on public.parceiros;
 create policy "admins can delete organization parceiros"
   on public.parceiros for delete to authenticated
   using (public.has_organization_role(organization_id, array['admin']));
 
+drop policy if exists "members can read organization materiais" on public.materiais;
 create policy "members can read organization materiais"
   on public.materiais for select to authenticated
   using (public.is_organization_member(organization_id));
 
+drop policy if exists "editors can write organization materiais" on public.materiais;
 create policy "editors can write organization materiais"
   on public.materiais for insert to authenticated
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "editors can update organization materiais" on public.materiais;
 create policy "editors can update organization materiais"
   on public.materiais for update to authenticated
   using (public.has_organization_role(organization_id, array['admin', 'editor']))
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "admins can delete organization materiais" on public.materiais;
 create policy "admins can delete organization materiais"
   on public.materiais for delete to authenticated
   using (public.has_organization_role(organization_id, array['admin']));

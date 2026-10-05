@@ -1,0 +1,50 @@
+Option Explicit
+
+Sub AbrirFormularioLancamentoDiesel()
+    frmLancamentoDiesel.Show
+End Sub
+
+Sub AbrirModoSistema()
+    PrepararTelaSistema
+    frmLancamentoDiesel.Show
+End Sub
+
+Sub PrepararTelaSistema()
+    Application.ScreenUpdating = False
+
+    Application.DisplayFullScreen = True
+    Application.DisplayFormulaBar = False
+    Application.DisplayStatusBar = False
+    Application.ExecuteExcel4Macro "SHOW.TOOLBAR(""Ribbon"",False)"
+
+    ActiveWindow.DisplayWorkbookTabs = False
+    ActiveWindow.DisplayHeadings = False
+    ActiveWindow.DisplayGridlines = False
+    ActiveWindow.DisplayHorizontalScrollBar = False
+    ActiveWindow.DisplayVerticalScrollBar = False
+
+    Application.WindowState = xlMaximized
+
+    Application.ScreenUpdating = True
+End Sub
+
+Sub VisualizarPlanilhas()
+    Application.ScreenUpdating = False
+
+    Application.DisplayFullScreen = False
+    Application.DisplayFormulaBar = True
+    Application.DisplayStatusBar = True
+    Application.ExecuteExcel4Macro "SHOW.TOOLBAR(""Ribbon"",True)"
+
+    ActiveWindow.DisplayWorkbookTabs = True
+    ActiveWindow.DisplayHeadings = True
+    ActiveWindow.DisplayGridlines = True
+    ActiveWindow.DisplayHorizontalScrollBar = True
+    ActiveWindow.DisplayVerticalScrollBar = True
+
+    Application.ScreenUpdating = True
+End Sub
+
+Sub RestaurarExcel()
+    VisualizarPlanilhas
+End Sub

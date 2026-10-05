@@ -11,6 +11,7 @@ import {
   TipoCombustivel,
   ProdutoLubrificacao,
   Abastecimento,
+  ImportAbastecimentosResult,
   Lubrificacao,
   StatusRegistroCombustivel,
   ControleEquipamentoDiario,
@@ -40,6 +41,7 @@ import CombustivelOperacionalTab from './CombustivelOperacionalTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
+import { buildFuelImportObservation, fuelSheetCompetence, isFuelImportWorksheet, normalizeConvoyCode } from '../utils/fuelMacroForm';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
@@ -59,7 +61,7 @@ interface LancamentosTabProps {
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
   onDeleteAbastecimentos: (ids: string[]) => void;
-  onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
+  onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => ImportAbastecimentosResult;
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
   onDeleteLubrificacao: (id: string) => void;
   onOpenCadastros?: () => void;
@@ -155,6 +157,7 @@ export default function LancamentosTab({
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
   const [importedFuelTypes, setImportedFuelTypes] = useState<TipoCombustivel[]>([]);
   const [importReport, setImportReport] = useState('');
+  const [openFuelHistorySignal, setOpenFuelHistorySignal] = useState(0);
 
   const normalizeHeader = (s: string) =>
     (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
@@ -344,7 +347,6 @@ export default function LancamentosTab({
       const rows: ImportRow[] = [];
       const seenInBatch = new Set<string>();
       const createdFuelTypes = new Map<string, TipoCombustivel>();
-      const referenceSheetNames = new Set(['equipamentos', 'combustiveis', 'comboios']);
 
       const resolveFuelType = (rawText: string) => {
         const nomePlanilha = rawText.trim();
@@ -388,8 +390,7 @@ export default function LancamentosTab({
 
       worksheetsToRead.forEach(ws => {
         const headerCandidate = findHeaderRow(ws);
-        const normalizedSheetName = normalizeCompact(ws.name);
-        if (headerCandidate.score < 2 && referenceSheetNames.has(normalizedSheetName)) return;
+        if (!isFuelImportWorksheet(ws.name)) return;
 
         const colMap = headerCandidate.rowNumber
           ? { ...FALLBACK_COLUMN_MAP, ...headerCandidate.map }
@@ -442,14 +443,17 @@ export default function LancamentosTab({
           const custoLitro = Number.isFinite(custoLitroLido) && custoLitroLido > 0 ? custoLitroLido : 0;
 
           const frotaNorm = frotaTexto.toLowerCase();
-          const comboioNorm = comboioTexto.toLowerCase();
+          const comboioNorm = normalizeConvoyCode(comboioTexto);
           const eq = findEquipmentByPrefix(frotaTexto, equipamentos)
             || equipamentos.find(e => e.nome.toLowerCase() === frotaNorm);
           const fuelResolution = resolveFuelType(tipoCombustivelTexto);
           const comb = fuelResolution.fuel;
-          const comboioExato = comboios.find(c => c.nome.toLowerCase() === comboioNorm);
+          const comboioExato = comboios.find(c => normalizeConvoyCode(c.nome) === comboioNorm);
           const comboiosParciais = comboioNorm
-            ? comboios.filter(c => comboioNorm.includes(c.nome.toLowerCase()) || c.nome.toLowerCase().includes(comboioNorm))
+            ? comboios.filter(c => {
+              const candidate = normalizeConvoyCode(c.nome);
+              return comboioNorm.includes(candidate) || candidate.includes(comboioNorm);
+            })
             : [];
           const combVeic = comboioExato || (comboiosParciais.length === 1 ? comboiosParciais[0] : undefined);
 
@@ -489,6 +493,7 @@ export default function LancamentosTab({
 
           // Identidade: Data + Prefixo + Litros + Hora + Bomba Inicial + Bomba Final.
           const dataFinal = dataStr;
+          const competenciaPlanilha = fuelSheetCompetence(ws.name) || dataFinal.slice(0, 7);
           const horaFinal = normalizeQuickTime(horaStr).valid ? horaStr : '';
           const quantidadeFinal = Number.isFinite(quantidade) ? Number(quantidade.toFixed(4)) : NaN;
           const candidate: Partial<Abastecimento> = {
@@ -533,23 +538,27 @@ export default function LancamentosTab({
             tipoCombustivelId: comb?.id || '',
             comboioId: combVeic?.id || '',
             responsavel,
-            observacao: [
-              observacao || `Fonte: ${ws.name}`,
-              `Linha original ${ws.name}:${rowNumber}: ${rawRowText}.`,
-              empresaTexto ? `Empresa informada na planilha: ${empresaTexto}.` : '',
-              frotaTexto && !eq ? `Prefixo informado sem cadastro: ${frotaTexto}.` : '',
-              tipoCombustivelTexto ? `Combustível informado na planilha: ${tipoCombustivelTexto}.` : '',
-              comboioTexto ? `Comboio informado na planilha: ${comboioTexto}.` : '',
-              !responsavel ? 'Responsável não informado na planilha; conferir no registro.' : '',
-              quantidadeFoiCalculada ? 'Quantidade calculada pela diferença entre bomba final e inicial.' : '',
+            observacao: buildFuelImportObservation({
+              sheetName: ws.name,
+              rowNumber,
+              observacao,
+              empresaTexto,
+              frotaTexto,
+              equipmentFound: Boolean(eq),
+              tipoCombustivelTexto,
+              comboioTexto,
+              responsavel,
+              quantidadeFoiCalculada,
               motivo,
-            ].filter(Boolean).join(' | '),
+              rawRowText,
+            }),
             status: motivo && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal,
             origem: 'Planilha',
             documentoOrigemNome: file.name,
             documentoOrigemHash: dupKey,
             integracaoAba: ws.name,
             integracaoLinha: rowNumber,
+            competencia: competenciaPlanilha,
             criadoEm: new Date().toISOString(),
             atualizadoEm: new Date().toISOString(),
           } : undefined;
@@ -593,8 +602,9 @@ export default function LancamentosTab({
     setIsConfirmingImport(true);
     const validItems = importRows.filter(r => r.status === 'valido' && r.item).map(r => r.item!) as Abastecimento[];
     const usedFuelIds = new Set(validItems.map(item => item.tipoCombustivelId));
-    onImportAbastecimentos(validItems, importedFuelTypes.filter(item => usedFuelIds.has(item.id)));
-    setImportReport(`Importação concluída: ${validItems.length} novo(s) abastecimento(s) publicado(s); ${importSummary.duplicadas} duplicado(s), ${importSummary.ignoradas} linha(s) vazia(s)/zerada(s) e ${importSummary.comErro} registro(s) inválido(s) não foram publicados.`);
+    const applied = onImportAbastecimentos(validItems, importedFuelTypes.filter(item => usedFuelIds.has(item.id)));
+    if (applied.accepted > 0) setOpenFuelHistorySignal(signal => signal + 1);
+    setImportReport(`Importação concluída: ${applied.accepted} de ${applied.requested} abastecimento(s) publicado(s); ${applied.rejected + importSummary.duplicadas + importSummary.ignoradas + importSummary.comErro} registro(s) não foram publicados. Total no histórico: ${applied.totalAfter}.${applied.fuelTypesCreated ? ` Também cadastrou ${applied.fuelTypesCreated} tipo(s) de combustível.` : ''}`);
     setIsConfirmingImport(false);
     setIsImportModalOpen(false);
     setImportRows([]);
@@ -1181,6 +1191,7 @@ export default function LancamentosTab({
           usuario={usuario}
           onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
           isParsingSpreadsheet={isParsingImport}
+          openHistorySignal={openFuelHistorySignal}
         />
         <input
           ref={fileInputRef}

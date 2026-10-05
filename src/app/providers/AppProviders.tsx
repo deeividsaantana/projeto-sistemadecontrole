@@ -61,6 +61,9 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Recuperação necessária</p>
               <h1 id="interface-error-title" className="mt-3 max-w-lg text-3xl font-black leading-[1.02] tracking-[-0.055em] text-slate-950 sm:text-4xl">Não foi possível abrir esta tela.</h1>
               <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">Os seus registros permanecem protegidos. Atualize o sistema para tentar novamente; se a falha continuar, informe o horário para que a equipe possa localizar o ocorrido.</p>
+              {import.meta.env.DEV && this.state.error && (
+                <pre className="mt-4 max-w-xl overflow-auto whitespace-pre-wrap border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">{this.state.error.message}</pre>
+              )}
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-11 items-center justify-center gap-2 bg-emerald-700 px-5 text-sm font-bold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"><RefreshCw size={16} />Tentar novamente</button>
                 <button type="button" onClick={() => window.history.back()} className="inline-flex min-h-11 items-center justify-center gap-2 border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100"><ArrowLeft size={16} />Voltar</button>

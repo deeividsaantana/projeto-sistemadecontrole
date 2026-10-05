@@ -1,13 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import type { Organization, UserRole, Worksite } from './types';
 import { getUserOrganizations } from '../../services/repositories/organizationRepository';
 import { getByOrganizationId } from '../../services/repositories/worksiteRepository';
+import { auth } from '../../../firebase';
 
 const STORAGE_KEY_ACTIVE_ORG = 'obrix_active_organization_id';
-// Usuário mockado — troca pelo usuário autenticado real quando o login do
-// Obrix existir; nenhuma tela chama isso, só este contexto.
-const MOCK_USER_ID = 'user-deivid';
-const MOCK_USER_NAME = 'Deivid Santana';
+const ORGANIZATION_LOAD_TIMEOUT_MS = 12_000;
 
 interface OrganizationContextValue {
   isLoading: boolean;
@@ -32,23 +31,40 @@ export const OrganizationProvider = ({ children }: PropsWithChildren) => {
   const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(null);
   const [worksites, setWorksites] = useState<Worksite[]>([]);
   const [activeWorksiteId, setActiveWorksiteId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+  const userId = currentUser?.uid || '';
+  const userName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
+
+  useEffect(() => onAuthStateChanged(auth, setCurrentUser), []);
 
   // Carrega as organizações do usuário e tenta restaurar a última ativa —
   // só se o usuário ainda tiver acesso a ela. Empresa removida ou perdida
   // volta pra tela de seleção, nunca fica presa num contexto inválido.
   useEffect(() => {
     let ativo = true;
-    getUserOrganizations(MOCK_USER_ID).then(lista => {
-      if (!ativo) return;
-      setOrganizations(lista);
-      const salvo = window.localStorage.getItem(STORAGE_KEY_ACTIVE_ORG);
-      const restaurada = salvo && lista.some(item => item.id === salvo) ? salvo : null;
-      const automatica = !restaurada && lista.length === 1 ? lista[0].id : null;
-      setActiveOrganizationId(restaurada || automatica);
-      setIsLoading(false);
+    const timeout = new Promise<never>((_, reject) => {
+      window.setTimeout(() => reject(new Error('ORGANIZATIONS_LOAD_TIMEOUT')), ORGANIZATION_LOAD_TIMEOUT_MS);
     });
+    void Promise.race([getUserOrganizations(userId), timeout])
+      .then(lista => {
+        if (!ativo) return;
+        setOrganizations(lista);
+        const salvo = window.localStorage.getItem(STORAGE_KEY_ACTIVE_ORG);
+        const restaurada = salvo && lista.some(item => item.id === salvo) ? salvo : null;
+        const automatica = !restaurada && lista.length === 1 ? lista[0].id : null;
+        setActiveOrganizationId(restaurada || automatica);
+      })
+      .catch(error => {
+        if (!ativo) return;
+        console.error('Não foi possível carregar as organizações.', error);
+        setOrganizations([]);
+        setActiveOrganizationId(null);
+      })
+      .finally(() => {
+        if (ativo) setIsLoading(false);
+      });
     return () => { ativo = false; };
-  }, []);
+  }, [userId]);
 
   // Obra ativa depende da empresa ativa — troca de empresa sempre limpa e
   // recarrega, nunca herda a obra de uma organização diferente.
@@ -98,7 +114,7 @@ export const OrganizationProvider = ({ children }: PropsWithChildren) => {
     activeWorksiteId,
     setActiveWorksite: setActiveWorksiteId,
     userRole: activeOrganization?.userRole ?? null,
-    userName: MOCK_USER_NAME,
+    userName,
   };
 
   return <OrganizationContext.Provider value={value}>{children}</OrganizationContext.Provider>;

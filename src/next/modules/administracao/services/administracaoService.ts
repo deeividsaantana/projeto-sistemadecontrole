@@ -3,6 +3,6 @@ import { getFornecedoresPorCategoria, getPessoas, getRamos } from '../../../serv
 // Síncrono hoje (cache local); assinatura async já pronta pro Supabase.
 export const fetchCadastros = async () => ({
   pessoas: getPessoas(),
-  fornecedoresPorCategoria: getFornecedoresPorCategoria(),
-  ramos: getRamos(),
+  fornecedoresPorCategoria: await getFornecedoresPorCategoria(),
+  ramos: await getRamos(),
 });

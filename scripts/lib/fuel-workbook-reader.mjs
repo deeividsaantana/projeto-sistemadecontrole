@@ -26,6 +26,15 @@ const aliases = {
   observacao: ['observacao', 'observacoes', 'obs'],
 };
 
+const MONTH_NAMES = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+
+const normalizeConvoyCode = value => String(value ?? '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase()
+  .replace(/[^A-Z0-9]/g, '')
+  .replace(/^TCQ/, 'TQC');
+
 const unwrapCellValue = value => {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) return value;
@@ -129,15 +138,37 @@ const findHeader = worksheet => {
   return best;
 };
 
+const sheetCompetencia = name => {
+  const normalized = String(name ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+  const year = Number(normalized.match(/20\d{2}/)?.[0] || 0);
+  const month = MONTH_NAMES.findIndex(item => normalized.includes(item)) + 1;
+  return year && month ? `${year}-${String(month).padStart(2, '0')}` : '';
+};
+
 const rawAt = (row, column) => column ? unwrapCellValue(row.getCell(column).value) : '';
 
-const selectFuelWorksheet = workbook => {
+const isReferenceWorksheet = worksheet => ['equipamentos', 'combustiveis', 'comboios'].includes(normalize(worksheet.name));
+
+const selectFuelWorksheets = workbook => {
   const preferredNames = new Set(['detalhe', 'dadoscombustivel']);
   const candidates = workbook.worksheets
-    .filter(sheet => preferredNames.has(normalize(sheet.name)) || normalize(sheet.name).includes('combustivel'))
+    .filter(sheet => !isReferenceWorksheet(sheet))
     .flatMap(sheet => {
       try {
-        return [{ worksheet: sheet, header: findHeader(sheet) }];
+        const header = findHeader(sheet);
+        const normalizedName = normalize(sheet.name);
+        if (header.score < 3) return [];
+        if (
+          preferredNames.has(normalizedName)
+          || normalizedName.includes('combustivel')
+          || sheetCompetencia(sheet.name)
+        ) {
+          return [{ worksheet: sheet, header }];
+        }
+        return [];
       } catch {
         return [];
       }
@@ -146,72 +177,120 @@ const selectFuelWorksheet = workbook => {
       || Number(preferredNames.has(normalize(right.worksheet.name))) - Number(preferredNames.has(normalize(left.worksheet.name)))
       || right.worksheet.rowCount - left.worksheet.rowCount);
   if (!candidates.length) throw new Error('A planilha não possui uma aba de detalhes de combustível com cabeçalhos reconhecíveis.');
-  return candidates[0];
+  const monthly = candidates
+    .filter(candidate => sheetCompetencia(candidate.worksheet.name))
+    .sort((left, right) => sheetCompetencia(left.worksheet.name).localeCompare(sheetCompetencia(right.worksheet.name)));
+  return monthly.length ? monthly : [candidates[0]];
+};
+
+const readEquipmentCatalog = workbook => {
+  const worksheet = workbook.getWorksheet('Equipamentos');
+  if (!worksheet) return [];
+  const headers = {};
+  const headerRow = worksheet.getRow(1);
+  for (let column = 1; column <= Math.max(10, headerRow.cellCount); column += 1) {
+    const header = normalize(textValue(headerRow.getCell(column).value));
+    if (header === 'frota' || header === 'prefixo') headers.prefixo = column;
+    if (header === 'equipamento' || header === 'descricao') headers.nome = column;
+    if (header === 'familia' || header === 'tipo') headers.tipo = column;
+    if (header === 'empresa') headers.empresa = column;
+    if (header === 'status') headers.status = column;
+  }
+  if (!headers.prefixo) return [];
+  const rows = [];
+  for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber);
+    const prefixo = textValue(row.getCell(headers.prefixo).value).toUpperCase();
+    if (!prefixo) continue;
+    rows.push({
+      prefixo,
+      nome: textValue(row.getCell(headers.nome).value),
+      tipo: textValue(row.getCell(headers.tipo).value),
+      empresa: textValue(row.getCell(headers.empresa).value),
+      status: textValue(row.getCell(headers.status).value),
+      sourceRow: rowNumber,
+    });
+  }
+  return rows;
 };
 
 export const readFuelWorkbook = async filePath => {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
-  const { worksheet, header } = selectFuelWorksheet(workbook);
+  const worksheets = selectFuelWorksheets(workbook);
   const rows = [];
   let warningCount = 0;
   const fileKey = normalize(path.basename(filePath));
 
-  for (let rowNumber = header.rowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
-    const source = worksheet.getRow(rowNumber);
-    // As colunas de descrição, empresa e bomba contêm fórmulas copiadas até o fim da aba.
-    // Elas não devem transformar linhas visualmente vazias em abastecimentos, mas qualquer
-    // conteúdo operacional parcial continua sendo importado para conferência no sistema.
-    const operationalFields = ['data', 'prefixo', 'kmInicial', 'horimetroInicial', 'quantidadeLitros', 'hora', 'comboio', 'tipoCombustivel', 'responsavel', 'observacao'];
-    const relevantValues = operationalFields.map(field => textValue(rawAt(source, header.map[field])));
-    if (!relevantValues.some(Boolean)) continue;
+  for (const { worksheet, header } of worksheets) {
+    for (let rowNumber = header.rowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+      const source = worksheet.getRow(rowNumber);
+      // As colunas de descrição, empresa e bomba contêm fórmulas copiadas até o fim da aba.
+      // Elas não devem transformar linhas visualmente vazias em abastecimentos, mas qualquer
+      // conteúdo operacional parcial continua sendo importado para conferência no sistema.
+      const operationalFields = ['data', 'prefixo', 'kmInicial', 'horimetroInicial', 'quantidadeLitros', 'hora', 'comboio', 'tipoCombustivel', 'responsavel', 'observacao'];
+      const relevantValues = operationalFields.map(field => textValue(rawAt(source, header.map[field])));
+      if (!relevantValues.some(Boolean)) continue;
 
-    const dataRaw = rawAt(source, header.map.data);
-    const prefixo = textValue(rawAt(source, header.map.prefixo)).toUpperCase();
-    const litrosRaw = rawAt(source, header.map.quantidadeLitros);
-    const data = dateValue(dataRaw);
-    const horaRaw = rawAt(source, header.map.hora);
-    const hora = timeValue(horaRaw);
-    const quantidadeLitros = numberValue(litrosRaw);
-    const bombaInicialRaw = rawAt(source, header.map.bombaInicial);
-    const bombaFinalRaw = rawAt(source, header.map.bombaFinal);
-    const bombaInicial = numberValue(bombaInicialRaw);
-    const bombaFinal = numberValue(bombaFinalRaw);
-    const rowWarnings = [];
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) rowWarnings.push('Data ausente ou inválida');
-    if (!prefixo) rowWarnings.push('Prefixo ausente');
-    if (!textValue(litrosRaw) || quantidadeLitros <= 0) rowWarnings.push('Quantidade ausente ou inválida');
-    if (textValue(horaRaw) && !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) rowWarnings.push('Hora inválida');
-    if (header.map.bombaInicial && textValue(bombaInicialRaw) && !isNumericValue(bombaInicialRaw)) rowWarnings.push('Bomba inicial inválida');
-    if (header.map.bombaFinal && textValue(bombaFinalRaw) && !isNumericValue(bombaFinalRaw)) rowWarnings.push('Bomba final inválida');
-    if (!textValue(rawAt(source, header.map.comboio))) rowWarnings.push('Comboio ausente');
-    if (!textValue(rawAt(source, header.map.tipoCombustivel))) rowWarnings.push('Tipo de combustível ausente');
-    warningCount += rowWarnings.length > 0 ? 1 : 0;
+      const dataRaw = rawAt(source, header.map.data);
+      const prefixo = textValue(rawAt(source, header.map.prefixo)).toUpperCase();
+      const litrosRaw = rawAt(source, header.map.quantidadeLitros);
+      const data = dateValue(dataRaw);
+      const horaRaw = rawAt(source, header.map.hora);
+      const hora = timeValue(horaRaw);
+      const quantidadeLitros = numberValue(litrosRaw);
+      const bombaInicialRaw = rawAt(source, header.map.bombaInicial);
+      const bombaFinalRaw = rawAt(source, header.map.bombaFinal);
+      const bombaInicial = numberValue(bombaInicialRaw);
+      const bombaFinal = numberValue(bombaFinalRaw);
+      const rowWarnings = [];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) rowWarnings.push('Data ausente ou inválida');
+      if (!prefixo) rowWarnings.push('Prefixo ausente');
+      if (!textValue(litrosRaw) || quantidadeLitros <= 0) rowWarnings.push('Quantidade ausente ou inválida');
+      if (textValue(horaRaw) && !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) rowWarnings.push('Hora inválida');
+      if (header.map.bombaInicial && textValue(bombaInicialRaw) && !isNumericValue(bombaInicialRaw)) rowWarnings.push('Bomba inicial inválida');
+      if (header.map.bombaFinal && textValue(bombaFinalRaw) && !isNumericValue(bombaFinalRaw)) rowWarnings.push('Bomba final inválida');
+      if (!textValue(rawAt(source, header.map.comboio))) rowWarnings.push('Comboio ausente');
+      if (!textValue(rawAt(source, header.map.tipoCombustivel))) rowWarnings.push('Tipo de combustível ausente');
+      warningCount += rowWarnings.length > 0 ? 1 : 0;
 
-    rows.push({
-      sourceRowId: `onedrive-${crypto.createHash('sha256').update(`${fileKey}|${normalize(worksheet.name)}|${rowNumber}`).digest('hex').slice(0, 36)}`,
-      sourceFile: path.basename(filePath),
-      rowNumber,
-      sheet: worksheet.name,
-      data,
-      hora,
-      prefixo,
-      descricaoEquipamento: textValue(rawAt(source, header.map.descricaoEquipamento)),
-      kmInicial: numberValue(rawAt(source, header.map.kmInicial)),
-      horimetroInicial: numberValue(rawAt(source, header.map.horimetroInicial)),
-      quantidadeLitros,
-      quantidadeOriginal: textValue(litrosRaw),
-      comboio: textValue(rawAt(source, header.map.comboio)),
-      tipoCombustivel: textValue(rawAt(source, header.map.tipoCombustivel)),
-      empresa: textValue(rawAt(source, header.map.empresa)),
-      bombaInicial,
-      bombaFinal,
-      custoLitro: numberValue(rawAt(source, header.map.custoLitro)),
-      responsavel: textValue(rawAt(source, header.map.responsavel)),
-      observacao: textValue(rawAt(source, header.map.observacao)),
-      avisos: rowWarnings.join(' | '),
-    });
+      rows.push({
+        sourceRowId: `onedrive-${crypto.createHash('sha256').update(`${fileKey}|${normalize(worksheet.name)}|${rowNumber}`).digest('hex').slice(0, 36)}`,
+        sourceFile: path.basename(filePath),
+        rowNumber,
+        sheet: worksheet.name,
+        competencia: sheetCompetencia(worksheet.name) || data.slice(0, 7),
+        data,
+        hora,
+        prefixo,
+        descricaoEquipamento: textValue(rawAt(source, header.map.descricaoEquipamento)),
+        kmInicial: numberValue(rawAt(source, header.map.kmInicial)),
+        horimetroInicial: numberValue(rawAt(source, header.map.horimetroInicial)),
+        quantidadeLitros,
+        quantidadeOriginal: textValue(litrosRaw),
+        comboio: normalizeConvoyCode(textValue(rawAt(source, header.map.comboio))),
+        tipoCombustivel: textValue(rawAt(source, header.map.tipoCombustivel)),
+        empresa: textValue(rawAt(source, header.map.empresa)),
+        bombaInicial,
+        bombaFinal,
+        custoLitro: numberValue(rawAt(source, header.map.custoLitro)),
+        responsavel: textValue(rawAt(source, header.map.responsavel)),
+        observacao: textValue(rawAt(source, header.map.observacao)),
+        avisos: rowWarnings.join(' | '),
+      });
+    }
   }
 
-  return { sheetName: worksheet.name, headerRow: header.rowNumber, rows, warningCount };
+  return {
+    sheetName: worksheets[0].worksheet.name,
+    headerRow: worksheets[0].header.rowNumber,
+    sheets: worksheets.map(({ worksheet, header }) => ({
+      name: worksheet.name,
+      headerRow: header.rowNumber,
+      competencia: sheetCompetencia(worksheet.name),
+    })),
+    equipamentos: readEquipmentCatalog(workbook),
+    rows,
+    warningCount,
+  };
 };

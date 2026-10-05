@@ -54,36 +54,44 @@ create index if not exists lancamentos_custo_fornecedor_idx
 alter table public.orcamento_itens enable row level security;
 alter table public.lancamentos_custo enable row level security;
 
+drop policy if exists "members can read organization orcamento" on public.orcamento_itens;
 create policy "members can read organization orcamento"
   on public.orcamento_itens for select to authenticated
   using (public.is_organization_member(organization_id));
 
+drop policy if exists "editors can write organization orcamento" on public.orcamento_itens;
 create policy "editors can write organization orcamento"
   on public.orcamento_itens for insert to authenticated
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "editors can update organization orcamento" on public.orcamento_itens;
 create policy "editors can update organization orcamento"
   on public.orcamento_itens for update to authenticated
   using (public.has_organization_role(organization_id, array['admin', 'editor']))
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "admins can delete organization orcamento" on public.orcamento_itens;
 create policy "admins can delete organization orcamento"
   on public.orcamento_itens for delete to authenticated
   using (public.has_organization_role(organization_id, array['admin']));
 
+drop policy if exists "members can read organization lancamentos_custo" on public.lancamentos_custo;
 create policy "members can read organization lancamentos_custo"
   on public.lancamentos_custo for select to authenticated
   using (public.is_organization_member(organization_id));
 
+drop policy if exists "editors can write organization lancamentos_custo" on public.lancamentos_custo;
 create policy "editors can write organization lancamentos_custo"
   on public.lancamentos_custo for insert to authenticated
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "editors can update organization lancamentos_custo" on public.lancamentos_custo;
 create policy "editors can update organization lancamentos_custo"
   on public.lancamentos_custo for update to authenticated
   using (public.has_organization_role(organization_id, array['admin', 'editor']))
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "admins can delete organization lancamentos_custo" on public.lancamentos_custo;
 create policy "admins can delete organization lancamentos_custo"
   on public.lancamentos_custo for delete to authenticated
   using (public.has_organization_role(organization_id, array['admin']));

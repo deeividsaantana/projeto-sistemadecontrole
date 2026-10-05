@@ -35,23 +35,28 @@ create index if not exists servicos_obra_project_idx
 alter table public.etapas_servico enable row level security;
 alter table public.servicos_obra enable row level security;
 
+drop policy if exists "members can read organization etapas" on public.etapas_servico;
 create policy "members can read organization etapas"
   on public.etapas_servico for select to authenticated
   using (public.is_organization_member(organization_id));
 
+drop policy if exists "editors can write organization etapas" on public.etapas_servico;
 create policy "editors can write organization etapas"
   on public.etapas_servico for insert to authenticated
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "editors can update organization etapas" on public.etapas_servico;
 create policy "editors can update organization etapas"
   on public.etapas_servico for update to authenticated
   using (public.has_organization_role(organization_id, array['admin', 'editor']))
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "admins can delete organization etapas" on public.etapas_servico;
 create policy "admins can delete organization etapas"
   on public.etapas_servico for delete to authenticated
   using (public.has_organization_role(organization_id, array['admin']));
 
+drop policy if exists "members can read project servicos" on public.servicos_obra;
 create policy "members can read project servicos"
   on public.servicos_obra for select to authenticated
   using (exists (
@@ -60,6 +65,7 @@ create policy "members can read project servicos"
       and public.is_organization_member(project.organization_id)
   ));
 
+drop policy if exists "editors can write project servicos" on public.servicos_obra;
 create policy "editors can write project servicos"
   on public.servicos_obra for insert to authenticated
   with check (exists (
@@ -68,6 +74,7 @@ create policy "editors can write project servicos"
       and public.has_organization_role(project.organization_id, array['admin', 'editor'])
   ));
 
+drop policy if exists "editors can update project servicos" on public.servicos_obra;
 create policy "editors can update project servicos"
   on public.servicos_obra for update to authenticated
   using (exists (
@@ -81,6 +88,7 @@ create policy "editors can update project servicos"
       and public.has_organization_role(project.organization_id, array['admin', 'editor'])
   ));
 
+drop policy if exists "admins can delete project servicos" on public.servicos_obra;
 create policy "admins can delete project servicos"
   on public.servicos_obra for delete to authenticated
   using (exists (

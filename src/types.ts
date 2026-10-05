@@ -214,6 +214,14 @@ export interface Abastecimento {
   inativoPor?: string;
 }
 
+export interface ImportAbastecimentosResult {
+  requested: number;
+  accepted: number;
+  rejected: number;
+  totalAfter: number;
+  fuelTypesCreated: number;
+}
+
 export interface Lubrificacao {
   id: string;
   data: string; // YYYY-MM-DD

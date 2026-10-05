@@ -34,6 +34,7 @@ alter table public.organizations enable row level security;
 alter table public.organization_members enable row level security;
 alter table public.erp_snapshots enable row level security;
 
+drop policy if exists "members can read their organization" on public.organizations;
 create policy "members can read their organization"
   on public.organizations for select to authenticated
   using (exists (
@@ -42,10 +43,12 @@ create policy "members can read their organization"
       and member.user_id = auth.uid()
   ));
 
+drop policy if exists "members can read their membership" on public.organization_members;
 create policy "members can read their membership"
   on public.organization_members for select to authenticated
   using (user_id = auth.uid());
 
+drop policy if exists "members can read organization snapshots" on public.erp_snapshots;
 create policy "members can read organization snapshots"
   on public.erp_snapshots for select to authenticated
   using (exists (

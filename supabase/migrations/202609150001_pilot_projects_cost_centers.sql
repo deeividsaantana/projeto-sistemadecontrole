@@ -61,23 +61,28 @@ revoke all on function public.has_organization_role(text, text[]) from public;
 grant execute on function public.is_organization_member(text) to authenticated;
 grant execute on function public.has_organization_role(text, text[]) to authenticated;
 
+drop policy if exists "members can read organization projects" on public.projects;
 create policy "members can read organization projects"
   on public.projects for select to authenticated
   using (public.is_organization_member(organization_id));
 
+drop policy if exists "editors can write organization projects" on public.projects;
 create policy "editors can write organization projects"
   on public.projects for insert to authenticated
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "editors can update organization projects" on public.projects;
 create policy "editors can update organization projects"
   on public.projects for update to authenticated
   using (public.has_organization_role(organization_id, array['admin', 'editor']))
   with check (public.has_organization_role(organization_id, array['admin', 'editor']));
 
+drop policy if exists "admins can delete organization projects" on public.projects;
 create policy "admins can delete organization projects"
   on public.projects for delete to authenticated
   using (public.has_organization_role(organization_id, array['admin']));
 
+drop policy if exists "members can read project cost centers" on public.cost_centers;
 create policy "members can read project cost centers"
   on public.cost_centers for select to authenticated
   using (exists (
@@ -86,6 +91,7 @@ create policy "members can read project cost centers"
       and public.is_organization_member(project.organization_id)
   ));
 
+drop policy if exists "editors can write project cost centers" on public.cost_centers;
 create policy "editors can write project cost centers"
   on public.cost_centers for insert to authenticated
   with check (exists (
@@ -94,6 +100,7 @@ create policy "editors can write project cost centers"
       and public.has_organization_role(project.organization_id, array['admin', 'editor'])
   ));
 
+drop policy if exists "editors can update project cost centers" on public.cost_centers;
 create policy "editors can update project cost centers"
   on public.cost_centers for update to authenticated
   using (exists (
@@ -107,6 +114,7 @@ create policy "editors can update project cost centers"
       and public.has_organization_role(project.organization_id, array['admin', 'editor'])
   ));
 
+drop policy if exists "admins can delete project cost centers" on public.cost_centers;
 create policy "admins can delete project cost centers"
   on public.cost_centers for delete to authenticated
   using (exists (

@@ -1,4 +1,4 @@
-import type { EtapaServico, FrenteServico, ModeloRotina, PendenciaRotina, PlanejamentoItem, PrevistoMaterial, RegistroProducao, RotinaDiaria, ServicoObra } from '../src/types';
+import type { Abastecimento, EtapaServico, FrenteServico, ImportAbastecimentosResult, ModeloRotina, PendenciaRotina, PlanejamentoItem, PrevistoMaterial, RegistroProducao, RotinaDiaria, ServicoObra, TipoCombustivel } from '../src/types';
 import MeuDiaTab from '../src/components/MeuDiaTab';
 import { planoCargaSge } from '../src/modules/materials/locaisSge';
 import React from 'react';
@@ -430,6 +430,54 @@ const equipesPainel = [fx.grupo, ...fx.equipesPresenca,
     ...fx.grupo, id: `painel-extra-${i}`, nome: `Equipe ${nome}`, frenteServico: `Ramo ${(i + 3) * 100}`, token: `painel-extra-${i}`,
   }))];
 
+function CombustivelPreview() {
+  const [abastecimentos, setAbastecimentos] = React.useState<Abastecimento[]>(() => [...fx.abastecimentos, ...fx.abastecimentosQuadro as never[]]);
+  const [combustiveis, setCombustiveis] = React.useState<TipoCombustivel[]>(() => [...fx.combustiveis]);
+
+  const salvarAbastecimento = (item: Abastecimento, isNew: boolean) => {
+    setAbastecimentos(atual => (isNew ? [item, ...atual] : atual.map(registro => (registro.id === item.id ? item : registro))));
+  };
+
+  const importarAbastecimentos = (items: Abastecimento[], combustiveisImportados: TipoCombustivel[] = []): ImportAbastecimentosResult => {
+    const existingIds = new Set(abastecimentos.map(item => item.id));
+    const novos = items.filter(item => !existingIds.has(item.id));
+    const existingFuelIds = new Set(combustiveis.map(item => item.id));
+    const novosCombustiveis = combustiveisImportados.filter(item => !existingFuelIds.has(item.id));
+
+    if (novos.length > 0) setAbastecimentos(atual => [...novos, ...atual]);
+    if (novosCombustiveis.length > 0) setCombustiveis(atual => [...atual, ...novosCombustiveis]);
+
+    return {
+      requested: items.length,
+      accepted: novos.length,
+      rejected: items.length - novos.length,
+      totalAfter: abastecimentos.length + novos.length,
+      fuelTypesCreated: novosCombustiveis.length,
+    };
+  };
+
+  return (
+    <LancamentosTab
+      empresas={fx.empresas}
+      comboios={fx.comboios}
+      combustiveis={combustiveis}
+      lubrificantes={fx.lubrificantes}
+      abastecimentos={abastecimentos}
+      lubrificacoes={fx.lubrificacoes}
+      equipamentos={[...fx.equipamentos, ...fx.equipamentosQuadro]}
+      registrosFrota={fx.controlesQuadro}
+      usuario="Deivid"
+      onOpenControle={noop}
+      onSaveAbastecimento={salvarAbastecimento}
+      onDeleteAbastecimento={id => setAbastecimentos(atual => atual.filter(item => item.id !== id))}
+      onDeleteAbastecimentos={ids => setAbastecimentos(atual => atual.filter(item => !ids.includes(item.id)))}
+      onImportAbastecimentos={importarAbastecimentos}
+      onSaveLubrificacao={noop}
+      onDeleteLubrificacao={noop}
+    />
+  );
+}
+
 const screens: Record<string, React.ReactNode> = {
   'meu-dia': <MeuDiaPreview />,
   sidebar: (
@@ -544,26 +592,7 @@ const screens: Record<string, React.ReactNode> = {
       equipamentos={fx.equipamentos}
     />
   ),
-  combustivel: (
-    <LancamentosTab
-      empresas={fx.empresas}
-      comboios={fx.comboios}
-      combustiveis={fx.combustiveis}
-      lubrificantes={fx.lubrificantes}
-      abastecimentos={[...fx.abastecimentos, ...fx.abastecimentosQuadro as never[]]}
-      lubrificacoes={fx.lubrificacoes}
-      equipamentos={[...fx.equipamentos, ...fx.equipamentosQuadro]}
-      registrosFrota={fx.controlesQuadro}
-      usuario="Deivid"
-      onOpenControle={noop}
-      onSaveAbastecimento={noop}
-      onDeleteAbastecimento={noop}
-      onDeleteAbastecimentos={noop}
-      onImportAbastecimentos={noop}
-      onSaveLubrificacao={noop}
-      onDeleteLubrificacao={noop}
-    />
-  ),
+  combustivel: <CombustivelPreview />,
   'modo-campo': (
     <ModoCampoTab
       presencasLink={fx.presencasHistorico}
