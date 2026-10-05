@@ -1,0 +1,204 @@
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
+import { Maximize2, Minimize2, X } from 'lucide-react';
+import { cn } from './styles';
+
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
+
+interface ModalProps {
+  open: boolean;
+  title?: ReactNode;
+  description?: ReactNode;
+  size?: ModalSize;
+  /** Bloqueia fechar por ESC/clique fora enquanto uma ação está em andamento. */
+  busy?: boolean;
+  role?: 'dialog' | 'alertdialog';
+  /**
+   * Ação de salvar do diálogo. Liga CTRL+ENTER em qualquer campo e ENTER nos
+   * campos de uma linha — quem preenche formulário no teclado não precisa
+   * procurar o botão com o mouse.
+   */
+  onSubmit?: () => void;
+  footer?: ReactNode;
+  onClose: () => void;
+  /** Campo operacional prioritário quando o diálogo abrir. */
+  initialFocusRef?: RefObject<HTMLElement | null>;
+  children?: ReactNode;
+  className?: string;
+  /**
+   * Nome do diálogo para oferecer o botão "Tela cheia". A escolha fica
+   * lembrada neste aparelho: quem lança o dia inteiro abre sempre grande.
+   */
+  telaCheia?: string;
+}
+
+const chaveTelaCheia = (nome: string) => `modal-tela-cheia:${nome}`;
+const lerTelaCheia = (nome?: string) => {
+  if (!nome) return false;
+  try { return localStorage.getItem(chaveTelaCheia(nome)) === '1'; } catch { return false; }
+};
+
+const sizeClass: Record<ModalSize, string> = {
+  sm: 'sm:max-w-md',
+  md: 'sm:max-w-xl',
+  lg: 'sm:max-w-3xl',
+  xl: 'sm:max-w-5xl',
+};
+
+const CAMPO_INICIAL = 'input:not([disabled]):not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([readonly]), select:not([disabled]), textarea:not([disabled]):not([readonly])';
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Base de todos os diálogos do sistema: ESC fecha, clique fora fecha, o corpo
+ * para de rolar e o foco fica preso dentro do diálogo. No celular abre como
+ * folha inferior para o conteúdo nunca sair da tela.
+ */
+export function Modal({
+  open,
+  title,
+  description,
+  size = 'md',
+  busy = false,
+  role = 'dialog',
+  onSubmit,
+  footer,
+  onClose,
+  initialFocusRef,
+  children,
+  className,
+  telaCheia,
+}: ModalProps) {
+  const panelRef = useRef<HTMLElement>(null);
+  const [cheia, setCheia] = useState(() => lerTelaCheia(telaCheia));
+  const alternarTelaCheia = () => {
+    const proxima = !cheia;
+    setCheia(proxima);
+    if (!telaCheia) return;
+    try { localStorage.setItem(chaveTelaCheia(telaCheia), proxima ? '1' : '0'); } catch { /* só não lembra */ }
+  };
+  const emTelaCheia = Boolean(telaCheia) && cheia;
+  // Quem usa o Modal costuma passar funções novas a cada digitação. Guardadas
+  // aqui, elas não reiniciam o efeito abaixo, que jogava o foco de volta para
+  // o primeiro botão a cada letra digitada.
+  const acoes = useRef({ onSubmit, onClose });
+  acoes.current = { onSubmit, onClose };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const panel = panelRef.current;
+    // Abre já no primeiro campo: quem vai lançar começa a digitar sem clicar.
+    // Diálogo sem campo (confirmação) fica no primeiro botão, como antes.
+    (initialFocusRef?.current
+      || panel?.querySelector<HTMLElement>(CAMPO_INICIAL)
+      || panel?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const { onSubmit, onClose } = acoes.current;
+      if (event.key === 'Escape' && !busy) {
+        onClose();
+        return;
+      }
+      if (event.key === 'Enter' && onSubmit && !busy) {
+        const alvo = event.target as HTMLElement | null;
+        const emTextoLongo = alvo?.tagName === 'TEXTAREA';
+        const emBotao = alvo?.tagName === 'BUTTON';
+        // CTRL+ENTER salva de qualquer lugar; ENTER sozinho só fora de textarea
+        // e fora de botão, senão atrapalharia quem está escrevendo ou navegando.
+        if ((event.ctrlKey || event.metaKey) || (!emTextoLongo && !emBotao)) {
+          event.preventDefault();
+          onSubmit();
+          return;
+        }
+      }
+      if (event.key !== 'Tab' || !panel) return;
+      const controls = panel.querySelectorAll<HTMLElement>(FOCUSABLE);
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [busy, initialFocusRef, open]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      className={cn('fixed inset-0 z-[120] flex items-end justify-center bg-slate-900/10 sm:items-center', emTelaCheia ? 'sm:p-0' : 'sm:p-4')}
+      role="presentation"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget && !busy) onClose();
+      }}
+    >
+      <section
+        ref={panelRef}
+        role={role}
+        aria-modal="true"
+        aria-label={typeof title === 'string' ? title : undefined}
+        data-tela-cheia={emTelaCheia ? 'true' : undefined}
+        className={cn(
+          'flex w-full flex-col border border-slate-200 bg-white shadow-2xl',
+          emTelaCheia
+            ? 'h-[100dvh] max-h-[100dvh] rounded-none'
+            : cn('max-h-[92vh] rounded-t-2xl sm:max-h-[88vh] sm:rounded-2xl', sizeClass[size], className),
+        )}
+      >
+        {(title || description) && (
+          <header className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
+            <div className="min-w-0 flex-1">
+              {title && <h2 className="text-base font-bold text-slate-900">{title}</h2>}
+              {description && <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>}
+            </div>
+            {telaCheia && (
+              <button
+                type="button"
+                onClick={alternarTelaCheia}
+                aria-pressed={emTelaCheia}
+                data-testid="modal-tela-cheia"
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
+              >
+                {emTelaCheia ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
+                <span className="max-sm:sr-only">{emTelaCheia ? 'Sair da tela cheia' : 'Tela cheia'}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label="Fechar"
+              disabled={busy}
+              onClick={onClose}
+              className="shrink-0 rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+            >
+              <X size={18} />
+            </button>
+          </header>
+        )}
+        {/* Em tela cheia, formulário curto fica numa coluna legível no meio;
+            a grade de viagens (xl) usa a largura toda. */}
+        {children && (
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {emTelaCheia && size !== 'xl' ? <div className="mx-auto w-full max-w-4xl">{children}</div> : children}
+          </div>
+        )}
+        {footer && (
+          <footer className="border-t border-slate-100 px-5 py-4">
+            {emTelaCheia && size !== 'xl' ? <div className="mx-auto w-full max-w-4xl">{footer}</div> : footer}
+          </footer>
+        )}
+      </section>
+    </div>,
+    document.body,
+  );
+}

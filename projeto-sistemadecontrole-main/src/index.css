@@ -1,0 +1,2302 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit Variable", "Outfit", "Geist Variable", "Segoe UI Variable", "Aptos", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit Variable", "Outfit", "Geist Variable", "Segoe UI Variable", "Aptos Display", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer components {
+  .input-dark {
+    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15;
+  }
+}
+
+:root {
+  --renea-color-primary: #063c31;
+  --renea-color-success: #087653;
+  --renea-color-warning: #8a4b08;
+  --renea-color-danger: #be123c;
+  --renea-color-info: #0369a1;
+  --renea-color-neutral: #69726d;
+  --renea-space-1: 0.25rem;
+  --renea-space-2: 0.5rem;
+  --renea-space-3: 0.75rem;
+  --renea-space-4: 1rem;
+  --renea-radius-control: 0.75rem;
+  --renea-radius-panel: 1rem;
+  --renea-motion-fast: 180ms;
+  --renea-motion-standard: 240ms;
+  --renea-z-sticky: 10;
+  --renea-z-dialog: 50;
+  --renea-ink: #17211e;
+  --renea-muted: #69726d;
+  --renea-line: #e2e8e4;
+  --renea-paper: #ffffff;
+  --renea-stone: #ffffff;
+  --renea-soft: #ffffff;
+  --renea-green: #063c31;
+  --renea-green-deep: #022b24;
+  --renea-focus: rgb(13 89 70 / 0.22);
+}
+
+html { min-width: 20rem; background: var(--renea-stone); scroll-behavior: smooth; }
+body {
+  min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--renea-stone);
+  color: var(--renea-ink);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgb(6 60 49 / .22); color: var(--renea-green-deep); }
+* { scrollbar-width: thin; scrollbar-color: #a8b1ac #f4f7f5; }
+h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0; text-wrap: balance; }
+
+#app-root { min-height: 100dvh; background: var(--renea-stone); color: var(--renea-ink); }
+#main-workspace { background: var(--renea-stone); }
+
+/* Compatibilidade explícita: os componentes administrativos ainda usam nomes
+   de utilitários históricos, mas existe somente um tema claro ativo.
+   [data-app-portal] cobre diálogos administrativos que usam createPortal para
+   document.body (ex.: FleetDetailDrawer) — eles ficam fora de #app-root no DOM,
+   mas fazem parte do mesmo app interno e precisam da mesma correção de tema.
+   PublicLinksApp nunca recebe esse atributo: suas telas escuras são intencionais. */
+:is(#app-root, [data-app-portal]) :is(.bg-slate-950, .bg-slate-900, .bg-slate-850),
+:is(#app-root, [data-app-portal]) [class^="bg-slate-950/"], :is(#app-root, [data-app-portal]) [class*=" bg-slate-950/"],
+:is(#app-root, [data-app-portal]) [class^="bg-slate-900/"], :is(#app-root, [data-app-portal]) [class*=" bg-slate-900/"] { background-color: var(--renea-paper); }
+
+:is(#app-root, [data-app-portal]) :is(.bg-slate-800, .bg-slate-700),
+:is(#app-root, [data-app-portal]) [class^="bg-slate-800/"], :is(#app-root, [data-app-portal]) [class*=" bg-slate-800/"] { background-color: var(--renea-soft); }
+
+:is(#app-root, [data-app-portal]) [class^="from-slate-9"], :is(#app-root, [data-app-portal]) [class*=" from-slate-9"],
+:is(#app-root, [data-app-portal]) [class^="from-slate-8"], :is(#app-root, [data-app-portal]) [class*=" from-slate-8"] { background-image: none; background-color: var(--renea-paper); }
+
+:is(#app-root, [data-app-portal]) :is(.border-slate-850, .border-slate-800, .border-slate-700, .border-slate-300, .border-slate-200) { border-color: var(--renea-line); }
+:is(#app-root, [data-app-portal]) :is(.text-slate-100, .text-slate-200, .text-slate-300) { color: #36443e; }
+:is(#app-root, [data-app-portal]) :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #69726d; }
+:is(#app-root, [data-app-portal]) :is(.text-emerald-200, .text-emerald-300, .text-emerald-400) { color: #087653; }
+:is(#app-root, [data-app-portal]) :is(.text-amber-100, .text-amber-200, .text-amber-300, .text-amber-400) { color: #8a4b08; }
+:is(#app-root, [data-app-portal]) :is(.text-orange-200, .text-orange-300, .text-orange-400) { color: #9a3412; }
+:is(#app-root, [data-app-portal]) :is(.text-rose-200, .text-rose-300, .text-rose-400) { color: #be123c; }
+:is(#app-root, [data-app-portal]) :is(.text-red-200, .text-red-300, .text-red-400) { color: #b91c1c; }
+:is(#app-root, [data-app-portal]) :is(.text-blue-200, .text-blue-300, .text-blue-400, .text-cyan-300) { color: #0369a1; }
+:is(#app-root, [data-app-portal]) :is(.text-violet-200, .text-violet-300, .text-violet-400) { color: #6d28d9; }
+/* .text-white só escurece onde o fundo escuro legado foi clareado logo acima.
+   A versão anterior escurecia todo .text-white e devolvia o branco por uma
+   lista de exceções que não tinha emerald-700/800/950, rose-700, amber-500/600
+   nem slate-500 — dezenas de botões verdes ficavam com texto verde-escuro
+   sobre verde-escuro. Invertida, o padrão passa a ser o seguro: sem fundo
+   legado, o branco continua branco. */
+:is(#app-root, [data-app-portal]) :is(.bg-slate-950, .bg-slate-900, .bg-slate-850, .bg-slate-800, .bg-slate-700).text-white,
+:is(#app-root, [data-app-portal]) :is(.bg-slate-950, .bg-slate-900, .bg-slate-850, .bg-slate-800, .bg-slate-700) .text-white,
+:is(#app-root, [data-app-portal]) [class^="bg-slate-950/"].text-white, :is(#app-root, [data-app-portal]) [class*=" bg-slate-950/"].text-white,
+:is(#app-root, [data-app-portal]) [class^="bg-slate-900/"].text-white, :is(#app-root, [data-app-portal]) [class*=" bg-slate-900/"].text-white { color: var(--renea-ink); }
+
+:is(#app-root, [data-app-portal]) :is(
+  .bg-emerald-500, .bg-emerald-600, .bg-emerald-700, .bg-emerald-800, .bg-emerald-900, .bg-emerald-950,
+  .bg-rose-500, .bg-rose-600, .bg-rose-700, .bg-red-500, .bg-red-600, .bg-red-700,
+  .bg-amber-500, .bg-amber-600, .bg-amber-700, .bg-orange-500, .bg-orange-600,
+  .bg-blue-600, .bg-blue-700, .bg-cyan-600, .bg-indigo-600, .bg-violet-600,
+  .bg-sky-600, .bg-teal-600, .bg-slate-500, .bg-slate-600
+).text-white,
+:is(#app-root, [data-app-portal]) :is(
+  .bg-emerald-500, .bg-emerald-600, .bg-emerald-700, .bg-emerald-800, .bg-emerald-900, .bg-emerald-950,
+  .bg-rose-500, .bg-rose-600, .bg-rose-700, .bg-red-500, .bg-red-600, .bg-red-700,
+  .bg-amber-500, .bg-amber-600, .bg-amber-700, .bg-orange-500, .bg-orange-600,
+  .bg-blue-600, .bg-blue-700, .bg-cyan-600, .bg-indigo-600, .bg-violet-600,
+  .bg-sky-600, .bg-teal-600, .bg-slate-500, .bg-slate-600
+) .text-white { color: #fff; }
+
+:is(#app-root, [data-app-portal]) option, :is(#app-root, [data-app-portal]) select { background-color: #fff; color: #33413b; }
+#app-root :is(button, a, input, select, textarea) { transition-duration: 240ms; transition-timing-function: cubic-bezier(.32,.72,0,1); }
+#app-root :is(button, [role="button"]):not(:disabled):active { transform: scale(.985); }
+#app-root :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--renea-focus); outline-offset: 2px; }
+
+#app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+  border-color: #cfd4d0;
+  background-color: var(--renea-paper);
+  color: var(--renea-ink);
+  box-shadow: none;
+}
+#app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):hover { border-color: #9fa9a3; }
+#app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus { border-color: var(--renea-green); box-shadow: 0 0 0 3px var(--renea-focus); }
+
+#app-root table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+#app-root thead { background: #fafcfb; color: #3e4843; letter-spacing: .025em; }
+#app-root tbody tr { transition: background-color 180ms ease; }
+#app-root tbody tr:hover { background-color: #edf2ed; }
+
+#mobile-header { background: #fff; border-bottom: 1px solid var(--renea-line); box-shadow: none; }
+#mobile-drawer { background: rgb(2 43 36 / .46) !important; }
+#mobile-drawer > .mobile-sidebar-panel {
+  border-color: #185443;
+  background: #0a4636 !important;
+  color: #eafff6;
+  box-shadow: -18px 0 44px rgb(2 43 36 / .2);
+}
+#mobile-drawer .border-slate-800 { border-color: #185443; }
+#mobile-drawer input { border-color: #2a725e !important; background: #0a3b2e !important; color: #fff !important; }
+#mobile-drawer input::placeholder { color: #a5c8ba !important; }
+#mobile-drawer section > p { color: #8cc7b2 !important; }
+#mobile-drawer nav button:not([class*="bg-rose"]):not([aria-current="page"]) { color: #c6e3d8 !important; }
+#mobile-drawer nav button:not([class*="bg-rose"]):not([aria-current="page"]):hover { background: #0d4c3a !important; color: #fff !important; }
+#mobile-drawer nav button[aria-current="page"] { background: #0d8a65 !important; color: #fff !important; box-shadow: none; }
+#mobile-drawer nav button svg { color: currentColor !important; }
+
+.login-shell { min-height: 100dvh; background: #fff; }
+.login-frame {
+  display: grid;
+  width: min(70rem, 100%);
+  min-height: min(45rem, calc(100dvh - 3rem));
+  grid-template-columns: minmax(0,1.08fr) minmax(24rem,.92fr);
+  overflow: hidden;
+  border: 1px solid #dbe4df;
+  border-radius: .35rem;
+  background: #fff;
+  box-shadow: 0 30px 80px rgb(2 43 36 / .1);
+}
+.login-story {
+  position: relative;
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(2rem,5vw,4.5rem);
+  overflow: hidden;
+  color: #10211c;
+  /* Enquadramento no vale e na pista, não no céu: sob o véu branco o céu
+     esbranquiçado da foto virava uma lavagem azul-clara, que briga com o verde
+     da marca e é justamente a cara de template que se quer evitar. */
+  background: linear-gradient(90deg, rgb(255 255 255 / .98) 0%, rgb(255 255 255 / .88) 46%, rgb(255 255 255 / .1) 100%), url("./assets/renea-editorial/rodovia-serra-1600.webp") 50% 68% / cover;
+}
+.login-story::after { position: absolute; inset: 0; content: ""; background: linear-gradient(120deg, rgb(15 143 100 / .1), rgb(15 143 100 / .02) 60%, transparent 82%); }
+.login-story > * { position: relative; z-index: 1; }
+.login-panel { display: flex; flex-direction: column; justify-content: center; padding: clamp(2rem,5vw,4.5rem); border-left: 1px solid #e2e8e4; background: #fbfdfb; }
+.login-story > * { animation: renea-white-reveal .65s cubic-bezier(.18,.8,.2,1) both; }
+.login-story > :nth-child(2) { animation-delay: 90ms; }
+.login-story > :nth-child(3) { animation-delay: 160ms; }
+.login-panel > * { animation: renea-white-reveal .65s .12s cubic-bezier(.18,.8,.2,1) both; }
+
+@utility ticket-input {
+  width: 100%;
+  height: 3rem;
+  border: 1px solid #cbd5e1;
+  border-radius: .375rem;
+  background: #fff;
+  padding-inline: .875rem;
+  color: #0f172a;
+  font-size: .875rem;
+  outline: none;
+}
+.ticket-input:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgb(16 185 129 / .12); }
+
+@media (max-width: 820px) {
+  .login-frame { min-height: auto; grid-template-columns: 1fr; border-radius: .35rem; }
+  .login-story { display: flex; min-height: 15rem; padding: 1.75rem; }
+  .login-story > div:first-child, .login-story > p:last-child { display: none; }
+  .login-story h1 { max-width: 12ch; font-size: 2.25rem; }
+  .login-panel { padding: 2rem 1.25rem; border-left: 0; border-top: 1px solid #e2e8e4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  #app-root *, #app-root *::before, #app-root *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  body * { visibility: hidden !important; }
+  #fleet-print-report, #fleet-print-report * { visibility: visible !important; }
+  #fleet-print-report { display: block !important; position: absolute; inset: 0; width: 100%; background: #fff; color: #222; }
+  #materiais-relatorio-impressao, #materiais-relatorio-impressao * { visibility: visible !important; }
+  #materiais-relatorio-impressao { position: absolute; top: 0; left: 0; width: 100%; border: 0; }
+  #materiais-relatorio-impressao thead { display: table-header-group; }
+  #materiais-relatorio-impressao tr { break-inside: avoid; page-break-inside: avoid; }
+  .fleet-report-page { display: flex; min-height: 190mm; flex-direction: column; break-after: page; page-break-after: always; }
+  .fleet-report-page:last-child { break-after: auto; page-break-after: auto; }
+  .fleet-report-page table { break-inside: auto; page-break-inside: auto; }
+  .fleet-report-page thead { display: table-header-group; }
+  .fleet-report-page tr { break-inside: avoid; page-break-inside: avoid; }
+  .fleet-report-page img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+
+/* Microinterações de entrada em CSS puro. Substituem a biblioteca de animação
+   que custava 126 kB baixados na abertura do sistema para fazer exatamente
+   estes dois efeitos. O bloco de prefers-reduced-motion acima já as neutraliza
+   para quem pede menos movimento. */
+@keyframes renea-enter-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes renea-enter-right {
+  from { opacity: 0; transform: translateX(50px) scale(.95); }
+  to { opacity: 1; transform: none; }
+}
+.renea-enter { animation: renea-enter-up 200ms cubic-bezier(0, 0, .2, 1) both; }
+.renea-enter-toast { animation: renea-enter-right 220ms cubic-bezier(0, 0, .2, 1) both; }
+
+/* Confirmação de ticket enviado no link público. */
+@keyframes renea-success-ring {
+  from { opacity: .7; transform: scale(.55); }
+  to { opacity: 0; transform: scale(1.35); }
+}
+@keyframes renea-success-pop {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: scale(1); }
+}
+.renea-success-ring { animation: renea-success-ring 750ms cubic-bezier(0, 0, .2, 1) both; }
+.renea-success-badge { animation: renea-success-pop 320ms cubic-bezier(.34, 1.4, .64, 1) both; }
+.renea-success-check { animation: renea-success-pop 280ms cubic-bezier(.34, 1.4, .64, 1) 200ms both; }
+
+/* RENEA ERP shell: one authoritative layer for desktop navigation and context. */
+.erp-shell {
+  display: flex;
+  min-height: 100dvh;
+  width: 100%;
+  background: var(--renea-stone);
+}
+.erp-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  width: 11.5rem;
+  min-width: 11.5rem;
+  height: 100dvh;
+  flex-direction: column;
+  border-right: 1px solid #0a4235;
+  background: #042f25;
+  color: #e0f0e8;
+}
+.erp-workspace { display: flex; min-width: 0; min-height: 100dvh; flex: 1; flex-direction: column; background: #fff; }
+.erp-topbar { display: flex; min-height: 4.6rem; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 0 1.9rem; border-bottom: 1px solid #dde4ef; background: #fff; }
+.erp-topbar__breadcrumb { display: flex; min-width: 0; align-items: center; gap: .7rem; color: #61718a; font-size: .78rem; }
+.erp-topbar__breadcrumb strong { overflow: hidden; color: #10213c; font-weight: 760; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topbar__chevron { color: #a3aea7; }
+.erp-topbar__actions { display: flex; align-items: center; gap: .9rem; }
+.erp-topbar__searchbox { min-width: 10rem; flex: 1 1 20rem; }
+.erp-topbar__status { display: flex; align-items: center; gap: .4rem; color: #496178; font-size: .7rem; font-weight: 650; }
+
+.erp-topbar__status span { width: .42rem; height: .42rem; border-radius: 50%; background: #0a9867; }
+.erp-topbar__pending { display: flex; align-items: center; gap: .45rem; padding: .28rem .42rem .28rem .6rem; border: 1px solid #f3c96b; border-radius: 999px; background: #fffbeb; color: #92400e; font-size: .65rem; font-weight: 700; white-space: nowrap; }
+.erp-topbar__pending button { border: 0; border-radius: 999px; background: #f59e0b; color: #fff; font: inherit; font-weight: 750; padding: .22rem .48rem; cursor: pointer; }
+.erp-topbar__pending button:hover:not(:disabled) { background: #d97706; }
+.erp-topbar__pending button:disabled { cursor: wait; opacity: .65; }
+.erp-topbar__date { display: grid; gap: .13rem; padding: 0 .9rem; border-left: 1px solid #e0e5df; color: #708098; font-size: .6rem; text-align: right; }
+.erp-topbar__date strong { color: #243955; font-size: .72rem; font-weight: 720; }
+.erp-topbar__user { display: flex; align-items: center; gap: .5rem; padding-left: .8rem; border-left: 1px solid #e0e5df; }
+.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid #bfd1f6; border-radius: 50%; background: #eaf1ff; color: #245cc4; font-size: .62rem; font-weight: 800; }
+.erp-topbar__user > span:last-child { display: grid; min-width: 0; gap: .1rem; }
+.erp-topbar__user strong { max-width: 10rem; overflow: hidden; color: #243955; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topbar__user small { max-width: 10rem; overflow: hidden; color: #8190a5; font-size: .6rem; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topbar__command { min-height: 2.3rem; padding: 0 .95rem; border: 1px solid #bdd0f7; border-radius: .42rem; background: #f4f8ff; color: #285fcb; font: inherit; font-size: .7rem; font-weight: 720; cursor: pointer; }
+.erp-topbar__command:hover { border-color: #4d88ff; background: #eaf1ff; }
+.erp-topbar__project {
+  display: flex;
+  width: auto;
+  max-width: 22rem;
+  flex: 1 1 15rem;
+  min-height: 2.8rem;
+  align-items: center;
+  gap: .7rem;
+  padding: .45rem .75rem;
+  border: 1px solid #d7e2dc;
+  border-radius: .45rem;
+  background: #fafcfb;
+  color: #173c2e;
+  text-align: left;
+}
+.erp-topbar__project:hover { border-color: #99bbaa; background: #f5faf7; }
+.erp-topbar__project > svg:first-child { width: 1rem; height: 1rem; flex: 0 0 auto; color: #087553; }
+.erp-topbar__project > span { display: grid; min-width: 0; flex: 1; gap: .08rem; }
+.erp-topbar__project small { color: #718078; font-size: .56rem; font-weight: 650; }
+.erp-topbar__project strong { overflow: hidden; color: #173c2e; font-size: .68rem; font-weight: 720; text-overflow: ellipsis; white-space: nowrap; }
+#main-tab-viewport { max-width: none; }
+
+@media (max-width: 1180px) {
+  .erp-sidebar { width: 11.5rem; min-width: 11.5rem; }
+  .erp-topbar { padding-inline: 1.1rem; }
+  .erp-topbar__command { display: none; }
+  .erp-topbar__status { display: none; }
+  .erp-topbar__project { max-width: 18rem; }
+}
+@media (max-width: 1320px) {
+  .erp-topbar { gap: .75rem; padding-inline: 1rem; }
+  .erp-topbar__actions { gap: .45rem; }
+  .erp-topbar__user > span:last-child { display: none; }
+  .erp-topbar__user { padding-left: .45rem; }
+  .erp-topbar__searchbox { max-width: 15rem; }
+}
+@media (max-width: 1100px) {
+  .erp-topbar__searchbox { display: none; }
+  .erp-topbar__project { max-width: none; }
+}
+@media (max-width: 1023px) {
+  .erp-shell { min-height: auto; }
+  .erp-workspace { min-height: calc(100dvh - 4.25rem); }
+  .erp-topbar { display: none; }
+  #main-workspace { overflow-y: auto; }
+  #mobile-header { position: sticky; top: 0; z-index: 40; }
+}
+
+/* RENEA front-end v2 foundation: one calm industrial system for every module. */
+.erp-shell { background: #fff; }
+.erp-shell #main-tab-viewport,
+.erp-shell #main-tab-viewport > div,
+.erp-shell #main-tab-viewport > div > :is(main, section, div)[id$="-tab"] {
+  background-color: #fff !important;
+}
+.erp-sidebar {
+  width: 11.5rem;
+  min-width: 11.5rem;
+  background: #0b4434;
+  border-right: 1px solid #123f31;
+  /* A navegação fica estática: animação contínua não ajuda a operação e
+     desperdiça GPU em uma área sempre visível. */
+  animation: none;
+}
+.erp-workspace { background: #fff; }
+.erp-topbar { min-height: 5rem; padding-inline: 2rem; border-bottom-color: #e2e8e4; background: #fff; }
+.erp-topbar__command { border-color: #b7d8ca; border-radius: .75rem; background: #eff9f3; color: #0c6b4e; transition: transform .45s cubic-bezier(.32,.72,0,1), background-color .45s cubic-bezier(.32,.72,0,1); }
+.erp-topbar__command:hover { transform: translateY(-1px); border-color: #6ab393; background: #e3f5ea; }
+#main-tab-viewport { background: #fff; }
+
+/* RENEA operational workspace: shared light surface language used by the rebuilt
+   executive panel and the fleet control. The navigation remains dark green by
+   design; content never inherits that dark treatment. */
+.erp-dashboard { background: #fff; }
+.erp-dashboard .erp-surface {
+  border: 1px solid #e2e8e4;
+  border-radius: .9rem;
+  background: #fff;
+  box-shadow: none;
+}
+.erp-dashboard .erp-availability {
+  background: #fff;
+}
+.erp-dashboard .erp-dayline { box-shadow: none; }
+.erp-dashboard table thead { background: #fafcfb; }
+.erp-dashboard table tbody tr { border-top: 1px solid #e8eeea; }
+.erp-dashboard table tbody tr:hover { background: #f8fbf9; }
+.erp-shortcuts { box-shadow: none; }
+
+.erp-topbar {
+  min-height: 4.55rem;
+  border-bottom-color: #dce5df;
+  background: #fff;
+  position: relative;
+  z-index: 80;
+  overflow: visible;
+}
+.erp-topbar__breadcrumb { color: #65766d; font-size: .8rem; }
+.erp-topbar__breadcrumb strong { color: #183428; }
+.erp-topbar__status { color: #486458; }
+.erp-topbar__status[data-offline] { color: #9a3412; }
+.erp-topbar__status[data-offline] span { background: #d97706; }
+.erp-topbar__date { border-left-color: #dce5df; color: #728178; }
+.erp-topbar__date strong, .erp-topbar__user strong { color: #1c382a; }
+.erp-topbar__user { border-left-color: #dce5df; }
+.erp-topbar__avatar { border-color: #b8d9c8; background: #eff8f2; color: #087345; }
+
+
+/* Single white workspace: legacy utility colors stay neutral outside the sidebar. */
+#main-tab-viewport [class~="bg-[#fffefa]"],
+#main-tab-viewport [class~="bg-[#f7f5ef]"],
+#main-tab-viewport [class~="bg-[#f0eee6]"],
+#main-tab-viewport [class~="bg-[#e8e5db]"] { background-color: #fff !important; }
+#main-tab-viewport [class~="border-[#ddd9cd]"],
+#main-tab-viewport [class~="border-[#d8d4c8]"],
+#main-tab-viewport [class~="border-[#e4e0d6]"] { border-color: #e2e8e4 !important; }
+#main-tab-viewport [class*="shadow-"] { box-shadow: none !important; }
+#main-tab-viewport [class~="bg-[#14231e]"] { background-color: #087653 !important; color: #fff !important; }
+#main-tab-viewport [class~="bg-[#14231e]"] [class~="text-white"] { color: #fff !important; }
+@media (max-width: 1023px) {
+  .erp-dashboard { background: #fff; }
+}
+
+/* O menu lateral é a única superfície escura do sistema. A camada de
+   compatibilidade acima clareia utilitários históricos (.text-white), e sem
+   esta regra de mesma especificidade o nome do usuário ficava ilegível
+   dentro do verde. O item ativo tem fundo branco com texto verde-escuro
+   (ver DesktopSidebar.tsx), então [aria-current="page"] não força mais cor. */
+#app-root .erp-sidebar .text-white { color: #ffffff; }
+
+/* Largura do menu recolhido precisa morar aqui: a regra base .erp-sidebar
+   fixa width/min-width e venceria a classe utilitaria por ordem no arquivo. */
+#app-root .erp-sidebar.erp-sidebar--recolhido { width: 3.75rem; min-width: 3.75rem; }
+
+/* RENEA engineering editorial v3 — approved operational language.
+   This layer intentionally leaves DesktopSidebar markup and the original logo
+   untouched. It standardizes every route through shared primitives. */
+:root {
+  --renea-v3-ink: #0b1714;
+  --renea-v3-forest: #082f25;
+  --renea-v3-green: #008b62;
+  --renea-v3-signal: #00a875;
+  --renea-v3-orange: #ef5b25;
+  --renea-v3-paper: #f5f6f2;
+  --renea-v3-line: #cdd6d1;
+}
+
+.erp-workspace,
+#main-workspace,
+#main-tab-viewport { background: var(--renea-v3-paper); }
+
+/* Context bar: one compact dark strip, matching the approved dashboard. */
+.erp-topbar {
+  min-height: 3.75rem;
+  padding-inline: 1.7rem;
+  border-bottom-color: #1d473d;
+  background: #0a241d;
+  color: #f4faf6;
+}
+.erp-topbar__breadcrumb,
+.erp-topbar__breadcrumb strong,
+.erp-topbar__status,
+.erp-topbar__date,
+.erp-topbar__date strong,
+.erp-topbar__user strong { color: #f2f8f4; }
+.erp-topbar__chevron,
+.erp-topbar__user small { color: #adc3b9; }
+.erp-topbar__date,
+.erp-topbar__user { border-left-color: #315048; }
+.erp-topbar__avatar { border-color: #d7e2dd; background: #edf2ef; color: #17372e; }
+.erp-topbar__project {
+  min-height: 2.65rem;
+  border-color: transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: #fff;
+}
+.erp-topbar__project:hover { border-color: #45665c; background: #12372d; }
+.erp-topbar__project small { color: #9eb7ac; }
+.erp-topbar__project strong { color: #fff; font-size: .72rem; }
+.erp-topbar__project > svg:first-child { color: #4bd19f; }
+.erp-topbar__command { border-color: #42655a; border-radius: 2px; background: #13372e; color: #e9f5ef; }
+.erp-topbar__command:hover { transform: none; border-color: #6d9487; background: #19483b; }
+
+/* Shared surfaces used by every current and future tab. Sem "both": o
+   fill-mode preso trava a barra "position: fixed" de qualquer aba (fica
+   presa dentro da aba, em vez do rodapé da tela), porque o navegador conta
+   a animação da transform como ativa pra sempre enquanto ela segura o
+   valor final. Sem delay, o começo (opacity 0) já pinta a tempo, então a
+   entrada continua igual; só o estado depois do fim volta a ser normal. */
+#main-tab-viewport > * { animation: renea-v3-enter 360ms cubic-bezier(.2,.8,.2,1); }
+.renea-card,
+.renea-stat { box-shadow: none !important; }
+.renea-card:hover { border-color: #aebbb4; }
+.renea-table-shell { scrollbar-color: #82958b #edf1ee; }
+.renea-table :is(th, td) { padding: .85rem 1rem; }
+.renea-table tbody tr { background: #fff; }
+.renea-table tbody tr:hover { background: #f0f4f1; }
+
+/* Normalize legacy screen containers without flattening dialogs and popovers. */
+#main-tab-viewport > :not(.erp-dashboard) {
+  color: var(--renea-v3-ink);
+  background-color: var(--renea-v3-paper);
+}
+
+/* O viewport já aplica o respiro da área de trabalho (p-3/p-4/p-5 no App).
+   Cada tela repetia esse espaço com `pt-6` no próprio container, e a soma
+   abria uma faixa vazia entre a barra de sincronização e o primeiro dado.
+   Zerar aqui, num lugar só, evita caçar a classe tela por tela. */
+#main-tab-viewport > :not(.erp-dashboard) > [id$="-tab"],
+#main-tab-viewport > :not(.erp-dashboard)[id$="-tab"],
+#main-tab-viewport > .renea-route-motion > [id$="-tab"],
+#main-tab-viewport > .renea-route-motion > main,
+#main-tab-viewport > .renea-route-motion > div > [id$="-tab"] {
+  padding-top: 0;
+}
+#main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+  min-height: 2.75rem;
+  border-radius: 3px;
+  border-color: #bbc7c1;
+  background: #fff;
+}
+#main-tab-viewport textarea { min-height: 6rem; }
+
+/* Approved dashboard hero: information first, image as project context. */
+.dashboard-hero { position: relative; min-height: 20rem; overflow: hidden; }
+.dashboard-hero__content { position: relative; z-index: 2; width: min(64%, 64rem); }
+.dashboard-hero__visual { position: absolute; inset: 0 0 0 50%; overflow: hidden; background: #17372e; }
+.dashboard-hero__visual::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, #f7f8f5 0%, rgb(247 248 245 / .92) 9%, rgb(7 27 21 / .1) 45%, rgb(5 25 19 / .58) 100%);
+}
+.dashboard-hero__visual img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.78) contrast(1.06); }
+.dashboard-hero__visual > span { position: absolute; z-index: 2; top: 2.2rem; right: 2rem; padding-left: 1.2rem; border-left: 1px solid rgb(255 255 255 / .65); color: #fff; font-size: .62rem; font-weight: 800; line-height: 1.65; letter-spacing: .25em; text-transform: uppercase; }
+.dashboard-project-tabs { position: relative; z-index: 3; }
+.dashboard-metrics { grid-template-columns: repeat(4, minmax(0,1fr)) minmax(15rem,1.15fr); gap: 0; }
+.dashboard-metric { border-color: #e7ebe6; transition: background-color .2s ease, box-shadow .2s ease; }
+.dashboard-metric:first-child { border-left: 0; }
+.dashboard-metric:hover { background: #fff; box-shadow: 0 1px 2px rgb(7 17 14 / .04), 0 8px 24px -12px rgb(7 17 14 / .16); }
+.dashboard-metric.text-\[\#176b4d\] strong { color: #087653; }
+.dashboard-metric.text-\[\#c94f1c\] strong { color: #d34d18; }
+.dashboard-metric.is-active { background: #fff; box-shadow: inset 0 -3px 0 currentColor; }
+.dashboard-metric-cta { border-left: 1px solid #e7ebe6; }
+.dashboard-integrated-grid { grid-template-columns: minmax(15rem, 1.25fr) repeat(3, minmax(12rem, 1fr)); }
+.dashboard-integrated-metric {
+  min-height: 10.5rem;
+  padding: 1.2rem;
+  border-left: 1px solid #dfe5e1;
+  background: #fff;
+  color: #10211b;
+  transition: background-color .2s ease, color .2s ease, transform .2s ease;
+}
+.dashboard-integrated-metric:first-child { border-left: 0; }
+.dashboard-integrated-metric:hover { background: #fbfdfc; box-shadow: 0 1px 2px rgb(7 17 14 / .04), 0 10px 28px -14px rgb(7 17 14 / .18); }
+.dashboard-integrated-metric:active { transform: translateY(1px); }
+.dashboard-integrated-metric.is-featured { background: #0b4938; color: #f4faf6; }
+.dashboard-integrated-metric.is-featured:hover { background: #0e5a45; }
+.erp-dashboard section { border-radius: 2px; }
+.erp-dashboard section > header h2 { font-weight: 900; text-transform: uppercase; letter-spacing: .065em; }
+
+/* The compatibility layer above changes historical .text-white. Approved
+   action surfaces must remain readable regardless of utility ordering. */
+#app-root #main-tab-viewport :is(
+  .bg-emerald-700,
+  .bg-emerald-800,
+  .bg-rose-700,
+  .bg-rose-800,
+  [class*="bg-[#087653]"],
+  [class*="bg-[#183f32]"],
+  [class*="bg-[#123d31]"],
+  [class*="bg-[#ed5d24]"]
+) { color: #fff; }
+
+@keyframes renea-v3-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes renea-v3-line-draw {
+  from { stroke-dashoffset: 900; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes renea-v3-image-settle {
+  from { transform: scale(1.055); filter: saturate(.5) contrast(1.12); }
+  to { transform: scale(1); filter: saturate(.78) contrast(1.06); }
+}
+.dashboard-hero__visual img { animation: renea-v3-image-settle 1.2s cubic-bezier(.2,.8,.2,1) both; }
+.erp-dashboard polyline { stroke-dasharray: 900; animation: renea-v3-line-draw 1.15s .25s cubic-bezier(.2,.8,.2,1) both; }
+.dashboard-metric { animation: renea-v3-enter .45s cubic-bezier(.2,.8,.2,1) both; }
+.dashboard-metric:nth-child(2) { animation-delay: 55ms; }
+.dashboard-metric:nth-child(3) { animation-delay: 110ms; }
+.dashboard-metric:nth-child(4) { animation-delay: 165ms; }
+.dashboard-metric-cta { animation: renea-v3-enter .45s 220ms cubic-bezier(.2,.8,.2,1) both; }
+
+/* Shared motion and hierarchy across all route modules.
+   `animation: … both` mantém o estado inicial aplicado até a tween começar:
+   com `renea-v3-enter` partindo de opacity 0, cada section/card da tela
+   nascia invisível. Em módulos com dezenas de blocos isso somava dezenas de
+   animações simultâneas e a aba parecia travada ao abrir. Agora só os três
+   primeiros blocos animam, e partindo de conteúdo já visível. */
+#main-tab-viewport > :not(.erp-dashboard) > :is(section, article, .renea-card, [role="region"]):nth-of-type(-n+3) {
+  animation: renea-v3-slide .3s cubic-bezier(.2,.8,.2,1) both;
+}
+#main-tab-viewport .renea-card :is(button, tr),
+#main-tab-viewport .renea-table tr { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
+#main-tab-viewport .renea-card button:hover { transform: translateX(2px); }
+
+/* Realce de ponteiro que antes vinha de gsap.quickTo com três listeners por
+   cartão (RouteMotion). Em CSS o compositor resolve sozinho, sem custo de JS
+   por elemento. */
+#main-tab-viewport :is(.renea-card, .renea-stat, [data-fleet-enter], .dashboard-metric) {
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+#main-tab-viewport :is(.renea-card, .renea-stat, [data-fleet-enter], .dashboard-metric):hover {
+  transform: translateY(-3px);
+}
+
+@keyframes renea-v3-slide {
+  from { transform: translateY(12px); }
+  to { transform: none; }
+}
+
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #d6e5dd; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #fff; }
+
+@media (max-width: 1180px) {
+  .dashboard-hero__content { width: min(72%, 54rem); }
+  .dashboard-hero__visual { left: 58%; }
+  .dashboard-metrics { grid-template-columns: repeat(4, minmax(10rem,1fr)); overflow-x: auto; }
+  .dashboard-metric-cta { min-width: 16rem; }
+  .dashboard-integrated-grid { grid-template-columns: repeat(2, minmax(14rem, 1fr)); }
+  .dashboard-integrated-metric:nth-child(3) { border-top: 1px solid #dfe5e1; border-left: 0; }
+  .dashboard-integrated-metric:nth-child(4) { border-top: 1px solid #dfe5e1; }
+}
+
+@media (max-width: 767px) {
+  #main-tab-viewport > :not(.erp-dashboard) { padding-inline: .8rem; }
+  .renea-page-header { padding-top: .5rem; }
+  .renea-page-actions { display: flex; flex-wrap: wrap; width: 100%; }
+  .renea-page-actions > * { max-width: 100%; }
+  .renea-button { min-height: 3rem; }
+  .dashboard-hero { min-height: auto; }
+  .dashboard-hero__content { width: 100%; padding-top: 2rem; padding-bottom: 1.5rem; }
+  .dashboard-hero__visual { inset: auto 0 0 0; height: 8.5rem; opacity: .17; }
+  .dashboard-hero__visual::before { background: linear-gradient(180deg, #f7f8f5, rgb(247 248 245 / .18)); }
+  .dashboard-hero__visual > span { display: none; }
+  .dashboard-project-tabs { padding-inline: .5rem; }
+  .dashboard-project-tabs button { min-height: 3rem; }
+  .dashboard-metrics { overflow-x: auto; grid-template-columns: repeat(4, minmax(10.5rem,1fr)) minmax(14rem,1fr); }
+  .dashboard-metric { min-height: 9rem; border-left: 1px solid #cdd6d1; }
+  .dashboard-metric:first-child { border-left: 0; }
+  .dashboard-integrated { margin-inline: 0; }
+  .dashboard-integrated-grid { display: flex; overflow-x: auto; scroll-snap-type: x proximity; }
+  .dashboard-integrated-metric { min-width: min(78vw, 18rem); min-height: 9.5rem; scroll-snap-align: start; border-top: 0 !important; border-left: 1px solid #dfe5e1 !important; }
+  .dashboard-integrated-metric:first-child { border-left: 0 !important; }
+  .dashboard-module-signal { grid-template-columns: minmax(6.5rem,.8fr) minmax(4.5rem,.45fr) minmax(7rem,1fr); gap: .65rem; }
+  .renea-table-shell { margin-inline: -1px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #main-tab-viewport > * { animation: none; }
+}
+
+/* RENEA white operational system — final approved direction.
+   The original sidebar remains the only dark navigation surface. */
+:root {
+  --renea-v3-paper: #ffffff;
+}
+
+.erp-workspace,
+#main-workspace,
+#main-tab-viewport,
+#main-tab-viewport > :not(.erp-dashboard) { background: #fff; }
+
+.erp-topbar {
+  border-bottom: 1px solid #dce4df;
+  background: rgb(255 255 255 / .96);
+  color: #10211c;
+  box-shadow: 0 1px 0 rgb(10 47 37 / .04);
+}
+
+.renea-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--renea-space-2);
+}
+.renea-filter-bar__fields {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--renea-space-2);
+  min-width: 0;
+}
+.renea-filter-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--renea-space-2);
+}
+.erp-topbar__breadcrumb,
+.erp-topbar__breadcrumb strong,
+.erp-topbar__status,
+.erp-topbar__date,
+.erp-topbar__date strong,
+.erp-topbar__user strong { color: #10211c; }
+.erp-topbar__chevron,
+.erp-topbar__user small { color: #60716a; }
+.erp-topbar__date,
+.erp-topbar__user { border-left-color: #dce4df; }
+.erp-topbar__project { color: #10211c; }
+.erp-topbar__project:hover { border-color: #c8d4ce; background: #f7faf8; }
+.erp-topbar__project small { color: #728078; }
+.erp-topbar__project strong { color: #10211c; }
+.erp-topbar__project > svg:first-child { color: #008b62; }
+.erp-topbar__command { border-color: #d4ddd8; background: #fff; color: #18362d; }
+.erp-topbar__command:hover { border-color: #87aa9d; background: #f6faf8; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #63736c; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #10211c; }
+
+/* Cabeçalho de módulo: faixa densa, sem foto e sem capa editorial. */
+#main-tab-viewport :has(> .renea-page-header) {
+  position: relative;
+  z-index: 24;
+  overflow: visible;
+}
+.renea-page-header {
+  position: relative;
+  z-index: 24;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: .75rem 1.25rem;
+  padding-block: .55rem .7rem;
+  border-block-end: 1px solid #dde4e0;
+  background: transparent;
+  overflow: visible;
+}
+.renea-page-header__copy { min-width: 0; flex: 1 1 22rem; }
+.renea-page-header__eyebrow {
+  display: block;
+  margin-bottom: .15rem;
+  color: #4d6a5d;
+  /* 0.68rem dava 10,88px e ficava abaixo do piso de legibilidade da obra. */
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.renea-page-header h1 {
+  color: #0d1a15;
+  font-size: clamp(1.2rem, 1.05rem + .5vw, 1.6rem);
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -.015em;
+}
+.renea-page-header__copy > p {
+  max-width: 78ch;
+  margin-top: .2rem;
+  color: #56635c;
+  font-size: .82rem;
+  line-height: 1.4;
+}
+.renea-page-header .renea-page-actions {
+  position: relative;
+  z-index: 25;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+.renea-page-header .renea-page-actions details { position: relative; }
+.renea-page-header .renea-page-actions details[open] { z-index: 60; }
+.renea-page-header .renea-page-actions details > div { z-index: 70; }
+@media (max-width: 767px) {
+  .renea-page-header { align-items: stretch; }
+  .renea-page-header .renea-page-actions { width: 100%; }
+}
+
+/* White surfaces across legacy and redesigned screens. */
+#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat):is([class~="bg-[#0f3025]"], [class~="bg-[#083c2f]"], [class~="bg-[#101a22]"]),
+#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat).bg-slate-900,
+#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat).bg-emerald-950 {
+  background-color: #fff !important;
+  color: #10211c !important;
+}
+/* Clear the remaining legacy dark panels without touching the original
+   navigation or colored primary actions. */
+#main-tab-viewport :is(div, section, article, aside, form, table, thead, tbody):is(
+  [class~="bg-slate-900"], [class~="bg-slate-950"], [class~="bg-[#101a22]"], [class~="bg-[#14231e]"]
+) {
+  background-color: #fff !important;
+  color: #10211c !important;
+}
+/* Só o cinza-claro de fundo vira branco. Por substring, "bg-slate-50"
+   apanhava também bg-slate-500 e apagava os selos escuros. */
+#main-tab-viewport [class~="bg-slate-50"],
+#main-tab-viewport [class~="bg-gray-50"] { background-color: #fff !important; }
+#main-tab-viewport :is([class~="border-slate-700"], [class~="border-slate-800"], [class~="border-slate-850"]) { border-color: #d7e0db !important; }
+#main-tab-viewport :is(input, select, textarea) {
+  border-color: #cbd7d1 !important;
+  background-color: #fff !important;
+  color: #10211c !important;
+}
+#main-tab-viewport :is(input, textarea)::placeholder { color: #839089 !important; }
+#main-tab-viewport :is(h1, h2, h3, h4, h5, p, label, dt, dd, td, th):is(
+  [class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]
+) { color: #10211c !important; }
+/* Texto branco dentro de botão de fundo escuro. O seletor precisa casar a
+   classe inteira: [class*="bg-emerald"] também casava `hover:bg-emerald-50/40`
+   e pintava de branco o rótulo de qualquer botão claro com hover verde — era
+   o que sumia com a linha de indicadores do Combustível, com os atalhos do
+   Modo Campo e com as abas ativas de Cadastros e Presença. `~=` casa só o
+   token exato. */
+#main-tab-viewport button:is(
+  [class~="bg-emerald-600"], [class~="bg-emerald-700"], [class~="bg-emerald-800"],
+  [class~="bg-emerald-900"], [class~="bg-emerald-950"],
+  [class~="bg-[#087653]"], [class~="bg-[#087345]"], [class~="bg-[#066344]"],
+  [class~="bg-[#07513c]"], [class~="bg-[#083c2f]"], [class~="bg-[#0f3025]"],
+  [class~="bg-[#123d31]"], [class~="bg-[#183f32]"], [class~="bg-[#14231e]"]
+) :is(span, strong, svg) { color: #fff !important; }
+#pendencias-tab button[aria-pressed="true"] :is(span, strong, svg) { color: #17352c !important; }
+
+/* Motion is deliberately visible but keeps operational controls steady. */
+@keyframes renea-white-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes renea-white-sweep {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes renea-line-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes renea-point-pop {
+  from { opacity: 0; transform: scale(.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+.dashboard-trend-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: renea-line-draw 1.05s .12s cubic-bezier(.22,.8,.2,1) forwards; }
+.dashboard-trend-point { opacity: 0; transform-box: fill-box; transform-origin: center; animation: renea-point-pop .42s cubic-bezier(.2,.9,.25,1.35) forwards; }
+#main-tab-viewport > :not(.erp-dashboard) > :is(section, article, div):nth-child(2) { animation-delay: 90ms; }
+#main-tab-viewport > * > :is(header, section, article),
+#main-tab-viewport > * > div > :is(header, section, article) {
+  animation: renea-white-reveal .5s cubic-bezier(.18,.8,.2,1) both;
+}
+#main-tab-viewport > * > :is(header, section, article):nth-child(2),
+#main-tab-viewport > * > div > :is(header, section, article):nth-child(2) { animation-delay: 70ms; }
+#main-tab-viewport > * > :is(header, section, article):nth-child(3),
+#main-tab-viewport > * > div > :is(header, section, article):nth-child(3) { animation-delay: 130ms; }
+#main-tab-viewport > * > :is(header, section, article):nth-child(4),
+#main-tab-viewport > * > div > :is(header, section, article):nth-child(4) { animation-delay: 190ms; }
+#main-tab-viewport button,
+#main-tab-viewport a { transition: color .2s ease, background-color .2s ease, border-color .2s ease, transform .2s cubic-bezier(.2,.8,.2,1); }
+#main-tab-viewport button:active,
+#main-tab-viewport a:active { transform: translateY(1px) scale(.99); }
+#main-tab-viewport :is(button, a, input, select, textarea):focus-visible { outline: 3px solid rgb(0 139 98 / .22); outline-offset: 2px; }
+
+@media (max-width: 767px) {
+  .erp-topbar { background: #fff; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .renea-page-header { animation: none; }
+}
+
+/* Painel "Mais ações" do Controle de Frotas (details/summary nativo): a
+   abertura era instantânea, sem nenhuma transição. O fechamento continua
+   instantâneo (é o próprio <details> que esconde o conteúdo), mas abrir
+   agora aparece com um leve fade + deslize, igual ao resto do sistema. */
+.erp-fleet-menu[open] > div:last-child { animation: erpFleetMenuIn .18s cubic-bezier(0.32, 0.72, 0, 1); }
+@keyframes erpFleetMenuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .erp-fleet-menu[open] > div:last-child { animation: none; }
+}
+
+/* ERP premium foundation v4. Dense, calm and consistent across operational
+   screens while keeping the established sidebar untouched. */
+:root {
+  --erp-canvas: #ffffff;
+  --erp-surface: #ffffff;
+  --erp-surface-muted: #ffffff;
+  --erp-ink: #14231e;
+  --erp-muted: #64736c;
+  --erp-line: #d7dfda;
+  --erp-line-strong: #bdcbc4;
+  --erp-brand: #087653;
+  --erp-brand-dark: #07533e;
+  --erp-warning: #c96a18;
+  --erp-danger: #c43d4b;
+}
+
+#main-tab-viewport {
+  background: var(--erp-canvas);
+  color: var(--erp-ink);
+}
+
+#main-tab-viewport > :not(.erp-dashboard) {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0 0 2rem;
+}
+
+/* O shell já informa o módulo ativo. O PageHeader preserva somente o h1 para
+   leitores de tela e transforma suas ações em uma barra operacional compacta. */
+#main-tab-viewport .renea-page-header {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  justify-content: flex-end;
+}
+
+#main-tab-viewport .renea-page-header:has(.renea-page-toolbar) {
+  padding-block: 0 0.75rem;
+}
+
+#main-tab-viewport .renea-page-toolbar {
+  width: auto;
+  margin-left: auto;
+  overflow: visible;
+}
+#main-tab-viewport .renea-page-header,
+#main-tab-viewport .renea-page-actions { overflow: visible; }
+
+.erp-module {
+  container-type: inline-size;
+}
+
+.renea-page-header {
+  min-height: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.renea-page-header__eyebrow,
+.dashboard-command-header__eyebrow {
+  letter-spacing: .08em;
+}
+
+.renea-page-header h1 {
+  font-size: clamp(1.45rem, 1.2rem + .5vw, 1.85rem);
+  font-weight: 760;
+}
+
+.renea-page-header__copy > p {
+  color: var(--erp-muted);
+  font-size: .875rem;
+}
+
+.renea-card {
+  border-color: var(--erp-line);
+  box-shadow: 0 1px 2px rgb(13 53 40 / .035) !important;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.renea-card:hover {
+  border-color: var(--erp-line-strong);
+  box-shadow: 0 8px 24px -22px rgb(13 53 40 / .45) !important;
+}
+
+.renea-table th {
+  white-space: nowrap;
+  border-bottom: 1px solid var(--erp-line);
+}
+
+.renea-table td {
+  color: #34443d;
+  font-size: .8125rem;
+}
+
+.renea-table tbody tr:hover {
+  background: #f4f8f6;
+}
+
+#main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+  border-radius: 6px;
+  border-color: #c7d2cc !important;
+  font-size: .8125rem;
+  box-shadow: inset 0 1px 0 rgb(12 49 37 / .02);
+}
+
+#main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus {
+  border-color: var(--erp-brand) !important;
+  box-shadow: 0 0 0 3px rgb(8 118 83 / .1);
+}
+
+#main-tab-viewport label {
+  color: #596861;
+  letter-spacing: 0;
+}
+
+#main-tab-viewport :is(.rounded-xl, .rounded-2xl, .rounded-3xl) {
+  border-radius: 8px;
+}
+
+.dashboard-command-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  max-width: 1600px;
+  margin-inline: auto;
+  padding: 1.5rem clamp(1rem, 2vw, 2rem) 1.35rem;
+  border-bottom: 1px solid var(--erp-line);
+  background: var(--erp-surface);
+}
+
+.dashboard-command-header--command {
+  min-height: 8.5rem;
+  background:
+    linear-gradient(90deg, rgb(8 60 47 / .045) 1px, transparent 1px),
+    linear-gradient(rgb(8 60 47 / .045) 1px, transparent 1px),
+    var(--erp-surface);
+  background-size: 1.5rem 1.5rem;
+}
+
+.dashboard-command-header--command::after {
+  position: absolute;
+  right: clamp(1rem, 2vw, 2rem);
+  bottom: 0;
+  left: clamp(1rem, 2vw, 2rem);
+  height: 3px;
+  content: '';
+  background: linear-gradient(90deg, var(--erp-brand) 0 18%, #dfe7e2 18% 100%);
+}
+
+.dashboard-command-header__copy { max-width: 46rem; }
+
+.dashboard-command-header__tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.dashboard-command-header--visual {
+  isolation: isolate;
+  min-height: 10.5rem;
+  overflow: hidden;
+}
+
+.dashboard-command-header__media {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 0 auto;
+  width: min(47%, 46rem);
+  overflow: hidden;
+  background: #0b3327;
+}
+
+.dashboard-command-header__media::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: '';
+  background: linear-gradient(90deg, #fff 0%, rgb(255 255 255 / .96) 10%, rgb(255 255 255 / .22) 65%, rgb(5 37 28 / .18) 100%);
+}
+
+.dashboard-command-header__media::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  content: '';
+  border-left: 1px solid rgb(255 255 255 / .4);
+  box-shadow: inset 20px 0 45px -35px rgb(0 45 33 / .8);
+}
+
+.dashboard-command-header__media img {
+  width: 100%;
+  height: 112%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(.82) contrast(1.06);
+  will-change: transform;
+}
+
+.dashboard-command-header__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  color: var(--erp-brand);
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dashboard-command-header__eyebrow > span,
+.dashboard-command-header__status i {
+  width: .45rem;
+  height: .45rem;
+  border-radius: 999px;
+  background: #12a872;
+  box-shadow: 0 0 0 4px rgb(18 168 114 / .1);
+}
+
+.dashboard-command-header h1 {
+  margin-top: .4rem;
+  color: var(--erp-ink);
+  font-size: clamp(1.75rem, 1.45rem + .85vw, 2.5rem);
+  font-weight: 780;
+  line-height: 1.08;
+}
+
+.dashboard-command-header > div:first-child > p:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .75rem;
+  margin-top: .55rem;
+  color: var(--erp-muted);
+  font-size: .8rem;
+}
+
+.dashboard-command-header > div:first-child > p:last-child strong {
+  color: #31443c;
+  font-weight: 700;
+}
+
+.dashboard-command-header > div:first-child > p:last-child span {
+  margin-left: .15rem;
+}
+
+.dashboard-command-header__status {
+  display: grid;
+  justify-items: end;
+  gap: .25rem;
+  flex: none;
+}
+
+.dashboard-command-header__actions {
+  display: flex;
+  gap: .5rem;
+}
+
+.dashboard-command-header__actions button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border: 1px solid rgb(255 255 255 / .42);
+  border-radius: 5px;
+  padding: 0 .85rem;
+  background: rgb(5 52 39 / .84);
+  color: #fff;
+  font-size: .74rem;
+  font-weight: 750;
+  box-shadow: 0 10px 24px -18px rgb(0 29 21 / .9);
+  transition: background-color .2s ease, transform .2s ease, border-color .2s ease;
+}
+
+.dashboard-command-header__actions button:hover {
+  border-color: rgb(255 255 255 / .75);
+  background: #087653;
+  transform: translateY(-1px);
+}
+
+.dashboard-command-header__actions button:active { transform: translateY(1px); }
+
+.dashboard-command-header__actions button:focus-visible {
+  outline: 2px solid #ed5d24;
+  outline-offset: 2px;
+}
+
+.dashboard-command-header__status span {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  color: #275144;
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.dashboard-command-header__status small {
+  color: var(--erp-muted);
+  font-size: .7rem;
+}
+
+.erp-dashboard > div {
+  padding-top: 1rem;
+}
+
+.project-workspace-tabs {
+  display: flex;
+  gap: .15rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--erp-line);
+  padding: 0 .2rem;
+  scrollbar-width: thin;
+}
+
+.project-workspace-tabs button {
+  display: inline-flex;
+  min-height: 3.35rem;
+  flex: none;
+  align-items: center;
+  gap: .5rem;
+  border-bottom: 2px solid transparent;
+  padding: 0 .8rem;
+  color: #67756f;
+  font-size: .76rem;
+  font-weight: 680;
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease;
+}
+
+.project-workspace-tabs button:hover {
+  background: #f6f8f6;
+  color: #123d31;
+}
+
+.project-workspace-tabs button.is-active {
+  border-bottom-color: var(--erp-brand);
+  color: var(--erp-brand);
+}
+
+.project-workspace-tabs button:focus-visible {
+  outline: 2px solid #ed5d24;
+  outline-offset: -3px;
+}
+
+
+.dashboard-metrics,
+.dashboard-integrated,
+.erp-dashboard section {
+  border-radius: 8px;
+}
+
+.dashboard-metrics {
+  overflow: hidden;
+  border: 1px solid var(--erp-line);
+  border-bottom: 1px solid var(--erp-line);
+}
+
+.dashboard-metrics > [data-dashboard-metric] { min-width: 0; }
+.dashboard-metrics > [data-dashboard-metric] > .dashboard-metric {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.dashboard-metrics > [data-dashboard-metric]:first-child > .dashboard-metric { border-left: 0; }
+
+.dashboard-metric {
+  min-height: 8.5rem;
+  padding: 1rem 1.1rem;
+}
+
+.dashboard-metric strong {
+  margin-top: .8rem;
+  font-size: clamp(2rem, 2.2vw, 3rem);
+  letter-spacing: 0;
+}
+
+.dashboard-metric-cta {
+  border-left-color: var(--erp-line);
+}
+
+.dashboard-metric-cta button {
+  min-height: 2.9rem;
+  border-radius: 6px;
+  box-shadow: 0 7px 18px -14px rgb(8 60 47 / .7);
+}
+
+.dashboard-integrated-metric {
+  min-height: 8.75rem;
+  padding: 1rem 1.1rem;
+}
+
+.erp-dashboard section > header h2 {
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.erp-module--cadastros #subtab-selector {
+  display: flex;
+  gap: .4rem;
+  overflow-x: auto;
+  padding-bottom: .2rem;
+  scrollbar-width: thin;
+}
+
+.erp-module--cadastros #subtab-selector > button {
+  min-width: 8.5rem;
+  min-height: 4.75rem;
+  border-radius: 7px;
+  padding: .7rem .65rem;
+}
+
+.erp-module--cadastros #subtab-selector > button:hover,
+.erp-module--lancamentos #lancamentos-selector button:hover {
+  transform: translateY(-1px);
+}
+
+.erp-module--cadastros #inline-form-card,
+.erp-module--lancamentos #log-editor-card,
+.erp-module--lancamentos #filtros-combustivel-painel {
+  border-color: var(--erp-line);
+  border-top: 3px solid var(--erp-brand);
+  border-radius: 8px;
+  box-shadow: 0 14px 36px -32px rgb(10 52 39 / .6);
+}
+
+.erp-module--lancamentos #lancamentos-selector {
+  border-radius: 7px;
+  padding: .25rem;
+}
+
+.erp-module--lancamentos #lancamentos-selector button {
+  border-radius: 5px;
+}
+
+@media (max-width: 767px) {
+  #main-tab-viewport > :not(.erp-dashboard) {
+    padding: .75rem .75rem 5rem;
+  }
+
+  .renea-page-header {
+    min-height: 0;
+    padding-bottom: 0;
+  }
+
+  .renea-page-header .renea-page-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .renea-page-header .renea-page-actions > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .renea-page-header .renea-page-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-command-header {
+    align-items: start;
+    padding: 1rem .85rem;
+  }
+
+  .dashboard-command-header--command {
+    min-height: 13rem;
+    padding-bottom: 4.25rem;
+  }
+
+  .dashboard-command-header__tools {
+    margin-left: 0;
+  }
+
+  .dashboard-command-header--visual {
+    min-height: 12rem;
+    padding-bottom: 5.25rem;
+  }
+
+  .dashboard-command-header__media {
+    inset: auto 0 0;
+    width: 100%;
+    height: 5.5rem;
+  }
+
+  .dashboard-command-header__media::before {
+    background: linear-gradient(180deg, #fff 0%, rgb(255 255 255 / .18) 100%);
+  }
+
+  .dashboard-command-header__media::after { border-left: 0; border-top: 1px solid rgb(255 255 255 / .5); }
+
+  .dashboard-command-header h1 {
+    font-size: 1.65rem;
+  }
+
+  .dashboard-command-header > div:first-child > p:last-child span,
+  .dashboard-command-header__status small {
+    display: none;
+  }
+
+  .dashboard-command-header__status > span {
+    font-size: 0;
+  }
+
+  .dashboard-command-header__status i {
+    display: block;
+  }
+
+  .dashboard-command-header__actions {
+    position: absolute;
+    right: .85rem;
+    bottom: .7rem;
+    left: .85rem;
+  }
+
+  .dashboard-command-header__actions button {
+    flex: 1;
+    padding-inline: .5rem;
+    font-size: .67rem;
+  }
+
+  .erp-dashboard > div {
+    padding-inline: .7rem;
+  }
+
+  .project-workspace-tabs {
+    margin-inline: -.7rem;
+    padding-inline: .7rem;
+  }
+
+  .dashboard-metrics {
+    scroll-snap-type: x proximity;
+  }
+
+  .dashboard-metric,
+  .dashboard-metric-cta {
+    scroll-snap-align: start;
+  }
+}
+
+/* Presence and fuel keep the same white operational language, but gain
+   responsive data feedback and a lighter visual rhythm. */
+.fuel-workspace-nav { position: sticky; z-index: 18; top: 0; border-radius: 2px; }
+.fuel-filter-dock { border-radius: 2px; box-shadow: 0 12px 34px -30px rgb(6 60 45 / .45); }
+.fuel-dashboard > section { border-radius: 2px; }
+.fuel-dashboard [data-fuel-bar],
+.fuel-dashboard [data-fuel-line] { will-change: transform; }
+.fuel-command-center__lead { background: linear-gradient(135deg, #fff 0%, #fff 62%, #eef6f1 100%); }
+/* A foto é uma cunha na borda direita do bloco, recortada na diagonal como a
+   faixa do cabeçalho. Antes ela começava em 58% da coluna e passava por baixo
+   do título e do número grande: a imagem só clareava para a direita, e o texto
+   ficava lendo sobre mato e asfalto. */
+.fuel-command-center__photo {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(42%, 26rem);
+  clip-path: polygon(18% 0, 100% 0, 100% 100%, 0 100%);
+  background: linear-gradient(90deg, #fff 0%, rgb(255 255 255 / .62) 30%, rgb(255 255 255 / .1) 100%), url('./assets/renea-editorial/rodovia-serra-1600.webp') center / cover no-repeat;
+  opacity: .38;
+  transform: scale(1.035);
+  animation: renea-v3-image-settle 1.2s cubic-bezier(.2,.8,.2,1) both;
+}
+@media (max-width: 1023px) {
+  .fuel-command-center__photo { width: 100%; clip-path: none; background-image: linear-gradient(180deg, rgb(255 255 255 / .18), #fff 78%), url('./assets/renea-editorial/rodovia-serra-800.webp'); opacity: .22; }
+}
+
+#modo-campo-tab .field-action {
+  position: relative;
+  overflow: hidden;
+  min-height: 7.5rem;
+  align-items: flex-start;
+  padding: 1.15rem;
+  text-align: left;
+}
+#modo-campo-tab .field-action::after {
+  position: absolute;
+  right: -1rem;
+  bottom: -1.5rem;
+  width: 5rem;
+  height: 5rem;
+  border: 1px solid #d8e9e1;
+  border-radius: 50%;
+  content: "";
+  transition: transform .45s cubic-bezier(.2,.8,.2,1);
+}
+#modo-campo-tab .field-action:hover::after { transform: scale(1.22); }
+#modo-campo-tab .field-action svg { transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+#modo-campo-tab .field-action:hover svg { transform: translateY(-2px) scale(1.06); }
+
+@media (min-width: 1024px) {
+  .erp-sidebar { width: 14rem; min-width: 14rem; background: #0b4938; border-right-color: #23614e; animation: none; }
+}
+
+@media (max-width: 767px) {
+  .fuel-workspace-nav { top: 0; }
+  .fuel-command-center__lead { min-height: 24rem; }
+  .fuel-command-center__photo { inset: 47% 0 0 0; width: 100%; opacity: .18; }
+}
+
+/* Peso das fotos: os JPEG originais têm ~2 MB cada e apareciam inteiros no
+   celular. As versões WebP custam ~120 kB no desktop e ~32 kB no celular, com
+   o mesmo enquadramento. */
+@media (max-width: 767px) {
+}
+
+/* A tarja "pessoas e engenharia em movimento" fica sobre o céu da foto, que é
+   claro: sem um véu atrás, o texto branco some. */
+
+/* ==========================================================================
+   Legibilidade e toque no celular
+   O ERP é operado no canteiro: sol, luva, tela pequena, uma mão só. As regras
+   abaixo valem apenas no toque — no desktop a densidade de ERP continua igual.
+   ========================================================================== */
+@media (max-width: 1023px) {
+  /* Campo com fonte abaixo de 16px faz o iOS dar zoom na página inteira assim
+     que a pessoa toca nele. A tela salta, o dedo erra o alvo, e o apontamento
+     se perde. 16px é o piso que impede o salto. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Piso de legibilidade. 9px e 10px são legíveis num monitor, não num celular
+     ao sol. As classes continuam onde estão; só o tamanho renderizado sobe. */
+  .text-\[8px\],
+  .text-\[9px\],
+  .text-\[10px\] {
+    font-size: 11.5px;
+    line-height: 1.35;
+  }
+
+  /* O piso de 16px do campo tem de vencer as classes utilitárias de tamanho —
+     um <select class="text-[10px]"> continuava abaixo do piso e o iOS voltava
+     a dar zoom. O seletor com [class] empata em especificidade e vem depois. */
+  input[class]:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select[class],
+  textarea[class] {
+    font-size: 16px;
+  }
+
+
+  /* Alvo de toque: 44px é o mínimo para acertar de primeira com luva. Vale para
+     o que é clicável e tem tamanho próprio — não para link dentro de frase. */
+  button,
+  [role='button'],
+  a[href]:not(:where(p, span, li, td) a) {
+    min-height: 44px;
+  }
+}
+
+/* No desktop o alvo confortável é menor, porque o ponteiro é preciso. */
+@media (min-width: 1024px) {
+  button,
+  [role='button'] {
+    min-height: 40px;
+  }
+}
+
+/* ==========================================================================
+   Mapa de chuvas
+   As nuvens andam devagar atrás do título. Só transform e opacity — nada que
+   force o navegador a refazer o layout — e param de vez para quem pediu
+   movimento reduzido no sistema.
+   ========================================================================== */
+.mapa-chuva__ceu {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mapa-chuva__nuvem {
+  position: absolute;
+  top: -6px;
+  left: -140px;
+  opacity: .34;
+  will-change: transform;
+  animation: mapa-chuva-passa 34s linear infinite;
+}
+
+.mapa-chuva__nuvem--1 { top: 10px; opacity: .22; animation-duration: 52s; animation-delay: -14s; }
+.mapa-chuva__nuvem--2 { top: 26px; opacity: .16; animation-duration: 68s; animation-delay: -30s; }
+
+@keyframes mapa-chuva-passa {
+  from { transform: translateX(0) scale(.9); }
+  to { transform: translateX(calc(100vw + 160px)) scale(.9); }
+}
+
+/* O quadradinho do dia cresce de leve ao passar o ponteiro: ajuda a mirar sem
+   deslocar os vizinhos, porque a escala não muda o espaço ocupado. */
+.mapa-chuva__dia {
+  transition: transform .18s ease-out;
+}
+.mapa-chuva__dia:hover {
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapa-chuva__nuvem { animation: none; }
+  .mapa-chuva__dia { transition: none; }
+  .mapa-chuva__dia:hover { transform: none; }
+}
+
+/* Final responsive guardrails. Kept last so old screen-specific layers cannot
+   reintroduce horizontal dashboard strips on narrow viewports. */
+@media (max-width: 767px) {
+  #main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    font-size: 16px;
+  }
+
+  .renea-page-header .renea-page-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: .15rem;
+    scrollbar-width: thin;
+  }
+
+  .renea-page-header .renea-page-actions > * {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .renea-page-header .renea-page-actions > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .renea-page-header .renea-page-actions button {
+    width: auto;
+  }
+
+  .erp-dashboard .dashboard-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  .erp-dashboard .dashboard-metric {
+    min-width: 0;
+    min-height: 8rem;
+    border-top: 1px solid var(--erp-line);
+  }
+
+  .erp-dashboard .dashboard-metric:nth-child(-n + 2) {
+    border-top: 0;
+  }
+
+  .erp-dashboard .dashboard-metrics > [data-dashboard-metric]:nth-child(-n + 2) > .dashboard-metric {
+    border-top: 0;
+  }
+
+  .erp-dashboard .dashboard-metrics > [data-dashboard-metric]:nth-child(odd) > .dashboard-metric {
+    border-left: 0;
+  }
+
+  .erp-dashboard .dashboard-metric:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .erp-dashboard .dashboard-metric-cta {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--erp-line);
+    border-left: 0;
+    padding: .75rem;
+  }
+
+  .erp-dashboard .dashboard-integrated-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  .erp-dashboard .dashboard-integrated-metric {
+    min-width: 0;
+    min-height: 9rem;
+    border-top: 1px solid var(--erp-line) !important;
+    border-left: 1px solid var(--erp-line) !important;
+  }
+
+  .erp-dashboard .dashboard-integrated-metric:nth-child(-n + 2) {
+    border-top: 0 !important;
+  }
+
+  .erp-dashboard .dashboard-integrated-metric:nth-child(odd) {
+    border-left: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .erp-dashboard .dashboard-metric,
+  .erp-dashboard .dashboard-integrated-metric {
+    padding: .85rem;
+  }
+
+  .erp-dashboard .dashboard-metric strong {
+    font-size: 1.8rem;
+  }
+}
+
+/* Premium command center: white workspace, strong hierarchy, no decorative bands. */
+.erp-dashboard {
+  position: relative;
+  isolation: isolate;
+  background: #f4f6f4 !important;
+}
+.dashboard-reference-shell { position: relative; width: 100%; overflow: hidden; background: #fff; }
+.dashboard-reference-shell__image { display: block; width: 100%; height: auto; }
+.dashboard-reference-shell__actions button { position: absolute; border: 0; background: transparent; color: transparent; cursor: pointer; }
+.dashboard-reference-shell__actions button:focus-visible { outline: 3px solid #0b815d; outline-offset: 3px; }
+.dashboard-reference-shell__actions button:nth-child(1) { left: 29.5%; top: 46%; width: 23.5%; height: 7.5%; }
+.dashboard-reference-shell__actions button:nth-child(2) { left: 53%; top: 46%; width: 12%; height: 7.5%; }
+.dashboard-reference-shell__actions button:nth-child(3) { left: 18%; top: 59%; width: 12%; height: 8%; }
+.dashboard-reference-shell__actions button:nth-child(4) { left: 31%; top: 59%; width: 15%; height: 8%; }
+.dashboard-reference-shell__actions button:nth-child(5) { left: 47%; top: 59%; width: 14%; height: 8%; }
+.dashboard-reference-shell__actions button:nth-child(6) { left: 62%; top: 59%; width: 13%; height: 8%; }
+.dashboard-reference-shell__actions button:nth-child(7) { left: 76%; top: 59%; width: 13%; height: 8%; }
+.erp-dashboard::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: .55;
+  background:
+    radial-gradient(circle at 12% 8%, rgb(31 157 111 / .08), transparent 28rem),
+    radial-gradient(circle at 88% 18%, rgb(237 93 36 / .045), transparent 24rem);
+}
+@keyframes dashboard-status-breathe {
+  0%, 100% { box-shadow: 0 0 0 3px rgb(18 168 114 / .09); opacity: .82; }
+  50% { box-shadow: 0 0 0 7px rgb(18 168 114 / .02); opacity: 1; }
+}
+@keyframes dashboard-card-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.erp-dashboard .dashboard-command-header__status i { animation: dashboard-status-breathe 2.8s cubic-bezier(.32,.72,0,1) infinite; }
+.erp-dashboard .dashboard-metrics > [data-dashboard-metric] { animation: dashboard-card-rise .72s cubic-bezier(.32,.72,0,1) both; }
+.erp-dashboard .dashboard-metrics > [data-dashboard-metric]:nth-child(2) { animation-delay: 80ms; }
+.erp-dashboard .dashboard-metrics > [data-dashboard-metric]:nth-child(3) { animation-delay: 140ms; }
+.erp-dashboard .dashboard-metrics > [data-dashboard-metric]:nth-child(4) { animation-delay: 200ms; }
+.dashboard-command-header--command {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(23rem, .88fr);
+  align-items: stretch;
+  min-height: 22rem;
+  gap: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 1px solid #dce5df;
+  background: #fff;
+}
+.dashboard-command-header--command::after {
+  display: block;
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: '';
+  background: linear-gradient(180deg, #12a872 0%, #07533e 100%);
+}
+.dashboard-command-header--command::before { display: none; }
+.dashboard-command-header__copy,
+.dashboard-command-header__tools { position: relative; z-index: 1; }
+.dashboard-command-header__visual {
+  position: relative;
+  display: grid;
+  grid-column: 2;
+  grid-template-columns: minmax(9rem, 1fr) minmax(12rem, 1fr);
+  align-items: center;
+  min-height: 100%;
+  overflow: hidden;
+  border-left: 1px solid #dce5df;
+  padding: 1.75rem 1.25rem 1.25rem 2rem;
+  color: #07533e;
+  background: radial-gradient(circle at 70% 48%, rgb(18 168 114 / .08), transparent 48%), #f8fbf9;
+}
+.dashboard-command-header__visual-copy { position: relative; z-index: 1; max-width: 11.5rem; }
+.dashboard-command-header__visual-copy > span,
+.dashboard-command-header__visual-copy > small,
+.dashboard-command-header__visual-copy dt { display: block; color: #5d766a; font-size: .6rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.dashboard-command-header__visual-copy strong { display: block; margin-top: .4rem; color: #07533e; font-size: clamp(3.5rem, 4vw, 5rem); line-height: .82; letter-spacing: -.09em; }
+.dashboard-command-header__visual-copy dl { display: grid; gap: .45rem; margin-top: .85rem; }
+.dashboard-command-header__visual-copy dl div { display: flex; justify-content: space-between; gap: .55rem; border-top: 1px solid #d2e2d8; padding-top: .35rem; }
+.dashboard-command-header__visual-copy dd { margin: 0; color: #123d31; font-size: .78rem; font-weight: 850; font-variant-numeric: tabular-nums; }
+.dashboard-command-header__excavator { position: absolute; right: .75rem; bottom: .75rem; width: 54%; height: 66%; color: #16805a; opacity: .48; }
+.dashboard-command-header__motion-path { animation: dashboard-motion-drift 5s cubic-bezier(.32,.72,0,1) infinite; }
+@keyframes dashboard-motion-drift { 0%,100% { opacity: .3; transform: translateX(-3px); } 50% { opacity: .85; transform: translateX(4px); } }
+.dashboard-command-header h1 { font-size: clamp(2rem, 1.55rem + 1.3vw, 3.1rem); }
+.dashboard-command-header h1 { font-size: clamp(3.2rem, 5.2vw, 5.7rem); line-height: .94; }
+.dashboard-command-header h1 { letter-spacing: -.065em; text-wrap: balance; }
+.dashboard-command-header__copy { display: flex; flex-direction: column; justify-content: center; padding: 2.2rem clamp(2rem, 4vw, 5.25rem) 5.15rem; }
+.dashboard-command-header__copy > p:last-child { max-width: 48rem; }
+.dashboard-command-header__tools {
+  display: grid;
+  gap: 1rem;
+  position: absolute;
+  z-index: 2;
+  bottom: 1.4rem;
+  left: clamp(2rem, 4vw, 5.25rem);
+  min-width: min(25rem, 43%);
+  padding: 1.1rem;
+  border: 1px solid #d8e4dc;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #f8fbf9 0%, #f1f7f3 100%);
+  box-shadow: 0 14px 28px -26px rgb(8 89 62 / .75);
+}
+.dashboard-command-header__status { justify-items: start; }
+.dashboard-command-header__status span { color: #176b4d; }
+.dashboard-command-header__status small { color: #6c7b73; }
+.dashboard-command-header__status small { padding-left: 1.05rem; font-variant-numeric: tabular-nums; }
+.dashboard-command-header__actions { width: 100%; }
+.dashboard-command-header__actions button {
+  flex: 1;
+  border-color: #d3e1d8;
+  background: #fff;
+  color: #164b3a;
+  box-shadow: none;
+}
+.dashboard-command-header__actions button:first-child { border-color: #07513c; background: #07513c; color: #fff; }
+.dashboard-command-header__actions button:hover { border-color: #0b815d; background: #eaf5ef; color: #07513c; }
+.dashboard-command-header__actions button:first-child:hover { background: #0b654a; color: #fff; }
+.dashboard-command-deck {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 10.5rem;
+  overflow: hidden;
+  border-bottom: 1px solid #cbd8d0;
+  background: #0b3026;
+}
+.dashboard-command-deck__intro {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1.2rem clamp(1.5rem, 3vw, 4rem);
+  color: #f5fbf7;
+}
+.dashboard-command-deck__intro > p {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  margin: 0;
+  color: #a8c9b9;
+  font-size: .67rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.dashboard-command-deck__intro > p img { width: 4.5rem; height: auto; filter: brightness(0) invert(1); opacity: .94; }
+.dashboard-command-deck__intro > p span { width: .4rem; height: .4rem; border-radius: 99px; background: #49d69a; box-shadow: 0 0 0 .3rem rgb(73 214 154 / .12); }
+.dashboard-command-deck__intro > img {
+  display: block;
+  height: 2rem;
+  width: auto;
+  opacity: 0.9;
+  margin-bottom: 0.5rem;
+}
+.dashboard-command-deck h1 { max-width: 36rem; margin: .45rem 0 .25rem; color: #fff; font-size: clamp(1.8rem, 3.2vw, 3.2rem); font-weight: 850; line-height: .95; letter-spacing: -.065em; }
+.dashboard-command-deck__intro > strong { color: #e2f0e7; font-size: .8rem; }
+.dashboard-command-deck__intro > small { margin-top: .25rem; color: #99b7a8; font-size: .68rem; }
+.dashboard-command-deck__actions { display: flex; gap: .55rem; margin-top: 0.95rem; flex-wrap: wrap; }
+.dashboard-command-deck__actions button { display: inline-flex; min-height: 2.85rem; align-items: center; justify-content: center; gap: .55rem; border: 1px solid #436e5d; padding: .65rem 1rem; color: #e6f5ec; font-size: .76rem; font-weight: 800; transition: transform .2s ease, background-color .2s ease; }
+.dashboard-command-deck__actions button:first-child { border-color: #52ce98; background: #52ce98; color: #083529; }
+.dashboard-command-deck__actions button:hover { transform: translateY(-2px); background: #164637; }
+.dashboard-command-deck__actions button:first-child:hover { background: #79e2ae; }
+.dashboard-command-deck__fleet { position: relative; display: flex; align-items: end; overflow: hidden; padding: 1.75rem 1.8rem; background: radial-gradient(circle at 80% 30%, rgb(77 205 151 / .27), transparent 38%), #dcebe2; }
+.dashboard-command-deck__fleet::after { position: absolute; inset: 0; content: ''; opacity: .35; background-image: radial-gradient(#5f8e78 1px, transparent 1px); background-size: 13px 13px; }
+.dashboard-command-deck__metrics { position: relative; z-index: 1; display: grid; width: min(16rem, 64%); grid-template-columns: 1fr 1fr; gap: .55rem; }
+.dashboard-command-deck__metrics div { min-height: 4.8rem; border-left: 2px solid #4bbd85; padding: .25rem 0 .25rem .65rem; background: rgb(247 253 249 / .55); }
+.dashboard-command-deck__metrics span { display: block; color: #4f7563; font-size: .56rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.dashboard-command-deck__metrics strong { display: block; margin-top: .35rem; color: #0a4534; font-size: 1.85rem; font-variant-numeric: tabular-nums; letter-spacing: -.06em; line-height: 1; }
+.dashboard-command-deck__metrics div:last-child strong { font-size: 1.35rem; }
+.dashboard-command-deck__fleet > img { position: absolute; z-index: 1; right: -1rem; bottom: .8rem; width: 50%; height: 78%; object-fit: contain; opacity: .47; mix-blend-mode: multiply; }
+/* O comando não repete a leitura de frota: os indicadores logo abaixo são a
+   única fonte visual desses números. Light mode adjustments mantém o grid layout. */
+.dashboard-command-deck { border-bottom: 1px solid #dce5df; background: #fff; }
+.dashboard-command-deck__intro { color: #172b23; }
+.dashboard-command-deck h1 { margin: 0; color: #10251d; font-size: clamp(1.85rem, 2.8vw, 2.4rem); }
+.dashboard-command-deck__intro > strong { display: block; margin-top: .35rem; color: #315245; font-size: .85rem; }
+.dashboard-command-deck__intro > small { display: block; color: #71857b; font-size: .75rem; }
+.dashboard-command-deck__actions { margin-top: 0.9rem; }
+.dashboard-command-deck__actions button { border-color: #cfddd5; color: #164b3a; background: #fff; }
+.dashboard-command-deck__actions button:first-child { border-color: #07513c; background: #07513c; color: #fff; }
+.dashboard-command-deck__actions button:hover { background: #edf6f0; }
+.dashboard-command-deck__actions button:first-child:hover { background: #0b654a; }
+.dashboard-command-deck__actions button { min-height: 2.4rem; font-size: .7rem; }
+.dashboard-central-grid { overflow: hidden; border: 1px solid #dce5df; border-radius: 8px; background: #fff; box-shadow: 0 14px 30px -30px rgb(11 56 42 / .75); }
+.dashboard-central-grid > header { display: flex; align-items: end; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #dce5df; padding: 1rem 1.25rem; }
+.dashboard-central-grid > header p { margin: 0; color: #16805a; font-size: .58rem; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+.dashboard-central-grid h2 { margin: .25rem 0 0; color: #10211b; font-size: 1.05rem; font-weight: 850; letter-spacing: -.025em; }
+.dashboard-central-grid > header > span { color: #718087; font-size: .66rem; font-variant-numeric: tabular-nums; }
+.dashboard-central-grid > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.dashboard-central-grid button { position: relative; min-height: 8.4rem; border-right: 1px solid #e1e8e3; padding: 1.1rem 1.15rem; text-align: left; transition: transform .3s cubic-bezier(.2,.8,.2,1), background-color .24s ease; }
+.dashboard-central-grid button:last-child { border-right: 0; }
+.dashboard-central-grid button:hover { z-index: 1; transform: translateY(-3px); background: #f2f8f4; }
+.dashboard-central-grid button svg { color: #16805a; }
+.dashboard-central-grid button span { display: block; margin-top: .7rem; color: #4e6259; font-size: .7rem; font-weight: 800; }
+.dashboard-central-grid button strong { display: block; margin-top: .15rem; color: #0d4b38; font-size: 2.25rem; font-variant-numeric: tabular-nums; letter-spacing: -.065em; line-height: 1; }
+.dashboard-central-grid button small { display: block; margin-top: .45rem; color: #718087; font-size: .64rem; }
+.erp-dashboard > div { padding-top: .3rem; }
+.project-workspace-tabs {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin: .2rem -.1rem 0;
+  padding: .35rem .35rem .15rem;
+  gap: .2rem;
+  overflow: hidden;
+  border-bottom: 1px solid #dce5df;
+  border: 1px solid #dce5df;
+  border-radius: 10px 10px 0 0;
+  background: #eef3ef;
+  box-shadow: none;
+}
+.project-workspace-tabs button {
+  min-width: 0;
+  min-height: 3rem;
+  border: 1px solid transparent;
+  border-bottom-width: 3px;
+  border-radius: 7px 7px 0 0;
+  justify-content: center;
+  padding-inline: .45rem;
+  white-space: nowrap;
+  color: #64756d;
+}
+.project-workspace-tabs button:hover { border-color: #d3e2d8; background: #f8fbf9; }
+.project-workspace-tabs button.is-active { border-color: #c9dfd1; border-bottom-color: #087653; background: #fff; color: #07533e; }
+.project-workspace-tabs button svg { color: #809189; transition: color .18s ease, transform .18s ease; }
+.project-workspace-tabs button:hover svg,
+.project-workspace-tabs button.is-active svg { color: #087653; transform: translateY(-1px); }
+.dashboard-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .75rem;
+  overflow: visible;
+  margin-top: 0;
+  border: 0;
+  background: transparent;
+}
+.dashboard-metrics > [data-dashboard-metric] {
+  overflow: hidden;
+  border: 1px solid #dce5df;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 28px -27px rgb(11 56 42 / .75);
+  transition: transform .22s cubic-bezier(.2,.8,.2,1), border-color .22s ease, box-shadow .22s ease;
+}
+.dashboard-metrics > [data-dashboard-metric]:hover {
+  transform: translateY(-3px);
+  border-color: #bcd6c7;
+  box-shadow: 0 18px 34px -24px rgb(11 89 61 / .42);
+}
+.dashboard-metrics > [data-dashboard-metric] > .dashboard-metric { border-left: 0; }
+.dashboard-metric { min-height: 10.2rem; padding: 1.2rem; }
+.dashboard-metric strong { font-size: clamp(2.35rem, 2.8vw, 3.5rem); }
+.dashboard-metric strong { letter-spacing: -.055em; font-variant-numeric: tabular-nums; }
+.dashboard-metric > :first-child { letter-spacing: .12em; }
+.erp-dashboard section:not(.dashboard-metrics) {
+  border-color: #dce5df;
+  box-shadow: 0 18px 40px -34px rgb(12 70 49 / .62);
+}
+.erp-dashboard button {
+  transition: transform .42s cubic-bezier(.32,.72,0,1), background-color .28s ease, border-color .28s ease, box-shadow .28s ease;
+}
+.erp-dashboard button:active { transform: translateY(1px) scale(.985); }
+@media (prefers-reduced-motion: reduce) {
+  .erp-dashboard .dashboard-command-header__status i,
+  .erp-dashboard .dashboard-metrics > [data-dashboard-metric] { animation: none; }
+  .erp-dashboard button,
+  .dashboard-metrics > [data-dashboard-metric],
+  .project-workspace-tabs button svg { transition: none; }
+}
+.dashboard-metric-cta { grid-column: 1 / -1; min-height: auto; border: 0; padding: 0; }
+.dashboard-metric-cta button { width: auto; min-width: 16rem; min-height: 3.2rem; }
+.dashboard-integrated {
+  margin-top: 1.25rem !important;
+  border: 1px solid #dce5df !important;
+  border-radius: 8px !important;
+  box-shadow: 0 14px 30px -28px rgb(11 56 42 / .7);
+}
+.dashboard-integrated > header { padding: 1.15rem 1.25rem; }
+.dashboard-integrated-grid { grid-template-columns: 1.25fr repeat(3, 1fr); }
+.dashboard-integrated-metric { min-height: 11.25rem; padding: 1.35rem 1.2rem; }
+.erp-dashboard section:not(.dashboard-metrics):not(.dashboard-integrated) {
+  border: 1px solid #dce5df;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px -30px rgb(11 56 42 / .75);
+}
+.erp-dashboard section > header { min-height: 4rem; }
+.dashboard-module-signal { min-height: 4.3rem; }
+
+@media (max-width: 767px) {
+  .dashboard-command-deck { grid-template-columns: 1fr; min-height: auto; }
+  .dashboard-command-deck__intro { padding: 1.65rem 1.1rem; }
+  .dashboard-command-deck__fleet { min-height: 10rem; padding: 1.1rem; }
+  .dashboard-command-deck__fleet > img { width: 47%; }
+  .dashboard-central-grid > div { grid-template-columns: 1fr 1fr; }
+  .dashboard-central-grid button:nth-child(2) { border-right: 0; }
+  .dashboard-central-grid button:nth-child(-n + 2) { border-bottom: 1px solid #e1e8e3; }
+  .dashboard-central-grid > header > span { display: none; }
+  .dashboard-command-header--command { grid-template-columns: minmax(0, 1fr) minmax(17rem, .65fr); align-items: start; }
+  .dashboard-command-header__tools { grid-template-columns: 1fr auto; width: 100%; min-width: 0; }
+  .dashboard-command-header__visual { grid-column: 1 / -1; min-height: 8rem; border-left: 0; border-top: 1px solid #dce5df; }
+  .dashboard-command-header__actions { width: auto; }
+  .project-workspace-tabs { display: flex; overflow-x: auto; }
+  .project-workspace-tabs button { flex: none; padding-inline: .8rem; }
+  .dashboard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-integrated-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+  .dashboard-command-header--command { grid-template-columns: minmax(0, 1fr); min-height: auto; gap: 1.1rem; padding-top: 1.25rem; padding-bottom: 1.15rem; }
+  .dashboard-command-header__visual { display: none; }
+  .dashboard-command-header__tools { display: block; padding: 0; border: 0; background: transparent; }
+  .dashboard-command-header__status { display: flex; align-items: center; justify-content: space-between; margin-bottom: .8rem; }
+  .dashboard-command-header__status > span { font-size: .72rem; }
+  .dashboard-command-header__status small { display: block; }
+  .dashboard-command-header__actions {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .dashboard-command-header__actions button { min-height: 2.8rem; font-size: .7rem; }
+  .dashboard-metrics { grid-template-columns: 1fr 1fr; gap: .55rem; }
+  .dashboard-metric { min-height: 8.8rem; padding: .9rem; }
+  .dashboard-metric strong { font-size: 2.2rem; }
+  .dashboard-metric-cta { grid-column: 1 / -1; }
+  .dashboard-metric-cta button { width: 100%; }
+  .dashboard-integrated-grid { display: grid; overflow: visible; grid-template-columns: 1fr 1fr; }
+  .dashboard-integrated-metric { min-width: 0; min-height: 9.75rem; padding: 1rem; border-top: 1px solid #dfe5e1 !important; }
+}
+@media (max-width: 520px) {
+  .erp-dashboard { overflow-x: clip; }
+  .dashboard-command-header__copy { padding-left: 0; }
+  .dashboard-command-header h1 { font-size: clamp(1.85rem, 9vw, 2.35rem); }
+  .dashboard-command-header > div:first-child > p:last-child { display: block; line-height: 1.45; }
+  .dashboard-command-header > div:first-child > p:last-child span { display: none; }
+  .dashboard-command-header__actions button { min-width: 0; padding-inline: .55rem; }
+  .project-workspace-tabs { max-width: 100%; overflow-x: auto; }
+  .project-workspace-tabs button { padding-inline: .8rem; }
+  .dashboard-metrics { grid-template-columns: 1fr; gap: .6rem; margin-top: 1rem; }
+  .dashboard-metric { min-height: 7.6rem; padding: 1rem; }
+  .dashboard-metric strong { font-size: 2.55rem; }
+}
+
+/* Reports are a working surface, not a static export menu. */
+.reports-workspace {
+  max-width: 1580px;
+  margin: 0 auto;
+  background: #f5f7f5;
+}
+
+.reports-workspace .renea-page-header {
+  align-items: end;
+}
+
+.reports-command {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid #dbe5df;
+  border-left: 4px solid #0b8a63;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reports-command > div {
+  display: grid;
+  gap: .18rem;
+}
+
+.reports-command span {
+  color: #087a59;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.reports-command strong {
+  color: #122b22;
+  font-size: 1rem;
+}
+
+.reports-command p {
+  max-width: 34rem;
+  margin: 0;
+  color: #607166;
+  font-size: .78rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.reports-catalog {
+  padding: .7rem;
+  border: 1px solid #e0e7e3;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reports-catalog button {
+  box-shadow: none;
+}
+
+.reports-preview {
+  overflow: hidden;
+  border-color: #dbe5df !important;
+  box-shadow: 0 16px 34px -32px rgb(11 56 42 / .7);
+}
+
+.reports-preview header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 5.1rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(90deg, #fff 0%, #f2f8f4 100%);
+}
+
+.reports-preview h2 {
+  color: #142d24;
+  font-size: 1rem;
+}
+
+.reports-preview header p {
+  max-width: 52rem;
+  margin: 0;
+  color: #64756a;
+  font-size: .72rem;
+  line-height: 1.45;
+}
+
+.reports-export-pdf {
+  box-shadow: inset 0 -1px 0 rgb(5 97 66 / .08);
+}
+
+@media (max-width: 767px) {
+  .reports-command {
+    align-items: start;
+    flex-direction: column;
+    gap: .65rem;
+    padding: 1rem;
+  }
+
+  .reports-command p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .reports-catalog {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .reports-catalog button {
+    flex: 0 0 auto;
+  }
+
+  .reports-preview header {
+    display: block;
+    min-height: auto;
+    padding: 1rem;
+  }
+
+  .reports-preview header p {
+    margin-top: .35rem;
+  }
+}
+
+/* Full white operacional. Mantém a sidebar aprovada em verde e neutraliza
+   somente os antigos fundos cinza/bege da área de trabalho. Cores semânticas
+   de alerta, sucesso e seleção continuam visíveis. */
+body,
+#app-root,
+.erp-shell,
+.erp-workspace,
+#main-workspace,
+#main-tab-viewport,
+#main-tab-viewport > * {
+  background-color: #fff;
+}
+
+/* Padrão transversal das 15 abas da sidebar: mesmo tamanho, mesmo respiro e
+   mesma área útil enquanto cada módulo é refeito por dentro. */
+#main-tab-viewport > .renea-route-motion {
+  width: 100%;
+  min-height: 100%;
+}
+
+#main-tab-viewport > .renea-route-motion > :not(.erp-dashboard),
+#main-tab-viewport > :not(.erp-dashboard) {
+  width: min(100%, 96rem);
+  margin-inline: auto;
+}
+
+#main-tab-viewport > .renea-route-motion > [id$="-tab"] {
+  min-height: calc(100vh - 7rem);
+}
+
+#main-tab-viewport .renea-filter-bar,
+#main-tab-viewport .renea-table,
+#main-tab-viewport .renea-card,
+#main-tab-viewport .renea-stat {
+  border-radius: 8px;
+}
+
+#main-tab-viewport .renea-page-actions button,
+#main-tab-viewport .renea-filter-bar button,
+#main-tab-viewport .renea-button {
+  min-height: 2.75rem;
+}
+
+#main-tab-viewport :is(
+  [class~="bg-[#f7f8f6]"],
+  [class~="bg-[#f4f7f5]"],
+  [class~="bg-[#f7f9f8]"],
+  [class~="bg-[#f5f8f6]"],
+  [class~="bg-[#f7f5ef]"],
+  [class~="bg-[#f0eee6]"],
+  [class~="bg-[#f2f4f1]"],
+  [class~="bg-[#f2f5f3]"],
+  [class~="bg-slate-50"],
+  [class~="bg-gray-50"],
+  [class~="bg-stone-50"]
+) {
+  background-color: #fff !important;
+}
+
+/* Master data is used repeatedly; keep selection, search and editing calm. */
+.erp-module--cadastros {
+  max-width: 1580px;
+  margin: 0 auto;
+}
+
+.erp-module--cadastros #subtab-selector {
+  gap: .6rem;
+  padding: .65rem;
+  border: 1px solid #dce5df;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.erp-module--cadastros #subtab-selector > button {
+  min-height: 5.3rem;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.erp-module--cadastros #subtab-selector > button:hover {
+  border-color: #82b9a4;
+  background: #f4faf6;
+  transform: none;
+}
+
+.erp-module--cadastros #subtab-selector > button[class*='bg-emerald'] {
+  border-color: #167958;
+  background: #eaf6ef;
+  box-shadow: inset 0 -2px 0 #0b815d;
+}
+
+.erp-module--cadastros #subtab-selector > button span:first-of-type {
+  color: inherit;
+  font-size: .67rem;
+  letter-spacing: .04em;
+}
+
+.erp-module--cadastros #subtab-selector + div {
+  padding: .85rem;
+  border-color: #dce5df;
+  box-shadow: 0 12px 28px -29px rgb(11 56 42 / .7);
+}
+
+.erp-module--cadastros #subtab-selector + div input,
+.erp-module--cadastros #subtab-selector + div select,
+.erp-module--cadastros #inline-form-card input,
+.erp-module--cadastros #inline-form-card select,
+.erp-module--cadastros #inline-form-card textarea {
+  border-radius: 6px;
+}
+
+.erp-module--cadastros #inline-form-card {
+  padding: 1.4rem;
+  border-color: #d7e5dc;
+  border-top: 3px solid #0b815d;
+  background: #fff;
+  box-shadow: 0 18px 40px -35px rgb(9 61 44 / .8);
+}
+
+.erp-module--cadastros #inline-form-card h3 {
+  color: #135b43;
+  font-size: .9rem;
+}
+
+@media (max-width: 767px) {
+  .erp-module--cadastros #subtab-selector {
+    display: flex;
+    overflow-x: auto;
+    padding: .5rem;
+    scrollbar-width: thin;
+  }
+
+  .erp-module--cadastros #subtab-selector > button {
+    flex: 0 0 8rem;
+    min-height: 5rem;
+  }
+
+  .erp-module--cadastros #inline-form-card {
+    padding: 1rem;
+  }
+}

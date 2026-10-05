@@ -1,0 +1,378 @@
+import type {
+  ControleEquipamentoDiario, Equipamento, Funcionario, ObraLocal } from '../src/types';
+
+export const obras: ObraLocal[] = [
+  { id: 'obr-1', nome: 'Complexo do Alto Tietê', endereco: 'SP', responsavel: 'Eng. Ricardo', status: 'Ativa' },
+];
+export const equipamentos: Equipamento[] = [
+  { id: 'eq-1', prefixo: 'CB770', nome: 'Escavadeira', tipo: 'Escavadeira hidráulica', marca: 'CAT', modelo: '320', seriePlaca: 'X1', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
+  { id: 'eq-2', prefixo: 'CB1005', nome: 'Caminhão basculante', tipo: 'Basculante', marca: 'Volvo', modelo: 'FH', seriePlaca: 'FEJ6753', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
+];
+export const funcionarios: Funcionario[] = [
+  { id: 'f-1', matricula: '103177', nome: 'José da Silva Costa', cargo: 'OPERADOR', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
+  { id: 'f-2', matricula: '100787', nome: 'Marcos de Souza', cargo: 'MOTORISTA', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
+];
+
+// --- Link público de presença ---
+import type { Empresa, GrupoEquipe, PresencaApontamento } from '../src/types';
+
+export const empresas: Empresa[] = [
+  { id: 'emp-1', nome: 'RENEA INFRAESTRUTURA S.A.', cnpj: '', telefone: '', responsavel: '' },
+  { id: 'emp-2', nome: 'TERRAPLENAGEM PARCEIRA LTDA', cnpj: '', telefone: '', responsavel: '' },
+];
+
+export const equipeFuncionarios: Funcionario[] = [
+  { id: 'c-1', matricula: '103177', nome: 'João Batista dos Santos', cargo: 'PEDREIRO', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
+  { id: 'c-2', matricula: '103180', nome: 'Maria Aparecida Souza', cargo: 'SERVENTE', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
+  { id: 'c-3', matricula: '103182', nome: 'Antônio Carlos Ferreira', cargo: 'CARPINTEIRO', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
+  { id: 'c-4', matricula: '103190', nome: 'Sebastião Rodrigues Lima', cargo: 'ARMADOR', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
+  { id: 'c-5', matricula: '103195', nome: 'Francisco das Chagas Oliveira', cargo: 'AJUDANTE', telefone: '', empresaId: 'emp-1', ativo: true, status: 'ATIVO' } as Funcionario,
+];
+
+export const grupo: GrupoEquipe = {
+  id: 'g-1', nome: 'Equipe do Renilson', responsavel: 'Renilson', frenteServico: 'Ramo 200',
+  obraId: 'obr-1', funcionarioIds: equipeFuncionarios.map(f => f.id),
+  token: 'presenca-exemplo', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '',
+} as GrupoEquipe;
+
+export const registrosEnviados: PresencaApontamento[] = equipeFuncionarios.slice(0, 3).map((f, i) => ({
+  id: `pl-${i}`, data: '2026-09-03', funcionarioId: f.id, funcionarioNome: f.nome,
+  funcao: f.cargo, grupoId: grupo.id, grupoNome: grupo.nome, status: i === 1 ? 'Ausente' : 'Presente',
+  observacao: '', responsavel: 'Renilson', frenteServico: 'Ramo 200', horaEnvio: '08:02',
+} as PresencaApontamento));
+
+// O dia anterior tem gente diferente do dia corrente: é assim que o e2e prova
+// que trocar de dia na régua realmente trouxe outro dia, e não repintou o mesmo.
+export const registrosDiaAnterior: PresencaApontamento[] = equipeFuncionarios.slice(3).map((f, i) => ({
+  id: `pl-ontem-${i}`, data: '2026-09-02', funcionarioId: f.id, funcionarioNome: f.nome,
+  funcao: f.cargo, grupoId: grupo.id, grupoNome: grupo.nome, status: 'Presente',
+  observacao: '', responsavel: 'Renilson', frenteServico: 'Ramo 200', horaEnvio: '07:55',
+} as PresencaApontamento));
+
+// --- Painel de Controle ---
+import type { Abastecimento, Comboio, Lubrificacao, OrdemServico, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../src/types';
+
+export const comboios: Comboio[] = [
+  { id: 'cmb-1', nome: 'Comboio 01', placa: 'ABC1D23', capacidadeLitros: 8000 } as Comboio,
+];
+export const combustiveis: TipoCombustivel[] = [{ id: 'tc-1', nome: 'Diesel S10' } as TipoCombustivel];
+export const lubrificantes: ProdutoLubrificacao[] = [{ id: 'pl-1', nome: 'Óleo 15W40' } as ProdutoLubrificacao];
+export const lubrificacoes: Lubrificacao[] = [
+  { id: 'lub-1', data: '2026-09-03', hora: '08:15', equipamentoId: 'eq-1', horimetro: 1240, produtoLubrificacaoId: 'pl-1', compartimento: 'Pinos do Braço / Caçamba', quantidade: 2, responsavel: 'Marcos de Souza', observacao: '' },
+];
+
+const dia = (n: number) => `2026-09-${String(n).padStart(2, '0')}`;
+export const abastecimentos: Abastecimento[] = Array.from({ length: 14 }, (_, i) => ({
+  id: `ab-${i}`, data: dia((i % 3) + 1), hora: '07:30',
+  equipamentoId: i % 2 ? 'eq-1' : 'eq-2', prefixoInformado: i % 2 ? 'CB770' : 'CB1005',
+  horimetroInicial: 1000 + i, kmInicial: 0, bombaInicial: 1000 * i,
+  quantidadeLitros: 120 + i * 7, bombaFinal: 1000 * i + 120,
+  tipoCombustivelId: 'tc-1', comboioId: 'cmb-1',
+  responsavel: 'José da Silva Costa', observacao: '',
+} as Abastecimento));
+
+// Sem cast: assim o TypeScript confere o fixture contra o tipo real.
+export const ordensServico: OrdemServico[] = [
+  {
+    id: 'os-1', numero: 'OS-0100', equipamentoId: 'eq-1', tipo: 'Corretiva', prioridade: 'Alta',
+    descricao: 'Troca de mangueira hidráulica', status: 'Em Andamento', dataAbertura: dia(2),
+    responsavel: 'Manutenção', observacao: '', motivo: 'Vazamento',
+  },
+  {
+    id: 'os-2', numero: 'OS-0101', equipamentoId: 'eq-2', tipo: 'Preventiva', prioridade: 'Média',
+    descricao: 'Revisão preventiva 500h', status: 'Aguardando Peça', dataAbertura: dia(1),
+    responsavel: 'Manutenção', observacao: '', motivo: 'Preventiva',
+  },
+];
+
+export const ticketsJazida: TicketJazida[] = Array.from({ length: 6 }, (_, i) => ({
+  id: `tk-${i}`, data: dia((i % 3) + 1), ticketNumero: String(2200 + i),
+  tipoTicket: 'Liberação', prefixo: 'CB1005', placa: 'FEJ6753',
+  horaSaida: '08:30', horaChegada: '09:15',
+  tipoMaterial: 'Solo', quantidadeM3: 12, unidadeQuantidade: 'm³',
+  destinoObra: 'Aterro', responsavelLiberacao: 'Renilson', nomeLegivel: 'Renilson',
+  empresa: 'RENEA', observacao: '', statusFluxo: 'Enviado', origemRegistro: 'Link',
+} as TicketJazida));
+
+export const controlesEquipamentos: ControleEquipamentoDiario[] = Array.from({ length: 9 }, (_, i) => ({
+  id: `cd-${i + 1}`,
+  chave: `cd-${i + 1}`,
+  data: `2026-09-0${(i % 3) + 1}`,
+  funcionarioId: `f-${(i % 3) + 1}`,
+  codigoFuncionario: `100${i + 1}`,
+  nomeMotorista: ['RENILSON DOS SANTOS', 'ROBERSON DA SILVA', 'SERGIO CONCEICAO'][i % 3],
+  equipamentoId: 'eq-1',
+  prefixo: `CB${770 + i}`,
+  familia: 'Caminhão basculante',
+  status: (['Em operação', 'Em manutenção', 'Disponível'] as const)[i % 3],
+  horaSaida: '07:10',
+  horaEntradaManutencao: i % 3 === 1 ? '09:20' : '',
+  horaLiberacao: '',
+  motivoManutencao: i % 3 === 1 ? 'Troca de pneu dianteiro' : undefined,
+  observacao: i % 2 ? 'Operando na frente 2.' : '',
+  origem: 'SISTEMA',
+  revisao: [],
+  criadoEm: '2026-09-01T10:00:00.000Z',
+  atualizadoEm: '2026-09-01T10:00:00.000Z',
+} as ControleEquipamentoDiario));
+
+/**
+ * Presença de várias equipes, ramos e canteiros nos últimos 14 dias contados a
+ * partir de hoje — sem isso o painel abre sempre vazio no preview e não dá
+ * para conferir gráfico, filtro nem hierarquia. É dado de demonstração e vive
+ * só aqui; o sistema continua lendo os apontamentos reais.
+ */
+export const equipesPresenca: GrupoEquipe[] = [
+  { id: 'g-1', nome: 'Equipe do Renilson', responsavel: 'Renilson', frenteServico: 'Ramo 200', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-exemplo', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+  { id: 'g-2', nome: 'Equipe da Marginal', responsavel: 'Cleber', frenteServico: 'Marginal', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-marginal', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+  { id: 'g-3', nome: 'Equipe do Vanderlei', responsavel: 'Vanderlei', frenteServico: 'Ramo 700', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-r700', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+  { id: 'g-4', nome: 'Equipe da Fábrica', responsavel: 'Adriana', frenteServico: 'Fábrica', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-fabrica', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+  { id: 'g-5', nome: 'Equipe do SP-066', responsavel: 'Josimar', frenteServico: 'SP-066', obraId: 'obr-1', funcionarioIds: [], token: 'presenca-sp066', status: 'ativo', linkAtivo: true, createdAt: '', updatedAt: '' },
+].map(item => item as GrupoEquipe);
+
+const FUNCOES_PRESENCA = ['AJUDANTE', 'OPERADOR', 'PEDREIRO', 'SERVENTE', 'ARMADOR', 'CARPINTEIRO', 'MOTORISTA', 'ENCARREGADO'];
+
+export const efetivoPresenca: Funcionario[] = Array.from({ length: 46 }, (_, i) => ({
+  id: `pf-${i}`,
+  matricula: String(104000 + i),
+  nome: ['João Batista dos Santos','Maria Aparecida Souza','Antônio Carlos Ferreira','Sebastião Rodrigues Lima','Francisco das Chagas Oliveira','Rita de Cássia Alves','Josué Pereira Nunes','Vanderlei Martins','Cleber Antunes','Adriana Moreira','Josimar da Silva','Renilson Barbosa'][i % 12] + ` ${i + 1}`,
+  cargo: FUNCOES_PRESENCA[i % FUNCOES_PRESENCA.length],
+  telefone: '', empresaId: i % 5 === 0 ? 'emp-2' : 'emp-1', ativo: true, status: 'ATIVO',
+} as Funcionario));
+
+const diasDePresenca = Array.from({ length: 14 }, (_, i) => {
+  const dia = new Date();
+  dia.setHours(12, 0, 0, 0);
+  dia.setDate(dia.getDate() - (13 - i));
+  return dia.toISOString().slice(0, 10);
+});
+
+export const presencasHistorico: PresencaApontamento[] = diasDePresenca.flatMap((data, d) =>
+  efetivoPresenca.map((f, i) => {
+    const equipe = equipesPresenca[i % equipesPresenca.length];
+    const semente = (d * 7 + i * 3) % 17;
+    const status = semente === 0 ? 'Ausente' : semente === 4 ? 'Atestado' : semente === 9 ? 'Atraso' : semente === 13 ? 'Falta justificada' : 'Presente';
+    return {
+      id: `ph-${d}-${i}`,
+      data,
+      horaEnvio: `0${6 + (i % 3)}:${String((i * 7) % 60).padStart(2, '0')}`,
+      grupoId: equipe.id,
+      grupoNome: equipe.nome,
+      responsavel: equipe.responsavel,
+      frenteServico: equipe.frenteServico,
+      funcionarioId: f.id,
+      funcionarioNome: f.nome,
+      funcao: f.cargo,
+      status: status as PresencaApontamento['status'],
+      observacao: status === 'Ausente' ? 'Sem transporte' : '',
+      tokenUsado: 'validado-preview',
+      createdAt: `${data}T10:00:00.000Z`,
+    } as PresencaApontamento;
+  }).filter((_, i) => (d + i) % 9 !== 0),
+);
+
+// Uma equipe que ainda não enviou nada: é ela que exercita o aviso do painel e
+// o lançamento manual. Entra depois dos registros, justamente para não ganhar
+// nenhum apontamento.
+equipesPresenca.push({
+  id: 'g-6',
+  nome: 'Equipe do Ramo 1300',
+  responsavel: 'Renato',
+  frenteServico: 'Ramo 1300',
+  obraId: 'obr-1',
+  funcionarioIds: efetivoPresenca.slice(0, 4).map(pessoa => pessoa.id),
+  token: 'presenca-r1300',
+  status: 'ativo',
+  linkAtivo: true,
+  createdAt: '',
+  updatedAt: '',
+} as GrupoEquipe);
+
+// Um mês de diário com pluviômetro, para o mapa de chuvas ter o que mostrar:
+// dias secos, chuva fraca, forte, e dias sem diário nenhum no fim do mês.
+import type { DiarioObra, Material, MovimentoMaterial } from '../src/types';
+
+export const diariosChuva: DiarioObra[] = [
+  { dia: 1, mm: 0 }, { dia: 2, mm: 3 }, { dia: 3, mm: 0 }, { dia: 4, mm: 12 },
+  { dia: 5, mm: 28, impraticavel: true }, { dia: 8, mm: 0 }, { dia: 9, mm: 1.5 },
+  { dia: 10, mm: 0 }, { dia: 11, mm: 62, impraticavel: true }, { dia: 12, mm: 7 },
+  { dia: 15, mm: 0 }, { dia: 16, mm: 0 }, { dia: 17, mm: 4 }, { dia: 18, mm: 33 },
+  { dia: 19, mm: 0 }, { dia: 22, mm: 0 }, { dia: 23, mm: 9 },
+].map(({ dia, mm, impraticavel }) => ({
+  id: `dob-${dia}`,
+  data: `2026-09-${String(dia).padStart(2, '0')}`,
+  climaManha: (impraticavel ? 'Impraticável' : mm > 0 ? 'Chuva fraca' : 'Bom'),
+  climaTarde: (impraticavel ? 'Impraticável' : mm > 25 ? 'Chuva forte' : 'Bom'),
+  precipitacaoMm: mm,
+  horasParadasClima: impraticavel ? 8 : mm > 10 ? 2 : 0,
+  responsavel: 'Deivid Santana',
+  ativo: true,
+  criadoEm: '',
+  atualizadoEm: '',
+} as DiarioObra));
+
+// Recebimento de material com pendência, no formato da planilha da obra:
+// a nota promete, chega menos, e a diferença é carga paga que não está aqui.
+export const materiaisObra: Material[] = [
+  { id: 'mt-1', codigo: '1486', descricao: 'ESTACA MADEIRA C/ PONTA', categoria: 'Madeira', unidade: 'PC', ativo: true, criadoEm: '', atualizadoEm: '' },
+  { id: 'mt-2', codigo: '766', descricao: 'CHAPA PLASTIFICADO 18MM', categoria: 'Madeira', unidade: 'UN', ativo: true, criadoEm: '', atualizadoEm: '' },
+  { id: 'mt-3', codigo: 'TB-1000', descricao: 'TUBO DE CONCRETO PA3 DN1000', categoria: 'Tubos de concreto', unidade: 'MT', ativo: true, criadoEm: '', atualizadoEm: '' },
+] as Material[];
+
+export const movimentosMateriaisObra: MovimentoMaterial[] = [
+  { id: 'mv-1', data: '2026-07-02', tipo: 'Entrada', materialId: 'mt-1', materialDescricao: 'ESTACA MADEIRA C/ PONTA', quantidade: 0, quantidadeNota: 2000, unidade: 'PC', notaFiscal: '4789', solicitacaoCompra: 'SC 92998794', destino: 'Ramo 1300', responsavel: 'Deivid', criadoEm: '' },
+  { id: 'mv-2', data: '2026-07-02', tipo: 'Entrada', materialId: 'mt-2', materialDescricao: 'CHAPA PLASTIFICADO 18MM', quantidade: 50, quantidadeNota: 450, unidade: 'UN', notaFiscal: '4789', solicitacaoCompra: 'SC 92998795', destino: 'Ramo 1400', responsavel: 'Deivid', criadoEm: '' },
+  { id: 'mv-3', data: '2026-08-17', tipo: 'Entrada', materialId: 'mt-3', materialDescricao: 'TUBO DE CONCRETO PA3 DN1000', quantidade: 6, quantidadeNota: 6, unidade: 'MT', notaFiscal: '132636', solicitacaoCompra: 'SC 93011249', destino: 'Ramo 1300', responsavel: 'Deivid', criadoEm: '' },
+] as MovimentoMaterial[];
+
+// Utilização por ramo: recebimentos reais da planilha de recebimento (tubos
+// dos ramos 1300 e 1400, em metros, peça de 1,50 m). Os usos são exemplo.
+export const etapasRamos = [
+  { id: 'etapa-ramo-1300', nome: 'Ramo 1300' },
+  { id: 'etapa-ramo-1400', nome: 'Ramo 1400' },
+];
+
+const tubo = (id: string, diametro: number, classe: string): Material => ({
+  id, codigo: '', descricao: `TUBO DE CONCRETO Ø${diametro} ${classe} 1,50 m`, categoria: 'Tubos de concreto', unidade: 'MT',
+  diametroMm: diametro, classe, comprimentoPecaM: 1.5, ativo: true, criadoEm: '', atualizadoEm: '',
+} as Material);
+
+export const materiaisUtilizacao: Material[] = [
+  tubo('tb-800-pa3', 800, 'PA3'), tubo('tb-800-pa4', 800, 'PA4'), tubo('tb-1000-pa2', 1000, 'PA2'),
+  tubo('tb-1200-pa3', 1200, 'PA3'), tubo('tb-600-pa2', 600, 'PA2'), tubo('tb-1500-pa3', 1500, 'PA3'),
+  { id: 'pead-100', codigo: '', descricao: 'TUBO PEAD KANANET DN 100', categoria: 'Tubos PEAD - PVC', unidade: 'MT', ativo: true, criadoEm: '', atualizadoEm: '' } as Material,
+  { id: 'chapa-18', codigo: '766', descricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', categoria: 'Madeiras e Formas', unidade: 'UN', ativo: true, criadoEm: '', atualizadoEm: '' } as Material,
+];
+
+const ramo = (id: string) => etapasRamos.find(item => item.id === id)!;
+const entrada = (id: string, materialId: string, quantidade: number, etapaId: string, nota: string, data: string): MovimentoMaterial => ({
+  id, data, tipo: 'Entrada', materialId, materialDescricao: materiaisUtilizacao.find(item => item.id === materialId)!.descricao,
+  quantidade, quantidadeNota: quantidade, unidade: 'MT', notaFiscal: nota, destino: ramo(etapaId).nome,
+  etapaServicoId: etapaId, etapaServicoNome: ramo(etapaId).nome, responsavel: 'Importação', criadoEm: `${data}T08:00:00.000Z`,
+} as MovimentoMaterial);
+const uso = (id: string, materialId: string, metros: number, etapaId: string, data: string, apontador: string, link = true): MovimentoMaterial => ({
+  id, data, tipo: 'Saída', finalidade: 'Consumo', materialId, materialDescricao: materiaisUtilizacao.find(item => item.id === materialId)!.descricao,
+  quantidade: metros, unidade: 'MT', destino: ramo(etapaId).nome, etapaServicoId: etapaId, etapaServicoNome: ramo(etapaId).nome,
+  apontadoPor: apontador, responsavel: apontador, origemApontamentoId: link ? `material_uso_${id}` : undefined, criadoEm: `${data}T15:10:00.000Z`,
+} as MovimentoMaterial);
+
+export const movimentosUtilizacao: MovimentoMaterial[] = [
+  entrada('r1', 'tb-800-pa3', 21, 'etapa-ramo-1400', '132683', '2026-08-18'),
+  entrada('r2', 'tb-800-pa4', 42, 'etapa-ramo-1400', '132680', '2026-08-18'),
+  entrada('r3', 'tb-1000-pa2', 33, 'etapa-ramo-1400', '132790', '2026-08-21'),
+  entrada('r4', 'tb-1200-pa3', 27, 'etapa-ramo-1400', '132795', '2026-08-21'),
+  entrada('r5', 'pead-100', 750, 'etapa-ramo-1400', '45959', '2026-08-24'),
+  entrada('r6', 'tb-600-pa2', 40.5, 'etapa-ramo-1300', '132640', '2026-08-17'),
+  entrada('r7', 'tb-800-pa4', 99, 'etapa-ramo-1300', '132650', '2026-08-17'),
+  entrada('r8', 'tb-1200-pa3', 61.5, 'etapa-ramo-1300', '132636', '2026-08-17'),
+  entrada('r9', 'tb-1500-pa3', 37.5, 'etapa-ramo-1300', '132769', '2026-08-20'),
+  uso('u1', 'tb-800-pa3', 21, 'etapa-ramo-1400', '2026-09-10', 'Carlos Menezes'),
+  uso('u2', 'tb-800-pa4', 24, 'etapa-ramo-1400', '2026-09-22', 'Carlos Menezes'),
+  uso('u3', 'tb-800-pa4', 12, 'etapa-ramo-1400', '2026-09-24', 'Renilson Araújo'),
+  uso('u4', 'tb-1000-pa2', 12, 'etapa-ramo-1400', '2026-09-23', 'Renilson Araújo'),
+  uso('u5', 'pead-100', 320, 'etapa-ramo-1400', '2026-09-19', 'Carlos Menezes'),
+  uso('u6', 'tb-600-pa2', 43.5, 'etapa-ramo-1300', '2026-09-15', 'Deivid Santana', false),
+  uso('u7', 'tb-800-pa4', 81, 'etapa-ramo-1300', '2026-09-23', 'Josué Paiva'),
+  uso('u8', 'tb-1200-pa3', 30, 'etapa-ramo-1300', '2026-09-20', 'Josué Paiva'),
+  { id: 'm1', data: '2026-08-26', tipo: 'Entrada', materialId: 'chapa-18', materialDescricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', quantidade: 50, unidade: 'UN', notaFiscal: '5453', destino: 'Drenagem Ramo 1400 / 1300', responsavel: 'Importação', criadoEm: '2026-08-26T08:00:00.000Z' } as MovimentoMaterial,
+  { id: 'm2', data: '2026-07-02', tipo: 'Entrada', materialId: 'chapa-18', materialDescricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', quantidade: 400, unidade: 'UN', notaFiscal: '4789', destino: 'Ramo 1400', responsavel: 'Importação', criadoEm: '2026-07-02T08:00:00.000Z' } as MovimentoMaterial,
+];
+
+// Estacas prancha no formato da planilha de agosto (frente em "identificação",
+// nome da estaca em "perfil"), com as a cravar como profundidade zero.
+const diaAtras = (dias: number) => {
+  const data = new Date();
+  data.setDate(data.getDate() - dias);
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+};
+const cravacaoFixture = (frente: string, numero: number, cravada: boolean, dias: number): import('../src/types').CravacaoEstaca => {
+  const comprimento = [12, 10.5, 11, 9.5, 12][numero % 5];
+  const cravado = cravada ? comprimento - [1.4, 1.8, 1.5, 2][numero % 4] : 0;
+  return {
+    id: `fx-estaca-${frente}-${numero}`,
+    data: diaAtras(dias),
+    item: String(numero),
+    servico: 'Cravação de estaca prancha',
+    identificacao: frente,
+    perfil: `Estaca ${numero}`,
+    comprimentoM: comprimento,
+    comprimentoCravadoM: cravado,
+    sobraM: cravada ? Math.round((comprimento - cravado) * 100) / 100 : 0,
+    perdaM: cravada && numero % 17 === 0 ? 0.5 : 0,
+    responsavel: 'Deivid',
+    observacao: '',
+    origem: 'Manual',
+    criadoEm: '2026-09-01T00:00:00Z',
+  };
+};
+export const controleEstacas: import('../src/types').ControleEstacas = {
+  lotes: [
+    { id: 'fx-lote-1', data: diaAtras(20), hora: '08:10', movimento: 'Entrada', notaFiscal: '45872', materialCodigo: 'EP-AZ18', descricao: 'Estaca prancha AZ 18-700 12 m', tipo: 'ESTACA PRANCHA', perfilModelo: 'AZ 18-700', comprimentoM: 12, unidade: 'UN', pesoKg: 18400, quantidadeFisica: 40, valorUnitario: 7.2, valorTotal: 132480, placaCavalo: 'FTR4E21', placaCarreta: 'GHJ1B22', transportadora: 'Rodomais', destino: 'AP 12', tipoCarregamento: 'Feixe central', status: 'Pendente', nfConferida: true, divergenciaNF: '', responsavel: 'Deivid', observacao: '', origem: 'Manual', criadoEm: '2026-09-01T00:00:00Z' },
+    { id: 'fx-lote-2', data: diaAtras(6), hora: '14:30', movimento: 'Entrada', notaFiscal: '46011', materialCodigo: 'EP-AZ18', descricao: 'Estaca prancha AZ 18-700 10,5 m', tipo: 'ESTACA PRANCHA', perfilModelo: 'AZ 18-700', comprimentoM: 10.5, unidade: 'UN', pesoKg: 12100, quantidadeFisica: 30, valorUnitario: 7.2, valorTotal: 87120, placaCavalo: 'FTR4E21', placaCarreta: 'GHJ1B22', transportadora: 'Rodomais', destino: 'Ramo 900', tipoCarregamento: 'Feixe central', status: 'Pendente', nfConferida: false, divergenciaNF: '', responsavel: 'Deivid', observacao: '', origem: 'Manual', criadoEm: '2026-09-01T00:00:00Z' },
+  ],
+  cravacoes: [
+    ...Array.from({ length: 64 }, (_, indice) => cravacaoFixture('AP 12 ferradura', indice + 1, indice < 41, 13 - Math.floor(indice / 3.5))),
+    ...Array.from({ length: 36 }, (_, indice) => cravacaoFixture('Ramo 900 lado esquerdo', indice + 1, indice < 9, 4 - Math.floor(indice / 3))),
+  ],
+};
+
+/**
+ * Frota de demonstração do Quadro da Frota: 30 máquinas em quatro frentes,
+ * lançadas no Controle de Frotas de hoje, com algumas paradas, em manutenção,
+ * sem operador e sem lançamento. Vive só no preview.
+ */
+const FROTA_QUADRO: Array<[string, string, string, string, string, string | null, ControleEquipamentoDiario['status'] | null]> = [
+  ['LO279', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'PADRE EUSTÁQUIO', 'CARLOS ALBERTO', 'Em operação'],
+  ['RC041', 'Rolo compactador', 'DYNAPAC', 'CA250', 'PADRE EUSTÁQUIO', 'MARCOS VINICIUS', 'Em operação'],
+  ['TE030', 'Trator de esteira', 'CATERPILLAR', 'D6N XL', 'PADRE EUSTÁQUIO', 'ANDERSON', 'Em operação'],
+  ['TE007', 'Trator de esteira', 'KOMATSU', 'D61EX', 'PADRE EUSTÁQUIO', 'RONALDO', 'Em operação'],
+  ['TE037', 'Trator de esteira', 'CATERPILLAR', 'D6T XL', 'PADRE EUSTÁQUIO', 'EDSON', 'Em operação'],
+  ['LO278', 'Retroescavadeira', 'JCB', '3CX', 'PADRE EUSTÁQUIO', 'WELLINGTON', 'Em operação'],
+  ['CP076', 'Caminhão pipa', 'VW', '31.320', 'PADRE EUSTÁQUIO', 'GILMAR', 'Em operação'],
+  ['EC013', 'Escavadeira hidráulica', 'VOLVO', 'EC210', 'PADRE EUSTÁQUIO', 'FABIO', 'Em operação'],
+  ['EC010', 'Escavadeira hidráulica', 'VOLVO', 'EC210', 'PADRE EUSTÁQUIO', null, 'Aguardando motorista'],
+  ['MT032', 'Motoniveladora', 'CATERPILLAR', '120K', 'PADRE EUSTÁQUIO', 'SERGIO', 'Em manutenção'],
+  ['EC079', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'PADRE EUSTÁQUIO', null, 'Disponível'],
+  ['MC071', 'Trator agrícola', 'VALTRA', 'BH145', 'PADRE EUSTÁQUIO', 'PAULO', 'Em operação'],
+  ['GH016', 'Grade aradora', 'TATU', 'GAPCR', 'PADRE EUSTÁQUIO', null, 'Reserva'],
+  ['EC081', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'MARGINAL', 'CARLOS', 'Em operação'],
+  ['EC063', 'Escavadeira hidráulica', 'VOLVO', 'EC210', 'MARGINAL', 'JOSE', 'Em operação'],
+  ['EC023', 'Escavadeira hidráulica', 'VOLVO', 'EC210', 'MARGINAL', 'JOCELIO', 'Em operação'],
+  ['LO318', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'MARGINAL', 'HERNANDES', 'Em operação'],
+  ['RC025', 'Rolo compactador', 'DYNAPAC', 'CA250', 'MARGINAL', 'RAFAEL', 'Em operação'],
+  ['RC042', 'Rolo compactador', 'DYNAPAC', 'CA250', 'MARGINAL', null, 'Em operação'],
+  ['RT021', 'Retroescavadeira', 'CATERPILLAR', '416E', 'MARGINAL', 'SAMUEL', 'Em operação'],
+  ['RT030', 'Retroescavadeira', 'CATERPILLAR', '416E', 'MARGINAL', 'LUAN', 'Em operação'],
+  ['CP079', 'Caminhão pipa', 'MERCEDES', 'ATEGO 2426', 'MARGINAL', 'JEAM', 'Em operação'],
+  ['CB1012', 'Caminhão basculante', 'VOLVO', 'FMX 500', 'MARGINAL', 'ROBERSON', 'Em manutenção'],
+  ['EC077', 'Escavadeira hidráulica', 'KOMATSU', 'PC210', 'IBAR', 'FRANCISCO', 'Em operação'],
+  ['LO361', 'Escavadeira hidráulica', 'CATERPILLAR', '320D', 'IBAR', 'JULIO', 'Em operação'],
+  ['PC044', 'Pá carregadeira', 'CATERPILLAR', '924K', 'IBAR', 'NELSON', 'Em operação'],
+  ['EC053', 'Escavadeira hidráulica', 'VOLVO', 'EC360', 'PEDREIRA', 'JOSE', 'Em operação'],
+  ['CB1020', 'Caminhão basculante', 'SCANIA', 'G440', 'PEDREIRA', 'RENILSON', 'Em operação'],
+  ['CV012', 'Cavalo mecânico', 'SCANIA', 'R450', 'MARGINAL', 'EDMILSON', 'Em operação'],
+  ['VL002', 'Caminhonete', 'TOYOTA', 'HILUX', 'PEDREIRA', 'ENG. RICARDO', 'Em operação'],
+  ['RC050', 'Rolo compactador', 'HAMM', '3411', 'PEDREIRA', null, null],
+  ['GD004', 'Guindaste', 'LIEBHERR', 'LTM 1050', 'MARGINAL', 'ADEMIR', 'Em operação'],
+  ['GE009', 'Gerador', 'STEMAC', 'SS180', 'IBAR', null, 'Disponível'],
+];
+
+export const equipamentosQuadro: Equipamento[] = FROTA_QUADRO.map(([prefixo, tipo, marca, modelo], i) => ({
+  id: `qf-${i + 1}`, prefixo, nome: tipo, tipo, marca, modelo, seriePlaca: '', empresaId: 'emp-1', status: 'Ativo', observacao: '',
+  localAtualId: 'obr-1', categoriaFrota: tipo === 'Caminhonete' || tipo === 'Cavalo mecânico' ? 'Veículo' : 'Equipamento',
+} as Equipamento));
+
+const hojeQuadro = new Date().toLocaleDateString('sv-SE');
+
+export const controlesQuadro = FROTA_QUADRO.flatMap(([prefixo, tipo, , , frente, operador, status], i) => (status ? [{
+  id: `qd-${i + 1}`, chave: `qd-${i + 1}`, data: hojeQuadro, funcionarioId: operador ? `op-${i}` : '', codigoFuncionario: '',
+  nomeMotorista: operador || '', equipamentoId: `qf-${i + 1}`, prefixo, familia: tipo, status,
+  horaSaida: '07:00', horaEntradaManutencao: '', horaLiberacao: '', observacao: '', origem: 'SISTEMA', revisao: [],
+  motivoManutencao: status === 'Em manutenção' ? 'Vazamento na mangueira do hidráulico' : undefined,
+  frenteServico: frente, criadoEm: `${hojeQuadro}T10:00:00.000Z`, atualizadoEm: `${hojeQuadro}T10:00:00.000Z`,
+} as ControleEquipamentoDiario] : []));
+
+export const abastecimentosQuadro = FROTA_QUADRO.map((_, i) => ({
+  id: `qa-${i + 1}`, data: hojeQuadro, hora: '06:30', equipamentoId: `qf-${i + 1}`, horimetroInicial: i % 5 === 4 ? 0 : 1200 + ((i * 3457) % 17000),
+  kmInicial: 0, bombaInicial: 0, quantidadeLitros: 120, bombaFinal: 0, tipoCombustivelId: '', comboioId: '', responsavel: '', observacao: '',
+}));

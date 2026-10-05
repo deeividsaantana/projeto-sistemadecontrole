@@ -1,0 +1,223 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Reusable general ID validation to prevent resource injection
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Contas administrativas são provisionadas no Firebase Authentication.
+    // Links públicos nunca acessam o Firestore diretamente; usam funções
+    // da API (api/) com validação e projeção mínima dos dados.
+    function isStaff() {
+      return request.auth != null
+        && request.auth.token.staff == true;
+    }
+
+    // Escrita exige um perfil explícito de escrita. Antes bastava não ser
+    // 'leitura', então uma conta sem a claim role — que a interface já trata
+    // como somente leitura — podia gravar direto no banco. Regra e interface
+    // agora dizem a mesma coisa, e a autorização não depende do navegador.
+    function canWrite() {
+      return isStaff() && request.auth.token.role in ['admin', 'gestor', 'operador'];
+    }
+
+    function hasBaseFields(data) {
+      return data != null
+        && data.keys().hasAll(['updatedAt', 'empresas', 'obras', 'equipamentos'])
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 64
+        && data.empresas is list
+        && data.obras is list
+        && data.equipamentos is list;
+    }
+
+    // Formato legado: todo o banco era salvo em um unico documento.
+    function isValidLegacyCloudState(data) {
+      return hasBaseFields(data)
+        && (!data.keys().hasAny(['schemaVersion']) || data.schemaVersion != 2);
+    }
+
+    // Formato intermediario publicado em 09/07/2026: uma tabela por documento
+    // no campo value. Mantido para leitura e migracao sem perda de dados.
+    function isValidIntermediateCloudState(docId, data) {
+      return data != null
+        && data.keys().hasAll(['updatedAt'])
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 64
+        && (docId == 'meta' || data.value is list || data.value is map);
+    }
+
+    // Formato v2: manifesto pequeno apontando para blocos menores que o limite
+    // de 1 MiB imposto pelo Firestore.
+    function isValidCloudManifest(data) {
+      return hasBaseFields(data)
+        && data.keys().hasAll([
+          'schemaVersion',
+          'kind',
+          'generation',
+          'chunks',
+          'tableHashes',
+          'totalRecords'
+        ])
+        && data.schemaVersion == 2
+        && data.kind == 'manifest'
+        && data.generation is string
+        && data.generation.size() <= 64
+        && data.chunks is map
+        && data.tableHashes is map
+        && data.totalRecords is map;
+    }
+
+    function isValidCloudChunk(data) {
+      return hasBaseFields(data)
+        && data.keys().hasAll([
+          'schemaVersion',
+          'kind',
+          'generation',
+          'table',
+          'chunkIndex',
+          'totalChunks',
+          'contentHash',
+          'payload'
+        ])
+        && data.schemaVersion == 2
+        && data.kind == 'chunk'
+        && data.generation is string
+        && data.generation.size() <= 64
+        && data.table is string
+        && data.table.size() <= 64
+        && data.chunkIndex is int
+        && data.chunkIndex >= 0
+        && data.totalChunks is int
+        && data.totalChunks > 0
+        && data.contentHash is string
+        && data.contentHash.size() <= 64
+        && data.payload is string
+        && data.payload.size() <= 700000;
+    }
+
+    function isValidTicketCounter(docId, data) {
+      return docId == 'ticket_counter'
+        && data != null
+        && data.keys().hasAll(['updatedAt', 'kind', 'value'])
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 64
+        && data.kind == 'ticket_counter'
+        && data.value is map
+        && data.value.nextNumber is number
+        && data.value.nextNumber >= 1;
+    }
+
+    function isValidPublicTicket(docId, data) {
+      return docId.matches('^ticket_public_[a-zA-Z0-9_\\-]+$')
+        && data != null
+        && data.keys().hasAll(['updatedAt', 'kind', 'value'])
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 64
+        && data.kind == 'ticket_public'
+        && data.value is map
+        && data.value.id is string
+        && data.value.id.size() <= 160
+        && data.value.ticketNumero is string
+        && data.value.ticketNumero.size() <= 32
+        && data.value.prefixo is string
+        && data.value.prefixo.size() <= 64
+        && data.value.placa is string
+        && data.value.placa.size() <= 32;
+    }
+
+    // Matches the cloud backup path for the Renea Infraestrutura system
+    match /sistemarenea_cloud/{docId} {
+      allow get: if isStaff() && isValidId(docId);
+      allow list: if isStaff();
+      allow create, update: if canWrite() && isValidId(docId)
+        && (
+          isValidLegacyCloudState(request.resource.data)
+          || isValidIntermediateCloudState(docId, request.resource.data)
+          || isValidCloudManifest(request.resource.data)
+          || isValidCloudChunk(request.resource.data)
+          || isValidTicketCounter(docId, request.resource.data)
+          || isValidPublicTicket(docId, request.resource.data)
+        );
+      // O histórico operacional não pode ser removido pelo navegador.
+      // Correções usam atualização auditável ou arquivamento.
+      allow delete: if false;
+    }
+
+    // Espelho operacional de tickets. O público grava e pesquisa somente pelas
+    // funções da API (api/); usuários autenticados administram o acervo pelo painel.
+    match /sistemarenea_public_tickets/{docId} {
+      allow get: if isStaff() && isValidId(docId);
+      allow list: if isStaff();
+      allow create, update: if canWrite() && isValidId(docId);
+      allow delete: if false;
+    }
+
+    match /sistemarenea_public_meta/{docId} {
+      allow get: if isStaff() && isValidId(docId);
+      allow list: if isStaff();
+      allow create, update: if canWrite() && isValidId(docId);
+      allow delete: if false;
+    }
+
+    // A fila é criada exclusivamente pelo Admin SDK. O painel autenticado pode
+    // ler e marcar itens processados, sem expor a coleção na internet.
+    match /sistemarenea_public_submissions/{docId} {
+      // Em consultas de coleção o Firestore não consegue provar uma expressão
+      // aplicada ao ID de cada documento antes de executar a query. Mantenha a
+      // validação de ID no acesso unitário e autorize a listagem pelo papel.
+      allow get: if isStaff() && isValidId(docId);
+      allow list: if isStaff();
+      allow update: if canWrite() && isValidId(docId);
+      allow create, delete: if false;
+    }
+
+    // Contadores de proteção contra abuso são internos às funções serverless.
+    match /sistemarenea_rate_limits/{docId} {
+      allow read, write: if false;
+    }
+
+    // Reservas atômicas de presença são criadas somente pelo Admin SDK para
+    // impedir duplicidade concorrente por equipe/data.
+    match /sistemarenea_presence_locks/{docId} {
+      allow read, write: if false;
+    }
+
+    // Colaboradores incluídos na equipe pelo link público. Só o Admin SDK
+    // escreve; o navegador nunca lê nem grava, mesmo autenticado — o painel
+    // recebe a inclusão pela fila de envios públicos.
+    match /sistemarenea_presence_team_members/{docId} {
+      allow read, write: if false;
+    }
+
+    // Cadastros segmentados, auditoria, usuários e lotes de importação são
+    // manipulados exclusivamente pela API (api/) usando o Admin SDK.
+    // Não há acesso direto do navegador, mesmo para usuários autenticados.
+    match /sistemarenea_master_data/{organizationId}/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /sistemarenea_audit_logs/{docId} {
+      allow read, write: if false;
+    }
+
+    match /sistemarenea_app_users/{docId} {
+      allow read, write: if false;
+    }
+
+    match /sistemarenea_import_batches/{batchId}/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /sistemarenea_organizations/{organizationId} {
+      allow read, write: if false;
+    }
+  }
+}

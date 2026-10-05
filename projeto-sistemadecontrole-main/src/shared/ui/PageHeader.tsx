@@ -1,0 +1,25 @@
+import type { ReactNode } from 'react';
+import { cn } from './styles';
+
+interface PageHeaderProps {
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+  className?: string;
+  /** Contexto do módulo, em caixa alta. Ex.: "Frota", "Suprimentos". */
+  eyebrow?: string;
+}
+
+/** Exibe o título (h1) e a descrição do módulo, visíveis para todos os usuários, além de uma barra opcional de ações. */
+export function PageHeader({ title, description, actions, className, eyebrow }: PageHeaderProps) {
+  return (
+    <header className={cn('renea-page-header', className)}>
+      <div className="renea-page-header__copy">
+        {eyebrow && <span className="renea-page-header__eyebrow">{eyebrow}</span>}
+        <h1>{title}</h1>
+        {description && <p>{description}</p>}
+      </div>
+      {actions && <div className="renea-page-toolbar renea-page-actions">{actions}</div>}
+    </header>
+  );
+}
