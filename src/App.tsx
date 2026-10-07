@@ -148,7 +148,7 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 import reneaLogo from './assets/images/logo-renea-transparent.png';
 import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 
-import { auth, db, onAuthStateChanged, type AppUser as User } from './supabase/appRuntime';
+import { auth, db, onAuthStateChanged, loadUserRoleFromMemberships, type AppUser as User } from './supabase/appRuntime';
 import {
   downloadCloudBackup,
   formatCloudSyncError,
@@ -937,7 +937,9 @@ export default function App() {
         setLoginError('Sua conta existe, mas ainda não foi autorizada para acessar o sistema.');
         return;
       }
-      setCurrentUserRole(normalizeUserRole(token.claims.role));
+      // Carrega o role do Supabase (organization_members) em vez do user_metadata
+      const userRole = await loadUserRoleFromMemberships();
+      setCurrentUserRole(normalizeUserRole(userRole));
       setCurrentUser(user);
       setIsLoggedIn(true);
     } catch (error) {

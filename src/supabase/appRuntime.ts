@@ -12,6 +12,7 @@ import {
   savePublicTicket,
   subscribePublicTickets,
 } from './publicTickets';
+import { loadSupabaseMemberships } from './memberships';
 
 export interface AppUser {
   uid: string;
@@ -20,6 +21,8 @@ export interface AppUser {
   getIdToken: (forceRefresh?: boolean) => Promise<string>;
   getIdTokenResult: (forceRefresh?: boolean) => Promise<{ claims: Record<string, unknown> }>;
 }
+
+let cachedUserRole: string | null = null;
 
 const toAppUser = (user: {
   id: string;
@@ -30,7 +33,7 @@ const toAppUser = (user: {
   const metadata = user.user_metadata || {};
   const claims = {
     ...metadata,
-    role: metadata.role || 'viewer',
+    role: metadata.role || cachedUserRole || 'viewer',
     staff: metadata.staff !== false,
   };
   return {
@@ -44,6 +47,22 @@ const toAppUser = (user: {
     },
     getIdTokenResult: async () => ({ claims }),
   };
+};
+
+export const loadUserRoleFromMemberships = async (): Promise<string> => {
+  try {
+    const memberships = await loadSupabaseMemberships();
+    // Prioriza a organização 'renea', mas se não existir, usa a primeira
+    const reneaMembership = memberships.find(m => m.organizationId === 'renea');
+    const membership = reneaMembership || memberships[0];
+    if (membership) {
+      cachedUserRole = membership.role;
+      return membership.role;
+    }
+  } catch (error) {
+    console.warn('Falha ao carregar role do Supabase:', error);
+  }
+  return cachedUserRole || 'viewer';
 };
 
 export const auth = {
