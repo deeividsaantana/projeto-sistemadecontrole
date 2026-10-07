@@ -54,6 +54,12 @@ import { aplicarCadastroSge } from '../src/fleet/sgeApontamentos';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
+const noopImportAbastecimentos = (items: unknown[] = []) => ({
+  requested: items.length,
+  accepted: 0,
+  rejected: items.length,
+  totalAfter: 0,
+});
 
 /** Quadro com estado: o que se salva no painel volta para o quadro, como no app. */
 function QuadroFrotaPreview() {
@@ -559,7 +565,7 @@ const screens: Record<string, React.ReactNode> = {
       onSaveAbastecimento={noop}
       onDeleteAbastecimento={noop}
       onDeleteAbastecimentos={noop}
-      onImportAbastecimentos={noop}
+      onImportAbastecimentos={noopImportAbastecimentos}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
     />

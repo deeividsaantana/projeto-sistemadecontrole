@@ -92,6 +92,7 @@ import {
   normalizeAvailabilityTarget,
 } from './utils/equipmentOperations';
 import { filterNovelFuelImports } from './utils/fuelImportIdentity';
+import type { FuelImportedMasterData } from './utils/fuelMasterDataImport';
 import { mergeImportedRecords } from './utils/importMerge';
 import { garantirOrdemAutomaticaDaFrota, liberarMaquinasDaOrdemConcluida, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
 import {
@@ -2712,7 +2713,11 @@ export default function App() {
   };
 
   // Importação de planilha — Prioridade 3: grava em lote (um único registro de histórico)
-  const handleImportAbastecimentos = (novosItens: Abastecimento[], combustiveisImportados: TipoCombustivel[] = []) => {
+  const handleImportAbastecimentos = (
+    novosItens: Abastecimento[],
+    combustiveisImportados: TipoCombustivel[] = [],
+    cadastrosImportados: Partial<FuelImportedMasterData> = {},
+  ) => {
     const existingWithCanonicalPrefix = abastecimentos.map(item => ({
       ...item,
       prefixoInformado: item.prefixoInformado || equipamentos.find(equipment => equipment.id === item.equipamentoId)?.prefixo || item.equipamentoId,
@@ -2720,7 +2725,18 @@ export default function App() {
     const { accepted: itensIneditos, rejected: itensRejeitados } = filterNovelFuelImports(existingWithCanonicalPrefix, novosItens || []);
     const tiposUtilizados = new Set(itensIneditos.map(item => item.tipoCombustivelId));
     const combustiveisValidos = combustiveisImportados.filter(item => tiposUtilizados.has(item.id));
-    if (itensIneditos.length === 0 && combustiveisValidos.length === 0) return;
+    if (itensIneditos.length === 0 && combustiveisValidos.length === 0) {
+      return {
+        requested: novosItens.length,
+        accepted: 0,
+        rejected: itensRejeitados.length,
+        totalAfter: abastecimentos.length,
+        companiesCreated: 0,
+        equipmentsCreated: 0,
+        convoysCreated: 0,
+        fuelTypesCreated: 0,
+      };
+    }
     const fuelMerge = combustiveisValidos.length
       ? mergeImportedRecords(combustiveis, combustiveisValidos, item => normalizeImportText(item.nome))
       : null;
@@ -2745,6 +2761,16 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_abastecimentos', JSON.stringify(updated));
       }
     );
+    return {
+      requested: novosItens.length,
+      accepted: itensIneditos.length,
+      rejected: itensRejeitados.length,
+      totalAfter: updated.length,
+      companiesCreated: cadastrosImportados.empresas?.length || 0,
+      equipmentsCreated: cadastrosImportados.equipamentos?.length || 0,
+      convoysCreated: cadastrosImportados.comboios?.length || 0,
+      fuelTypesCreated: fuelMerge?.created || 0,
+    };
   };
 
   const handleSaveLubrificacao = (item: Lubrificacao, isNew: boolean) => {

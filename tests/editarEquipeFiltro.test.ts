@@ -11,5 +11,5 @@ test('editar equipe abre a lista só com os colaboradores ativos da equipe', () 
 });
 
 test('equipe nova continua mostrando todo o efetivo ativo', () => {
-  assert.match(tela, /setEditingGroupId\(null\);\n\s*setMembrosAoAbrir\(null\);/);
+  assert.match(tela, /setEditingGroupId\(null\);\r?\n\s*setMembrosAoAbrir\(null\);/);
 });

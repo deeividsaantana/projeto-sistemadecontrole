@@ -11,7 +11,6 @@ import {
   TipoCombustivel,
   ProdutoLubrificacao,
   Abastecimento,
-  ImportAbastecimentosResult,
   Lubrificacao,
   StatusRegistroCombustivel,
   ControleEquipamentoDiario,
@@ -52,6 +51,17 @@ import {
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
+
+export interface ImportAbastecimentosResult {
+  requested: number;
+  accepted: number;
+  rejected: number;
+  totalAfter: number;
+  companiesCreated?: number;
+  equipmentsCreated?: number;
+  convoysCreated?: number;
+  fuelTypesCreated?: number;
+}
 
 interface LancamentosTabProps {
   empresas: Empresa[];
