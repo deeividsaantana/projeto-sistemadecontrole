@@ -52,7 +52,6 @@ import {
   getFuelTankCapacity,
 } from '../utils/fuelOperations';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
-import { auth } from '../firebase';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import { stageFuelDataset } from '../services/masterDataApi';
 import { PageHeader } from '../shared/ui';
@@ -575,7 +574,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
         revisaoStatus: item.record.alertas?.some(alert => alert.severidade !== 'info') ? 'Pendente' as const : 'Aprovado' as const,
         revisadoPor: item.record.alertas?.some(alert => alert.severidade !== 'info')
           ? undefined
-          : auth.currentUser?.displayName || auth.currentUser?.email || 'Usuário autenticado',
+          : 'Usuário autenticado',
         revisadoEm: item.record.alertas?.some(alert => alert.severidade !== 'info')
           ? undefined
           : new Date().toISOString(),
@@ -613,7 +612,7 @@ const CombustivelInteligenteTab: React.FC<CombustivelInteligenteTabProps> = ({
   };
 
   const approveReview = (record: Abastecimento) => {
-    const reviewer = auth.currentUser?.displayName || auth.currentUser?.email || 'Usuário autenticado';
+    const reviewer = 'Usuário autenticado';
     onSaveAbastecimento({
       ...record,
       revisaoStatus: 'Aprovado',

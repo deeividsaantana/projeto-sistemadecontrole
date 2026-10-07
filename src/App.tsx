@@ -145,13 +145,8 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 import reneaLogo from './assets/images/logo-renea-transparent.png';
 import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 
-// Firebase Imports
-import { auth, db } from './firebase';
-import {
-  onAuthStateChanged,
-  type User,
-} from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import type { User } from '@supabase/supabase-js';
+import { getSupabaseClient } from './supabase/client';
 import {
   downloadCloudBackup,
   formatCloudSyncError,
@@ -159,20 +154,19 @@ import {
   uploadCloudBackup,
   type CloudData,
 } from './cloud/cloudSyncGateway';
-import { cloudProvider } from './platform/cloudProvider';
 import {
   deletePublicTicket,
   subscribePublicTickets,
   reservePublicTicketNumber,
   reservePublicTicketNumbers,
   savePublicTicket,
-} from './firebaseTickets';
+} from './supabase/publicTickets';
 import {
   markPublicSubmissionsProcessed,
   subscribePendingPublicSubmissions,
   type PublicSubmission,
-} from './firebasePublicSubmissions';
-import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
+} from './supabase/publicSubmissions';
+import { fetchAllPresenceSubmissions } from './supabase/presenceRecovery';
 import { captureCloudBaseline, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import {
   addPublicPresenceMember,
@@ -451,7 +445,7 @@ export default function App() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
   const [loginNotice, setLoginNotice] = useState<string>('');
-  const activeUserName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
+  const activeUserName = String(currentUser?.user_metadata?.name || currentUser?.email || 'Usuário RENEA');
 
   // Notification and Toast States
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -879,40 +873,46 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => onAuthStateChanged(auth, async user => {
-    if (!user) {
-      setCurrentUser(null);
-      setIsLoggedIn(false);
-      setIsAuthenticating(false);
-      return;
-    }
-    try {
-      const token = await user.getIdTokenResult(true);
-      if (token.claims.staff !== true) {
-        await signOutCurrentUser(auth);
+  useEffect(() => {
+    const client = getSupabaseClient();
+    const applyUser = (user: User | null) => {
+      if (!user) {
         setCurrentUser(null);
         setIsLoggedIn(false);
-        setLoginError('Sua conta existe, mas ainda não foi autorizada para acessar o sistema.');
+        setIsAuthenticating(false);
         return;
       }
-      setCurrentUserRole(normalizeUserRole(token.claims.role));
+      const role = String(user.app_metadata?.role || user.user_metadata?.role || 'admin');
+      setCurrentUserRole(normalizeUserRole(role));
       setCurrentUser(user);
       setIsLoggedIn(true);
-    } catch (error) {
-      console.error('Falha ao validar a autorização do usuário:', error);
-      setCurrentUser(null);
-      setIsLoggedIn(false);
-      setLoginError('Não foi possível validar sua autorização. Tente entrar novamente.');
-    } finally {
       setIsAuthenticating(false);
-    }
-  }), []);
+    };
+
+    client.auth.getUser()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        applyUser(data.user);
+      })
+      .catch(error => {
+        console.error('Falha ao validar a sessao Supabase:', error);
+        setCurrentUser(null);
+        setIsLoggedIn(false);
+        setIsAuthenticating(false);
+        setLoginError('Não foi possível validar sua autorização. Tente entrar novamente.');
+      });
+
+    const { data: subscription } = client.auth.onAuthStateChange((_event, session) => {
+      applyUser(session?.user || null);
+    });
+    return () => subscription.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) return;
     let timeoutId: number | undefined;
     const expireSession = async () => {
-      await signOutCurrentUser(auth);
+      await signOutCurrentUser();
       setCurrentUser(null);
       setIsLoggedIn(false);
       setPassword('');
@@ -947,7 +947,7 @@ export default function App() {
 
     const checkConnection = async () => {
       try {
-        const status = await getCloudConnectionStatus(db);
+        const status = await getCloudConnectionStatus();
         setIsCloudConnected(status.connected);
 
         // O horario remoto nao pode ser gravado como uma sincronizacao local.
@@ -1034,18 +1034,11 @@ export default function App() {
         ...overrides,
       };
 
-      // Recarrega as claims antes de qualquer gravação. Usuários que receberam
-      // o perfil staff/admin depois do login podem estar com um token antigo,
-      // embora a conta já esteja corretamente autorizada no Firebase Auth.
-      if (auth.currentUser) {
-        await auth.currentUser.getIdToken(true);
-      }
       // A versão que este aparelho comprovadamente já baixou. É o que permite
       // ao envio saber se está publicando em cima de algo conhecido ou se
       // precisa mesclar antes para não apagar o trabalho de outro usuário.
       const knownCloudVersion = localStorage.getItem('renea_last_cloud_sync_iso') || '';
       const uploadResult = await uploadCloudBackup(
-        db,
         data,
         knownCloudVersion,
         cloudBaselineRef.current,
@@ -1090,7 +1083,7 @@ export default function App() {
   // Download da nuvem pelo provedor autoritativo da fase atual.
   const handleDownloadFromFirebase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
     try {
-      const backup = await downloadCloudBackup(db);
+      const backup = await downloadCloudBackup();
       if (backup.data) {
         const downloadedData = backup.data;
         const validation = validateSystemBackup(downloadedData, false);
@@ -1393,7 +1386,7 @@ export default function App() {
     isCheckingSyncRef.current = true;
     lastSyncCheckAtRef.current = Date.now();
     try {
-      const status = await getCloudConnectionStatus(db);
+      const status = await getCloudConnectionStatus();
       setIsCloudConnected(status.connected);
 
       if (!status.updatedAt) return;
@@ -1416,24 +1409,7 @@ export default function App() {
     if (!isLoggedIn || !isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
 
     const initialCheck = window.setTimeout(pullRemoteChanges, 3_000);
-    // O manifesto dispara a atualização imediatamente quando outro cliente
-    // publica uma nova geração. O intervalo permanece apenas como fallback
-    // para reconectar quando o listener fica offline.
-    let unsubscribeManifest: (() => void) | undefined = () => undefined;
-    try {
-      if (cloudProvider !== 'supabase') {
-        unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
-          const updatedAt = String(snapshot.data()?.updatedAt || '');
-          if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
-        }, error => {
-          console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao configurar listener do manifesto:', error);
-      // Listener setup failed, unsubscribeManifest remains as no-op
-      // This ensures cleanup in useEffect return won't crash
-    }
+    const unsubscribeManifest: (() => void) | undefined = () => undefined;
     const interval = window.setInterval(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS);
     // O canal em tempo real do Firestore pode cair sem avisar quando o
     // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
@@ -1512,7 +1488,7 @@ export default function App() {
   // o documento que muda de fato.
   useEffect(() => {
     if (!isLoggedIn || externalTicketLink) return;
-    const unsubscribe = subscribePublicTickets(db, publicTickets => {
+    const unsubscribe = subscribePublicTickets(undefined, publicTickets => {
       const incomingIds = new Set(publicTickets.map(item => item.id));
       setTicketsJazida(current => {
         const withoutRemovedPublicTickets = current.filter(item => (
@@ -1599,7 +1575,7 @@ export default function App() {
     setLoginNotice('');
     setIsAuthenticating(true);
     try {
-      await signInWithCorporateEmail(auth, username, password);
+      await signInWithCorporateEmail(undefined, username, password);
       setLoginError('');
     } catch (error: unknown) {
       setLoginError(getLoginErrorMessage(error));
@@ -1617,7 +1593,7 @@ export default function App() {
       return;
     }
     try {
-      await sendPasswordRecoveryEmail(auth, email);
+      await sendPasswordRecoveryEmail(undefined, email);
     } catch {
       // A mesma resposta evita confirmar se um e-mail possui conta no sistema.
     }
@@ -1625,7 +1601,7 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await signOutCurrentUser(auth);
+    await signOutCurrentUser();
     setIsLoggedIn(false);
     setCurrentUser(null);
     setUsername('');
@@ -2508,7 +2484,7 @@ export default function App() {
       }
     );
     void savePublicTicket(
-      db,
+      undefined,
       { ...item, origemRegistro: item.origemRegistro || 'Admin' },
       { allowOverwriteSent: true },
     )
@@ -2529,7 +2505,7 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(updated));
       }
     );
-    void deletePublicTicket(db, id)
+    void deletePublicTicket(undefined, id)
       .catch(error => console.warn('Falha ao excluir ticket público:', error));
   };
 
@@ -2564,7 +2540,7 @@ export default function App() {
       }
     );
     ids.forEach(id => {
-      void deletePublicTicket(db, id).catch(error => console.warn('Falha ao excluir ticket público:', error));
+      void deletePublicTicket(undefined, id).catch(error => console.warn('Falha ao excluir ticket público:', error));
     });
   };
 
@@ -2586,8 +2562,8 @@ export default function App() {
     );
   };
 
-  const handleReserveTicketNumber = () => reservePublicTicketNumber(db, ticketsJazida);
-  const handleReserveTicketNumbers = (count: number) => reservePublicTicketNumbers(db, ticketsJazida, count);
+  const handleReserveTicketNumber = () => reservePublicTicketNumber(undefined, ticketsJazida);
+  const handleReserveTicketNumbers = (count: number) => reservePublicTicketNumbers(undefined, ticketsJazida, count);
 
   const handleSaveTicketLink = async (
     item: TicketJazida,
@@ -2704,7 +2680,7 @@ export default function App() {
   const handleRestorePresenceHistory = async (): Promise<{ success: boolean; message: string }> => {
     const releasePresenceSync = await acquirePresenceSync();
     try {
-      const submissions = await fetchAllPresenceSubmissions(db);
+      const submissions = await fetchAllPresenceSubmissions();
       const recoveredRecords = submissions.flatMap(item => item.payload.records || []);
       if (recoveredRecords.length === 0) {
         return { success: true, message: 'Nenhum envio de presença encontrado na fila pública para recuperar.' };
@@ -2928,7 +2904,7 @@ export default function App() {
           syncResult = await uploadLocalSnapshotToFirebase();
         }
         if (!syncResult.success) throw new Error(syncResult.message);
-        await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
+        await markPublicSubmissionsProcessed(undefined, submissions.map(item => item.id), currentUser.id);
       } catch (error) {
         if (!cancelled) {
           const message = error instanceof Error ? error.message : String(error);
@@ -2961,7 +2937,7 @@ export default function App() {
     };
 
     const unsubscribe = subscribePendingPublicSubmissions(
-      db,
+      undefined,
       submissions => {
         if (cancelled) return;
         // A query já filtra status == pending: esta contagem reflete o que

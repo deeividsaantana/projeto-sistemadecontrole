@@ -15,9 +15,9 @@ test('bootstrap publico carrega tela leve sem iniciar ERP administrativo', () =>
   assert.match(mainSource, /startReneaStorageMirror\(\)/);
 });
 
-test('servicos publicos nao importam Firebase no caminho inicial do link', () => {
-  assert.doesNotMatch(publicApiSource, /^import \{ auth \} from '\.\/firebase';/m);
-  assert.match(publicApiSource, /await import\('\.\/firebase'\)/);
+test('servicos publicos usam sessao Supabase sem importar Firebase', () => {
+  assert.doesNotMatch(publicApiSource, /from ['"]\.\/firebase|import\(['"]\.\/firebase/);
+  assert.match(publicApiSource, /getSupabaseClient\(\)\.auth\.getSession/);
   assert.doesNotMatch(publicLinksSource, /from '\.\/firebase'/);
 });
 

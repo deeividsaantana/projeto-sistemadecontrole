@@ -12,7 +12,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ClipboardCopy, Database, Link2, MessageCircle, Plus, RotateCcw, ShieldCheck } from 'lucide-react';
 import UsuariosTab from './UsuariosTab';
-import { INTERMEDIATE_TABLE_IDS } from '../firebaseCloudSync';
+import { OPERATIONAL_TABLE_IDS } from '../cloud/operationalTables';
 import {
   divergenciasDeRegistro,
   formatarBytes,
@@ -47,7 +47,7 @@ export default function AdministracaoTab({
     [],
   );
   const resumo = resumoArmazenamento(volumes);
-  const divergencias = useMemo(() => divergenciasDeRegistro(INTERMEDIATE_TABLE_IDS), []);
+  const divergencias = useMemo(() => divergenciasDeRegistro(OPERATIONAL_TABLE_IDS), []);
   const activeGroups = useMemo(
     () => gruposEquipe.filter(group => group.status === 'ativo' && group.linkAtivo !== false),
     [gruposEquipe],

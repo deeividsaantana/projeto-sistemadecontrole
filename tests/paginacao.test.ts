@@ -19,12 +19,12 @@ test('a página nunca passa do total de páginas', () => {
   assert.match(fonte, /Math\.min\(pagina, totalPaginas\)/);
 });
 
-// Custo de Firebase é prioridade máxima do sistema: a tela de tickets lia a
-// coleção inteira a cada 30 segundos. Isto trava a correção no lugar.
+// A tela de tickets nao pode voltar para varredura periodica. O backend agora
+// e Supabase, mas o contrato continua sendo listener/realtime.
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 
 test('tickets públicos chegam por listener, não por varredura periódica', () => {
-  assert.match(app, /subscribePublicTickets\(db,/);
+  assert.match(app, /subscribePublicTickets\(undefined,/);
   assert.equal(/setInterval\([\s\S]{0,120}PublicTickets/.test(app), false);
 });
 

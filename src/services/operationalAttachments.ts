@@ -1,10 +1,4 @@
-import {
-  getBlob,
-  ref,
-  uploadBytes,
-  type StorageReference,
-} from 'firebase/storage';
-import { storage } from '../firebaseStorage';
+import { getSupabaseClient } from '../supabase/client';
 import {
   buildOperationalAttachmentPath,
   type OperationalAttachmentScope,
@@ -34,21 +28,37 @@ const safeFileName = (value: string) => {
   return normalized;
 };
 
+const getOperationalAttachmentsBucket = () => String(
+  import.meta.env.VITE_SUPABASE_OPERATIONAL_ATTACHMENTS_BUCKET || 'operational-attachments',
+).trim();
+
+const normalizeSupabaseStorageError = (error: unknown): Error => {
+  if (error instanceof Error) return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    return new Error(String((error as { message?: unknown }).message || 'Falha no Supabase Storage.'));
+  }
+  return new Error(String(error || 'Falha no Supabase Storage.'));
+};
+
 export const uploadOperationalAttachment = async (
   scope: OperationalAttachmentScope,
   file: File,
 ): Promise<StoredOperationalAttachment> => {
   validateOperationalAttachment(file);
   const path = buildOperationalAttachmentPath(scope, file.name);
-  const reference = ref(storage, path);
-  await uploadBytes(reference, file, {
-    contentType: file.type,
-    customMetadata: {
-      originalName: safeFileName(file.name),
-      module: scope.module,
-      recordId: scope.recordId,
-    },
-  });
+  const { error } = await getSupabaseClient().storage
+    .from(getOperationalAttachmentsBucket())
+    .upload(path, file, {
+      upsert: true,
+      cacheControl: '3600',
+      contentType: file.type,
+      metadata: {
+        originalName: safeFileName(file.name),
+        module: scope.module,
+        recordId: scope.recordId,
+      },
+    });
+  if (error) throw normalizeSupabaseStorageError(error);
   return {
     ...scope,
     path,
@@ -59,6 +69,10 @@ export const uploadOperationalAttachment = async (
 };
 
 export const readOperationalAttachment = async (path: string): Promise<Blob> => {
-  const reference: StorageReference = ref(storage, String(path || ''));
-  return getBlob(reference);
+  const { data, error } = await getSupabaseClient().storage
+    .from(getOperationalAttachmentsBucket())
+    .download(String(path || ''));
+  if (error) throw normalizeSupabaseStorageError(error);
+  if (!data) throw new Error('Anexo operacional não encontrado no Supabase Storage.');
+  return data;
 };

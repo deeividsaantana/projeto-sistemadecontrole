@@ -61,11 +61,11 @@ const REQUIRED_ENV_KEYS: Array<keyof FirebaseEnv> = [
  * errado em produção.
  */
 export const getMissingFirebaseEnvKeys = (
-  env: FirebaseEnv = import.meta.env,
+  env: FirebaseEnv = {},
 ): Array<keyof FirebaseEnv> => REQUIRED_ENV_KEYS.filter(key => !String(env[key] || '').trim());
 
 export const resolveFirebaseClientConfig = (
-  env: FirebaseEnv = import.meta.env,
+  env: FirebaseEnv = {},
 ): FirebaseClientConfig => ({
   apiKey: pickEnv(env, 'VITE_FIREBASE_API_KEY', defaultFirebaseClientConfig.apiKey),
   authDomain: pickEnv(env, 'VITE_FIREBASE_AUTH_DOMAIN', defaultFirebaseClientConfig.authDomain),
