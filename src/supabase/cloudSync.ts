@@ -1,22 +1,22 @@
 import { captureCloudBaseline, mergeCloudSnapshotsWithBaseline, resolvePublishPayload, type CloudBaseline } from '../cloudMerge';
 import type {
-  FirebaseCloudData,
-  FirebaseConnectionStatus,
-  FirebaseDownloadResult,
-  FirebaseUploadResult,
-} from '../firebaseCloudSync';
+  CloudConnectionStatus,
+  CloudData,
+  CloudDownloadResult,
+  CloudUploadResult,
+} from '../cloud/cloudTypes';
 import { getSupabaseClient } from './client';
 import { resolveSupabaseClientConfig } from './config';
 
 const MAX_CONFLICT_ATTEMPTS = 4;
 
 interface SnapshotRow {
-  payload: FirebaseCloudData;
+  payload: CloudData;
   updated_at: string;
   record_count: number;
 }
 
-const countRecords = (data: FirebaseCloudData) => Object.values(data).reduce<number>(
+const countRecords = (data: CloudData) => Object.values(data).reduce<number>(
   (total, value) => total + (Array.isArray(value) ? value.length : 0),
   0,
 );
@@ -34,7 +34,7 @@ const normalizeSupabaseError = (error: unknown): Error => {
   return new Error(String(error || 'Falha no Supabase.'));
 };
 
-export const getSupabaseConnectionStatus = async (): Promise<FirebaseConnectionStatus> => {
+export const getSupabaseConnectionStatus = async (): Promise<CloudConnectionStatus> => {
   const client = getSupabaseClient();
   const organizationId = resolveSupabaseClientConfig().organizationId;
   const { data, error } = await client
@@ -51,7 +51,7 @@ export const getSupabaseConnectionStatus = async (): Promise<FirebaseConnectionS
   };
 };
 
-export const downloadSupabaseBackup = async (): Promise<FirebaseDownloadResult> => {
+export const downloadSupabaseBackup = async (): Promise<CloudDownloadResult> => {
   const client = getSupabaseClient();
   const organizationId = resolveSupabaseClientConfig().organizationId;
   const { data, error } = await client
@@ -71,9 +71,9 @@ export const downloadSupabaseBackup = async (): Promise<FirebaseDownloadResult> 
 };
 
 const publishSnapshot = async (
-  data: FirebaseCloudData,
+  data: CloudData,
   knownCloudVersion: string,
-): Promise<FirebaseUploadResult> => {
+): Promise<CloudUploadResult> => {
   const client = getSupabaseClient();
   const organizationId = resolveSupabaseClientConfig().organizationId;
   const { data: result, error } = await client.rpc('publish_erp_snapshot', {
@@ -95,10 +95,10 @@ const publishSnapshot = async (
 };
 
 export const uploadSupabaseBackup = async (
-  data: FirebaseCloudData,
+  data: CloudData,
   knownCloudVersion = '',
   baseline?: CloudBaseline,
-): Promise<FirebaseUploadResult> => {
+): Promise<CloudUploadResult> => {
   let payload = data;
   let expectedVersion = knownCloudVersion;
   let lastError: unknown;
@@ -113,7 +113,7 @@ export const uploadSupabaseBackup = async (
           remoteUpdatedAt: remote.updatedAt,
           knownCloudVersion: expectedVersion,
           baseline,
-        }) as FirebaseCloudData;
+        }) as CloudData;
         expectedVersion = remote.updatedAt;
       }
       return await publishSnapshot(payload, expectedVersion);
@@ -121,11 +121,10 @@ export const uploadSupabaseBackup = async (
       if (!isVersionConflict(error) || attempt === MAX_CONFLICT_ATTEMPTS) throw error;
       lastError = error;
       const remote = await downloadSupabaseBackup();
-      payload = mergeCloudSnapshotsWithBaseline(remote.data, payload, baseline) as FirebaseCloudData;
+      payload = mergeCloudSnapshotsWithBaseline(remote.data, payload, baseline) as CloudData;
       expectedVersion = remote.updatedAt;
     }
   }
 
   throw normalizeSupabaseError(lastError);
 };
-

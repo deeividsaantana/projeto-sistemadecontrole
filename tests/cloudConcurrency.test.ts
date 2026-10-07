@@ -108,14 +108,7 @@ test('registro criado pelo colega sobrevive mesmo com base registrada', () => {
   );
 });
 
-// TODO(decisão pendente, ver commit 09857ad): 'presencasLink' entrou em
-// TABELAS_SOMENTE_ACRESCIMO (src/cloudMerge.ts) para não perder histórico
-// recuperado no download. Isso também faz esta mesclagem ignorar a base e
-// nunca respeitar uma exclusão de presencasLink feita neste aparelho — o
-// registro apagado localmente volta da nuvem para sempre. Não decidi essa
-// política sozinho; marcado como todo até o time escolher entre reverter o
-// append-only para esta tabela ou trocar a exclusão por um campo de status.
-test('exclusao e criacao simultaneas convivem no mesmo envio', { todo: true }, () => {
+test('exclusao e criacao simultaneas convivem no mesmo envio', () => {
   const resolved = resolvePublishPayload({
     localPayload: { presencasLink: [{ id: 'p1' }, { id: 'p-novo-aqui' }] },
     remoteSnapshot: { presencasLink: [{ id: 'p1' }, { id: 'p-apagado' }, { id: 'p-novo-colega' }] },

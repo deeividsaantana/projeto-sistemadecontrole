@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { Building2, LogOut, Search, X } from 'lucide-react';
-import type { User } from 'firebase/auth';
+import type { AppUser } from '../../supabase/appRuntime';
 import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
 import type { Alerta } from '../../utils/alertas';
@@ -17,7 +17,7 @@ interface DesktopTopBarProps {
   activeTab: string;
   groups: NavigationGroupView[];
   menuSearch: string;
-  currentUser: User | null;
+  currentUser: AppUser | null;
   isNotificationOpen: boolean;
   notifications: AppNotification[];
   unreadCount: number;

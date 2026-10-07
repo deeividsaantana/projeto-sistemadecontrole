@@ -17,7 +17,8 @@ test('bootstrap publico carrega tela leve sem iniciar ERP administrativo', () =>
 
 test('servicos publicos nao importam Firebase no caminho inicial do link', () => {
   assert.doesNotMatch(publicApiSource, /^import \{ auth \} from '\.\/firebase';/m);
-  assert.match(publicApiSource, /await import\('\.\/firebase'\)/);
+  assert.match(publicApiSource, /from '\.\/supabase\/appRuntime'/);
+  assert.doesNotMatch(publicApiSource, /await import\('\.\/firebase'\)/);
   assert.doesNotMatch(publicLinksSource, /from '\.\/firebase'/);
 });
 

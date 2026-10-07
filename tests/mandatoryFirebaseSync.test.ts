@@ -57,10 +57,11 @@ test('detalhes tecnicos e controles manuais de sincronizacao nao aparecem nas co
   assert.match(configSource, /EXCLUIR \$\{selectedTab/);
 });
 
-test('recuperacao de presenca so roda pelo botao: a sincronizacao e em tempo real', () => {
+test('recuperacao de presenca so roda pelo botao: a sincronizacao Supabase permanece automatica', () => {
   assert.doesNotMatch(appSource, /automaticPresenceRecovery/);
   assert.match(appSource, /onRestorePresenceHistory=\{handleRestorePresenceHistory\}/);
-  assert.match(appSource, /onSnapshot\(doc\(db, 'sistemarenea_cloud', 'main_data_v2'\)/);
+  assert.match(appSource, /setInterval\(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS\)/);
+  assert.doesNotMatch(appSource, /onSnapshot\(doc\(db, 'sistemarenea_cloud', 'main_data_v2'\)/);
 });
 
 test('navegador novo baixa a nuvem antes de enviar qualquer coisa', () => {

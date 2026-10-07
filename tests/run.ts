@@ -1,5 +1,10 @@
 import './critical-path.test';
 import './supabaseCloudProvider.test';
+import './supabaseOnlyAuthService.test';
+import './supabaseOnlyCloudProvider.test';
+import './supabaseOnlyRuntimeImports.test';
+import './supabaseRelationalExport.test';
+import './supabaseRelationalImport.test';
 import './organizationRepository.test';
 import './worksiteRepository.test';
 import './administracaoRepository.test';

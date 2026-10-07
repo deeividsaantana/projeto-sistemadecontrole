@@ -45,6 +45,7 @@ playwright-report/
 # Saídas locais de auditoria, prints e backups (nunca versionar dados reais)
 artifacts/
 tmp/
+work/
 .playwright-mcp/
 *.log
 RENEA/

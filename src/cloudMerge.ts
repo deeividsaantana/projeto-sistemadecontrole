@@ -205,9 +205,11 @@ export const resolvePublishPayload = ({
  * faz pelo backend, não por um corte de armazenamento do navegador.
  *
  * As exclusões de cadastro entram aqui pelo mesmo motivo: se uma marca de
- * exclusão sumisse, o registro excluído voltaria.
+ * exclusão sumisse, o registro excluído voltaria. `presencasLink` não entra
+ * nessa exceção: a base persistida diferencia exclusão local de novidade do
+ * colega, então o histórico de presença pode respeitar exclusões explícitas.
  */
-const TABELAS_SOMENTE_ACRESCIMO = new Set(['historyLogs', 'presencasLink', TABELA_EXCLUSOES]);
+const TABELAS_SOMENTE_ACRESCIMO = new Set(['historyLogs', TABELA_EXCLUSOES]);
 
 export const mergeCloudSnapshotsWithBaseline = (
   remote: CloudSnapshot | null | undefined,

@@ -148,13 +148,7 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 import reneaLogo from './assets/images/logo-renea-transparent.png';
 import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 
-// Firebase Imports
-import { auth, db } from './firebase';
-import {
-  onAuthStateChanged,
-  type User,
-} from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db, onAuthStateChanged, type AppUser as User } from './supabase/appRuntime';
 import {
   downloadCloudBackup,
   formatCloudSyncError,
@@ -169,15 +163,15 @@ import {
   reservePublicTicketNumber,
   reservePublicTicketNumbers,
   savePublicTicket,
-} from './firebaseTickets';
+} from './supabase/appRuntime';
 import {
   markPublicSubmissionsProcessed,
   subscribePendingMaterialUses,
   subscribePendingPublicSubmissions,
   type PublicSubmission,
-} from './firebasePublicSubmissions';
+} from './supabase/appRuntime';
 import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
-import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
+import { fetchAllPresenceSubmissions } from './supabase/presenceRecovery';
 import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
@@ -1534,24 +1528,6 @@ export default function App() {
         return pullRemoteChanges();
       });
     }, 3_000);
-    // O manifesto dispara a atualização imediatamente quando outro cliente
-    // publica uma nova geração. O intervalo permanece apenas como fallback
-    // para reconectar quando o listener fica offline.
-    let unsubscribeManifest: (() => void) | undefined = () => undefined;
-    try {
-      if (cloudProvider !== 'supabase') {
-        unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
-          const updatedAt = String(snapshot.data()?.updatedAt || '');
-          if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
-        }, error => {
-          console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao configurar listener do manifesto:', error);
-      // Listener setup failed, unsubscribeManifest remains as no-op
-      // This ensures cleanup in useEffect return won't crash
-    }
     const interval = window.setInterval(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS);
     // O canal em tempo real do Firestore pode cair sem avisar quando o
     // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
@@ -1568,7 +1544,6 @@ export default function App() {
     return () => {
       window.clearTimeout(initialCheck);
       window.clearInterval(interval);
-      unsubscribeManifest();
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onReconnect);
       window.removeEventListener('focus', onReconnect);

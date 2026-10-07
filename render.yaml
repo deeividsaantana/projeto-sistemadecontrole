@@ -33,10 +33,12 @@ services:
       - key: VITE_FIREBASE_MEASUREMENT_ID
         sync: false
       - key: VITE_CLOUD_PROVIDER
-        value: firebase
+        value: supabase
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
         sync: false
       - key: VITE_SUPABASE_ORGANIZATION_ID
         value: renea
+      - key: VITE_SUPABASE_OPERATIONAL_ATTACHMENTS_BUCKET
+        value: operational-attachments

@@ -8,6 +8,7 @@ import type {
   PresencaStatus,
   TicketJazida,
 } from './types';
+import { auth } from './supabase/appRuntime';
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -192,7 +193,6 @@ export const updatePublicPresenceDayNote = async (
  * apontamento pelo link. Exige conta de equipe — não é ação de link público.
  */
 export const resetPresenceDay = async (grupoId: string, data: string) => {
-  const { auth } = await import('./firebase');
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login novamente para zerar o dia.');
   const idToken = await user.getIdToken();
@@ -212,7 +212,6 @@ export const resetPresenceDay = async (grupoId: string, data: string) => {
 export const deletePublicPresenceRecords = async (
   targets: Array<{ submissionDocId: string; recordIds: string[] }>,
 ) => {
-  const { auth } = await import('./firebase');
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login novamente para excluir os registros.');
   const idToken = await user.getIdToken();
@@ -240,7 +239,6 @@ export const validatePublicTicketAccess = async (accessToken: string) => {
 };
 
 export const getSecurePublicTicketLink = async () => {
-  const { auth } = await import('./firebase');
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login novamente para gerar o link público.');
   const idToken = await user.getIdToken();
@@ -357,7 +355,6 @@ export const submitPublicMaterialUse = async (accessToken: string, input: Public
 };
 
 export const getSecurePublicMaterialLink = async () => {
-  const { auth } = await import('./firebase');
   const user = auth.currentUser;
   if (!user) throw new Error('Faça login novamente para gerar o link dos apontadores.');
   const idToken = await user.getIdToken();

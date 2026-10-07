@@ -1,10 +1,5 @@
-import {
-  getBlob,
-  ref,
-  uploadBytes,
-  type StorageReference,
-} from 'firebase/storage';
-import { storage } from '../firebaseStorage';
+import { getSupabaseClient } from '../supabase/client';
+import { resolveSupabaseClientConfig } from '../supabase/config';
 import {
   buildOperationalAttachmentPath,
   type OperationalAttachmentScope,
@@ -40,15 +35,19 @@ export const uploadOperationalAttachment = async (
 ): Promise<StoredOperationalAttachment> => {
   validateOperationalAttachment(file);
   const path = buildOperationalAttachmentPath(scope, file.name);
-  const reference = ref(storage, path);
-  await uploadBytes(reference, file, {
-    contentType: file.type,
-    customMetadata: {
-      originalName: safeFileName(file.name),
-      module: scope.module,
-      recordId: scope.recordId,
-    },
-  });
+  const { error } = await getSupabaseClient()
+    .storage
+    .from(String(import.meta.env.VITE_SUPABASE_OPERATIONAL_ATTACHMENTS_BUCKET || 'operational-attachments'))
+    .upload(path, file, {
+      contentType: file.type,
+      upsert: true,
+      metadata: {
+        originalName: safeFileName(file.name),
+        module: scope.module,
+        recordId: scope.recordId,
+      },
+    });
+  if (error) throw error;
   return {
     ...scope,
     path,
@@ -59,6 +58,8 @@ export const uploadOperationalAttachment = async (
 };
 
 export const readOperationalAttachment = async (path: string): Promise<Blob> => {
-  const reference: StorageReference = ref(storage, String(path || ''));
-  return getBlob(reference);
+  const bucket = String(import.meta.env.VITE_SUPABASE_OPERATIONAL_ATTACHMENTS_BUCKET || 'operational-attachments');
+  const { data, error } = await getSupabaseClient().storage.from(bucket).download(String(path || ''));
+  if (error) throw error;
+  return data;
 };

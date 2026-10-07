@@ -72,7 +72,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     setError('');
     try {
       await updateManagedUser({
-        uid: user.firebaseUid,
+        uid: user.supabaseUserId,
         role: changes.role || user.role,
         active: changes.active ?? user.active,
       });
@@ -157,7 +157,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
               </thead>
               <tbody>
                 {users.map(user => (
-                  <tr key={user.firebaseUid} className="border-t border-slate-100">
+                  <tr key={user.supabaseUserId} className="border-t border-slate-100">
                     <td className="p-3">
                       <strong className="block text-slate-900">{user.fullName}</strong>
                       <span className="text-xs text-slate-500">{user.email}</span>

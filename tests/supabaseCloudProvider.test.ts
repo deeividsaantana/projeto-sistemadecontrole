@@ -6,7 +6,7 @@ import {
   isSupabaseCloudEnabledFor,
 } from '../src/platform/cloudProvider';
 
-test('provider Supabase cai para Firebase quando as variaveis obrigatorias ainda nao existem', () => {
+test('provider permanece Supabase quando as variaveis obrigatorias ainda nao existem', () => {
   const provider = resolveCloudProvider({
     VITE_CLOUD_PROVIDER: 'supabase',
     VITE_SUPABASE_URL: '',
@@ -14,7 +14,7 @@ test('provider Supabase cai para Firebase quando as variaveis obrigatorias ainda
     VITE_SUPABASE_ORGANIZATION_ID: '',
   });
 
-  assert.equal(provider, 'firebase');
+  assert.equal(provider, 'supabase');
   assert.equal(isSupabaseCloudEnabledFor({
     VITE_CLOUD_PROVIDER: 'supabase',
     VITE_SUPABASE_URL: '',
@@ -23,17 +23,17 @@ test('provider Supabase cai para Firebase quando as variaveis obrigatorias ainda
   }), false);
 });
 
-test('provider dual-write continua habilitado quando o Supabase estiver configurado', () => {
+test('provider Supabase permanece habilitado quando estiver configurado', () => {
   const provider = resolveCloudProvider({
-    VITE_CLOUD_PROVIDER: 'dual-write',
+    VITE_CLOUD_PROVIDER: 'supabase',
     VITE_SUPABASE_URL: 'https://example.supabase.co',
     VITE_SUPABASE_PUBLISHABLE_KEY: 'anon-key',
     VITE_SUPABASE_ORGANIZATION_ID: 'renea',
   });
 
-  assert.equal(provider, 'dual-write');
+  assert.equal(provider, 'supabase');
   assert.equal(isSupabaseCloudEnabledFor({
-    VITE_CLOUD_PROVIDER: 'dual-write',
+    VITE_CLOUD_PROVIDER: 'supabase',
     VITE_SUPABASE_URL: 'https://example.supabase.co',
     VITE_SUPABASE_PUBLISHABLE_KEY: 'anon-key',
     VITE_SUPABASE_ORGANIZATION_ID: 'renea',

@@ -8,7 +8,6 @@ import '@fontsource-variable/geist';
 import { isPublicLinkUrl } from './app/routing/publicRoutes';
 import { parsePrivatePath } from './app/routing/privateRoutes';
 import { PrivateRouteApp } from './app/routing/PrivateRouteApp';
-import { isSupabaseCloudEnabled } from './platform/cloudProvider';
 import { mirrorReneaLocalStorage, restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';
 import { instalarReservaEmMemoria, registrarPendentesDaReserva } from './utils/reservaArmazenamento';
 
@@ -33,7 +32,7 @@ const startApplication = async () => {
     );
   } else {
     const privateRoute = parsePrivatePath(window.location.pathname);
-    if (privateRoute && isSupabaseCloudEnabled) {
+    if (privateRoute) {
       root.render(<StrictMode><AppProviders><PrivateRouteApp route={privateRoute} /></AppProviders></StrictMode>);
     } else {
       const [{ default: App }] = await Promise.all([import('./App.tsx')]);

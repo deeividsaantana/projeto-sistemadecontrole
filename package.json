@@ -13,6 +13,7 @@
     "test": "node scripts/run-tests.mjs",
     "start": "node server/index.js",
     "provision:staff": "node scripts/provision-staff.mjs",
+    "migrate:supabase": "tsx scripts/migrate-firebase-to-supabase.ts",
     "prepare": "node scripts/install-git-hooks.mjs",
     "e2e": "playwright test",
     "check:bundle": "node scripts/check-bundle-size.mjs"

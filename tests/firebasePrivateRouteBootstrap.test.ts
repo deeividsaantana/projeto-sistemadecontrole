@@ -4,11 +4,11 @@ import { readFileSync } from 'node:fs';
 
 const mainSource = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
 
-test('rotas privadas SaaS nao desligam o sincronizador Firebase durante a transicao', () => {
-  assert.match(mainSource, /import \{ isSupabaseCloudEnabled \} from '\.\/platform\/cloudProvider'/);
+test('rotas privadas SaaS entram diretamente no shell Supabase', () => {
+  assert.doesNotMatch(mainSource, /isSupabaseCloudEnabled/);
   assert.match(mainSource, /const privateRoute = parsePrivatePath\(window\.location\.pathname\)/);
-  assert.match(mainSource, /if \(privateRoute && isSupabaseCloudEnabled\)/);
-  assert.match(mainSource, /import\('\.\/App\.tsx'\)/);
+  assert.match(mainSource, /if \(privateRoute\)/);
+  assert.match(mainSource, /<PrivateRouteApp route=\{privateRoute\}/);
   assert.match(mainSource, /restoreMissingReneaLocalStorage\(reserva\)/);
   assert.match(mainSource, /startReneaStorageMirror\(reserva\)/);
 });
