@@ -1,4 +1,4 @@
-import { auth } from './firebase';
+import { getSupabaseClient } from './supabase/client';
 
 export interface UsageSummaryItem {
   id: string;
@@ -18,10 +18,12 @@ const endpoint = '/.netlify/functions/usage-telemetry';
 const isLocalPreview = () => typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 const getAuthorizationHeaders = async () => {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Faça login para registrar o uso do sistema.');
+  const { data, error } = await getSupabaseClient().auth.getSession();
+  if (error) throw error;
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Faça login para registrar o uso do sistema.');
   return {
-    Authorization: `Bearer ${await user.getIdToken()}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   };
 };

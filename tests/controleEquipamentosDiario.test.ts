@@ -5,7 +5,7 @@ const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const component = readFileSync(new URL('../src/components/ControleEquipamentosDiarioTab.tsx', import.meta.url), 'utf8');
 const navigation = readFileSync(new URL('../src/app/navigation/navigation.ts', import.meta.url), 'utf8');
 const backup = readFileSync(new URL('../src/utils/systemBackup.ts', import.meta.url), 'utf8');
-const cloud = readFileSync(new URL('../src/firebaseCloudSync.ts', import.meta.url), 'utf8');
+const cloudTables = readFileSync(new URL('../src/cloud/operationalTables.ts', import.meta.url), 'utf8');
 const publicSnapshot = readFileSync(new URL('../netlify/functions/_shared/cloud-snapshot.js', import.meta.url), 'utf8');
 const reportService = readFileSync(new URL('../src/fleet/reportService.ts', import.meta.url), 'utf8');
 const reconciliation = readFileSync(new URL('../src/fleet/reconciliation.ts', import.meta.url), 'utf8');
@@ -46,5 +46,5 @@ assert.match(weeklyReport, /RELATÓRIO SEMANAL DE SITUAÇÃO OPERACIONAL DAS FRO
 assert.match(weeklyReport, /RESUMO SEMANAL/);
 assert.match(app, /renea_controle_equipamentos_diario/);
 assert.match(backup, /controleEquipamentosDiario/);
-assert.match(cloud, /controleEquipamentosDiario/);
+assert.match(cloudTables, /controleEquipamentosDiario/);
 assert.match(publicSnapshot, /controleEquipamentosDiario/);

@@ -1,4 +1,4 @@
-import { auth } from '../firebase';
+import { getSupabaseClient } from '../supabase/client';
 
 export const MASTER_DATA_ENTITIES = [
   'companies',
@@ -25,7 +25,7 @@ export type MasterDataReviewEntity =
 
 export interface MasterDataGatewayStatus {
   configured: boolean;
-  mode: 'firebase-auth-netlify-firestore';
+  mode: 'supabase-auth-postgres';
   organization: {
     id: string;
     code: string;
@@ -50,7 +50,7 @@ export type ManagedUserRole = 'admin' | 'gestor' | 'operador' | 'leitura';
 
 export interface ManagedUser {
   id: string;
-  firebaseUid: string;
+  supabaseUserId: string;
   email: string | null;
   fullName: string;
   role: ManagedUserRole;
@@ -76,10 +76,12 @@ const createIdempotencyKey = () => {
 };
 
 const authorizationHeaders = async () => {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Faça login para consultar os cadastros mestres.');
+  const { data, error } = await getSupabaseClient().auth.getSession();
+  if (error) throw error;
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Faça login para consultar os cadastros mestres.');
   return {
-    Authorization: `Bearer ${await user.getIdToken()}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   };
 };
@@ -98,7 +100,7 @@ const request = async <T>(url: string, init: MasterDataRequestInit = {}): Promis
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success !== true) {
-    throw new Error(payload?.message || 'Não foi possível consultar a persistência protegida do Firebase.');
+    throw new Error(payload?.message || 'Não foi possível consultar a persistência protegida do Supabase.');
   }
   return payload as ApiEnvelope<T>;
 };

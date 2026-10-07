@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { Building2, LogOut, Search, X } from 'lucide-react';
-import type { User } from 'firebase/auth';
+import type { User } from '@supabase/supabase-js';
 import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
 import type { Alerta } from '../../utils/alertas';
@@ -70,7 +70,7 @@ export function DesktopTopBar({
   const headerRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const logoutBtnRef = useRef<HTMLButtonElement>(null);
-  const userName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
+  const userName = String(currentUser?.user_metadata?.name || currentUser?.email || 'Usuário RENEA');
   const userInitials = userName.trim().slice(0, 2).toUpperCase();
 
   const visibleItems = useMemo(() => groups.flatMap(group => group.items), [groups]);

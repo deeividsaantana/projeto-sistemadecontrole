@@ -8,6 +8,7 @@ import type {
   PresencaStatus,
   TicketJazida,
 } from './types';
+import { getSupabaseClient } from './supabase/client';
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -45,6 +46,14 @@ const callPublicApi = async <T,>(path: string, init?: RequestInit): Promise<ApiE
     globalThis.clearTimeout(timeoutId);
     init?.signal?.removeEventListener('abort', abortFromCaller);
   }
+};
+
+const getSupabaseAuthorizationHeader = async () => {
+  const { data, error } = await getSupabaseClient().auth.getSession();
+  if (error) throw error;
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Faça login novamente para continuar.');
+  return { Authorization: `Bearer ${token}` };
 };
 
 const stableRequestKey = (kind: string, payload: unknown) => {
@@ -192,13 +201,9 @@ export const updatePublicPresenceDayNote = async (
  * apontamento pelo link. Exige conta de equipe — não é ação de link público.
  */
 export const resetPresenceDay = async (grupoId: string, data: string) => {
-  const { auth } = await import('./firebase');
-  const user = auth.currentUser;
-  if (!user) throw new Error('Faça login novamente para zerar o dia.');
-  const idToken = await user.getIdToken();
   const response = await callPublicApi<{ enviosRemovidos: number; registrosRemovidos: number }>(
     `/.netlify/functions/public-presenca?grupoId=${encodeURIComponent(grupoId)}&data=${encodeURIComponent(data)}`,
-    { method: 'DELETE', headers: { Authorization: `Bearer ${idToken}` } },
+    { method: 'DELETE', headers: await getSupabaseAuthorizationHeader() },
   );
   return {
     success: true,
@@ -212,13 +217,9 @@ export const resetPresenceDay = async (grupoId: string, data: string) => {
 export const deletePublicPresenceRecords = async (
   targets: Array<{ submissionDocId: string; recordIds: string[] }>,
 ) => {
-  const { auth } = await import('./firebase');
-  const user = auth.currentUser;
-  if (!user) throw new Error('Faça login novamente para excluir os registros.');
-  const idToken = await user.getIdToken();
   const response = await callPublicApi<{ registrosRemovidos: number }>('/.netlify/functions/public-presenca', {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${idToken}` },
+    headers: await getSupabaseAuthorizationHeader(),
     body: JSON.stringify({ action: 'excluir-registros', targets }),
   });
   return {
@@ -240,12 +241,8 @@ export const validatePublicTicketAccess = async (accessToken: string) => {
 };
 
 export const getSecurePublicTicketLink = async () => {
-  const { auth } = await import('./firebase');
-  const user = auth.currentUser;
-  if (!user) throw new Error('Faça login novamente para gerar o link público.');
-  const idToken = await user.getIdToken();
   const response = await callPublicApi<{ path: string }>('/.netlify/functions/public-tickets?action=link', {
-    headers: { Authorization: `Bearer ${idToken}` },
+    headers: await getSupabaseAuthorizationHeader(),
   });
   if (!response.data?.path) throw new Error('O servidor não retornou o link protegido.');
   return `${window.location.origin}${response.data.path}`;

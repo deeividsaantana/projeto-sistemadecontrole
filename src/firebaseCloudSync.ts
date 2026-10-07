@@ -11,60 +11,14 @@ import {
   resolvePublishPayload,
   type CloudBaseline,
 } from './cloudMerge';
+import { OPERATIONAL_TABLE_IDS } from './cloud/operationalTables';
 
 const CLOUD_COLLECTION = 'sistemarenea_cloud';
 const CLOUD_MANIFEST_ID = 'main_data_v2';
 const LEGACY_DOCUMENT_ID = 'main_data';
 const CLOUD_SCHEMA_VERSION = 2;
 const INTERMEDIATE_META_ID = 'meta';
-export const INTERMEDIATE_TABLE_IDS = [
-  'empresas',
-  'obras',
-  'equipamentos',
-  'funcionarios',
-  'motoristasOperacionais',
-  'comboios',
-  'combustiveis',
-  'lubrificantes',
-  'etapas',
-  'abastecimentos',
-  'lubrificacoes',
-  'ticketsJazida',
-  'listasPresenca',
-  'ordensServico',
-  'gruposEquipe',
-  'presencasLink',
-  'historicoPresencas',
-  'checklists',
-  'apontamentosOperacionais',
-  'registrosDds',
-  'treinamentos',
-  'modelosChecklist',
-  'apontamentoRamos',
-  'apontamentoRamoRegistros',
-  'materiaisCadastro',
-  'materiaisMovimentos',
-  'frentesServico',
-  'diariosObra',
-  'servicosObra',
-  'producaoRegistros',
-  'planejamentoItens',
-  'modelosFvs',
-  'fichasFvs',
-  'inspecoes',
-  'naoConformidades',
-  'medicoes',
-  'documentos',
-  'ocorrencias',
-  'lancamentosCusto',
-  'orcamentoItens',
-  'materiaisRegistros',
-  'controleEquipamentosDiario',
-  'periodosArquivados',
-  'notifications',
-  'historyLogs',
-  'vinculosOperadorEquipamento',
-] as const;
+export const INTERMEDIATE_TABLE_IDS = OPERATIONAL_TABLE_IDS;
 const MAX_CHUNK_PAYLOAD_BYTES = 600_000;
 const FIREBASE_READ_TIMEOUT_MS = 20_000;
 const FIREBASE_WRITE_TIMEOUT_MS = 45_000;
