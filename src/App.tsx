@@ -5,7 +5,7 @@
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
-import { PeriodFilter, RouteMotion, buildPeriod, type PeriodValue } from './shared/ui';
+import { RouteMotion } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -13,8 +13,9 @@ import {
   VinculoOperadorEquipamento,
   Funcionario, 
   FuncionarioDisponivel,
-  Comboio, 
-  TipoCombustivel, 
+  Comboio,
+  Canteiro,
+  TipoCombustivel,
   ProdutoLubrificacao, 
   EtapaServico, 
   Abastecimento, 
@@ -31,6 +32,10 @@ import {
   ServicoObra,
   RegistroProducao,
   PlanejamentoItem,
+  PrevistoMaterial,
+  RotinaDiaria,
+  PendenciaRotina,
+  ModeloRotina,
   ModeloFvs,
   FichaVerificacaoServico,
   Inspecao,
@@ -58,8 +63,9 @@ import {
   INITIAL_OBRAS, 
   INITIAL_EQUIPAMENTOS, 
   INITIAL_FUNCIONARIOS, 
-  INITIAL_COMBOIOS, 
-  INITIAL_TIPOS_COMBUSTIVEL, 
+  INITIAL_COMBOIOS,
+  INITIAL_CANTEIROS,
+  INITIAL_TIPOS_COMBUSTIVEL,
   INITIAL_PRODUTOS_LUBRIFICACAO, 
   INITIAL_ETAPAS_SERVICO, 
   INITIAL_ABASTECIMENTOS, 
@@ -73,9 +79,11 @@ import {
   INITIAL_TICKETS_JAZIDA,
   hydrateInitialOperationalSeedData,
 } from './utils/initialData';
+import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
+import { aplicarCadastroSge, type PreviaCadastroSge } from './fleet/sgeApontamentos';
 import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
 import { useOfflineQueueCount } from './hooks/useOfflineQueue';
@@ -85,12 +93,13 @@ import {
 } from './utils/equipmentOperations';
 import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 import { mergeImportedRecords } from './utils/importMerge';
-import { garantirOrdemAutomaticaDaFrota, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
+import { garantirOrdemAutomaticaDaFrota, liberarMaquinasDaOrdemConcluida, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
 import {
   LOCAL_FUEL_RESET_STORAGE_KEY,
   LOCAL_FUEL_RESET_VERSION,
   shouldResetLocalFuel,
 } from './utils/localFuelReset';
+import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -103,7 +112,7 @@ const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
-const CentralOperacionalTab = lazy(() => import('./components/CentralOperacionalTab'));
+const QuadroFrotaTab = lazy(() => import('./components/QuadroFrotaTab'));
 const FrotaTab = lazy(() => import('./components/FrotaTab'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const HorasParadasTab = lazy(() => import('./components/HorasParadasTab'));
@@ -113,21 +122,13 @@ const EquipesTab = lazy(() => import('./components/EquipesTab'));
 const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
 const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
-const FrentesTab = lazy(() => import('./components/FrentesTab'));
+const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
-const ProducaoTab = lazy(() => import('./components/ProducaoTab'));
 const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
-const FvsTab = lazy(() => import('./components/FvsTab'));
-const InspecoesTab = lazy(() => import('./components/InspecoesTab'));
-const NaoConformidadesTab = lazy(() => import('./components/NaoConformidadesTab'));
-const MedicoesTab = lazy(() => import('./components/MedicoesTab'));
-const DocumentosTab = lazy(() => import('./components/DocumentosTab'));
-const OcorrenciasTab = lazy(() => import('./components/OcorrenciasTab'));
 const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
 const IndicadoresTab = lazy(() => import('./components/IndicadoresTab'));
 const CustosTab = lazy(() => import('./components/CustosTab'));
 const OrcamentoTab = lazy(() => import('./components/OrcamentoTab'));
-const CronogramaTab = lazy(() => import('./components/CronogramaTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const TimelineTab = lazy(() => import('./components/TimelineTab'));
 const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
@@ -169,11 +170,15 @@ import {
 } from './firebaseTickets';
 import {
   markPublicSubmissionsProcessed,
+  subscribePendingMaterialUses,
   subscribePendingPublicSubmissions,
   type PublicSubmission,
 } from './firebasePublicSubmissions';
+import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
 import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
-import { captureCloudBaseline, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
+import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
+import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
+import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import {
   addPublicPresenceMember,
   deletePublicPresenceRecords,
@@ -200,17 +205,21 @@ import {
   normalizeTeamGroups,
 } from './utils/runtimeDataSafety';
 import { commitStorageBatch, isStorageQuotaExceededError } from './utils/resilientStorage';
+import { retirarPendentesDaReserva } from './utils/reservaArmazenamento';
 import { parseStoredJson, readStoredFlag, writeStorageValue, writeStoredFlag } from './data/localStore';
 import { ordemDoChecklist, MODELO_CHECKLIST_PADRAO } from './utils/checklist';
 import { STORAGE_KEYS } from './data/storageKeys';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
-import { promoteMasterWorkbook } from './masterData/materializeMasterData';
-import type { MasterWorkbookAnalysis, MasterWorkbookReviewRow } from './masterData/masterWorkbook';
+import type { MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
-import { obraDependencies, registryDependencies } from './masterData/registryDependencies';
+import { removerEquipamentosDoQuadro } from './modules/frota/quadroFrota';
+import { usosDoCadastro } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
+import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from './utils/cadastrosCategorias';
 import { appendMovement, applyMaterialImport, saveMaterial } from './modules/materials/materialCommands';
+import { desfazerNotasRepetidas } from './modules/materials/notaDuplicada';
+import { ticketsRepetidosParaExcluir } from './utils/ticketDuplicateDetection';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
@@ -274,7 +283,7 @@ import {
 
 import { AppNotification } from './types';
 
-type CadastroImportTarget = 'empresas' | 'fornecedores' | 'obras' | 'equipamentos' | 'veiculos' | 'funcionarios' | 'comboios' | 'combustiveis' | 'lubrificantes' | 'etapas';
+type CadastroImportTarget = CadastroCategoriaId;
 type CadastroImportRow = Record<string, string>;
 
 const normalizeImportText = (value: string = '') =>
@@ -342,10 +351,6 @@ const mergeRecordsById = <T extends { id: string }>(current: T[], incoming: T[])
   return Array.from(indexed.values());
 };
 
-const presenceBusinessKey = (item: Pick<PresencaApontamento, 'grupoId' | 'data' | 'funcionarioId'>) => (
-  `${item.grupoId}|${item.data}|${item.funcionarioId}`
-);
-
 /**
  * De qual chave local sai cada tabela do retrato da nuvem. Fica em um só
  * lugar porque duas rotinas dependem dela: gravar o que foi baixado e montar
@@ -358,6 +363,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['funcionarios', 'renea_funcionarios'],
   ['motoristasOperacionais', STORAGE_KEYS.motoristasOperacionais],
   ['comboios', 'renea_comboios'],
+  ['canteiros', 'renea_canteiros'],
   ['combustiveis', 'renea_combustiveis'],
   ['lubrificantes', 'renea_lubrificantes'],
   ['etapas', 'renea_etapas'],
@@ -376,6 +382,10 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['treinamentos', STORAGE_KEYS.treinamentos],
   ['materiaisCadastro', STORAGE_KEYS.materiaisCadastro],
   ['materiaisMovimentos', STORAGE_KEYS.materiaisMovimentos],
+  ['materiaisPrevistos', STORAGE_KEYS.materiaisPrevistos],
+  ['rotinasDiarias', STORAGE_KEYS.rotinasDiarias],
+  ['pendenciasRotina', STORAGE_KEYS.pendenciasRotina],
+  ['modelosRotina', STORAGE_KEYS.modelosRotina],
   ['frentesServico', STORAGE_KEYS.frentesServico],
   ['diariosObra', STORAGE_KEYS.diariosObra],
   ['servicosObra', STORAGE_KEYS.servicosObra],
@@ -395,6 +405,7 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['masterDataReviewQueue', 'renea_master_data_review_queue'],
   ['notifications', 'renea_notifications'],
   ['historyLogs', 'renea_history_logs'],
+  ['exclusoes', STORAGE_KEYS.exclusoes],
 ];
 
 /**
@@ -434,6 +445,9 @@ const SYNC_CHECK_MIN_INTERVAL_MS = 15_000;
  */
 const SYNC_FALLBACK_INTERVAL_MS = 5 * 60_000;
 
+/** Marca o navegador que ainda não baixou a nuvem nenhuma vez. */
+const AGUARDANDO_PRIMEIRO_DOWNLOAD = 'renea_aguardando_primeiro_download';
+
 const mergePresenceRecords = (current: PresencaApontamento[], incoming: PresencaApontamento[]) => {
   const indexed = new Map(current.map(item => [presenceBusinessKey(item), item]));
   incoming.forEach(item => indexed.set(presenceBusinessKey(item), item));
@@ -460,9 +474,10 @@ export default function App() {
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // Parte de Materiais pedida por outro lugar (aviso, busca); a vez remonta a tela na parte certa.
+  const [materiaisPedido, setMateriaisPedido] = useState<{ secao?: SecaoMateriais; vez: number }>({ vez: 0 });
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
   // o controle é renderizado na barra superior, ao lado do estado da nuvem.
-  const [periodoPainel, setPeriodoPainel] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [menuSearch, setMenuSearch] = useState<string>('');
   // Preferência de notificação é do dispositivo: fica no navegador e não sobe
@@ -518,6 +533,7 @@ export default function App() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [motoristasOperacionais, setMotoristasOperacionais] = useState<Funcionario[]>([...OPERATIONAL_DRIVERS]);
   const [comboios, setComboios] = useState<Comboio[]>([]);
+  const [canteiros, setCanteiros] = useState<Canteiro[]>([]);
   const [combustiveis, setCombustiveis] = useState<TipoCombustivel[]>([]);
   const [lubrificantes, setLubrificantes] = useState<ProdutoLubrificacao[]>([]);
   const [etapas, setEtapas] = useState<EtapaServico[]>([]);
@@ -533,6 +549,13 @@ export default function App() {
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
   const [materiaisCadastro, setMateriaisCadastro] = useState<Material[]>([]);
   const [materiaisMovimentos, setMateriaisMovimentos] = useState<MovimentoMaterial[]>([]);
+  // Lançamento desfeito continua guardado para o histórico, mas nenhuma outra
+  // tela soma ele: só a aba Materiais mostra o registro, marcado como desfeito.
+  const materiaisMovimentosVigentes = useMemo(() => materiaisMovimentos.filter(item => !item.canceladoEm), [materiaisMovimentos]);
+  const [materiaisPrevistos, setMateriaisPrevistos] = useState<PrevistoMaterial[]>([]);
+  const [rotinasDiarias, setRotinasDiarias] = useState<RotinaDiaria[]>([]);
+  const [pendenciasRotina, setPendenciasRotina] = useState<PendenciaRotina[]>([]);
+  const [modelosRotina, setModelosRotina] = useState<ModeloRotina[]>([]);
   const [frentesServico, setFrentesServico] = useState<FrenteServico[]>([]);
   const [diariosObra, setDiariosObra] = useState<DiarioObra[]>([]);
   const [servicosObra, setServicosObra] = useState<ServicoObra[]>([]);
@@ -556,6 +579,7 @@ export default function App() {
   // que os cálculos continuem vendo exatamente o mesmo conjunto que viam
   // quando a exclusão era definitiva. O arquivo completo continua no estado,
   // que é o que vai para o armazenamento e para a nuvem.
+  const canteirosNomes = useMemo(() => canteiros.map(item => item.nome), [canteiros]);
   const abastecimentosAtivos = useMemo(() => somenteAtivos(abastecimentos), [abastecimentos]);
   const ticketsJazidaAtivos = useMemo(() => somenteAtivos(ticketsJazida), [ticketsJazida]);
   const presencasLinkAtivas = useMemo(() => somenteAtivos(presencasLink), [presencasLink]);
@@ -565,6 +589,7 @@ export default function App() {
   const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
   const [vinculosOperadorEquipamento, setVinculosOperadorEquipamento] = useState<VinculoOperadorEquipamento[]>([]);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
+  const [exclusoes, setExclusoes] = useState<ExclusaoRegistro[]>([]);
   const [isExternalPresenceLoading, setIsExternalPresenceLoading] = useState<boolean>(Boolean(getPresenceTokenFromUrl()));
   const [externalPresenceLoadError, setExternalPresenceLoadError] = useState('');
   const [externalMeuGrupo, setExternalMeuGrupo] = useState<GrupoEquipe | null>(null);
@@ -604,14 +629,22 @@ export default function App() {
     let cancelled = false;
     const hydrateLocalData = async () => {
       if (externalTicketLink || externalPresenceToken) return;
-      try {
-        await hydrateInitialOperationalSeedData();
-        if (cancelled) return;
-      } catch (error) {
-        console.error('Falha ao carregar a base historica inicial:', error);
-      }
 
-    const isDataLoadedV2 = readStoredFlag(localStorage, STORAGE_KEYS.dataLoadedV2);
+      const isDataLoadedV2 = readStoredFlag(localStorage, STORAGE_KEYS.dataLoadedV2);
+      // A base de exemplo (seed) só é usada na primeira carga do aparelho e na
+      // migração pontual da planilha operacional (shouldMigrateSpreadsheetSeed,
+      // mais abaixo). Com as duas já feitas, baixar e processar esses módulos
+      // (~1,6 MB) a cada abertura do app não tinha efeito nenhum — só custava tempo.
+      const needsSeedData = !isDataLoadedV2
+        || !readStoredFlag(localStorage, STORAGE_KEYS.planilhasOperacionaisV2);
+      if (needsSeedData) {
+        try {
+          await hydrateInitialOperationalSeedData();
+          if (cancelled) return;
+        } catch (error) {
+          console.error('Falha ao carregar a base historica inicial:', error);
+        }
+      }
 
     if (!isDataLoadedV2) {
       const initialStorageEntries = [
@@ -620,6 +653,7 @@ export default function App() {
         { key: 'renea_equipamentos', value: JSON.stringify(INITIAL_EQUIPAMENTOS) },
         { key: 'renea_funcionarios', value: JSON.stringify(INITIAL_FUNCIONARIOS) },
         { key: 'renea_comboios', value: JSON.stringify(INITIAL_COMBOIOS) },
+        { key: 'renea_canteiros', value: JSON.stringify(INITIAL_CANTEIROS) },
         { key: 'renea_combustiveis', value: JSON.stringify(INITIAL_TIPOS_COMBUSTIVEL) },
         { key: 'renea_lubrificantes', value: JSON.stringify(INITIAL_PRODUTOS_LUBRIFICACAO) },
         { key: 'renea_etapas', value: JSON.stringify(INITIAL_ETAPAS_SERVICO) },
@@ -642,6 +676,9 @@ export default function App() {
       commitStorageBatch(localStorage, [
         ...initialStorageEntries,
         { key: 'renea_data_loaded_v2', value: 'true' },
+        // Navegador sem nenhum dado (aba anônima, computador novo): o que está
+        // aqui é só a semente do sistema. Nada sobe até a nuvem ser baixada.
+        { key: AGUARDANDO_PRIMEIRO_DOWNLOAD, value: 'true' },
         { key: 'renea_colaboradores_planilha_v1', value: 'true' },
         { key: 'renea_planilhas_operacionais_v2', value: 'true' },
       ]);
@@ -652,6 +689,7 @@ export default function App() {
       setFuncionarios(INITIAL_FUNCIONARIOS);
       setMotoristasOperacionais([...OPERATIONAL_DRIVERS]);
       setComboios(INITIAL_COMBOIOS);
+      setCanteiros(INITIAL_CANTEIROS);
       setCombustiveis(INITIAL_TIPOS_COMBUSTIVEL);
       setLubrificantes(INITIAL_PRODUTOS_LUBRIFICACAO);
       setEtapas(INITIAL_ETAPAS_SERVICO);
@@ -676,6 +714,7 @@ export default function App() {
       const savedFuncionarios = localStorage.getItem('renea_funcionarios');
       const savedMotoristasOperacionais = localStorage.getItem(STORAGE_KEYS.motoristasOperacionais);
       const savedComboios = localStorage.getItem('renea_comboios');
+      const savedCanteiros = localStorage.getItem('renea_canteiros');
       const savedCombustiveis = localStorage.getItem('renea_combustiveis');
       const savedLubrificantes = localStorage.getItem('renea_lubrificantes');
       const savedEtapas = localStorage.getItem('renea_etapas');
@@ -750,6 +789,7 @@ export default function App() {
       setFuncionarios(shouldMigratePresencePeople ? INITIAL_FUNCIONARIOS : parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS));
       setMotoristasOperacionais(parseStoredJson(savedMotoristasOperacionais, STORAGE_KEYS.motoristasOperacionais, [...OPERATIONAL_DRIVERS]));
       setComboios(loadedComboios);
+      setCanteiros(parseStoredJson(savedCanteiros, 'renea_canteiros', INITIAL_CANTEIROS));
       setCombustiveis(parseStoredJson(savedCombustiveis, 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL));
       setLubrificantes(parseStoredJson(savedLubrificantes, 'renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO));
       setEtapas(parseStoredJson(savedEtapas, 'renea_etapas', INITIAL_ETAPAS_SERVICO));
@@ -764,6 +804,10 @@ export default function App() {
       setTreinamentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.treinamentos), STORAGE_KEYS.treinamentos, [] as Treinamento[]));
       setMateriaisCadastro(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisCadastro), STORAGE_KEYS.materiaisCadastro, [] as Material[]));
       setMateriaisMovimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]));
+      setMateriaisPrevistos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisPrevistos), STORAGE_KEYS.materiaisPrevistos, [] as PrevistoMaterial[]));
+      setRotinasDiarias(parseStoredJson(localStorage.getItem(STORAGE_KEYS.rotinasDiarias), STORAGE_KEYS.rotinasDiarias, [] as RotinaDiaria[]));
+      setPendenciasRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.pendenciasRotina), STORAGE_KEYS.pendenciasRotina, [] as PendenciaRotina[]));
+      setModelosRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosRotina), STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]));
       setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, INITIAL_FRENTES_SERVICO));
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
       setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
@@ -788,6 +832,7 @@ export default function App() {
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
+      setExclusoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.exclusoes), STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[]));
       setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
 
       // Efetivo do EFETIVO_OBRA_3 em quem já usa o sistema. A semente acima só
@@ -931,7 +976,6 @@ export default function App() {
     };
   }, [isLoggedIn]);
 
-
   // Check the real Firestore connection only after authentication.
   useEffect(() => {
     setIsAutoSyncEnabled(true);
@@ -979,6 +1023,7 @@ export default function App() {
     funcionarios: readTable('renea_funcionarios', INITIAL_FUNCIONARIOS),
     motoristasOperacionais: readTable(STORAGE_KEYS.motoristasOperacionais, motoristasOperacionais),
     comboios: readTable('renea_comboios', INITIAL_COMBOIOS),
+    canteiros: readTable('renea_canteiros', INITIAL_CANTEIROS),
     combustiveis: readTable('renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL),
     lubrificantes: readTable('renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO),
     etapas: readTable('renea_etapas', INITIAL_ETAPAS_SERVICO),
@@ -991,6 +1036,10 @@ export default function App() {
     treinamentos: readTable(STORAGE_KEYS.treinamentos, [] as Treinamento[]),
     materiaisCadastro: readTable(STORAGE_KEYS.materiaisCadastro, [] as Material[]),
     materiaisMovimentos: readTable(STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]),
+    materiaisPrevistos: readTable(STORAGE_KEYS.materiaisPrevistos, [] as PrevistoMaterial[]),
+    rotinasDiarias: readTable(STORAGE_KEYS.rotinasDiarias, [] as RotinaDiaria[]),
+    pendenciasRotina: readTable(STORAGE_KEYS.pendenciasRotina, [] as PendenciaRotina[]),
+    modelosRotina: readTable(STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]),
     frentesServico: readTable(STORAGE_KEYS.frentesServico, [] as FrenteServico[]),
     diariosObra: readTable(STORAGE_KEYS.diariosObra, [] as DiarioObra[]),
     servicosObra: readTable(STORAGE_KEYS.servicosObra, [] as ServicoObra[]),
@@ -1017,22 +1066,30 @@ export default function App() {
     masterDataReviewQueue: readTable('renea_master_data_review_queue', [] as MasterWorkbookReviewRow[]),
     notifications: readTable('renea_notifications', getInitialNotifications()),
     historyLogs: readTable('renea_history_logs', [] as HistoryLog[]),
+    exclusoes: readTable(STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[]),
   });
 
   // Envio para a nuvem pelo gateway de migração.
   const handleUploadToFirebase = async (
     overrides: Partial<CloudData> = {},
   ): Promise<{ success: boolean; message: string }> => {
+    // Enviar a semente de um navegador novo por cima da nuvem trocava os
+    // links das equipes e zerava a presença de todo mundo.
+    if (localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD)) {
+      return { success: false, message: 'Este navegador ainda está baixando os dados da nuvem; nada foi enviado.' };
+    }
     uploadsInFlightRef.current += 1;
     try {
       const stored = readLocalCloudTables();
       const controleEstacasSalvo = readTable('renea_controle_estacas', controleEstacas);
-      const data = {
+      // Rede de proteção: nada com exclusão ativa sai deste aparelho, mesmo
+      // que uma tela antiga tenha deixado o registro no armazenamento local.
+      const data = aplicarExclusoes({
         ...stored,
         estacaLotes: controleEstacasSalvo.lotes,
         estacaCravacoes: controleEstacasSalvo.cravacoes,
         ...overrides,
-      };
+      });
 
       // Recarrega as claims antes de qualquer gravação. Usuários que receberam
       // o perfil staff/admin depois do login podem estar com um token antigo,
@@ -1106,12 +1163,20 @@ export default function App() {
           'renea_presencas_link',
           [],
         );
-        // O manifesto pode estar atrasado em relação ao histórico público já
-        // recuperado neste aparelho. Nunca deixe um download menor apagar
-        // presenças locais que ainda não chegaram a esse manifesto.
-        if (localPresence.length > remotePresence.length) {
-          data.presencasLink = mergePresenceRecords(remotePresence, localPresence);
-        }
+        // Presença lançada ou recuperada aqui que ainda não subiu continua;
+        // a que saiu da nuvem depois da última sincronização sai daqui também.
+        data.presencasLink = juntarPresencaBaixada(remotePresence, localPresence, cloudBaselineRef.current?.presencasLink);
+        // As exclusões nunca são trocadas pelo que veio da nuvem, só somadas:
+        // uma exclusão feita aqui que ainda não subiu não pode se perder, senão
+        // o registro volta. Depois disso, a marca vale para todas as tabelas.
+        const localExclusoes = parseStoredJson<ExclusaoRegistro[]>(
+          localStorage.getItem(STORAGE_KEYS.exclusoes),
+          STORAGE_KEYS.exclusoes,
+          [],
+        );
+        const remoteExclusoes = Array.isArray(data.exclusoes) ? data.exclusoes : [];
+        data.exclusoes = mergeCloudTable(remoteExclusoes, localExclusoes);
+        Object.assign(data, aplicarExclusoes(data));
         const downloadedBaseline = captureCloudBaseline(data);
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
@@ -1145,6 +1210,7 @@ export default function App() {
           if (!isStorageQuotaExceededError(error)) throw error;
           console.warn('A cache local está cheia. Os dados remotos continuarão disponíveis nesta sessão.');
         }
+        localStorage.removeItem(AGUARDANDO_PRIMEIRO_DOWNLOAD);
 
         // Só atualiza o React depois de toda a persistência local concluir.
         if (Object.hasOwn(data, 'empresas')) {
@@ -1164,6 +1230,9 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'comboios')) {
           setComboios(normalizeRuntimeCollection<Comboio>(data.comboios));
+        }
+        if (Object.hasOwn(data, 'canteiros')) {
+          setCanteiros(normalizeRuntimeCollection<Canteiro>(data.canteiros));
         }
         if (Object.hasOwn(data, 'combustiveis')) {
           setCombustiveis(normalizeRuntimeCollection<TipoCombustivel>(data.combustiveis));
@@ -1206,6 +1275,18 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'materiaisMovimentos')) {
           setMateriaisMovimentos(normalizeRuntimeCollection<MovimentoMaterial>(data.materiaisMovimentos));
+        }
+        if (Object.hasOwn(data, 'materiaisPrevistos')) {
+          setMateriaisPrevistos(normalizeRuntimeCollection<PrevistoMaterial>(data.materiaisPrevistos));
+        }
+        if (Object.hasOwn(data, 'rotinasDiarias')) {
+          setRotinasDiarias(normalizeRuntimeCollection<RotinaDiaria>(data.rotinasDiarias));
+        }
+        if (Object.hasOwn(data, 'pendenciasRotina')) {
+          setPendenciasRotina(normalizeRuntimeCollection<PendenciaRotina>(data.pendenciasRotina));
+        }
+        if (Object.hasOwn(data, 'modelosRotina')) {
+          setModelosRotina(normalizeRuntimeCollection<ModeloRotina>(data.modelosRotina));
         }
         if (Object.hasOwn(data, 'frentesServico')) {
           setFrentesServico(normalizeRuntimeCollection<FrenteServico>(data.frentesServico));
@@ -1282,6 +1363,9 @@ export default function App() {
         setHistoryLogs(restoredHistory);
         writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(restoredHistory));
       }
+      if (Array.isArray(data.exclusoes)) {
+        setExclusoes(data.exclusoes as ExclusaoRegistro[]);
+      }
       if (Array.isArray(data.vinculosOperadorEquipamento)) {
         setVinculosOperadorEquipamento(data.vinculosOperadorEquipamento);
         writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(data.vinculosOperadorEquipamento));
@@ -1341,7 +1425,7 @@ export default function App() {
         // locais antigos dos dados da nuvem. Perfis de escrita fazem uma
         // mesclagem conservadora antes de baixar o retrato publicado; assim
         // nenhum lancamento que so existe neste aparelho e perdido.
-        if (!localCloudVersion && currentUserRoleRef.current !== 'leitura') {
+        if (!localCloudVersion && currentUserRoleRef.current !== 'leitura' && !localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD)) {
           const uploadResult = await handleUploadToFirebase();
           if (!uploadResult.success) {
             pendingRemoteVersionRef.current = requestedVersion;
@@ -1415,7 +1499,27 @@ export default function App() {
     // — e o navegador nunca chegava a baixar os dados reais da nuvem.
     if (!isLoggedIn || !isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
 
-    const initialCheck = window.setTimeout(pullRemoteChanges, 3_000);
+    // O que não coube na memória do navegador e voltou da cópia de
+    // recuperação num F5 sobe antes de qualquer checagem: sem isso a
+    // importação só chegava à nuvem no próximo salvamento, se chegasse.
+    const initialCheck = window.setTimeout(() => {
+      const pendentes = retirarPendentesDaReserva();
+      if (pendentes.length === 0) {
+        void pullRemoteChanges();
+        return;
+      }
+      void handleUploadToFirebase().then(resultado => {
+        if (!resultado.success) {
+          addNotification(
+            'Envio pendente para a nuvem',
+            `O que foi salvo antes de recarregar a página está neste aparelho, mas ainda não chegou à nuvem. Motivo: ${resultado.message}`,
+            'error',
+            'Sistema Local',
+          );
+        }
+        return pullRemoteChanges();
+      });
+    }, 3_000);
     // O manifesto dispara a atualização imediatamente quando outro cliente
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.
@@ -1696,46 +1800,253 @@ export default function App() {
     );
   };
 
-  const handleDeleteObra = (id: string) => {
-    const item = obras.find(x => x.id === id);
-    if (!item) return false;
-    const dependencies = obraDependencies(id, {
-      equipamentos,
-      collections: {
-        Presenças: listasPresenca,
-        Equipes: gruposEquipe,
-        Frentes: frentesServico,
-        Diários: diariosObra,
-        Serviços: servicosObra,
-        Produção: producaoRegistros,
-        Planejamento: planejamentoItens,
-        FVS: fichasFvs,
-        Inspeções: inspecoes,
-        'Não conformidades': naoConformidades,
-        Medições: medicoes,
-        Documentos: documentos,
-        Ocorrências: ocorrencias,
-        Custos: lancamentosCusto,
-        Orçamentos: orcamentoItens,
-      },
-    });
-    if (dependencies.length > 0) {
-      notifyRegistryDeletionBlocked(dependencies);
-      return false;
-    }
-    const updated = obras.filter(x => x.id !== id);
+  /**
+   * Exclusão real de um cadastro: tira da lista e grava a marca em
+   * `exclusoes` no mesmo lote do armazenamento local, antes do envio. A marca
+   * é o que faz a exclusão chegar ao Firebase e aos outros aparelhos sem
+   * voltar (ver src/cloud/exclusoes.ts).
+   */
+  const excluirCadastros = <T extends { id: string; nome?: string }>({
+    tabela,
+    storageKey,
+    tela,
+    itens,
+    lista,
+    setLista,
+  }: {
+    tabela: string;
+    storageKey: string;
+    tela: string;
+    itens: Array<{ item: T; rotulo: string }>;
+    lista: T[];
+    setLista: (next: T[]) => void;
+  }) => {
+    // Vários de uma vez gravam num lote só: chamadas seguidas enxergariam a
+    // mesma lista antiga e só a última exclusão ficaria.
+    const agora = new Date().toISOString();
+    const novas = itens.map(({ item, rotulo }) => criarExclusao({
+      tabela,
+      registro: item as unknown as { id: string } & Record<string, unknown>,
+      rotulo,
+      usuario: activeUserName,
+      agora,
+    }));
+    const ids = new Set(itens.map(({ item }) => item.id));
+    const updated = lista.filter(x => !ids.has(x.id));
+    const nextExclusoes = [...novas, ...exclusoes];
+    const nomes = itens.map(({ rotulo }) => `"${rotulo}"`).join(', ');
     saveAndLog(
-      'Obras/Locais',
+      tela,
       'Excluiu',
-      `Excluiu permanentemente a obra/local "${item.nome}".`,
+      itens.length === 1 ? `Excluiu ${nomes}.` : `Excluiu ${itens.length} cadastros: ${nomes}.`,
       historyLogs,
       () => {
-        setObras(updated);
-        writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
+        commitStorageBatch(localStorage, [
+          { key: storageKey, value: JSON.stringify(updated) },
+          { key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) },
+        ]);
+        setLista(updated);
+        setExclusoes(nextExclusoes);
       },
-      { registroId: id, valorAnterior: item, tipoOperacao: 'DELETE' },
+      {
+        registroId: itens.map(({ item }) => item.id).join(','),
+        valorAnterior: itens.length === 1 ? itens[0].item : itens.map(({ item }) => item),
+        tipoOperacao: 'DELETE',
+      },
     );
-    return true;
+    return novas.map(exclusao => exclusao.id);
+  };
+
+  /** Tabelas que a aba Cadastros edita, com onde cada uma é guardada. */
+  const tabelasCadastro = (): Record<string, { lista: Array<{ id: string; nome?: string }>; setLista: (next: never[]) => void; storageKey: string; tela: string }> => ({
+    empresas: { lista: empresas, setLista: setEmpresas as (next: never[]) => void, storageKey: 'renea_empresas', tela: 'Empresas' },
+    funcionarios: { lista: funcionarios, setLista: setFuncionarios as (next: never[]) => void, storageKey: 'renea_funcionarios', tela: 'Funcionários' },
+    equipamentos: { lista: equipamentos, setLista: setEquipamentos as (next: never[]) => void, storageKey: 'renea_equipamentos', tela: 'Equipamentos' },
+    obras: { lista: obras, setLista: setObras as (next: never[]) => void, storageKey: 'renea_obras', tela: 'Obras/Locais' },
+    comboios: { lista: comboios, setLista: setComboios as (next: never[]) => void, storageKey: 'renea_comboios', tela: 'Comboios' },
+    canteiros: { lista: canteiros, setLista: setCanteiros as (next: never[]) => void, storageKey: 'renea_canteiros', tela: 'Canteiros' },
+    combustiveis: { lista: combustiveis, setLista: setCombustiveis as (next: never[]) => void, storageKey: 'renea_combustiveis', tela: 'Combustíveis' },
+    lubrificantes: { lista: lubrificantes, setLista: setLubrificantes as (next: never[]) => void, storageKey: 'renea_lubrificantes', tela: 'Produtos Lubrificação' },
+    etapas: { lista: etapas, setLista: setEtapas as (next: never[]) => void, storageKey: 'renea_etapas', tela: 'Etapas de Serviço' },
+    frentesServico: { lista: frentesServico, setLista: setFrentesServico as (next: never[]) => void, storageKey: STORAGE_KEYS.frentesServico, tela: 'Frentes de Serviço' },
+    servicosObra: { lista: servicosObra, setLista: setServicosObra as (next: never[]) => void, storageKey: STORAGE_KEYS.servicosObra, tela: 'Serviços da obra' },
+    // Tickets repetidos vão para a Lixeira sozinhos; daqui eles voltam se restaurados.
+    ticketsJazida: { lista: ticketsJazida as never[], setLista: setTicketsJazida as (next: never[]) => void, storageKey: 'renea_tickets_jazida', tela: 'Tickets Jazida' },
+  });
+
+  const usosDoCadastroAtual = (tabela: string, id: string) => usosDoCadastro(tabela, id, {
+    empresas,
+    funcionarios,
+    equipamentos,
+    abastecimentos,
+    lubrificacoes,
+    apontamentos: apontamentosOperacionais,
+    ordensServico,
+    listasPresenca,
+    presencasLink,
+    gruposEquipe,
+    controleEquipamentosDiario: controleEquipamentosDiario as ReadonlyArray<ControleEquipamentoDiario & { local?: string }>,
+    canteiros,
+    materiaisMovimentos,
+    frentesServico,
+    producao: producaoRegistros,
+    planejamento: planejamentoItens,
+    colecoesDaObra: {
+      Presenças: listasPresenca,
+      Equipes: gruposEquipe,
+      Frentes: frentesServico,
+      Diários: diariosObra,
+      Serviços: servicosObra,
+      Produção: producaoRegistros,
+      Planejamento: planejamentoItens,
+      FVS: fichasFvs,
+      Inspeções: inspecoes,
+      'Não conformidades': naoConformidades,
+      Medições: medicoes,
+      Documentos: documentos,
+      Ocorrências: ocorrencias,
+      Custos: lancamentosCusto,
+      Orçamentos: orcamentoItens,
+    },
+  });
+
+  /**
+   * Exclusão real pedida pela aba Cadastros. Só admin, e só de cadastro que
+   * não aparece em nenhum lançamento: com uso, devolve onde ele aparece e a
+   * tela oferece inativar.
+   */
+  type UsoRegistro = { collection: string; count: number };
+
+  /**
+   * Exclui vários cadastros da mesma tabela. O que está em uso fica de fora e
+   * volta na lista de travados, com onde aparece; o resto sai num lote só.
+   */
+  const handleExcluirCadastros = (tabela: string, alvos: Array<{ id: string; rotulo: string }>): {
+    excluidos: Array<{ id: string; rotulo: string; exclusaoId: string }>;
+    travados: Array<{ id: string; rotulo: string; usos: UsoRegistro[] }>;
+    mensagem?: string;
+  } => {
+    if (!pode(currentUserRole, 'cadastros', 'excluir')) {
+      return { excluidos: [], travados: [], mensagem: 'Só o administrador pode excluir cadastros.' };
+    }
+    const alvo = tabelasCadastro()[tabela];
+    if (!alvo) return { excluidos: [], travados: [], mensagem: 'Este tipo de cadastro não pode ser excluído por aqui.' };
+    const porId = new Map(alvo.lista.map(item => [item.id, item]));
+    const livres: Array<{ item: (typeof alvo.lista)[number]; rotulo: string }> = [];
+    const travados: Array<{ id: string; rotulo: string; usos: UsoRegistro[] }> = [];
+    alvos.forEach(({ id, rotulo }) => {
+      const item = porId.get(id);
+      if (!item) return;
+      const usos = usosDoCadastroAtual(tabela, id);
+      if (usos.length > 0) travados.push({ id, rotulo, usos });
+      else livres.push({ item, rotulo });
+    });
+    if (livres.length === 0) return { excluidos: [], travados };
+    const ids = excluirCadastros({ tabela, storageKey: alvo.storageKey, tela: alvo.tela, itens: livres, lista: alvo.lista, setLista: alvo.setLista as (next: typeof alvo.lista) => void });
+    return { excluidos: livres.map(({ item, rotulo }, indice) => ({ id: item.id, rotulo, exclusaoId: ids[indice] })), travados };
+  };
+
+  const handleExcluirCadastro = (tabela: string, id: string, rotulo: string): { ok: true; exclusaoId: string } | { ok: false; usos: UsoRegistro[]; mensagem?: string } => {
+    const alvo = tabelasCadastro()[tabela];
+    if (pode(currentUserRole, 'cadastros', 'excluir') && !alvo?.lista.some(x => x.id === id)) {
+      return { ok: false, usos: [], mensagem: 'Este cadastro não existe mais neste aparelho.' };
+    }
+    const resultado = handleExcluirCadastros(tabela, [{ id, rotulo }]);
+    if (resultado.excluidos.length > 0) return { ok: true, exclusaoId: resultado.excluidos[0].exclusaoId };
+    return { ok: false, usos: resultado.travados[0]?.usos || [], mensagem: resultado.mensagem };
+  };
+
+  /**
+   * Devolve os cadastros guardados nas exclusões e marca as exclusões como
+   * desfeitas, tudo num lote só (o Desfazer de uma exclusão em lote passa aqui).
+   */
+  const handleRestaurarCadastros = (exclusaoIds: string[]): { ok: boolean; mensagem: string } => {
+    const pedidos = new Set(exclusaoIds);
+    const pendentes = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm && !item.apagadoEm);
+    if (pendentes.length === 0) return { ok: false, mensagem: exclusaoIds.length === 1 ? 'Este cadastro já foi restaurado ou excluído de vez.' : 'Estes cadastros já foram restaurados ou excluídos de vez.' };
+    const tabelas = tabelasCadastro();
+    const agora = new Date().toISOString();
+    const listas = new Map<string, Array<{ id: string }>>();
+    const restaurados: typeof pendentes = [];
+    const erros: string[] = [];
+    pendentes.forEach(exclusao => {
+      const alvo = tabelas[exclusao.tabela];
+      if (!alvo) {
+        erros.push(`${exclusao.rotulo}: este tipo não pode ser restaurado por aqui.`);
+        return;
+      }
+      const lista = listas.get(exclusao.tabela) || alvo.lista;
+      if (lista.some(item => item.id === exclusao.registroId)) {
+        restaurados.push(exclusao);
+        return;
+      }
+      const registro = { ...exclusao.registro, id: exclusao.registroId } as { id: string };
+      if (['empresas', 'funcionarios', 'equipamentos', 'obras'].includes(exclusao.tabela)) {
+        const problemas = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: registro as Empresa });
+        if (problemas.length > 0) {
+          erros.push(`${exclusao.rotulo}: ${problemas.join(' ')}`);
+          return;
+        }
+      }
+      const restaurado = ['empresas', 'funcionarios'].includes(exclusao.tabela) ? { ...registro, atualizadoEm: agora } : registro;
+      listas.set(exclusao.tabela, [...lista, restaurado]);
+      restaurados.push(exclusao);
+    });
+    if (restaurados.length === 0) return { ok: false, mensagem: `Não deu para restaurar: ${erros.join(' ')}` };
+    const feitos = new Set(restaurados.map(item => item.id));
+    const nextExclusoes = exclusoes.map(item => (feitos.has(item.id) ? restaurarExclusao(item, activeUserName, agora) : item));
+    const nomes = restaurados.map(item => `"${item.rotulo}"`).join(', ');
+    saveAndLog(
+      tabelas[restaurados[0].tabela]?.tela || 'Cadastros',
+      'Restaurou',
+      restaurados.length === 1 ? `Restaurou ${nomes} da Lixeira.` : `Restaurou ${restaurados.length} cadastros da Lixeira: ${nomes}.`,
+      historyLogs,
+      () => {
+        commitStorageBatch(localStorage, [
+          ...Array.from(listas, ([tabela, lista]) => ({ key: tabelas[tabela].storageKey, value: JSON.stringify(lista) })),
+          { key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) },
+        ]);
+        listas.forEach((lista, tabela) => tabelas[tabela].setLista(lista as never[]));
+        setExclusoes(nextExclusoes);
+      },
+      { registroId: restaurados.map(item => item.registroId).join(','), valorNovo: restaurados.map(item => item.registro), tipoOperacao: 'RESTORE' },
+    );
+    const texto = restaurados.length === 1 ? `${restaurados[0].rotulo} voltou para a lista.` : `${restaurados.length} cadastros voltaram para a lista.`;
+    return { ok: erros.length === 0, mensagem: erros.length === 0 ? texto : `${texto} Não voltaram: ${erros.join(' ')}` };
+  };
+
+  const handleRestaurarCadastro = (exclusaoId: string) => handleRestaurarCadastros([exclusaoId]);
+
+  // Locais na Lixeira: a lista SGE de Materiais não oferece de novo o que foi apagado.
+  const locaisApagados = useMemo(() => new Set(exclusoes.filter(item => item.tabela === 'etapas' && !item.restauradoEm).map(item => item.registroId)), [exclusoes]);
+
+  /**
+   * Tira da Lixeira e joga fora a cópia guardada. A marca de exclusão fica,
+   * para nenhum aparelho publicar o cadastro de volta. Não tem desfazer.
+   */
+  const handleApagarDeVez = (exclusaoIds: string[]): { ok: boolean; mensagem: string } => {
+    if (!pode(currentUserRole, 'cadastros', 'excluir')) {
+      return { ok: false, mensagem: 'Só o administrador pode excluir de vez.' };
+    }
+    const pedidos = new Set(exclusaoIds);
+    const alvos = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm && !item.apagadoEm);
+    if (alvos.length === 0) return { ok: false, mensagem: 'Nada para excluir de vez: a Lixeira já mudou.' };
+    const agora = new Date().toISOString();
+    const feitos = new Set(alvos.map(item => item.id));
+    const nextExclusoes = exclusoes.map(item => (feitos.has(item.id) ? apagarDeVez(item, activeUserName, agora) : item));
+    const nomes = alvos.map(item => `"${item.rotulo}"`).join(', ');
+    saveAndLog(
+      tabelasCadastro()[alvos[0].tabela]?.tela || 'Cadastros',
+      'Excluiu',
+      alvos.length === 1 ? `Excluiu de vez ${nomes} da Lixeira.` : `Excluiu de vez ${alvos.length} cadastros da Lixeira: ${nomes}.`,
+      historyLogs,
+      () => {
+        commitStorageBatch(localStorage, [{ key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) }]);
+        setExclusoes(nextExclusoes);
+      },
+      { registroId: alvos.map(item => item.registroId).join(','), tipoOperacao: 'DELETE' },
+    );
+    return { ok: true, mensagem: alvos.length === 1 ? `${alvos[0].rotulo} foi excluído de vez.` : `${alvos.length} cadastros foram excluídos de vez.` };
   };
 
   const handleSaveEquipamento = (item: Equipamento, isNew: boolean) => {
@@ -1784,8 +2095,8 @@ export default function App() {
     };
     const nextLinks = [link, ...closedLinks];
     const nextEquipment = equipamentos.map(item => {
-      if (item.id === equipamentoId) return { ...item, operadorResponsavelId: funcionarioId, operadorResponsavelNome: funcionario.nome };
-      if (item.operadorResponsavelId === funcionarioId) return { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined };
+      if (item.id === equipamentoId) return { ...item, operadorResponsavelId: funcionarioId, operadorResponsavelNome: funcionario.nome, operadorResponsavelDesde: new Date().toLocaleDateString('sv-SE'), atualizadoEm: now };
+      if (item.operadorResponsavelId === funcionarioId) return { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined, operadorResponsavelDesde: undefined, atualizadoEm: now };
       return item;
     });
     setVinculosOperadorEquipamento(nextLinks);
@@ -1795,12 +2106,57 @@ export default function App() {
     addNotification('Vínculo operacional atualizado', `${funcionario.nome} vinculado ao equipamento ${equipamento.prefixo}.`, 'success', 'Sistema Local');
   };
 
+  const handleAplicarCadastroSge = (previa: PreviaCadastroSge) => {
+    if (!previa.alteracoes.length) return;
+    const now = new Date().toISOString();
+    const nextEquipment = aplicarCadastroSge(equipamentos, previa, funcionarios);
+    const trocas = previa.alteracoes.filter(item => item.motorista);
+    const equipamentosTrocados = new Set(trocas.map(item => item.equipamentoId));
+    const motoristasNovos = new Set(trocas.map(item => item.motorista?.funcionarioId).filter(Boolean));
+    const closedLinks = vinculosOperadorEquipamento.map(link =>
+      link.status === 'ATIVO' && (equipamentosTrocados.has(link.equipamentoId) || motoristasNovos.has(link.funcionarioId))
+        ? { ...link, status: 'ENCERRADO' as const, fimEm: now, atualizadoEm: now }
+        : link,
+    );
+    const newLinks: VinculoOperadorEquipamento[] = trocas.flatMap(item => {
+      const funcionario = funcionarios.find(person => person.id === item.motorista?.funcionarioId);
+      if (!funcionario) return [];
+      return [{
+        id: `vinculo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        funcionarioId: funcionario.id,
+        funcionarioNome: funcionario.nome,
+        equipamentoId: item.equipamentoId,
+        equipamentoPrefixo: item.prefixo,
+        inicioEm: now,
+        status: 'ATIVO' as const,
+        responsavelAlteracao: activeUserName,
+        observacao: 'Último operador no apontamento do SGE.',
+        criadoEm: now,
+        atualizadoEm: now,
+      }];
+    });
+    const nextLinks = [...newLinks, ...closedLinks];
+    saveAndLog(
+      'Equipamentos',
+      'Editou',
+      `Atualizou pelo apontamento do SGE: ${previa.equipamentosNovos} equipamento(s) cadastrado(s), ${previa.equipamentosReativados} de volta ao quadro, ${previa.motoristasVinculados} motorista(s) vinculado(s), ${previa.motoristasRetirados} retirado(s) e ${previa.horimetrosAtualizados} horímetro(s).`,
+      historyLogs,
+      () => {
+        setEquipamentos(nextEquipment);
+        setVinculosOperadorEquipamento(nextLinks);
+        writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(nextEquipment));
+        writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
+      },
+      { registroId: 'sge-cadastro', valorAnterior: previa.alteracoes.map(item => ({ prefixo: item.prefixo, motorista: item.motorista?.antes, horimetro: item.horimetro?.antes })), valorNovo: previa.alteracoes.map(item => ({ prefixo: item.prefixo, motorista: item.motorista?.depois, horimetro: item.horimetro?.depois })), tipoOperacao: 'UPDATE' },
+    );
+  };
+
   const handleEncerrarVinculoOperadorEquipamento = (vinculoId: string) => {
     const current = vinculosOperadorEquipamento.find(link => link.id === vinculoId && link.status === 'ATIVO');
     if (!current) return;
     const now = new Date().toISOString();
     const nextLinks = vinculosOperadorEquipamento.map(link => link.id === vinculoId ? { ...link, status: 'ENCERRADO' as const, fimEm: now, atualizadoEm: now } : link);
-    const nextEquipment = equipamentos.map(item => item.id === current.equipamentoId ? { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined } : item);
+    const nextEquipment = equipamentos.map(item => item.id === current.equipamentoId ? { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined, operadorResponsavelDesde: undefined, atualizadoEm: now } : item);
     setVinculosOperadorEquipamento(nextLinks);
     setEquipamentos(nextEquipment);
     writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
@@ -1912,43 +2268,41 @@ export default function App() {
     );
   };
 
-  const notifyRegistryDeletionBlocked = (dependencies: { collection: string; count: number }[]) => {
-    addNotification(
-      'Exclusão bloqueada',
-      `Este cadastro ainda é usado em ${dependencies.map(item => `${item.count} ${item.collection}`).join(' e ')}. Preserve o histórico antes de removê-lo.`,
-      'warning',
-      'Sistema Local',
-    );
-  };
 
-  const canDeleteAuxRegistry = (kind: 'comboio' | 'combustivel' | 'lubrificante' | 'etapa', id: string): boolean => {
-    const dependencies = registryDependencies(kind, id, {
-      abastecimentos,
-      equipamentos,
-      lubrificacoes,
-      apontamentos: apontamentosOperacionais,
-    });
-    if (dependencies.length === 0) return true;
-    notifyRegistryDeletionBlocked(dependencies);
-    return false;
-  };
 
-  const handleDeleteComboio = (id: string) => {
-    const item = comboios.find(x => x.id === id);
-    if (!item) return false;
-    if (!canDeleteAuxRegistry('comboio', id)) return false;
-    const updated = comboios.filter(x => x.id !== id);
+  const renomearCanteiroNosLancamentos = (nomeAntigo: string, nomeNovo: string) => {
+    const registros = controleEquipamentosDiario as Array<ControleEquipamentoDiario & { local?: string }>;
+    const { afetados, atualizados } = registrosComCanteiroRenomeado(registros, nomeAntigo, nomeNovo);
+    if (!afetados.length) return;
+    const updated = atualizados as ControleEquipamentoDiario[];
     saveAndLog(
-      'Comboios', 
-      'Excluiu', 
-      `Excluiu o comboio "${item.nome}".`,
+      'Controle Diário de Equipamentos',
+      'Editou',
+      `Canteiro "${nomeAntigo}" renomeado para "${nomeNovo}": atualizou ${afetados.length} lançamento(s) antigo(s).`,
       historyLogs,
       () => {
-        setComboios(updated);
-        writeStorageValue(localStorage, 'renea_comboios', JSON.stringify(updated));
+        setControleEquipamentosDiario(updated);
+        writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
+      },
+    );
+  };
+
+  const handleSaveCanteiro = (item: Canteiro, isNew: boolean) => {
+    const anterior = isNew ? undefined : canteiros.find(x => x.id === item.id);
+    const updated = isNew ? [...canteiros, item] : canteiros.map(x => (x.id === item.id ? item : x));
+    saveAndLog(
+      'Canteiros',
+      isNew ? 'Criou' : 'Editou',
+      `${isNew ? 'Cadastrou' : 'Editou'} o canteiro "${item.nome}".`,
+      historyLogs,
+      () => {
+        setCanteiros(updated);
+        writeStorageValue(localStorage, 'renea_canteiros', JSON.stringify(updated));
       }
     );
-    return true;
+    if (anterior && anterior.nome.trim() !== item.nome.trim()) {
+      renomearCanteiroNosLancamentos(anterior.nome, item.nome);
+    }
   };
 
   const handleSaveTipoCombustivel = (item: TipoCombustivel, isNew: boolean) => {
@@ -1970,24 +2324,6 @@ export default function App() {
     );
   };
 
-  const handleDeleteTipoCombustivel = (id: string) => {
-    const item = combustiveis.find(x => x.id === id);
-    if (!item) return false;
-    if (!canDeleteAuxRegistry('combustivel', id)) return false;
-    const updated = combustiveis.filter(x => x.id !== id);
-    saveAndLog(
-      'Combustíveis', 
-      'Excluiu', 
-      `Excluiu o tipo de combustível "${item.nome}".`,
-      historyLogs,
-      () => {
-        setCombustiveis(updated);
-        writeStorageValue(localStorage, 'renea_combustiveis', JSON.stringify(updated));
-      }
-    );
-    return true;
-  };
-
   const handleSaveProdutoLubrificacao = (item: ProdutoLubrificacao, isNew: boolean) => {
     let updated;
     if (isNew) {
@@ -2005,24 +2341,6 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_lubrificantes', JSON.stringify(updated));
       }
     );
-  };
-
-  const handleDeleteProdutoLubrificacao = (id: string) => {
-    const item = lubrificantes.find(x => x.id === id);
-    if (!item) return false;
-    if (!canDeleteAuxRegistry('lubrificante', id)) return false;
-    const updated = lubrificantes.filter(x => x.id !== id);
-    saveAndLog(
-      'Produtos Lubrificação', 
-      'Excluiu', 
-      `Excluiu o lubrificante "${item.nome}".`,
-      historyLogs,
-      () => {
-        setLubrificantes(updated);
-        writeStorageValue(localStorage, 'renea_lubrificantes', JSON.stringify(updated));
-      }
-    );
-    return true;
   };
 
   const handleSaveEtapaServico = (item: EtapaServico, isNew: boolean) => {
@@ -2044,22 +2362,63 @@ export default function App() {
     );
   };
 
-  const handleDeleteEtapaServico = (id: string) => {
-    const item = etapas.find(x => x.id === id);
-    if (!item) return false;
-    if (!canDeleteAuxRegistry('etapa', id)) return false;
-    const updated = etapas.filter(x => x.id !== id);
-    saveAndLog(
-      'Etapas de Serviço', 
-      'Excluiu', 
-      `Excluiu a etapa/ramo "${item.nome}".`,
-      historyLogs,
-      () => {
-        setEtapas(updated);
-        writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
-      }
-    );
-    return true;
+  // Materiais grava ramos em lote (lista SGE, apelidos da planilha): um só
+  // registro no histórico e uma só gravação, sem apagar nenhum ramo.
+  const handleSaveEtapasServico = (itens: EtapaServico[], descricao: string) => {
+    if (!itens.length) return;
+    const porId = new Map(itens.map(item => [item.id, item]));
+    const existentes = new Set(etapas.map(item => item.id));
+    const updated = [...etapas.map(item => porId.get(item.id) ?? item), ...itens.filter(item => !existentes.has(item.id))];
+    saveAndLog('Etapas de Serviço', itens.some(item => !existentes.has(item.id)) ? 'Criou' : 'Editou', descricao, historyLogs, () => {
+      setEtapas(updated);
+      writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
+    });
+  };
+
+  // Previsto de material por ramo e mês: grava em lote (copiar do mês anterior)
+  // com um registro só no histórico. Tirar um previsto só desliga, não apaga.
+  const handleSaveMateriaisPrevistos = (itens: PrevistoMaterial[], descricao: string) => {
+    if (!itens.length) return;
+    const porId = new Map(itens.map(item => [item.id, item]));
+    const existentes = new Set(materiaisPrevistos.map(item => item.id));
+    const updated = [...materiaisPrevistos.map(item => porId.get(item.id) ?? item), ...itens.filter(item => !existentes.has(item.id))];
+    const acao = itens.some(item => !existentes.has(item.id)) ? 'Criou' : itens.every(item => item.ativo === false) ? 'Excluiu' : 'Editou';
+    saveAndLog('Materiais', acao, descricao, historyLogs, () => {
+      setMateriaisPrevistos(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisPrevistos, JSON.stringify(updated));
+    });
+  };
+
+  // Rotina do assistente (Meu dia): o dia de cada pessoa e as pendências que
+  // passam de um dia para o outro. Marcar o checklist não entra no histórico
+  // para não encher a auditoria com um registro por clique.
+  const handleSaveRotinaDiaria = (rotina: RotinaDiaria) => {
+    const updated = rotinasDiarias.some(item => item.id === rotina.id)
+      ? rotinasDiarias.map(item => (item.id === rotina.id ? rotina : item))
+      : [...rotinasDiarias, rotina];
+    setRotinasDiarias(updated);
+    writeStorageValue(localStorage, STORAGE_KEYS.rotinasDiarias, JSON.stringify(updated));
+  };
+
+  // Excluir uma pendência marca excluidaEm (a nuvem não traz de volta) e só
+  // acontece quando a própria pessoa confirma na tela.
+  const handleSavePendenciaRotina = (pendencia: PendenciaRotina, descricao: string, acao: HistoryLog['acao']) => {
+    const updated = pendenciasRotina.some(item => item.id === pendencia.id)
+      ? pendenciasRotina.map(item => (item.id === pendencia.id ? pendencia : item))
+      : [...pendenciasRotina, pendencia];
+    saveAndLog('Meu dia', acao, descricao, historyLogs, () => {
+      setPendenciasRotina(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.pendenciasRotina, JSON.stringify(updated));
+    });
+  };
+
+  // O checklist do jeito de cada pessoa (um modelo por pessoa).
+  const handleSaveModeloRotina = (modelo: ModeloRotina, descricao: string) => {
+    const updated = [...modelosRotina.filter(item => item.id !== modelo.id), modelo];
+    saveAndLog('Meu dia', 'Editou', descricao, historyLogs, () => {
+      setModelosRotina(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.modelosRotina, JSON.stringify(updated));
+    });
   };
 
   const handleImportCadastros = (target: CadastroImportTarget, rows: CadastroImportRow[]) => {
@@ -2120,7 +2479,10 @@ export default function App() {
       return { success: true, message };
     };
 
-    if (target === 'empresas' || target === 'fornecedores') {
+    // Toda aba de empresa (inclusive Terceiras e as subáreas de fornecedor)
+    // importa como empresa com as classes do tipo escolhido. Antes, importar
+    // em Terceiras caía no fim desta função e gravava as linhas como Ramos.
+    if (isCategoriaEmpresa(target)) {
       const incoming = validRows.map((row, index): Empresa | null => {
         const cnpj = getImportValue(row, ['cnpj', 'documento']);
         const nome = getImportValue(row, ['nome', 'empresa', 'nome fantasia', 'razao social', 'razão social']) || cnpj || `Empresa ${index + 1}`;
@@ -2130,7 +2492,7 @@ export default function App() {
           cnpj,
           telefone: getImportValue(row, ['telefone', 'contato', 'celular']),
           responsavel: getImportValue(row, ['responsavel', 'responsável', 'gestor']),
-          tipos: [target === 'fornecedores' ? 'FORNECEDOR' : 'EMPRESA'],
+          tipos: [...TIPOS_POR_CATEGORIA_EMPRESA[target]],
           status: normalizeImportText(getImportValue(row, ['status', 'situacao', 'situação'])).includes('inativo') ? 'INATIVO' : 'ATIVO',
           criadoEm: new Date().toISOString(),
           atualizadoEm: new Date().toISOString(),
@@ -2142,7 +2504,7 @@ export default function App() {
         empresas, incoming, item => normalizeImportText(item.cnpj || item.nome),
         (saved, sheet) => mergeEmpresaImport(saved, sheet, statusProvided.has(sheet.id)),
       );
-      return persistImport(target === 'fornecedores' ? 'Fornecedores' : 'Empresas', 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
+      return persistImport(categoriaCadastro(target).label, 'renea_empresas', setEmpresas, result.next, incoming.length, result.created, result.updated);
     }
 
     if (target === 'obras') {
@@ -2303,74 +2665,6 @@ export default function App() {
     const incoming = incomingSimple as EtapaServico[];
     const result = mergeImportedRecords(etapas, incoming, item => normalizeImportText(item.nome));
     return persistImport('Etapas de Serviço', 'renea_etapas', setEtapas, result.next, incoming.length, result.created, result.updated);
-  };
-
-  const handleApplyMasterWorkbook = async (
-    analysis: MasterWorkbookAnalysis,
-  ): Promise<{ success: boolean; message: string }> => {
-    try {
-      const promoted = promoteMasterWorkbook(analysis, {
-        empresas,
-        obras,
-        funcionarios,
-        equipamentos,
-      });
-      const previousReviewRows = parseStoredJson<MasterWorkbookReviewRow[]>(
-        localStorage.getItem('renea_master_data_review_queue'),
-        'renea_master_data_review_queue',
-        [],
-      );
-      const reviewIndex = new Map(previousReviewRows.map(row => [
-        `${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`,
-        row,
-      ]));
-      promoted.reviewRows.forEach(row => {
-        reviewIndex.set(`${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`, row);
-      });
-      const nextReviewRows = Array.from(reviewIndex.values());
-      const created = Object.values(promoted.counts).reduce((total, count) => total + count.created, 0);
-      const updated = Object.values(promoted.counts).reduce((total, count) => total + count.updated, 0);
-      const preserved = promoted.reviewRows.length;
-      const message = `Planilha Mestre aplicada: ${created} cadastro(s) criado(s), ${updated} atualizado(s) e ${preserved} linha(s) preservada(s) para revisão.`;
-      const nextHistory: HistoryLog[] = [{
-        id: `log-master-${Date.now()}`,
-        timestamp: new Date().toLocaleString('pt-BR'),
-        usuario: activeUserName,
-        acao: 'Criou',
-        tela: 'Cadastros Mestres',
-        descricao: `${message} Origem: ${analysis.sourceName}.`,
-      }, ...historyLogs];
-
-      commitStorageBatch(localStorage, [
-        { key: 'renea_empresas', value: JSON.stringify(promoted.empresas) },
-        { key: 'renea_obras', value: JSON.stringify(promoted.obras) },
-        { key: 'renea_funcionarios', value: JSON.stringify(promoted.funcionarios) },
-        { key: 'renea_equipamentos', value: JSON.stringify(promoted.equipamentos) },
-        { key: 'renea_master_data_review_queue', value: JSON.stringify(nextReviewRows) },
-        { key: 'renea_history_logs', value: JSON.stringify(nextHistory) },
-      ]);
-
-      setEmpresas(promoted.empresas);
-      setObras(promoted.obras);
-      setFuncionarios(promoted.funcionarios);
-      setEquipamentos(promoted.equipamentos);
-      setHistoryLogs(nextHistory);
-      addNotification('Planilha Mestre atualizada', message, preserved > 0 ? 'warning' : 'success', 'Sistema Local');
-
-      // Sem atraso, pelo mesmo motivo do saveAndLog: handleUploadToFirebase
-      // marca uploadsInFlightRef antes de qualquer await, e é essa marca que
-      // impede uma sincronização automática concorrente de sobrescrever este
-      // lote recém-aplicado com uma versão mais antiga da nuvem.
-      if (isAutoSyncEnabled) {
-        void uploadLocalSnapshotToFirebase();
-      }
-      return { success: true, message };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Falha ao aplicar a Planilha Mestre.',
-      };
-    }
   };
 
   // Mantém exatamente o que foi digitado/importado e acrescenta somente campos
@@ -2693,7 +2987,6 @@ export default function App() {
     }
   }, [isRetryingPending, uploadLocalSnapshotToFirebase, addNotification]);
 
-
   // Reconstrói o histórico de presença a partir da fila pública original
   // (sistemarenea_public_submissions), que nunca é apagada nem sobrescrita
   // pelo navegador. Existe porque um retrato consolidado corrompido em algum
@@ -2712,30 +3005,34 @@ export default function App() {
       const storedPresence = parseStoredJson<PresencaApontamento[]>(
         localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', [],
       );
-      const beforeCount = storedPresence.length;
-      const merged = mergePresenceRecords(storedPresence, recoveredRecords);
-      const addedCount = merged.length - beforeCount;
-      writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(merged));
-      setPresencasLink(merged);
-      if (addedCount <= 0) {
+      const arquivados = parseStoredJson<PeriodoArquivado[]>(
+        localStorage.getItem('renea_periodos_arquivados'), 'renea_periodos_arquivados', [],
+      );
+      const faltantes = presencasFaltantes(storedPresence, recoveredRecords, arquivados);
+      const addedCount = faltantes.length;
+      if (addedCount === 0) {
         return { success: true, message: 'O histórico local já tinha todos os registros da fila pública.' };
       }
+      const origem = resumoRecuperadas(faltantes);
+      const merged = [...storedPresence, ...faltantes];
+      writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(merged));
+      setPresencasLink(merged);
       if (currentUserRoleRef.current === 'leitura') {
         return {
           success: true,
-          message: `${addedCount} registro(s) de presença recuperado(s) neste aparelho.`,
+          message: `${addedCount} registro(s) de presença recuperado(s) neste aparelho: ${origem}.`,
         };
       }
       const uploadResult = await uploadLocalSnapshotToFirebase();
       if (!uploadResult.success) {
         return {
           success: false,
-          message: `${addedCount} registro(s) recuperado(s) neste aparelho, mas não foi possível publicar na nuvem ainda. Motivo: ${uploadResult.message}`,
+          message: `${addedCount} registro(s) recuperado(s) neste aparelho (${origem}), mas não foi possível publicar na nuvem ainda. Motivo: ${uploadResult.message}`,
         };
       }
       return {
         success: true,
-        message: `${addedCount} registro(s) de presença recuperado(s) e publicado(s) na nuvem.`,
+        message: `${addedCount} registro(s) de presença recuperado(s) e publicado(s) na nuvem: ${origem}.`,
       };
     } catch (error) {
       return { success: false, message: formatCloudSyncError(error) };
@@ -2743,18 +3040,6 @@ export default function App() {
       releasePresenceSync();
     }
   };
-
-  useEffect(() => {
-    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
-    let cancelled = false;
-    const automaticPresenceRecovery = async () => {
-      const result = await handleRestorePresenceHistory();
-      if (cancelled || !result.success || result.message.includes('já tinha todos')) return;
-      addNotification('Presença sincronizada', result.message, 'success', 'Sistema Local');
-    };
-    void automaticPresenceRecovery();
-    return () => { cancelled = true; };
-  }, [isLoggedIn, currentUser?.uid, currentUserRole, externalTicketLink, externalPresenceToken]);
 
   useEffect(() => {
     if (!publicLinksRotationPending || !isLoggedIn || externalTicketLink || externalPresenceToken) return;
@@ -2983,6 +3268,97 @@ export default function App() {
     return () => {
       cancelled = true;
       queuedSubmissions = null;
+      unsubscribe();
+    };
+  }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken]);
+
+  // Uso de material apontado pelo link do apontador. Cada envio vira saídas de
+  // consumo com ID derivado do envio, então dois computadores abertos ou uma
+  // queda no meio nunca contam o mesmo uso duas vezes. Só marca o envio como
+  // processado depois que o retrato com as saídas subiu para a nuvem.
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
+    let cancelled = false;
+    let running = false;
+    let queued: MaterialUseSubmission[] | null = null;
+
+    const readStoredMovements = () => parseStoredJson<MovimentoMaterial[]>(
+      localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [],
+    );
+    const applyIncoming = (incoming: MovimentoMaterial[]) => {
+      const merged = mergeMaterialUseMovements(readStoredMovements(), incoming);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(merged.movements));
+      setMateriaisMovimentos(merged.movements);
+      return merged.added;
+    };
+
+    const ingest = async (submissions: MaterialUseSubmission[]) => {
+      if (cancelled || submissions.length === 0) return;
+      if (running) {
+        queued = submissions;
+        return;
+      }
+      running = true;
+      const release = await acquirePresenceSync();
+      try {
+        const incoming = submissions.flatMap(movementsFromMaterialUse);
+        const added = applyIncoming(incoming);
+        if (added > 0) {
+          const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
+          const nextHistory = mergeRecordsById(storedHistory, submissions.map(item => ({
+            id: `log-public-${item.id}`,
+            timestamp: new Date(item.createdAtIso || Date.now()).toLocaleString('pt-BR'),
+            usuario: item.payload.apontador || 'Link do apontador',
+            acao: 'Criou' as const,
+            tela: 'Materiais',
+            descricao: `Apontou uso no ${item.payload.etapaServicoNome}: ${item.payload.itens.map(uso => `${uso.quantidade} ${uso.unidade} de ${uso.materialDescricao}`).join('; ')}.`,
+          })));
+          writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(nextHistory));
+          setHistoryLogs(nextHistory);
+        }
+        let syncResult = await uploadLocalSnapshotToFirebase();
+        if (!syncResult.success && /conflito|outro computador|vers[aã]o mais recente/i.test(syncResult.message)) {
+          // Outro computador salvou antes: baixa o retrato vencedor e reaplica
+          // só as saídas deste envio por cima, sem apagar nada do que chegou.
+          const downloadResult = await handleDownloadFromFirebase();
+          if (!downloadResult.success) throw new Error(downloadResult.message);
+          applyIncoming(incoming);
+          syncResult = await uploadLocalSnapshotToFirebase();
+        }
+        if (!syncResult.success) throw new Error(syncResult.message);
+        await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Falha ao incorporar o uso de materiais do link; os envios continuam na fila:', error);
+          addNotification(
+            'Uso de material do link ainda não entrou',
+            `Os apontamentos chegaram e estão guardados na fila, mas não foi possível gravá-los neste painel. Motivo: ${error instanceof Error ? error.message : String(error)}`,
+            'error',
+            'Sistema Local',
+          );
+        }
+      } finally {
+        release();
+        running = false;
+        if (!cancelled && queued) {
+          const next = queued;
+          queued = null;
+          void ingest(next);
+        }
+      }
+    };
+
+    const unsubscribe = subscribePendingMaterialUses(
+      db,
+      submissions => { if (!cancelled) void ingest(submissions); },
+      error => {
+        if (cancelled) return;
+        console.warn('Falha ao acompanhar o uso de materiais do link:', error);
+      },
+    );
+    return () => {
+      cancelled = true;
+      queued = null;
       unsubscribe();
     };
   }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken]);
@@ -3380,14 +3756,6 @@ export default function App() {
     );
   };
 
-  const handleSaveFrente = (frente: FrenteServico, isNew: boolean) => {
-    const updated = isNew ? [frente, ...frentesServico] : frentesServico.map(item => item.id === frente.id ? frente : item);
-    saveAndLog('Frentes de Serviço', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} a frente ${frente.nome} (${frente.situacao}).`, historyLogs, () => {
-      setFrentesServico(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.frentesServico, JSON.stringify(updated));
-    });
-  };
-
   // Alertas do sino: derivados dos mesmos registros das pendências, filtrando só
   // gravidade alta. Não são salvos, então nunca sobra alerta de algo resolvido.
   const alertasSistema = useMemo(() => alertasDoSistema({
@@ -3411,9 +3779,9 @@ export default function App() {
     producao: producaoRegistros,
     medicoes,
     materiais: materiaisCadastro,
-    movimentosMaterial: materiaisMovimentos,
+    movimentosMaterial: materiaisMovimentosVigentes,
     ocorrencias,
-  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentos, ocorrencias]);
+  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentosVigentes, ocorrencias]);
 
   const handleSaveOrcamento = (item: OrcamentoItem, isNew: boolean) => {
     const updated = isNew ? [item, ...orcamentoItens] : orcamentoItens.map(atual => atual.id === item.id ? item : atual);
@@ -3441,82 +3809,19 @@ export default function App() {
     salvarPreferencias(localStorage, preferencias);
   };
 
-  const handleSaveOcorrencia = (ocorrencia: Ocorrencia, isNew: boolean) => {
-    const updated = isNew ? [ocorrencia, ...ocorrencias] : ocorrencias.map(item => item.id === ocorrencia.id ? ocorrencia : item);
-    saveAndLog('Ocorrências', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Atualizou'} a ocorrência ${ocorrencia.numero} (${ocorrencia.tipo}) em ${ocorrencia.data}.`, historyLogs, () => {
-      setOcorrencias(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.ocorrencias, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveDocumento = (documento: DocumentoArquivo, isNew: boolean) => {
-    const updated = isNew ? [documento, ...documentos] : documentos.map(item => item.id === documento.id ? documento : item);
-    saveAndLog('Documentos', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o documento ${documento.titulo} (${documento.tipo}).`, historyLogs, () => {
-      setDocumentos(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.documentos, JSON.stringify(updated));
-    });
-  };
-
-  // Sobe o arquivo pelo mesmo caminho validado dos anexos operacionais e guarda
-  // só a referência no documento — o binário nunca entra no estado nem no backup.
-  const handleUploadDocumento = async (documento: DocumentoArquivo, arquivo: File) => {
-    const { uploadOperationalAttachment } = await import('./services/operationalAttachments');
-    const anexo = await uploadOperationalAttachment(
-      { obraId: documento.obraId || 'geral', module: 'documentos', recordId: documento.id },
-      arquivo,
-    );
-    handleSaveDocumento({
-      ...documento,
-      anexo: { path: anexo.path, name: anexo.name, contentType: anexo.contentType, size: anexo.size },
-      atualizadoEm: new Date().toISOString(),
-    }, false);
-  };
-
-  const handleSaveMedicao = (medicao: Medicao, isNew: boolean) => {
-    const updated = isNew ? [medicao, ...medicoes] : medicoes.map(item => item.id === medicao.id ? medicao : item);
-    saveAndLog('Medições', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a medição ${medicao.numero} (${medicao.periodoInicio} a ${medicao.periodoFim}) — ${medicao.situacao}.`, historyLogs, () => {
-      setMedicoes(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.medicoes, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveNaoConformidade = (registro: NaoConformidade, isNew: boolean) => {
-    const updated = isNew ? [registro, ...naoConformidades] : naoConformidades.map(item => item.id === registro.id ? registro : item);
-    saveAndLog('Não Conformidades', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a NC ${registro.numero} (${registro.origem}) — ${registro.situacao}.`, historyLogs, () => {
-      setNaoConformidades(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.naoConformidades, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveInspecao = (inspecao: Inspecao, isNew: boolean) => {
-    const updated = isNew ? [inspecao, ...inspecoes] : inspecoes.map(item => item.id === inspecao.id ? inspecao : item);
-    saveAndLog('Inspeções', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a inspeção ${inspecao.numero} em ${inspecao.local} — ${inspecao.situacao}.`, historyLogs, () => {
-      setInspecoes(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.inspecoes, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveModeloFvs = (modelo: ModeloFvs, isNew: boolean) => {
-    const updated = isNew ? [modelo, ...modelosFvs] : modelosFvs.map(item => item.id === modelo.id ? modelo : item);
-    saveAndLog('FVS', isNew ? 'Criou' : 'Editou', `${isNew ? 'Criou' : 'Editou'} o modelo de FVS ${modelo.nome}.`, historyLogs, () => {
-      setModelosFvs(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.modelosFvs, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveFichaFvs = (ficha: FichaVerificacaoServico, isNew: boolean) => {
-    const updated = isNew ? [ficha, ...fichasFvs] : fichasFvs.map(item => item.id === ficha.id ? ficha : item);
-    saveAndLog('FVS', isNew ? 'Criou' : 'Editou', `${isNew ? 'Abriu' : 'Atualizou'} a ficha ${ficha.numero} (${ficha.local}) — ${ficha.situacao}.`, historyLogs, () => {
-      setFichasFvs(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.fichasFvs, JSON.stringify(updated));
-    });
-  };
-
   const handleSavePlanejamento = (plano: PlanejamentoItem, isNew: boolean) => {
     const updated = isNew ? [plano, ...planejamentoItens] : planejamentoItens.map(item => item.id === plano.id ? plano : item);
     saveAndLog('Planejamento', isNew ? 'Criou' : 'Editou', `${isNew ? 'Planejou' : 'Editou'} ${plano.quantidadePlanejada} ${plano.unidade} de ${plano.servicoDescricao} entre ${plano.dataInicio} e ${plano.dataFim}.`, historyLogs, () => {
       setPlanejamentoItens(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.planejamentoItens, JSON.stringify(updated));
+    });
+  };
+
+  const handleSaveFrente = (frente: FrenteServico, isNew: boolean) => {
+    const updated = isNew ? [frente, ...frentesServico] : frentesServico.map(item => item.id === frente.id ? frente : item);
+    saveAndLog('Frentes de Serviço', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} a frente ${frente.nome} (${frente.situacao}).`, historyLogs, () => {
+      setFrentesServico(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.frentesServico, JSON.stringify(updated));
     });
   };
 
@@ -3555,6 +3860,64 @@ export default function App() {
   const handleSaveMovimentoMaterial = (movimento: MovimentoMaterial) => {
     const updated = appendMovement(materiaisMovimentos, movimento);
     saveAndLog('Materiais', 'Criou', `${movimento.tipo} de ${movimento.quantidade} ${movimento.unidade} de ${movimento.materialDescricao}.`, historyLogs, () => {
+      setMateriaisMovimentos(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
+    });
+  };
+
+  // Vários itens de uma vez (apontamento do dia no ERP): um único saveAndLog,
+  // para o segundo item não sobrescrever o primeiro com um estado antigo.
+  const podeEditarMateriais = pode(currentUserRole, 'materiais', 'editar');
+  // Viagem da jazida com ticket repetido (mesmo número e tipo) vai sozinha para a
+  // Lixeira: fica o primeiro registrado, e o resto pode ser restaurado.
+  useEffect(() => {
+    if (!isLoggedIn || !podeEditarMateriais || ticketsJazida.length === 0) return;
+    const repetidos = ticketsRepetidosParaExcluir(ticketsJazida);
+    if (!repetidos.length) return;
+    excluirCadastros({
+      tabela: 'ticketsJazida',
+      storageKey: 'renea_tickets_jazida',
+      tela: 'Tickets Jazida',
+      itens: repetidos.map(item => ({ item: item as TicketJazida & { nome?: string }, rotulo: `Ticket ${item.tipoTicket || 'Liberação'} Nº ${item.ticketNumero} (repetido)` })),
+      lista: ticketsJazida as Array<TicketJazida & { nome?: string }>,
+      setLista: next => setTicketsJazida(next),
+    });
+    repetidos.forEach(item => {
+      void deletePublicTicket(db, item.id).catch(error => console.warn('Falha ao excluir ticket público repetido:', error));
+    });
+    addNotification('Tickets repetidos excluídos', `${repetidos.length} viagem(ns) da jazida com ticket já lançado foram para a Lixeira. Dá para restaurar de lá.`, 'info', 'Sistema Local');
+  }, [ticketsJazida, isLoggedIn, podeEditarMateriais]);
+
+  // Nota ou ticket repetido no mesmo material é desfeito sozinho, venha de onde
+  // vier (lançamento, link do apontador, importação, nuvem). Fica no histórico.
+  useEffect(() => {
+    if (!isLoggedIn || !podeEditarMateriais || materiaisMovimentos.length === 0) return;
+    const { movimentos, desfeitos } = desfazerNotasRepetidas(materiaisMovimentos, new Date().toISOString());
+    if (!desfeitos.length) return;
+    saveAndLog('Materiais', 'Excluiu', `Desfez automaticamente ${desfeitos.length} lançamento(s) com nota ou ticket repetido.`, historyLogs, () => {
+      setMateriaisMovimentos(movimentos);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(movimentos));
+    });
+    addNotification('Lançamentos repetidos desfeitos', `${desfeitos.length} lançamento(s) de material com nota ou ticket já lançado saíram do saldo. Continuam no histórico.`, 'info', 'Sistema Local');
+  // saveAndLog e historyLogs mudam a cada render; a regra só depende dos movimentos.
+  }, [materiaisMovimentos, isLoggedIn, podeEditarMateriais]);
+
+  const handleSaveMovimentosMaterial = (movimentos: MovimentoMaterial[], descricao: string) => {
+    if (movimentos.length === 0) return;
+    const updated = mergeMaterialUseMovements(materiaisMovimentos, movimentos).movements;
+    saveAndLog('Materiais', 'Criou', descricao, historyLogs, () => {
+      setMateriaisMovimentos(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
+    });
+  };
+
+  // Vincular entradas a um ramo e desfazer um uso trocam o registro pelo mesmo
+  // ID, sem apagar nenhum movimento.
+  const handleUpdateMovimentosMaterial = (alterados: MovimentoMaterial[], descricao: string, acao: 'Editou' | 'Excluiu' = 'Editou') => {
+    if (alterados.length === 0) return;
+    const porId = new Map(alterados.map(item => [item.id, item]));
+    const updated = materiaisMovimentos.map(item => porId.get(item.id) || item);
+    saveAndLog('Materiais', acao, descricao, historyLogs, () => {
       setMateriaisMovimentos(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
     });
@@ -3611,14 +3974,19 @@ export default function App() {
   const handleSaveOrdemServico = (ordem: OrdemServico, isNew: boolean) => {
     const updated = isNew ? [ordem, ...ordensServico] : ordensServico.map(item => item.id === ordem.id ? ordem : item);
     const equipamento = equipamentos.find(item => item.id === ordem.equipamentoId);
+    const liberacao = liberarMaquinasDaOrdemConcluida(ordem, controleEquipamentosDiario, activeUserName);
     saveAndLog(
       'Manutenção',
       isNew ? 'Criou' : 'Editou',
-      `${isNew ? 'Abriu' : 'Atualizou'} a ${ordem.numero} de ${equipamento?.prefixo || 'frota não localizada'} — ${ordem.status}.`,
+      `${isNew ? 'Abriu' : 'Atualizou'} a ${ordem.numero} de ${equipamento?.prefixo || 'frota não localizada'} — ${ordem.status}.${liberacao.liberados ? ` Liberou ${liberacao.liberados} lançamento(s) da frota.` : ''}`,
       historyLogs,
       () => {
         setOrdensServico(updated);
         writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(updated));
+        if (liberacao.liberados) {
+          setControleEquipamentosDiario(liberacao.registros);
+          writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(liberacao.registros));
+        }
       },
     );
   };
@@ -3655,6 +4023,38 @@ export default function App() {
         if (maintenance.ordens !== ordensServico) {
           setOrdensServico(maintenance.ordens);
           writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(maintenance.ordens));
+        }
+      },
+    );
+  };
+
+  // Vários lançamentos de uma vez (aba Lançar do Quadro da Frota): uma gravação só,
+  // para um não sobrescrever o outro, com a OS automática de cada manutenção.
+  const handleSaveControleEquipamentosEmLote = (itens: Array<{ registro: ControleEquipamentoDiario; novo: boolean }>) => {
+    if (!itens.length) return;
+    let ordens = ordensServico;
+    let abertas = 0;
+    const porId = new Map(controleEquipamentosDiario.map(item => [item.id, item]));
+    const novos: ControleEquipamentoDiario[] = [];
+    itens.forEach(({ registro, novo }) => {
+      const maintenance = garantirOrdemAutomaticaDaFrota(registro, ordens, activeUserName);
+      ordens = maintenance.ordens;
+      if (maintenance.criada) abertas += 1;
+      if (novo && !porId.has(maintenance.registro.id)) novos.push(maintenance.registro);
+      else porId.set(maintenance.registro.id, maintenance.registro);
+    });
+    const updated = [...novos, ...controleEquipamentosDiario.map(item => porId.get(item.id) || item)];
+    saveAndLog(
+      'Controle Diário de Equipamentos',
+      'Editou',
+      `Lançou ${itens.length} equipamento(s) pelo Quadro da Frota.${abertas ? ` Abriu ${abertas} OS automática(s).` : ''}`,
+      historyLogs,
+      () => {
+        setControleEquipamentosDiario(updated);
+        writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
+        if (ordens !== ordensServico) {
+          setOrdensServico(ordens);
+          writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordens));
         }
       },
     );
@@ -3723,14 +4123,39 @@ export default function App() {
     );
   };
 
-  const handleDeleteControleEquipamentosDiario = (ids: string[]) => {
+  const handleDeleteControleEquipamentosDiario = (ids: string[], jaConfirmado = false) => {
     const uniqueIds = Array.from(new Set(ids));
-    if (!uniqueIds.length || !confirm(`Você está prestes a excluir ${uniqueIds.length} registro(s) do controle de basculantes. Continuar?`)) return;
+    if (!uniqueIds.length || (!jaConfirmado && !confirm(`Você está prestes a excluir ${uniqueIds.length} registro(s) do controle de basculantes. Continuar?`))) return;
     const updated = controleEquipamentosDiario.filter(item => !uniqueIds.includes(item.id));
     saveAndLog('Controle Diário de Equipamentos', 'Excluiu', `Excluiu ${uniqueIds.length} registro(s) em uma única operação.`, historyLogs, () => {
       setControleEquipamentosDiario(updated);
       writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
     });
+  };
+
+  /**
+   * "Remover do quadro" desmobiliza (não apaga) e some com o lançamento de
+   * hoje, se tiver: mesma ação de excluir em Cadastros > Equipamentos, só que
+   * disparada direto do Quadro da Frota, pra sumir da tela na hora.
+   */
+  const handleRemoverEquipamentosDoQuadro = (itens: Array<{ equipamentoId: string; registroId?: string }>) => {
+    const { alvos, equipamentosAtualizados: updatedEquipamentos, registrosAtualizados: updatedControle } = removerEquipamentosDoQuadro(equipamentos, controleEquipamentosDiario, itens);
+    if (!alvos.length) return;
+    const mudouControle = updatedControle.length !== controleEquipamentosDiario.length;
+    saveAndLog(
+      'Quadro da Frota',
+      'Desmobilizou',
+      `Removeu ${alvos.length} equipamento(s) do Quadro da Frota: ${alvos.map(item => item.prefixo).join(', ')}.`,
+      historyLogs,
+      () => {
+        setEquipamentos(updatedEquipamentos);
+        writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(updatedEquipamentos));
+        if (mudouControle) {
+          setControleEquipamentosDiario(updatedControle);
+          writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updatedControle));
+        }
+      },
+    );
   };
 
   // Administration helpers
@@ -3741,6 +4166,7 @@ export default function App() {
     funcionarios?: Funcionario[];
     motoristasOperacionais?: Funcionario[];
     comboios?: Comboio[];
+    canteiros?: Canteiro[];
     combustiveis?: TipoCombustivel[];
     lubrificantes?: ProdutoLubrificacao[];
     etapas?: EtapaServico[];
@@ -3767,6 +4193,7 @@ export default function App() {
     const nextFuncionarios = imported.funcionarios ?? funcionarios;
     const nextMotoristasOperacionais = imported.motoristasOperacionais ?? motoristasOperacionais;
     const nextComboios = imported.comboios ?? comboios;
+    const nextCanteiros = imported.canteiros ?? canteiros;
     const nextCombustiveis = imported.combustiveis ?? combustiveis;
     const nextLubrificantes = imported.lubrificantes ?? lubrificantes;
     const nextEtapas = imported.etapas ?? etapas;
@@ -3804,6 +4231,7 @@ export default function App() {
       { key: 'renea_funcionarios', value: JSON.stringify(nextFuncionarios) },
       { key: STORAGE_KEYS.motoristasOperacionais, value: JSON.stringify(nextMotoristasOperacionais) },
       { key: 'renea_comboios', value: JSON.stringify(nextComboios) },
+      { key: 'renea_canteiros', value: JSON.stringify(nextCanteiros) },
       { key: 'renea_combustiveis', value: JSON.stringify(nextCombustiveis) },
       { key: 'renea_lubrificantes', value: JSON.stringify(nextLubrificantes) },
       { key: 'renea_etapas', value: JSON.stringify(nextEtapas) },
@@ -3829,6 +4257,7 @@ export default function App() {
     setFuncionarios(nextFuncionarios);
     setMotoristasOperacionais(nextMotoristasOperacionais);
     setComboios(nextComboios);
+    setCanteiros(nextCanteiros);
     setCombustiveis(nextCombustiveis);
     setLubrificantes(nextLubrificantes);
     setEtapas(nextEtapas);
@@ -3863,6 +4292,7 @@ export default function App() {
       funcionarios: 'Funcionários',
       motoristasOperacionais: 'Motoristas operacionais',
       comboios: 'Comboios',
+      canteiros: 'Canteiros',
       combustiveis: 'Tipos de combustível',
       lubrificantes: 'Lubrificantes/Etapas',
       etapas: 'Etapas de serviço',
@@ -3924,6 +4354,9 @@ export default function App() {
             case 'comboios':
               persist('renea_comboios', nextValue(INITIAL_COMBOIOS), setComboios);
               break;
+            case 'canteiros':
+              persist('renea_canteiros', nextValue(INITIAL_CANTEIROS), setCanteiros);
+              break;
             case 'combustiveis':
               persist('renea_combustiveis', nextValue(INITIAL_TIPOS_COMBUSTIVEL), setCombustiveis);
               break;
@@ -3980,7 +4413,7 @@ export default function App() {
 
   const handleDeleteTabData = (tabId: string): { success: boolean; message: string } => {
     const scopesByTab: Record<string, string[]> = {
-      cadastros: ['empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios', 'combustiveis', 'lubrificantes', 'etapas'],
+      cadastros: ['empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios', 'canteiros', 'combustiveis', 'lubrificantes', 'etapas'],
       lancamentos: ['abastecimentos', 'lubrificacoes'],
       'controle-equipamentos': ['controleEquipamentos'],
       'tickets-jazida': ['ticketsJazida'],
@@ -4205,6 +4638,7 @@ export default function App() {
       funcionarios,
       motoristasOperacionais,
       comboios,
+      canteiros,
       combustiveis,
       lubrificantes,
       etapas,
@@ -4228,7 +4662,6 @@ export default function App() {
       historyLogs
     }, null, 2);
   };
-
 
   const handleImportFullData = (importedJson: string): boolean => {
     try {
@@ -4287,6 +4720,7 @@ export default function App() {
       const newEquipamentos = mergeById(equipamentos, parsed.equipamentos);
       const newFuncionarios = mergeById(funcionarios, parsed.funcionarios);
       const newComboios = mergeById(comboios, parsed.comboios);
+      const newCanteiros = mergeById(canteiros, parsed.canteiros);
       const newCombustiveis = mergeById(combustiveis, parsed.combustiveis);
       const newLubrificantes = mergeById(lubrificantes, parsed.lubrificantes);
       const newEtapas = mergeById(etapas, parsed.etapas);
@@ -4352,6 +4786,7 @@ export default function App() {
         { key: 'renea_equipamentos', value: JSON.stringify(newEquipamentos) },
         { key: 'renea_funcionarios', value: JSON.stringify(newFuncionarios) },
         { key: 'renea_comboios', value: JSON.stringify(newComboios) },
+        { key: 'renea_canteiros', value: JSON.stringify(newCanteiros) },
         { key: 'renea_combustiveis', value: JSON.stringify(newCombustiveis) },
         { key: 'renea_lubrificantes', value: JSON.stringify(newLubrificantes) },
         { key: 'renea_etapas', value: JSON.stringify(newEtapas) },
@@ -4374,6 +4809,7 @@ export default function App() {
       setEquipamentos(newEquipamentos);
       setFuncionarios(newFuncionarios);
       setComboios(newComboios);
+      setCanteiros(newCanteiros);
       setCombustiveis(newCombustiveis);
       setLubrificantes(newLubrificantes);
       setEtapas(newEtapas);
@@ -4499,8 +4935,33 @@ export default function App() {
     }))
     .filter(group => group.items.length > 0);
 
+  // Frentes e produção vivem na parte Frentes do Meu dia: links da busca, da
+  // timeline e das pendências que apontam para elas abrem ali.
+  const SUB_TAB_MAPPING: Record<string, string> = {
+    frentes: 'meu-dia',
+    producao: 'meu-dia',
+    // Os tickets da jazida moraram numa aba própria até 28/09/2026; agora são
+    // a parte Viagens da jazida dentro de Materiais.
+    'tickets-jazida': 'materiais',
+  };
+
   const navigateTo = (tab: string, closeMobile = false) => {
-    setActiveTab(allowedTabs.includes(tab) ? tab : 'dashboard');
+    // Check if it's a primary module (top-level tab)
+    let targetTab = tab;
+    if (tab === 'tickets-jazida') setMateriaisPedido(atual => ({ secao: 'viagens', vez: atual.vez + 1 }));
+    else if (tab === 'materiais') setMateriaisPedido(atual => (atual.secao ? { secao: undefined, vez: atual.vez } : atual));
+    if (!allowedTabs.includes(tab)) {
+      // Check if it's a sub-tab that should route to a parent module
+      const parentTab = SUB_TAB_MAPPING[tab];
+      if (parentTab && allowedTabs.includes(parentTab)) {
+        // Route to parent tab instead of defaulting to dashboard
+        targetTab = parentTab;
+      } else {
+        // Unknown tab - default to dashboard
+        targetTab = 'dashboard';
+      }
+    }
+    setActiveTab(targetTab);
     if (closeMobile) setIsMobileMenuOpen(false);
     window.requestAnimationFrame(() => {
       document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
@@ -4635,9 +5096,6 @@ export default function App() {
           alertas={alertasDoSino}
           isCloudConnected={isCloudConnected}
           lastCloudSync={lastCloudSync}
-          filtroDaTela={activeTab === 'dashboard'
-            ? <PeriodFilter value={periodoPainel} onChange={setPeriodoPainel} />
-            : undefined}
           pendingCount={pendingCount}
           isRetryingPending={isRetryingPending}
           onRetryPending={() => void handleRetryPending()}
@@ -4650,12 +5108,11 @@ export default function App() {
           onLogout={() => void handleLogout()}
         />
         {/* Dynamic Inner Tab Viewport */}
-        <div id="main-tab-viewport" className={`flex-1 overflow-x-hidden w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
+        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (
               <Dashboard
-                periodo={{ from: periodoPainel.from, to: periodoPainel.to }}
                 empresas={empresas}
                 obras={obras}
                 equipamentos={equipamentos}
@@ -4677,7 +5134,7 @@ export default function App() {
                 producao={producaoRegistros}
                 medicoes={medicoes}
                 materiais={materiaisCadastro}
-                movimentosMaterial={materiaisMovimentos}
+                movimentosMaterial={materiaisMovimentosVigentes}
                 fichasFvs={fichasFvs}
                 inspecoes={inspecoes}
                 naoConformidades={naoConformidades}
@@ -4718,7 +5175,7 @@ export default function App() {
             )}
 
             {activeTab === 'cadastros' && allowedTabs.includes('cadastros') && (
-              <CadastrosTab 
+              <CadastrosTab
                 empresas={empresas}
                 obras={obras}
                 equipamentos={equipamentos}
@@ -4726,35 +5183,47 @@ export default function App() {
                 comboios={comboios}
                 combustiveis={combustiveis}
                 lubrificantes={lubrificantes}
+                canteiros={canteiros}
                 etapas={etapas}
-                ordensServico={ordensServico}
+                historyLogs={historyLogs}
+                exclusoes={exclusoes}
+                podeEditar={pode(currentUserRole, 'cadastros', 'editar')}
+                podeExcluir={pode(currentUserRole, 'cadastros', 'excluir')}
                 onSaveEmpresa={handleSaveEmpresa}
-                onDeleteEmpresa={handleDeleteEmpresa}
                 onSaveObra={handleSaveObra}
-                onDeleteObra={handleDeleteObra}
                 onSaveEquipamento={handleSaveEquipamento}
-                onDeleteEquipamento={handleDeleteEquipamento}
                 onSaveFuncionario={handleSaveFuncionario}
-                onDeleteFuncionario={handleDeleteFuncionario}
                 onSaveComboio={handleSaveComboio}
-                onDeleteComboio={handleDeleteComboio}
                 onSaveTipoCombustivel={handleSaveTipoCombustivel}
-                onDeleteTipoCombustivel={handleDeleteTipoCombustivel}
+                onSaveCanteiro={handleSaveCanteiro}
                 onSaveProdutoLubrificacao={handleSaveProdutoLubrificacao}
-                onDeleteProdutoLubrificacao={handleDeleteProdutoLubrificacao}
                 onSaveEtapaServico={handleSaveEtapaServico}
-                onDeleteEtapaServico={handleDeleteEtapaServico}
+                frentesServico={frentesServico}
+                servicosObra={servicosObra}
+                onSaveFrente={handleSaveFrente}
+                onSaveServico={handleSaveServicoObra}
+                onInativar={(tabela, id) => {
+                  if (tabela === 'empresas') handleDeleteEmpresa(id);
+                  else if (tabela === 'funcionarios') handleDeleteFuncionario(id);
+                  else if (tabela === 'equipamentos') handleDeleteEquipamento(id);
+                }}
+                usosDoCadastro={usosDoCadastroAtual}
+                onExcluir={handleExcluirCadastro}
+                onRestaurar={handleRestaurarCadastro}
+                onExcluirVarios={handleExcluirCadastros}
+                onRestaurarVarios={handleRestaurarCadastros}
+                onApagarDeVez={handleApagarDeVez}
                 onImportCadastros={handleImportCadastros}
-                onApplyMasterWorkbook={handleApplyMasterWorkbook}
               />
             )}
 
             {activeTab === 'lancamentos' && (
-              <LancamentosTab 
+              <LancamentosTab
                 empresas={empresas}
                 equipamentos={equipamentos}
                 comboios={comboios}
                 combustiveis={combustiveis}
+                canteiros={canteirosNomes}
                 lubrificantes={lubrificantes}
                 abastecimentos={abastecimentosAtivos}
                 lubrificacoes={lubrificacoes}
@@ -4765,33 +5234,10 @@ export default function App() {
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}
                 onOpenCadastros={allowedTabs.includes('cadastros') ? () => navigateTo('cadastros') : undefined}
-              />
-            )}
-
-            {activeTab === 'central-operacional' && (
-              <CentralOperacionalTab
-                equipamentos={equipamentos}
-                controlesEquipamentos={controleEquipamentosDiario}
+                registrosFrota={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
-                presencasLink={presencasLinkAtivas}
-                ordensServico={ordensServico}
-                ticketsJazida={ticketsJazidaAtivos}
-                obras={obras}
-                frentes={frentesServico}
-                apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentos}
-                servicos={servicosObra}
-                producao={producaoRegistros}
-                ocorrencias={ocorrencias}
-                funcionarios={funcionarios}
-                podeAtualizar={pode(currentUserRole, 'central-operacional', 'editar')}
-                responsavel={activeUserName}
-                onSaveControleEquipamento={handleSaveControleEquipamentoDiario}
-                onSaveFrente={handleSaveFrente}
-                onSaveServico={handleSaveServicoObra}
-                onSaveProducao={handleSaveProducao}
-                onSaveOcorrencia={handleSaveOcorrencia}
-                onNavigate={navigateTo}
+                usuario={activeUserName}
+                onOpenControle={allowedTabs.includes('controle-equipamentos') ? () => navigateTo('controle-equipamentos') : undefined}
               />
             )}
 
@@ -4829,7 +5275,7 @@ export default function App() {
                   planejamento: planejamentoItens,
                   producao: producaoRegistros,
                   medicoes,
-                  movimentosMaterial: materiaisMovimentos,
+                  movimentosMaterial: materiaisMovimentosVigentes,
                   ocorrencias,
                   abastecimentos,
                   historyLogs,
@@ -4907,20 +5353,12 @@ export default function App() {
                   producao: producaoRegistros,
                   medicoes,
                   materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentos,
+                  movimentosMaterial: materiaisMovimentosVigentes,
                   ocorrencias,
                   servicos: servicosObra,
                   lancamentosCusto,
                   abastecimentos,
                 }}
-              />
-            )}
-
-            {activeTab === 'cronograma' && (
-              <CronogramaTab
-                planos={planejamentoItens}
-                producao={producaoRegistros}
-                frentes={frentesServico}
               />
             )}
 
@@ -4972,7 +5410,7 @@ export default function App() {
                   producao: producaoRegistros,
                   medicoes,
                   materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentos,
+                  movimentosMaterial: materiaisMovimentosVigentes,
                   ocorrencias,
                 }}
               />
@@ -4998,90 +5436,10 @@ export default function App() {
                   producao: producaoRegistros,
                   medicoes,
                   materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentos,
+                  movimentosMaterial: materiaisMovimentosVigentes,
                   ocorrencias,
                 }}
                 onNavigate={navigateTo}
-              />
-            )}
-
-            {activeTab === 'ocorrencias' && (
-              <OcorrenciasTab
-                ocorrencias={ocorrencias}
-                obras={obras}
-                frentes={frentesServico}
-                equipamentos={equipamentos}
-                funcionarios={funcionarios}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'ocorrencias', 'editar')}
-                onSave={handleSaveOcorrencia}
-              />
-            )}
-
-            {activeTab === 'documentos' && (
-              <DocumentosTab
-                documentos={documentos}
-                funcionarios={funcionarios}
-                equipamentos={equipamentos}
-                obras={obras}
-                fichasFvs={fichasFvs}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'documentos', 'editar')}
-                onSave={handleSaveDocumento}
-                onUpload={handleUploadDocumento}
-              />
-            )}
-
-            {activeTab === 'medicoes' && (
-              <MedicoesTab
-                medicoes={medicoes}
-                servicos={servicosObra}
-                producao={producaoRegistros}
-                obras={obras}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'medicoes', 'editar')}
-                podeAprovar={pode(currentUserRole, 'medicoes', 'aprovar')}
-                onSave={handleSaveMedicao}
-              />
-            )}
-
-            {activeTab === 'nao-conformidades' && (
-              <NaoConformidadesTab
-                registros={naoConformidades}
-                fichasFvs={fichasFvs}
-                inspecoes={inspecoes}
-                obras={obras}
-                frentes={frentesServico}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'nao-conformidades', 'editar')}
-                onSave={handleSaveNaoConformidade}
-              />
-            )}
-
-            {activeTab === 'inspecoes' && (
-              <InspecoesTab
-                inspecoes={inspecoes}
-                obras={obras}
-                frentes={frentesServico}
-                equipamentos={equipamentos}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'inspecoes', 'editar')}
-                onSave={handleSaveInspecao}
-              />
-            )}
-
-            {activeTab === 'fvs' && (
-              <FvsTab
-                fichas={fichasFvs}
-                modelos={modelosFvs}
-                servicos={servicosObra}
-                obras={obras}
-                frentes={frentesServico}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'fvs', 'editar')}
-                podeAprovar={pode(currentUserRole, 'fvs', 'aprovar')}
-                onSaveFicha={handleSaveFichaFvs}
-                onSaveModelo={handleSaveModeloFvs}
               />
             )}
 
@@ -5099,20 +5457,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'producao' && (
-              <ProducaoTab
-                servicos={servicosObra}
-                registros={producaoRegistros}
-                obras={obras}
-                frentes={frentesServico}
-                gruposEquipe={gruposEquipe}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'producao', 'editar')}
-                onSaveServico={handleSaveServicoObra}
-                onSaveRegistro={handleSaveProducao}
-              />
-            )}
-
             {activeTab === 'diario-obra' && (
               <DiarioObraTab
                 diarios={diariosObra}
@@ -5121,7 +5465,7 @@ export default function App() {
                 presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentos}
+                movimentosMaterial={materiaisMovimentosVigentes}
                 ticketsJazida={ticketsJazidaAtivos}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
@@ -5129,23 +5473,50 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'frentes' && (
-              <FrentesTab
+            {activeTab === 'meu-dia' && (
+              <MeuDiaTab
+                responsavel={activeUserName}
+                rotinas={rotinasDiarias}
+                pendencias={pendenciasRotina}
+                modelos={modelosRotina}
+                onSaveRotina={handleSaveRotinaDiaria}
+                onSavePendencia={handleSavePendenciaRotina}
+                onSaveModelo={handleSaveModeloRotina}
                 frentes={frentesServico}
-                obras={obras}
-                gruposEquipe={gruposEquipe}
-                presencasLink={presencasLinkAtivas}
-                controlesEquipamentos={controleEquipamentosDiario}
-                apontamentos={apontamentosOperacionais}
+                servicos={servicosObra}
+                producao={producaoRegistros}
+                planos={planejamentoItens}
+                onSaveProducao={pode(currentUserRole, 'producao', 'editar') ? handleSaveProducao : undefined}
+                onSavePlano={pode(currentUserRole, 'planejamento', 'editar') ? handleSavePlanejamento : undefined}
+                materiais={materiaisCadastro}
                 movimentosMaterial={materiaisMovimentos}
-                ticketsJazida={ticketsJazidaAtivos}
-                podeEditar={pode(currentUserRole, 'frentes', 'editar')}
-                onSave={handleSaveFrente}
+                abastecimentos={abastecimentos}
+                controlesFrota={controleEquipamentosDiario}
+                equipamentos={equipamentos}
+                onIrPara={aba => { if (allowedTabs.includes(aba)) navigateTo(aba); }}
               />
             )}
 
             {activeTab === 'materiais' && (
               <MateriaisTab
+                key={materiaisPedido.vez}
+                secaoInicial={materiaisPedido.secao}
+                viagensJazida={(
+                  <TicketsJazidaTab
+                    tickets={ticketsJazida}
+                    equipamentos={equipamentos}
+                    controlesEquipamentos={controleEquipamentosDiario}
+                    obras={obras}
+                    responsavel={activeUserName}
+                    onSaveTicket={handleSaveTicketJazida}
+                    onDeleteTicket={handleDeleteTicketJazida}
+                    onDeleteTickets={handleDeleteTicketsJazida}
+                    onImportTickets={handleImportTicketsJazida}
+                    onReserveTicketNumber={handleReserveTicketNumber}
+                    onReserveTicketNumbers={handleReserveTicketNumbers}
+                  />
+                )}
+                totalViagensJazida={ticketsJazida.length}
                 materiais={materiaisCadastro}
                 movimentos={materiaisMovimentos}
                 empresas={empresas}
@@ -5154,7 +5525,15 @@ export default function App() {
                 podeEditar={pode(currentUserRole, 'materiais', 'editar')}
                 onSaveMaterial={handleSaveMaterial}
                 onSaveMovimento={handleSaveMovimentoMaterial}
+                onSaveMovimentos={handleSaveMovimentosMaterial}
+                onUpdateMovimentos={handleUpdateMovimentosMaterial}
                 onApplyImport={handleApplyMaterialImport}
+                onSaveEtapas={handleSaveEtapasServico}
+                onExcluirLocal={pode(currentUserRole, 'cadastros', 'excluir') ? (id, rotulo) => handleExcluirCadastro('etapas', id, rotulo) : undefined}
+                onRestaurarLocal={handleRestaurarCadastro}
+                locaisApagados={locaisApagados}
+                previstos={materiaisPrevistos}
+                onSavePrevistos={handleSaveMateriaisPrevistos}
               />
             )}
 
@@ -5262,6 +5641,31 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'quadro-frota' && (
+              <QuadroFrotaTab
+                equipamentos={equipamentos}
+                registros={controleEquipamentosDiario}
+                gruposEquipe={gruposEquipe}
+                abastecimentos={abastecimentosAtivos}
+                canteiros={canteirosNomes}
+                frentes={frentesServico}
+                funcionarios={funcionarios}
+                empresas={empresas}
+                ordensServico={ordensServico}
+                operationalDrivers={motoristasOperacionais}
+                podeEditar={pode(currentUserRole, 'controle-equipamentos', 'editar')}
+                usuario={activeUserName}
+                onSave={handleSaveControleEquipamentoDiario}
+                onSaveMany={handleSaveControleEquipamentosEmLote}
+                onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
+                podeRemover={pode(currentUserRole, 'cadastros', 'excluir')}
+                onRemoverEquipamentos={handleRemoverEquipamentosDoQuadro}
+                onNavigate={navigateTo}
+                onImportSge={handleImportControleEquipamentosDiario}
+                onApplyCadastroSge={handleAplicarCadastroSge}
+              />
+            )}
+
             {activeTab === 'controle-equipamentos' && (
               <ControleEquipamentosDiarioTab
                 registros={controleEquipamentosDiario}
@@ -5273,7 +5677,9 @@ export default function App() {
                 ordensServico={ordensServico}
                 onSave={handleSaveControleEquipamentoDiario}
                 onImport={handleImportControleEquipamentosDiario}
-                onDeleteMany={handleDeleteControleEquipamentosDiario}
+                onApplyCadastroSge={handleAplicarCadastroSge}
+                onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
+                onOpenMaintenance={() => navigateTo('manutencao')}
                 onOpenEmployeeRegistration={() => navigateTo('cadastros')}
                 onOpenEquipmentRegistration={() => navigateTo('cadastros')}
                 onSaveOperationalDriver={handleSaveOperationalDriver}
@@ -5281,6 +5687,7 @@ export default function App() {
                 canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
                 registeredBy={activeUserName}
                 onApproveFleetRecord={handleApproveControleEquipamentoDiario}
+                onNavigate={navigateTo}
               />
             )}
 
@@ -5289,6 +5696,7 @@ export default function App() {
                 funcionarios={funcionarios}
                 empresas={empresas}
                 obras={obras}
+                canteiros={canteirosNomes}
                 gruposEquipe={gruposEquipe}
                 presencasLink={presencasLinkAtivas}
                 historicoPresencas={historicoPresencas}
@@ -5301,22 +5709,6 @@ export default function App() {
                 onDeletePresencaLink={handleDeletePresencaLink}
                 onResetPresencaDia={handleResetPresencaDia}
                 onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
-              />
-            )}
-
-            {activeTab === 'tickets-jazida' && (
-              <TicketsJazidaTab
-                tickets={ticketsJazida}
-                equipamentos={equipamentos}
-                controlesEquipamentos={controleEquipamentosDiario}
-                obras={obras}
-                responsavel={activeUserName}
-                onSaveTicket={handleSaveTicketJazida}
-                onDeleteTicket={handleDeleteTicketJazida}
-                onDeleteTickets={handleDeleteTicketsJazida}
-                onImportTickets={handleImportTicketsJazida}
-                onReserveTicketNumber={handleReserveTicketNumber}
-                onReserveTicketNumbers={handleReserveTicketNumbers}
               />
             )}
 

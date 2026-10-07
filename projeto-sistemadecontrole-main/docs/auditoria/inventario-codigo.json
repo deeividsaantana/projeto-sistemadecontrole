@@ -1,0 +1,1464 @@
+{
+  "generatedAt": "2026-07-31",
+  "root": ".",
+  "fileCount": 113,
+  "topDirectories": {
+    "[root]": 25,
+    "netlify": 10,
+    "public": 3,
+    "scripts": 8,
+    "src": 58,
+    "tests": 9
+  },
+  "extensionCounts": {
+    ".example": 1,
+    "[none]": 3,
+    ".md": 9,
+    ".txt": 1,
+    ".json": 7,
+    ".rules": 1,
+    ".html": 1,
+    ".js": 10,
+    ".toml": 1,
+    ".png": 3,
+    ".cmd": 1,
+    ".zip": 1,
+    ".mjs": 7,
+    ".py": 1,
+    ".tsx": 24,
+    ".svg": 1,
+    ".css": 2,
+    ".ts": 39
+  },
+  "largestFiles": [
+    {
+      "file": "src/utils/initialMateriaisData.ts",
+      "lines": 144595,
+      "chars": 3308186
+    },
+    {
+      "file": "src/utils/importedSpreadsheetSeed.ts",
+      "lines": 13280,
+      "chars": 370948
+    },
+    {
+      "file": "package-lock.json",
+      "lines": 7929,
+      "chars": 288435
+    },
+    {
+      "file": "src/App.tsx",
+      "lines": 3954,
+      "chars": 178169
+    },
+    {
+      "file": "src/components/TicketsJazidaTab.tsx",
+      "lines": 2407,
+      "chars": 155113
+    },
+    {
+      "file": "src/components/CombustivelInteligenteTab.tsx",
+      "lines": 2191,
+      "chars": 100166
+    },
+    {
+      "file": "src/components/LancamentosTab.tsx",
+      "lines": 1721,
+      "chars": 92554
+    },
+    {
+      "file": "src/components/RelatoriosTab.tsx",
+      "lines": 1545,
+      "chars": 78398
+    },
+    {
+      "file": "src/components/CadastrosTab.tsx",
+      "lines": 1374,
+      "chars": 76052
+    },
+    {
+      "file": "src/components/MateriaisTab.tsx",
+      "lines": 1350,
+      "chars": 71288
+    },
+    {
+      "file": "src/components/Dashboard.tsx",
+      "lines": 1140,
+      "chars": 52865
+    },
+    {
+      "file": "src/components/ControlePresencaTab.tsx",
+      "lines": 1074,
+      "chars": 53272
+    },
+    {
+      "file": "src/components/ConfiguracoesTab.tsx",
+      "lines": 1057,
+      "chars": 56576
+    },
+    {
+      "file": "src/utils/initialData.ts",
+      "lines": 949,
+      "chars": 117363
+    },
+    {
+      "file": "src/components/ApontamentoRamosTab.tsx",
+      "lines": 762,
+      "chars": 38942
+    },
+    {
+      "file": "src/components/TicketLinkExterno.tsx",
+      "lines": 703,
+      "chars": 42947
+    },
+    {
+      "file": "src/components/ParteDiariaEquipamentosTab.tsx",
+      "lines": 688,
+      "chars": 72166
+    },
+    {
+      "file": "src/components/OperationalReportsDashboard.tsx",
+      "lines": 685,
+      "chars": 51987
+    },
+    {
+      "file": "src/components/PresencaTab.tsx",
+      "lines": 683,
+      "chars": 33803
+    },
+    {
+      "file": "src/components/ManutencaoEquipamentosTab.tsx",
+      "lines": 577,
+      "chars": 26778
+    },
+    {
+      "file": "src/utils/operationalAnalytics.ts",
+      "lines": 537,
+      "chars": 19892
+    },
+    {
+      "file": "scripts/publicar-tudo.mjs",
+      "lines": 516,
+      "chars": 20951
+    },
+    {
+      "file": "src/utils/fuelDocumentParsing.ts",
+      "lines": 516,
+      "chars": 21888
+    },
+    {
+      "file": "src/firebaseCloudSync.ts",
+      "lines": 504,
+      "chars": 16085
+    },
+    {
+      "file": "src/types.ts",
+      "lines": 495,
+      "chars": 12973
+    },
+    {
+      "file": "src/utils/parteDiariaPdf.ts",
+      "lines": 416,
+      "chars": 16636
+    },
+    {
+      "file": "src/components/ApontamentoRamoLinkExterno.tsx",
+      "lines": 398,
+      "chars": 17246
+    },
+    {
+      "file": "src/components/PresencaLinkExterno.tsx",
+      "lines": 367,
+      "chars": 16287
+    },
+    {
+      "file": "src/components/SgeIndicadoresPanel.tsx",
+      "lines": 357,
+      "chars": 23952
+    },
+    {
+      "file": "src/components/LegadoSgePanel.tsx",
+      "lines": 311,
+      "chars": 17806
+    },
+    {
+      "file": "src/utils/combustivelValidation.ts",
+      "lines": 301,
+      "chars": 16416
+    },
+    {
+      "file": "netlify/functions/analisar-combustivel-documento.js",
+      "lines": 275,
+      "chars": 11285
+    },
+    {
+      "file": "netlify/functions/public-tickets.js",
+      "lines": 236,
+      "chars": 10016
+    },
+    {
+      "file": "src/utils/ticketSpreadsheetExport.ts",
+      "lines": 232,
+      "chars": 10567
+    },
+    {
+      "file": "scripts/lib/fuel-workbook-reader.mjs",
+      "lines": 216,
+      "chars": 10474
+    },
+    {
+      "file": "src/utils/excelCorporate.ts",
+      "lines": 211,
+      "chars": 8728
+    },
+    {
+      "file": "src/utils/resilientStorage.ts",
+      "lines": 208,
+      "chars": 7402
+    },
+    {
+      "file": "src/utils/operationalAnalysis.ts",
+      "lines": 203,
+      "chars": 11501
+    },
+    {
+      "file": "src/components/SpreadsheetImportReview.tsx",
+      "lines": 188,
+      "chars": 9786
+    },
+    {
+      "file": "firestore.rules",
+      "lines": 187,
+      "chars": 6552
+    }
+  ],
+  "localStorage": [
+    {
+      "file": "src/App.tsx",
+      "keys": [
+        "renea_data_loaded_v2",
+        "renea_empresas",
+        "renea_obras",
+        "renea_equipamentos",
+        "renea_funcionarios",
+        "renea_comboios",
+        "renea_combustiveis",
+        "renea_lubrificantes",
+        "renea_etapas",
+        "renea_abastecimentos",
+        "renea_lubrificacoes",
+        "renea_tickets_jazida",
+        "renea_rdos",
+        "renea_listas_presenca",
+        "renea_ordens_servico",
+        "renea_grupos_equipes",
+        "renea_presencas_link",
+        "renea_historico_presencas",
+        "renea_apontamento_ramos",
+        "renea_apontamento_ramo_registros",
+        "renea_materiais_cadastro",
+        "renea_materiais_registros",
+        "renea_partes_diarias_equipamentos",
+        "renea_periodos_arquivados",
+        "renea_history_logs",
+        "renea_notifications",
+        "renea_colaboradores_planilha_v1",
+        "renea_planilhas_operacionais_v1",
+        "renea_materiais_planilha_v1",
+        "renea_auto_sync",
+        "renea_last_cloud_sync",
+        "renea_last_cloud_sync_iso",
+        "renea_onedrive_fuel_batch"
+      ]
+    },
+    {
+      "file": "src/components/TicketsJazidaTab.tsx",
+      "keys": [
+        "jazidaPrintedTicketBatches",
+        "renea_jazida_printed_batches"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "file": "netlify/functions/analisar-combustivel-documento.js",
+      "endpoints": [
+        "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(firebaseApiKey)}",
+        "https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}"
+      ]
+    },
+    {
+      "file": "netlify/functions/sync-manutencao.js",
+      "endpoints": [
+        "https://sistemarenea-default-rtdb.firebaseio.com",
+        "https://dynamic-manatee-66561d.netlify.app/"
+      ]
+    },
+    {
+      "file": "netlify/functions/_shared/firebase-admin.js",
+      "endpoints": [
+        "https://sistemarenea-default-rtdb.firebaseio.com"
+      ]
+    },
+    {
+      "file": "scripts/provision-staff.mjs",
+      "endpoints": [
+        "https://identitytoolkit.googleapis.com/admin/v2/projects/${serviceAccount.project_id}/config?updateMask=signIn.email.enabled,signIn.email.passwordRequired"
+      ]
+    },
+    {
+      "file": "scripts/publicar-tudo.mjs",
+      "endpoints": [
+        "https://sistemarenea-default-rtdb.firebaseio.com",
+        "https://dynamic-manatee-66561d.netlify.app/",
+        "https://github.com/${EXPECTED_REMOTE}.git",
+        "https://controlereneaa.netlify.app",
+        "https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID}/settings/serviceaccounts/adminsdk"
+      ]
+    },
+    {
+      "file": "src/components/ApontamentoRamosTab.tsx",
+      "endpoints": [
+        "https://wa.me/?text=${encodeURIComponent(message)}"
+      ]
+    },
+    {
+      "file": "src/components/CombustivelInteligenteTab.tsx",
+      "endpoints": [
+        "/.netlify/functions/analisar-combustivel-documento"
+      ]
+    },
+    {
+      "file": "src/components/ControlePresencaTab.tsx",
+      "endpoints": [
+        "https://wa.me/?text=${encodeURIComponent(text)}"
+      ]
+    },
+    {
+      "file": "src/components/PresencaTab.tsx",
+      "endpoints": [
+        "https://dynamic-manatee-66561d.netlify.app/"
+      ]
+    },
+    {
+      "file": "src/firebase.ts",
+      "endpoints": [
+        "https://sistemarenea-default-rtdb.firebaseio.com"
+      ]
+    },
+    {
+      "file": "src/publicApi.ts",
+      "endpoints": [
+        "/.netlify/functions/public-presenca",
+        "/.netlify/functions/public-apontamento",
+        "/.netlify/functions/public-tickets"
+      ]
+    },
+    {
+      "file": "src/usageTelemetry.ts",
+      "endpoints": [
+        "/.netlify/functions/usage-telemetry"
+      ]
+    }
+  ],
+  "firebaseCollections": [
+    {
+      "file": "netlify/functions/cleanup-cloud-data.js",
+      "paths": [
+        "kind",
+        "cleanup_status"
+      ]
+    },
+    {
+      "file": "netlify/functions/public-apontamento.js",
+      "paths": [
+        "sistemarenea_public_submissions",
+        "apontamento_${submissionId}"
+      ]
+    },
+    {
+      "file": "netlify/functions/public-presenca.js",
+      "paths": [
+        "sistemarenea_public_submissions",
+        "presence_${submissionId}"
+      ]
+    },
+    {
+      "file": "netlify/functions/public-tickets.js",
+      "paths": [
+        "${TICKET_DOCUMENT_PREFIX}${safeDocumentId(ticket.id)}"
+      ]
+    },
+    {
+      "file": "netlify/functions/sync-manutencao.js",
+      "paths": [
+        "sistemarenea_cloud",
+        "equipamentos_externos"
+      ]
+    },
+    {
+      "file": "netlify/functions/usage-telemetry.js",
+      "paths": [
+        "${day}_${safeDocumentPart(staff.uid)}",
+        "day"
+      ]
+    },
+    {
+      "file": "netlify/functions/_shared/firebase-admin.js",
+      "paths": [
+        "sistemarenea_rate_limits"
+      ]
+    },
+    {
+      "file": "src/hooks/useEquipamentosExternos.ts",
+      "paths": [
+        "sistemarenea_cloud"
+      ]
+    }
+  ],
+  "exports": {
+    "netlify/functions/analisar-combustivel-documento.js": [
+      "handler"
+    ],
+    "netlify/functions/cleanup-cloud-data.js": [
+      "handler"
+    ],
+    "netlify/functions/public-apontamento.js": [
+      "handler"
+    ],
+    "netlify/functions/public-presenca.js": [
+      "handler"
+    ],
+    "netlify/functions/public-tickets.js": [
+      "handler"
+    ],
+    "netlify/functions/sync-combustivel-onedrive.js": [
+      "handler"
+    ],
+    "netlify/functions/sync-manutencao.js": [
+      "handler"
+    ],
+    "netlify/functions/usage-telemetry.js": [
+      "handler"
+    ],
+    "netlify/functions/_shared/cloud-snapshot.js": [
+      "loadCloudSnapshot"
+    ],
+    "netlify/functions/_shared/firebase-admin.js": [
+      "getAdminDb",
+      "getAdminAuth",
+      "requireStaffUser",
+      "serverTimestamp",
+      "jsonResponse",
+      "parseJsonBody",
+      "cleanString",
+      "isIsoDate",
+      "stableHash",
+      "requestIpHash",
+      "enforceRateLimit",
+      "functionErrorResponse"
+    ],
+    "scripts/lib/fuel-sync-inventory.mjs": [
+      "FUEL_SYNC_PARSER_VERSION",
+      "fuelFilePeriodKey",
+      "sortFuelFiles",
+      "selectChangedFuelFiles",
+      "buildFuelFileHashMap"
+    ],
+    "scripts/lib/fuel-workbook-reader.mjs": [
+      "readFuelWorkbook"
+    ],
+    "src/App.tsx": [
+      "App"
+    ],
+    "src/components/ApontamentoRamoLinkExterno.tsx": [
+      "ApontamentoRamoLinkExterno"
+    ],
+    "src/components/ApontamentoRamosTab.tsx": [
+      "ApontamentoRamosTab"
+    ],
+    "src/components/CadastrosTab.tsx": [
+      "CadastrosTab"
+    ],
+    "src/components/ConfiguracoesTab.tsx": [
+      "ConfiguracoesTab"
+    ],
+    "src/components/ControlePresencaTab.tsx": [
+      "ControlePresencaTab"
+    ],
+    "src/components/Dashboard.tsx": [
+      "Dashboard"
+    ],
+    "src/components/LancamentosTab.tsx": [
+      "LancamentosTab"
+    ],
+    "src/components/ManutencaoEquipamentosTab.tsx": [
+      "ManutencaoEquipamentosTab"
+    ],
+    "src/components/MateriaisTab.tsx": [
+      "MateriaisTab"
+    ],
+    "src/components/OperationalAnalysisPanel.tsx": [
+      "OperationalAnalysisPanel"
+    ],
+    "src/components/OperationalReportsDashboard.tsx": [
+      "OperationalReportsDashboard"
+    ],
+    "src/components/PresencaLinkExterno.tsx": [
+      "isGeneralPresenceToken",
+      "PresencaLinkExterno"
+    ],
+    "src/components/PresencaTab.tsx": [
+      "PresencaTab"
+    ],
+    "src/components/RelatoriosTab.tsx": [
+      "RelatoriosTab"
+    ],
+    "src/components/SignaturePad.tsx": [
+      "SignaturePad"
+    ],
+    "src/components/SpreadsheetImportReview.tsx": [
+      "SpreadsheetPreviewRow",
+      "SpreadsheetImportReview"
+    ],
+    "src/components/TicketLinkExterno.tsx": [
+      "TicketLinkExterno"
+    ],
+    "src/components/TicketsJazidaTab.tsx": [
+      "TicketsJazidaTab"
+    ],
+    "src/firebase.ts": [
+      "db",
+      "auth",
+      "OperationType",
+      "FirestoreErrorInfo",
+      "handleFirestoreError",
+      "analyticsPromise"
+    ],
+    "src/firebaseCloudSync.ts": [
+      "FirebaseCloudData",
+      "FirebaseConnectionStatus",
+      "FirebaseUploadResult",
+      "FirebaseDownloadResult",
+      "formatFirebaseSyncError",
+      "getFirebaseConnectionStatus",
+      "uploadFirebaseBackup",
+      "downloadFirebaseBackup"
+    ],
+    "src/firebasePublicSubmissions.ts": [
+      "PublicSubmission",
+      "loadPendingPublicSubmissions",
+      "markPublicSubmissionsProcessed"
+    ],
+    "src/firebaseTickets.ts": [
+      "reservePublicTicketNumbers",
+      "reservePublicTicketNumber",
+      "savePublicTicket",
+      "deletePublicTicket",
+      "loadPublicTickets"
+    ],
+    "src/hooks/useEquipamentosExternos.ts": [
+      "EquipamentosExternos",
+      "useEquipamentosExternos"
+    ],
+    "src/oneDriveFuelSync.ts": [
+      "OneDriveFuelSyncStatus",
+      "OneDriveFuelRow",
+      "OneDriveFuelPayload",
+      "loadOneDriveFuelPayload"
+    ],
+    "src/publicApi.ts": [
+      "PublicPresenceConfig",
+      "loadPublicPresenceConfig",
+      "submitPublicPresence",
+      "PublicApontamentoConfig",
+      "PublicApontamentoPayload",
+      "loadPublicApontamentoConfig",
+      "submitPublicApontamento",
+      "searchPendingPublicTickets",
+      "reservePublicTicketNumberViaApi",
+      "savePublicTicketViaApi"
+    ],
+    "src/types.ts": [
+      "Empresa",
+      "ObraLocal",
+      "Equipamento",
+      "Funcionario",
+      "Comboio",
+      "TipoCombustivel",
+      "ProdutoLubrificacao",
+      "EtapaServico",
+      "MaterialCategoria",
+      "MaterialStatus",
+      "MaterialCadastro",
+      "MaterialRegistro",
+      "StatusRegistroCombustivel",
+      "OrigemRegistroCombustivel",
+      "SeveridadeAlertaCombustivel",
+      "AlertaCombustivel",
+      "Abastecimento",
+      "Lubrificacao",
+      "RdoDiario",
+      "HistoryLog",
+      "PresencaItem",
+      "ListaPresenca",
+      "PresencaStatus",
+      "GrupoEquipe",
+      "PresencaApontamento",
+      "HistoricoPresenca",
+      "TipoMaterialJazida",
+      "DestinoObraJazida",
+      "EmpresaTicketJazida",
+      "TipoTicketJazida",
+      "StatusFluxoTicket",
+      "UnidadeQuantidadeTicket",
+      "TicketJazida",
+      "OrdemServico",
+      "TurnoApontamento",
+      "ClimaApontamento",
+      "CondicaoApontamento",
+      "ApontamentoRamo",
+      "ApontamentoQuantidadeItem",
+      "ApontamentoRamoRegistro",
+      "AppNotification",
+      "PeriodoArquivado",
+      "RespostaChecklistEquipamento",
+      "StatusParteDiariaEquipamento",
+      "TipoMarcacaoParteDiaria",
+      "ParteDiariaAtividade",
+      "ParteDiariaTransporte",
+      "ParteDiariaChecklistItem",
+      "ParteDiariaEquipamento"
+    ],
+    "src/usageTelemetry.ts": [
+      "UsageSummaryItem",
+      "UsageSummary",
+      "recordTabUsage",
+      "loadUsageSummary"
+    ],
+    "src/utils/apontamentoRamosConfig.ts": [
+      "APONTAMENTO_LINK_TOKEN",
+      "APONTAMENTO_EMPRESA_PADRAO",
+      "APONTAMENTO_FUNCOES",
+      "APONTAMENTO_EQUIPAMENTOS",
+      "APONTAMENTO_TURNOS",
+      "APONTAMENTO_CLIMAS",
+      "APONTAMENTO_CONDICOES",
+      "createQuantidadeItems",
+      "createDefaultClima",
+      "createDefaultCondicao",
+      "totalQuantidade"
+    ],
+    "src/utils/combustivelValidation.ts": [
+      "isValidFuelDate",
+      "normalizeQuickTime",
+      "findEquipmentByPrefix",
+      "validateFueling",
+      "getFuelStatusFromAlerts",
+      "getFuelQualityScore",
+      "normalizeFuelRecord",
+      "auditFuelDataset"
+    ],
+    "src/utils/excelCorporate.ts": [
+      "EXCEL_MIME",
+      "CORPORATE_EXCEL",
+      "CorporateSheetOptions",
+      "configureCorporateWorkbook",
+      "autoFitCorporateColumns",
+      "styleCorporateWorksheet",
+      "addCorporateSummarySheet",
+      "validateExcelImportFile",
+      "loadValidatedWorkbook",
+      "downloadCorporateWorkbook"
+    ],
+    "src/utils/fuelDocumentParsing.ts": [
+      "LocalFuelDocumentAnalysis",
+      "OperationalIndicator",
+      "OperationalAction",
+      "OperationalAnalysis",
+      "buildFuelOperationalAnalysis",
+      "analyzeFuelDocumentLocally"
+    ],
+    "src/utils/fuelPumpSequence.ts": [
+      "fuelRecordOrderKey",
+      "findPreviousPumpForConvoy",
+      "PumpContinuityIssue",
+      "auditPumpContinuityByConvoy"
+    ],
+    "src/utils/importedSpreadsheetSeed.ts": [
+      "IMPORTED_SEED_EQUIPAMENTOS",
+      "IMPORTED_SEED_ABASTECIMENTOS",
+      "IMPORTED_SEED_TICKETS_JAZIDA"
+    ],
+    "src/utils/importHelpers.ts": [
+      "ImportTableRow",
+      "normalizeImportText",
+      "cleanImportValue",
+      "parseImportNumber",
+      "excelSerialToIsoDate",
+      "toImportIsoDate",
+      "getImportValue",
+      "parseDelimitedText",
+      "tableRowsToObjects"
+    ],
+    "src/utils/initialData.ts": [
+      "loadInitialMateriaisData",
+      "INITIAL_EMPRESAS",
+      "INITIAL_OBRAS",
+      "INITIAL_EQUIPAMENTOS",
+      "INITIAL_FUNCIONARIOS",
+      "INITIAL_COMBOIOS",
+      "INITIAL_TIPOS_COMBUSTIVEL",
+      "INITIAL_PRODUTOS_LUBRIFICACAO",
+      "INITIAL_ETAPAS_SERVICO",
+      "INITIAL_ABASTECIMENTOS",
+      "INITIAL_TICKETS_JAZIDA",
+      "INITIAL_LUBRIFICACOES",
+      "INITIAL_RDOS",
+      "INITIAL_HISTORY_LOGS",
+      "INITIAL_PRESENCAS",
+      "INITIAL_GRUPOS_EQUIPES",
+      "INITIAL_PRESENCAS_LINK",
+      "INITIAL_HISTORICO_PRESENCAS",
+      "INITIAL_APONTAMENTO_RAMOS",
+      "INITIAL_APONTAMENTO_RAMO_REGISTROS",
+      "INITIAL_PARTES_DIARIAS_EQUIPAMENTOS",
+      "INITIAL_ORDENS_SERVICO"
+    ],
+    "src/utils/initialMateriaisData.ts": [
+      "INITIAL_MATERIAIS_CADASTRO",
+      "INITIAL_MATERIAIS_REGISTROS"
+    ],
+    "src/utils/jazidaDailyControl.ts": [
+      "JazidaDailyControlRow",
+      "JazidaDailyControl",
+      "getTicketControlDate",
+      "isTicketReturned",
+      "buildJazidaDailyControl"
+    ],
+    "src/utils/oneDriveFuelImport.ts": [
+      "materializeOneDriveFuelRows"
+    ],
+    "src/utils/operationalAnalysis.ts": [
+      "OperationalIndicator",
+      "OperationalAction",
+      "OperationalAnalysis",
+      "buildMaterialOperationalAnalysis",
+      "buildParteDiariaOperationalAnalysis"
+    ],
+    "src/utils/operationalAnalytics.ts": [
+      "FuelAnalyticsFilters",
+      "FuelDetailRow",
+      "FuelAggregateRow",
+      "FuelAnalytics",
+      "JazidaAnalyticsFilters",
+      "JazidaDetailRow",
+      "JazidaAggregateRow",
+      "JazidaAnalytics",
+      "buildFuelAnalytics",
+      "buildJazidaAnalytics"
+    ],
+    "src/utils/parteDiariaPdf.ts": [
+      "CODIGOS_PERDA_PARTE_DIARIA",
+      "CHECKLIST_PADRAO_PARTE_DIARIA",
+      "createParteDiariaPdf",
+      "downloadParteDiariaPdf"
+    ],
+    "src/utils/resilientStorage.ts": [
+      "StorageBatchEntry",
+      "commitStorageBatch",
+      "isReneaJsonArrayStorageKey",
+      "isReneaStoredValueValid",
+      "parseReneaStoredJson",
+      "mirrorReneaLocalStorage",
+      "restoreMissingReneaLocalStorage",
+      "startReneaStorageMirror"
+    ],
+    "src/utils/systemBackup.ts": [
+      "SYSTEM_BACKUP_ARRAY_KEYS",
+      "SystemBackupArrayKey",
+      "SystemBackupValidation",
+      "isRecordValue",
+      "validateSystemBackup",
+      "describeInvalidBackup"
+    ],
+    "src/utils/ticketDuplicateDetection.ts": [
+      "ticketDuplicateKey",
+      "buildDuplicateTicketKeys",
+      "isDuplicateTicket"
+    ],
+    "src/utils/ticketNumberSequence.ts": [
+      "TICKET_PREFIX",
+      "normalizeTicketNumber",
+      "baseTicketNumber",
+      "buildTicketNumberSequence"
+    ],
+    "src/utils/ticketSpreadsheetExport.ts": [
+      "getTicketSpreadsheetStatus",
+      "buildTicketSpreadsheetWorkbook"
+    ]
+  },
+  "components": [
+    {
+      "file": "src/components/TicketsJazidaTab.tsx",
+      "lines": 2407,
+      "imports": [
+        "react",
+        "lucide-react",
+        "exceljs",
+        "../utils/excelCorporate",
+        "./SpreadsheetImportReview",
+        "../utils/ticketNumberSequence",
+        "../utils/ticketDuplicateDetection",
+        "../utils/ticketSpreadsheetExport",
+        "../utils/jazidaDailyControl",
+        "../utils/resilientStorage",
+        "jspdf",
+        "../types",
+        "../assets/images/renea_logo_new.png",
+        "../assets/images/spmar_logo.png"
+      ],
+      "useState": 64,
+      "useEffect": 0,
+      "useMemo": 12,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 11,
+      "inlineStyles": 1,
+      "exports": [
+        "TicketsJazidaTab"
+      ]
+    },
+    {
+      "file": "src/components/CombustivelInteligenteTab.tsx",
+      "lines": 2191,
+      "imports": [
+        "react",
+        "lucide-react",
+        "exceljs",
+        "../types",
+        "../utils/combustivelValidation",
+        "../utils/fuelPumpSequence",
+        "../utils/fuelDocumentParsing",
+        "../utils/operationalAnalysis",
+        "../utils/excelCorporate",
+        "../firebase",
+        "../oneDriveFuelSync",
+        "./OperationalAnalysisPanel"
+      ],
+      "useState": 24,
+      "useEffect": 0,
+      "useMemo": 11,
+      "useCallback": 0,
+      "alerts": 1,
+      "any": 2,
+      "inlineStyles": 2,
+      "exports": []
+    },
+    {
+      "file": "src/components/LancamentosTab.tsx",
+      "lines": 1721,
+      "imports": [
+        "react",
+        "../types",
+        "lucide-react",
+        "exceljs",
+        "../utils/excelCorporate",
+        "./SpreadsheetImportReview",
+        "./CombustivelInteligenteTab",
+        "../utils/combustivelValidation",
+        "../utils/fuelPumpSequence",
+        "../oneDriveFuelSync"
+      ],
+      "useState": 39,
+      "useEffect": 0,
+      "useMemo": 3,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 12,
+      "inlineStyles": 0,
+      "exports": [
+        "LancamentosTab"
+      ]
+    },
+    {
+      "file": "src/components/RelatoriosTab.tsx",
+      "lines": 1545,
+      "imports": [
+        "react",
+        "../types",
+        "lucide-react",
+        "../utils/apontamentoRamosConfig",
+        "../assets/images/renea_logo_new.png",
+        "../assets/images/spmar_logo.png",
+        "jspdf",
+        "jspdf-autotable",
+        "exceljs",
+        "../utils/excelCorporate",
+        "./OperationalReportsDashboard"
+      ],
+      "useState": 10,
+      "useEffect": 0,
+      "useMemo": 0,
+      "useCallback": 0,
+      "alerts": 1,
+      "any": 28,
+      "inlineStyles": 0,
+      "exports": [
+        "RelatoriosTab"
+      ]
+    },
+    {
+      "file": "src/components/CadastrosTab.tsx",
+      "lines": 1374,
+      "imports": [
+        "react",
+        "exceljs",
+        "../utils/excelCorporate",
+        "./SpreadsheetImportReview",
+        "../types",
+        "lucide-react"
+      ],
+      "useState": 47,
+      "useEffect": 0,
+      "useMemo": 0,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 6,
+      "inlineStyles": 0,
+      "exports": [
+        "CadastrosTab"
+      ]
+    },
+    {
+      "file": "src/components/MateriaisTab.tsx",
+      "lines": 1350,
+      "imports": [
+        "react",
+        "exceljs",
+        "../utils/excelCorporate",
+        "../utils/importHelpers",
+        "../utils/operationalAnalysis",
+        "./SpreadsheetImportReview",
+        "lucide-react",
+        "../types"
+      ],
+      "useState": 24,
+      "useEffect": 1,
+      "useMemo": 8,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 7,
+      "inlineStyles": 0,
+      "exports": [
+        "MateriaisTab"
+      ]
+    },
+    {
+      "file": "src/components/Dashboard.tsx",
+      "lines": 1140,
+      "imports": [
+        "react",
+        "../hooks/useEquipamentosExternos",
+        "../assets/images/logo-renea-branco.svg",
+        "../types",
+        "recharts",
+        "lucide-react"
+      ],
+      "useState": 5,
+      "useEffect": 0,
+      "useMemo": 2,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 0,
+      "inlineStyles": 4,
+      "exports": [
+        "Dashboard"
+      ]
+    },
+    {
+      "file": "src/components/ControlePresencaTab.tsx",
+      "lines": 1074,
+      "imports": [
+        "react",
+        "lucide-react",
+        "exceljs",
+        "../utils/excelCorporate",
+        "jspdf",
+        "jspdf-autotable",
+        "../types"
+      ],
+      "useState": 20,
+      "useEffect": 0,
+      "useMemo": 11,
+      "useCallback": 0,
+      "alerts": 1,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "ControlePresencaTab"
+      ]
+    },
+    {
+      "file": "src/components/ConfiguracoesTab.tsx",
+      "lines": 1057,
+      "imports": [
+        "react",
+        "../types",
+        "../usageTelemetry",
+        "lucide-react"
+      ],
+      "useState": 33,
+      "useEffect": 1,
+      "useMemo": 2,
+      "useCallback": 0,
+      "alerts": 1,
+      "any": 2,
+      "inlineStyles": 1,
+      "exports": [
+        "ConfiguracoesTab"
+      ]
+    },
+    {
+      "file": "src/components/ApontamentoRamosTab.tsx",
+      "lines": 762,
+      "imports": [
+        "react",
+        "lucide-react",
+        "../types",
+        "../utils/apontamentoRamosConfig"
+      ],
+      "useState": 11,
+      "useEffect": 0,
+      "useMemo": 4,
+      "useCallback": 0,
+      "alerts": 3,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "ApontamentoRamosTab"
+      ]
+    },
+    {
+      "file": "src/components/TicketLinkExterno.tsx",
+      "lines": 703,
+      "imports": [
+        "react",
+        "motion/react",
+        "lucide-react",
+        "../types",
+        "../assets/images/logo-renea-branco.svg",
+        "./SignaturePad"
+      ],
+      "useState": 16,
+      "useEffect": 4,
+      "useMemo": 1,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "TicketLinkExterno"
+      ]
+    },
+    {
+      "file": "src/components/ParteDiariaEquipamentosTab.tsx",
+      "lines": 688,
+      "imports": [
+        "react",
+        "exceljs",
+        "lucide-react",
+        "../types",
+        "../assets/images/renea_logo_new.png",
+        "../utils/parteDiariaPdf",
+        "../utils/excelCorporate",
+        "../utils/importHelpers",
+        "../utils/operationalAnalysis",
+        "./LegadoSgePanel",
+        "./SgeIndicadoresPanel",
+        "./SpreadsheetImportReview"
+      ],
+      "useState": 16,
+      "useEffect": 0,
+      "useMemo": 7,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 1,
+      "inlineStyles": 3,
+      "exports": []
+    },
+    {
+      "file": "src/components/OperationalReportsDashboard.tsx",
+      "lines": 685,
+      "imports": [
+        "react",
+        "../types",
+        "../utils/operationalAnalytics",
+        "recharts",
+        "lucide-react",
+        "exceljs",
+        "jspdf",
+        "jspdf-autotable",
+        "../assets/images/renea_logo_new.png",
+        "../assets/images/logo-renea-branco.svg",
+        "../assets/images/spmar_logo.png",
+        "../utils/excelCorporate"
+      ],
+      "useState": 12,
+      "useEffect": 0,
+      "useMemo": 4,
+      "useCallback": 0,
+      "alerts": 2,
+      "any": 0,
+      "inlineStyles": 2,
+      "exports": [
+        "OperationalReportsDashboard"
+      ]
+    },
+    {
+      "file": "src/components/PresencaTab.tsx",
+      "lines": 683,
+      "imports": [
+        "react",
+        "motion/react",
+        "lucide-react",
+        "../types"
+      ],
+      "useState": 9,
+      "useEffect": 0,
+      "useMemo": 0,
+      "useCallback": 0,
+      "alerts": 2,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "PresencaTab"
+      ]
+    },
+    {
+      "file": "src/components/ManutencaoEquipamentosTab.tsx",
+      "lines": 577,
+      "imports": [
+        "react",
+        "motion/react",
+        "lucide-react",
+        "../types"
+      ],
+      "useState": 8,
+      "useEffect": 0,
+      "useMemo": 0,
+      "useCallback": 0,
+      "alerts": 2,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "ManutencaoEquipamentosTab"
+      ]
+    },
+    {
+      "file": "src/components/ApontamentoRamoLinkExterno.tsx",
+      "lines": 398,
+      "imports": [
+        "react",
+        "lucide-react",
+        "motion/react",
+        "../types",
+        "../utils/apontamentoRamosConfig",
+        "../assets/images/logo-renea-branco.svg"
+      ],
+      "useState": 13,
+      "useEffect": 1,
+      "useMemo": 4,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "ApontamentoRamoLinkExterno"
+      ]
+    },
+    {
+      "file": "src/components/PresencaLinkExterno.tsx",
+      "lines": 367,
+      "imports": [
+        "react",
+        "lucide-react",
+        "motion/react",
+        "../types",
+        "../assets/images/logo-renea-branco.svg"
+      ],
+      "useState": 6,
+      "useEffect": 1,
+      "useMemo": 5,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "isGeneralPresenceToken",
+        "PresencaLinkExterno"
+      ]
+    },
+    {
+      "file": "src/components/SgeIndicadoresPanel.tsx",
+      "lines": 357,
+      "imports": [
+        "react",
+        "lucide-react"
+      ],
+      "useState": 9,
+      "useEffect": 1,
+      "useMemo": 9,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 0,
+      "inlineStyles": 1,
+      "exports": []
+    },
+    {
+      "file": "src/components/LegadoSgePanel.tsx",
+      "lines": 311,
+      "imports": [
+        "react",
+        "lucide-react",
+        "../types"
+      ],
+      "useState": 9,
+      "useEffect": 1,
+      "useMemo": 5,
+      "useCallback": 0,
+      "alerts": 1,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": []
+    },
+    {
+      "file": "src/components/SpreadsheetImportReview.tsx",
+      "lines": 188,
+      "imports": [
+        "react",
+        "lucide-react",
+        "motion/react",
+        "./OperationalAnalysisPanel",
+        "../utils/operationalAnalysis"
+      ],
+      "useState": 2,
+      "useEffect": 1,
+      "useMemo": 1,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "SpreadsheetPreviewRow",
+        "SpreadsheetImportReview"
+      ]
+    },
+    {
+      "file": "src/components/SignaturePad.tsx",
+      "lines": 139,
+      "imports": [
+        "react",
+        "lucide-react"
+      ],
+      "useState": 1,
+      "useEffect": 1,
+      "useMemo": 0,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "SignaturePad"
+      ]
+    },
+    {
+      "file": "src/components/OperationalAnalysisPanel.tsx",
+      "lines": 109,
+      "imports": [
+        "react",
+        "../utils/operationalAnalysis"
+      ],
+      "useState": 0,
+      "useEffect": 0,
+      "useMemo": 0,
+      "useCallback": 0,
+      "alerts": 0,
+      "any": 0,
+      "inlineStyles": 0,
+      "exports": [
+        "OperationalAnalysisPanel"
+      ]
+    }
+  ],
+  "netlifyFunctions": [
+    {
+      "file": "netlify/functions/analisar-combustivel-documento.js",
+      "lines": 275,
+      "imports": [
+        "./_shared/firebase-admin.js"
+      ],
+      "requiresStaff": false,
+      "rateLimit": true,
+      "cors": false,
+      "secrets": [
+        "FIREBASE_WEB_API_KEY",
+        "AI_ALLOWED_EMAILS",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GEMINI_DOCUMENT_MODEL"
+      ],
+      "collections": [],
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "netlify/functions/cleanup-cloud-data.js",
+      "lines": 60,
+      "imports": [
+        "./_shared/firebase-admin.js"
+      ],
+      "requiresStaff": false,
+      "rateLimit": false,
+      "cors": false,
+      "secrets": [],
+      "collections": [],
+      "methods": []
+    },
+    {
+      "file": "netlify/functions/public-apontamento.js",
+      "lines": 123,
+      "imports": [
+        "node:crypto",
+        "./_shared/firebase-admin.js",
+        "./_shared/cloud-snapshot.js"
+      ],
+      "requiresStaff": false,
+      "rateLimit": true,
+      "cors": false,
+      "secrets": [],
+      "collections": [
+        "sistemarenea_public_submissions"
+      ],
+      "methods": []
+    },
+    {
+      "file": "netlify/functions/public-presenca.js",
+      "lines": 159,
+      "imports": [
+        "node:crypto",
+        "./_shared/firebase-admin.js",
+        "./_shared/cloud-snapshot.js"
+      ],
+      "requiresStaff": false,
+      "rateLimit": true,
+      "cors": false,
+      "secrets": [],
+      "collections": [
+        "sistemarenea_public_submissions"
+      ],
+      "methods": []
+    },
+    {
+      "file": "netlify/functions/public-tickets.js",
+      "lines": 236,
+      "imports": [
+        "./_shared/firebase-admin.js"
+      ],
+      "requiresStaff": false,
+      "rateLimit": true,
+      "cors": false,
+      "secrets": [],
+      "collections": [],
+      "methods": []
+    },
+    {
+      "file": "netlify/functions/sync-combustivel-onedrive.js",
+      "lines": 164,
+      "imports": [
+        "node:crypto",
+        "./_shared/firebase-admin.js"
+      ],
+      "requiresStaff": true,
+      "rateLimit": false,
+      "cors": false,
+      "secrets": [
+        "RENEA_ONEDRIVE_SYNC_TOKEN"
+      ],
+      "collections": [],
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "netlify/functions/sync-manutencao.js",
+      "lines": 111,
+      "imports": [
+        "firebase-admin/app",
+        "firebase-admin/firestore"
+      ],
+      "requiresStaff": false,
+      "rateLimit": false,
+      "cors": false,
+      "secrets": [
+        "FIREBASE_SERVICE_ACCOUNT_KEY_BASE64",
+        "FIREBASE_SERVICE_ACCOUNT_KEY",
+        "FIREBASE_DATABASE_URL",
+        "MANUTENCAO_SOURCE_URL"
+      ],
+      "collections": [
+        "sistemarenea_cloud"
+      ],
+      "methods": []
+    },
+    {
+      "file": "netlify/functions/usage-telemetry.js",
+      "lines": 104,
+      "imports": [
+        "./_shared/firebase-admin.js"
+      ],
+      "requiresStaff": true,
+      "rateLimit": true,
+      "cors": false,
+      "secrets": [],
+      "collections": [],
+      "methods": []
+    },
+    {
+      "file": "netlify/functions/_shared/cloud-snapshot.js",
+      "lines": 78,
+      "imports": [
+        "node:crypto"
+      ],
+      "requiresStaff": false,
+      "rateLimit": false,
+      "cors": false,
+      "secrets": [],
+      "collections": [],
+      "methods": []
+    },
+    {
+      "file": "netlify/functions/_shared/firebase-admin.js",
+      "lines": 129,
+      "imports": [
+        "node:crypto",
+        "firebase-admin/app",
+        "firebase-admin/auth",
+        "firebase-admin/firestore"
+      ],
+      "requiresStaff": false,
+      "rateLimit": false,
+      "cors": false,
+      "secrets": [
+        "FIREBASE_SERVICE_ACCOUNT_KEY_BASE64",
+        "FIREBASE_SERVICE_ACCOUNT_KEY",
+        "FIREBASE_DATABASE_URL"
+      ],
+      "collections": [
+        "sistemarenea_rate_limits"
+      ],
+      "methods": []
+    }
+  ]
+}

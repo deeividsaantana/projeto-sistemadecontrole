@@ -49,7 +49,7 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
               <div className="grid size-10 place-items-center rounded-full bg-emerald-50 text-emerald-700"><ShieldCheck size={20} strokeWidth={2.1} /></div>
               <div>
                 <p className="text-sm font-black tracking-[-0.03em] text-slate-900">RENEA</p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Central operacional</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Controle de obra</p>
               </div>
             </div>
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700"><i className="size-2 rounded-full bg-emerald-500" />Dados preservados</span>

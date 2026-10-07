@@ -1,0 +1,4 @@
+@import "../src/index.css";
+/* Tailwind v4 detecta o conteudo a partir da raiz do projeto; como a raiz aqui
+   e preview/, e preciso declarar explicitamente onde estao as telas. */
+@source "../src";

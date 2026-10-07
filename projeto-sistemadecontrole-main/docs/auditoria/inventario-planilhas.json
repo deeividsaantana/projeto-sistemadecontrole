@@ -1,0 +1,2806 @@
+{
+  "generatedAt": "2026-07-31",
+  "sourceNote": "Metadados estruturais; não inclui linhas operacionais nem dados pessoais.",
+  "workbooks": [
+    {
+      "file": "CONTROLE DE ESTACAS.xlsx",
+      "sizeBytes": 130398,
+      "sha256": "ab4ac66ab4b0cba7b5b7c9ba09c39da0d5eb8de2ae54bca0696ab7a96e5a2a22",
+      "sheets": [
+        {
+          "name": "Listas",
+          "state": "hidden",
+          "dimension": "A1:F10",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Cadastro Materiais",
+          "state": "hidden",
+          "dimension": "A1:J199",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 0
+        },
+        {
+          "name": "Veículos",
+          "state": "hidden",
+          "dimension": "A1:I8",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 0
+        },
+        {
+          "name": "Conferência",
+          "state": "hidden",
+          "dimension": "A1:C17",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Lançamentos",
+          "state": "visible",
+          "dimension": "A1:AA497",
+          "formulaCount": 16,
+          "representativeFormulas": [
+            "LancamentosTable[[#This Row],[Peso (kg)]]*LancamentosTable[[#This Row],[Valor Unitário (R$)]]"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 1
+        },
+        {
+          "name": "Cravações",
+          "state": "visible",
+          "dimension": "A1:Q985",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Resumo",
+          "state": "hidden",
+          "dimension": "A1:M22",
+          "formulaCount": 5,
+          "representativeFormulas": [
+            "COUNTA(Lançamentos!#REF!)",
+            "SUM(Lançamentos!J6:J497)",
+            "SUM(Lançamentos!L6:L497)",
+            "COUNTA(A19:A21)",
+            "SUBTOTAL(3,Tabela5[Item])"
+          ],
+          "validations": [],
+          "mergeCount": 4,
+          "drawingCount": 1
+        }
+      ],
+      "tables": [
+        {
+          "sheet": "Cadastro Materiais",
+          "tables": [
+            {
+              "name": "MateriaisTable",
+              "ref": "A3:J18",
+              "columns": [
+                "Código",
+                "Descrição completa",
+                "Tipo",
+                "Perfil / Modelo",
+                "Aço",
+                "Comprimento (m)",
+                "NCM",
+                "Unidade padrão",
+                "Peso unitário (kg)",
+                "Observações"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "Veículos",
+          "tables": [
+            {
+              "name": "VeiculosTable",
+              "ref": "A3:I8",
+              "columns": [
+                "Placa",
+                "Tipo",
+                "Marca / Modelo",
+                "Ano Fab.",
+                "Ano Modelo",
+                "Renavam",
+                "Chassi",
+                "Eixos",
+                "Proprietário"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "Lançamentos",
+          "tables": [
+            {
+              "name": "LancamentosTable",
+              "ref": "A5:R21",
+              "columns": [
+                "Data",
+                "Hora",
+                "Movimento",
+                "NF",
+                "Código Material",
+                "Descrição",
+                "Tipo",
+                "Comprimento (m)",
+                "Unidade",
+                "Peso (kg)",
+                "Valor Unitário (R$)",
+                "Valor Total (R$)",
+                "Cavalo / Placa",
+                "Carreta / Placa",
+                "Transportadora",
+                "Destino / Obra",
+                "Tipo de Carregamento",
+                "Status"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "Cravações",
+          "tables": [
+            {
+              "name": "Tabela5",
+              "ref": "A1:G985",
+              "columns": [
+                "Data",
+                "Item",
+                "Serviço",
+                "Identificação",
+                "Perfil",
+                "Comprimento (m)",
+                "Comprimento cravado"
+              ]
+            }
+          ]
+        }
+      ],
+      "definedNames": [
+        {
+          "name": "_xlnm.Print_Area",
+          "localSheetId": "5",
+          "value": "Cravações!$H:$M"
+        },
+        {
+          "name": "_xlnm.Print_Area",
+          "localSheetId": "4",
+          "value": "Lançamentos!$S:$Y"
+        }
+      ],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/CONTROLE DE ESTACAS.xlsx"
+    },
+    {
+      "file": "CONTROLE DE MATERIAIS COMPLEXO ALTO TIETE POR RAMO BACKUP.xlsx",
+      "sizeBytes": 16420124,
+      "sha256": "49ec4dc5c9c1a4af69fd3373b47690b3a9e0a91859cd2e2143b4ae3ecb78e7ab",
+      "sheets": [
+        {
+          "name": "RES_GERAL",
+          "state": "visible",
+          "dimension": "B1:T52",
+          "formulaCount": 200,
+          "representativeFormulas": [
+            "SUMIFS(RACHÃO!E:E,RACHÃO!J:J,RES_GERAL!B8,RACHÃO!C:C,RES_GERAL!$C$6,RACHÃO!$B:$B,\">=\"&RES_GERAL!$D$3,RACHÃO!$B:$B,\"<=\"&RES_GERAL!$E$3)",
+            "C8/1.5",
+            "SUMIFS('SOLO REFORÇADO'!E:E,'SOLO REFORÇADO'!J:J,RES_GERAL!B8,'SOLO REFORÇADO'!C:C,RES_GERAL!$F$6,'SOLO REFORÇADO'!$B:$B,\">=\"&RES_GERAL!$D$3,'SOLO REFORÇADO'!$B:$B,\"<=\"&RES_GERAL!$E$3)",
+            "F8/1.28",
+            "SUMIFS('BICA CORRIDA'!E:E,'BICA CORRIDA'!J:J,RES_GERAL!B8,'BICA CORRIDA'!C:C,RES_GERAL!$I$6,'BICA CORRIDA'!$B:$B,\">=\"&RES_GERAL!$D$3,'BICA CORRIDA'!B:B,\"<=\"&RES_GERAL!$E$3)",
+            "I8/1.5",
+            "SUMIFS('SOLO REFORÇADO'!E:E,'SOLO REFORÇADO'!J:J,RES_GERAL!B8,'SOLO REFORÇADO'!C:C,RES_GERAL!$L$6,'SOLO REFORÇADO'!B:B,\">=\"&RES_GERAL!$D$3,'SOLO REFORÇADO'!$B:$B,\"<=\"&RES_GERAL!$E$3)",
+            "L8/1.3",
+            "SUMIFS(MACADAME!$E:$E,MACADAME!$C:$C,RES_GERAL!$O$6,MACADAME!$J:$J,RES_GERAL!$B8)",
+            "O8/1.3",
+            "SUMIFS(RACHÃO!$E:$E,RACHÃO!$C:$C,RES_GERAL!$R$6,RACHÃO!$J:$J,RES_GERAL!$B8)",
+            "R8/1.3"
+          ],
+          "validations": [],
+          "mergeCount": 21,
+          "drawingCount": 0
+        },
+        {
+          "name": "RACHÃO",
+          "state": "visible",
+          "dimension": "B2:T3499",
+          "formulaCount": 3242,
+          "representativeFormulas": [
+            "Tabela2[[#This Row],[QUANTIDADE]]*Tabela2[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J3:J3168 J3214:J3220 J3232:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$4:$N$28",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "MACADAME",
+          "state": "visible",
+          "dimension": "B2:T3499",
+          "formulaCount": 481,
+          "representativeFormulas": [
+            "Tabela210[[#This Row],[VALOR UNIT.]]*Tabela210[[#This Row],[QUANTIDADE]]",
+            "Tabela210[[#This Row],[QUANTIDADE]]*Tabela210[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J3500:J1048576 N6",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$4:$N$28",
+              "formula2": ""
+            },
+            {
+              "sqref": "J3:J3499",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$32",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "SOLO REFORÇADO",
+          "state": "visible",
+          "dimension": "B1:N1048576",
+          "formulaCount": 1048563,
+          "representativeFormulas": [
+            "Tabela24[[#This Row],[SUPORTE]]*Tabela24[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J3:J2178 J2180:J2520 J2523:J2629 J2708:J2716 J2689:J2704 J2875:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$22",
+              "formula2": ""
+            },
+            {
+              "sqref": "J2179",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$24",
+              "formula2": ""
+            },
+            {
+              "sqref": "J2521:J2522",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$20",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BICA CORRIDA",
+          "state": "visible",
+          "dimension": "B2:N464",
+          "formulaCount": 306,
+          "representativeFormulas": [
+            "Tabela246[[#This Row],[QUANTIDADE]]*Tabela246[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J1:J301 J304:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$25",
+              "formula2": ""
+            },
+            {
+              "sqref": "N22",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$4:$N$28",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BRITA 02",
+          "state": "visible",
+          "dimension": "B2:N1216",
+          "formulaCount": 1213,
+          "representativeFormulas": [
+            "Tabela2467[[#This Row],[VALOR UNIT.]]*Tabela2467[[#This Row],[QUANTIDADE]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J1:J1126 J1128:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$28",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "AREIA INDUSTRIAL",
+          "state": "hidden",
+          "dimension": "B2:T2587",
+          "formulaCount": 2585,
+          "representativeFormulas": [
+            "Tabela29[[#This Row],[QUANTIDADE]]*Tabela29[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J3:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$4:$N$28",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BOTA FORA (LARA)",
+          "state": "visible",
+          "dimension": "B2:L486",
+          "formulaCount": 372,
+          "representativeFormulas": [
+            "Tabela24678[[#This Row],[VALOR UNIT.]]*Tabela24678[[#This Row],[QUANTIDADE]]"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BOTA FORA (ITAQUAREIA)",
+          "state": "visible",
+          "dimension": "B1:M719",
+          "formulaCount": 1,
+          "representativeFormulas": [
+            "SUBTOTAL(3,F3:F1017)"
+          ],
+          "validations": [
+            {
+              "sqref": "J692:J697 J3:J30 J32:J689",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$L$3:$L$66",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Q.E.SÃO BENTO SPE LTDA",
+          "state": "visible",
+          "dimension": "B2:M724",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "LANÇ_MAT-RENEA",
+          "state": "hidden",
+          "dimension": "B1:M1048576",
+          "formulaCount": 13,
+          "representativeFormulas": [
+            "F3*G3"
+          ],
+          "validations": [
+            {
+              "sqref": "J3:J1048567",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$K$3:$K$31",
+              "formula2": ""
+            },
+            {
+              "sqref": "I3:I1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$L$3:$L$18",
+              "formula2": ""
+            },
+            {
+              "sqref": "D3:D1048567",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$M$3:$M$28",
+              "formula2": ""
+            },
+            {
+              "sqref": "I1:J2",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "#REF!",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [
+        {
+          "sheet": "RACHÃO",
+          "tables": [
+            {
+              "name": "Tabela2",
+              "ref": "B2:L3499",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL/DESTINO",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "MACADAME",
+          "tables": [
+            {
+              "name": "Tabela210",
+              "ref": "B2:M3499",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL/DESTINO",
+                "VALOR UNIT.",
+                "TOTAL R$",
+                "OBSERVAÇÃO"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "SOLO REFORÇADO",
+          "tables": [
+            {
+              "name": "Tabela24",
+              "ref": "B2:M1048566",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL/DESTINO",
+                "VALOR UNIT.",
+                "TOTAL R$",
+                "Coluna1"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BICA CORRIDA",
+          "tables": [
+            {
+              "name": "Tabela246",
+              "ref": "B2:L464",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BRITA 02",
+          "tables": [
+            {
+              "name": "Tabela2467",
+              "ref": "B2:L1216",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "Coluna1",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "AREIA INDUSTRIAL",
+          "tables": [
+            {
+              "name": "Tabela29",
+              "ref": "B2:L2587",
+              "columns": [
+                "DATA",
+                "MATERIAL",
+                "UNIDADE",
+                "QUANTIDADE",
+                "QUANTIDADE2",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL/DESTINO",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BOTA FORA (LARA)",
+          "tables": [
+            {
+              "name": "Tabela24678",
+              "ref": "B2:L486",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BOTA FORA (ITAQUAREIA)",
+          "tables": [
+            {
+              "name": "Tabela2467810",
+              "ref": "B2:K718",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL DE CARREGAMENTO",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "Q.E.SÃO BENTO SPE LTDA",
+          "tables": [
+            {
+              "name": "Tabela24678109",
+              "ref": "B2:K724",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL DE CARREGAMENTO",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "LANÇ_MAT-RENEA",
+          "tables": [
+            {
+              "name": "Tabela111",
+              "ref": "B2:J1048567",
+              "columns": [
+                "DATA",
+                "PREFIXO",
+                "MATERIAL",
+                "UNIDADE",
+                "QUANTIDADE",
+                "VOL. CAÇAMBA",
+                "TOTAL M³",
+                "LOCAL DE CARREGAMENTO",
+                "LOCAL DE DESCARGA"
+              ]
+            }
+          ]
+        }
+      ],
+      "definedNames": [
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "5",
+          "value": "'BRITA 02'!$N$2:$N$23"
+        },
+        {
+          "name": "fe_areia",
+          "localSheetId": null,
+          "value": "[1]Dados!$B$5"
+        },
+        {
+          "name": "revisão",
+          "localSheetId": null,
+          "value": "[2]Dados!$B$4"
+        },
+        {
+          "name": "S",
+          "localSheetId": null,
+          "value": "[2]Dados!$B$5"
+        },
+        {
+          "name": "SEE",
+          "localSheetId": null,
+          "value": "[3]Dados!$B$5"
+        }
+      ],
+      "externalLinks": [
+        "xl/externalLinks/externalLink1.xml",
+        "xl/externalLinks/externalLink2.xml",
+        "xl/externalLinks/externalLink3.xml",
+        "xl/externalLinks/_rels/externalLink1.xml.rels",
+        "xl/externalLinks/_rels/externalLink2.xml.rels",
+        "xl/externalLinks/_rels/externalLink3.xml.rels"
+      ],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/CONTROLE DE MATERIAIS COMPLEXO ALTO TIETE POR RAMO BACKUP.xlsx"
+    },
+    {
+      "file": "CONTROLE DE MATERIAIS COMPLEXO ALTO TIETE POR RAMO.xlsx",
+      "sizeBytes": 16425299,
+      "sha256": "8233d091f4544fd7c336938e7510c36c870bd68ea9fb62382b9121ca2ffb8127",
+      "sheets": [
+        {
+          "name": "RES_GERAL",
+          "state": "visible",
+          "dimension": "B1:T59",
+          "formulaCount": 229,
+          "representativeFormulas": [
+            "SUMIFS(RACHÃO!E:E,RACHÃO!J:J,RES_GERAL!B8,RACHÃO!C:C,RES_GERAL!$C$6,RACHÃO!$B:$B,\">=\"&RES_GERAL!$D$3,RACHÃO!$B:$B,\"<=\"&RES_GERAL!$E$3)",
+            "C8/1.5",
+            "SUMIFS('SOLO REFORÇADO'!E:E,'SOLO REFORÇADO'!J:J,RES_GERAL!B8,'SOLO REFORÇADO'!C:C,RES_GERAL!$F$6,'SOLO REFORÇADO'!$B:$B,\">=\"&RES_GERAL!$D$3,'SOLO REFORÇADO'!$B:$B,\"<=\"&RES_GERAL!$E$3)",
+            "F8/1.28",
+            "SUMIFS('BICA CORRIDA'!E:E,'BICA CORRIDA'!J:J,RES_GERAL!B8,'BICA CORRIDA'!C:C,RES_GERAL!$I$6,'BICA CORRIDA'!$B:$B,\">=\"&RES_GERAL!$D$3,'BICA CORRIDA'!B:B,\"<=\"&RES_GERAL!$E$3)",
+            "I8/1.5",
+            "SUMIFS('SOLO REFORÇADO'!E:E,'SOLO REFORÇADO'!J:J,RES_GERAL!B8,'SOLO REFORÇADO'!C:C,RES_GERAL!$L$6,'SOLO REFORÇADO'!B:B,\">=\"&RES_GERAL!$D$3,'SOLO REFORÇADO'!$B:$B,\"<=\"&RES_GERAL!$E$3)",
+            "L8/1.3",
+            "SUMIFS(MACADAME!$E:$E,MACADAME!$C:$C,RES_GERAL!$O$6,MACADAME!$J:$J,RES_GERAL!$B8)",
+            "O8/1.3",
+            "SUMIFS(RACHÃO!$E:$E,RACHÃO!$C:$C,RES_GERAL!$R$6,RACHÃO!$J:$J,RES_GERAL!$B8)",
+            "R8/1.3"
+          ],
+          "validations": [],
+          "mergeCount": 21,
+          "drawingCount": 0
+        },
+        {
+          "name": "RACHÃO",
+          "state": "visible",
+          "dimension": "B2:T3499",
+          "formulaCount": 3242,
+          "representativeFormulas": [
+            "Tabela2[[#This Row],[QUANTIDADE]]*Tabela2[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J3:J3168 J3214:J3220 J3232:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$4:$N$28",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "MACADAME",
+          "state": "visible",
+          "dimension": "B2:T3499",
+          "formulaCount": 481,
+          "representativeFormulas": [
+            "Tabela210[[#This Row],[VALOR UNIT.]]*Tabela210[[#This Row],[QUANTIDADE]]",
+            "Tabela210[[#This Row],[QUANTIDADE]]*Tabela210[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J3500:J1048576 N6",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$4:$N$28",
+              "formula2": ""
+            },
+            {
+              "sqref": "J3:J3499",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$32",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "SOLO REFORÇADO",
+          "state": "visible",
+          "dimension": "B1:N1048576",
+          "formulaCount": 1048563,
+          "representativeFormulas": [
+            "Tabela24[[#This Row],[SUPORTE]]*Tabela24[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J3:J2178 J2180:J2520 J2523:J2629 J2708:J2716 J2689:J2704 J2875:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$22",
+              "formula2": ""
+            },
+            {
+              "sqref": "J2179",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$24",
+              "formula2": ""
+            },
+            {
+              "sqref": "J2521:J2522",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$20",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BICA CORRIDA",
+          "state": "visible",
+          "dimension": "B2:N464",
+          "formulaCount": 306,
+          "representativeFormulas": [
+            "Tabela246[[#This Row],[QUANTIDADE]]*Tabela246[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J1:J301 J304:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$25",
+              "formula2": ""
+            },
+            {
+              "sqref": "N22",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$4:$N$28",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BRITA 02",
+          "state": "visible",
+          "dimension": "B2:N1216",
+          "formulaCount": 1213,
+          "representativeFormulas": [
+            "Tabela2467[[#This Row],[VALOR UNIT.]]*Tabela2467[[#This Row],[QUANTIDADE]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J1:J1126 J1128:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$3:$N$28",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "AREIA INDUSTRIAL",
+          "state": "hidden",
+          "dimension": "B2:T2587",
+          "formulaCount": 2585,
+          "representativeFormulas": [
+            "Tabela29[[#This Row],[QUANTIDADE]]*Tabela29[[#This Row],[VALOR UNIT.]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J3:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$N$4:$N$28",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BOTA FORA (LARA)",
+          "state": "visible",
+          "dimension": "B2:L486",
+          "formulaCount": 372,
+          "representativeFormulas": [
+            "Tabela24678[[#This Row],[VALOR UNIT.]]*Tabela24678[[#This Row],[QUANTIDADE]]"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BOTA FORA (ITAQUAREIA)",
+          "state": "visible",
+          "dimension": "B1:M719",
+          "formulaCount": 1,
+          "representativeFormulas": [
+            "SUBTOTAL(3,F3:F1017)"
+          ],
+          "validations": [
+            {
+              "sqref": "J692:J697 J3:J30 J32:J689",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$L$3:$L$66",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Q.E.SÃO BENTO SPE LTDA",
+          "state": "visible",
+          "dimension": "B2:M724",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "LANÇ_MAT-RENEA",
+          "state": "hidden",
+          "dimension": "B1:M1048576",
+          "formulaCount": 13,
+          "representativeFormulas": [
+            "F3*G3"
+          ],
+          "validations": [
+            {
+              "sqref": "J3:J1048567",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$K$3:$K$31",
+              "formula2": ""
+            },
+            {
+              "sqref": "I3:I1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$L$3:$L$18",
+              "formula2": ""
+            },
+            {
+              "sqref": "D3:D1048567",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "$M$3:$M$28",
+              "formula2": ""
+            },
+            {
+              "sqref": "I1:J2",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "#REF!",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [
+        {
+          "sheet": "RACHÃO",
+          "tables": [
+            {
+              "name": "Tabela2",
+              "ref": "B2:L3499",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL/DESTINO",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "MACADAME",
+          "tables": [
+            {
+              "name": "Tabela210",
+              "ref": "B2:M3499",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL/DESTINO",
+                "VALOR UNIT.",
+                "TOTAL R$",
+                "OBSERVAÇÃO"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "SOLO REFORÇADO",
+          "tables": [
+            {
+              "name": "Tabela24",
+              "ref": "B2:M1048566",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL/DESTINO",
+                "VALOR UNIT.",
+                "TOTAL R$",
+                "Coluna1"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BICA CORRIDA",
+          "tables": [
+            {
+              "name": "Tabela246",
+              "ref": "B2:L464",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BRITA 02",
+          "tables": [
+            {
+              "name": "Tabela2467",
+              "ref": "B2:L1216",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "Coluna1",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "AREIA INDUSTRIAL",
+          "tables": [
+            {
+              "name": "Tabela29",
+              "ref": "B2:L2587",
+              "columns": [
+                "DATA",
+                "MATERIAL",
+                "UNIDADE",
+                "QUANTIDADE",
+                "QUANTIDADE2",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL/DESTINO",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BOTA FORA (LARA)",
+          "tables": [
+            {
+              "name": "Tabela24678",
+              "ref": "B2:L486",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL",
+                "VALOR UNIT.",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BOTA FORA (ITAQUAREIA)",
+          "tables": [
+            {
+              "name": "Tabela2467810",
+              "ref": "B2:K718",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL DE CARREGAMENTO",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "Q.E.SÃO BENTO SPE LTDA",
+          "tables": [
+            {
+              "name": "Tabela24678109",
+              "ref": "B2:K724",
+              "columns": [
+                "DATA",
+                "ITEM",
+                "UNIDADE",
+                "QUANTIDADE",
+                "SUPORTE",
+                "FORNECEDOR",
+                "PLACA",
+                "NUMERO DA NOTA",
+                "LOCAL DE CARREGAMENTO",
+                "TOTAL R$"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "LANÇ_MAT-RENEA",
+          "tables": [
+            {
+              "name": "Tabela111",
+              "ref": "B2:J1048567",
+              "columns": [
+                "DATA",
+                "PREFIXO",
+                "MATERIAL",
+                "UNIDADE",
+                "QUANTIDADE",
+                "VOL. CAÇAMBA",
+                "TOTAL M³",
+                "LOCAL DE CARREGAMENTO",
+                "LOCAL DE DESCARGA"
+              ]
+            }
+          ]
+        }
+      ],
+      "definedNames": [
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "5",
+          "value": "'BRITA 02'!$N$2:$N$23"
+        },
+        {
+          "name": "fe_areia",
+          "localSheetId": null,
+          "value": "[1]Dados!$B$5"
+        },
+        {
+          "name": "revisão",
+          "localSheetId": null,
+          "value": "[2]Dados!$B$4"
+        },
+        {
+          "name": "S",
+          "localSheetId": null,
+          "value": "[2]Dados!$B$5"
+        },
+        {
+          "name": "SEE",
+          "localSheetId": null,
+          "value": "[3]Dados!$B$5"
+        }
+      ],
+      "externalLinks": [
+        "xl/externalLinks/externalLink1.xml",
+        "xl/externalLinks/externalLink2.xml",
+        "xl/externalLinks/externalLink3.xml",
+        "xl/externalLinks/_rels/externalLink1.xml.rels",
+        "xl/externalLinks/_rels/externalLink2.xml.rels",
+        "xl/externalLinks/_rels/externalLink3.xml.rels"
+      ],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/CONTROLE DE MATERIAIS COMPLEXO ALTO TIETE POR RAMO.xlsx"
+    },
+    {
+      "file": "CONTROLE DE VIAGEMS JAZIDA SABESP.xlsx",
+      "sizeBytes": 147669,
+      "sha256": "6a532af37cd6e7a33e41be54c9d8520120c97fa2349e78b7f86388c8c32c3120",
+      "sheets": [
+        {
+          "name": "LIBERAÇÃO",
+          "state": "visible",
+          "dimension": "A1:AA498",
+          "formulaCount": 228,
+          "representativeFormulas": [
+            "SUBTOTAL(3,Tabela1[Ticket Nº])",
+            "Tabela1[[#This Row],[Data]]"
+          ],
+          "validations": [
+            {
+              "sqref": "J4:J1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "\"CONFERIDO,REVISAR,PENDENTE\"",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "RECEBIMENTO",
+          "state": "visible",
+          "dimension": "A1:P667",
+          "formulaCount": 251,
+          "representativeFormulas": [
+            "SUBTOTAL(3,Tabela15[Ticket Nº])",
+            "Tabela15[[#This Row],[Data]]"
+          ],
+          "validations": [
+            {
+              "sqref": "K4:K1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "\"CONFERIDO,REVISAR,PENDENTE\"",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 1,
+          "drawingCount": 1
+        }
+      ],
+      "tables": [
+        {
+          "sheet": "LIBERAÇÃO",
+          "tables": [
+            {
+              "name": "Tabela1",
+              "ref": "B4:J231",
+              "columns": [
+                "Data",
+                "Ticket Nº",
+                "Prefixo",
+                "Placa",
+                "Hora de saída",
+                "Tipo de material",
+                "Quantidade m³",
+                "Destino / Obra",
+                "Status / Conferência"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "RECEBIMENTO",
+          "tables": [
+            {
+              "name": "Tabela15",
+              "ref": "B4:K276",
+              "columns": [
+                "Data",
+                "Ticket Nº",
+                "Prefixo",
+                "Placa",
+                "Hora de chegada",
+                "Tipo de material",
+                "Quantidade m³",
+                "Ramo de Descarga",
+                "Estaca",
+                "Status"
+              ]
+            }
+          ]
+        }
+      ],
+      "definedNames": [],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/CONTROLE DE VIAGEMS JAZIDA SABESP.xlsx"
+    },
+    {
+      "file": "EFETIVO OBRA.xlsx",
+      "sizeBytes": 192135,
+      "sha256": "07cc3048353079aecee11663f79ac13749329162ccd93352b764ca3e8c3c47b0",
+      "sheets": [
+        {
+          "name": "Custo Gerencial",
+          "state": "visible",
+          "dimension": "A1:H241",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Resumo",
+          "state": "visible",
+          "dimension": "B1:I69",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "Efetivo",
+          "state": "visible",
+          "dimension": "A1:G212",
+          "formulaCount": 492,
+          "representativeFormulas": [
+            "_xlfn.XLOOKUP($A3,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$D:$D,FALSE)",
+            "_xlfn.XLOOKUP($A3,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$G:$G,FALSE)",
+            "_xlfn.XLOOKUP($D3,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$D:$D,FALSE)",
+            "_xlfn.XLOOKUP($A4,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$D:$D,FALSE)",
+            "_xlfn.XLOOKUP($A4,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$G:$G,FALSE)",
+            "_xlfn.XLOOKUP($D4,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$D:$D,FALSE)",
+            "_xlfn.XLOOKUP($A5,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$D:$D,FALSE)",
+            "_xlfn.XLOOKUP($A5,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$G:$G,FALSE)",
+            "_xlfn.XLOOKUP($D5,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$D:$D,FALSE)",
+            "_xlfn.XLOOKUP($A6,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$D:$D,FALSE)",
+            "_xlfn.XLOOKUP($A6,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$G:$G,FALSE)",
+            "_xlfn.XLOOKUP($D6,'Custo Gerencial'!$C:$C,'Custo Gerencial'!$D:$D,FALSE)"
+          ],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 1
+        }
+      ],
+      "tables": [],
+      "definedNames": [
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "0",
+          "value": "'Custo Gerencial'!$A$1:$H$216"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "2",
+          "value": "Efetivo!$A$2:$G$166"
+        }
+      ],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/EFETIVO OBRA.xlsx"
+    },
+    {
+      "file": "Equipamentos Complexo Alto Tietê.xlsx",
+      "sizeBytes": 26796,
+      "sha256": "0098034ac1f31e0f4c6664cf6f64ff8c6c4b219e6a06bcb32ce600f5ee4f56f7",
+      "sheets": [
+        {
+          "name": "SGE",
+          "state": "visible",
+          "dimension": "A1:J205",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CBs",
+          "state": "visible",
+          "dimension": "A1:E66",
+          "formulaCount": 64,
+          "representativeFormulas": [
+            "_xlfn.XLOOKUP($B:$B,SGE!$B:$B,SGE!$A:$A,FALSE)"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [],
+      "definedNames": [
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "1",
+          "value": "CBs!$A$1:$E$66"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "0",
+          "value": "SGE!$A$1:$J$194"
+        }
+      ],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/Equipamentos Complexo Alto Tietê.xlsx"
+    },
+    {
+      "file": "FORNECIMENTO DE COMBUSTIVEL - AGOSTO2026.xlsx",
+      "sizeBytes": 258861,
+      "sha256": "2de87fec3ab3d8a0bffbaef6e5eedc2b21c5fe5fe87c52cafae75909f0000901",
+      "sheets": [
+        {
+          "name": "Detalhe",
+          "state": "visible",
+          "dimension": "A1:N993",
+          "formulaCount": 1526,
+          "representativeFormulas": [
+            "SUBTOTAL(9,G6:G993)",
+            "IF(B6=\"\",\"\",TEXT(B6,\"ddd\"))",
+            "IF(C6=\"\",\"\",IFERROR(INDEX(Equipamentos!$C:$C,MATCH(TRIM(C6),Equipamentos!$A:$A,0)),\"NÃO CADASTRADO\"))",
+            "IF(C6=\"\",\"\",IFERROR(INDEX(Equipamentos!$I:$I,MATCH(TRIM(C6),Equipamentos!$A:$A,0)),\"NÃO CADASTRADO\"))",
+            "M5",
+            "IF(OR(L6=\"\",G6=\"\"),\"\",L6+G6)",
+            "IF(B7=\"\",\"\",TEXT(B7,\"ddd\"))",
+            "IF(C7=\"\",\"\",IFERROR(INDEX(Equipamentos!$C:$C,MATCH(TRIM(C7),Equipamentos!$A:$A,0)),\"NÃO CADASTRADO\"))",
+            "IF(C7=\"\",\"\",IFERROR(INDEX(Equipamentos!$I:$I,MATCH(TRIM(C7),Equipamentos!$A:$A,0)),\"NÃO CADASTRADO\"))",
+            "M6",
+            "IF(OR(L7=\"\",G7=\"\"),\"\",L7+G7)",
+            "IF(C8=\"\",\"\",IFERROR(INDEX(Equipamentos!$I:$I,MATCH(TRIM(C8),Equipamentos!$A:$A,0)),\"NÃO CADASTRADO\"))"
+          ],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "Resumo",
+          "state": "visible",
+          "dimension": "C1:F151",
+          "formulaCount": 1,
+          "representativeFormulas": [
+            "SUBTOTAL(9,F5:F149)"
+          ],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "Equipamentos",
+          "state": "hidden",
+          "dimension": "A1:J200",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [
+        {
+          "sheet": "Detalhe",
+          "tables": [
+            {
+              "name": "Tabela2",
+              "ref": "B5:M989",
+              "columns": [
+                "Data",
+                "Prefixo",
+                "Descrição do equipamento",
+                "KM inicial",
+                "Horímetro",
+                "Litros",
+                "Hora",
+                "Comboio",
+                "Tipo de combustível",
+                "Empresa",
+                "Bomba inicial",
+                "Bomba final"
+              ]
+            }
+          ]
+        }
+      ],
+      "definedNames": [
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "0",
+          "value": "Detalhe!$A$1:$O$993"
+        }
+      ],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/FORNECIMENTO DE COMBUSTIVEL - AGOSTO2026.xlsx"
+    },
+    {
+      "file": "FORNECIMENTO DE COMBUSTIVEL - JULHO2026.xlsx",
+      "sizeBytes": 246526,
+      "sha256": "58b56bcb2abc3d08b6b74a0da63beb9a6f960de56df580f6b2dbd83439609ca1",
+      "sheets": [
+        {
+          "name": "Resumo",
+          "state": "visible",
+          "dimension": "C1:F151",
+          "formulaCount": 283,
+          "representativeFormulas": [
+            "_xlfn.XLOOKUP($C:$C,Equipamentos!$A:$A,Equipamentos!$C:$C,FALSE)",
+            "_xlfn.XLOOKUP($C:$C,Equipamentos!$A:$A,Equipamentos!$I:$I,FALSE)",
+            "SUBTOTAL(9,F5:F149)"
+          ],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "Detalhe",
+          "state": "visible",
+          "dimension": "B1:N999",
+          "formulaCount": 1985,
+          "representativeFormulas": [
+            "_xlfn.XLOOKUP($C:$C,Equipamentos!$A:$A,Equipamentos!C:C,FALSE)",
+            "_xlfn.XLOOKUP($C:$C,Equipamentos!$A:$A,Equipamentos!$I:$I,FALSE)"
+          ],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "Equipamentos",
+          "state": "visible",
+          "dimension": "A1:J196",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [],
+      "definedNames": [
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "1",
+          "value": "Detalhe!$B$5:$K$999"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "2",
+          "value": "Equipamentos!$A$1:$J$195"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "0",
+          "value": "Resumo!$C$4:$F$149"
+        }
+      ],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/FORNECIMENTO DE COMBUSTIVEL - JULHO2026.xlsx"
+    },
+    {
+      "file": "FORNECIMENTO DE COMBUSTIVEL - JUNHO2026.xlsx",
+      "sizeBytes": 799286,
+      "sha256": "a986656f72dcb4d7ee150afc2c46cd5a5924e8ed0779278943d5d99f4ce25a72",
+      "sheets": [
+        {
+          "name": "DadosHT",
+          "state": "visible",
+          "dimension": "A1:J1513",
+          "formulaCount": 4562,
+          "representativeFormulas": [
+            "_xlfn.XLOOKUP($C2,Dpara!$A:$A,Dpara!B:B,FALSE)",
+            "_xlfn.XLOOKUP($C2,Dpara!$A:$A,Dpara!$C:$C,FALSE)",
+            "VLOOKUP($D:$D,Serviço_Interferencias!$B$3:$C$46,2,FALSE)",
+            "E2*24",
+            "_xlfn.XLOOKUP($C3,Dpara!$A:$A,Dpara!B:B,FALSE)",
+            "_xlfn.XLOOKUP($C3,Dpara!$A:$A,Dpara!$C:$C,FALSE)",
+            "E3*24",
+            "_xlfn.XLOOKUP($C4,Dpara!$A:$A,Dpara!B:B,FALSE)",
+            "_xlfn.XLOOKUP($C4,Dpara!$A:$A,Dpara!$C:$C,FALSE)",
+            "_xlfn.XLOOKUP($C5,Dpara!$A:$A,Dpara!$C:$C,FALSE)",
+            "_xlfn.XLOOKUP($C6,Dpara!$A:$A,Dpara!$C:$C,FALSE)",
+            "_xlfn.XLOOKUP($C7,Dpara!$A:$A,Dpara!$C:$C,FALSE)"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "DadosHP",
+          "state": "visible",
+          "dimension": "A1:L4115",
+          "formulaCount": 16523,
+          "representativeFormulas": [
+            "_xlfn.XLOOKUP($C2,Dpara!$A:$A,Dpara!$B:$B,FALSE)",
+            "VLOOKUP($C2,Dpara!$A:$C,3,FALSE)",
+            "VLOOKUP($D2,Serviço_Interferencias!$K$3:$M$18,2,FALSE)",
+            "E2*24",
+            "VLOOKUP($D2,Serviço_Interferencias!$K$3:$N$18,4,FALSE)",
+            "_xlfn.XLOOKUP($C3,Dpara!$A:$A,Dpara!$B:$B,FALSE)",
+            "VLOOKUP($C3,Dpara!$A:$C,3,FALSE)",
+            "VLOOKUP($D3,Serviço_Interferencias!$K$3:$M$18,2,FALSE)",
+            "E3*24",
+            "VLOOKUP($D3,Serviço_Interferencias!$K$3:$N$18,4,FALSE)",
+            "_xlfn.XLOOKUP($C4,Dpara!$A:$A,Dpara!$B:$B,FALSE)",
+            "VLOOKUP($C4,Dpara!$A:$C,3,FALSE)"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Dpara",
+          "state": "visible",
+          "dimension": "A1:E183",
+          "formulaCount": 279,
+          "representativeFormulas": [
+            "VLOOKUP($A3,Eqtos!$A:$H,2,FALSE)",
+            "VLOOKUP($A3,Eqtos!$A:$H,8,FALSE)",
+            "VLOOKUP($A4,Eqtos!$A:$H,2,FALSE)",
+            "VLOOKUP($A4,Eqtos!$A:$H,8,FALSE)",
+            "VLOOKUP($A6,Eqtos!$A:$H,2,FALSE)",
+            "VLOOKUP($A6,Eqtos!$A:$H,8,FALSE)",
+            "VLOOKUP($A7,Eqtos!$A:$H,2,FALSE)",
+            "VLOOKUP($A7,Eqtos!$A:$H,8,FALSE)",
+            "VLOOKUP($A8,Eqtos!$A:$H,2,FALSE)",
+            "VLOOKUP($A8,Eqtos!$A:$H,8,FALSE)",
+            "VLOOKUP($A9,Eqtos!$A:$H,2,FALSE)",
+            "VLOOKUP($A9,Eqtos!$A:$H,8,FALSE)"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Eqtos",
+          "state": "visible",
+          "dimension": "A1:J160",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Serviço_Interferencias",
+          "state": "visible",
+          "dimension": "A1:N55",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 2,
+          "drawingCount": 0
+        },
+        {
+          "name": "ResumoHT_HP",
+          "state": "visible",
+          "dimension": "A1:I151",
+          "formulaCount": 874,
+          "representativeFormulas": [
+            "SUBTOTAL(9,C8:C151)",
+            "SUMIFS(DadosHT!$J:$J,DadosHT!$G:$G,ResumoHT_HP!$A8)",
+            "SUMIFS(DadosHP!$K:$K,DadosHP!$L:$L,ResumoHT_HP!D$6,DadosHP!$H:$H,$A8)",
+            "SUMIFS(DadosHP!$K:$K,DadosHP!$L:$L,ResumoHT_HP!E$6,DadosHP!$H:$H,$A8)",
+            "SUMIFS(DadosHP!$K:$K,DadosHP!$L:$L,ResumoHT_HP!F$6,DadosHP!$H:$H,$A8)",
+            "SUM(C8:E8)",
+            "SUMIFS(DadosCombustível!$H:$H,DadosCombustível!$B:$B,ResumoHT_HP!$A8,DadosCombustível!$K:$K,ResumoHT_HP!$H$6)",
+            "+H8/C8",
+            "VLOOKUP($A9,Dpara!$B:$C,2,FALSE)",
+            "SUMIFS(DadosHT!$J:$J,DadosHT!$G:$G,ResumoHT_HP!$A9)",
+            "SUMIFS(DadosHP!$K:$K,DadosHP!$L:$L,ResumoHT_HP!D$6,DadosHP!$H:$H,$A9)",
+            "SUMIFS(DadosHP!$K:$K,DadosHP!$L:$L,ResumoHT_HP!E$6,DadosHP!$H:$H,$A9)"
+          ],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "ResumoDiesel",
+          "state": "visible",
+          "dimension": "A1:I150",
+          "formulaCount": 1015,
+          "representativeFormulas": [
+            "SUBTOTAL(9,D6:D150)",
+            "SUBTOTAL(9,E6:E149)",
+            "VLOOKUP($A6,Dpara!$B:$D,3,FALSE)",
+            "SUMIFS(DadosCombustível!$H:$H,DadosCombustível!$B:$B,ResumoDiesel!$A6,DadosCombustível!$K:$K,ResumoDiesel!D$5)",
+            "SUMIFS(DadosCombustível!H:H,DadosCombustível!$B:$B,ResumoDiesel!$A6,DadosCombustível!$K:$K,ResumoDiesel!E$5)",
+            "SUMIFS(DadosCombustível!H:H,DadosCombustível!$B:$B,ResumoDiesel!$A6,DadosCombustível!$K:$K,ResumoDiesel!F$5)",
+            "SUMIFS(DadosCombustível!H:H,DadosCombustível!$B:$B,ResumoDiesel!$A6,DadosCombustível!$K:$K,ResumoDiesel!G$5)",
+            "SUMIFS(DadosCombustível!H:H,DadosCombustível!$B:$B,ResumoDiesel!$A6,DadosCombustível!$K:$K,ResumoDiesel!H$5)",
+            "IFERROR(VLOOKUP($A7,DadosCombustível!$B:$C,2,FALSE),\"\")",
+            "VLOOKUP($A7,Dpara!$B:$D,3,FALSE)",
+            "SUMIFS(DadosCombustível!$H:$H,DadosCombustível!$B:$B,ResumoDiesel!$A7,DadosCombustível!$K:$K,ResumoDiesel!D$5)",
+            "SUMIFS(DadosCombustível!H:H,DadosCombustível!$B:$B,ResumoDiesel!$A7,DadosCombustível!$K:$K,ResumoDiesel!E$5)"
+          ],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "Planilha1",
+          "state": "hidden",
+          "dimension": "A1:F58",
+          "formulaCount": 3,
+          "representativeFormulas": [
+            "D2-C2",
+            "D3-C3",
+            "D4-C4"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "DadosCombustível",
+          "state": "visible",
+          "dimension": "A1:L1264",
+          "formulaCount": 2443,
+          "representativeFormulas": [
+            "SUBTOTAL(9,H6:H1048576)",
+            "SUMIFS($H$6:$H$1048576,$K$6:$K$1048576,$H1)",
+            "SUMIFS($H$6:$H$1048576,$K$6:$K$1048576,$H2)",
+            "SUMIFS($H$6:$H$1048576,$K$6:$K$1048576,$H3)",
+            "SUMIFS($H$6:$H$1048576,$K$6:$K$1048576,$H4)",
+            "IFERROR(VLOOKUP($B6,Dpara!$B:$D,2,FALSE),\"\")",
+            "IFERROR(VLOOKUP($B6,Dpara!$B:$D,3,FALSE),\"\")",
+            "IFERROR(VLOOKUP($B7,Dpara!$B:$D,2,FALSE),\"\")",
+            "IFERROR(VLOOKUP($B7,Dpara!$B:$D,3,FALSE),\"\")",
+            "IFERROR(VLOOKUP($B8,Dpara!$B:$D,2,FALSE),\"\")",
+            "IFERROR(VLOOKUP($B8,Dpara!$B:$D,3,FALSE),\"\")",
+            "IFERROR(VLOOKUP($B9,Dpara!$B:$D,2,FALSE),\"\")"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "Insumos",
+          "state": "visible",
+          "dimension": "A2:A7",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [],
+      "definedNames": [
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "8",
+          "value": "DadosCombustível!$A$5:$L$1222"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "1",
+          "value": "DadosHP!$A$1:$L$1"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "0",
+          "value": "DadosHT!$A$1:$J$1260"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "2",
+          "value": "Dpara!$A$1:$D$119"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "3",
+          "value": "Eqtos!$A$1:$J$160"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "7",
+          "value": "Planilha1!$A$1:$F$58"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "6",
+          "value": "ResumoDiesel!$A$5:$I$150"
+        },
+        {
+          "name": "_xlnm._FilterDatabase",
+          "localSheetId": "5",
+          "value": "ResumoHT_HP!$A$7:$I$151"
+        }
+      ],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/FORNECIMENTO DE COMBUSTIVEL - JUNHO2026.xlsx"
+    },
+    {
+      "file": "PLANILHA MESTRE DE CADASTROS DE CONTROLE.xlsx",
+      "sizeBytes": 1219878,
+      "sha256": "46e815c6d7b46207e51e73ef1e23d174af3ac10e12fbb9be0c8f454ea36fa57a",
+      "sheets": [
+        {
+          "name": "INSTRUÇÕES",
+          "state": "hidden",
+          "dimension": "A1:H14",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 0
+        },
+        {
+          "name": "LISTAS_AUX",
+          "state": "hidden",
+          "dimension": "A1:B30",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "PAINEL GERAL",
+          "state": "visible",
+          "dimension": "A1:L23",
+          "formulaCount": 21,
+          "representativeFormulas": [
+            "COUNTA(BASE_MATERIAIS!$A$2:$A$10054)",
+            "SUM(BASE_COMBUSTIVEL!$I$2:$I$1350)",
+            "COUNTIF(BASE_VIAGENS!$E$2:$E$279,\"COMPLETA\")",
+            "COUNTIF(BASE_EFETIVO!$L$2:$L$234,\"ATIVO\")",
+            "COUNTIF(BASE_EQUIPAMENTOS!$G$2:$G$210,\"ATIVO\")",
+            "SUM(BASE_ESTACAS_CRAV!$H$2:$H$21)",
+            "SUMIF(BASE_COMBUSTIVEL!$B$2:$B$1350,A13,BASE_COMBUSTIVEL!$I$2:$I$1350)",
+            "COUNTIF(BASE_VIAGENS!$E$2:$E$279,D13)",
+            "COUNTIF(BASE_MATERIAIS!$T$2:$T$10054,G13)",
+            "SUMIF(BASE_COMBUSTIVEL!$B$2:$B$1350,A14,BASE_COMBUSTIVEL!$I$2:$I$1350)",
+            "COUNTIF(BASE_VIAGENS!$E$2:$E$279,D14)",
+            "COUNTIF(BASE_MATERIAIS!$T$2:$T$10054,G14)"
+          ],
+          "validations": [],
+          "mergeCount": 10,
+          "drawingCount": 1
+        },
+        {
+          "name": "CAD_EQUIPAMENTOS",
+          "state": "visible",
+          "dimension": "A1:N210",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [
+            {
+              "sqref": "G2:G210",
+              "type": "list",
+              "operator": null,
+              "allowBlank": null,
+              "formula1": "\"ATIVO,INATIVO,MANUTENÇÃO,PARADO,DESMOBILIZADO\"",
+              "formula2": ""
+            },
+            {
+              "sqref": "N2:N210",
+              "type": "decimal",
+              "operator": "greaterThan",
+              "allowBlank": null,
+              "formula1": "0",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CAD_VEICULOS",
+          "state": "visible",
+          "dimension": "A1:P83",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CAD_COLABORADORES",
+          "state": "visible",
+          "dimension": "A1:AA234",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [
+            {
+              "sqref": "L2:L234",
+              "type": "list",
+              "operator": null,
+              "allowBlank": null,
+              "formula1": "\"ATIVO,INATIVO,FÉRIAS,AFASTADO,DESMOBILIZADO\"",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CAD_MATERIAIS",
+          "state": "visible",
+          "dimension": "A1:L31",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CAD_EMPRESAS",
+          "state": "visible",
+          "dimension": "A1:AC29",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CAD_FORNECEDORES",
+          "state": "visible",
+          "dimension": "A1:AB188",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CAD_LOCAIS",
+          "state": "visible",
+          "dimension": "A1:AF99",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CAD_RAMOS",
+          "state": "visible",
+          "dimension": "A1:Z44",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BASE_ESTACAS_RECEB",
+          "state": "visible",
+          "dimension": "A1:T17",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BASE_ESTACAS_CRAV",
+          "state": "visible",
+          "dimension": "A1:K21",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BASE_EFETIVO",
+          "state": "visible",
+          "dimension": "A1:P234",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BASE_EQUIPAMENTOS",
+          "state": "visible",
+          "dimension": "A1:N210",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BASE_VIAGENS",
+          "state": "visible",
+          "dimension": "A1:V279",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BASE_MATERIAIS",
+          "state": "visible",
+          "dimension": "A1:T10054",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [
+            {
+              "sqref": "F2:F10054",
+              "type": "decimal",
+              "operator": "greaterThanOrEqual",
+              "allowBlank": null,
+              "formula1": "0",
+              "formula2": ""
+            },
+            {
+              "sqref": "E2:E10054",
+              "type": "list",
+              "operator": null,
+              "allowBlank": null,
+              "formula1": "\"TON,KG,M³,M,UN,VIAGEM\"",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "BASE_COMBUSTIVEL",
+          "state": "visible",
+          "dimension": "A1:W1350",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [
+            {
+              "sqref": "I2:I1350",
+              "type": "decimal",
+              "operator": "greaterThan",
+              "allowBlank": null,
+              "formula1": "0",
+              "formula2": ""
+            },
+            {
+              "sqref": "L2:L1350",
+              "type": "list",
+              "operator": null,
+              "allowBlank": null,
+              "formula1": "\"ÓLEO DIESEL S 10 COMUM,ÓLEO DIESEL S 500,GASOLINA,ETANOL,OUTRO\"",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [
+        {
+          "sheet": "LISTAS_AUX",
+          "tables": [
+            {
+              "name": "tbListasAux",
+              "ref": "A1:B30",
+              "columns": [
+                "Grupo",
+                "Valor"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CAD_EQUIPAMENTOS",
+          "tables": [
+            {
+              "name": "tbCadEquip",
+              "ref": "A1:N210",
+              "columns": [
+                "ID Mestre",
+                "Prefixo",
+                "Placa",
+                "Equipamento",
+                "Família",
+                "Empresa",
+                "Status",
+                "Mobilizado",
+                "Meta disponibilidade",
+                "Data mobilização",
+                "Data desmobilização",
+                "Operador/Responsável",
+                "Combustível",
+                "Capacidade tanque (L)"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CAD_VEICULOS",
+          "tables": [
+            {
+              "name": "tbCadVeiculos",
+              "ref": "A1:H83",
+              "columns": [
+                "ID Veículo",
+                "Prefixo",
+                "Placa",
+                "Equipamento",
+                "Família",
+                "Empresa",
+                "Status",
+                "Operador/Responsável"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CAD_COLABORADORES",
+          "tables": [
+            {
+              "name": "tbCadColab",
+              "ref": "A1:P234",
+              "columns": [
+                "ID Mestre",
+                "Matrícula",
+                "Colaborador",
+                "Função",
+                "Divisão",
+                "Seção",
+                "Matrícula líder",
+                "Nome líder",
+                "Área",
+                "Responsável",
+                "Empresa",
+                "Status",
+                "Data mobilização",
+                "Data desmobilização",
+                "Situação RH",
+                "Observação"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CAD_MATERIAIS",
+          "tables": [
+            {
+              "name": "tbCadMateriais",
+              "ref": "A1:L31",
+              "columns": [
+                "ID Mestre",
+                "Código original",
+                "Descrição completa",
+                "Tipo",
+                "Perfil / Modelo",
+                "Aço",
+                "Comprimento (m)",
+                "NCM",
+                "Unidade padrão",
+                "Peso unitário (kg)",
+                "Observações",
+                "Fonte"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CAD_EMPRESAS",
+          "tables": [
+            {
+              "name": "tbCadEmpresas",
+              "ref": "A1:E29",
+              "columns": [
+                "ID Empresa",
+                "Nome",
+                "Tipo(s)",
+                "CNPJ",
+                "Status"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CAD_FORNECEDORES",
+          "tables": [
+            {
+              "name": "tbCadFornecedores",
+              "ref": "A1:D7",
+              "columns": [
+                "ID Fornecedor",
+                "Fornecedor",
+                "CNPJ",
+                "Status"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CAD_LOCAIS",
+          "tables": [
+            {
+              "name": "tbCadLocais",
+              "ref": "A1:D99",
+              "columns": [
+                "ID Local",
+                "Local",
+                "Tipo",
+                "Status"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CAD_RAMOS",
+          "tables": [
+            {
+              "name": "tbCadRamos",
+              "ref": "A1:D44",
+              "columns": [
+                "ID Ramo",
+                "Ramo / Trecho",
+                "Status",
+                "Fontes"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BASE_ESTACAS_RECEB",
+          "tables": [
+            {
+              "name": "tbBaseEstReceb",
+              "ref": "A1:T17",
+              "columns": [
+                "ID Registro",
+                "Data",
+                "Hora",
+                "Movimento",
+                "NF",
+                "Código Material",
+                "Descrição",
+                "Tipo",
+                "Comprimento (m)",
+                "Unidade",
+                "Peso (kg)",
+                "Valor Unitário",
+                "Valor Total",
+                "Cavalo/Placa",
+                "Carreta/Placa",
+                "Transportadora",
+                "Destino/Obra",
+                "Tipo Carregamento",
+                "Status",
+                "Fonte"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BASE_ESTACAS_CRAV",
+          "tables": [
+            {
+              "name": "tbBaseEstCrav",
+              "ref": "A1:K21",
+              "columns": [
+                "ID Registro",
+                "Data",
+                "Item",
+                "Serviço",
+                "Identificação",
+                "Perfil",
+                "Comprimento total (m)",
+                "Comprimento cravado (m)",
+                "Sobra/Perda (m)",
+                "Aproveitamento",
+                "Fonte"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BASE_EFETIVO",
+          "tables": [
+            {
+              "name": "tbBaseEfetivo",
+              "ref": "A1:P234",
+              "columns": [
+                "ID Mestre",
+                "Matrícula",
+                "Colaborador",
+                "Função",
+                "Divisão",
+                "Seção",
+                "Matrícula líder",
+                "Nome líder",
+                "Área",
+                "Responsável",
+                "Empresa",
+                "Status",
+                "Data mobilização",
+                "Data desmobilização",
+                "Situação RH",
+                "Observação"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BASE_EQUIPAMENTOS",
+          "tables": [
+            {
+              "name": "tbBaseEquip",
+              "ref": "A1:N210",
+              "columns": [
+                "ID Mestre",
+                "Prefixo",
+                "Placa",
+                "Equipamento",
+                "Família",
+                "Empresa",
+                "Status",
+                "Mobilizado",
+                "Meta disponibilidade",
+                "Data mobilização",
+                "Data desmobilização",
+                "Operador/Responsável",
+                "Combustível",
+                "Capacidade tanque (L)"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BASE_VIAGENS",
+          "tables": [
+            {
+              "name": "tbBaseViagens",
+              "ref": "A1:V279",
+              "columns": [
+                "ID Registro",
+                "Ticket",
+                "Qtd liberações",
+                "Qtd recebimentos",
+                "Status do par",
+                "Conferência",
+                "Data liberação",
+                "Saída",
+                "Prefixo liberação",
+                "Placa liberação",
+                "Material liberação",
+                "Volume liberação",
+                "Destino/Obra",
+                "Data recebimento",
+                "Chegada",
+                "Prefixo recebimento",
+                "Placa recebimento",
+                "Material recebimento",
+                "Volume recebimento",
+                "Ramo descarga",
+                "Estaca/Serviço",
+                "Duração"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BASE_MATERIAIS",
+          "tables": [
+            {
+              "name": "tbBaseMateriais",
+              "ref": "A1:T10054",
+              "columns": [
+                "ID Registro",
+                "Data",
+                "Tipo movimentação",
+                "Material",
+                "Unidade",
+                "Quantidade",
+                "Suporte/Viagens",
+                "Volume caçamba",
+                "Total m³",
+                "Fornecedor",
+                "Placa",
+                "Prefixo",
+                "Nota fiscal",
+                "Origem",
+                "Destino",
+                "Ramo/Trecho",
+                "Valor unitário",
+                "Valor total",
+                "Observação",
+                "Aba de origem"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "BASE_COMBUSTIVEL",
+          "tables": [
+            {
+              "name": "tbBaseCombustivel",
+              "ref": "A1:W1350",
+              "columns": [
+                "ID Registro",
+                "Mês",
+                "Ano",
+                "Data",
+                "Prefixo",
+                "Descrição equipamento",
+                "KM inicial",
+                "Horímetro",
+                "Litros",
+                "Hora",
+                "Comboio",
+                "Tipo combustível",
+                "Empresa",
+                "Bomba inicial",
+                "Bomba final",
+                "Conferência bomba",
+                "Consumo L/h",
+                "Consumo km/L",
+                "Custo/L",
+                "Custo total",
+                "Capacidade tanque (L)",
+                "Alerta capacidade",
+                "Status cadastro"
+              ]
+            }
+          ]
+        }
+      ],
+      "definedNames": [],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/PLANILHA MESTRE DE CADASTROS DE CONTROLE.xlsx"
+    },
+    {
+      "file": "RELATORIO_COMERCIAL_SPMAR_20-07_A_26-07.xlsx",
+      "sizeBytes": 13971,
+      "sha256": "9db5c226cec06254df8f6d05dc303f9e49a3a5a19c9aec2e3d55a931a5a3a2b3",
+      "sheets": [
+        {
+          "name": "Relatório Comercial",
+          "state": "visible",
+          "dimension": "A1:I80",
+          "formulaCount": 4,
+          "representativeFormulas": [
+            "COUNTA(A10:A76)",
+            "SUM(E10:E76)",
+            "AVERAGE(F10:F76)",
+            "SUM(G10:G76)"
+          ],
+          "validations": [],
+          "mergeCount": 1,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [
+        {
+          "sheet": "Relatório Comercial",
+          "tables": [
+            {
+              "name": "RelatorioComercial",
+              "ref": "A9:I76",
+              "columns": [
+                "Data do Descarte",
+                "Placa",
+                "Aut. Descarte",
+                "Nº Vale",
+                "Peso Líquido",
+                "Unitário R$",
+                "Valor R$",
+                "Volume",
+                "Pagamento"
+              ]
+            }
+          ]
+        }
+      ],
+      "definedNames": [],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/RELATORIO_COMERCIAL_SPMAR_20-07_A_26-07.xlsx"
+    },
+    {
+      "file": "VIAGENS JAZIDA SABESP.xlsx",
+      "sizeBytes": 301784,
+      "sha256": "e8e34a7660d72861ad8b4e3426719ff346130548b4b83b57c3d350b2beb5b76c",
+      "sheets": [
+        {
+          "name": "LIBERAÇÃO",
+          "state": "visible",
+          "dimension": "A1:Y1000",
+          "formulaCount": 1204,
+          "representativeFormulas": [
+            "SUBTOTAL(3,Tabela1[Ticket Nº])",
+            "IF(B5=\"\",\"\",B5)",
+            "IF(C5=\"\",\"\",IF(COUNTIF($C$5:$C$431,C5)>1,\"TICKET DUPLICADO\",IF(COUNTIF(RECEBIMENTO!$C$5:$C$270,C5)=0,\"SEM RECEBIMENTO\",IF(AND(D5=INDEX(RECEBIMENTO!$D$5:$D$270,MATCH(C5,RECEBIMENTO!$C$5:$C$270,0)),E5=INDEX(RECEBIMENTO!$E$5:$E$270,MATCH(C5,RECEBIMENTO!$C$5:$C$270,0)),G5=INDEX(RECEBIMENTO!$G$5:$G$270,MATCH(C5,RECEBIMENTO!$C$5:$C$270,0)),H5=INDEX(RECEBIMENTO!$H$5:$H$270,MATCH(C5,RECEBIMENTO!$C$5:$C$270,0))),\"CONFERIDO\",\"DIVERGÊNCIA\"))))"
+          ],
+          "validations": [
+            {
+              "sqref": "B5:B431",
+              "type": "date",
+              "operator": null,
+              "allowBlank": null,
+              "formula1": "DATE(2020,1,1)",
+              "formula2": "DATE(2100,12,31)"
+            },
+            {
+              "sqref": "C5:C431",
+              "type": null,
+              "operator": "greaterThan",
+              "allowBlank": null,
+              "formula1": "0",
+              "formula2": ""
+            },
+            {
+              "sqref": "H5:H431",
+              "type": "decimal",
+              "operator": "greaterThan",
+              "allowBlank": null,
+              "formula1": "0",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "RECEBIMENTO",
+          "state": "visible",
+          "dimension": "A1:Q1015",
+          "formulaCount": 4344,
+          "representativeFormulas": [
+            "SUBTOTAL(3,Tabela15[Ticket Nº])",
+            "IF(B5=\"\",\"\",B5)",
+            "IF(C5=\"\",\"\",IFERROR(INDEX(LIBERAÇÃO!$D$5:$D$431,MATCH(C5,LIBERAÇÃO!$C$5:$C$431,0)),\"\"))",
+            "IF(C5=\"\",\"\",IFERROR(INDEX(LIBERAÇÃO!$E$5:$E$431,MATCH(C5,LIBERAÇÃO!$C$5:$C$431,0)),\"\"))",
+            "IF(C5=\"\",\"\",IF(COUNTIF(LIBERAÇÃO!$C$5:$C$431,C5)>0,\"COMPLETA\",\"PENDENTE\"))",
+            "IF(C5=\"\",\"\",IF(COUNTIF($C$5:$C$270,C5)>1,\"TICKET DUPLICADO\",IF(COUNTIF(LIBERAÇÃO!$C$5:$C$431,C5)=0,\"SEM LIBERAÇÃO\",IF(AND(D5=INDEX(LIBERAÇÃO!$D$5:$D$431,MATCH(C5,LIBERAÇÃO!$C$5:$C$431,0)),E5=INDEX(LIBERAÇÃO!$E$5:$E$431,MATCH(C5,LIBERAÇÃO!$C$5:$C$431,0)),G5=INDEX(LIBERAÇÃO!$G$5:$G$431,MATCH(C5,LIBERAÇÃO!$C$5:$C$431,0)),H5=INDEX(LIBERAÇÃO!$H$5:$H$431,MATCH(C5,LIBERAÇÃO!$C$5:$C$431,0))),\"CONFERIDO\",\"DIVERGÊNCIA\"))))",
+            "IF(C6=\"\",\"\",IFERROR(INDEX(LIBERAÇÃO!$E$5:$E$431,MATCH(C6,LIBERAÇÃO!$C$5:$C$431,0)),\"\"))",
+            "IF(C6=\"\",\"\",IF(COUNTIF(LIBERAÇÃO!$C$5:$C$431,C6)>0,\"COMPLETA\",\"PENDENTE\"))",
+            "IF(C6=\"\",\"\",IF(COUNTIF($C$5:$C$270,C6)>1,\"TICKET DUPLICADO\",IF(COUNTIF(LIBERAÇÃO!$C$5:$C$431,C6)=0,\"SEM LIBERAÇÃO\",IF(AND(D6=INDEX(LIBERAÇÃO!$D$5:$D$431,MATCH(C6,LIBERAÇÃO!$C$5:$C$431,0)),E6=INDEX(LIBERAÇÃO!$E$5:$E$431,MATCH(C6,LIBERAÇÃO!$C$5:$C$431,0)),G6=INDEX(LIBERAÇÃO!$G$5:$G$431,MATCH(C6,LIBERAÇÃO!$C$5:$C$431,0)),H6=INDEX(LIBERAÇÃO!$H$5:$H$431,MATCH(C6,LIBERAÇÃO!$C$5:$C$431,0))),\"CONFERIDO\",\"DIVERGÊNCIA\"))))",
+            "IF(C7=\"\",\"\",IFERROR(INDEX(LIBERAÇÃO!$E$5:$E$431,MATCH(C7,LIBERAÇÃO!$C$5:$C$431,0)),\"\"))",
+            "IF(C7=\"\",\"\",IF(COUNTIF(LIBERAÇÃO!$C$5:$C$431,C7)>0,\"COMPLETA\",\"PENDENTE\"))",
+            "IF(C7=\"\",\"\",IF(COUNTIF($C$5:$C$270,C7)>1,\"TICKET DUPLICADO\",IF(COUNTIF(LIBERAÇÃO!$C$5:$C$431,C7)=0,\"SEM LIBERAÇÃO\",IF(AND(D7=INDEX(LIBERAÇÃO!$D$5:$D$431,MATCH(C7,LIBERAÇÃO!$C$5:$C$431,0)),E7=INDEX(LIBERAÇÃO!$E$5:$E$431,MATCH(C7,LIBERAÇÃO!$C$5:$C$431,0)),G7=INDEX(LIBERAÇÃO!$G$5:$G$431,MATCH(C7,LIBERAÇÃO!$C$5:$C$431,0)),H7=INDEX(LIBERAÇÃO!$H$5:$H$431,MATCH(C7,LIBERAÇÃO!$C$5:$C$431,0))),\"CONFERIDO\",\"DIVERGÊNCIA\"))))"
+          ],
+          "validations": [
+            {
+              "sqref": "B5:B270",
+              "type": "date",
+              "operator": null,
+              "allowBlank": null,
+              "formula1": "DATE(2020,1,1)",
+              "formula2": "DATE(2100,12,31)"
+            },
+            {
+              "sqref": "C5:C270",
+              "type": null,
+              "operator": "greaterThan",
+              "allowBlank": null,
+              "formula1": "0",
+              "formula2": ""
+            },
+            {
+              "sqref": "H5:H270",
+              "type": "decimal",
+              "operator": "greaterThan",
+              "allowBlank": null,
+              "formula1": "0",
+              "formula2": ""
+            },
+            {
+              "sqref": "K4:K1048576",
+              "type": "list",
+              "operator": null,
+              "allowBlank": "1",
+              "formula1": "\"CONFERIDO,REVISAR,PENDENTE\"",
+              "formula2": ""
+            }
+          ],
+          "mergeCount": 1,
+          "drawingCount": 1
+        },
+        {
+          "name": "CADASTRO",
+          "state": "hidden",
+          "dimension": "A1:B35",
+          "formulaCount": 0,
+          "representativeFormulas": [],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "CONTROLE TICKETS",
+          "state": "visible",
+          "dimension": "A1:O1001",
+          "formulaCount": 1000,
+          "representativeFormulas": [
+            "IF(A2=\"\",\"\",IF(D2<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A2)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A2)>0),\"UTILIZADO\",IF(C2<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A3=\"\",\"\",IF(D3<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A3)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A3)>0),\"UTILIZADO\",IF(C3<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A4=\"\",\"\",IF(D4<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A4)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A4)>0),\"UTILIZADO\",IF(C4<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A5=\"\",\"\",IF(D5<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A5)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A5)>0),\"UTILIZADO\",IF(C5<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A6=\"\",\"\",IF(D6<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A6)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A6)>0),\"UTILIZADO\",IF(C6<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A7=\"\",\"\",IF(D7<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A7)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A7)>0),\"UTILIZADO\",IF(C7<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A8=\"\",\"\",IF(D8<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A8)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A8)>0),\"UTILIZADO\",IF(C8<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A9=\"\",\"\",IF(D9<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A9)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A9)>0),\"UTILIZADO\",IF(C9<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A10=\"\",\"\",IF(D10<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A10)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A10)>0),\"UTILIZADO\",IF(C10<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A11=\"\",\"\",IF(D11<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A11)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A11)>0),\"UTILIZADO\",IF(C11<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A12=\"\",\"\",IF(D12<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A12)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A12)>0),\"UTILIZADO\",IF(C12<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))",
+            "IF(A13=\"\",\"\",IF(D13<>\"\",\"CANCELADO\",IF(OR(COUNTIF(LIBERAÇÃO!$C$5:$C$431,A13)>0,COUNTIF(RECEBIMENTO!$C$5:$C$270,A13)>0),\"UTILIZADO\",IF(C13<>\"\",\"IMPRESSO\",\"DISPONÍVEL\"))))"
+          ],
+          "validations": [
+            {
+              "sqref": "A2:A1001",
+              "type": null,
+              "operator": "greaterThan",
+              "allowBlank": null,
+              "formula1": "0",
+              "formula2": ""
+            },
+            {
+              "sqref": "C2:D1001",
+              "type": "date",
+              "operator": null,
+              "allowBlank": null,
+              "formula1": "DATE(2020,1,1)",
+              "formula2": "DATE(2100,12,31)"
+            }
+          ],
+          "mergeCount": 0,
+          "drawingCount": 0
+        },
+        {
+          "name": "INDICADORES",
+          "state": "visible",
+          "dimension": "A1:AC82",
+          "formulaCount": 12,
+          "representativeFormulas": [
+            "COUNTIF(LIBERAÇÃO!#REF!,\"COMPLETA\")",
+            "COUNTIF(LIBERAÇÃO!#REF!,\"PENDENTE\")",
+            "COUNTIF(RECEBIMENTO!Q5:Q270,\"SEM LIBERAÇÃO\")",
+            "COUNTIF(LIBERAÇÃO!J5:J231,\"DIVERGÊNCIA\")+COUNTIF(RECEBIMENTO!Q5:Q270,\"DIVERGÊNCIA\")",
+            "COUNTIF(LIBERAÇÃO!J5:J231,\"TICKET DUPLICADO\")",
+            "COUNTIF(RECEBIMENTO!Q5:Q270,\"TICKET DUPLICADO\")",
+            "IFERROR(AVERAGE(RECEBIMENTO!#REF!),\"\")",
+            "SUM(RECEBIMENTO!H5:H270)",
+            "COUNTIF('CONTROLE TICKETS'!B2:B1001,\"IMPRESSO\")",
+            "COUNTIF('CONTROLE TICKETS'!B2:B1001,\"UTILIZADO\")",
+            "COUNTIF('CONTROLE TICKETS'!B2:B1001,\"CANCELADO\")",
+            "COUNTIF('CONTROLE TICKETS'!B2:B1001,\"DISPONÍVEL\")"
+          ],
+          "validations": [],
+          "mergeCount": 0,
+          "drawingCount": 0
+        }
+      ],
+      "tables": [
+        {
+          "sheet": "LIBERAÇÃO",
+          "tables": [
+            {
+              "name": "Tabela1",
+              "ref": "B4:J431",
+              "columns": [
+                "Data",
+                "Ticket Nº",
+                "Prefixo",
+                "Placa",
+                "Hora de saída",
+                "Tipo de material",
+                "Quantidade m³",
+                "Destino / Obra",
+                "Conferência automática"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "RECEBIMENTO",
+          "tables": [
+            {
+              "name": "Tabela15",
+              "ref": "B4:K291",
+              "columns": [
+                "Data",
+                "Ticket Nº",
+                "Prefixo",
+                "Placa",
+                "Hora de chegada",
+                "Tipo de material",
+                "Quantidade m³",
+                "Ramo de Descarga",
+                "Estaca",
+                "Status"
+              ]
+            },
+            {
+              "name": "Tabela2",
+              "ref": "N4:Q900",
+              "columns": [
+                "Prefixo automático",
+                "Placa automática",
+                "Status do par",
+                "Conferência automática"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "CONTROLE TICKETS",
+          "tables": [
+            {
+              "name": "Tabela3",
+              "ref": "A1:E1001",
+              "columns": [
+                "Ticket",
+                "Situação",
+                "Data de impressão",
+                "Data de cancelamento",
+                "Observação"
+              ]
+            }
+          ]
+        },
+        {
+          "sheet": "INDICADORES",
+          "tables": [
+            {
+              "name": "Tabela5",
+              "ref": "A1:B13",
+              "columns": [
+                "INDICADOR",
+                "VALOR"
+              ]
+            }
+          ]
+        }
+      ],
+      "definedNames": [],
+      "externalLinks": [],
+      "hasMacros": false,
+      "source": "Planilhas de Apoio/VIAGENS JAZIDA SABESP.xlsx"
+    }
+  ]
+}

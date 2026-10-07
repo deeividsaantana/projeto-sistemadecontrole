@@ -1,0 +1,14 @@
+/* Cartões que respondem ao mouse, no mesmo passo de Materiais. */
+.meu-dia-vivo {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+@media (hover: hover) {
+  .meu-dia-vivo:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -18px rgb(23 107 77 / 0.55);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meu-dia-vivo,
+  .meu-dia-vivo:hover { transform: none; transition: none; }
+}

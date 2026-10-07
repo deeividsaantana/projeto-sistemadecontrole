@@ -1,0 +1,17 @@
+/*
+ * No celular a barra de ações do cabeçalho herda regras gerais do
+ * #main-tab-viewport (sem quebra de linha) e o botão principal saía da tela.
+ * Aqui a barra quebra linha e cada botão vira uma faixa de toque inteira.
+ */
+@media (max-width: 639px) {
+  #main-tab-viewport .cadastros-header .renea-page-actions,
+  .cadastros-header .renea-page-actions {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+  #main-tab-viewport .cadastros-header .renea-page-actions > button,
+  .cadastros-header .renea-page-actions > button {
+    flex: 1 1 100%;
+  }
+}

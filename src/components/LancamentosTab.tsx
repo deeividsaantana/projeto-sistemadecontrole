@@ -11,8 +11,11 @@ import {
   TipoCombustivel,
   ProdutoLubrificacao,
   Abastecimento,
+  ImportAbastecimentosResult,
   Lubrificacao,
   StatusRegistroCombustivel,
+  ControleEquipamentoDiario,
+  GrupoEquipe,
 } from '../types';
 
 import { 
@@ -38,6 +41,14 @@ import CombustivelOperacionalTab from './CombustivelOperacionalTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
 import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
+import { buildFuelImportObservation, fuelSheetCompetence, isFuelImportWorksheet, normalizeConvoyCode } from '../utils/fuelMacroForm';
+import {
+  buildFuelImportedMasterData,
+  normalizeFuelMasterKey,
+  type FuelEquipmentRegistryRow,
+  type FuelImportedMasterData,
+  type FuelLaunchRegistryRow,
+} from '../utils/fuelMasterDataImport';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
@@ -48,6 +59,8 @@ interface LancamentosTabProps {
   comboios: Comboio[];
   combustiveis: TipoCombustivel[];
   lubrificantes: ProdutoLubrificacao[];
+  /** Canteiros do cadastro; sem isso usa a lista fixa de reserva. */
+  canteiros?: readonly string[];
 
   abastecimentos: Abastecimento[];
   lubrificacoes: Lubrificacao[];
@@ -55,10 +68,15 @@ interface LancamentosTabProps {
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
   onDeleteAbastecimentos: (ids: string[]) => void;
-  onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
+  onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[], cadastrosImportados?: Partial<FuelImportedMasterData>) => ImportAbastecimentosResult;
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
   onDeleteLubrificacao: (id: string) => void;
   onOpenCadastros?: () => void;
+  /** Lançamentos do Controle de Frotas: dão operador, canteiro e situação ao abastecimento. */
+  registrosFrota?: ControleEquipamentoDiario[];
+  gruposEquipe?: GrupoEquipe[];
+  usuario?: string;
+  onOpenControle?: () => void;
 }
 
 type Mode = 'abastecimentos' | 'lubrificacoes';
@@ -69,6 +87,7 @@ export default function LancamentosTab({
   comboios,
   combustiveis,
   lubrificantes,
+  canteiros,
   abastecimentos,
   lubrificacoes,
   onSaveAbastecimento,
@@ -78,6 +97,10 @@ export default function LancamentosTab({
   onSaveLubrificacao,
   onDeleteLubrificacao,
   onOpenCadastros,
+  registrosFrota,
+  gruposEquipe,
+  usuario,
+  onOpenControle,
 }: LancamentosTabProps) {
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
@@ -124,6 +147,7 @@ export default function LancamentosTab({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const equipamentoFieldRef = useRef<HTMLSelectElement>(null);
   const moduleRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Foco automático no campo de Frota/Equipamento ao abrir o formulário: data e
   // hora já vêm preenchidas por padrão, então é o próximo campo que o usuário
@@ -139,7 +163,9 @@ export default function LancamentosTab({
   const [importFileName, setImportFileName] = useState('');
   const [isConfirmingImport, setIsConfirmingImport] = useState(false);
   const [importedFuelTypes, setImportedFuelTypes] = useState<TipoCombustivel[]>([]);
+  const [importedMasterData, setImportedMasterData] = useState<FuelImportedMasterData>({ empresas: [], equipamentos: [], comboios: [] });
   const [importReport, setImportReport] = useState('');
+  const [openFuelHistorySignal, setOpenFuelHistorySignal] = useState(0);
 
   const normalizeHeader = (s: string) =>
     (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
@@ -147,6 +173,7 @@ export default function LancamentosTab({
   const COLUMN_SYNONYMS: Record<string, string[]> = {
     data: ['data', 'data abastecimento', 'data do abastecimento', 'dt', 'dia'],
     frota: ['frota', 'prefixo', 'equipamento', 'frota prefixo', 'equipamento frota', 'cb', 'codigo equipamento', 'código equipamento', 'cod equipamento', 'n frota', 'numero frota', 'número frota', 'prefixo placa', 'placa', 'veiculo', 'veículo', 'maquina', 'máquina'],
+    descricao: ['descricao do equipamento', 'descrição do equipamento', 'descricao equipamento', 'descrição equipamento', 'descricao', 'descrição'],
     kmInicial: ['km inicial', 'kminicial', 'km', 'hodometro', 'odometro'],
     horimetroInicial: ['horimetro inicial', 'horimetro', 'hm inicial', 'hm'],
     bombaInicial: ['bomba inicial', 'inicio bomba', 'inicial bomba', 'bico inicial', 'marcador inicial', 'encerrante inicial', 'enc inicial'],
@@ -292,6 +319,7 @@ export default function LancamentosTab({
     setIsParsingImport(true);
     setValidationError('');
     setImportedFuelTypes([]);
+    setImportedMasterData({ empresas: [], equipamentos: [], comboios: [] });
     try {
       const wb = await loadValidatedWorkbook(file);
       const worksheetsToRead = wb.worksheets;
@@ -329,7 +357,64 @@ export default function LancamentosTab({
       const rows: ImportRow[] = [];
       const seenInBatch = new Set<string>();
       const createdFuelTypes = new Map<string, TipoCombustivel>();
-      const referenceSheetNames = new Set(['equipamentos', 'combustiveis', 'comboios']);
+      const equipmentRegistryRows: FuelEquipmentRegistryRow[] = [];
+      const launchRegistryRows: FuelLaunchRegistryRow[] = [];
+
+      const equipmentSheet = worksheetsToRead.find(ws => normalizeFuelMasterKey(ws.name) === 'equipamentos');
+      if (equipmentSheet) {
+        const headerLookup = new Map<string, number>();
+        equipmentSheet.getRow(1).eachCell({ includeEmpty: false }, (cell, col) => {
+          headerLookup.set(normalizeFuelMasterKey(cellToText(cell.value)), col);
+        });
+        const valueFromEquipment = (row: ExcelJS.Row, key: string) => {
+          const column = headerLookup.get(key);
+          return column ? unwrapCellValue(row.getCell(column).value) : undefined;
+        };
+        equipmentSheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+          if (rowNumber === 1) return;
+          equipmentRegistryRows.push({
+            frota: valueFromEquipment(row, 'frota'),
+            equipamento: valueFromEquipment(row, 'equipamento'),
+            familia: valueFromEquipment(row, 'familia'),
+            empresa: valueFromEquipment(row, 'empresa'),
+            status: valueFromEquipment(row, 'status'),
+            mobilizado: valueFromEquipment(row, 'mobilizado'),
+            dataMob: valueFromEquipment(row, 'datamob'),
+            dataDesmob: valueFromEquipment(row, 'datadesmob'),
+            metaDispMec: valueFromEquipment(row, 'metadispmec'),
+          });
+        });
+      }
+
+      worksheetsToRead.forEach(ws => {
+        if (!isFuelImportWorksheet(ws.name)) return;
+        const headerCandidate = findHeaderRow(ws);
+        const colMap = headerCandidate.rowNumber
+          ? { ...FALLBACK_COLUMN_MAP, ...headerCandidate.map }
+          : FALLBACK_COLUMN_MAP;
+        const dataStartRow = headerCandidate.rowNumber ? headerCandidate.rowNumber + 1 : 1;
+        const getCell = (row: ExcelJS.Row, key: string) => {
+          const idx = colMap[key];
+          return idx ? unwrapCellValue(row.getCell(idx).value) : undefined;
+        };
+        ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+          if (rowNumber < dataStartRow) return;
+          launchRegistryRows.push({
+            prefixo: getCell(row, 'frota'),
+            descricao: getCell(row, 'descricao') || getCell(row, 'frota'),
+            empresa: getCell(row, 'empresa'),
+            comboio: getCell(row, 'comboio'),
+          });
+        });
+      });
+
+      const masterData = buildFuelImportedMasterData({
+        equipmentRows: equipmentRegistryRows,
+        launchRows: launchRegistryRows,
+        nowIso: new Date().toISOString(),
+      });
+      const equipamentosDisponiveis = [...equipamentos, ...masterData.equipamentos];
+      const comboiosDisponiveis = [...comboios, ...masterData.comboios];
 
       const resolveFuelType = (rawText: string) => {
         const nomePlanilha = rawText.trim();
@@ -373,8 +458,7 @@ export default function LancamentosTab({
 
       worksheetsToRead.forEach(ws => {
         const headerCandidate = findHeaderRow(ws);
-        const normalizedSheetName = normalizeCompact(ws.name);
-        if (headerCandidate.score < 2 && referenceSheetNames.has(normalizedSheetName)) return;
+        if (!isFuelImportWorksheet(ws.name)) return;
 
         const colMap = headerCandidate.rowNumber
           ? { ...FALLBACK_COLUMN_MAP, ...headerCandidate.map }
@@ -427,14 +511,17 @@ export default function LancamentosTab({
           const custoLitro = Number.isFinite(custoLitroLido) && custoLitroLido > 0 ? custoLitroLido : 0;
 
           const frotaNorm = frotaTexto.toLowerCase();
-          const comboioNorm = comboioTexto.toLowerCase();
-          const eq = findEquipmentByPrefix(frotaTexto, equipamentos)
-            || equipamentos.find(e => e.nome.toLowerCase() === frotaNorm);
+          const comboioNorm = normalizeConvoyCode(comboioTexto);
+          const eq = findEquipmentByPrefix(frotaTexto, equipamentosDisponiveis)
+            || equipamentosDisponiveis.find(e => e.nome.toLowerCase() === frotaNorm);
           const fuelResolution = resolveFuelType(tipoCombustivelTexto);
           const comb = fuelResolution.fuel;
-          const comboioExato = comboios.find(c => c.nome.toLowerCase() === comboioNorm);
+          const comboioExato = comboiosDisponiveis.find(c => normalizeConvoyCode(c.placa || c.nome) === comboioNorm || normalizeConvoyCode(c.nome) === comboioNorm);
           const comboiosParciais = comboioNorm
-            ? comboios.filter(c => comboioNorm.includes(c.nome.toLowerCase()) || c.nome.toLowerCase().includes(comboioNorm))
+            ? comboiosDisponiveis.filter(c => {
+              const candidate = normalizeConvoyCode(c.placa || c.nome);
+              return comboioNorm.includes(candidate) || candidate.includes(comboioNorm);
+            })
             : [];
           const combVeic = comboioExato || (comboiosParciais.length === 1 ? comboiosParciais[0] : undefined);
 
@@ -474,6 +561,7 @@ export default function LancamentosTab({
 
           // Identidade: Data + Prefixo + Litros + Hora + Bomba Inicial + Bomba Final.
           const dataFinal = dataStr;
+          const competenciaPlanilha = fuelSheetCompetence(ws.name) || dataFinal.slice(0, 7);
           const horaFinal = normalizeQuickTime(horaStr).valid ? horaStr : '';
           const quantidadeFinal = Number.isFinite(quantidade) ? Number(quantidade.toFixed(4)) : NaN;
           const candidate: Partial<Abastecimento> = {
@@ -518,23 +606,27 @@ export default function LancamentosTab({
             tipoCombustivelId: comb?.id || '',
             comboioId: combVeic?.id || '',
             responsavel,
-            observacao: [
-              observacao || `Fonte: ${ws.name}`,
-              `Linha original ${ws.name}:${rowNumber}: ${rawRowText}.`,
-              empresaTexto ? `Empresa informada na planilha: ${empresaTexto}.` : '',
-              frotaTexto && !eq ? `Prefixo informado sem cadastro: ${frotaTexto}.` : '',
-              tipoCombustivelTexto ? `Combustível informado na planilha: ${tipoCombustivelTexto}.` : '',
-              comboioTexto ? `Comboio informado na planilha: ${comboioTexto}.` : '',
-              !responsavel ? 'Responsável não informado na planilha; conferir no registro.' : '',
-              quantidadeFoiCalculada ? 'Quantidade calculada pela diferença entre bomba final e inicial.' : '',
+            observacao: buildFuelImportObservation({
+              sheetName: ws.name,
+              rowNumber,
+              observacao,
+              empresaTexto,
+              frotaTexto,
+              equipmentFound: Boolean(eq),
+              tipoCombustivelTexto,
+              comboioTexto,
+              responsavel,
+              quantidadeFoiCalculada,
               motivo,
-            ].filter(Boolean).join(' | '),
+              rawRowText,
+            }),
             status: motivo && statusFinal === 'OK' ? 'Conferência necessária' : statusFinal,
             origem: 'Planilha',
             documentoOrigemNome: file.name,
             documentoOrigemHash: dupKey,
             integracaoAba: ws.name,
             integracaoLinha: rowNumber,
+            competencia: competenciaPlanilha,
             criadoEm: new Date().toISOString(),
             atualizadoEm: new Date().toISOString(),
           } : undefined;
@@ -554,6 +646,7 @@ export default function LancamentosTab({
 
       setImportRows(rows);
       setImportedFuelTypes(Array.from(createdFuelTypes.values()));
+      setImportedMasterData(masterData);
       setIsImportModalOpen(true);
     } catch (err: unknown) {
       console.error('Erro ao ler planilha:', err);
@@ -578,13 +671,21 @@ export default function LancamentosTab({
     setIsConfirmingImport(true);
     const validItems = importRows.filter(r => r.status === 'valido' && r.item).map(r => r.item!) as Abastecimento[];
     const usedFuelIds = new Set(validItems.map(item => item.tipoCombustivelId));
-    onImportAbastecimentos(validItems, importedFuelTypes.filter(item => usedFuelIds.has(item.id)));
-    setImportReport(`Importação concluída: ${validItems.length} novo(s) abastecimento(s) publicado(s); ${importSummary.duplicadas} duplicado(s), ${importSummary.ignoradas} linha(s) vazia(s)/zerada(s) e ${importSummary.comErro} registro(s) inválido(s) não foram publicados.`);
+    const applied = onImportAbastecimentos(validItems, importedFuelTypes.filter(item => usedFuelIds.has(item.id)), importedMasterData);
+    if (applied.accepted > 0) setOpenFuelHistorySignal(signal => signal + 1);
+    const cadastrosCriados = [
+      applied.companiesCreated ? `${applied.companiesCreated} empresa(s)/locadora(s)` : '',
+      applied.equipmentsCreated ? `${applied.equipmentsCreated} equipamento(s)` : '',
+      applied.convoysCreated ? `${applied.convoysCreated} comboio(s)` : '',
+      applied.fuelTypesCreated ? `${applied.fuelTypesCreated} tipo(s) de combustível` : '',
+    ].filter(Boolean);
+    setImportReport(`Importação concluída: ${applied.accepted} de ${applied.requested} abastecimento(s) publicado(s); ${applied.rejected + importSummary.duplicadas + importSummary.ignoradas + importSummary.comErro} registro(s) não foram publicados. Total no histórico: ${applied.totalAfter}.${cadastrosCriados.length ? ` Também cadastrou ${cadastrosCriados.join(', ')}.` : ''}`);
     setIsConfirmingImport(false);
     setIsImportModalOpen(false);
     setImportRows([]);
     setImportFileName('');
     setImportedFuelTypes([]);
+    setImportedMasterData({ empresas: [], equipamentos: [], comboios: [] });
   };
 
   const handleCancelImport = () => {
@@ -592,6 +693,7 @@ export default function LancamentosTab({
     setImportRows([]);
     setImportFileName('');
     setImportedFuelTypes([]);
+    setImportedMasterData({ empresas: [], equipamentos: [], comboios: [] });
   };
 
   // 1. Form Temporary States
@@ -688,6 +790,27 @@ export default function LancamentosTab({
     resetFormFields();
     setIsFormOpen(true);
   };
+
+  // Lubrificação usava a tela sem nenhum atalho de teclado, diferente do
+  // Abastecimento (delegado ao CombustivelOperacionalTab, que já tem N e /).
+  // Mesmo padrão aqui: N lança, / busca.
+  useEffect(() => {
+    if (mode !== 'lubrificacoes' || isFormOpen) return undefined;
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+      if (event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        handleOpenCreate();
+      } else if (event.key === '/') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [mode, isFormOpen]);
 
   const handleOpenEdit = (item: Abastecimento | Lubrificacao) => {
     resetFormFields();
@@ -1127,6 +1250,7 @@ export default function LancamentosTab({
           equipamentos={equipamentos}
           comboios={comboios}
           combustiveis={combustiveis}
+          canteiros={canteiros}
           abastecimentos={abastecimentos}
           onSaveAbastecimento={onSaveAbastecimento}
           onDeleteAbastecimento={onDeleteAbastecimento}
@@ -1138,8 +1262,13 @@ export default function LancamentosTab({
             resetFormFields();
           }}
           onOpenCadastros={onOpenCadastros}
+          onOpenControle={onOpenControle}
+          registros={registrosFrota}
+          gruposEquipe={gruposEquipe}
+          usuario={usuario}
           onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
           isParsingSpreadsheet={isParsingImport}
+          openHistorySignal={openFuelHistorySignal}
         />
         <input
           ref={fileInputRef}
@@ -1227,6 +1356,7 @@ export default function LancamentosTab({
           >
             <Plus className="w-4.5 h-4.5" />
             {mode === 'abastecimentos' ? 'Novo Abastecimento' : 'Nova Lubrificação'}
+            {mode === 'lubrificacoes' && <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>}
           </button>
         </>}
       />
@@ -1260,7 +1390,8 @@ export default function LancamentosTab({
       <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white border border-slate-200 p-3 rounded-lg">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
-          <input 
+          <input
+            ref={searchInputRef}
             type="text"
             placeholder={mode === 'abastecimentos' ? 'Filtrar por data, responsável ou prefixo de frota...' : mode === 'lubrificacoes' ? 'Filtrar por data, compartimento ou prefixo...' : 'Filtrar por data, obra ou serviço executado...'}
             value={searchQuery}

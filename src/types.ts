@@ -12,7 +12,11 @@ export interface Empresa {
   // TERCEIRA: empresa contratada que presta serviço na obra (ex.: Tecnogeo,
   // Rivoli) — diferente de FORNECEDOR (vende material, ex.: Pedraforte,
   // Dovalle). Uma empresa pode acumular mais de um tipo.
-  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA' | 'TERCEIRA'>;
+  // Subáreas de fornecedor: LOCACAO_EQUIPAMENTOS (locadora de máquinas),
+  // MATERIAIS (vende insumo) e SUBFORNECEDOR (atende por meio de outro
+  // fornecedor, apontado em fornecedorPrincipalId).
+  tipos?: Array<'EMPRESA' | 'FORNECEDOR' | 'GERADOR' | 'ACEITANTE' | 'TRANSPORTADORA' | 'TERCEIRA' | 'LOCACAO_EQUIPAMENTOS' | 'MATERIAIS' | 'SUBFORNECEDOR'>;
+  fornecedorPrincipalId?: string;
   status?: 'ATIVO' | 'INATIVO';
   criadoEm?: string;
   atualizadoEm?: string;
@@ -53,9 +57,20 @@ export interface Equipamento {
   dataDesmobilizacao?: string;
   operadorResponsavelId?: string;
   operadorResponsavelNome?: string;
+  /** Dia em que o operador responsável foi definido; no Quadro da Frota vale o mais recente entre ele e o último lançamento. */
+  operadorResponsavelDesde?: string;
+  /** Última leitura de horímetro conhecida (h) e o dia dela; hoje vem do apontamento do SGE. */
+  horimetroAtual?: number;
+  horimetroAtualData?: string;
   combustivelId?: string;
   capacidadeTanqueLitros?: number;
   equipamentoVinculadoId?: string;
+  /**
+   * Quando o cadastro mudou pela última vez. A mesclagem com a nuvem usa esta
+   * data para decidir qual versão fica; sem ela, a versão da nuvem sempre ganha
+   * e a mudança feita neste aparelho se perde.
+   */
+  atualizadoEm?: string;
 }
 
 export interface Funcionario {
@@ -99,9 +114,25 @@ export interface ProdutoLubrificacao {
   nome: string; // ex: Graxa, 68T, 15W40, etc.
 }
 
+/** Canteiro ou pátio de apoio onde a frota trabalha (Quadro da Frota). */
+export interface Canteiro {
+  id: string;
+  nome: string;
+}
+
+/** O que o lugar é na obra: decide onde ele aparece e como soma. */
+export type TipoLocalObra = 'Ramo' | 'Frente' | 'Origem' | 'Bota-fora' | 'Bota-espera' | 'Estoque' | 'Canteiro' | 'Serviço';
+
 export interface EtapaServico {
   id: string;
-  nome: string; // ex: Terraplenagem, Drenagem, Pavimentação, etc.
+  nome: string; // ex: Ramo 900, Espinha Ramo 900, Pedreira Contern
+  /** Código de apropriação de horas e serviços no SGE (100 a 160). */
+  codigoSge?: string;
+  tipoLocal?: TipoLocalObra;
+  /** Ramo a que a frente pertence ("Ramo 900"): é por ele que o previsto soma. */
+  ramo?: string;
+  /** Como a planilha e o campo escrevem este lugar ("CS RAMO 900"). */
+  apelidos?: string[];
 }
 
 export type StatusRegistroCombustivel =
@@ -203,13 +234,13 @@ export interface HistoryLog {
   id: string;
   timestamp: string; // Data e hora da alteração
   usuario: string; // admin
-  acao: 'Criou' | 'Editou' | 'Excluiu' | 'Inativou' | 'Desmobilizou' | 'Sincronizou';
+  acao: 'Criou' | 'Editou' | 'Excluiu' | 'Inativou' | 'Desmobilizou' | 'Sincronizou' | 'Restaurou';
   tela: string; // ex: Empresas, Abastecimentos, etc.
   descricao: string; // Detalhes legíveis por humanos
   registroId?: string;
   valorAnterior?: unknown;
   valorNovo?: unknown;
-  tipoOperacao?: 'CREATE' | 'UPDATE' | 'INACTIVATE' | 'DEMOBILIZE' | 'SYNC' | 'DELETE';
+  tipoOperacao?: 'CREATE' | 'UPDATE' | 'INACTIVATE' | 'DEMOBILIZE' | 'SYNC' | 'DELETE' | 'RESTORE';
 }
 
 export interface PresencaItem {
@@ -543,12 +574,32 @@ export interface Material {
   fornecedorPadraoId?: string;
   estoqueMinimo?: number;
   observacao?: string;
+  /** Tubo de concreto: classe de resistência (PA2, PA3, PA4). */
+  classe?: string;
+  /**
+   * Comprimento de uma peça, em metros, quando o material chega medido em
+   * metro mas é aplicado por peça (tubo de 1,50 m). Sem ele, a quantidade
+   * aparece só na unidade do cadastro.
+   */
+  comprimentoPecaM?: number;
   ativo: boolean;
   criadoEm: string;
   atualizadoEm: string;
+  /** Diâmetro nominal, em mm — usado por materiais tubulares (ex: Ø800). */
+  diametroMm?: number;
+  /** Comprimento da peça, em metros — usado por materiais em barra/tubo. */
+  comprimentoM?: number;
 }
 
 export type TipoMovimentoMaterial = 'Entrada' | 'Saída' | 'Transferência' | 'Ajuste';
+
+/** Posição do GPS do celular, com a precisão em metros e a hora da leitura. */
+export interface LocalGps {
+  lat: number;
+  lng: number;
+  precisaoM: number;
+  em: string;
+}
 
 export interface MovimentoMaterial {
   id: string;
@@ -566,6 +617,10 @@ export interface MovimentoMaterial {
   finalidade?: 'Consumo';
   /** Envio público aprovado que originou este movimento, quando aplicável. */
   origemApontamentoId?: string;
+  /** Fotos do envio do apontador: caminhos no Storage, que só a equipe logada lê. */
+  /** Onde o celular estava ao apontar pelo link (GPS no momento do envio). */
+  localGps?: LocalGps;
+  fotos?: string[];
   /** Obra operacional informada na origem; migração SaaS exige mapeamento para project_id. */
   obraId?: string;
   fornecedorId?: string;
@@ -588,6 +643,14 @@ export interface MovimentoMaterial {
    * verdade para divergir.
    */
   quantidadeNota?: number;
+  /** Quem apontou o uso em campo (link do apontador ou usuário do ERP). */
+  apontadoPor?: string;
+  /**
+   * Lançamento desfeito. Fica no histórico com quem e quando desfez, mas sai
+   * do saldo e da utilização: apagar sumiria com o registro fornecido.
+   */
+  canceladoEm?: string;
+  canceladoPor?: string;
   /** Para onde foi: frente, obra ou ponto de apoio. */
   destino?: string;
   origem?: string;
@@ -595,6 +658,109 @@ export interface MovimentoMaterial {
   responsavel: string;
   observacao?: string;
   criadoEm: string;
+}
+
+/**
+ * Quanto de um material um ramo deve receber num mês ("40 t de rachão no
+ * Ramo 900 em setembro"). O realizado nunca é digitado aqui: vem dos
+ * movimentos que chegaram a algum local daquele ramo no mesmo mês.
+ */
+export interface PrevistoMaterial {
+  id: string;
+  mes: string; // YYYY-MM
+  /** Nome do ramo ("Ramo 900"): soma todas as frentes que pertencem a ele. */
+  ramo: string;
+  materialId: string;
+  materialDescricao: string;
+  unidade: string;
+  quantidade: number;
+  observacao?: string;
+  responsavel: string;
+  /** Previsto tirado continua guardado: o histórico do mês não some. */
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/** Prioridade da rotina do assistente: 🔴 crítico, 🟠 importante, 🟡 acompanhar, 🟢 rotina. */
+export type PrioridadeRotina = 'critico' | 'importante' | 'acompanhar' | 'rotina';
+
+/** Para onde a pendência leva: cobrar alguém, ir ao campo, abrir o projeto... */
+export type TipoPendenciaRotina = 'cobrar' | 'campo' | 'projeto' | 'planilha' | 'sistema' | 'rdo' | 'medicao' | 'email' | 'outro';
+
+/**
+ * Uma coisa a fazer ou cobrar na rotina do assistente de engenharia. Fica
+ * aberta de um dia para o outro até ser concluída; concluir não apaga.
+ */
+export interface PendenciaRotina {
+  id: string;
+  titulo: string;
+  prioridade: PrioridadeRotina;
+  tipo: TipoPendenciaRotina;
+  /** Quem precisa responder ou entregar (encarregado, fornecedor, topografia...). */
+  dependeDe?: string;
+  /** Ramo ou frente, em texto livre. */
+  frente?: string;
+  /** Dia em que entrou na lista (YYYY-MM-DD). */
+  dia: string;
+  prazo?: string;
+  observacao?: string;
+  concluidaEm?: string;
+  /** Apagada pela própria pessoa; fica marcada para a nuvem não trazer de volta. */
+  excluidaEm?: string;
+  responsavel: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/**
+ * O dia de uma pessoa na rotina: o que já marcou no checklist, as anotações
+ * e as prioridades para amanhã. Um registro por pessoa e por dia.
+ */
+export interface RotinaDiaria {
+  /** `${dia}:${responsavel}` */
+  id: string;
+  dia: string;
+  responsavel: string;
+  /** Itens do checklist já feitos (ids do ModeloRotina da pessoa ou do modelo padrão). */
+  feitos: string[];
+  levantar: string;
+  duvida: string;
+  aprendi: string;
+  /** Até três prioridades para o dia seguinte. */
+  amanha: string[];
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/** Um item do checklist de uma pessoa. O id fica gravado em RotinaDiaria.feitos. */
+export interface ItemRotina {
+  id: string;
+  texto: string;
+}
+
+export type MomentoRotina = 'manha' | 'durante' | 'fechamento';
+
+export interface BlocoRotina {
+  id: string;
+  titulo: string;
+  momento: MomentoRotina;
+  /** Uma linha dizendo para que serve o bloco. */
+  ajuda: string;
+  itens: ItemRotina[];
+}
+
+/**
+ * O checklist do jeito de cada pessoa: quem nunca mexeu usa o modelo padrão;
+ * quem cria, edita ou apaga blocos e itens passa a ter o seu. Um por pessoa.
+ */
+export interface ModeloRotina {
+  /** O nome do responsável. */
+  id: string;
+  responsavel: string;
+  blocos: BlocoRotina[];
+  criadoEm: string;
+  atualizadoEm: string;
 }
 
 export type SituacaoFrente = 'Planejada' | 'Em execução' | 'Paralisada' | 'Concluída';

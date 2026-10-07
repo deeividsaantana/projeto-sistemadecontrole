@@ -1,0 +1,100 @@
+/*
+ * Desenho da cortina de estacas prancha. As cores ficam aqui, e não soltas
+ * no componente, para o desenho usar só a paleta RENEA e tons neutros.
+ */
+.cortina,
+#estacas-tab {
+  --cortina-ceu: #f7f8f6;
+  --cortina-solo: #d9c7a8;
+  --cortina-solo-escuro: #b89f7a;
+  --cortina-cravada: #176b4d;
+  --cortina-cravada-face: #1f8a63;
+  --cortina-cravada-claro: #9fd6bd;
+  --cortina-proxima: #f26a2e;
+  --cortina-prevista: #718087;
+  --cortina-linha: #cbd5e1;
+}
+
+.cortina svg { display: block; width: 100%; height: auto; }
+
+.cortina .cortina-estaca { cursor: pointer; }
+.cortina .cortina-estaca:focus { outline: none; }
+.cortina .cortina-estaca:focus-visible .cortina-contorno,
+.cortina .cortina-estaca[data-escolhida='true'] .cortina-contorno {
+  stroke: var(--cortina-proxima);
+  stroke-width: 2.5;
+}
+@media (hover: hover) {
+  .cortina .cortina-estaca:hover .cortina-contorno { stroke: var(--cortina-proxima); stroke-width: 2; }
+  .cortina .cortina-estaca:hover .cortina-prevista-corpo { fill-opacity: 0.22; }
+}
+
+.cortina-ceu-topo { stop-color: #ffffff; }
+.cortina-ceu-base { stop-color: var(--cortina-ceu); }
+.cortina-solo-topo { stop-color: var(--cortina-solo); stop-opacity: 0.22; }
+.cortina-solo-base { stop-color: var(--cortina-solo-escuro); stop-opacity: 0.5; }
+.cortina-aco-a { stop-color: var(--cortina-cravada-face); }
+.cortina-aco-b { stop-color: var(--cortina-cravada); }
+
+.cortina-fundo { fill: url(#cortina-ceu); }
+.cortina-terra { fill: url(#cortina-solo); }
+.cortina-textura { fill: url(#cortina-pontos); }
+.cortina-pontos-cor { fill: var(--cortina-solo-escuro); opacity: 0.4; }
+.cortina-chao { stroke: var(--cortina-solo-escuro); stroke-width: 2; }
+.cortina-regua { stroke: var(--cortina-linha); stroke-dasharray: 3 4; stroke-width: 1; }
+.cortina-regua-texto { fill: #718087; font-size: 10px; font-weight: 600; }
+
+.cortina-cravada-corpo { fill: url(#cortina-aco); }
+.cortina-cravada-face { fill: var(--cortina-cravada); opacity: 0.55; }
+.cortina-cravada-brilho { fill: #ffffff; opacity: 0.18; }
+.cortina-sobra { fill: var(--cortina-cravada-claro); }
+.cortina-contorno { fill: none; stroke: rgb(15 23 42 / 0.18); stroke-width: 1; transition: stroke 150ms ease; }
+.cortina-prevista-corpo { fill: var(--cortina-prevista); fill-opacity: 0.1; stroke: var(--cortina-prevista); stroke-opacity: 0.55; stroke-dasharray: 4 3; stroke-width: 1; }
+.cortina-proxima-corpo { fill: var(--cortina-proxima); fill-opacity: 0.16; stroke: var(--cortina-proxima); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.cortina-martelo { fill: var(--cortina-proxima); }
+.cortina-martelo-cabo { stroke: var(--cortina-proxima); stroke-width: 2; }
+
+.cortina-planta-cravada { stroke: var(--cortina-cravada); }
+.cortina-planta-prevista { stroke: var(--cortina-linha); }
+.cortina-planta-proxima { stroke: var(--cortina-proxima); }
+.cortina-planta { fill: none; stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; }
+
+.cortina-anel-fundo { stroke: #e2e8f0; }
+.cortina-anel { stroke: var(--cortina-cravada); transition: stroke-dashoffset 600ms ease; }
+
+.estacas-vivo { transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease; }
+@media (hover: hover) {
+  .estacas-vivo:hover {
+    transform: translateY(-2px);
+    border-color: #9fd6bd;
+    box-shadow: 0 12px 28px -18px rgb(23 107 77 / 0.55);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .estacas-vivo, .estacas-vivo:hover { transform: none; transition: none; }
+  .cortina-anel, .cortina-contorno { transition: none; }
+}
+
+.estacas-menu {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+@media (max-width: 639px) {
+  #main-tab-viewport .estacas-header .renea-page-actions,
+  .estacas-header .renea-page-actions {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+  #main-tab-viewport .estacas-header .renea-page-actions > button,
+  .estacas-header .renea-page-actions > button {
+    flex: 1 1 100%;
+  }
+}
+
+@media print {
+  .estacas-nao-imprime { display: none !important; }
+}
