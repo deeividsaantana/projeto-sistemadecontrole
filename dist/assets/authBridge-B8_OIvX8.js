@@ -1,0 +1,1 @@
+import{g as r}from"./resilientStorage-BgRGUmRz.js";import"./vendor-react-BRdKA9p5.js";import"./vendor-supabase-DADWICq6.js";const e=async(t,s)=>{const{error:a}=await r().auth.signInWithPassword({email:t,password:s});if(a)throw a},g=async()=>{const{error:t}=await r().auth.signOut();if(t)throw t};export{e as signInSupabaseBridge,g as signOutSupabaseBridge};
