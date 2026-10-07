@@ -1,20 +1,24 @@
 /**
- * Combustível: lançar o abastecimento puxando do lançamento do dia da frota
- * quem operava, em que canteiro e frente a máquina estava e a última leitura.
- * Horímetro e km ficam separados; leitura menor que a anterior, máquina em
- * manutenção ou sem lançamento no dia viram aviso antes de salvar.
+ * Combustível: lançar o abastecimento com o fluxo da planilha macro.
+ * A máquina ainda consulta as últimas leituras do controle, mas o cadastro
+ * rápido fica focado em prefixo, litros, comboio, combustível e bomba.
  *
  * Teclas, fora de campo de texto: N novo abastecimento, / busca no histórico.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, CalendarDays, CheckCircle2, ClipboardList, Droplets, FileSpreadsheet, Fuel, Gauge, History, Info, MapPin, Plus, Search, Trash2, Truck, UserRound, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CheckCircle2, Download, Droplets, FileSpreadsheet, FileText, Filter, Fuel, History, Info, PieChart, Plus, RotateCcw, Save, Search, Trash2 } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../types';
-import { ConfirmDialog, CountUp, PageHeader, isoDay } from '../shared/ui';
-import { CANTEIROS, montarQuadro, type CartaoFrota } from '../modules/frota/quadroFrota';
-import { abastecidasSemLancamento, avisosDoAbastecimento, contextoDoAbastecimento, lerNumero, operandoSemAbastecer } from '../modules/frota/combustivelDoDia';
+import type { FuelImportedMasterData } from '../utils/fuelMasterDataImport';
+import { ConfirmDialog, isoDay } from '../shared/ui';
+import { PageHeader } from '../shared/ui/PageHeader';
+import { montarQuadro } from '../modules/frota/quadroFrota';
+import { avisosDoAbastecimento, contextoDoAbastecimento, lerNumero } from '../modules/frota/combustivelDoDia';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from './cadastros/estilos';
+import { normalizeQuickTime } from '../utils/combustivelValidation';
+import { buildMacroFuelingRecord, getDefaultDieselFuelId, parseFuelFormNumber, resolveMacroPumpReadings } from '../utils/fuelMacroForm';
+import { buildFuelHistoryAnalytics, type FuelHistoryGroup } from '../modules/frota/fuelHistoryAnalytics';
 
 interface Props {
   empresas: Empresa[];
@@ -31,12 +35,13 @@ interface Props {
   usuario?: string;
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
-  onImportAbastecimentos?: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[]) => void;
+  onImportAbastecimentos?: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[], cadastrosImportados?: Partial<FuelImportedMasterData>) => void;
   onOpenLubrificacao: () => void;
   onOpenCadastros?: () => void;
   onOpenControle?: () => void;
   onOpenSpreadsheetImport: () => void;
   isParsingSpreadsheet: boolean;
+  openHistorySignal?: number;
 }
 
 type View = 'resumo' | 'novo' | 'historico';
@@ -48,78 +53,105 @@ interface Formulario {
   tipoCombustivelId: string;
   comboioId: string;
   litros: string;
+  bombaInicial: string;
   horimetro: string;
   km: string;
-  operador: string;
   responsavel: string;
-  local: string;
   observacao: string;
 }
+
+interface FiltrosHistorico {
+  texto: string;
+  dataInicio: string;
+  dataFim: string;
+  comboioId: string;
+  equipamentoId: string;
+  empresaId: string;
+  combustivelId: string;
+}
+
+const TAMANHO_PAGINA_HISTORICO = 50;
+const FILTROS_HISTORICO_VAZIOS: FiltrosHistorico = {
+  texto: '', dataInicio: '', dataFim: '', comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '',
+};
+const CORES_GRAFICO_COMBUSTIVEL = ['#176b4d', '#f26a2e', '#718087', '#f7f8f6'];
 
 const agoraHora = () => new Date().toTimeString().slice(0, 5);
 const hoje = () => isoDay(new Date());
 const dataCurta = (dia: string) => dia ? new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR') : 'Sem data';
+const mesOperacional = (dia: string) => dia ? new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase() : '';
+const mesMacro = (dia: string) => mesOperacional(dia).replace(' DE ', ' ');
 const litrosTexto = (valor: number) => `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L`;
 const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-const TOM_GRUPO: Record<CartaoFrota['grupo'], string> = {
-  operando: 'bg-emerald-50 text-[#176b4d] ring-emerald-200',
-  manutencao: 'bg-rose-50 text-rose-700 ring-rose-200',
-  parado: 'bg-amber-50 text-amber-800 ring-amber-200',
-  'sem-lancamento': 'bg-slate-100 text-slate-600 ring-slate-200',
-};
+const CAMPO_MACRO = 'h-8 w-full rounded-none border border-[#718087] bg-white px-3 text-sm font-medium text-slate-950 shadow-[inset_1px_1px_0_rgba(15,23,42,0.18)] outline-none transition focus:border-[#176b4d] focus:ring-2 focus:ring-[#176b4d]/20 disabled:text-slate-500';
+const ROTULO_MACRO = 'flex h-8 items-center text-sm font-black text-black';
 
 const vazio = (usuario: string, data = hoje()): Formulario => ({
-  data, hora: agoraHora(), prefixo: '', tipoCombustivelId: '', comboioId: '', litros: '', horimetro: '', km: '',
-  operador: '', responsavel: usuario, local: '', observacao: '',
+  data, hora: agoraHora(), prefixo: '', tipoCombustivelId: '', comboioId: '', litros: '', bombaInicial: '', horimetro: '', km: '',
+  responsavel: usuario, observacao: '',
 });
 
 export default function CombustivelOperacionalTab({
-  equipamentos, comboios, combustiveis, abastecimentos, canteiros = CANTEIROS, registros = [], gruposEquipe = [], usuario = '',
-  onSaveAbastecimento, onDeleteAbastecimento, onOpenLubrificacao, onOpenCadastros, onOpenControle, onOpenSpreadsheetImport, isParsingSpreadsheet,
+  empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
+  onSaveAbastecimento, onDeleteAbastecimento, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
+  openHistorySignal = 0,
 }: Props) {
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   const prefixoRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<View>('resumo');
   const [dia, setDia] = useState(hoje);
-  const [busca, setBusca] = useState('');
+  const [filtrosHistorico, setFiltrosHistorico] = useState<FiltrosHistorico>(FILTROS_HISTORICO_VAZIOS);
+  const [paginaHistorico, setPaginaHistorico] = useState(0);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [abaDashboard, setAbaDashboard] = useState<'consumo' | 'ranking'>('consumo');
+  const [exportandoHistorico, setExportandoHistorico] = useState<'' | 'excel' | 'pdf'>('');
   const [excluindo, setExcluindo] = useState<Abastecimento | null>(null);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
   const [form, setForm] = useState<Formulario>(() => vazio(usuario));
+  const [comboioFixoId, setComboioFixoId] = useState('');
   /** Campos que a pessoa mexeu; o que vem do lançamento do dia não passa por cima deles. */
   const [mexidos, setMexidos] = useState<ReadonlySet<keyof Formulario>>(() => new Set());
+
+  useEffect(() => {
+    if (openHistorySignal > 0) setView('historico');
+  }, [openHistorySignal]);
 
   const ativos = useMemo(() => abastecimentos
     .filter(item => !item.inativoEm && item.status !== 'Cancelado')
     .sort((a, b) => `${b.data}${b.hora}`.localeCompare(`${a.data}${a.hora}`)), [abastecimentos]);
   const porId = useMemo(() => new Map(equipamentos.map(item => [item.id, item])), [equipamentos]);
+  const empresaPorId = useMemo(() => new Map<string, string>(empresas.map(item => [item.id, item.nome])), [empresas]);
+  const comboioPorId = useMemo(() => new Map(comboios.map(item => [item.id, item.nome])), [comboios]);
   const nomeCombustivel = useMemo(() => new Map(combustiveis.map(item => [item.id, item.nome])), [combustiveis]);
+  const combustivelPadraoId = useMemo(() => getDefaultDieselFuelId(combustiveis), [combustiveis]);
+  const analyticsCombustivel = useMemo(() => buildFuelHistoryAnalytics({
+    records: ativos, equipamentos, empresas, comboios, combustiveis, referenceDate: hoje(),
+  }), [ativos, comboios, combustiveis, equipamentos, empresas]);
 
   const cartoesDoDia = useMemo(() => montarQuadro({ dia, equipamentos, registros, gruposEquipe, abastecimentos }), [abastecimentos, dia, equipamentos, gruposEquipe, registros]);
   const cartoesDoForm = useMemo(
     () => (form.data === dia ? cartoesDoDia : montarQuadro({ dia: form.data, equipamentos, registros, gruposEquipe, abastecimentos })),
     [abastecimentos, cartoesDoDia, dia, equipamentos, form.data, gruposEquipe, registros],
   );
-  const doDia = ativos.filter(item => item.data === dia);
-  const litrosDia = doDia.reduce((soma, item) => soma + Number(item.quantidadeLitros || 0), 0);
-  const maquinasDia = new Set(doDia.map(item => item.equipamentoId)).size;
-  const semDiesel = useMemo(() => operandoSemAbastecer(cartoesDoDia, ativos, dia), [ativos, cartoesDoDia, dia]);
-  const semLancamento = useMemo(() => abastecidasSemLancamento(cartoesDoDia, ativos, dia), [ativos, cartoesDoDia, dia]);
-  const aConferir = doDia.filter(item => item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || item.alertas?.some(alerta => alerta.severidade !== 'info')).length;
-
   // Máquina escolhida pelo prefixo digitado ("CB726" ou "CB726 · Caminhão").
   const equipamento = useMemo(() => {
     const texto = semAcento(form.prefixo.split('·')[0].trim());
     if (!texto) return undefined;
     return equipamentos.find(item => semAcento(item.prefixo) === texto);
   }, [equipamentos, form.prefixo]);
+  const empresaEquipamento = equipamento ? empresaPorId.get(equipamento.empresaId) || '' : '';
   const cartao = equipamento ? cartoesDoForm.find(item => item.equipamentoId === equipamento.id) : undefined;
   const contexto = cartao ? contextoDoAbastecimento({ dia: form.data, hora: form.hora, cartao, abastecimentos: ativos }) : undefined;
   const avisos = contexto ? avisosDoAbastecimento({ contexto, horimetro: lerNumero(form.horimetro), km: lerNumero(form.km) }) : [];
-  const ehVeiculo = equipamento?.categoriaFrota === 'Veículo';
+  const leiturasBomba = useMemo(() => resolveMacroPumpReadings({
+    records: ativos,
+    comboioId: form.comboioId,
+    litros: form.litros,
+    bombaInicialManual: form.bombaInicial,
+  }), [ativos, form.bombaInicial, form.comboioId, form.litros]);
 
   // Ao escolher a máquina, puxa do lançamento do dia o que a pessoa ainda não digitou.
   useEffect(() => {
@@ -127,47 +159,82 @@ export default function CombustivelOperacionalTab({
     const ultimoCombustivel = ativos.find(item => item.equipamentoId === equipamento.id && item.tipoCombustivelId)?.tipoCombustivelId;
     setForm(atual => ({
       ...atual,
-      operador: mexidos.has('operador') ? atual.operador : contexto.operador,
-      local: mexidos.has('local') ? atual.local : [contexto.canteiro, contexto.frente].filter(Boolean).join(' · '),
-      tipoCombustivelId: mexidos.has('tipoCombustivelId') || atual.tipoCombustivelId ? atual.tipoCombustivelId : ultimoCombustivel || combustiveis.find(item => /diesel/i.test(item.nome))?.id || combustiveis[0]?.id || '',
+      tipoCombustivelId: mexidos.has('tipoCombustivelId') || atual.tipoCombustivelId ? atual.tipoCombustivelId : ultimoCombustivel || combustivelPadraoId,
     }));
     // Só roda quando a máquina ou o dia mudam.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipamento?.id, form.data]);
 
+  const bombaInicialDoComboio = (comboioId: string) => {
+    const leitura = resolveMacroPumpReadings({ records: ativos, comboioId, litros: 0 });
+    return leitura.bombaInicial > 0 ? String(leitura.bombaInicial).replace('.', ',') : '';
+  };
+
   const mudar = (campo: keyof Formulario, valor: string) => {
-    setForm(atual => ({ ...atual, [campo]: valor }));
+    if (campo === 'comboioId') {
+      setForm(atual => ({ ...atual, comboioId: valor, bombaInicial: bombaInicialDoComboio(valor) }));
+      setComboioFixoId(valor);
+    } else {
+      setForm(atual => ({ ...atual, [campo]: valor }));
+    }
     setMexidos(atual => new Set(atual).add(campo));
     setErro('');
   };
 
   const abrirNovo = (prefixo = '') => {
-    setForm({ ...vazio(usuario, dia), prefixo });
+    setForm({ ...vazio(usuario, dia), prefixo, comboioId: comboioFixoId, bombaInicial: bombaInicialDoComboio(comboioFixoId), tipoCombustivelId: combustivelPadraoId });
     setMexidos(new Set());
     setErro('');
     setView('novo');
     window.setTimeout(() => (prefixo ? document.getElementById('combustivel-litros') : prefixoRef.current)?.focus(), 60);
   };
 
+  const limparLancamento = () => {
+    setForm(atual => ({
+      ...vazio(usuario, atual.data),
+      comboioId: atual.comboioId,
+      bombaInicial: bombaInicialDoComboio(atual.comboioId),
+      tipoCombustivelId: atual.tipoCombustivelId || combustivelPadraoId,
+      responsavel: atual.responsavel,
+    }));
+    setMexidos(new Set());
+    setErro('');
+    window.setTimeout(() => prefixoRef.current?.focus(), 60);
+  };
+
   const salvar = (outro: boolean) => {
-    const litros = lerNumero(form.litros);
+    const horaNormalizada = normalizeQuickTime(form.hora);
+    const litros = parseFuelFormNumber(form.litros, 0);
     if (!equipamento) return setErro('Escolha a máquina pelo prefixo.');
+    if (!horaNormalizada.valid) return setErro('Digite a hora no formato 1005 ou 10:05.');
     if (!form.tipoCombustivelId) return setErro('Escolha o combustível.');
-    if (litros === undefined || litros <= 0) return setErro('Informe quantos litros foram abastecidos.');
-    const horimetro = lerNumero(form.horimetro) ?? 0;
-    const km = lerNumero(form.km) ?? 0;
+    if (!form.comboioId) return setErro('Selecione o comboio.');
+    if (litros <= 0) return setErro('Informe quantos litros foram abastecidos.');
+    if (leiturasBomba.bombaInicial <= 0) return setErro('Bomba inicial não encontrada para este comboio.');
+    if (leiturasBomba.bombaFinal <= 0) return setErro('Bomba final não calculada.');
     const agora = new Date().toISOString();
-    onSaveAbastecimento({
-      id: crypto.randomUUID(), data: form.data, hora: form.hora, equipamentoId: equipamento.id,
-      horimetroInicial: horimetro, kmInicial: km, bombaInicial: 0, bombaFinal: litros,
-      quantidadeLitros: litros, tipoCombustivelId: form.tipoCombustivelId, comboioId: form.comboioId,
-      responsavel: form.responsavel.trim() || 'Não informado', operadorNome: form.operador.trim() || undefined,
-      localAbastecimento: form.local.trim(), observacao: form.observacao.trim(), status: 'OK', origem: 'Manual',
-      competencia: form.data.slice(0, 7), criadoEm: agora, atualizadoEm: agora,
-    }, true);
+    onSaveAbastecimento(buildMacroFuelingRecord({
+      id: crypto.randomUUID(),
+      equipment: equipamento,
+      records: ativos,
+      data: form.data,
+      hora: form.hora,
+      litros: form.litros,
+      horimetro: form.horimetro,
+      km: form.km,
+      tipoCombustivelId: form.tipoCombustivelId,
+      comboioId: form.comboioId,
+      responsavel: form.responsavel,
+      bombaInicialManual: form.bombaInicial,
+      observacao: form.observacao,
+      nowIso: agora,
+    }), true);
     setAviso(`${equipamento.prefixo} abastecido com ${litrosTexto(litros)}.`);
     if (outro) {
-      setForm(atual => ({ ...vazio(usuario, atual.data), responsavel: atual.responsavel, comboioId: atual.comboioId }));
+      setForm(atual => {
+        const proximaBombaInicial = leiturasBomba.bombaFinal > 0 ? String(leiturasBomba.bombaFinal).replace('.', ',') : bombaInicialDoComboio(atual.comboioId);
+        return { ...vazio(usuario, atual.data), responsavel: atual.responsavel, comboioId: atual.comboioId, bombaInicial: proximaBombaInicial, tipoCombustivelId: atual.tipoCombustivelId || combustivelPadraoId };
+      });
       setMexidos(new Set());
       window.setTimeout(() => prefixoRef.current?.focus(), 60);
     } else {
@@ -175,15 +242,137 @@ export default function CombustivelOperacionalTab({
     }
   };
 
-  const filtrados = useMemo(() => {
-    const termo = semAcento(busca.trim());
-    const base = ativos.filter(item => item.data === dia);
-    if (!termo) return base;
-    return base.filter(item => semAcento([
-      porId.get(item.equipamentoId)?.prefixo, porId.get(item.equipamentoId)?.nome, nomeCombustivel.get(item.tipoCombustivelId),
-      item.responsavel, item.operadorNome, item.localAbastecimento,
-    ].filter(Boolean).join(' ')).includes(termo));
-  }, [ativos, busca, dia, nomeCombustivel, porId]);
+  const historicoFiltrado = useMemo(() => {
+    const termo = semAcento(filtrosHistorico.texto.trim());
+    return ativos.filter(item => {
+      const maquina = porId.get(item.equipamentoId);
+      const empresaId = maquina?.empresaId || '';
+      if (filtrosHistorico.dataInicio && item.data < filtrosHistorico.dataInicio) return false;
+      if (filtrosHistorico.dataFim && item.data > filtrosHistorico.dataFim) return false;
+      if (filtrosHistorico.comboioId && item.comboioId !== filtrosHistorico.comboioId) return false;
+      if (filtrosHistorico.equipamentoId && item.equipamentoId !== filtrosHistorico.equipamentoId) return false;
+      if (filtrosHistorico.empresaId && empresaId !== filtrosHistorico.empresaId) return false;
+      if (filtrosHistorico.combustivelId && item.tipoCombustivelId !== filtrosHistorico.combustivelId) return false;
+      if (!termo) return true;
+      return semAcento([
+        item.data, item.hora, maquina?.prefixo, item.prefixoInformado, maquina?.nome, maquina?.tipo,
+        empresaPorId.get(empresaId), comboioPorId.get(item.comboioId), nomeCombustivel.get(item.tipoCombustivelId),
+        item.responsavel, item.operadorNome, item.localAbastecimento, item.observacao,
+      ].filter(Boolean).join(' ')).includes(termo);
+    });
+  }, [ativos, comboioPorId, empresaPorId, filtrosHistorico, nomeCombustivel, porId]);
+  const analyticsHistorico = useMemo(() => buildFuelHistoryAnalytics({
+    records: historicoFiltrado, equipamentos, empresas, comboios, combustiveis, referenceDate: hoje(),
+  }), [comboios, combustiveis, equipamentos, empresas, historicoFiltrado]);
+  const totalPaginasHistorico = Math.max(1, Math.ceil(historicoFiltrado.length / TAMANHO_PAGINA_HISTORICO));
+  const paginaHistoricoAtual = Math.min(paginaHistorico, totalPaginasHistorico - 1);
+  const historicoPaginado = historicoFiltrado.slice(
+    paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO,
+    (paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO,
+  );
+  const totalLitrosHistorico = historicoFiltrado.reduce((total, item) => total + Number(item.quantidadeLitros || 0), 0);
+  const maquinasHistorico = new Set(historicoFiltrado.map(item => item.equipamentoId || item.prefixoInformado).filter(Boolean)).size;
+  const empresasHistorico = new Set(historicoFiltrado.map(item => porId.get(item.equipamentoId)?.empresaId).filter(Boolean)).size;
+
+  const filtrosHistoricoAplicados = useMemo(() => [
+    filtrosHistorico.dataInicio ? `De ${dataCurta(filtrosHistorico.dataInicio)}` : '',
+    filtrosHistorico.dataFim ? `Até ${dataCurta(filtrosHistorico.dataFim)}` : '',
+    filtrosHistorico.comboioId ? `Comboio: ${comboioPorId.get(filtrosHistorico.comboioId) || filtrosHistorico.comboioId}` : '',
+    filtrosHistorico.equipamentoId ? `Equipamento: ${porId.get(filtrosHistorico.equipamentoId)?.prefixo || filtrosHistorico.equipamentoId}` : '',
+    filtrosHistorico.empresaId ? `Empresa: ${empresaPorId.get(filtrosHistorico.empresaId) || filtrosHistorico.empresaId}` : '',
+    filtrosHistorico.combustivelId ? `Combustível: ${nomeCombustivel.get(filtrosHistorico.combustivelId) || filtrosHistorico.combustivelId}` : '',
+    filtrosHistorico.texto.trim() ? `Busca: ${filtrosHistorico.texto.trim()}` : '',
+  ].filter(Boolean), [comboioPorId, empresaPorId, filtrosHistorico, nomeCombustivel, porId]);
+
+  const atualizarFiltroHistorico = (campo: keyof FiltrosHistorico, valor: string) => {
+    setFiltrosHistorico(atual => ({ ...atual, [campo]: valor }));
+    setPaginaHistorico(0);
+  };
+
+  const linhasHistoricoExportacao = () => historicoFiltrado.map(item => {
+    const maquina = porId.get(item.equipamentoId);
+    const empresaId = maquina?.empresaId || '';
+    return {
+      data: dataCurta(item.data), hora: item.hora || '', prefixo: maquina?.prefixo || item.prefixoInformado || '',
+      equipamento: maquina?.nome || '', empresa: empresaPorId.get(empresaId) || '',
+      comboio: comboioPorId.get(item.comboioId) || item.comboioId || '',
+      combustivel: nomeCombustivel.get(item.tipoCombustivelId) || '', litros: Number(item.quantidadeLitros || 0),
+      bombaInicial: item.bombaInicial > 0 ? item.bombaInicial : '', bombaFinal: item.bombaFinal > 0 ? item.bombaFinal : '',
+      km: item.kmInicial > 0 ? item.kmInicial : '', horimetro: item.horimetroInicial > 0 ? item.horimetroInicial : '',
+      origem: item.origem || '', status: item.revisaoStatus || item.status || '', observacao: item.observacao || '',
+    };
+  });
+
+  const exportarHistoricoExcel = async () => {
+    setExportandoHistorico('excel');
+    try {
+      const { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } = await import('../utils/excelCorporate');
+      const workbook = await createCorporateWorkbook();
+      configureCorporateWorkbook(workbook, 'Histórico de abastecimentos');
+      addCorporateSummarySheet(workbook, 'Histórico de Combustível', [
+        ['Registros filtrados', historicoFiltrado.length], ['Volume total', `${numeroTexto(totalLitrosHistorico)} L`],
+        ['Equipamentos', maquinasHistorico], ['Empresas', empresasHistorico],
+      ], filtrosHistoricoAplicados);
+      const worksheet = workbook.addWorksheet('HISTÓRICO', { views: [{ showGridLines: false }] });
+      worksheet.columns = [
+        { header: 'Data', key: 'data', width: 13 }, { header: 'Hora', key: 'hora', width: 9 },
+        { header: 'Prefixo', key: 'prefixo', width: 13 }, { header: 'Equipamento', key: 'equipamento', width: 24 },
+        { header: 'Empresa', key: 'empresa', width: 24 }, { header: 'Comboio', key: 'comboio', width: 18 },
+        { header: 'Combustível', key: 'combustivel', width: 18 }, { header: 'Litros', key: 'litros', width: 13 },
+        { header: 'Bomba inicial', key: 'bombaInicial', width: 15 }, { header: 'Bomba final', key: 'bombaFinal', width: 15 },
+        { header: 'KM', key: 'km', width: 14 }, { header: 'Horímetro', key: 'horimetro', width: 14 },
+        { header: 'Origem', key: 'origem', width: 14 }, { header: 'Revisão', key: 'status', width: 14 },
+        { header: 'Observação', key: 'observacao', width: 30 },
+      ];
+      worksheet.getRow(4).values = ['Data', 'Hora', 'Prefixo', 'Equipamento', 'Empresa', 'Comboio', 'Combustível', 'Litros', 'Bomba inicial', 'Bomba final', 'KM', 'Horímetro', 'Origem', 'Revisão', 'Observação'];
+      linhasHistoricoExportacao().forEach(linha => worksheet.addRow(linha));
+      styleCorporateWorksheet(worksheet, { title: 'Histórico de Combustível', headerRow: 4, lastColumn: 15, dataStartRow: 5, recordCount: historicoFiltrado.length, filters: filtrosHistoricoAplicados });
+      await downloadCorporateWorkbook(workbook, `RENEA_historico_combustivel_${hoje()}.xlsx`);
+      setAviso(`${historicoFiltrado.length} registro(s) exportado(s) para Excel.`);
+    } catch (falha) {
+      setErro(falha instanceof Error ? `Falha ao exportar Excel: ${falha.message}` : 'Falha ao exportar Excel.');
+    } finally {
+      setExportandoHistorico('');
+    }
+  };
+
+  const exportarHistoricoPdf = async () => {
+    setExportandoHistorico('pdf');
+    try {
+      const { generateUniversalPdfReport } = await import('../utils/universalPdfReport');
+      const linhas = linhasHistoricoExportacao();
+      await generateUniversalPdfReport({
+        title: 'Histórico de Combustível', subtitle: `${historicoFiltrado.length} registro(s) no resultado filtrado`,
+        orientation: 'landscape', period: filtrosHistorico.dataInicio || filtrosHistorico.dataFim
+          ? `${filtrosHistorico.dataInicio ? dataCurta(filtrosHistorico.dataInicio) : 'Início'} a ${filtrosHistorico.dataFim ? dataCurta(filtrosHistorico.dataFim) : 'Hoje'}`
+          : 'Todo o período', filters: filtrosHistoricoAplicados,
+        columns: [
+          { header: 'Data', dataKey: 'data' }, { header: 'Hora', dataKey: 'hora' }, { header: 'Prefixo', dataKey: 'prefixo' },
+          { header: 'Empresa', dataKey: 'empresa' }, { header: 'Comboio', dataKey: 'comboio' },
+          { header: 'Combustível', dataKey: 'combustivel' }, { header: 'Litros', dataKey: 'litros' },
+          { header: 'Bomba inicial', dataKey: 'bombaInicial' }, { header: 'Bomba final', dataKey: 'bombaFinal' },
+          { header: 'KM', dataKey: 'km' }, { header: 'Horímetro', dataKey: 'horimetro' }, { header: 'Revisão', dataKey: 'status' },
+        ],
+        rows: linhas.map(linha => ({
+          ...linha,
+          litros: litrosTexto(linha.litros),
+          bombaInicial: typeof linha.bombaInicial === 'number' ? numeroTexto(linha.bombaInicial) : '',
+          bombaFinal: typeof linha.bombaFinal === 'number' ? numeroTexto(linha.bombaFinal) : '',
+          km: typeof linha.km === 'number' ? numeroTexto(linha.km) : '',
+          horimetro: typeof linha.horimetro === 'number' ? numeroTexto(linha.horimetro) : '',
+        })),
+        summary: [
+          { label: 'Registros', value: historicoFiltrado.length }, { label: 'Volume total', value: litrosTexto(totalLitrosHistorico) },
+          { label: 'Equipamentos', value: maquinasHistorico }, { label: 'Empresas', value: empresasHistorico },
+        ], fileName: `RENEA_historico_combustivel_${hoje()}.pdf`,
+      });
+      setAviso(`${historicoFiltrado.length} registro(s) exportado(s) para PDF.`);
+    } catch (falha) {
+      setErro(falha instanceof Error ? `Falha ao exportar PDF: ${falha.message}` : 'Falha ao exportar PDF.');
+    } finally {
+      setExportandoHistorico('');
+    }
+  };
 
   useEffect(() => {
     if (!aviso) return undefined;
@@ -194,6 +383,11 @@ export default function CombustivelOperacionalTab({
   useEffect(() => {
     const teclar = (event: KeyboardEvent) => {
       const alvo = event.target as HTMLElement | null;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && view === 'novo' && !excluindo) {
+        event.preventDefault();
+        salvar(true);
+        return;
+      }
       if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey || excluindo) return;
       if (event.key.toLowerCase() === 'n') {
         event.preventDefault();
@@ -214,200 +408,125 @@ export default function CombustivelOperacionalTab({
     gsap.fromTo(raiz.querySelectorAll('[data-comb-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' });
   }, { scope: escopo, dependencies: [view, dia] });
 
-  const indicadores: Array<{ id: string; titulo: string; valor: number; sufixo?: string; detalhe: string; Icone: LucideIcon; tom: string; acao?: () => void }> = [
-    { id: 'litros', titulo: 'Litros no dia', valor: Math.round(litrosDia), sufixo: ' L', detalhe: `${doDia.length} abastecimento(s)`, Icone: Fuel, tom: 'bg-emerald-50 text-[#176b4d]', acao: () => setView('historico') },
-    { id: 'maquinas', titulo: 'Máquinas abastecidas', valor: maquinasDia, detalhe: 'receberam diesel', Icone: Truck, tom: 'bg-slate-100 text-slate-700', acao: () => setView('historico') },
-    { id: 'sem-diesel', titulo: 'Operando sem diesel', valor: semDiesel.length, detalhe: 'lançadas em operação', Icone: Gauge, tom: 'bg-orange-50 text-[#f26a2e]' },
-    { id: 'sem-lancamento', titulo: 'Sem lançamento', valor: semLancamento.length, detalhe: 'abasteceram sem lançar', Icone: AlertTriangle, tom: 'bg-amber-50 text-amber-700' },
-    { id: 'conferir', titulo: 'A conferir', valor: aConferir, detalhe: 'com aviso ou pendência', Icone: ClipboardList, tom: 'bg-rose-50 text-rose-700', acao: () => setView('historico') },
-  ];
-
   const vistas = [['resumo', 'Resumo', Fuel], ['novo', 'Lançar', Plus], ['historico', 'Histórico', History]] as const;
 
   return (
-    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className="space-y-4">
-      <div data-comb-reveal>
-        <PageHeader
-          eyebrow="Frota"
-          title="Combustível"
-          description="Abastecimento de cada máquina, ligado ao lançamento do dia: operador e canteiro já vêm preenchidos."
-          actions={<div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-            <label className="relative flex w-full min-w-0 items-center sm:inline-flex sm:w-auto">
-              <span className="sr-only">Dia</span>
-              <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
-              <input type="date" value={dia} onChange={event => setDia(event.target.value || hoje())} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="combustivel-dia" />
-            </label>
-            <div className="grid grid-cols-2 gap-2 sm:contents">
-              <button type="button" onClick={onOpenLubrificacao} className={`${BOTAO_SECUNDARIO} px-3`}><Droplets className="size-4" aria-hidden="true" />Lubrificação</button>
-              <button type="button" onClick={onOpenSpreadsheetImport} disabled={isParsingSpreadsheet} className={`${BOTAO_SECUNDARIO} px-3`}><FileSpreadsheet className="size-4" aria-hidden="true" />{isParsingSpreadsheet ? 'Lendo…' : 'Importar'}</button>
-            </div>
-            <button type="button" onClick={() => abrirNovo()} className={`${BOTAO_PRIMARIO} w-full px-5 max-sm:order-first sm:w-auto`} data-testid="combustivel-novo">
-              <Plus className="size-5" aria-hidden="true" />
-              Novo abastecimento
-              <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
-            </button>
-            <nav aria-label="Área de combustível" className="grid w-full grid-cols-3 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:order-first sm:mr-auto sm:inline-grid sm:w-auto">
-              {vistas.map(([id, rotulo, Icone]) => (
-                <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? abrirNovo() : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] sm:gap-2 sm:px-3 ${view === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}>
-                  <Icone className="size-4 max-[380px]:hidden" aria-hidden="true" />{rotulo}
-                </button>
-              ))}
-            </nav>
-          </div>}
-        />
-      </div>
+    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'space-y-4' : 'mx-auto flex h-[calc(100dvh-7rem)] min-h-[34rem] w-full max-w-[96rem] flex-col overflow-hidden'}>
+      {view !== 'novo' && <div data-comb-reveal className="mb-2 shrink-0">
+        <PageHeader eyebrow="Frota" title="Combustível" className="mb-2" actions={<>
+          <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`}><Droplets className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Lubrificação</span></button>
+          <button type="button" onClick={() => abrirNovo()} className={`${BOTAO_PRIMARIO} min-h-10 px-3 sm:px-4`} data-testid="combustivel-novo"><Plus className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Novo abastecimento</span><span className="sm:hidden">Lançar</span><kbd title="Atalho de teclado: N" aria-label="Atalho de teclado: N" className="inline-flex rounded-md bg-white/15 px-1.5 font-mono text-xs">N</kbd></button>
+        </>} />
+        <nav aria-label="Área de combustível" className="grid w-full grid-cols-3 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200">
+          {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? abrirNovo() : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-bold transition sm:gap-2 sm:px-3 sm:text-sm ${view === id ? 'bg-white text-[#176b4d] shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
+        </nav>
+      </div>}
 
       <p role="status" aria-live="polite" className={`${aviso ? '' : 'sr-only'} flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`} data-testid="combustivel-aviso">
         {aviso && <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />}
         {aviso}
       </p>
 
-      {view === 'resumo' && <>
-        <section aria-label="Resumo do dia" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
-          {indicadores.map(item => {
-            const conteudo = <>
-              <span className="flex items-start justify-between gap-2">
-                <span className="min-w-0 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 [overflow-wrap:anywhere] sm:tracking-[0.12em]">{item.titulo}</span>
-                <span className={`grid size-8 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-4" aria-hidden="true" /></span>
-              </span>
-              <CountUp value={item.valor} suffix={item.sufixo} className="mt-1 block text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl" />
-              <span className="block text-xs text-slate-500">{item.detalhe}</span>
-            </>;
-            const classe = `${CARTAO} flex min-h-24 flex-col p-3 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] sm:min-h-28 sm:p-3.5`;
-            return item.acao
-              ? <button key={item.id} type="button" data-comb-reveal onClick={item.acao} data-testid={`combustivel-indicador-${item.id}`} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>{conteudo}</button>
-              : <div key={item.id} data-comb-reveal data-testid={`combustivel-indicador-${item.id}`} className={classe}>{conteudo}</div>;
-          })}
-        </section>
-
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          <section data-comb-reveal aria-labelledby="comb-sem-diesel" className="rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
-            <header className="rounded-[0.9rem] bg-white px-4 py-3">
-              <h2 id="comb-sem-diesel" className="text-base font-bold text-slate-900">Operando e ainda sem diesel</h2>
-              <p className="text-sm text-slate-500">Lançadas em operação no Controle de Frotas. Toque para abastecer.</p>
-            </header>
-            {semDiesel.length === 0
-              ? <p className="px-4 py-6 text-center text-sm text-slate-500">Nenhuma máquina operando sem diesel neste dia.</p>
-              : <ul className="grid gap-1.5 p-1.5 sm:grid-cols-2">
-                  {semDiesel.slice(0, 12).map(item => (
-                    <li key={item.equipamentoId}>
-                      <button type="button" onClick={() => abrirNovo(item.prefixo)} data-testid={`combustivel-abastecer-${item.prefixo}`} className={`flex min-h-14 w-full items-center gap-3 rounded-xl bg-white px-3 py-2 text-left ring-1 ring-slate-200 transition duration-200 hover:ring-emerald-300 active:scale-[0.98] ${FOCO}`}>
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-mono text-sm font-bold text-slate-900">{item.prefixo}</span>
-                          <span className="block truncate text-xs text-slate-500">{[item.operador, item.canteiro !== 'Sem canteiro' ? item.canteiro : ''].filter(Boolean).join(' · ') || item.tipo}</span>
-                        </span>
-                        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-50 text-[#176b4d]"><Plus className="size-4" aria-hidden="true" /></span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>}
-            {semDiesel.length > 12 && <p className="px-4 pb-2 text-xs text-slate-500">E mais {semDiesel.length - 12} máquina(s).</p>}
-          </section>
-
-          <section data-comb-reveal aria-labelledby="comb-sem-lancamento" className="rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
-            <header className="flex flex-wrap items-start justify-between gap-2 rounded-[0.9rem] bg-white px-4 py-3">
-              <div>
-                <h2 id="comb-sem-lancamento" className="text-base font-bold text-slate-900">Abasteceu sem lançamento</h2>
-                <p className="text-sm text-slate-500">Receberam diesel, mas ninguém lançou a máquina no Controle de Frotas.</p>
-              </div>
-              {onOpenControle && semLancamento.length > 0 && <button type="button" onClick={onOpenControle} className={`${BOTAO_SECUNDARIO} px-3`}>Abrir Controle</button>}
-            </header>
-            {semLancamento.length === 0
-              ? <p className="px-4 py-6 text-center text-sm text-slate-500">Tudo que abasteceu tem lançamento no dia.</p>
-              : <ul className="flex flex-wrap gap-1.5 p-2">
-                  {semLancamento.map(item => <li key={item.equipamentoId} className="rounded-full bg-white px-3 py-1.5 font-mono text-sm font-bold text-amber-800 ring-1 ring-amber-200">{item.prefixo}</li>)}
-                </ul>}
-          </section>
+      {view === 'resumo' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-dashboard">
+        <div className="grid shrink-0 grid-cols-4 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white">
+          {[
+            ['Lançamentos', analyticsCombustivel.totalRegistros.toLocaleString('pt-BR')],
+            ['Volume abastecido', litrosTexto(analyticsCombustivel.totalLitros)],
+            ['Empresas', analyticsCombustivel.porEmpresa.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
+            ['Equipamentos', analyticsCombustivel.porEquipamento.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
+          ].map(([titulo, valor]) => <div key={titulo} className="min-w-0 px-2 py-2 sm:px-3"><p className="truncate text-[9px] font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">{titulo}</p><p className="mt-0.5 truncate text-sm font-black tabular-nums text-slate-950 sm:text-lg">{valor}</p></div>)}
         </div>
-
-        <ListaDoDia itens={doDia.slice(0, 8)} porId={porId} nomeCombustivel={nomeCombustivel} titulo="Últimos abastecimentos do dia" onExcluir={setExcluindo} onVerTodos={doDia.length > 8 ? () => setView('historico') : undefined} onCadastros={combustiveis.length === 0 ? onOpenCadastros : undefined} />
-      </>}
+        <nav aria-label="Painéis do resumo de combustível" className="grid shrink-0 grid-cols-2 rounded-lg bg-slate-100 p-1">
+          <button type="button" aria-pressed={abaDashboard === 'consumo'} onClick={() => setAbaDashboard('consumo')} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-bold ${abaDashboard === 'consumo' ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><PieChart className="size-4" aria-hidden="true" />Distribuição e consumo</button>
+          <button type="button" aria-pressed={abaDashboard === 'ranking'} onClick={() => setAbaDashboard('ranking')} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-bold ${abaDashboard === 'ranking' ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><BarChart3 className="size-4" aria-hidden="true" />Rankings e quantidades</button>
+        </nav>
+        {abaDashboard === 'consumo' ? <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-consumo">
+          <GraficoRosca titulo="Consumo por empresa" grupos={analyticsCombustivel.porEmpresa} vazio="Sem abastecimentos por empresa." />
+          <GraficoRosca titulo="Consumo por combustível" grupos={analyticsCombustivel.porCombustivel} vazio="Sem tipo de combustível informado." />
+          <GraficoRosca titulo="Consumo por comboio" grupos={analyticsCombustivel.porComboio} vazio="Sem comboio vinculado." />
+          <GraficoMeses grupos={analyticsCombustivel.porMes} />
+        </div> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-ranking">
+          <GraficoBarras titulo="Top empresas" grupos={analyticsCombustivel.porEmpresa} medida="litros" vazio="Sem volume por empresa." />
+          <GraficoBarras titulo="Top equipamentos" grupos={analyticsCombustivel.porEquipamento} medida="litros" vazio="Sem volume por equipamento." />
+          <GraficoBarras titulo="Lançamentos por comboio" grupos={analyticsCombustivel.porComboio} medida="registros" vazio="Sem comboios com lançamento." />
+          <GraficoBarras titulo="Volume por combustível" grupos={analyticsCombustivel.porCombustivel} medida="litros" vazio="Sem tipos de combustível." />
+        </div>}
+      </div>}
 
       {view === 'novo' && (
-        <form data-comb-reveal onSubmit={event => { event.preventDefault(); salvar(false); }} className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]" data-testid="combustivel-form">
-          <div className={`${CARTAO} space-y-5 p-4 sm:p-5`}>
-            <fieldset className="space-y-2">
-              <legend className="text-base font-bold text-slate-900">1. Qual máquina?</legend>
-              <label className="block">
-                <span className="sr-only">Prefixo da máquina</span>
-                <span className="relative block">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                  <input ref={prefixoRef} list="combustivel-prefixos" value={form.prefixo} onChange={event => mudar('prefixo', event.target.value.toUpperCase())} placeholder="Digite o prefixo, ex.: CB726" className={`${CAMPO} pl-9 font-mono text-lg font-bold uppercase`} data-testid="combustivel-prefixo" autoComplete="off" />
-                </span>
-                <datalist id="combustivel-prefixos">
-                  {equipamentos.filter(item => item.status !== 'Desmobilizado').map(item => <option key={item.id} value={item.prefixo}>{item.nome}</option>)}
-                </datalist>
-              </label>
-              {form.prefixo && !equipamento && <p className="text-sm font-semibold text-amber-800">Prefixo não encontrado no cadastro.</p>}
-              {!form.prefixo && semDiesel.length > 0 && form.data === dia && (
-                <div>
-                  <p className="mb-1.5 text-xs font-semibold text-slate-500">Operando e sem diesel hoje:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {semDiesel.slice(0, 10).map(item => (
-                      <button key={item.equipamentoId} type="button" onClick={() => { mudar('prefixo', item.prefixo); window.setTimeout(() => document.getElementById('combustivel-litros')?.focus(), 60); }} className={`min-h-10 rounded-full bg-emerald-50 px-3 font-mono text-sm font-bold text-[#176b4d] ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100 active:scale-[0.97] ${FOCO}`}>{item.prefixo}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </fieldset>
+        <form data-comb-reveal onSubmit={event => { event.preventDefault(); salvar(false); }} className="w-full bg-white" data-testid="combustivel-form">
+          <div className="bg-white">
+            <header className="flex flex-col gap-2 border-b border-slate-200 bg-white px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm font-black uppercase tracking-[0.12em] text-[#176b4d]">Lançamento de abastecimento</span>
+              <span className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setView('resumo')} className={`${BOTAO_SECUNDARIO} min-h-8 rounded-none px-3 py-1`}><ArrowLeft className="size-4" aria-hidden="true" />Voltar</button>
+                <button type="button" onClick={limparLancamento} className={`${BOTAO_SECUNDARIO} min-h-8 rounded-none px-3 py-1`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
+                <button type="button" onClick={() => salvar(true)} className={`${BOTAO_SECUNDARIO} min-h-8 justify-center rounded-none px-3 py-1`} data-testid="combustivel-salvar-outro"><Save className="size-4" aria-hidden="true" />Salvar e lançar outro</button>
+                <button type="submit" className={`${BOTAO_PRIMARIO} min-h-8 rounded-none px-4 py-1`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />Salvar</button>
+              </span>
+            </header>
 
-            {contexto && cartao && <div className="lg:hidden"><CartaoContexto cartao={cartao} contexto={contexto} /></div>}
+            <div className="bg-white px-4 py-5 sm:px-12 lg:px-20" data-testid="combustivel-macro-form">
+              <fieldset className="grid gap-x-8 gap-y-5 lg:grid-cols-[9.5rem_minmax(18rem,20rem)_8rem_minmax(12rem,16rem)]">
+                <legend className="sr-only">Lançamento no layout da macro</legend>
 
-            <fieldset className="grid gap-3 sm:grid-cols-3">
-              <legend className="mb-2 text-base font-bold text-slate-900">2. Quanto abasteceu?</legend>
-              <label className={ROTULO}>Litros
-                <input id="combustivel-litros" inputMode="decimal" value={form.litros} onChange={event => mudar('litros', event.target.value)} placeholder="0,0" className={`${CAMPO} mt-1 text-lg font-bold`} data-testid="combustivel-litros" />
-              </label>
-              <label className={ROTULO}>Combustível
-                <select value={form.tipoCombustivelId} onChange={event => mudar('tipoCombustivelId', event.target.value)} className={`${CAMPO} mt-1`} data-testid="combustivel-tipo">
+                <label htmlFor="combustivel-mes" className={ROTULO_MACRO}>Mês</label>
+                <select id="combustivel-mes" value={mesMacro(form.data)} disabled className={`${CAMPO_MACRO} max-w-[19rem]`}>
+                  <option>{mesMacro(form.data)}</option>
+                </select>
+                <span className="hidden lg:block" />
+                <span className="hidden lg:block" />
+
+                <label htmlFor="combustivel-data" className={ROTULO_MACRO}>Data</label>
+                <input id="combustivel-data" type="date" value={form.data} onChange={event => mudar('data', event.target.value || hoje())} className={`${CAMPO_MACRO} max-w-[19rem]`} />
+                <span className="hidden lg:block" />
+                <span className="hidden lg:block" />
+
+                <label htmlFor="combustivel-prefixo" className={ROTULO_MACRO}>Prefixo</label>
+                <input id="combustivel-prefixo" ref={prefixoRef} value={form.prefixo} onChange={event => mudar('prefixo', event.target.value.toUpperCase())} placeholder="GM2501" className={`${CAMPO_MACRO} max-w-[19rem] font-mono uppercase`} data-testid="combustivel-prefixo" autoComplete="off" />
+                <span className="hidden lg:block" />
+                <span className="hidden lg:block" />
+
+                <label htmlFor="combustivel-descricao" className={ROTULO_MACRO}>Descrição</label>
+                <input id="combustivel-descricao" value={equipamento?.nome || ''} readOnly className={`${CAMPO_MACRO} lg:col-span-3`} />
+
+                <label htmlFor="combustivel-empresa" className={ROTULO_MACRO}>Empresa</label>
+                <input id="combustivel-empresa" value={empresaEquipamento || ''} readOnly className={`${CAMPO_MACRO} lg:col-span-3`} />
+
+                <label htmlFor="combustivel-km" className={ROTULO_MACRO}>KM inicial</label>
+                <input id="combustivel-km" inputMode="decimal" value={form.km} onChange={event => mudar('km', event.target.value)} placeholder={contexto?.ultimoKm ? `último: ${numeroTexto(contexto.ultimoKm.valor)}` : '0'} className={`${CAMPO_MACRO} max-w-[19rem] font-mono`} data-testid="combustivel-km" />
+                <label htmlFor="combustivel-horimetro" className={`${ROTULO_MACRO} lg:justify-end`}>Horímetro</label>
+                <input id="combustivel-horimetro" inputMode="decimal" value={form.horimetro} onChange={event => mudar('horimetro', event.target.value)} placeholder={contexto?.ultimoHorimetro ? `último: ${numeroTexto(contexto.ultimoHorimetro.valor)}` : '0'} className={`${CAMPO_MACRO} font-mono`} data-testid="combustivel-horimetro" />
+
+                <label htmlFor="combustivel-litros" className={ROTULO_MACRO}>Litros</label>
+                <input id="combustivel-litros" inputMode="decimal" value={form.litros} onChange={event => mudar('litros', event.target.value)} placeholder="0,0" className={`${CAMPO_MACRO} max-w-[19rem] font-mono`} data-testid="combustivel-litros" />
+                <label htmlFor="combustivel-hora" className={`${ROTULO_MACRO} lg:justify-end`}>Hora</label>
+                <input id="combustivel-hora" inputMode="numeric" value={form.hora} onChange={event => mudar('hora', event.target.value)} onBlur={() => { const normalized = normalizeQuickTime(form.hora); if (normalized.valid) mudar('hora', normalized.value); }} placeholder="10:49" className={`${CAMPO_MACRO} font-mono`} />
+
+                <label htmlFor="combustivel-comboio" className={ROTULO_MACRO}>Comboio</label>
+                <select id="combustivel-comboio" value={form.comboioId} onChange={event => mudar('comboioId', event.target.value)} className={`${CAMPO_MACRO} max-w-[19rem]`}>
+                  <option value="">Selecione</option>
+                  {comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                </select>
+                <span className="hidden lg:block" />
+                <span className="hidden lg:block" />
+
+                <label htmlFor="combustivel-tipo" className={ROTULO_MACRO}>Combustível</label>
+                <select id="combustivel-tipo" value={form.tipoCombustivelId} onChange={event => mudar('tipoCombustivelId', event.target.value)} className={`${CAMPO_MACRO} lg:col-span-3`} data-testid="combustivel-tipo" disabled={Boolean(combustivelPadraoId)}>
                   <option value="">Escolha</option>
                   {combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
                 </select>
-              </label>
-              <label className={ROTULO}>Comboio
-                <select value={form.comboioId} onChange={event => mudar('comboioId', event.target.value)} className={`${CAMPO} mt-1`}>
-                  <option value="">Não informado</option>
-                  {comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                </select>
-              </label>
-            </fieldset>
 
-            <fieldset className="grid gap-3 sm:grid-cols-2">
-              <legend className="mb-2 text-base font-bold text-slate-900">3. Leitura do painel</legend>
-              {([
-                ['horimetro', 'Horímetro (h)', contexto?.ultimoHorimetro, 'h'],
-                ['km', 'Km', contexto?.ultimoKm, 'km'],
-              ] as const).filter(([campo]) => !(ehVeiculo && campo === 'horimetro' && !contexto?.ultimoHorimetro) || true).sort(([a]) => (ehVeiculo && a === 'km' ? -1 : 0)).map(([campo, rotulo, ultimo, unidade]) => (
-                <label key={campo} className={ROTULO}>{rotulo}
-                  <input inputMode="decimal" value={form[campo]} onChange={event => mudar(campo, event.target.value)} placeholder={ultimo ? `último: ${numeroTexto(ultimo.valor)}` : 'Opcional'} className={`${CAMPO} mt-1 font-mono`} data-testid={`combustivel-${campo}`} />
-                  {ultimo && <span className="mt-1 block text-xs font-normal text-slate-500">Último: {numeroTexto(ultimo.valor)} {unidade} em {dataCurta(ultimo.data)}</span>}
-                </label>
-              ))}
-            </fieldset>
+                <label htmlFor="combustivel-bomba-inicial" className={ROTULO_MACRO}>Bomba inicial</label>
+                <input id="combustivel-bomba-inicial" inputMode="decimal" value={form.bombaInicial} onChange={event => mudar('bombaInicial', event.target.value)} placeholder={form.comboioId ? 'Digite a leitura inicial' : 'Selecione o comboio'} className={`${CAMPO_MACRO} max-w-[19rem] font-mono`} data-testid="combustivel-bomba-inicial" />
+                <span className={`${ROTULO_MACRO} lg:justify-end`}>Bomba final</span>
+                <output className={`${CAMPO_MACRO} flex items-center font-mono`} data-testid="combustivel-bomba-final">{leiturasBomba.bombaFinal > 0 ? numeroTexto(leiturasBomba.bombaFinal) : ''}</output>
 
-            <fieldset className="grid gap-3 sm:grid-cols-2">
-              <legend className="mb-2 text-base font-bold text-slate-900">4. Quem e onde</legend>
-              <label className={ROTULO}>Operador
-                <input list="combustivel-operadores" value={form.operador} onChange={event => mudar('operador', event.target.value)} placeholder="Quem estava na máquina" className={`${CAMPO} mt-1`} data-testid="combustivel-operador" />
-                <datalist id="combustivel-operadores">
-                  {Array.from(new Set(cartoesDoForm.map(item => item.operador).filter(Boolean))).map(nome => <option key={nome} value={nome} />)}
-                </datalist>
-              </label>
-              <label className={ROTULO}>Canteiro / local
-                <input list="combustivel-locais" value={form.local} onChange={event => mudar('local', event.target.value)} placeholder="Onde abasteceu" className={`${CAMPO} mt-1`} data-testid="combustivel-local" />
-                <datalist id="combustivel-locais">{canteiros.map(nome => <option key={nome} value={nome} />)}</datalist>
-              </label>
-              <label className={ROTULO}>Responsável
-                <input value={form.responsavel} onChange={event => mudar('responsavel', event.target.value)} placeholder="Quem lançou" className={`${CAMPO} mt-1`} />
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className={ROTULO}>Data<input type="date" value={form.data} onChange={event => mudar('data', event.target.value || hoje())} className={`${CAMPO} mt-1`} /></label>
-                <label className={ROTULO}>Hora<input type="time" value={form.hora} onChange={event => mudar('hora', event.target.value)} className={`${CAMPO} mt-1`} /></label>
-              </div>
-              <label className={`${ROTULO} sm:col-span-2`}>Observação
-                <textarea rows={2} value={form.observacao} onChange={event => mudar('observacao', event.target.value)} placeholder="Opcional" className={`${CAMPO} mt-1 py-2`} />
-              </label>
-            </fieldset>
+                <span className="hidden lg:block" />
+                <p className={`pt-2 font-black ${equipamento ? 'text-black' : 'text-slate-600'} lg:col-span-3`}>
+                  {equipamento ? 'Equipamento localizado.' : 'Digite o prefixo para localizar.'}
+                </p>
+              </fieldset>
 
             {avisos.length > 0 && (
               <ul className="space-y-1.5" data-testid="combustivel-avisos">
@@ -421,34 +540,95 @@ export default function CombustivelOperacionalTab({
             )}
             {erro && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
 
-            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
-              <button type="button" onClick={() => setView('resumo')} className={BOTAO_SECUNDARIO}>Cancelar</button>
-              <button type="button" onClick={() => salvar(true)} className={BOTAO_SECUNDARIO} data-testid="combustivel-salvar-outro">Salvar e lançar outro</button>
-              <button type="submit" className={`${BOTAO_PRIMARIO} px-6`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />Salvar abastecimento</button>
             </div>
           </div>
-
-          <aside className="hidden lg:sticky lg:top-4 lg:block">
-            {contexto && cartao
-              ? <CartaoContexto cartao={cartao} contexto={contexto} />
-              : <div className={`${CARTAO} grid place-items-center gap-2 p-6 text-center`}>
-                  <Truck className="size-8 text-slate-300" aria-hidden="true" />
-                  <p className="text-sm font-semibold text-slate-600">Escolha a máquina para ver o lançamento do dia dela.</p>
-                </div>}
-          </aside>
         </form>
       )}
 
-      {view === 'historico' && <>
-        <section data-comb-reveal className={`${CARTAO} p-3`}>
-          <label className="relative block">
-            <span className="sr-only">Buscar prefixo, operador, local ou combustível</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input ref={buscaRef} value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar prefixo, operador, local ou combustível" className={`${CAMPO} pl-9`} data-testid="combustivel-busca" />
-          </label>
+      {view === 'historico' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-historico">
+        <section data-comb-reveal className={`${CARTAO} overflow-hidden`}>
+          <div className="flex shrink-0 flex-col gap-2 border-b border-slate-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="hidden size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d] sm:grid"><History className="size-5" aria-hidden="true" /></span>
+              <div>
+                <h2 className="text-base font-bold text-slate-950">Histórico de abastecimentos</h2>
+                <p className="text-xs text-slate-500">Do mais recente ao mais antigo</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+              <button type="button" onClick={onOpenSpreadsheetImport} disabled={isParsingSpreadsheet} className={`${BOTAO_SECUNDARIO} px-3`}><FileSpreadsheet className="size-4" aria-hidden="true" />{isParsingSpreadsheet ? 'Lendo…' : 'Importar'}</button>
+              <button type="button" onClick={exportarHistoricoExcel} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_SECUNDARIO} px-3`}><Download className="size-4" aria-hidden="true" />{exportandoHistorico === 'excel' ? 'Gerando…' : 'Excel'}</button>
+              <button type="button" onClick={exportarHistoricoPdf} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_PRIMARIO} px-3`}><FileText className="size-4" aria-hidden="true" />{exportandoHistorico === 'pdf' ? 'Gerando…' : 'PDF'}</button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
+            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Registros</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{historicoFiltrado.length.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">no resultado filtrado</p></div>
+            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Volume total</p><p className="mt-1 text-2xl font-bold tabular-nums text-[#176b4d]">{litrosTexto(totalLitrosHistorico)}</p><p className="text-xs text-slate-500">somatório dos litros</p></div>
+            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Equipamentos</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{maquinasHistorico.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">com abastecimento</p></div>
+            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Empresas</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{empresasHistorico.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">no resultado filtrado</p></div>
+          </div>
         </section>
-        <ListaDoDia itens={filtrados} porId={porId} nomeCombustivel={nomeCombustivel} titulo={`Abastecimentos de ${dataCurta(dia)}`} onExcluir={setExcluindo} />
-      </>}
+
+        <section data-comb-reveal aria-label="Filtros do histórico" className={`${CARTAO} shrink-0 p-2`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input ref={buscaRef} value={filtrosHistorico.texto} onChange={event => atualizarFiltroHistorico('texto', event.target.value)} placeholder="Buscar prefixo, empresa, comboio…" className={`${CAMPO} pl-9`} data-testid="combustivel-busca" /></span>
+              <button type="button" aria-expanded={filtrosAbertos} onClick={() => setFiltrosAbertos(aberto => !aberto)} className={`${BOTAO_SECUNDARIO} min-h-10 shrink-0 px-3`}><Filter className="size-4" aria-hidden="true" />{filtrosAbertos ? 'Ocultar' : 'Filtros'}{Object.values(filtrosHistorico).filter(Boolean).length > 0 && <span className="rounded-full bg-emerald-100 px-1.5 text-xs text-emerald-800">{Object.values(filtrosHistorico).filter(Boolean).length}</span>}</button>
+            </div>
+            <button type="button" onClick={() => { setFiltrosHistorico(FILTROS_HISTORICO_VAZIOS); setPaginaHistorico(0); setErro(''); }} disabled={!Object.values(filtrosHistorico).some(Boolean)} className={`${BOTAO_SECUNDARIO} min-h-10 px-3 text-xs`}>Limpar</button>
+          </div>
+          {filtrosAbertos && <div className="mt-2 grid gap-2 border-t border-slate-100 pt-2 sm:grid-cols-2 lg:grid-cols-6">
+            <label><span className={`${ROTULO} mb-1 block`}>Data inicial</span><input type="date" value={filtrosHistorico.dataInicio} onChange={event => atualizarFiltroHistorico('dataInicio', event.target.value)} className={CAMPO} /></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Data final</span><input type="date" value={filtrosHistorico.dataFim} onChange={event => atualizarFiltroHistorico('dataFim', event.target.value)} className={CAMPO} /></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Comboio</span><select value={filtrosHistorico.comboioId} onChange={event => atualizarFiltroHistorico('comboioId', event.target.value)} className={CAMPO}><option value="">Todos os comboios</option>{comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Equipamento</span><select value={filtrosHistorico.equipamentoId} onChange={event => atualizarFiltroHistorico('equipamentoId', event.target.value)} className={CAMPO}><option value="">Todos os equipamentos</option>{equipamentos.map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Empresa</span><select value={filtrosHistorico.empresaId} onChange={event => atualizarFiltroHistorico('empresaId', event.target.value)} className={CAMPO}><option value="">Todas as empresas</option>{empresas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Combustível</span><select value={filtrosHistorico.combustivelId} onChange={event => atualizarFiltroHistorico('combustivelId', event.target.value)} className={CAMPO}><option value="">Todos os combustíveis</option>{combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+          </div>}
+          {erro && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
+        </section>
+
+        <section data-comb-reveal aria-label="Registros de combustível" className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+            <div><h3 className="text-sm font-bold text-slate-900">Lançamentos</h3><p className="text-xs text-slate-500">Exportação inclui todos os resultados filtrados.</p></div>
+            <span className="text-xs font-semibold tabular-nums text-slate-500">{historicoFiltrado.length ? `${paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO + 1}–${Math.min((paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO, historicoFiltrado.length)} de ${historicoFiltrado.length}` : '0 registros'}</span>
+          </header>
+          {historicoPaginado.length === 0
+            ? <div className="px-4 py-14 text-center"><History className="mx-auto size-8 text-slate-300" aria-hidden="true" /><p className="mt-3 font-semibold text-slate-700">Nenhum abastecimento encontrado</p><p className="mt-1 text-sm text-slate-500">Ajuste os filtros ou limpe a busca para consultar outros lançamentos.</p></div>
+            : <div className="min-h-0 flex-1 overflow-auto"><table className="w-full min-w-[1180px] text-left text-sm">
+                <thead className="sticky top-0 z-[1] bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500"><tr>
+                  <th className="px-3 py-3">Data / hora</th><th className="px-3 py-3">Equipamento</th><th className="px-3 py-3">Empresa</th><th className="px-3 py-3">Comboio</th><th className="px-3 py-3">Combustível</th><th className="px-3 py-3 text-right">Litros</th><th className="px-3 py-3">Bomba inicial → final</th><th className="px-3 py-3">KM / horímetro</th><th className="px-3 py-3">Responsável</th><th className="px-3 py-3">Ação</th>
+                </tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {historicoPaginado.map(item => {
+                    const maquina = porId.get(item.equipamentoId);
+                    const empresa = maquina ? empresaPorId.get(maquina.empresaId) : '';
+                    const revisaoPendente = item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || item.alertas?.some(alerta => alerta.severidade !== 'info');
+                    return <tr key={item.id} className="transition-colors hover:bg-emerald-50/40">
+                      <td className="whitespace-nowrap px-3 py-3"><span className="block font-semibold text-slate-800">{dataCurta(item.data)}</span><span className="font-mono text-xs text-slate-500">{item.hora || '—'}</span></td>
+                      <td className="px-3 py-3"><span className="block font-mono font-bold text-slate-950">{maquina?.prefixo || item.prefixoInformado || 'Sem cadastro'}</span><span className="block max-w-44 truncate text-xs text-slate-500">{maquina?.nome || 'Equipamento não cadastrado'}</span></td>
+                      <td className="max-w-44 truncate px-3 py-3 text-slate-600">{empresa || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700">{comboioPorId.get(item.comboioId) || '—'}</td>
+                      <td className="px-3 py-3 text-slate-600">{nomeCombustivel.get(item.tipoCombustivelId) || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums text-slate-950">{litrosTexto(Number(item.quantidadeLitros || 0))}</td>
+                      <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-slate-600">{item.bombaInicial > 0 ? numeroTexto(item.bombaInicial) : '—'} <span className="text-slate-300">→</span> {item.bombaFinal > 0 ? numeroTexto(item.bombaFinal) : '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600">{item.kmInicial > 0 ? `${numeroTexto(item.kmInicial)} km` : '—'}{item.horimetroInicial > 0 ? ` · ${numeroTexto(item.horimetroInicial)} h` : ''}</td>
+                      <td className="max-w-36 truncate px-3 py-3 text-slate-600">{item.responsavel || '—'}</td>
+                      <td className="px-3 py-3"><span className="flex items-center gap-2">{revisaoPendente && <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">Conferir</span>}<button type="button" onClick={() => setExcluindo(item)} aria-label={`Excluir abastecimento de ${maquina?.prefixo || item.prefixoInformado || 'máquina'}`} title="Excluir abastecimento" className={`grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-rose-300 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button></span></td>
+                    </tr>;
+                  })}
+                </tbody>
+              </table></div>}
+          <footer className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+            <p className="text-xs text-slate-500">Página {paginaHistoricoAtual + 1} de {totalPaginasHistorico}</p>
+            <div className="flex items-center gap-2">
+              <button type="button" aria-label="Página anterior" title="50 lançamentos anteriores" onClick={() => setPaginaHistorico(Math.max(0, paginaHistoricoAtual - 1))} disabled={paginaHistoricoAtual === 0} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronLeft className="size-4" aria-hidden="true" /></button>
+              <button type="button" aria-label="Próxima página" title="Próximos 50 lançamentos" onClick={() => setPaginaHistorico(Math.min(totalPaginasHistorico - 1, paginaHistoricoAtual + 1))} disabled={paginaHistoricoAtual >= totalPaginasHistorico - 1} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronRight className="size-4" aria-hidden="true" /></button>
+            </div>
+          </footer>
+        </section>
+      </div>}
 
       <ConfirmDialog
         open={Boolean(excluindo)}
@@ -459,36 +639,6 @@ export default function CombustivelOperacionalTab({
         onCancel={() => setExcluindo(null)}
         onConfirm={() => { if (excluindo) onDeleteAbastecimento(excluindo.id); setExcluindo(null); }}
       />
-    </section>
-  );
-}
-
-function CartaoContexto({ cartao, contexto }: { cartao: CartaoFrota; contexto: ReturnType<typeof contextoDoAbastecimento> }) {
-  const linhas: Array<[LucideIcon, string, string]> = [
-    [UserRound, 'Operador', contexto.operador || 'Não informado'],
-    [MapPin, 'Canteiro', contexto.canteiro || 'Sem canteiro'],
-    [ClipboardList, 'Frente', contexto.frente || 'Sem frente'],
-    [Gauge, 'Último horímetro', contexto.ultimoHorimetro ? `${numeroTexto(contexto.ultimoHorimetro.valor)} h` : '—'],
-  ];
-  return (
-    <section aria-label="Lançamento do dia da máquina" data-testid="combustivel-contexto" className="rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
-      <header className="flex items-center justify-between gap-2 rounded-[0.9rem] bg-white px-4 py-3">
-        <span className="min-w-0">
-          <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Hoje no Controle</span>
-          <span className="block font-mono text-lg font-bold text-slate-950">{cartao.prefixo}</span>
-          <span className="block truncate text-xs text-slate-500">{cartao.modelo}</span>
-        </span>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${TOM_GRUPO[contexto.grupo]}`}>{contexto.situacao}</span>
-      </header>
-      <dl className="grid gap-1 p-2">
-        {linhas.map(([Icone, rotulo, valor]) => (
-          <div key={rotulo} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2">
-            <Icone className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
-            <dt className="text-xs font-semibold text-slate-500">{rotulo}</dt>
-            <dd className="ml-auto truncate text-right text-sm font-bold text-slate-900">{valor}</dd>
-          </div>
-        ))}
-      </dl>
     </section>
   );
 }
@@ -525,8 +675,7 @@ function ListaDoDia({ itens, porId, nomeCombustivel, titulo, onExcluir, onVerTod
                     <span className="block truncate text-xs text-slate-500">{nomeCombustivel.get(item.tipoCombustivelId) || 'Combustível não informado'}{leitura ? ` · ${leitura}` : ''}</span>
                   </span>
                   <span className="min-w-0 text-xs text-slate-600 max-sm:col-span-2 max-sm:order-4">
-                    <span className="block truncate">{item.operadorNome || 'Operador não informado'}</span>
-                    <span className="block truncate text-slate-500">{item.localAbastecimento || 'Local não informado'}</span>
+                    <span className="block truncate text-slate-500">{item.bombaInicial > 0 && item.bombaFinal > 0 ? `Bomba ${numeroTexto(item.bombaInicial)} -> ${numeroTexto(item.bombaFinal)}` : 'Bomba não informada'}</span>
                   </span>
                   <span className="text-right text-base font-bold tabular-nums text-slate-900 max-sm:order-2">{litrosTexto(Number(item.quantidadeLitros || 0))}</span>
                   <button type="button" onClick={() => onExcluir(item)} aria-label={`Excluir abastecimento de ${maquina?.prefixo || 'máquina'}`} className={`grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-rose-300 hover:text-rose-700 max-sm:order-5 max-sm:justify-self-end ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button>
@@ -536,4 +685,56 @@ function ListaDoDia({ itens, porId, nomeCombustivel, titulo, onExcluir, onVerTod
           </ul>}
     </section>
   );
+}
+
+function GraficoRosca({ titulo, grupos, vazio }: { titulo: string; grupos: FuelHistoryGroup[]; vazio: string }) {
+  const dados = grupos.filter(item => item.litros > 0).slice(0, 6);
+  let acumulado = 0;
+  const fatias = dados.map((item, indice) => {
+    const inicio = acumulado;
+    acumulado += item.percentual;
+    return `${CORES_GRAFICO_COMBUSTIVEL[indice % CORES_GRAFICO_COMBUSTIVEL.length]} ${inicio}% ${acumulado}%`;
+  });
+
+  return <section className={`${CARTAO} flex min-h-0 flex-col overflow-hidden p-3`}>
+    <h3 className="shrink-0 truncate text-xs font-bold text-slate-800 sm:text-sm">{titulo}</h3>
+    {dados.length === 0 ? <p className="grid min-h-0 flex-1 place-items-center text-center text-xs text-slate-500">{vazio}</p> : <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] items-center gap-2 pt-2">
+      <div className="grid min-h-0 place-items-center">
+        <div role="img" aria-label={`${titulo}: ${dados.map(item => `${item.nome} ${item.percentual}%`).join(', ')}`} className="relative aspect-square h-full max-h-36 rounded-full" style={{ background: `conic-gradient(${fatias.join(', ')})` }}>
+          <div className="absolute inset-[24%] grid place-content-center rounded-full bg-white text-center"><span className="text-sm font-black tabular-nums text-slate-900">{litrosTexto(grupos.reduce((soma, item) => soma + item.litros, 0))}</span><span className="text-[9px] text-slate-500">total</span></div>
+        </div>
+      </div>
+      <ul className="grid gap-x-2 gap-y-1 sm:grid-cols-2">
+        {dados.slice(0, 4).map((item, indice) => <li key={item.chave} className="flex min-w-0 items-center gap-1.5 text-[10px]" title={`${item.nome}: ${litrosTexto(item.litros)} (${item.percentual}%)`}>
+          <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: CORES_GRAFICO_COMBUSTIVEL[indice % CORES_GRAFICO_COMBUSTIVEL.length] }} /><span className="min-w-0 flex-1 truncate text-slate-600">{item.nome}</span><span className="shrink-0 font-semibold tabular-nums text-slate-800">{item.percentual}%</span>
+        </li>)}
+      </ul>
+    </div>}
+  </section>;
+}
+
+function GraficoMeses({ grupos }: { grupos: (FuelHistoryGroup & { rotulo: string })[] }) {
+  const maior = Math.max(1, ...grupos.map(item => item.litros));
+  return <section className={`${CARTAO} flex min-h-0 flex-col overflow-hidden p-3`}>
+    <h3 className="shrink-0 text-xs font-bold text-slate-800 sm:text-sm">Consumo mensal</h3>
+    <div className="grid min-h-0 flex-1 grid-cols-6 items-end gap-1 pt-3" role="img" aria-label={`Consumo mensal: ${grupos.map(item => `${item.rotulo}, ${litrosTexto(item.litros)}`).join('; ')}`}>
+      {grupos.map(item => <div key={item.chave} className="flex h-full min-w-0 flex-col items-center justify-end gap-1" title={`${item.rotulo}: ${litrosTexto(item.litros)} em ${item.registros} lançamentos`}>
+        <span className="max-w-full truncate text-[9px] font-semibold tabular-nums text-slate-600">{numeroTexto(item.litros)}</span><div className="flex h-[68%] w-full items-end"><span className="w-full rounded-t bg-[#176b4d]" style={{ height: `${item.litros > 0 ? Math.max(5, item.litros / maior * 100) : 2}%` }} /></div><span className="truncate text-[9px] text-slate-500">{item.rotulo}</span>
+      </div>)}
+    </div>
+  </section>;
+}
+
+function GraficoBarras({ titulo, grupos, medida, vazio }: { titulo: string; grupos: FuelHistoryGroup[]; medida: 'litros' | 'registros'; vazio: string }) {
+  const dados = grupos.filter(item => item[medida] > 0).slice(0, 6);
+  const maior = Math.max(1, ...dados.map(item => item[medida]));
+  return <section className={`${CARTAO} flex min-h-0 flex-col overflow-hidden p-3`}>
+    <h3 className="shrink-0 truncate text-xs font-bold text-slate-800 sm:text-sm">{titulo}</h3>
+    {dados.length === 0 ? <p className="grid min-h-0 flex-1 place-items-center text-center text-xs text-slate-500">{vazio}</p> : <ol className="mt-2 grid min-h-0 flex-1 content-evenly gap-2 overflow-hidden">
+      {dados.map((item, indice) => <li key={item.chave} className="min-w-0" title={`${item.nome}: ${medida === 'litros' ? litrosTexto(item.litros) : `${item.registros} lançamentos`}`}>
+        <div className="mb-0.5 flex min-w-0 items-center justify-between gap-2 text-[10px]"><span className="min-w-0 truncate font-medium text-slate-700">{indice + 1}. {item.nome}</span><span className="shrink-0 font-bold tabular-nums text-slate-900">{medida === 'litros' ? litrosTexto(item.litros) : item.registros}</span></div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${Math.max(3, item[medida] / maior * 100)}%`, backgroundColor: CORES_GRAFICO_COMBUSTIVEL[indice % CORES_GRAFICO_COMBUSTIVEL.length] }} /></div>
+      </li>)}
+    </ol>}
+  </section>;
 }
