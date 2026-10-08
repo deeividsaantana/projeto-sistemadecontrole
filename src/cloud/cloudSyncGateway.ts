@@ -6,7 +6,11 @@ const loadSupabaseSync = () => import('../supabase/cloudSync');
 export type { CloudConnectionStatus, CloudData, CloudDownloadResult, CloudUploadResult };
 
 export const formatCloudSyncError = (error: unknown): string => {
-  const message = error instanceof Error ? error.message : String(error || '');
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error && 'message' in error && typeof error.message === 'string'
+      ? error.message
+      : String(error || '');
   if (message.includes('SUPABASE_CONFIG_MISSING')) return 'O Supabase ainda não foi configurado neste ambiente.';
   if (message.toLowerCase().includes('row-level security') || message.toLowerCase().includes('permission denied')) return 'O Supabase recusou o acesso. Confirme a sessão e o vínculo com a organização.';
   return message || 'Não foi possível sincronizar com o Supabase.';

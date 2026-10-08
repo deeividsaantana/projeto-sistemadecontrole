@@ -13,6 +13,7 @@ import './dataSafety.test';
 import './fuelWorkbookReader.test';
 import './fuelSyncInventory.test';
 import './publicRoutes.test';
+import './realtimeSubmissions.test';
 import './privateRoutes.test';
 import './supabaseMemberships.test';
 import './materialCommands.test';
