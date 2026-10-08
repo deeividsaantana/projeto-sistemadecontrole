@@ -15,6 +15,7 @@ import { ConfirmDialog, isoDay } from '../shared/ui';
 import { PageHeader } from '../shared/ui/PageHeader';
 import { montarQuadro } from '../modules/frota/quadroFrota';
 import { avisosDoAbastecimento, contextoDoAbastecimento, lerNumero } from '../modules/frota/combustivelDoDia';
+import { groupByMonth, summarizeMonth, applyFilters, exportToExcel } from '../modules/frota/fuelReport';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from './cadastros/estilos';
 import { normalizeQuickTime } from '../utils/combustivelValidation';
 import { buildMacroFuelingRecord, getDefaultDieselFuelId, parseFuelFormNumber, resolveMacroPumpReadings } from '../utils/fuelMacroForm';
@@ -107,12 +108,19 @@ export default function CombustivelOperacionalTab({
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   const prefixoRef = useRef<HTMLInputElement>(null);
+  const syncBadgeRef = useRef<HTMLSpanElement>(null);
+  const filtroPanelRef = useRef<HTMLElement>(null);
   const [view, setView] = useState<View>('resumo');
   const [dia, setDia] = useState(hoje);
   const [filtrosHistorico, setFiltrosHistorico] = useState<FiltrosHistorico>(FILTROS_HISTORICO_VAZIOS);
   const [paginaHistorico, setPaginaHistorico] = useState(0);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-  const [abaDashboard, setAbaDashboard] = useState<'consumo' | 'ranking'>('consumo');
+  const [mesSelecionado, setMesSelecionado] = useState<string>('');
+  const mesesDisponiveis = useMemo(() => {
+    const groups = groupByMonth(ativos);
+    // ordem decrescente (mais recente primeiro)
+    return Object.keys(groups).sort((a, b) => b.localeCompare(a));
+  }, [ativos]);
   const [exportandoHistorico, setExportandoHistorico] = useState<'' | 'excel' | 'pdf'>('');
   const [excluindo, setExcluindo] = useState<Abastecimento | null>(null);
   const [erro, setErro] = useState('');
@@ -283,6 +291,7 @@ export default function CombustivelOperacionalTab({
       const desvios = desviosPorId.get(item.id) || [];
       if (filtrosHistorico.dataInicio && item.data < filtrosHistorico.dataInicio) return false;
       if (filtrosHistorico.dataFim && item.data > filtrosHistorico.dataFim) return false;
+      if (mesSelecionado && (item.competencia ?? item.data.slice(0,7)) !== mesSelecionado) return false;
       if (filtrosHistorico.comboioId && item.comboioId !== filtrosHistorico.comboioId) return false;
       if (filtrosHistorico.equipamentoId && item.equipamentoId !== filtrosHistorico.equipamentoId) return false;
       if (filtrosHistorico.empresaId && empresaId !== filtrosHistorico.empresaId) return false;
@@ -297,7 +306,7 @@ export default function CombustivelOperacionalTab({
         item.responsavel, item.operadorNome, item.localAbastecimento, item.observacao,
       ].filter(Boolean).join(' ')).includes(termo);
     });
-  }, [ativos, comboioPorId, empresaPorId, filtrosHistorico, nomeCombustivel, porId, desviosPorId]);
+  }, [ativos, comboioPorId, empresaPorId, filtrosHistorico, nomeCombustivel, porId, desviosPorId, mesSelecionado]);
   const analyticsHistorico = useMemo(() => buildFuelHistoryAnalytics({
     records: historicoFiltrado, equipamentos, empresas, comboios, combustiveis, referenceDate: hoje(),
   }), [comboios, combustiveis, equipamentos, empresas, historicoFiltrado]);
@@ -442,8 +451,13 @@ export default function CombustivelOperacionalTab({
   useGSAP(() => {
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    gsap.fromTo(raiz.querySelectorAll('[data-comb-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' });
-  }, { scope: escopo, dependencies: [view, dia] });
+    // Animação de entrada dos blocos principais
+    gsap.fromTo(raiz.querySelectorAll('[data-comb-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.04, ease: 'power3.out' });
+    // Animação do painel de filtros ao abrir/fechar
+    if (filtrosAbertos && filtroPanelRef.current) {
+      gsap.fromTo(filtroPanelRef.current, { height: 0, opacity: 0 }, { height: 'auto', opacity: 1, duration: 0.25, ease: 'power2.out' });
+    }
+  }, { scope: escopo, dependencies: [view, dia, filtrosAbertos] });
 
   const vistas = [['resumo', 'Resumo', Fuel], ['novo', 'Lançar', Plus], ['historico', 'Histórico', History]] as const;
 
@@ -451,13 +465,42 @@ export default function CombustivelOperacionalTab({
     <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'space-y-4' : 'mx-auto flex h-[calc(100dvh-7rem)] min-h-[34rem] w-full max-w-[96rem] flex-col overflow-hidden'}>
       {view !== 'novo' && <div data-comb-reveal className="mb-2 shrink-0">
         <PageHeader eyebrow="Frota" title="Combustível" className="mb-2" actions={<>
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700" ref={syncBadgeRef}>Última sync: {lastSync}</span>
           <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`}><Droplets className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Lubrificação</span></button>
           <button type="button" onClick={() => abrirNovo()} className={`${BOTAO_PRIMARIO} min-h-10 px-3 sm:px-4`} data-testid="combustivel-novo"><Plus className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Novo abastecimento</span><span className="sm:hidden">Lançar</span><kbd title="Atalho de teclado: N" aria-label="Atalho de teclado: N" className="inline-flex rounded-md bg-white/15 px-1.5 font-mono text-xs">N</kbd></button>
         </>} />
-        <nav aria-label="Área de combustível" className="grid w-full grid-cols-3 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200">
-          {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? abrirNovo() : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-bold transition sm:gap-2 sm:px-3 sm:text-sm ${view === id ? 'bg-white text-[#176b4d] shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
+        <nav aria-label="Aba de meses" className="mb-2 flex flex-wrap gap-2">
+          {mesesDisponiveis.map(mes => (
+            <button
+              key={mes}
+              type="button"
+              onClick={() => setMesSelecionado(mes)}
+              className={`rounded px-2 py-1 text-sm ${mesSelecionado === mes ? 'bg-[#176b4d] text-white' : 'bg-gray-100 text-gray-800'} transition`}
+            >
+              {mes}
+            </button>
+          ))}
         </nav>
-      </div>}
+
+  
+
+              {vistas.map(([id, rotulo, Icone]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={view === id}
+                  onClick={() => (id === 'novo' ? abrirNovo() : setView(id))}
+                  data-testid={`combustivel-vista-${id}`}
+                  className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-bold transition sm:gap-2 sm:px-3 sm:text-sm ${view === id ? 'bg-white text-[#176b4d] shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
+                >
+                  <Icone className="size-4" aria-hidden="true" />
+                  {rotulo}
+                </button>
+              ))}
+
+
+
+      
 
       <p role="status" aria-live="polite" className={`${aviso ? '' : 'sr-only'} flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`} data-testid="combustivel-aviso">
         {aviso && <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />}
@@ -471,24 +514,24 @@ export default function CombustivelOperacionalTab({
             ['Volume abastecido', litrosTexto(analyticsCombustivel.totalLitros)],
             ['Empresas', analyticsCombustivel.porEmpresa.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
             ['Equipamentos', analyticsCombustivel.porEquipamento.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
-          ].map(([titulo, valor]) => <div key={titulo} className="min-w-0 px-2 py-2 sm:px-3"><p className="truncate text-[9px] font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">{titulo}</p><p className="mt-0.5 truncate text-sm font-black tabular-nums text-slate-950 sm:text-lg">{valor}</p></div>)}
-        </div>
+          ].map(([titulo, valor]) => <div key={titulo} className="min-w-0 px-2 py-2 sm:px-3"><p className="truncate text-[9px] font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">{titulo}</p><p className="mt-0.5 truncate text-sm font-black tabular-nums text-slate-950 sm:text-lg">{valor}</p>)}
+
         <nav aria-label="Painéis do resumo de combustível" className="grid shrink-0 grid-cols-2 rounded-lg bg-slate-100 p-1">
           <button type="button" aria-pressed={abaDashboard === 'consumo'} onClick={() => setAbaDashboard('consumo')} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-bold ${abaDashboard === 'consumo' ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><PieChart className="size-4" aria-hidden="true" />Distribuição e consumo</button>
           <button type="button" aria-pressed={abaDashboard === 'ranking'} onClick={() => setAbaDashboard('ranking')} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-bold ${abaDashboard === 'ranking' ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><BarChart3 className="size-4" aria-hidden="true" />Rankings e quantidades</button>
-        </nav>
+
         {abaDashboard === 'consumo' ? <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-consumo">
           <GraficoRosca titulo="Consumo por empresa" grupos={analyticsCombustivel.porEmpresa} vazio="Sem abastecimentos por empresa." />
           <GraficoRosca titulo="Consumo por combustível" grupos={analyticsCombustivel.porCombustivel} vazio="Sem tipo de combustível informado." />
           <GraficoRosca titulo="Consumo por comboio" grupos={analyticsCombustivel.porComboio} vazio="Sem comboio vinculado." />
           <GraficoMeses grupos={analyticsCombustivel.porMes} />
-        </div> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-ranking">
+ : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-ranking">
           <GraficoBarras titulo="Top empresas" grupos={analyticsCombustivel.porEmpresa} medida="litros" vazio="Sem volume por empresa." />
           <GraficoBarras titulo="Top equipamentos" grupos={analyticsCombustivel.porEquipamento} medida="litros" vazio="Sem volume por equipamento." />
           <GraficoBarras titulo="Lançamentos por comboio" grupos={analyticsCombustivel.porComboio} medida="registros" vazio="Sem comboios com lançamento." />
           <GraficoBarras titulo="Volume por combustível" grupos={analyticsCombustivel.porCombustivel} medida="litros" vazio="Sem tipos de combustível." />
-        </div>}
-      </div>}
+
+      
 
       {view === 'novo' && (
         <form data-comb-reveal onSubmit={event => { event.preventDefault(); salvar(false); }} className="w-full bg-white" data-testid="combustivel-form">
@@ -574,11 +617,12 @@ export default function CombustivelOperacionalTab({
                   </li>
                 ))}
               </ul>
-            )}
+            )}</nav>
+          </nav></nav>
             {erro && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
 
-            </div>
-          </div>
+    
+  
         </form>
       )}
 
@@ -590,21 +634,21 @@ export default function CombustivelOperacionalTab({
               <div>
                 <h2 className="text-base font-bold text-slate-950">Histórico de abastecimentos</h2>
                 <p className="text-xs text-slate-500">Do mais recente ao mais antigo</p>
-              </div>
-            </div>
+      
+    
             <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
               <button type="button" onClick={onOpenSpreadsheetImport} disabled={isParsingSpreadsheet} className={`${BOTAO_SECUNDARIO} px-3`}><FileSpreadsheet className="size-4" aria-hidden="true" />{isParsingSpreadsheet ? 'Lendo…' : 'Importar'}</button>
               <button type="button" onClick={exportarHistoricoExcel} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_SECUNDARIO} px-3`}><Download className="size-4" aria-hidden="true" />{exportandoHistorico === 'excel' ? 'Gerando…' : 'Excel'}</button>
               <button type="button" onClick={exportarHistoricoPdf} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_PRIMARIO} px-3`}><FileText className="size-4" aria-hidden="true" />{exportandoHistorico === 'pdf' ? 'Gerando…' : 'PDF'}</button>
-            </div>
-          </div>
+    
+  
 
           <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
-            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Registros</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{historicoFiltrado.length.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">no resultado filtrado</p></div>
-            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Volume total</p><p className="mt-1 text-2xl font-bold tabular-nums text-[#176b4d]">{litrosTexto(totalLitrosHistorico)}</p><p className="text-xs text-slate-500">somatório dos litros</p></div>
-            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Equipamentos</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{maquinasHistorico.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">com abastecimento</p></div>
-            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Empresas</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{empresasHistorico.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">no resultado filtrado</p></div>
-          </div>
+            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Registros</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{historicoFiltrado.length.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">no resultado filtrado</p>
+            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Volume total</p><p className="mt-1 text-2xl font-bold tabular-nums text-[#176b4d]">{litrosTexto(totalLitrosHistorico)}</p><p className="text-xs text-slate-500">somatório dos litros</p>
+            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Equipamentos</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{maquinasHistorico.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">com abastecimento</p>
+            <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Empresas</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{empresasHistorico.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">no resultado filtrado</p>
+  
         </section>
 
         <section data-comb-reveal aria-label="Filtros do histórico" className={`${CARTAO} shrink-0 p-2`}>
@@ -612,27 +656,27 @@ export default function CombustivelOperacionalTab({
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input ref={buscaRef} value={filtrosHistorico.texto} onChange={event => atualizarFiltroHistorico('texto', event.target.value)} placeholder="Buscar prefixo, empresa, comboio…" className={`${CAMPO} pl-9`} data-testid="combustivel-busca" /></span>
               <button type="button" aria-expanded={filtrosAbertos} onClick={() => setFiltrosAbertos(aberto => !aberto)} className={`${BOTAO_SECUNDARIO} min-h-10 shrink-0 px-3`}><Filter className="size-4" aria-hidden="true" />{filtrosAbertos ? 'Ocultar' : 'Filtros'}{Object.values(filtrosHistorico).filter(Boolean).length > 0 && <span className="rounded-full bg-emerald-100 px-1.5 text-xs text-emerald-800">{Object.values(filtrosHistorico).filter(Boolean).length}</span>}</button>
-            </div>
+    
             <button type="button" onClick={() => { setFiltrosHistorico(FILTROS_HISTORICO_VAZIOS); setPaginaHistorico(0); setErro(''); }} disabled={!Object.values(filtrosHistorico).some(Boolean)} className={`${BOTAO_SECUNDARIO} min-h-10 px-3 text-xs`}>Limpar</button>
-          </div>
-          {filtrosAbertos && <div className="mt-2 grid gap-2 border-t border-slate-100 pt-2 sm:grid-cols-2 lg:grid-cols-6">
+  
+          {filtrosAbertos && <div ref={filtroPanelRef} className="mt-2 grid gap-2 border-t border-slate-100 pt-2 sm:grid-cols-2 lg:grid-cols-6">
             <label><span className={`${ROTULO} mb-1 block`}>Data inicial</span><input type="date" value={filtrosHistorico.dataInicio} onChange={event => atualizarFiltroHistorico('dataInicio', event.target.value)} className={CAMPO} /></label>
             <label><span className={`${ROTULO} mb-1 block`}>Data final</span><input type="date" value={filtrosHistorico.dataFim} onChange={event => atualizarFiltroHistorico('dataFim', event.target.value)} className={CAMPO} /></label>
             <label><span className={`${ROTULO} mb-1 block`}>Comboio</span><select value={filtrosHistorico.comboioId} onChange={event => atualizarFiltroHistorico('comboioId', event.target.value)} className={CAMPO}><option value="">Todos os comboios</option>{comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
             <label><span className={`${ROTULO} mb-1 block`}>Equipamento</span><select value={filtrosHistorico.equipamentoId} onChange={event => atualizarFiltroHistorico('equipamentoId', event.target.value)} className={CAMPO}><option value="">Todos os equipamentos</option>{equipamentos.map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select></label>
             <label><span className={`${ROTULO} mb-1 block`}>Empresa</span><select value={filtrosHistorico.empresaId} onChange={event => atualizarFiltroHistorico('empresaId', event.target.value)} className={CAMPO}><option value="">Todas as empresas</option>{empresas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
             <label><span className={`${ROTULO} mb-1 block`}>Combustível</span><select value={filtrosHistorico.combustivelId} onChange={event => atualizarFiltroHistorico('combustivelId', event.target.value)} className={CAMPO}><option value="">Todos os combustíveis</option>{combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-          </div>}
+  
           {erro && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
         </section>
 
         <section data-comb-reveal aria-label="Registros de combustível" className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden`}>
           <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-            <div><h3 className="text-sm font-bold text-slate-900">Lançamentos</h3><p className="text-xs text-slate-500">Exportação inclui todos os resultados filtrados.</p></div>
+            <div><h3 className="text-sm font-bold text-slate-900">Lançamentos</h3><p className="text-xs text-slate-500">Exportação inclui todos os resultados filtrados.</p>
             <span className="text-xs font-semibold tabular-nums text-slate-500">{historicoFiltrado.length ? `${paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO + 1}–${Math.min((paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO, historicoFiltrado.length)} de ${historicoFiltrado.length}` : '0 registros'}</span>
           </header>
           {historicoPaginado.length === 0
-            ? <div className="px-4 py-14 text-center"><History className="mx-auto size-8 text-slate-300" aria-hidden="true" /><p className="mt-3 font-semibold text-slate-700">Nenhum abastecimento encontrado</p><p className="mt-1 text-sm text-slate-500">Ajuste os filtros ou limpe a busca para consultar outros lançamentos.</p></div>
+            ? <div className="px-4 py-14 text-center"><History className="mx-auto size-8 text-slate-300" aria-hidden="true" /><p className="mt-3 font-semibold text-slate-700">Nenhum abastecimento encontrado</p><p className="mt-1 text-sm text-slate-500">Ajuste os filtros ou limpe a busca para consultar outros lançamentos.</p>
             : <div className="min-h-0 flex-1 overflow-auto"><table className="w-full min-w-[1180px] text-left text-sm">
                 <thead className="sticky top-0 z-[1] bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500"><tr>
                   <th className="px-3 py-3">Data / hora</th><th className="px-3 py-3">Equipamento</th><th className="px-3 py-3">Empresa</th><th className="px-3 py-3">Comboio</th><th className="px-3 py-3">Combustível</th><th className="px-3 py-3 text-right">Litros</th><th className="px-3 py-3">Bomba inicial → final</th><th className="px-3 py-3">KM / horímetro</th><th className="px-3 py-3">Responsável</th><th className="px-3 py-3">Ação</th>
@@ -656,16 +700,16 @@ export default function CombustivelOperacionalTab({
                     </tr>;
                   })}
                 </tbody>
-              </table></div>}
+              </table>
           <footer className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
             <p className="text-xs text-slate-500">Página {paginaHistoricoAtual + 1} de {totalPaginasHistorico}</p>
             <div className="flex items-center gap-2">
               <button type="button" aria-label="Página anterior" title="50 lançamentos anteriores" onClick={() => setPaginaHistorico(Math.max(0, paginaHistoricoAtual - 1))} disabled={paginaHistoricoAtual === 0} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronLeft className="size-4" aria-hidden="true" /></button>
               <button type="button" aria-label="Próxima página" title="Próximos 50 lançamentos" onClick={() => setPaginaHistorico(Math.min(totalPaginasHistorico - 1, paginaHistoricoAtual + 1))} disabled={paginaHistoricoAtual >= totalPaginasHistorico - 1} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronRight className="size-4" aria-hidden="true" /></button>
-            </div>
+    
           </footer>
         </section>
-      </div>}
+      
 
       <ImportacaoPlanilhaModal
         isOpen={modalImportacaoAberto}
@@ -749,15 +793,15 @@ function GraficoRosca({ titulo, grupos, vazio }: { titulo: string; grupos: FuelH
     {dados.length === 0 ? <p className="grid min-h-0 flex-1 place-items-center text-center text-xs text-slate-500">{vazio}</p> : <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] items-center gap-2 pt-2">
       <div className="grid min-h-0 place-items-center">
         <div role="img" aria-label={`${titulo}: ${dados.map(item => `${item.nome} ${item.percentual}%`).join(', ')}`} className="relative aspect-square h-full max-h-36 rounded-full" style={{ background: `conic-gradient(${fatias.join(', ')})` }}>
-          <div className="absolute inset-[24%] grid place-content-center rounded-full bg-white text-center"><span className="text-sm font-black tabular-nums text-slate-900">{litrosTexto(grupos.reduce((soma, item) => soma + item.litros, 0))}</span><span className="text-[9px] text-slate-500">total</span></div>
-        </div>
-      </div>
+          <div className="absolute inset-[24%] grid place-content-center rounded-full bg-white text-center"><span className="text-sm font-black tabular-nums text-slate-900">{litrosTexto(grupos.reduce((soma, item) => soma + item.litros, 0))}</span><span className="text-[9px] text-slate-500">total</span>
+
+      
       <ul className="grid gap-x-2 gap-y-1 sm:grid-cols-2">
         {dados.slice(0, 4).map((item, indice) => <li key={item.chave} className="flex min-w-0 items-center gap-1.5 text-[10px]" title={`${item.nome}: ${litrosTexto(item.litros)} (${item.percentual}%)`}>
           <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: CORES_GRAFICO_COMBUSTIVEL[indice % CORES_GRAFICO_COMBUSTIVEL.length] }} /><span className="min-w-0 flex-1 truncate text-slate-600">{item.nome}</span><span className="shrink-0 font-semibold tabular-nums text-slate-800">{item.percentual}%</span>
         </li>)}
       </ul>
-    </div>}
+    
   </section>;
 }
 
@@ -767,9 +811,9 @@ function GraficoMeses({ grupos }: { grupos: (FuelHistoryGroup & { rotulo: string
     <h3 className="shrink-0 text-xs font-bold text-slate-800 sm:text-sm">Consumo mensal</h3>
     <div className="grid min-h-0 flex-1 grid-cols-6 items-end gap-1 pt-3" role="img" aria-label={`Consumo mensal: ${grupos.map(item => `${item.rotulo}, ${litrosTexto(item.litros)}`).join('; ')}`}>
       {grupos.map(item => <div key={item.chave} className="flex h-full min-w-0 flex-col items-center justify-end gap-1" title={`${item.rotulo}: ${litrosTexto(item.litros)} em ${item.registros} lançamentos`}>
-        <span className="max-w-full truncate text-[9px] font-semibold tabular-nums text-slate-600">{numeroTexto(item.litros)}</span><div className="flex h-[68%] w-full items-end"><span className="w-full rounded-t bg-[#176b4d]" style={{ height: `${item.litros > 0 ? Math.max(5, item.litros / maior * 100) : 2}%` }} /></div><span className="truncate text-[9px] text-slate-500">{item.rotulo}</span>
-      </div>)}
-    </div>
+        <span className="max-w-full truncate text-[9px] font-semibold tabular-nums text-slate-600">{numeroTexto(item.litros)}</span><div className="flex h-[68%] w-full items-end"><span className="w-full rounded-t bg-[#176b4d]" style={{ height: `${item.litros > 0 ? Math.max(5, item.litros / maior * 100) : 2}%` }} /><span className="truncate text-[9px] text-slate-500">{item.rotulo}</span>
+      )}
+    
   </section>;
 }
 
@@ -780,8 +824,8 @@ function GraficoBarras({ titulo, grupos, medida, vazio }: { titulo: string; grup
     <h3 className="shrink-0 truncate text-xs font-bold text-slate-800 sm:text-sm">{titulo}</h3>
     {dados.length === 0 ? <p className="grid min-h-0 flex-1 place-items-center text-center text-xs text-slate-500">{vazio}</p> : <ol className="mt-2 grid min-h-0 flex-1 content-evenly gap-2 overflow-hidden">
       {dados.map((item, indice) => <li key={item.chave} className="min-w-0" title={`${item.nome}: ${medida === 'litros' ? litrosTexto(item.litros) : `${item.registros} lançamentos`}`}>
-        <div className="mb-0.5 flex min-w-0 items-center justify-between gap-2 text-[10px]"><span className="min-w-0 truncate font-medium text-slate-700">{indice + 1}. {item.nome}</span><span className="shrink-0 font-bold tabular-nums text-slate-900">{medida === 'litros' ? litrosTexto(item.litros) : item.registros}</span></div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${Math.max(3, item[medida] / maior * 100)}%`, backgroundColor: CORES_GRAFICO_COMBUSTIVEL[indice % CORES_GRAFICO_COMBUSTIVEL.length] }} /></div>
+        <div className="mb-0.5 flex min-w-0 items-center justify-between gap-2 text-[10px]"><span className="min-w-0 truncate font-medium text-slate-700">{indice + 1}. {item.nome}</span><span className="shrink-0 font-bold tabular-nums text-slate-900">{medida === 'litros' ? litrosTexto(item.litros) : item.registros}</span>
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${Math.max(3, item[medida] / maior * 100)}%`, backgroundColor: CORES_GRAFICO_COMBUSTIVEL[indice % CORES_GRAFICO_COMBUSTIVEL.length] }} />
       </li>)}
     </ol>}
   </section>;
