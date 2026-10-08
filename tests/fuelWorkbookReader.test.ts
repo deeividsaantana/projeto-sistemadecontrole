@@ -72,3 +72,29 @@ test('aceita leitura zero como reinício válido do medidor', async () => {
     await fs.rm(filePath, { force: true });
   }
 });
+
+test('lê todas as abas mensais e preserva a competência de origem', async () => {
+  const filePath = path.join(os.tmpdir(), `renea-fuel-monthly-${Date.now()}-${Math.random().toString(36).slice(2)}.xlsx`);
+  const workbook = new ExcelJS.Workbook();
+  for (const [sheetName, prefixo, litros] of [['JUNHO 2026', 'CB770', 79], ['JULHO 2026', 'EC023', 62]] as const) {
+    const sheet = workbook.addWorksheet(sheetName);
+    sheet.addRows([
+      [], [], [], [],
+      ['Dia', 'Data', 'Prefixo', 'Descrição do equipamento', 'KM inicial', 'Horímetro', 'Litros', 'Hora', 'Comboio', 'Tipo de combustível', 'Empresa', 'Bomba inicial', 'Bomba final'],
+      ['', new Date(Date.UTC(2026, 5, 21)), prefixo, 'Equipamento de teste', 100, 0, litros, new Date(Date.UTC(1899, 11, 30, 7, 0)), 'TQC019', 'Óleo Diesel S10', 'Renea', 1000, 1000 + litros],
+    ]);
+    if (sheetName === 'JULHO 2026') sheet.getCell('T7').value = 'metadado fora da área operacional';
+  }
+  await workbook.xlsx.writeFile(filePath);
+  try {
+    const result = await readFuelWorkbook(filePath);
+    assert.equal(result.rows.length, 2);
+    assert.deepEqual(result.sheetNames, ['JUNHO 2026', 'JULHO 2026']);
+    assert.deepEqual(result.rows.map(row => [row.sheet, row.competencia, row.prefixo]), [
+      ['JUNHO 2026', '2026-06', 'CB770'],
+      ['JULHO 2026', '2026-07', 'EC023'],
+    ]);
+  } finally {
+    await fs.rm(filePath, { force: true });
+  }
+});

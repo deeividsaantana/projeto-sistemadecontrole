@@ -26,6 +26,18 @@ const aliases = {
   observacao: ['observacao', 'observacoes', 'obs'],
 };
 
+const MONTHS = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+
+const fuelSheetCompetence = sheetName => {
+  const normalized = String(sheetName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+  const year = Number(normalized.match(/20\d{2}/)?.[0] || 0);
+  const month = MONTHS.findIndex(item => normalized.includes(item)) + 1;
+  return year && month ? `${year}-${String(month).padStart(2, '0')}` : '';
+};
+
 const unwrapCellValue = value => {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) return value;
@@ -131,10 +143,10 @@ const findHeader = worksheet => {
 
 const rawAt = (row, column) => column ? unwrapCellValue(row.getCell(column).value) : '';
 
-const selectFuelWorksheet = workbook => {
+const selectFuelWorksheets = workbook => {
   const preferredNames = new Set(['detalhe', 'dadoscombustivel']);
   const candidates = workbook.worksheets
-    .filter(sheet => preferredNames.has(normalize(sheet.name)) || normalize(sheet.name).includes('combustivel'))
+    .filter(sheet => preferredNames.has(normalize(sheet.name)) || normalize(sheet.name).includes('combustivel') || fuelSheetCompetence(sheet.name))
     .flatMap(sheet => {
       try {
         return [{ worksheet: sheet, header: findHeader(sheet) }];
@@ -142,22 +154,28 @@ const selectFuelWorksheet = workbook => {
         return [];
       }
     })
-    .sort((left, right) => right.header.score - left.header.score
+    .sort((left, right) => {
+      const leftCompetence = fuelSheetCompetence(left.worksheet.name);
+      const rightCompetence = fuelSheetCompetence(right.worksheet.name);
+      return (leftCompetence && rightCompetence ? leftCompetence.localeCompare(rightCompetence) : 0)
+      || right.header.score - left.header.score
       || Number(preferredNames.has(normalize(right.worksheet.name))) - Number(preferredNames.has(normalize(left.worksheet.name)))
-      || right.worksheet.rowCount - left.worksheet.rowCount);
+      || right.worksheet.rowCount - left.worksheet.rowCount;
+    });
   if (!candidates.length) throw new Error('A planilha não possui uma aba de detalhes de combustível com cabeçalhos reconhecíveis.');
-  return candidates[0];
+  return candidates;
 };
 
 export const readFuelWorkbook = async filePath => {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
-  const { worksheet, header } = selectFuelWorksheet(workbook);
+  const worksheets = selectFuelWorksheets(workbook);
   const rows = [];
   let warningCount = 0;
   const fileKey = normalize(path.basename(filePath));
 
-  for (let rowNumber = header.rowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+  for (const { worksheet, header } of worksheets) {
+    for (let rowNumber = header.rowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const source = worksheet.getRow(rowNumber);
     // As colunas de descrição, empresa e bomba contêm fórmulas copiadas até o fim da aba.
     // Elas não devem transformar linhas visualmente vazias em abastecimentos, mas qualquer
@@ -193,6 +211,7 @@ export const readFuelWorkbook = async filePath => {
       sourceFile: path.basename(filePath),
       rowNumber,
       sheet: worksheet.name,
+      competencia: fuelSheetCompetence(worksheet.name),
       data,
       hora,
       prefixo,
@@ -212,6 +231,14 @@ export const readFuelWorkbook = async filePath => {
       avisos: rowWarnings.join(' | '),
     });
   }
+  }
 
-  return { sheetName: worksheet.name, headerRow: header.rowNumber, rows, warningCount };
+  return {
+    sheetName: worksheets[0].worksheet.name,
+    headerRow: worksheets[0].header.rowNumber,
+    sheetNames: worksheets.map(item => item.worksheet.name),
+    headerRows: Object.fromEntries(worksheets.map(item => [item.worksheet.name, item.header.rowNumber])),
+    rows,
+    warningCount,
+  };
 };
