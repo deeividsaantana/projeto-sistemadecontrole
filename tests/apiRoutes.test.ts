@@ -21,6 +21,12 @@ test('o servidor da Render atende /api/ e mantém o endereço antigo', () => {
   }
 });
 
+test('adaptador Supabase representa documento ausente sem ler id de null', () => {
+  const source = read('api/_shared/supabase-admin.js');
+  assert.match(source, /id:\s*row\?\.id/);
+  assert.match(source, /exists:\s*Boolean\(row\)/);
+});
+
 test('repetir um envio pelo endereço novo reaproveita a idempotência do antigo', () => {
   const body = JSON.stringify({ nome: 'Teste' });
   assert.equal(

@@ -43,7 +43,7 @@ export const requestIpHash = event => {
 export const functionErrorResponse = error => jsonResponse(Number(error?.statusCode) || 500, { success: false, message: Number(error?.statusCode) >= 500 ? 'O serviço está temporariamente indisponível.' : error.message });
 
 const valueAt = (value, path) => String(path).split('.').reduce((current, key) => current == null ? undefined : current[key], value);
-const snapshot = (row, ref) => ({ id: row.id, exists: Boolean(row), ref, data: () => row?.payload || {} });
+const snapshot = (row, ref) => ({ id: row?.id, exists: Boolean(row), ref, data: () => row?.payload || {} });
 const rowStore = () => getSupabaseAdmin().from('legacy_documents');
 const makeRef = (path, id = crypto.randomUUID()) => ({
   id,
