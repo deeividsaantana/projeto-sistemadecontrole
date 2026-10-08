@@ -5,7 +5,7 @@ const gatewayUrl = new URL('../api/master-data.js', import.meta.url);
 const gateway = readFileSync(gatewayUrl, 'utf8');
 
 assert.match(gateway, /const staff = await requireStaffUser\(event\)/);
-assert.match(gateway, /resolveOrganizationId\(staff, process\.env\.FIREBASE_DEFAULT_ORGANIZATION_ID/);
+assert.match(gateway, /resolveOrganizationId\(staff, process\.env\.SUPABASE_ORGANIZATION_ID/);
 assert.match(gateway, /const ROOT_COLLECTION = 'sistemarenea_master_data'/);
 assert.match(gateway, /const AUDIT_COLLECTION = 'sistemarenea_audit_logs'/);
 assert.match(gateway, /const writeAudit = async/);

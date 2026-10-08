@@ -11,7 +11,7 @@ import {
   requireStaffUser,
   serverTimestamp,
   stableHash,
-} from './_shared/firebase-admin.js';
+} from './_shared/supabase-admin.js';
 import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
 import { EFETIVO_OBRA_3_LEADERS } from './_shared/efetivo-obra3.js';
 import { assertIdempotencyKey } from './_shared/api-security.js';

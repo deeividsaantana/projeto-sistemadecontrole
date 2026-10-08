@@ -103,7 +103,7 @@ import {
 import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
 
 // Subcomponents Imports
-const Dashboard = lazy(() => import('./components/Dashboard'));
+import Dashboard from './components/Dashboard';
 const ConsultaGeralTab = lazy(() => import('./components/ConsultaGeralTab'));
 const PeriodoTab = lazy(() => import('./components/PeriodoTab'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
@@ -147,13 +147,10 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 import reneaLogo from './assets/images/logo-renea-transparent.png';
 import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 
-// Firebase Imports
-import { auth, db } from './firebase';
-import {
-  onAuthStateChanged,
-  type User,
-} from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+// Supabase is authoritative for authentication and synchronization.
+const db = undefined;
+import { supabaseAuth as auth, type SupabaseAuthUser as User } from './auth/supabaseAuth';
+import { loadSupabaseMemberships } from './supabase/memberships';
 import {
   downloadCloudBackup,
   formatCloudSyncError,
@@ -161,22 +158,21 @@ import {
   uploadCloudBackup,
   type CloudData,
 } from './cloud/cloudSyncGateway';
-import { cloudProvider } from './platform/cloudProvider';
 import {
   deletePublicTicket,
   subscribePublicTickets,
   reservePublicTicketNumber,
   reservePublicTicketNumbers,
   savePublicTicket,
-} from './firebaseTickets';
+} from './supabase/tickets';
 import {
   markPublicSubmissionsProcessed,
   subscribePendingMaterialUses,
   subscribePendingPublicSubmissions,
   type PublicSubmission,
-} from './firebasePublicSubmissions';
+} from './supabase/submissions';
 import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
-import { fetchAllPresenceSubmissions } from './firebasePresenceRecovery';
+import { fetchAllPresenceSubmissions } from './supabase/submissionRecovery';
 import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
@@ -487,7 +483,7 @@ export default function App() {
     () => typeof localStorage === 'undefined' ? { categoriasSilenciadas: [], mostrarSistema: true } : carregarPreferencias(localStorage),
   );
 
-  // Estado do provedor de nuvem ativo. O gateway mantém Firebase, Supabase e
+  // Estado do provedor de nuvem ativo. O gateway usa somente Supabase e
   // o período de dual-write fora dos componentes operacionais.
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   // Evita repetir o mesmo aviso de falha de sincronização a cada salvamento
@@ -495,7 +491,7 @@ export default function App() {
   const lastSyncFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
   const presenceIngestFailureRef = useRef<{ message: string; at: number }>({ message: '', at: 0 });
   const presenceSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
-  // Conta envios ao Firebase em andamento. Um download que caia bem no meio
+  // Conta envios ao Supabase em andamento. Um download que caia bem no meio
   // desse intervalo (por exemplo, ao voltar o foco na aba logo depois de
   // salvar algo) leria a nuvem antes do envio terminar de publicá-la, e
   // sobrescreveria o lançamento que acabou de ser feito com a versão antiga.
@@ -514,7 +510,7 @@ export default function App() {
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(true);
   const [lastCloudSync, setLastCloudSync] = useState<string>('');
   currentUserRoleRef.current = currentUserRole;
-  // Quantos envios do link público de presença já estão no Firebase, pendentes
+  // Quantos envios do link público de presença já estão no Supabase, pendentes
   // de entrar neste retrato local. Serve só de diagnóstico visível: se ficar
   // preso em um número maior que zero, o processamento em tempo real travou.
   const [pendingPublicSubmissionsCount, setPendingPublicSubmissionsCount] = useState(0);
@@ -925,7 +921,7 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => onAuthStateChanged(auth, async user => {
+  useEffect(() => auth.onAuthStateChanged(async user => {
     if (!user) {
       setCurrentUser(null);
       setIsLoggedIn(false);
@@ -933,15 +929,18 @@ export default function App() {
       return;
     }
     try {
-      const token = await user.getIdTokenResult(true);
-      if (token.claims.staff !== true) {
+      // No Supabase, a autorização é uma associação explícita na organização;
+      // A autorização vem da associação do usuário no Supabase.
+      const memberships = await loadSupabaseMemberships();
+      const membership = memberships[0];
+      if (!membership) {
         await signOutCurrentUser(auth);
         setCurrentUser(null);
         setIsLoggedIn(false);
         setLoginError('Sua conta existe, mas ainda não foi autorizada para acessar o sistema.');
         return;
       }
-      setCurrentUserRole(normalizeUserRole(token.claims.role));
+      setCurrentUserRole(normalizeUserRole(membership.role));
       setCurrentUser(user);
       setIsLoggedIn(true);
     } catch (error) {
@@ -1071,7 +1070,7 @@ export default function App() {
   });
 
   // Envio para a nuvem pelo gateway de migração.
-  const handleUploadToFirebase = async (
+  const handleUploadToSupabase = async (
     overrides: Partial<CloudData> = {},
   ): Promise<{ success: boolean; message: string }> => {
     // Enviar a semente de um navegador novo por cima da nuvem trocava os
@@ -1094,7 +1093,7 @@ export default function App() {
 
       // Recarrega as claims antes de qualquer gravação. Usuários que receberam
       // o perfil staff/admin depois do login podem estar com um token antigo,
-      // embora a conta já esteja corretamente autorizada no Firebase Auth.
+      // embora a conta já esteja corretamente autorizada no Supabase Auth.
       if (auth.currentUser) {
         await auth.currentUser.getIdToken(true);
       }
@@ -1134,7 +1133,7 @@ export default function App() {
       setIsCloudConnected(false);
       console.error('Falha ao sincronizar o backup na nuvem:', error);
       if (!navigator.onLine) {
-        void enqueueOfflineCommand('firebase-backup', { requestedAt: new Date().toISOString() });
+        void enqueueOfflineCommand('supabase-backup', { requestedAt: new Date().toISOString() });
       }
       return { success: false, message: formatCloudSyncError(error) };
     } finally {
@@ -1146,7 +1145,7 @@ export default function App() {
   };
 
   // Download da nuvem pelo provedor autoritativo da fase atual.
-  const handleDownloadFromFirebase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
+  const handleDownloadFromSupabase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
     try {
       const backup = await downloadCloudBackup(db);
       if (backup.data) {
@@ -1427,7 +1426,7 @@ export default function App() {
         // mesclagem conservadora antes de baixar o retrato publicado; assim
         // nenhum lancamento que so existe neste aparelho e perdido.
         if (!localCloudVersion && currentUserRoleRef.current !== 'leitura' && !localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD)) {
-          const uploadResult = await handleUploadToFirebase();
+          const uploadResult = await handleUploadToSupabase();
           if (!uploadResult.success) {
             pendingRemoteVersionRef.current = requestedVersion;
             retryPendingImmediately = false;
@@ -1441,7 +1440,7 @@ export default function App() {
           }
         }
 
-        const downloadResult = await handleDownloadFromFirebase();
+        const downloadResult = await handleDownloadFromSupabase();
         if (!downloadResult.success) {
           pendingRemoteVersionRef.current = requestedVersion;
           retryPendingImmediately = false;
@@ -1509,7 +1508,7 @@ export default function App() {
         void pullRemoteChanges();
         return;
       }
-      void handleUploadToFirebase().then(resultado => {
+      void handleUploadToSupabase().then(resultado => {
         if (!resultado.success) {
           addNotification(
             'Envio pendente para a nuvem',
@@ -1525,20 +1524,8 @@ export default function App() {
     // publica uma nova geração. O intervalo permanece apenas como fallback
     // para reconectar quando o listener fica offline.
     let unsubscribeManifest: (() => void) | undefined = () => undefined;
-    try {
-      if (cloudProvider !== 'supabase') {
-        unsubscribeManifest = onSnapshot(doc(db, 'sistemarenea_cloud', 'main_data_v2'), snapshot => {
-          const updatedAt = String(snapshot.data()?.updatedAt || '');
-          if (updatedAt) void requestAutomaticRemoteSync(updatedAt);
-        }, error => {
-          console.warn('Listener realtime do manifesto indisponível; usando fallback:', error);
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao configurar listener do manifesto:', error);
-      // Listener setup failed, unsubscribeManifest remains as no-op
-      // This ensures cleanup in useEffect return won't crash
-    }
+    // O Supabase usa o intervalo e os eventos de foco/reconexão para atualizar
+    // o retrato, sem listener do provedor legado.
     const interval = window.setInterval(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS);
     // O canal em tempo real do Firestore pode cair sem avisar quando o
     // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
@@ -1668,17 +1655,17 @@ export default function App() {
     }
 
     // A sincronização é obrigatória e silenciosa para manter todos os usuários alinhados.
-    // Dispara na hora (sem atraso): handleUploadToFirebase marca
+    // Dispara na hora (sem atraso): handleUploadToSupabase marca
     // uploadsInFlightRef antes de qualquer await, e esse é o sinal que impede
     // uma sincronização automática concorrente de baixar a versão antiga da
     // nuvem e sobrescrever, na tela, o que acabou de ser salvo aqui. Um
     // atraso artificial antes desta chamada deixava essa proteção sem efeito
     // durante a janela de espera.
-    handleUploadToFirebase().then(res => {
+    handleUploadToSupabase().then(res => {
       if (res.success) return;
       console.warn('Sincronização automática pendente:', res.message);
       // A falha precisa ser visível: antes disso o salvamento parecia ter
-      // dado certo e a base podia ficar dias sem chegar ao Firebase.
+    // dado certo e a base podia ficar dias sem chegar ao Supabase.
       const now = Date.now();
       const isRepeat = lastSyncFailureRef.current.message === res.message
         && now - lastSyncFailureRef.current.at < 60_000;
@@ -1804,7 +1791,7 @@ export default function App() {
   /**
    * Exclusão real de um cadastro: tira da lista e grava a marca em
    * `exclusoes` no mesmo lote do armazenamento local, antes do envio. A marca
-   * é o que faz a exclusão chegar ao Firebase e aos outros aparelhos sem
+   * é o que faz a exclusão chegar ao Supabase e aos outros aparelhos sem
    * voltar (ver src/cloud/exclusoes.ts).
    */
   const excluirCadastros = <T extends { id: string; nome?: string }>({
@@ -2977,10 +2964,10 @@ export default function App() {
     type: NotificationType = 'info'
   ): AppNotification => createNotification(title, message, type, 'RENEA API', 'notif-pres');
 
-  const uploadLocalSnapshotToFirebase = (overrides: {
+  const uploadLocalSnapshotToSupabase = (overrides: {
     funcionarios?: Funcionario[];
     gruposEquipe?: GrupoEquipe[];
-  } = {}) => handleUploadToFirebase({
+  } = {}) => handleUploadToSupabase({
     ...overrides,
     // Este caminho publica o retrato sem o historico: ele e reconstruido a
     // partir dos proprios lancamentos e nao precisa trafegar aqui.
@@ -2998,8 +2985,8 @@ export default function App() {
     setIsRetryingPending(true);
     try {
       const result = await flushOfflineCommands({
-        'firebase-backup': async () => {
-          const uploadResult = await uploadLocalSnapshotToFirebase();
+        'supabase-backup': async () => {
+          const uploadResult = await uploadLocalSnapshotToSupabase();
           if (!uploadResult.success) throw new Error(uploadResult.message);
         },
       });
@@ -3011,7 +2998,7 @@ export default function App() {
     } finally {
       setIsRetryingPending(false);
     }
-  }, [isRetryingPending, uploadLocalSnapshotToFirebase, addNotification]);
+  }, [isRetryingPending, uploadLocalSnapshotToSupabase, addNotification]);
 
   // Reconstrói o histórico de presença a partir da fila pública original
   // (sistemarenea_public_submissions), que nunca é apagada nem sobrescrita
@@ -3049,7 +3036,7 @@ export default function App() {
           message: `${addedCount} registro(s) de presença recuperado(s) neste aparelho: ${origem}.`,
         };
       }
-      const uploadResult = await uploadLocalSnapshotToFirebase();
+      const uploadResult = await uploadLocalSnapshotToSupabase();
       if (!uploadResult.success) {
         return {
           success: false,
@@ -3074,7 +3061,7 @@ export default function App() {
     const publishRotation = async () => {
       if (cancelled || running || !navigator.onLine) return;
       running = true;
-      const result = await uploadLocalSnapshotToFirebase();
+      const result = await uploadLocalSnapshotToSupabase();
       running = false;
       if (cancelled || !result.success) return;
       localStorage.removeItem(STORAGE_KEYS.publicLinksRotationPendingV31);
@@ -3105,8 +3092,8 @@ export default function App() {
     const flush = () => {
       if (!navigator.onLine) return;
       void flushOfflineCommands({
-        'firebase-backup': async () => {
-          const result = await uploadLocalSnapshotToFirebase();
+        'supabase-backup': async () => {
+          const result = await uploadLocalSnapshotToSupabase();
           if (!result.success) throw new Error(result.message);
         },
       });
@@ -3196,12 +3183,12 @@ export default function App() {
           setGruposEquipe(nextGroups);
         }
 
-        let syncResult = await uploadLocalSnapshotToFirebase();
+        let syncResult = await uploadLocalSnapshotToSupabase();
         if (!syncResult.success && /conflito|outro computador|vers[aã]o mais recente/i.test(syncResult.message)) {
           // A fila pública é idempotente por ID. Em caso de concorrência,
           // baixa o retrato vencedor, reaplica somente os envios pendentes e
           // tenta novamente sem apagar nem duplicar registros operacionais.
-          const downloadResult = await handleDownloadFromFirebase();
+          const downloadResult = await handleDownloadFromSupabase();
           if (!downloadResult.success) throw new Error(downloadResult.message);
           const refreshedPresence = mergePresenceRecords(
             parseStoredJson<PresencaApontamento[]>(localStorage.getItem('renea_presencas_link'), 'renea_presencas_link', []),
@@ -3236,7 +3223,7 @@ export default function App() {
             writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(refreshedGroups));
             setGruposEquipe(refreshedGroups);
           }
-          syncResult = await uploadLocalSnapshotToFirebase();
+          syncResult = await uploadLocalSnapshotToSupabase();
         }
         if (!syncResult.success) throw new Error(syncResult.message);
         await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
@@ -3244,7 +3231,7 @@ export default function App() {
         if (!cancelled) {
           const message = error instanceof Error ? error.message : String(error);
           console.warn('Falha ao incorporar a fila pública; os itens permanecerão pendentes:', error);
-          // O envio já está salvo no Firebase (fila pública); só a incorporação
+          // O envio já está salvo no Supabase (fila pública); só a incorporação
           // a este retrato falhou. Sem aviso aqui, essa presença ficava presa
           // sem nenhum sinal na tela — só sumindo silenciosamente.
           const now = Date.now();
@@ -3342,14 +3329,14 @@ export default function App() {
           writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(nextHistory));
           setHistoryLogs(nextHistory);
         }
-        let syncResult = await uploadLocalSnapshotToFirebase();
+        let syncResult = await uploadLocalSnapshotToSupabase();
         if (!syncResult.success && /conflito|outro computador|vers[aã]o mais recente/i.test(syncResult.message)) {
           // Outro computador salvou antes: baixa o retrato vencedor e reaplica
           // só as saídas deste envio por cima, sem apagar nada do que chegou.
-          const downloadResult = await handleDownloadFromFirebase();
+          const downloadResult = await handleDownloadFromSupabase();
           if (!downloadResult.success) throw new Error(downloadResult.message);
           applyIncoming(incoming);
-          syncResult = await uploadLocalSnapshotToFirebase();
+          syncResult = await uploadLocalSnapshotToSupabase();
         }
         if (!syncResult.success) throw new Error(syncResult.message);
         await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
@@ -3442,7 +3429,7 @@ export default function App() {
           writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(restantes));
         },
       );
-      void uploadLocalSnapshotToFirebase();
+      void uploadLocalSnapshotToSupabase();
       return resposta;
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Não foi possível zerar o dia.' };
@@ -3470,7 +3457,7 @@ export default function App() {
     );
     // O retrato remoto precisa refletir a mudança para que os links públicos,
     // que leem da nuvem, enxerguem as equipes novas.
-    const result = await uploadLocalSnapshotToFirebase({
+    const result = await uploadLocalSnapshotToSupabase({
       funcionarios: proximosFuncionarios,
       gruposEquipe: proximasEquipes,
     });
@@ -3654,7 +3641,7 @@ export default function App() {
 
     // presencasLink e historicoPresencas ja foram gravados acima; as
     // notificacoes tambem. O envio le tudo do armazenamento local.
-    void handleUploadToFirebase();
+    void handleUploadToSupabase();
   };
 
   /**
@@ -3687,7 +3674,7 @@ export default function App() {
       'Sistema Local',
     );
     processarDesligamentosDaPresenca(situacoes, grupo.id, data);
-    void handleUploadToFirebase();
+    void handleUploadToSupabase();
   };
 
   const handleDeletePresencaLink = async (ids: string[]) => {
@@ -3711,7 +3698,7 @@ export default function App() {
     setPresencasLink(updatedPresencas);
     writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
     addNotification('Presenças excluídas', `${ids.length} registro(s) foram excluídos permanentemente.`, 'success', 'Sistema Local');
-    void uploadLocalSnapshotToFirebase();
+    void uploadLocalSnapshotToSupabase();
   };
 
   const handleChangeControleEstacas = (next: ControleEstacas, description: string) => {

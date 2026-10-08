@@ -1,13 +1,11 @@
 import {
   cleanString,
-  enforceRateLimit,
   functionErrorResponse,
-  getAdminDb,
   jsonResponse,
   parseJsonBody,
-  requireStaffUser,
-  serverTimestamp,
-} from './_shared/firebase-admin.js';
+  requireSupabaseUser,
+  getSupabaseAdmin,
+} from './_shared/supabase-admin.js';
 
 const COLLECTION = 'sistemarenea_usage';
 const TAB_LABELS = {
@@ -37,25 +35,13 @@ const recordUsage = async (event, staff) => {
     return jsonResponse(400, { success: false, message: 'Evento de uso inválido.' });
   }
 
-  const database = getAdminDb();
-  await enforceRateLimit(database, event, `usage-${staff.uid}`, 600, 3600);
   const day = isoDay();
-  const reference = database.collection(COLLECTION).doc(`${day}_${safeDocumentPart(staff.uid)}`);
-  await database.runTransaction(async transaction => {
-    const snapshot = await transaction.get(reference);
-    const current = snapshot.data() || {};
-    const tabs = current.tabs && typeof current.tabs === 'object' ? current.tabs : {};
-    transaction.set(reference, {
-      day,
-      userId: staff.uid,
-      userLabel: cleanString(staff.name || staff.email || 'Equipe RENEA', 120),
-      tabs: { ...tabs, [key]: Number(tabs[key] || 0) + 1 },
-      tabLabels: { ...(current.tabLabels || {}), [key]: TAB_LABELS[key] },
-      lastTab: key,
-      updatedAt: serverTimestamp(),
-      updatedAtIso: new Date().toISOString(),
-    });
-  });
+  const client = getSupabaseAdmin();
+  const { data: current } = await client.from('usage_telemetry').select('tabs, tab_labels').eq('organization_id', staff.organizationId).eq('day', day).eq('user_id', staff.uid).maybeSingle();
+  const tabs = current?.tabs && typeof current.tabs === 'object' ? current.tabs : {};
+  const tabLabels = current?.tab_labels && typeof current.tab_labels === 'object' ? current.tab_labels : {};
+  const { error } = await client.from('usage_telemetry').upsert({ organization_id: staff.organizationId, day, user_id: staff.uid, user_label: cleanString(staff.name || staff.email || 'Equipe RENEA', 120), tabs: { ...tabs, [key]: Number(tabs[key] || 0) + 1 }, tab_labels: { ...tabLabels, [key]: TAB_LABELS[key] }, last_tab: key, updated_at: new Date().toISOString() }, { onConflict: 'organization_id,day,user_id' });
+  if (error) throw error;
   return jsonResponse(200, { success: true });
 };
 
@@ -64,14 +50,14 @@ const summarizeUsage = async (event) => {
   const periodDays = Math.max(1, Math.min(90, Number.isFinite(requestedDays) ? Math.floor(requestedDays) : 30));
   const start = new Date();
   start.setUTCDate(start.getUTCDate() - periodDays + 1);
-  const snapshot = await getAdminDb().collection(COLLECTION).where('day', '>=', isoDay(start)).get();
+  const { data: rows, error } = await getSupabaseAdmin().from('usage_telemetry').select('user_id, tabs, updated_at').gte('day', isoDay(start));
+  if (error) throw error;
   const counts = {};
   const users = new Set();
   let updatedAt = '';
-  snapshot.docs.forEach(document => {
-    const data = document.data();
+  (rows || []).forEach(data => {
     if (data.userId) users.add(String(data.userId));
-    if (String(data.updatedAtIso || '') > updatedAt) updatedAt = String(data.updatedAtIso);
+    if (String(data.updated_at || '') > updatedAt) updatedAt = String(data.updated_at);
     Object.entries(data.tabs || {}).forEach(([key, count]) => {
       counts[key] = Number(counts[key] || 0) + Number(count || 0);
     });
@@ -93,7 +79,7 @@ const summarizeUsage = async (event) => {
 
 export const handler = async event => {
   try {
-    const staff = await requireStaffUser(event);
+    const staff = await requireSupabaseUser(event);
     if (event.httpMethod === 'POST') return await recordUsage(event, staff);
     if (event.httpMethod === 'GET') return await summarizeUsage(event);
     return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST' });

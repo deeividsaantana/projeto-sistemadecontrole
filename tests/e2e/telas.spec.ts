@@ -94,7 +94,7 @@ test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({
   await page.locator('[data-linha-lista]:visible').first().click();
   await page.getByTestId('cadastro-excluir').click();
   const dialog = page.getByRole('alertdialog');
-  await expect(dialog).toContainText('Firebase');
+  await expect(dialog).toContainText('Supabase');
   await dialog.getByTestId('cadastro-confirmar').click();
   const aviso = page.getByTestId('cadastro-aviso');
   await expect(aviso).toContainText('excluído');

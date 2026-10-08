@@ -8,7 +8,7 @@ const app = readFileSync(appUrl, 'utf8');
 const authService = readFileSync(authServiceUrl, 'utf8');
 const loginScreen = readFileSync(loginScreenUrl, 'utf8');
 
-assert.match(authService, /sendPasswordResetEmail/);
+assert.match(authService, /resetPasswordForEmail/);
 assert.match(app, /sendPasswordRecoveryEmail/);
 assert.match(app, /const handlePasswordRecovery = async/);
 assert.match(loginScreen, /Recuperar senha/);

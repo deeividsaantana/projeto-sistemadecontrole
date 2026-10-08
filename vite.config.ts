@@ -33,10 +33,6 @@ export default defineConfig(() => {
             // abrir qualquer tela passa a exigir os 412 kB do jsPDF antes.
             if (id.includes('vite/preload-helper')) return 'vendor-preload';
             if (id.includes('node_modules')) {
-              if (id.includes('/firebase/') || id.includes('\\firebase\\')) {
-                if (id.includes('/storage/') || id.includes('\\storage\\')) return 'vendor-firebase-storage';
-                return 'vendor-firebase';
-              }
               if (id.includes('/@supabase/') || id.includes('\\@supabase\\')) return 'vendor-supabase';
               if (id.includes('/exceljs/') || id.includes('\\exceljs\\')) return 'vendor-excel';
               if (id.includes('/jspdf') || id.includes('\\jspdf')) return 'vendor-pdf';

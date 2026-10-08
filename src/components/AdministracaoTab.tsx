@@ -14,7 +14,7 @@ import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { AlertTriangle, CheckCircle2, ClipboardCopy, Database, Link2, MessageCircle, Plus, RotateCcw, ShieldCheck } from 'lucide-react';
 import UsuariosTab from './UsuariosTab';
-import { INTERMEDIATE_TABLE_IDS } from '../firebaseCloudSync';
+import { INTERMEDIATE_TABLE_IDS } from '../cloud/types';
 import {
   divergenciasDeRegistro,
   formatarBytes,

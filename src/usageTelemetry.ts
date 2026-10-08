@@ -1,4 +1,4 @@
-import { auth } from './firebase';
+import { supabaseAuth as auth } from './auth/supabaseAuth';
 
 export interface UsageSummaryItem {
   id: string;

@@ -12,7 +12,7 @@ import path from 'node:path';
 const KB = 1024;
 const LIMITE_INICIAL = 600 * KB;
 const LIMITE_POR_ABA = 300 * KB;
-const PESADAS_FORA_DO_INICIO = /vendor-(excel|pdf|canvas|firebase-storage)|seed-/;
+const PESADAS_FORA_DO_INICIO = /vendor-(excel|pdf|canvas)|seed-/;
 
 const dist = path.resolve('dist');
 const assets = path.join(dist, 'assets');

@@ -1,4 +1,4 @@
-import { auth } from '../firebase';
+import { supabaseAuth as auth } from '../auth/supabaseAuth';
 
 export const MASTER_DATA_ENTITIES = [
   'companies',
@@ -25,7 +25,7 @@ export type MasterDataReviewEntity =
 
 export interface MasterDataGatewayStatus {
   configured: boolean;
-  mode: 'firebase-auth-api-firestore';
+  mode: 'supabase-api';
   organization: {
     id: string;
     code: string;
@@ -50,7 +50,7 @@ export type ManagedUserRole = 'admin' | 'gestor' | 'operador' | 'leitura';
 
 export interface ManagedUser {
   id: string;
-  firebaseUid: string;
+  userId: string;
   email: string | null;
   fullName: string;
   role: ManagedUserRole;
@@ -98,7 +98,7 @@ const request = async <T>(url: string, init: MasterDataRequestInit = {}): Promis
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success !== true) {
-    throw new Error(payload?.message || 'Não foi possível consultar a persistência protegida do Firebase.');
+    throw new Error(payload?.message || 'Não foi possível consultar a persistência protegida do Supabase.');
   }
   return payload as ApiEnvelope<T>;
 };

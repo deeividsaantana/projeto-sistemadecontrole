@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { jsonResponse } from '../api/_shared/firebase-admin.js';
+import { jsonResponse } from '../api/_shared/supabase-admin.js';
 import {
   buildIdempotencyDocumentId,
   buildRequestHash,

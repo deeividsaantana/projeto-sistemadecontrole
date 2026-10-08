@@ -141,7 +141,7 @@ test('[P0-01-02] Cloud rejection error shown and modal stays open for retry', ()
  *
  * Current Bugs:
  * - EV-BUG-001: saveAndLog does optimistic write immediately but doesn't track pending state
- *               handleUploadToFirebase runs async but no UI indication
+ *               handleUploadToSupabase runs async but no UI indication
  * - EV-BUG-002: No way to show pending state since modal closes immediately
  *
  * Expected Behavior:
@@ -157,10 +157,10 @@ test('[P0-01-02] Cloud rejection error shown and modal stays open for retry', ()
  *   1. User goes offline
  *   2. User creates empresa and clicks Salvar
  *   3. Optimistic write happens, modal closes
- *   4. handleUploadToFirebase runs but fails silently (only console.warn)
+ *   4. handleUploadToSupabase runs but fails silently (only console.warn)
  *   5. No pending indicator shown
  *   6. When online again, no auto-retry
- *   7. Data might not persist to Firebase
+ *   7. Data might not persist to Supabase
  */
 test('[P0-01-03] Offline state shows pending indicator and retries when online', () => {
   // Verify app has no pending state tracking
@@ -169,7 +169,7 @@ test('[P0-01-03] Offline state shows pending indicator and retries when online',
     console.log(
       '[FAIL] ✗ Missing pending/offline state tracking:\n' +
       '  Current: No visible pending state for offline creates\n' +
-      '  Issue: handleUploadToFirebase runs async but:\n' +
+      '  Issue: handleUploadToSupabase runs async but:\n' +
       '    - Modal closes immediately (EV-BUG-002)\n' +
       '    - No UI badge/spinner to show pending (EV-BUG-001)\n' +
       '    - Manual retry not possible (modal closed)\n' +
@@ -179,15 +179,15 @@ test('[P0-01-03] Offline state shows pending indicator and retries when online',
     );
   }
 
-  // Verify handleUploadToFirebase exists and is called
-  assert.match(appSource, /handleUploadToFirebase/);
+  // Verify handleUploadToSupabase exists and is called
+assert.match(appSource, /handleUploadToSupabase/);
 
   // Verify it's called from saveAndLog
-  assert.match(appSource, /handleUploadToFirebase\(\)\.then/);
+assert.match(appSource, /handleUploadToSupabase\(\)\.then/);
 
   console.log(
     '[FAIL] ✗ No visible pending/offline state or recovery flow:\n' +
-    '  handleUploadToFirebase exists but:\n' +
+    '  handleUploadToSupabase exists but:\n' +
     '  - Only console.warn on failure (line 1511)\n' +
     '  - No error callback to parent\n' +
     '  - Modal already closed, so user can\'t see pending state\n' +
@@ -201,7 +201,7 @@ test('[P0-01-03] Offline state shows pending indicator and retries when online',
  * These tests document the current behavior and the two main bugs:
  *
  * EV-BUG-001: Cloud sync failures are silent
- *   - Location: App.tsx:1509-1525 (saveAndLog → handleUploadToFirebase error handling)
+ *   - Location: App.tsx:1509-1525 (saveAndLog → handleUploadToSupabase error handling)
  *   - Issue: Only logs console.warn, doesn't call error callback
  *   - Impact: Parent component (CadastrosTab) doesn't know about failures
  *

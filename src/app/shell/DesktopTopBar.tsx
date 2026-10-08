@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { Building2, LogOut, Search, X } from 'lucide-react';
-import type { User } from 'firebase/auth';
+import type { SupabaseAuthUser as User } from '../../auth/supabaseAuth';
 import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
 import type { Alerta } from '../../utils/alertas';

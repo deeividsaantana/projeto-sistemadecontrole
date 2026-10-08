@@ -1,8 +1,0 @@
-Option Explicit
-
-Public Sub SalvarLancamentoDieselAtalho()
-    On Error Resume Next
-    frmLancamentoDiesel.SalvarPorAtalho
-    On Error GoTo 0
-End Sub
-

@@ -1,4 +1,4 @@
-import { getAdminDb, serverTimestamp } from './_shared/firebase-admin.js';
+import { getAdminDb, serverTimestamp } from './_shared/supabase-admin.js';
 
 const CLOUD_COLLECTION = 'sistemarenea_cloud';
 const RATE_LIMIT_COLLECTION = 'sistemarenea_rate_limits';

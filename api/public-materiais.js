@@ -8,7 +8,7 @@ import {
   requestIpHash,
   requireStaffUser,
   serverTimestamp,
-} from './_shared/firebase-admin.js';
+} from './_shared/supabase-admin.js';
 import { constantTimeEquals } from './_shared/public-access.js';
 import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
 import {

@@ -6,7 +6,7 @@ import type { Equipamento, Funcionario, ListaPresenca, MovimentoMaterial } from 
  * Camada de repositório: a única ponte entre os módulos do novo frontend e
  * os dados reais. Hoje lê o cache local resiliente (mesma fonte que o app
  * atual usa — AGENTS.md chama isso de "cache local resiliente e
- * sincronização Firebase"); a assinatura de cada função não muda quando um
+ * sincronização em nuvem"); a assinatura de cada função não muda quando um
  * módulo passar a ler do Supabase. Nenhum componente de tela importa
  * STORAGE_KEYS ou localStorage diretamente.
  */

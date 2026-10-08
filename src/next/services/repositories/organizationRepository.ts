@@ -1,16 +1,44 @@
-import type { Organization } from '../../app/organizations/types';
+import type { Organization, UserRole } from '../../app/organizations/types';
+import { getSupabaseClient } from '../../../supabase/client';
 
-/**
- * Mock centralizado — único lugar que sabe quais organizações existem.
- * Trocar por uma chamada real ao Supabase (organizations + organization_members)
- * não muda quem chama isso, só o corpo destas duas funções.
- */
-const MOCK_ORGANIZATIONS: Organization[] = [
-  { id: 'org-renea', name: 'RENEA Infraestrutura', slug: 'renea', plan: 'Profissional', status: 'active', userRole: 'admin', worksitesCount: 3 },
-  { id: 'org-demo', name: 'Empresa Demo', slug: 'demo', plan: 'Teste', status: 'trial', userRole: 'owner', worksitesCount: 1 },
-];
+const normalizeRole = (role: string): UserRole => {
+  if (role === 'admin') return 'admin';
+  if (role === 'editor') return 'engenheiro';
+  return 'visualizador';
+};
 
-export const getUserOrganizations = async (_userId: string): Promise<Organization[]> => MOCK_ORGANIZATIONS;
+export const getUserOrganizations = async (_userId: string): Promise<Organization[]> => {
+  const client = getSupabaseClient();
+  const { data: authData, error: authError } = await client.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) return [];
 
-export const getOrganizationById = async (id: string): Promise<Organization | null> =>
-  MOCK_ORGANIZATIONS.find(item => item.id === id) ?? null;
+  const { data: memberships, error: membershipError } = await client
+    .from('organization_members')
+    .select('organization_id, role')
+    .eq('user_id', authData.user.id);
+  if (membershipError) throw membershipError;
+
+  const ids = (memberships || []).map(row => row.organization_id).filter(Boolean);
+  if (ids.length === 0) return [];
+  const { data: organizations, error: organizationError } = await client
+    .from('organizations')
+    .select('id, name')
+    .in('id', ids);
+  if (organizationError) throw organizationError;
+
+  return (organizations || []).map(organization => ({
+    id: organization.id,
+    name: organization.name,
+    slug: organization.id,
+    plan: 'Profissional',
+    status: 'active',
+    userRole: normalizeRole(memberships.find(row => row.organization_id === organization.id)?.role || 'viewer'),
+    worksitesCount: 0,
+  }));
+};
+
+export const getOrganizationById = async (id: string): Promise<Organization | null> => {
+  const organizations = await getUserOrganizations(id);
+  return organizations.find(item => item.id === id) ?? null;
+};

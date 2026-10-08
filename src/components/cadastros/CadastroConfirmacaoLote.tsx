@@ -69,7 +69,7 @@ export default function CadastroConfirmacaoLote({ tipo, livres, travados, proces
           <p id="cadastro-lote-texto" className="text-sm leading-relaxed text-slate-600">
             {nada
               ? 'Todos aparecem em lançamentos. Para tirar da lista sem quebrar o histórico, abra cada um e use Inativar.'
-              : 'Eles saem deste aparelho, do Firebase e dos outros aparelhos. Ficam na Lixeira desta aba, onde dá para restaurar.'}
+              : 'Eles saem deste aparelho, do Supabase e dos outros aparelhos. Ficam na Lixeira desta aba, onde dá para restaurar.'}
           </p>
         </div>
         {travados.length > 0 && (

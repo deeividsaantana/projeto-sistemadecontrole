@@ -4,6 +4,10 @@
  */
 export const enderecoDaFoto = async (caminho: string) => {
   if (/^(data:|https?:)/.test(caminho)) return caminho;
-  const [{ getDownloadURL, ref }, { storage }] = await Promise.all([import('firebase/storage'), import('../firebaseStorage')]);
-  return getDownloadURL(ref(storage, caminho));
+  const bucket = String(import.meta.env.VITE_SUPABASE_OPERATIONAL_ATTACHMENTS_BUCKET || 'operational-attachments');
+  const { data, error } = await (await import('../supabase/client')).getSupabaseClient().storage
+    .from(bucket)
+    .createSignedUrl(caminho, 3600);
+  if (error || !data?.signedUrl) throw error || new Error('Não foi possível gerar o endereço da foto.');
+  return data.signedUrl;
 };

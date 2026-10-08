@@ -5,7 +5,7 @@
  * Não existe tabela nova de previsto. A estaca prevista é uma cravação com
  * profundidade cravada zero: fica "a cravar" até alguém lançar a cravação
  * nela. Assim o previsto viaja pela mesma sincronização das cravações, sem
- * mexer no que já está gravado no navegador e no Firebase.
+ * mexer no que já está gravado no navegador e no Supabase.
  */
 import type { CravacaoEstaca } from '../../types';
 

@@ -3,7 +3,7 @@ import {
   jsonResponse,
   serverTimestamp,
   stableHash,
-} from './firebase-admin.js';
+} from './supabase-admin.js';
 
 export const IDEMPOTENCY_COLLECTION = 'sistemarenea_idempotency_keys';
 

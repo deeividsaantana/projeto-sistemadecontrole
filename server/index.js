@@ -20,7 +20,7 @@ const distDir = path.join(__dirname, '..', 'dist');
 const app = express();
 app.disable('x-powered-by');
 // Corpo cru como string: os handlers fazem o próprio parse/limite de tamanho
-// (parseJsonBody em firebase-admin.js), no formato de evento que os handlers esperam.
+// (parseJsonBody em supabase-admin.js), no formato de evento que os handlers esperam.
 app.use(express.text({ type: '*/*', limit: '2mb' }));
 
 app.use((req, res, next) => {

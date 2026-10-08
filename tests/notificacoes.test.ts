@@ -18,7 +18,7 @@ const notificacao = (extra: Partial<AppNotification> = {}): AppNotification => (
   message: 'Dados enviados',
   timestamp: '08:30',
   read: false,
-  source: 'Firebase Cloud',
+  source: 'Supabase Cloud',
   ...extra,
 });
 

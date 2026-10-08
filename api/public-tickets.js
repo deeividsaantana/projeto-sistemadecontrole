@@ -9,7 +9,7 @@ import {
   requestIpHash,
   requireStaffUser,
   serverTimestamp,
-} from './_shared/firebase-admin.js';
+} from './_shared/supabase-admin.js';
 import {
   buildPublicTicketPath,
   requirePublicTicketAccess,

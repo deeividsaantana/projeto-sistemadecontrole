@@ -2,7 +2,7 @@
  * P0-06 Offline Queue Recovery Tests
  *
  * Verifica badge de pendencias + retry manual da fila offline.
- * Padrao P0-03: node:test + inspecao de fonte, sem Firebase.
+ * Padrao P0-03: node:test + inspecao de fonte, sem SDK de nuvem.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';

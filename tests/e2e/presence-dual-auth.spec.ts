@@ -49,7 +49,7 @@ test('presence dual-auth sync: admin change visible in field within 5s', async (
   await expect(fieldContent).toBeVisible({ timeout: 5000 });
 
   // In the preview harness, admin and field are isolated props-based components.
-  // In production, they would be listening to separate Firebase onSnapshot chains.
+  // In production, they would be listening to Supabase realtime channels.
   // This test verifies they do NOT share a real-time sync mechanism.
 
   // Wait 5 seconds (the required sync time per requirements)

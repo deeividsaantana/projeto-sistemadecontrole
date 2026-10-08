@@ -129,7 +129,7 @@ interface ControlePresencaTabProps {
     resumo: TeamSyncPlan['resumo'],
   ) => Promise<{ success: boolean; message: string }>;
   /**
-   * Envios do link público que já chegaram no Firebase mas ainda não foram
+   * Envios do link público que já chegaram no Supabase mas ainda não foram
    * incorporados a este retrato local. Um número maior que zero por muito
    * tempo indica que o processamento em tempo real travou, mesmo sem erro
    * visível — o dado existe, só não foi puxado para cá ainda.
@@ -794,13 +794,13 @@ export default function ControlePresencaTab({
     try {
       const result = await onSyncEquipesPlanilha(proximosFuncionarios, proximasEquipes, syncPlan.resumo);
       if (!result.success) {
-        setSyncError(`As equipes foram salvas neste computador, mas o Firebase não foi atualizado: ${result.message}`);
+      setSyncError(`As equipes foram salvas neste computador, mas o Supabase não foi atualizado: ${result.message}`);
         return;
       }
       setSyncPlan(null);
       setSyncFileName('');
       const desmobilizados = syncPlan.resumo.desmobilizar > 0 ? ` ${syncPlan.resumo.desmobilizar} colaborador(es) desmobilizado(s) por sair da planilha.` : '';
-      setFeedback(`Equipes sincronizadas no Firebase: ${syncPlan.resumo.criar} criadas, ${syncPlan.resumo.atualizar} atualizadas, ${syncPlan.resumo.desativar} desativadas.${desmobilizados}`);
+      setFeedback(`Equipes sincronizadas no Supabase: ${syncPlan.resumo.criar} criadas, ${syncPlan.resumo.atualizar} atualizadas, ${syncPlan.resumo.desativar} desativadas.${desmobilizados}`);
     } finally {
       setSyncBusy(false);
     }
@@ -1570,7 +1570,7 @@ export default function ControlePresencaTab({
             <footer className="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:justify-end">
               <p className="flex-1 text-xs text-slate-500">Equipes fora da planilha ficam inativas, nunca são excluídas. Colaboradores fora da planilha são marcados como desmobilizados (saem do efetivo), o cadastro nunca é apagado. Os links já distribuídos continuam valendo.</p>
               <button type="button" onClick={() => setSyncPlan(null)} className={SECONDARY_BUTTON}>Cancelar</button>
-              <button type="button" onClick={() => void confirmarSincronizacao()} disabled={syncBusy} className={PRIMARY_BUTTON}>{syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {syncBusy ? 'Gravando no Firebase' : 'Gravar sincronização'}</button>
+              <button type="button" onClick={() => void confirmarSincronizacao()} disabled={syncBusy} className={PRIMARY_BUTTON}>{syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {syncBusy ? 'Gravando no Supabase' : 'Gravar sincronização'}</button>
             </footer>
           </div>
         </div>,

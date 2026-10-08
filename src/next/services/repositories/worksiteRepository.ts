@@ -1,11 +1,16 @@
 import type { Worksite } from '../../app/organizations/types';
+import { getSupabaseClient } from '../../../supabase/client';
 
-const MOCK_WORKSITES: Worksite[] = [
-  { id: 'obra-alto-tiete', organizationId: 'org-renea', name: 'Complexo do Alto Tietê' },
-  { id: 'obra-serra', organizationId: 'org-renea', name: 'Rodovia da Serra' },
-  { id: 'obra-duplicada', organizationId: 'org-renea', name: 'Duplicação BR-101' },
-  { id: 'obra-demo', organizationId: 'org-demo', name: 'Obra Demonstração' },
-];
-
-export const getByOrganizationId = async (organizationId: string): Promise<Worksite[]> =>
-  MOCK_WORKSITES.filter(item => item.organizationId === organizationId);
+export const getByOrganizationId = async (organizationId: string): Promise<Worksite[]> => {
+  const { data, error } = await getSupabaseClient()
+    .from('projects')
+    .select('id, organization_id, name')
+    .eq('organization_id', organizationId)
+    .order('name');
+  if (error) throw error;
+  return (data || []).map(project => ({
+    id: project.id,
+    organizationId: project.organization_id,
+    name: project.name,
+  }));
+};

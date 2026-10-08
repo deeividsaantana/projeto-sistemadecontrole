@@ -9,10 +9,19 @@ import { isPublicLinkUrl } from './app/routing/publicRoutes';
 import { parsePrivatePath } from './app/routing/privateRoutes';
 import { PrivateRouteApp } from './app/routing/PrivateRouteApp';
 import { isSupabaseCloudEnabled } from './platform/cloudProvider';
+import App from './App';
 import { mirrorReneaLocalStorage, restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';
 import { instalarReservaEmMemoria, registrarPendentesDaReserva } from './utils/reservaArmazenamento';
 
 const startApplication = async () => {
+  // Um service worker de um build anterior pode continuar controlando o
+  // localhost e devolver index.html no lugar de módulos .tsx do Vite.
+  // Em desenvolvimento, remova esse controle antes de iniciar a aplicação.
+  if (!import.meta.env.PROD && 'serviceWorker' in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map(registration => registration.unregister()));
+  }
+
   // Antes de qualquer leitura: memória cheia não pode fazer o envio publicar cópia antiga.
   // O que não coube vai na hora para a cópia de recuperação (IndexedDB, bem
   // maior), para um F5 antes do envio à nuvem não perder o que foi lançado.
@@ -36,10 +45,7 @@ const startApplication = async () => {
     if (privateRoute && isSupabaseCloudEnabled) {
       root.render(<StrictMode><AppProviders><PrivateRouteApp route={privateRoute} /></AppProviders></StrictMode>);
     } else {
-      const [{ default: App }, pendentes] = await Promise.all([
-        import('./App.tsx'),
-        restoreMissingReneaLocalStorage(reserva),
-      ]);
+      const pendentes = await restoreMissingReneaLocalStorage(reserva);
       registrarPendentesDaReserva(pendentes);
       root.render(<StrictMode><AppProviders><App /></AppProviders></StrictMode>);
     }

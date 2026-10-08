@@ -1,4 +1,4 @@
-import { cleanString, serverTimestamp } from './firebase-admin.js';
+import { cleanString, serverTimestamp } from './supabase-admin.js';
 
 const SENSITIVE_FIELD_PATTERN = /authorization|cookie|password|secret|token|api[_-]?key|serviceaccount/i;
 const MAX_AUDIT_DEPTH = 4;

@@ -12,7 +12,6 @@
     "lint": "tsc --noEmit",
     "test": "node scripts/run-tests.mjs",
     "start": "node server/index.js",
-    "provision:staff": "node scripts/provision-staff.mjs",
     "prepare": "node scripts/install-git-hooks.mjs",
     "e2e": "playwright test",
     "check:bundle": "node scripts/check-bundle-size.mjs"
@@ -29,8 +28,6 @@
     "@vitejs/plugin-react": "^5.0.4",
     "exceljs": "^4.4.0",
     "express": "^4.21.2",
-    "firebase": "^12.15.0",
-    "firebase-admin": "^13.6.0",
     "gsap": "^3.15.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",

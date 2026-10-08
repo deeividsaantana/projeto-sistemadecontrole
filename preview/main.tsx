@@ -102,7 +102,7 @@ const previewGroups = SIDEBAR_NAVIGATION_GROUPS
   .map(g => ({ label: g.label, items: g.items.filter(item => (PRIMARY_MODULE_IDS as readonly string[]).includes(item.id)) }))
   .filter(g => g.items.length > 0);
 const previewNotifications = [
-  { id: '1', type: 'success' as const, title: 'Sincronizacao concluida', message: 'Dados do periodo enviados para a nuvem.', timestamp: '08:12', read: false, source: 'Firebase Cloud' as const },
+  { id: '1', type: 'success' as const, title: 'Sincronizacao concluida', message: 'Dados do periodo enviados para a nuvem.', timestamp: '08:12', read: false, source: 'Supabase Cloud' as const },
   { id: '2', type: 'warning' as const, title: 'Estoque baixo', message: 'Produto de lubrificacao abaixo do minimo.', timestamp: '07:40', read: true, source: 'Sistema Local' as const },
 ];
 

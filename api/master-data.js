@@ -20,7 +20,7 @@ import {
   parseJsonBody,
   requireStaffUser,
   serverTimestamp,
-} from './_shared/firebase-admin.js';
+} from './_shared/supabase-admin.js';
 import {
   assertHttpMethod,
   assertIdempotencyKey,
@@ -76,7 +76,7 @@ const getRequestContext = async event => {
   const staff = await requireStaffUser(event);
   const role = normalizeStaffRole(staff.role);
   const organizationId = safeId(
-    resolveOrganizationId(staff, process.env.FIREBASE_DEFAULT_ORGANIZATION_ID || 'renea'),
+    resolveOrganizationId(staff, process.env.SUPABASE_ORGANIZATION_ID || 'renea'),
     'Organização',
   );
   const database = getAdminDb();
@@ -97,7 +97,7 @@ const getRequestContext = async event => {
   const userId = safeId(staff.uid || staff.sub, 'Usuário');
   await database.collection(USERS_COLLECTION).doc(organizationId + '_' + userId).set({
     organizationId,
-    firebaseUid: userId,
+    userId,
     email: cleanString(staff.email, 320).toLowerCase() || null,
     fullName: cleanString(staff.name || staff.email || 'Equipe RENEA', 240),
     role,
@@ -120,7 +120,7 @@ const gatewayStatus = async context => jsonResponse(200, {
   success: true,
   data: {
     configured: true,
-    mode: 'firebase-auth-api-firestore',
+    mode: 'supabase-api',
     organization: {
       id: context.organizationId,
       code: context.organization.code || context.organizationId.toUpperCase(),
@@ -242,7 +242,7 @@ const createUser = async (body, context) => {
   });
   await context.database.collection(USERS_COLLECTION).doc(context.organizationId + '_' + user.uid).set({
     organizationId: context.organizationId,
-    firebaseUid: user.uid,
+    userId: user.uid,
     email,
     fullName,
     role,
@@ -278,7 +278,7 @@ const updateUser = async (body, context) => {
   const after = { email: user.email || null, displayName: user.displayName || null, role, active };
   await context.database.collection(USERS_COLLECTION).doc(context.organizationId + '_' + uid).set({
     organizationId: context.organizationId,
-    firebaseUid: uid,
+    userId: uid,
     email: user.email || null,
     fullName: user.displayName || user.email || 'Usuário',
     role,

@@ -1252,7 +1252,7 @@ export interface AppNotification {
   message: string;
   timestamp: string; // HH:MM
   read: boolean;
-  source: 'RENEA API' | 'Sistema Local' | 'Firebase Cloud';
+  source: 'RENEA API' | 'Sistema Local' | 'Supabase Cloud';
 }
 
 export interface PeriodoArquivado {

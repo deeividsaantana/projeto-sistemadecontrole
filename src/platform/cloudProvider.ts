@@ -1,20 +1,17 @@
-export type CloudProvider = 'firebase' | 'supabase' | 'dual-write';
+export type CloudProvider = 'supabase';
 
-const SUPPORTED_PROVIDERS = new Set<CloudProvider>(['firebase', 'supabase', 'dual-write']);
+const SUPPORTED_PROVIDERS = new Set<CloudProvider>(['supabase']);
 
-const requestedProvider = String(import.meta.env.VITE_CLOUD_PROVIDER || 'firebase')
+// Supabase é o único provedor aceito pelo sistema.
+const requestedProvider = String(import.meta.env.VITE_CLOUD_PROVIDER || 'supabase')
   .trim()
   .toLowerCase();
 
 export const cloudProvider: CloudProvider = SUPPORTED_PROVIDERS.has(requestedProvider as CloudProvider)
   ? requestedProvider as CloudProvider
-  : 'firebase';
+  : 'supabase';
 
-export const isSupabaseCloudEnabled = cloudProvider === 'supabase' || cloudProvider === 'dual-write';
+export const isSupabaseCloudEnabled = true;
 
-export const cloudProviderLabel = cloudProvider === 'supabase'
-  ? 'Supabase'
-  : cloudProvider === 'dual-write'
-    ? 'Firebase + Supabase'
-    : 'Firebase';
+export const cloudProviderLabel = 'Supabase';
 

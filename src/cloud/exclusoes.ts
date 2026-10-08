@@ -14,7 +14,7 @@
  * Excluir de vez tira o item da Lixeira e joga fora a cópia guardada, mas a
  * marca continua: sem ela, um aparelho atrasado publicaria o cadastro de volta.
  *
- * Não depende do Firebase: no Supabase a mesma marca vira `deleted_at` e
+ * A exclusão é persistida no Supabase como `deleted_at` e
  * `deleted_by` na linha do cadastro.
  */
 

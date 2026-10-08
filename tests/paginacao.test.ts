@@ -19,7 +19,7 @@ test('a página nunca passa do total de páginas', () => {
   assert.match(fonte, /Math\.min\(pagina, totalPaginas\)/);
 });
 
-// Custo de Firebase é prioridade máxima do sistema: a tela de tickets lia a
+// Custo de rede é prioridade máxima do sistema: a tela de tickets lia a
 // coleção inteira a cada 30 segundos. Isto trava a correção no lugar.
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 

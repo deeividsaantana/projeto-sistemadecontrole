@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { divergenciasDeRegistro, formatarBytes, resumoArmazenamento, volumePorColecao } from '../src/utils/diagnostico';
-import { INTERMEDIATE_TABLE_IDS } from '../src/firebaseCloudSync';
+import { INTERMEDIATE_TABLE_IDS } from '../src/cloud/types';
 import { STORAGE_KEYS } from '../src/data/storageKeys';
 
 test('toda coleção de dados está no backup e na sincronização', () => {

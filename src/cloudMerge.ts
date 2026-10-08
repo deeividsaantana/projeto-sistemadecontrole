@@ -1,7 +1,7 @@
 // Mesclagem usada quando o envio para a nuvem encontra um conflito de versão:
 // outro usuário publicou entre a leitura do manifesto e a confirmação. Antes
 // disso o envio inteiro era descartado em silêncio, e o trabalho de quem
-// perdia a corrida nunca chegava ao Firebase.
+// perdia a corrida nunca chegava ao Supabase.
 //
 // Regras, nesta ordem:
 // 1. Registro que existe só de um lado é sempre preservado. É isso que impede

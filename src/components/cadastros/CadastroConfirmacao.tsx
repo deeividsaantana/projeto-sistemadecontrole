@@ -69,7 +69,7 @@ export default function CadastroConfirmacao({ acao, nome, codigo, usos, podeInat
                 ? 'Ele aparece em lançamentos. Se sumir, esses lançamentos ficam sem nome no histórico e nos relatórios. Inative: ele sai das listas de escolha e o histórico continua certo.'
                 : 'Ele aparece em lançamentos. Se sumir, esses lançamentos ficam sem nome no histórico e nos relatórios.'
               : acao === 'excluir'
-                ? 'Ele sai deste aparelho, do Firebase e dos outros aparelhos. Fica na Lixeira desta aba, onde dá para restaurar.'
+                ? 'Ele sai deste aparelho, do Supabase e dos outros aparelhos. Fica na Lixeira desta aba, onde dá para restaurar.'
                 : acao === 'excluir-de-vez'
                   ? 'Sai da Lixeira em todos os aparelhos e não dá mais para restaurar. O histórico de lançamentos não muda.'
                 : 'Ele sai das listas de escolha, mas continua no histórico e nos lançamentos antigos. Dá para reativar quando quiser.'}
