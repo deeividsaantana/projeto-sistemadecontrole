@@ -45,11 +45,23 @@ export const functionErrorResponse = error => jsonResponse(Number(error?.statusC
 const valueAt = (value, path) => String(path).split('.').reduce((current, key) => current == null ? undefined : current[key], value);
 const snapshot = (row, ref) => ({ id: row?.id, exists: Boolean(row), ref, data: () => row?.payload || {} });
 const rowStore = () => getSupabaseAdmin().from('legacy_documents');
+const PUBLIC_SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
+const mirrorPublicSubmission = async (id, document) => {
+  const { error } = await getSupabaseAdmin().from('erp_public_submissions').upsert({
+    id,
+    organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea',
+    kind: cleanString(document?.kind, 80) || 'presence',
+    status: cleanString(document?.status, 40) || 'pending',
+    created_at: document?.createdAtIso || document?.createdAt || new Date().toISOString(),
+    payload: document?.payload || {},
+  });
+  if (error) throw error;
+};
 const makeRef = (path, id = crypto.randomUUID()) => ({
   id,
   path: `${path}/${id}`,
   async get() { const { data, error } = await rowStore().select('id,payload').eq('path', `${path}/${id}`).maybeSingle(); if (error) throw error; return snapshot(data ? { ...data, payload: data.payload } : null, makeRef(path, id)); },
-  async set(payload, options = {}) { const current = options.merge ? await this.get() : null; const next = options.merge ? { ...(current.data() || {}), ...payload } : payload; const { error } = await rowStore().upsert({ id, organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea', collection_path: path, path: `${path}/${id}`, payload: next, updated_at: new Date().toISOString() }); if (error) throw error; },
+  async set(payload, options = {}) { const current = options.merge ? await this.get() : null; const next = options.merge ? { ...(current.data() || {}), ...payload } : payload; const { error } = await rowStore().upsert({ id, organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea', collection_path: path, path: `${path}/${id}`, payload: next, updated_at: new Date().toISOString() }); if (error) throw error; if (path === PUBLIC_SUBMISSIONS_COLLECTION) await mirrorPublicSubmission(id, next); },
   async update(payload) { const current = await this.get(); if (!current.exists) throw new Error('Documento não encontrado.'); await this.set({ ...current.data(), ...payload }); },
   async delete() { const { error } = await rowStore().delete().eq('path', `${path}/${id}`); if (error) throw error; },
   collection(child) { return makeCollection(`${path}/${id}/${child}`); },

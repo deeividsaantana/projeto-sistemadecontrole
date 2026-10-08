@@ -21,3 +21,27 @@ assert.match(
   /typeof error === 'object' && error && 'message' in error/,
   'erros estruturados do Supabase precisam preservar a mensagem para o alerta',
 );
+
+const adapter = read('api/_shared/supabase-admin.js');
+assert.match(
+  adapter,
+  /const mirrorPublicSubmission = async/,
+  'o adaptador precisa espelhar envios públicos na fila relacional observada pelo painel',
+);
+assert.match(
+  adapter,
+  /from\('erp_public_submissions'\)\.upsert/,
+  'o espelho precisa usar upsert idempotente na fila relacional',
+);
+
+const recoveryMigration = read('supabase/migrations/202610080002_backfill_public_presence_queue.sql');
+assert.match(
+  recoveryMigration,
+  /from public\.legacy_documents/i,
+  'os envios feitos antes da correção precisam ser recuperados da fila legada',
+);
+assert.match(
+  recoveryMigration,
+  /on conflict \(id\) do update/i,
+  'a recuperação deve ser idempotente',
+);
