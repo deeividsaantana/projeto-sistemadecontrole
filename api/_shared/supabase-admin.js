@@ -47,7 +47,11 @@ const snapshot = (row, ref) => ({ id: row?.id, exists: Boolean(row), ref, data: 
 const rowStore = () => getSupabaseAdmin().from('legacy_documents');
 const PUBLIC_SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
 const mirrorPublicSubmission = async (id, document) => {
-  const { error } = await getSupabaseAdmin().from('erp_public_submissions').upsert({
+  const table = getSupabaseAdmin().from('erp_public_submissions');
+  const { data: existing, error: existingError } = await table.select('status').eq('id', id).maybeSingle();
+  if (existingError) throw existingError;
+  if (existing?.status === 'processed' && document?.status === 'pending') return;
+  const { error } = await table.upsert({
     id,
     organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea',
     kind: cleanString(document?.kind, 80) || 'presence',
@@ -68,7 +72,26 @@ const makeRef = (path, id = crypto.randomUUID()) => ({
 });
 const makeCollection = path => {
   const filters = [];
-  const query = { where(field, operator, value) { filters.push({ field, operator, value }); return query; }, orderBy(field, direction = 'asc') { query._order = { field, direction }; return query; }, limit(count) { query._limit = count; return query; }, async get() { let builder = rowStore().select('id,payload').eq('collection_path', path); const { data, error } = await builder; if (error) throw error; let rows = data || []; rows = rows.filter(row => filters.every(filter => { const actual = valueAt(row.payload, filter.field); return filter.operator === '==' ? actual === filter.value : filter.operator === 'in' ? Array.isArray(filter.value) && filter.value.includes(actual) : filter.operator === '>=' ? actual >= filter.value : true; })); if (query._order) rows.sort((a, b) => String(valueAt(a.payload, query._order.field) || '').localeCompare(String(valueAt(b.payload, query._order.field) || '')) * (query._order.direction === 'desc' ? -1 : 1)); if (query._limit) rows = rows.slice(0, query._limit); return { docs: rows.map(row => snapshot(row, makeRef(path, row.id))) }; }, doc(id) { return makeRef(path, id); } }; return query;
+  const query = {
+    where(field, operator, value) { filters.push({ field, operator, value }); return query; },
+    orderBy(field, direction = 'asc') { query._order = { field, direction }; return query; },
+    limit(count) { query._limit = count; return query; },
+    async get() {
+      const { data, error } = await rowStore().select('id,payload').eq('collection_path', path);
+      if (error) throw error;
+      let rows = data || [];
+      if (path === PUBLIC_SUBMISSIONS_COLLECTION) await Promise.all(rows.map(row => mirrorPublicSubmission(row.id, row.payload)));
+      rows = rows.filter(row => filters.every(filter => {
+        const actual = valueAt(row.payload, filter.field);
+        return filter.operator === '==' ? actual === filter.value : filter.operator === 'in' ? Array.isArray(filter.value) && filter.value.includes(actual) : filter.operator === '>=' ? actual >= filter.value : true;
+      }));
+      if (query._order) rows.sort((a, b) => String(valueAt(a.payload, query._order.field) || '').localeCompare(String(valueAt(b.payload, query._order.field) || '')) * (query._order.direction === 'desc' ? -1 : 1));
+      if (query._limit) rows = rows.slice(0, query._limit);
+      return { docs: rows.map(row => snapshot(row, makeRef(path, row.id))) };
+    },
+    doc(id) { return makeRef(path, id); },
+  };
+  return query;
 };
 const makeBatch = () => { const actions = []; return { set(ref, data, options) { actions.push(() => ref.set(data, options)); }, update(ref, data) { actions.push(() => ref.update(data)); }, delete(ref) { actions.push(() => ref.delete()); }, async commit() { for (const action of actions) await action(); } }; };
 export const getAdminDb = () => ({ collection: makeCollection, batch: makeBatch, async runTransaction(callback) { const transaction = { get: ref => ref.get(), set: (ref, data, options) => ref.set(data, options), update: (ref, data) => ref.update(data), delete: ref => ref.delete(), create: (ref, data) => ref.set(data) }; return callback(transaction); } });

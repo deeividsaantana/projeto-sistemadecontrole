@@ -30,8 +30,18 @@ assert.match(
 );
 assert.match(
   adapter,
-  /from\('erp_public_submissions'\)\.upsert/,
+  /table\.upsert/,
   'o espelho precisa usar upsert idempotente na fila relacional',
+);
+assert.match(
+  adapter,
+  /existing\?\.status === 'processed' && document\?\.status === 'pending'/,
+  'um espelho legado não pode reabrir um envio que o painel já processou',
+);
+assert.match(
+  adapter,
+  /if \(path === PUBLIC_SUBMISSIONS_COLLECTION\) await Promise\.all\(rows\.map\(row => mirrorPublicSubmission\(row\.id, row\.payload\)\)\);/,
+  'a leitura da fila legada deve recuperar envios pendentes feitos antes da correção',
 );
 
 const recoveryMigration = read('supabase/migrations/202610080002_backfill_public_presence_queue.sql');
