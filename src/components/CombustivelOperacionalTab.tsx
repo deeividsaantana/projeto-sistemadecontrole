@@ -19,6 +19,9 @@ import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '.
 import { normalizeQuickTime } from '../utils/combustivelValidation';
 import { buildMacroFuelingRecord, getDefaultDieselFuelId, parseFuelFormNumber, resolveMacroPumpReadings } from '../utils/fuelMacroForm';
 import { buildFuelHistoryAnalytics, type FuelHistoryGroup } from '../modules/frota/fuelHistoryAnalytics';
+import { analisarHistoricoAbastecimentos } from '../modules/frota/fuelHistoryAdvanced';
+import { DesviosBadge } from './CombustivelDesviosIndicadores';
+import { ImportacaoPlanilhaModal } from './ImportacaoPlanilhaModal';
 
 interface Props {
   empresas: Empresa[];
@@ -68,11 +71,15 @@ interface FiltrosHistorico {
   equipamentoId: string;
   empresaId: string;
   combustivelId: string;
+  statusRevisao: string;
+  comDesvios: boolean;
+  origem: string;
 }
 
 const TAMANHO_PAGINA_HISTORICO = 50;
 const FILTROS_HISTORICO_VAZIOS: FiltrosHistorico = {
   texto: '', dataInicio: '', dataFim: '', comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '',
+  statusRevisao: '', comDesvios: false, origem: '',
 };
 const CORES_GRAFICO_COMBUSTIVEL = ['#176b4d', '#f26a2e', '#718087', '#f7f8f6'];
 
@@ -95,7 +102,7 @@ const vazio = (usuario: string, data = hoje()): Formulario => ({
 export default function CombustivelOperacionalTab({
   empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
   onSaveAbastecimento, onDeleteAbastecimento, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
-  openHistorySignal = 0,
+  onImportAbastecimentos, openHistorySignal = 0,
 }: Props) {
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
@@ -114,6 +121,8 @@ export default function CombustivelOperacionalTab({
   const [comboioFixoId, setComboioFixoId] = useState('');
   /** Campos que a pessoa mexeu; o que vem do lançamento do dia não passa por cima deles. */
   const [mexidos, setMexidos] = useState<ReadonlySet<keyof Formulario>>(() => new Set());
+  const [modalImportacaoAberto, setModalImportacaoAberto] = useState(false);
+  const [importandoPlanilha, setImportandoPlanilha] = useState(false);
 
   useEffect(() => {
     if (openHistorySignal > 0) setView('historico');
@@ -122,6 +131,8 @@ export default function CombustivelOperacionalTab({
   const ativos = useMemo(() => abastecimentos
     .filter(item => !item.inativoEm && item.status !== 'Cancelado')
     .sort((a, b) => `${b.data}${b.hora}`.localeCompare(`${a.data}${a.hora}`)), [abastecimentos]);
+  const ativosComDesvios = useMemo(() => analisarHistoricoAbastecimentos(ativos), [ativos]);
+  const desviosPorId = useMemo(() => new Map(ativosComDesvios.map(a => [a.id, a.desvios])), [ativosComDesvios]);
   const porId = useMemo(() => new Map(equipamentos.map(item => [item.id, item])), [equipamentos]);
   const empresaPorId = useMemo(() => new Map<string, string>(empresas.map(item => [item.id, item.nome])), [empresas]);
   const comboioPorId = useMemo(() => new Map(comboios.map(item => [item.id, item.nome])), [comboios]);
@@ -242,17 +253,43 @@ export default function CombustivelOperacionalTab({
     }
   };
 
+  const handleImportarAbastecimentos = (registros: Abastecimento[], combustiveisNovos?: TipoCombustivel[]) => {
+    setImportandoPlanilha(true);
+    try {
+      // Salva cada registro importado
+      registros.forEach(registro => {
+        onSaveAbastecimento(registro, true);
+      });
+
+      // Chama callback de importação se disponível
+      if (onImportAbastecimentos) {
+        onImportAbastecimentos(registros, combustiveisNovos);
+      }
+
+      setAviso(`${registros.length} abastecimento(s) importado(s) com sucesso.`);
+      setModalImportacaoAberto(false);
+    } catch (err) {
+      setErro(`Erro ao importar: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setImportandoPlanilha(false);
+    }
+  };
+
   const historicoFiltrado = useMemo(() => {
     const termo = semAcento(filtrosHistorico.texto.trim());
     return ativos.filter(item => {
       const maquina = porId.get(item.equipamentoId);
       const empresaId = maquina?.empresaId || '';
+      const desvios = desviosPorId.get(item.id) || [];
       if (filtrosHistorico.dataInicio && item.data < filtrosHistorico.dataInicio) return false;
       if (filtrosHistorico.dataFim && item.data > filtrosHistorico.dataFim) return false;
       if (filtrosHistorico.comboioId && item.comboioId !== filtrosHistorico.comboioId) return false;
       if (filtrosHistorico.equipamentoId && item.equipamentoId !== filtrosHistorico.equipamentoId) return false;
       if (filtrosHistorico.empresaId && empresaId !== filtrosHistorico.empresaId) return false;
       if (filtrosHistorico.combustivelId && item.tipoCombustivelId !== filtrosHistorico.combustivelId) return false;
+      if (filtrosHistorico.statusRevisao && item.revisaoStatus !== filtrosHistorico.statusRevisao) return false;
+      if (filtrosHistorico.comDesvios && desvios.length === 0) return false;
+      if (filtrosHistorico.origem && item.origem !== filtrosHistorico.origem) return false;
       if (!termo) return true;
       return semAcento([
         item.data, item.hora, maquina?.prefixo, item.prefixoInformado, maquina?.nome, maquina?.tipo,
@@ -260,7 +297,7 @@ export default function CombustivelOperacionalTab({
         item.responsavel, item.operadorNome, item.localAbastecimento, item.observacao,
       ].filter(Boolean).join(' ')).includes(termo);
     });
-  }, [ativos, comboioPorId, empresaPorId, filtrosHistorico, nomeCombustivel, porId]);
+  }, [ativos, comboioPorId, empresaPorId, filtrosHistorico, nomeCombustivel, porId, desviosPorId]);
   const analyticsHistorico = useMemo(() => buildFuelHistoryAnalytics({
     records: historicoFiltrado, equipamentos, empresas, comboios, combustiveis, referenceDate: hoje(),
   }), [comboios, combustiveis, equipamentos, empresas, historicoFiltrado]);
@@ -629,6 +666,17 @@ export default function CombustivelOperacionalTab({
           </footer>
         </section>
       </div>}
+
+      <ImportacaoPlanilhaModal
+        isOpen={modalImportacaoAberto}
+        isLoading={importandoPlanilha}
+        equipamentos={equipamentos}
+        combustiveis={combustiveis}
+        comboios={comboios}
+        usuarioResponsavel={usuario}
+        onConfirm={handleImportarAbastecimentos}
+        onCancel={() => setModalImportacaoAberto(false)}
+      />
 
       <ConfirmDialog
         open={Boolean(excluindo)}
