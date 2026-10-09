@@ -7,9 +7,7 @@ import '@fontsource-variable/outfit';
 import '@fontsource-variable/geist';
 import { isPublicLinkUrl } from './app/routing/publicRoutes';
 import { parsePrivatePath } from './app/routing/privateRoutes';
-import { PrivateRouteApp } from './app/routing/PrivateRouteApp';
 import { isSupabaseCloudEnabled } from './platform/cloudProvider';
-import App from './App';
 import { mirrorReneaLocalStorage, restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';
 import { instalarReservaEmMemoria, registrarPendentesDaReserva } from './utils/reservaArmazenamento';
 
@@ -43,10 +41,12 @@ const startApplication = async () => {
   } else {
     const privateRoute = parsePrivatePath(window.location.pathname);
     if (privateRoute && isSupabaseCloudEnabled) {
+      const { PrivateRouteApp } = await import('./app/routing/PrivateRouteApp');
       root.render(<StrictMode><AppProviders><PrivateRouteApp route={privateRoute} /></AppProviders></StrictMode>);
     } else {
       const pendentes = await restoreMissingReneaLocalStorage(reserva);
       registrarPendentesDaReserva(pendentes);
+      const { default: App } = await import('./App');
       root.render(<StrictMode><AppProviders><App /></AppProviders></StrictMode>);
     }
     startReneaStorageMirror(reserva);

@@ -45,7 +45,7 @@ interface Props {
   openHistorySignal?: number;
 }
 
-type View = 'resumo' | 'novo' | 'historico';
+type View = 'resumo' | 'novo' | 'historico' | 'relatorio';
 
 interface Formulario {
   data: string;
@@ -101,11 +101,38 @@ const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFr
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const CAMPO_MACRO = 'h-8 w-full rounded-none border border-[#718087] bg-white px-3 text-sm font-medium text-slate-950 shadow-[inset_1px_1px_0_rgba(15,23,42,0.18)] outline-none transition focus:border-[#176b4d] focus:ring-2 focus:ring-[#176b4d]/20 disabled:text-slate-500';
 const ROTULO_MACRO = 'flex h-8 items-center text-sm font-black text-black';
+type AgrupamentoRelatorio = 'competencia' | 'empresa' | 'equipamento' | 'comboio' | 'combustivel';
 
 const vazio = (usuario: string, data = hoje()): Formulario => ({
   data, hora: agoraHora(), prefixo: '', tipoCombustivelId: '', comboioId: '', litros: '', bombaInicial: '', horimetro: '', km: '',
   responsavel: usuario, observacao: '',
 });
+
+function addFuelRankingWorksheet(workbook: { addWorksheet: (name: string, options?: unknown) => any }, name: string, grupos: FuelHistoryGroup[], medida: 'litros' | 'registros') {
+  const worksheet = workbook.addWorksheet(name, { views: [{ showGridLines: false }] });
+  worksheet.columns = [
+    { header: 'Posição', key: 'posicao', width: 10 },
+    { header: 'Grupo', key: 'nome', width: 42 },
+    { header: 'Litros', key: 'litros', width: 16 },
+    { header: 'Registros', key: 'registros', width: 14 },
+    { header: 'Participação', key: 'percentual', width: 16 },
+  ];
+  worksheet.getRow(4).values = ['Posição', 'Grupo', 'Litros', 'Registros', 'Participação'];
+  grupos.slice(0, 80).forEach((grupo, index) => worksheet.addRow({
+    posicao: index + 1,
+    nome: grupo.nome,
+    litros: grupo.litros,
+    registros: grupo.registros,
+    percentual: `${grupo.percentual}%`,
+  }));
+  worksheet.getCell('A2').value = name;
+  worksheet.getCell('A2').font = { bold: true, size: 16, color: { argb: 'FF176B4D' } };
+  worksheet.getRow(4).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  worksheet.getRow(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F4057' } };
+  worksheet.views = [{ state: 'frozen', ySplit: 4, showGridLines: false }];
+  worksheet.autoFilter = { from: 'A4', to: `E${Math.max(5, worksheet.rowCount)}` };
+  return worksheet;
+}
 
 export default function CombustivelOperacionalTab({
   empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
@@ -121,7 +148,8 @@ export default function CombustivelOperacionalTab({
   const [filtrosRelatorio, setFiltrosRelatorio] = useState<FiltrosRelatorio>(FILTROS_RELATORIO_VAZIOS);
   const [paginaHistorico, setPaginaHistorico] = useState(0);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-  const [abaDashboard, setAbaDashboard] = useState<'resumo' | 'planilha' | 'ranking' | 'conferencia'>('resumo');
+  const [abaDashboard, setAbaDashboard] = useState<'resumo' | 'ranking'>('resumo');
+  const [agrupamentoRelatorio, setAgrupamentoRelatorio] = useState<AgrupamentoRelatorio>('competencia');
   const [exportandoHistorico, setExportandoHistorico] = useState<'' | 'excel' | 'pdf'>('');
   const [excluindo, setExcluindo] = useState<Abastecimento | null>(null);
   const [erro, setErro] = useState('');
@@ -315,6 +343,15 @@ export default function CombustivelOperacionalTab({
     filtrosHistorico.combustivelId ? `Combustível: ${nomeCombustivel.get(filtrosHistorico.combustivelId) || filtrosHistorico.combustivelId}` : '',
     filtrosHistorico.texto.trim() ? `Busca: ${filtrosHistorico.texto.trim()}` : '',
   ].filter(Boolean), [comboioPorId, empresaPorId, filtrosHistorico, nomeCombustivel, porId]);
+  const filtrosRelatorioAplicadosTexto = useMemo(() => [
+    filtrosRelatorio.competencia ? `Competência: ${competenciasDisponiveis.find(item => item.chave === filtrosRelatorio.competencia)?.rotulo || filtrosRelatorio.competencia}` : '',
+    filtrosRelatorio.empresaId ? `Empresa: ${empresaPorId.get(filtrosRelatorio.empresaId) || filtrosRelatorio.empresaId}` : '',
+    filtrosRelatorio.equipamentoId ? `Equipamento: ${porId.get(filtrosRelatorio.equipamentoId)?.prefixo || filtrosRelatorio.equipamentoId}` : '',
+    filtrosRelatorio.comboioId ? `Comboio: ${comboioPorId.get(filtrosRelatorio.comboioId) || filtrosRelatorio.comboioId}` : '',
+    filtrosRelatorio.combustivelId ? `Combustível: ${nomeCombustivel.get(filtrosRelatorio.combustivelId) || filtrosRelatorio.combustivelId}` : '',
+    filtrosRelatorio.apenasConferencia ? 'Somente conferência' : '',
+    filtrosRelatorio.texto.trim() ? `Busca: ${filtrosRelatorio.texto.trim()}` : '',
+  ].filter(Boolean), [comboioPorId, competenciasDisponiveis, empresaPorId, filtrosRelatorio, nomeCombustivel, porId]);
 
   const atualizarFiltroHistorico = (campo: keyof FiltrosHistorico, valor: string) => {
     setFiltrosHistorico(atual => ({ ...atual, [campo]: valor }));
@@ -322,6 +359,61 @@ export default function CombustivelOperacionalTab({
   };
 
   const linhasHistoricoExportacao = () => relatorioHistorico.linhasExcel;
+
+  const exportarRelatorioExcel = async () => {
+    setExportandoHistorico('excel');
+    try {
+      const { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } = await import('../utils/excelCorporate');
+      const workbook = await createCorporateWorkbook();
+      configureCorporateWorkbook(workbook, 'Relatório de combustível');
+      addCorporateSummarySheet(workbook, 'Relatório de Combustível', [
+        ['Registros filtrados', relatorioCombustivel.totalRegistros],
+        ['Volume total', `${numeroTexto(relatorioCombustivel.totalLitros)} L`],
+        ['Conferência', relatorioCombustivel.totalConferencia],
+        ['Equipamentos', relatorioCombustivel.porEquipamento.filter(item => item.litros > 0).length],
+      ], filtrosRelatorioAplicadosTexto);
+      addFuelRankingWorksheet(workbook, 'RANKING COMPETÊNCIAS', relatorioCombustivel.porCompetencia, 'litros');
+      addFuelRankingWorksheet(workbook, 'RANKING EMPRESAS', relatorioCombustivel.porEmpresa, 'litros');
+      addFuelRankingWorksheet(workbook, 'RANKING EQUIPAMENTOS', relatorioCombustivel.porEquipamento, 'litros');
+      addFuelRankingWorksheet(workbook, 'RANKING COMBOIOS', relatorioCombustivel.porComboio, 'registros');
+      addFuelRankingWorksheet(workbook, 'RANKING COMBUSTÍVEIS', relatorioCombustivel.porCombustivel, 'litros');
+      const conferencia = workbook.addWorksheet('CONFERÊNCIA', { views: [{ showGridLines: false }] });
+      conferencia.columns = [
+        { header: 'Aba', key: 'aba', width: 16 }, { header: 'Linha', key: 'linha', width: 9 },
+        { header: 'Data', key: 'data', width: 13 }, { header: 'Prefixo', key: 'prefixo', width: 13 },
+        { header: 'Descrição do equipamento', key: 'descricao', width: 30 }, { header: 'Litros', key: 'litros', width: 13 },
+        { header: 'Comboio', key: 'comboio', width: 18 }, { header: 'Empresa', key: 'empresa', width: 26 },
+        { header: 'Status', key: 'status', width: 20 }, { header: 'Observação', key: 'observacao', width: 36 },
+      ];
+      conferencia.getRow(4).values = ['Aba', 'Linha', 'Data', 'Prefixo', 'Descrição do equipamento', 'Litros', 'Comboio', 'Empresa', 'Status', 'Observação'];
+      relatorioCombustivel.linhasExcel.filter(linha => linha.status === 'Conferência necessária').forEach(linha => conferencia.addRow({
+        aba: linha.aba, linha: linha.linha, data: linha.data, prefixo: linha.prefixo, descricao: linha.descricao,
+        litros: linha.litros, comboio: linha.comboio, empresa: linha.empresa, status: linha.status, observacao: linha.observacao,
+      }));
+      styleCorporateWorksheet(conferencia, { title: 'Conferência de Combustível', headerRow: 4, lastColumn: 10, dataStartRow: 5, recordCount: relatorioCombustivel.totalConferencia, filters: filtrosRelatorioAplicadosTexto });
+      const worksheet = workbook.addWorksheet('LANÇAMENTOS', { views: [{ showGridLines: false }] });
+      worksheet.columns = [
+        { header: 'Aba', key: 'aba', width: 16 }, { header: 'Linha', key: 'linha', width: 9 },
+        { header: 'Dia', key: 'dia', width: 8 }, { header: 'Data', key: 'data', width: 13 },
+        { header: 'Prefixo', key: 'prefixo', width: 13 }, { header: 'Descrição do equipamento', key: 'descricao', width: 28 },
+        { header: 'KM inicial', key: 'kmInicial', width: 14 }, { header: 'Horímetro', key: 'horimetro', width: 14 },
+        { header: 'Litros', key: 'litros', width: 13 }, { header: 'Hora', key: 'hora', width: 9 },
+        { header: 'Comboio', key: 'comboio', width: 18 }, { header: 'Tipo de combustível', key: 'tipoCombustivel', width: 20 },
+        { header: 'Empresa', key: 'empresa', width: 24 }, { header: 'Bomba inicial', key: 'bombaInicial', width: 15 },
+        { header: 'Bomba final', key: 'bombaFinal', width: 15 }, { header: 'Status', key: 'status', width: 18 },
+        { header: 'Observação', key: 'observacao', width: 32 },
+      ];
+      worksheet.getRow(4).values = ['Aba', 'Linha', 'Dia', 'Data', 'Prefixo', 'Descrição do equipamento', 'KM inicial', 'Horímetro', 'Litros', 'Hora', 'Comboio', 'Tipo de combustível', 'Empresa', 'Bomba inicial', 'Bomba final', 'Status', 'Observação'];
+      relatorioCombustivel.linhasExcel.forEach(linha => worksheet.addRow(linha));
+      styleCorporateWorksheet(worksheet, { title: 'Lançamentos de Combustível', headerRow: 4, lastColumn: 17, dataStartRow: 5, recordCount: relatorioCombustivel.totalRegistros, filters: filtrosRelatorioAplicadosTexto });
+      await downloadCorporateWorkbook(workbook, `RENEA_relatorio_combustivel_${hoje()}.xlsx`);
+      setAviso(`${relatorioCombustivel.totalRegistros} registro(s) exportado(s) para Excel.`);
+    } catch (falha) {
+      setErro(falha instanceof Error ? `Falha ao exportar Excel: ${falha.message}` : 'Falha ao exportar Excel.');
+    } finally {
+      setExportandoHistorico('');
+    }
+  };
 
   const exportarHistoricoExcel = async () => {
     setExportandoHistorico('excel');
@@ -333,7 +425,24 @@ export default function CombustivelOperacionalTab({
         ['Registros filtrados', historicoFiltrado.length], ['Volume total', `${numeroTexto(totalLitrosHistorico)} L`],
         ['Equipamentos', maquinasHistorico], ['Empresas', empresasHistorico],
       ], filtrosHistoricoAplicados);
-      const worksheet = workbook.addWorksheet('HISTÓRICO', { views: [{ showGridLines: false }] });
+      addFuelRankingWorksheet(workbook, 'RANKING EMPRESAS', relatorioHistorico.porEmpresa, 'litros');
+      addFuelRankingWorksheet(workbook, 'RANKING EQUIPAMENTOS', relatorioHistorico.porEquipamento, 'litros');
+      addFuelRankingWorksheet(workbook, 'RANKING COMBOIOS', relatorioHistorico.porComboio, 'registros');
+      const conferencia = workbook.addWorksheet('CONFERÊNCIA', { views: [{ showGridLines: false }] });
+      conferencia.columns = [
+        { header: 'Aba', key: 'aba', width: 16 }, { header: 'Linha', key: 'linha', width: 9 },
+        { header: 'Data', key: 'data', width: 13 }, { header: 'Prefixo', key: 'prefixo', width: 13 },
+        { header: 'Descrição do equipamento', key: 'descricao', width: 30 }, { header: 'Litros', key: 'litros', width: 13 },
+        { header: 'Comboio', key: 'comboio', width: 18 }, { header: 'Empresa', key: 'empresa', width: 26 },
+        { header: 'Status', key: 'status', width: 20 }, { header: 'Observação', key: 'observacao', width: 36 },
+      ];
+      conferencia.getRow(4).values = ['Aba', 'Linha', 'Data', 'Prefixo', 'Descrição do equipamento', 'Litros', 'Comboio', 'Empresa', 'Status', 'Observação'];
+      linhasHistoricoExportacao().filter(linha => linha.status === 'Conferência necessária').forEach(linha => conferencia.addRow({
+        aba: linha.aba, linha: linha.linha, data: linha.data, prefixo: linha.prefixo, descricao: linha.descricao,
+        litros: linha.litros, comboio: linha.comboio, empresa: linha.empresa, status: linha.status, observacao: linha.observacao,
+      }));
+      styleCorporateWorksheet(conferencia, { title: 'Conferência de Combustível', headerRow: 4, lastColumn: 10, dataStartRow: 5, recordCount: relatorioHistorico.totalConferencia, filters: filtrosHistoricoAplicados });
+      const worksheet = workbook.addWorksheet('LANÇAMENTOS', { views: [{ showGridLines: false }] });
       worksheet.columns = [
         { header: 'Aba', key: 'aba', width: 16 }, { header: 'Linha', key: 'linha', width: 9 },
         { header: 'Dia', key: 'dia', width: 8 }, { header: 'Data', key: 'data', width: 13 },
@@ -429,14 +538,26 @@ export default function CombustivelOperacionalTab({
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(raiz.querySelectorAll('[data-comb-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' });
-  }, { scope: escopo, dependencies: [view, dia] });
+  }, { scope: escopo, dependencies: [view, dia, agrupamentoRelatorio] });
 
-  const vistas = [['resumo', 'Resumo', Fuel], ['novo', 'Lançar', Plus], ['historico', 'Histórico', History]] as const;
+  const vistas = [['resumo', 'Resumo', Fuel], ['novo', 'Lançar', Plus], ['historico', 'Histórico', History], ['relatorio', 'Relatório', FileSpreadsheet]] as const;
   const abasDashboard = [
     ['resumo', 'Resumo', PieChart],
-    ['planilha', 'Planilha', FileSpreadsheet],
     ['ranking', 'Ranking', BarChart3],
-    ['conferencia', 'Conferência', AlertTriangle],
+  ] as const;
+  const gruposRelatorio = {
+    competencia: relatorioCombustivel.porCompetencia,
+    empresa: relatorioCombustivel.porEmpresa,
+    equipamento: relatorioCombustivel.porEquipamento,
+    comboio: relatorioCombustivel.porComboio,
+    combustivel: relatorioCombustivel.porCombustivel,
+  } satisfies Record<AgrupamentoRelatorio, FuelHistoryGroup[]>;
+  const agrupamentosRelatorio = [
+    ['competencia', 'Mês', CalendarDays],
+    ['empresa', 'Empresa', PieChart],
+    ['equipamento', 'Equipamento', Fuel],
+    ['comboio', 'Comboio', History],
+    ['combustivel', 'Combustível', Droplets],
   ] as const;
 
   return (
@@ -446,7 +567,7 @@ export default function CombustivelOperacionalTab({
           <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`}><Droplets className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Lubrificação</span></button>
           <button type="button" onClick={() => abrirNovo()} className={`${BOTAO_PRIMARIO} min-h-10 px-3 sm:px-4`} data-testid="combustivel-novo"><Plus className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Novo abastecimento</span><span className="sm:hidden">Lançar</span><kbd title="Atalho de teclado: N" aria-label="Atalho de teclado: N" className="inline-flex rounded-md bg-white/15 px-1.5 font-mono text-xs">N</kbd></button>
         </>} />
-        <nav aria-label="Área de combustível" className="grid w-full grid-cols-3 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200">
+        <nav aria-label="Área de combustível" className="grid w-full grid-cols-2 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:grid-cols-4">
           {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? abrirNovo() : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-bold transition sm:gap-2 sm:px-3 sm:text-sm ${view === id ? 'bg-white text-[#176b4d] shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
         </nav>
       </div>}
@@ -457,20 +578,6 @@ export default function CombustivelOperacionalTab({
       </p>
 
       {view === 'resumo' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-dashboard">
-        <section data-comb-reveal aria-label="Filtros do relatório de combustível" className={`${CARTAO} shrink-0 p-3`}>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.2fr_repeat(5,minmax(0,1fr))_auto]">
-            <label className="sm:col-span-2 lg:col-span-1"><span className={`${ROTULO} mb-1 block`}>Busca do relatório</span><span className="relative block"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input value={filtrosRelatorio.texto} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, texto: event.target.value }))} placeholder="Prefixo, empresa, comboio, aba..." className={`${CAMPO} pl-9`} /></span></label>
-            <label><span className={`${ROTULO} mb-1 block`}>Competência</span><select value={filtrosRelatorio.competencia} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, competencia: event.target.value }))} className={CAMPO}><option value="">Todas</option>{competenciasDisponiveis.map(item => <option key={item.chave} value={item.chave}>{item.rotulo}</option>)}</select></label>
-            <label><span className={`${ROTULO} mb-1 block`}>Empresa</span><select value={filtrosRelatorio.empresaId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, empresaId: event.target.value }))} className={CAMPO}><option value="">Todas</option>{empresas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-            <label><span className={`${ROTULO} mb-1 block`}>Equipamento</span><select value={filtrosRelatorio.equipamentoId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, equipamentoId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{equipamentos.map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select></label>
-            <label><span className={`${ROTULO} mb-1 block`}>Comboio</span><select value={filtrosRelatorio.comboioId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, comboioId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-            <label><span className={`${ROTULO} mb-1 block`}>Combustível</span><select value={filtrosRelatorio.combustivelId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, combustivelId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-            <div className="flex items-end gap-2">
-              <button type="button" aria-pressed={filtrosRelatorio.apenasConferencia} onClick={() => setFiltrosRelatorio(atual => ({ ...atual, apenasConferencia: !atual.apenasConferencia }))} className={`${filtrosRelatorio.apenasConferencia ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} min-h-10 px-3`}><AlertTriangle className="size-4" aria-hidden="true" />Conferir</button>
-              <button type="button" onClick={() => setFiltrosRelatorio(FILTROS_RELATORIO_VAZIOS)} disabled={!Object.values(filtrosRelatorio).some(Boolean)} title="Limpar filtros do relatório" className={`${BOTAO_SECUNDARIO} min-h-10 px-3`}><RotateCcw className="size-4" aria-hidden="true" /></button>
-            </div>
-          </div>
-        </section>
         <div className="grid shrink-0 grid-cols-4 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white">
           {[
             ['Lançamentos', relatorioCombustivel.totalRegistros.toLocaleString('pt-BR')],
@@ -479,7 +586,7 @@ export default function CombustivelOperacionalTab({
             ['Equipamentos', relatorioCombustivel.porEquipamento.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
           ].map(([titulo, valor]) => <div key={titulo} className="min-w-0 px-2 py-2 sm:px-3"><p className="truncate text-[9px] font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">{titulo}</p><p className="mt-0.5 truncate text-sm font-black tabular-nums text-slate-950 sm:text-lg">{valor}</p></div>)}
         </div>
-        <nav aria-label="Painéis do resumo de combustível" className="grid shrink-0 grid-cols-4 rounded-lg bg-slate-100 p-1">
+        <nav aria-label="Painéis do resumo de combustível" className="grid shrink-0 grid-cols-2 rounded-lg bg-slate-100 p-1">
           {abasDashboard.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={abaDashboard === id} onClick={() => setAbaDashboard(id)} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-1 text-[11px] font-bold sm:px-2 sm:text-xs ${abaDashboard === id ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
         </nav>
         {abaDashboard === 'resumo' && <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-consumo">
@@ -488,32 +595,83 @@ export default function CombustivelOperacionalTab({
           <GraficoRosca titulo="Consumo por comboio" grupos={relatorioCombustivel.porComboio} vazio="Sem comboio vinculado." />
           <GraficoBarras titulo="Competências" grupos={relatorioCombustivel.porCompetencia} medida="litros" vazio="Sem competência com lançamento." />
         </div>}
-        {abaDashboard === 'planilha' && <TabelaPlanilhaCombustivel linhas={relatorioCombustivel.linhasExcel.slice(0, 120)} total={relatorioCombustivel.linhasExcel.length} />}
         {abaDashboard === 'ranking' && <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-ranking">
           <GraficoBarras titulo="Top empresas" grupos={relatorioCombustivel.porEmpresa} medida="litros" vazio="Sem volume por empresa." />
           <GraficoBarras titulo="Top equipamentos" grupos={relatorioCombustivel.porEquipamento} medida="litros" vazio="Sem volume por equipamento." />
           <GraficoBarras titulo="Lançamentos por comboio" grupos={relatorioCombustivel.porComboio} medida="registros" vazio="Sem comboios com lançamento." />
           <GraficoBarras titulo="Volume por combustível" grupos={relatorioCombustivel.porCombustivel} medida="litros" vazio="Sem tipos de combustível." />
         </div>}
-        {abaDashboard === 'conferencia' && <TabelaPlanilhaCombustivel linhas={relatorioCombustivel.linhasExcel.filter(item => item.status === 'Conferência necessária').slice(0, 120)} total={relatorioCombustivel.totalConferencia} destaqueConferencia />}
+      </div>}
+
+      {view === 'relatorio' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-relatorio">
+        <section data-comb-reveal aria-label="Filtros do relatório de combustível" className={`${CARTAO} shrink-0 overflow-hidden`}>
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="grid size-9 place-items-center rounded-xl bg-blue-50 text-blue-700"><FileSpreadsheet className="size-5" aria-hidden="true" /></span>
+              <div>
+                <h2 className="text-base font-black text-slate-950">Relatório de combustível</h2>
+                <p className="text-xs text-slate-500">Filtros, rankings e linhas no mesmo padrão operacional.</p>
+              </div>
+            </div>
+            <span className="flex flex-wrap gap-2">
+              <button type="button" onClick={exportarRelatorioExcel} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_SECUNDARIO} px-3`}><Download className="size-4" aria-hidden="true" />{exportandoHistorico === 'excel' ? 'Gerando...' : 'Excel'}</button>
+              <button type="button" onClick={() => setFiltrosRelatorio(FILTROS_RELATORIO_VAZIOS)} disabled={!Object.values(filtrosRelatorio).some(Boolean)} title="Limpar filtros do relatório" className={`${BOTAO_SECUNDARIO} px-3`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
+            </span>
+          </header>
+          <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-[1.25fr_repeat(5,minmax(0,1fr))]">
+            <label className="md:col-span-2 xl:col-span-1"><span className={`${ROTULO} mb-1 block`}>Busca</span><span className="relative block"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input value={filtrosRelatorio.texto} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, texto: event.target.value }))} placeholder="Prefixo, empresa, comboio, aba..." className={`${CAMPO} pl-9`} /></span></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Competência</span><select value={filtrosRelatorio.competencia} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, competencia: event.target.value }))} className={CAMPO}><option value="">Todas</option>{competenciasDisponiveis.map(item => <option key={item.chave} value={item.chave}>{item.rotulo}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Empresa</span><select value={filtrosRelatorio.empresaId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, empresaId: event.target.value }))} className={CAMPO}><option value="">Todas</option>{empresas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Equipamento</span><select value={filtrosRelatorio.equipamentoId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, equipamentoId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{equipamentos.map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Comboio</span><select value={filtrosRelatorio.comboioId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, comboioId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Combustível</span><select value={filtrosRelatorio.combustivelId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, combustivelId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+          </div>
+        </section>
+        <div className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            ['Lançamentos', relatorioCombustivel.totalRegistros.toLocaleString('pt-BR')],
+            ['Volume abastecido', litrosTexto(relatorioCombustivel.totalLitros)],
+            ['Conferência', relatorioCombustivel.totalConferencia.toLocaleString('pt-BR')],
+            ['Equipamentos', relatorioCombustivel.porEquipamento.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
+          ].map(([titulo, valor]) => <div key={titulo} data-comb-reveal className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{titulo}</p><p className="mt-1 text-xl font-black tabular-nums text-slate-950">{valor}</p></div>)}
+        </div>
+        <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
+          <section data-comb-reveal className={`${CARTAO} flex min-h-0 flex-col overflow-hidden`}>
+            <header className="border-b border-slate-100 px-4 py-3">
+              <h3 className="text-sm font-black text-slate-900">Agrupamento</h3>
+              <nav aria-label="Agrupar relatório de combustível" className="mt-3 grid grid-cols-2 gap-2">
+                {agrupamentosRelatorio.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={agrupamentoRelatorio === id} onClick={() => setAgrupamentoRelatorio(id)} className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-2 text-xs font-bold ${agrupamentoRelatorio === id ? 'border-[#176b4d] bg-emerald-50 text-[#176b4d]' : 'border-slate-200 bg-white text-slate-600'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
+              </nav>
+            </header>
+            <RankingRelatorioCombustivel grupos={gruposRelatorio[agrupamentoRelatorio]} medida={agrupamentoRelatorio === 'comboio' ? 'registros' : 'litros'} />
+          </section>
+          <PainelLinhasCombustivel linhas={relatorioCombustivel.linhasExcel.slice(0, 160)} total={relatorioCombustivel.linhasExcel.length} />
+        </div>
       </div>}
 
       {view === 'novo' && (
-        <form data-comb-reveal onSubmit={event => { event.preventDefault(); salvar(false); }} className="w-full bg-white" data-testid="combustivel-form">
-          <div className="bg-white">
-            <header className="flex flex-col gap-2 border-b border-slate-200 bg-white px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-sm font-black uppercase tracking-[0.12em] text-[#176b4d]">Lançamento de abastecimento</span>
+        <form data-comb-reveal onSubmit={event => { event.preventDefault(); salvar(false); }} className="mx-auto w-full max-w-[75rem] space-y-4" data-testid="combustivel-form">
+          <div className="flex flex-col gap-4">
+            <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <button type="button" onClick={() => setView('resumo')} className={`${BOTAO_SECUNDARIO} mb-3 min-h-8 px-3 py-1`}><ArrowLeft className="size-4" aria-hidden="true" />Voltar</button>
+                <h2 className="text-xl font-black text-slate-950">Novo abastecimento de combustível</h2>
+                <p className="text-sm text-slate-500">Use Enter para avançar e Ctrl + S para salvar.</p>
+              </div>
               <span className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setView('resumo')} className={`${BOTAO_SECUNDARIO} min-h-8 rounded-none px-3 py-1`}><ArrowLeft className="size-4" aria-hidden="true" />Voltar</button>
-                <button type="button" onClick={limparLancamento} className={`${BOTAO_SECUNDARIO} min-h-8 rounded-none px-3 py-1`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
-                <button type="button" onClick={() => salvar(true)} className={`${BOTAO_SECUNDARIO} min-h-8 justify-center rounded-none px-3 py-1`} data-testid="combustivel-salvar-outro"><Save className="size-4" aria-hidden="true" />Salvar e lançar outro</button>
-                <button type="submit" className={`${BOTAO_PRIMARIO} min-h-8 rounded-none px-4 py-1`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />Salvar</button>
+                <button type="button" onClick={limparLancamento} className={`${BOTAO_SECUNDARIO} min-h-9 px-3 py-1`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
+                <button type="button" onClick={() => salvar(true)} className={`${BOTAO_SECUNDARIO} min-h-9 justify-center px-3 py-1`} data-testid="combustivel-salvar-outro"><Save className="size-4" aria-hidden="true" />Salvar e outro</button>
+                <button type="submit" className={`${BOTAO_PRIMARIO} min-h-9 px-4 py-1`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />Salvar</button>
               </span>
             </header>
 
-            <div className="bg-white px-4 py-5 sm:px-12 lg:px-20" data-testid="combustivel-macro-form">
-              <fieldset className="grid gap-x-8 gap-y-5 lg:grid-cols-[9.5rem_minmax(18rem,20rem)_8rem_minmax(12rem,16rem)]">
-                <legend className="sr-only">Lançamento no layout da macro</legend>
+            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="combustivel-macro-form">
+              <header className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
+                <CalendarDays className="size-4 text-blue-600" aria-hidden="true" />
+                <h3 className="text-sm font-black text-slate-950">Dados do abastecimento</h3>
+              </header>
+              <fieldset className="grid gap-x-5 gap-y-5 p-5 lg:grid-cols-[10rem_minmax(12rem,1fr)_10rem_minmax(12rem,1fr)]">
+                <legend className="sr-only">Lançamento de combustível</legend>
 
                 <label htmlFor="combustivel-mes" className={ROTULO_MACRO}>Mês</label>
                 <select id="combustivel-mes" value={mesMacro(form.data)} disabled className={`${CAMPO_MACRO} max-w-[19rem]`}>
@@ -533,10 +691,10 @@ export default function CombustivelOperacionalTab({
                 <span className="hidden lg:block" />
 
                 <label htmlFor="combustivel-descricao" className={ROTULO_MACRO}>Descrição</label>
-                <input id="combustivel-descricao" value={equipamento?.nome || ''} readOnly className={`${CAMPO_MACRO} lg:col-span-3`} />
+                <input id="combustivel-descricao" value={equipamento?.nome || ''} readOnly className={`${CAMPO_MACRO} bg-slate-50 lg:col-span-3`} />
 
                 <label htmlFor="combustivel-empresa" className={ROTULO_MACRO}>Empresa</label>
-                <input id="combustivel-empresa" value={empresaEquipamento || ''} readOnly className={`${CAMPO_MACRO} lg:col-span-3`} />
+                <input id="combustivel-empresa" value={empresaEquipamento || ''} readOnly className={`${CAMPO_MACRO} bg-slate-50 lg:col-span-3`} />
 
                 <label htmlFor="combustivel-km" className={ROTULO_MACRO}>KM inicial</label>
                 <input id="combustivel-km" inputMode="decimal" value={form.km} onChange={event => mudar('km', event.target.value)} placeholder={contexto?.ultimoKm ? `último: ${numeroTexto(contexto.ultimoKm.valor)}` : '0'} className={`${CAMPO_MACRO} max-w-[19rem] font-mono`} data-testid="combustivel-km" />
@@ -565,7 +723,7 @@ export default function CombustivelOperacionalTab({
                 <label htmlFor="combustivel-bomba-inicial" className={ROTULO_MACRO}>Bomba inicial</label>
                 <input id="combustivel-bomba-inicial" inputMode="decimal" value={form.bombaInicial} onChange={event => mudar('bombaInicial', event.target.value)} placeholder={form.comboioId ? 'Digite a leitura inicial' : 'Selecione o comboio'} className={`${CAMPO_MACRO} max-w-[19rem] font-mono`} data-testid="combustivel-bomba-inicial" />
                 <span className={`${ROTULO_MACRO} lg:justify-end`}>Bomba final</span>
-                <output className={`${CAMPO_MACRO} flex items-center font-mono`} data-testid="combustivel-bomba-final">{leiturasBomba.bombaFinal > 0 ? numeroTexto(leiturasBomba.bombaFinal) : ''}</output>
+                <output className={`${CAMPO_MACRO} flex items-center bg-blue-50 font-mono font-black text-blue-700`} data-testid="combustivel-bomba-final">{leiturasBomba.bombaFinal > 0 ? numeroTexto(leiturasBomba.bombaFinal) : ''}</output>
 
                 <span className="hidden lg:block" />
                 <p className={`pt-2 font-black ${equipamento ? 'text-black' : 'text-slate-600'} lg:col-span-3`}>
@@ -574,7 +732,7 @@ export default function CombustivelOperacionalTab({
               </fieldset>
 
             {avisos.length > 0 && (
-              <ul className="space-y-1.5" data-testid="combustivel-avisos">
+              <ul className="space-y-1.5 px-5 pb-4" data-testid="combustivel-avisos">
                 {avisos.map(item => (
                   <li key={item.texto} className={`flex items-start gap-2 rounded-xl px-3 py-2 text-sm font-semibold ring-1 ring-inset ${item.tom === 'alerta' ? 'bg-amber-50 text-amber-900 ring-amber-200' : 'bg-[#f7f8f6] text-slate-700 ring-slate-200'}`}>
                     {item.tom === 'alerta' ? <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> : <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />}
@@ -583,9 +741,24 @@ export default function CombustivelOperacionalTab({
                 ))}
               </ul>
             )}
-            {erro && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
+            {erro && <p role="alert" className="mx-5 mb-4 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
 
-            </div>
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <div className="overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
+                <header className="flex items-center gap-2 border-b border-emerald-100 bg-emerald-50 px-4 py-3"><CheckCircle2 className="size-4 text-emerald-700" aria-hidden="true" /><h3 className="text-sm font-black text-slate-950">Resumo da leitura</h3></header>
+                <div className="grid gap-3 p-4 text-sm sm:grid-cols-3">
+                  <div><p className="text-xs font-black uppercase text-slate-400">Litros</p><p className="font-mono text-lg font-black text-slate-950">{parseFuelFormNumber(form.litros, 0) > 0 ? litrosTexto(parseFuelFormNumber(form.litros, 0)) : '0 L'}</p></div>
+                  <div><p className="text-xs font-black uppercase text-slate-400">Inicial</p><p className="font-mono text-lg font-black text-slate-950">{leiturasBomba.bombaInicial > 0 ? numeroTexto(leiturasBomba.bombaInicial) : '—'}</p></div>
+                  <div><p className="text-xs font-black uppercase text-slate-400">Final</p><p className="font-mono text-lg font-black text-[#176b4d]">{leiturasBomba.bombaFinal > 0 ? numeroTexto(leiturasBomba.bombaFinal) : '—'}</p></div>
+                </div>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm">
+                <header className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3"><AlertTriangle className="size-4 text-amber-700" aria-hidden="true" /><h3 className="text-sm font-black text-slate-950">Conferência</h3></header>
+                <div className="p-4 text-sm font-semibold text-slate-600">{avisos.length ? `${avisos.length} aviso(s) para revisar antes de salvar.` : 'Nenhum alerta para este lançamento.'}</div>
+              </div>
+            </section>
           </div>
         </form>
       )}
@@ -641,30 +814,7 @@ export default function CombustivelOperacionalTab({
           </header>
           {historicoPaginado.length === 0
             ? <div className="px-4 py-14 text-center"><History className="mx-auto size-8 text-slate-300" aria-hidden="true" /><p className="mt-3 font-semibold text-slate-700">Nenhum abastecimento encontrado</p><p className="mt-1 text-sm text-slate-500">Ajuste os filtros ou limpe a busca para consultar outros lançamentos.</p></div>
-            : <div className="min-h-0 flex-1 overflow-auto"><table className="w-full min-w-[1180px] text-left text-sm">
-                <thead className="sticky top-0 z-[1] bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500"><tr>
-                  <th className="px-3 py-3">Data / hora</th><th className="px-3 py-3">Equipamento</th><th className="px-3 py-3">Empresa</th><th className="px-3 py-3">Comboio</th><th className="px-3 py-3">Combustível</th><th className="px-3 py-3 text-right">Litros</th><th className="px-3 py-3">Bomba inicial → final</th><th className="px-3 py-3">KM / horímetro</th><th className="px-3 py-3">Responsável</th><th className="px-3 py-3">Ação</th>
-                </tr></thead>
-                <tbody className="divide-y divide-slate-100">
-                  {historicoPaginado.map(item => {
-                    const maquina = porId.get(item.equipamentoId);
-                    const empresa = maquina ? empresaPorId.get(maquina.empresaId) : '';
-                    const revisaoPendente = item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || item.alertas?.some(alerta => alerta.severidade !== 'info');
-                    return <tr key={item.id} className="transition-colors hover:bg-emerald-50/40">
-                      <td className="whitespace-nowrap px-3 py-3"><span className="block font-semibold text-slate-800">{dataCurta(item.data)}</span><span className="font-mono text-xs text-slate-500">{item.hora || '—'}</span></td>
-                      <td className="px-3 py-3"><span className="block font-mono font-bold text-slate-950">{maquina?.prefixo || item.prefixoInformado || 'Sem cadastro'}</span><span className="block max-w-44 truncate text-xs text-slate-500">{maquina?.nome || 'Equipamento não cadastrado'}</span></td>
-                      <td className="max-w-44 truncate px-3 py-3 text-slate-600">{empresa || '—'}</td>
-                      <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700">{comboioPorId.get(item.comboioId) || '—'}</td>
-                      <td className="px-3 py-3 text-slate-600">{nomeCombustivel.get(item.tipoCombustivelId) || '—'}</td>
-                      <td className="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums text-slate-950">{litrosTexto(Number(item.quantidadeLitros || 0))}</td>
-                      <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-slate-600">{item.bombaInicial > 0 ? numeroTexto(item.bombaInicial) : '—'} <span className="text-slate-300">→</span> {item.bombaFinal > 0 ? numeroTexto(item.bombaFinal) : '—'}</td>
-                      <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600">{item.kmInicial > 0 ? `${numeroTexto(item.kmInicial)} km` : '—'}{item.horimetroInicial > 0 ? ` · ${numeroTexto(item.horimetroInicial)} h` : ''}</td>
-                      <td className="max-w-36 truncate px-3 py-3 text-slate-600">{item.responsavel || '—'}</td>
-                      <td className="px-3 py-3"><span className="flex items-center gap-2">{revisaoPendente && <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">Conferir</span>}<button type="button" onClick={() => setExcluindo(item)} aria-label={`Excluir abastecimento de ${maquina?.prefixo || item.prefixoInformado || 'máquina'}`} title="Excluir abastecimento" className={`grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-rose-300 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button></span></td>
-                    </tr>;
-                  })}
-                </tbody>
-              </table></div>}
+            : <ListaHistoricoCombustivel itens={historicoPaginado} porId={porId} empresaPorId={empresaPorId} comboioPorId={comboioPorId} nomeCombustivel={nomeCombustivel} onExcluir={setExcluindo} />}
           <footer className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
             <p className="text-xs text-slate-500">Página {paginaHistoricoAtual + 1} de {totalPaginasHistorico}</p>
             <div className="flex items-center gap-2">
@@ -758,42 +908,104 @@ function GraficoRosca({ titulo, grupos, vazio }: { titulo: string; grupos: FuelH
   </section>;
 }
 
-function TabelaPlanilhaCombustivel({ linhas, total, destaqueConferencia = false }: { linhas: FuelReportExcelRow[]; total: number; destaqueConferencia?: boolean }) {
-  return <section className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden`} data-testid="combustivel-planilha">
+function ListaHistoricoCombustivel({ itens, porId, empresaPorId, comboioPorId, nomeCombustivel, onExcluir }: {
+  itens: readonly Abastecimento[];
+  porId: ReadonlyMap<string, Equipamento>;
+  empresaPorId: ReadonlyMap<string, string>;
+  comboioPorId: ReadonlyMap<string, string>;
+  nomeCombustivel: ReadonlyMap<string, string>;
+  onExcluir: (item: Abastecimento) => void;
+}) {
+  return <div className="min-h-0 flex-1 overflow-auto p-3">
+    <ul className="grid gap-2 xl:grid-cols-2">
+      {itens.map(item => {
+        const maquina = porId.get(item.equipamentoId);
+        const empresa = maquina ? empresaPorId.get(maquina.empresaId) : '';
+        const revisaoPendente = item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || item.alertas?.some(alerta => alerta.severidade !== 'info');
+        return <li key={item.id} data-comb-reveal className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-emerald-200 hover:bg-emerald-50/30">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-500">{dataCurta(item.data)} · {item.hora || 'Sem hora'}</p>
+              <h4 className="mt-1 truncate font-mono text-lg font-black text-slate-950">{maquina?.prefixo || item.prefixoInformado || 'Sem cadastro'}</h4>
+              <p className="truncate text-sm text-slate-600">{maquina?.nome || 'Equipamento não cadastrado'}</p>
+            </div>
+            <div className="flex items-start justify-between gap-2 sm:flex-col sm:items-end">
+              <strong className="text-xl font-black tabular-nums text-[#176b4d]">{litrosTexto(Number(item.quantidadeLitros || 0))}</strong>
+              <button type="button" onClick={() => onExcluir(item)} aria-label={`Excluir abastecimento de ${maquina?.prefixo || item.prefixoInformado || 'máquina'}`} title="Excluir abastecimento" className={`grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-rose-300 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button>
+            </div>
+          </div>
+          <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
+            <div><dt className="font-black uppercase text-slate-400">Empresa</dt><dd className="truncate font-semibold text-slate-700">{empresa || '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Comboio</dt><dd className="truncate font-semibold text-slate-700">{comboioPorId.get(item.comboioId) || '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Combustível</dt><dd className="truncate font-semibold text-slate-700">{nomeCombustivel.get(item.tipoCombustivelId) || '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Responsável</dt><dd className="truncate font-semibold text-slate-700">{item.responsavel || '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Bomba</dt><dd className="font-mono text-slate-700">{item.bombaInicial > 0 ? numeroTexto(item.bombaInicial) : '—'} → {item.bombaFinal > 0 ? numeroTexto(item.bombaFinal) : '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">KM</dt><dd className="font-mono text-slate-700">{item.kmInicial > 0 ? numeroTexto(item.kmInicial) : '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Horímetro</dt><dd className="font-mono text-slate-700">{item.horimetroInicial > 0 ? numeroTexto(item.horimetroInicial) : '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Status</dt><dd>{revisaoPendente ? <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-800">Conferir</span> : <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-800">OK</span>}</dd></div>
+          </dl>
+        </li>;
+      })}
+    </ul>
+  </div>;
+}
+
+function RankingRelatorioCombustivel({ grupos, medida }: { grupos: FuelHistoryGroup[]; medida: 'litros' | 'registros' }) {
+  const maior = Math.max(1, ...grupos.map(item => medida === 'litros' ? item.litros : item.registros));
+  return <div className="min-h-0 flex-1 overflow-auto p-3">
+    {grupos.length === 0 ? <p className="grid min-h-52 place-items-center text-center text-sm text-slate-500">Sem dados para o agrupamento selecionado.</p> : <ol className="space-y-2">
+      {grupos.slice(0, 30).map((grupo, index) => {
+        const valor = medida === 'litros' ? grupo.litros : grupo.registros;
+        return <li key={grupo.chave} data-comb-reveal className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">#{index + 1}</p>
+              <p className="truncate text-sm font-black text-slate-950" title={grupo.nome}>{grupo.nome}</p>
+              <p className="text-xs text-slate-500">{grupo.registros.toLocaleString('pt-BR')} registro(s) · {grupo.percentual}%</p>
+            </div>
+            <strong className="shrink-0 text-right text-sm font-black tabular-nums text-[#176b4d]">{medida === 'litros' ? litrosTexto(grupo.litros) : grupo.registros.toLocaleString('pt-BR')}</strong>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><span className="block h-full rounded-full bg-[#176b4d]" style={{ width: `${Math.max(4, valor / maior * 100)}%` }} /></div>
+        </li>;
+      })}
+    </ol>}
+  </div>;
+}
+
+function PainelLinhasCombustivel({ linhas, total }: { linhas: FuelReportExcelRow[]; total: number }) {
+  return <section className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden`} data-testid="combustivel-linhas-relatorio">
     <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
       <div>
-        <h3 className="text-sm font-bold text-slate-900">{destaqueConferencia ? 'Linhas para conferência' : 'Visualização no formato da planilha'}</h3>
+        <h3 className="text-sm font-black text-slate-900">Lançamentos do relatório</h3>
         <p className="text-xs text-slate-500">{linhas.length.toLocaleString('pt-BR')} de {total.toLocaleString('pt-BR')} linha(s) exibidas</p>
       </div>
       {total > linhas.length && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">Use os filtros para refinar</span>}
     </header>
-    {linhas.length === 0 ? <div className="grid min-h-0 flex-1 place-items-center px-4 py-12 text-center text-sm text-slate-500">Nenhum lançamento encontrado para os filtros atuais.</div> : <div className="min-h-0 flex-1 overflow-auto">
-      <table className="w-full min-w-[1320px] text-left text-xs">
-        <thead className="sticky top-0 z-[1] bg-slate-50 text-[10px] font-black uppercase tracking-wide text-slate-500">
-          <tr>
-            <th className="px-3 py-3">Aba</th><th className="px-3 py-3">Linha</th><th className="px-3 py-3">Data</th><th className="px-3 py-3">Prefixo</th><th className="px-3 py-3">Descrição do equipamento</th><th className="px-3 py-3 text-right">KM inicial</th><th className="px-3 py-3 text-right">Horímetro</th><th className="px-3 py-3 text-right">Litros</th><th className="px-3 py-3">Hora</th><th className="px-3 py-3">Comboio</th><th className="px-3 py-3">Tipo de combustível</th><th className="px-3 py-3">Empresa</th><th className="px-3 py-3 text-right">Bomba inicial</th><th className="px-3 py-3 text-right">Bomba final</th><th className="px-3 py-3">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {linhas.map((linha, index) => <tr key={`${linha.aba}-${linha.linha}-${linha.prefixo}-${linha.data}-${index}`} className={linha.status === 'Conferência necessária' ? 'bg-amber-50/55 hover:bg-amber-50' : 'hover:bg-emerald-50/40'}>
-            <td className="whitespace-nowrap px-3 py-2 font-bold text-slate-700">{linha.aba}</td>
-            <td className="px-3 py-2 font-mono text-slate-500">{linha.linha || '—'}</td>
-            <td className="whitespace-nowrap px-3 py-2">{dataCurta(linha.data)}</td>
-            <td className="whitespace-nowrap px-3 py-2 font-mono font-black text-slate-950">{linha.prefixo || '—'}</td>
-            <td className="max-w-56 truncate px-3 py-2 text-slate-600">{linha.descricao || '—'}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{typeof linha.kmInicial === 'number' ? numeroTexto(linha.kmInicial) : '—'}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{typeof linha.horimetro === 'number' ? numeroTexto(linha.horimetro) : '—'}</td>
-            <td className="px-3 py-2 text-right font-black tabular-nums text-slate-950">{litrosTexto(linha.litros)}</td>
-            <td className="whitespace-nowrap px-3 py-2 font-mono">{linha.hora || '—'}</td>
-            <td className="max-w-36 truncate px-3 py-2">{linha.comboio || '—'}</td>
-            <td className="max-w-40 truncate px-3 py-2">{linha.tipoCombustivel || '—'}</td>
-            <td className="max-w-44 truncate px-3 py-2">{linha.empresa || '—'}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{typeof linha.bombaInicial === 'number' ? numeroTexto(linha.bombaInicial) : '—'}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{typeof linha.bombaFinal === 'number' ? numeroTexto(linha.bombaFinal) : '—'}</td>
-            <td className="px-3 py-2">{linha.status === 'Conferência necessária' ? <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-900">Conferir</span> : <span className="text-slate-500">{linha.status || 'OK'}</span>}</td>
-          </tr>)}
-        </tbody>
-      </table>
+    {linhas.length === 0 ? <div className="grid min-h-0 flex-1 place-items-center px-4 py-12 text-center text-sm text-slate-500">Nenhum lançamento encontrado para os filtros atuais.</div> : <div className="min-h-0 flex-1 overflow-auto p-3">
+      <ol className="grid gap-2 xl:grid-cols-2">
+        {linhas.map((linha, index) => <li key={`${linha.aba}-${linha.linha}-${linha.prefixo}-${linha.data}-${index}`} data-comb-reveal className={`rounded-xl border p-3 ${linha.status === 'Conferência necessária' ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-white'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-500">{dataCurta(linha.data)} · {linha.hora || 'Sem hora'} · {linha.aba}</p>
+              <h4 className="mt-1 truncate font-mono text-lg font-black text-slate-950">{linha.prefixo || 'Sem prefixo'}</h4>
+              <p className="truncate text-sm text-slate-600" title={linha.descricao}>{linha.descricao || 'Equipamento não informado'}</p>
+            </div>
+            <strong className="shrink-0 text-xl font-black tabular-nums text-[#176b4d]">{litrosTexto(linha.litros)}</strong>
+          </div>
+          <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+            <div><dt className="font-black uppercase text-slate-400">Comboio</dt><dd className="truncate font-semibold text-slate-700">{linha.comboio || '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Combustível</dt><dd className="truncate font-semibold text-slate-700">{linha.tipoCombustivel || '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Empresa</dt><dd className="truncate font-semibold text-slate-700">{linha.empresa || '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Bomba</dt><dd className="font-mono text-slate-700">{typeof linha.bombaInicial === 'number' ? numeroTexto(linha.bombaInicial) : '—'} → {typeof linha.bombaFinal === 'number' ? numeroTexto(linha.bombaFinal) : '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">KM</dt><dd className="font-mono text-slate-700">{typeof linha.kmInicial === 'number' ? numeroTexto(linha.kmInicial) : '—'}</dd></div>
+            <div><dt className="font-black uppercase text-slate-400">Horímetro</dt><dd className="font-mono text-slate-700">{typeof linha.horimetro === 'number' ? numeroTexto(linha.horimetro) : '—'}</dd></div>
+          </dl>
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-slate-500">Linha {linha.linha || '—'}</span>
+            {linha.status === 'Conferência necessária' ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black text-amber-900">Conferir</span> : <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-800">{linha.status || 'OK'}</span>}
+          </div>
+        </li>)}
+      </ol>
     </div>}
   </section>;
 }
