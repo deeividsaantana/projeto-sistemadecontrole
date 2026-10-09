@@ -18,7 +18,8 @@ import { avisosDoAbastecimento, contextoDoAbastecimento, lerNumero } from '../mo
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from './cadastros/estilos';
 import { normalizeQuickTime } from '../utils/combustivelValidation';
 import { buildMacroFuelingRecord, getDefaultDieselFuelId, parseFuelFormNumber, resolveMacroPumpReadings } from '../utils/fuelMacroForm';
-import { buildFuelHistoryAnalytics, type FuelHistoryGroup } from '../modules/frota/fuelHistoryAnalytics';
+import type { FuelHistoryGroup } from '../modules/frota/fuelHistoryAnalytics';
+import { buildFuelReport, type FuelReportExcelRow, type FuelReportFilters } from '../modules/frota/fuelReport';
 
 interface Props {
   empresas: Empresa[];
@@ -70,9 +71,23 @@ interface FiltrosHistorico {
   combustivelId: string;
 }
 
+interface FiltrosRelatorio {
+  texto: string;
+  competencia: string;
+  empresaId: string;
+  equipamentoId: string;
+  comboioId: string;
+  combustivelId: string;
+  status: string;
+  apenasConferencia: boolean;
+}
+
 const TAMANHO_PAGINA_HISTORICO = 50;
 const FILTROS_HISTORICO_VAZIOS: FiltrosHistorico = {
   texto: '', dataInicio: '', dataFim: '', comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '',
+};
+const FILTROS_RELATORIO_VAZIOS: FiltrosRelatorio = {
+  texto: '', competencia: '', empresaId: '', equipamentoId: '', comboioId: '', combustivelId: '', status: '', apenasConferencia: false,
 };
 const CORES_GRAFICO_COMBUSTIVEL = ['#176b4d', '#f26a2e', '#718087', '#f7f8f6'];
 
@@ -103,9 +118,10 @@ export default function CombustivelOperacionalTab({
   const [view, setView] = useState<View>('resumo');
   const [dia, setDia] = useState(hoje);
   const [filtrosHistorico, setFiltrosHistorico] = useState<FiltrosHistorico>(FILTROS_HISTORICO_VAZIOS);
+  const [filtrosRelatorio, setFiltrosRelatorio] = useState<FiltrosRelatorio>(FILTROS_RELATORIO_VAZIOS);
   const [paginaHistorico, setPaginaHistorico] = useState(0);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-  const [abaDashboard, setAbaDashboard] = useState<'consumo' | 'ranking'>('consumo');
+  const [abaDashboard, setAbaDashboard] = useState<'resumo' | 'planilha' | 'ranking' | 'conferencia'>('resumo');
   const [exportandoHistorico, setExportandoHistorico] = useState<'' | 'excel' | 'pdf'>('');
   const [excluindo, setExcluindo] = useState<Abastecimento | null>(null);
   const [erro, setErro] = useState('');
@@ -127,10 +143,26 @@ export default function CombustivelOperacionalTab({
   const comboioPorId = useMemo(() => new Map(comboios.map(item => [item.id, item.nome])), [comboios]);
   const nomeCombustivel = useMemo(() => new Map(combustiveis.map(item => [item.id, item.nome])), [combustiveis]);
   const combustivelPadraoId = useMemo(() => getDefaultDieselFuelId(combustiveis), [combustiveis]);
-  const analyticsCombustivel = useMemo(() => buildFuelHistoryAnalytics({
-    records: ativos, equipamentos, empresas, comboios, combustiveis, referenceDate: hoje(),
-  }), [ativos, comboios, combustiveis, equipamentos, empresas]);
-
+  const competenciasDisponiveis = useMemo(() => {
+    const chaves = new Set(ativos.map(item => item.competencia && /^\d{4}-\d{2}$/.test(item.competencia) ? item.competencia : item.data.slice(0, 7)).filter(Boolean));
+    return [...chaves].sort((a, b) => b.localeCompare(a)).map(chave => ({
+      chave,
+      rotulo: /^\d{4}-\d{2}$/.test(chave) ? new Date(`${chave}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase() : 'Sem data',
+    }));
+  }, [ativos]);
+  const filtrosRelatorioAplicados = useMemo<FuelReportFilters>(() => ({
+    competencias: filtrosRelatorio.competencia ? [filtrosRelatorio.competencia] : [],
+    empresaIds: filtrosRelatorio.empresaId ? [filtrosRelatorio.empresaId] : [],
+    equipamentoIds: filtrosRelatorio.equipamentoId ? [filtrosRelatorio.equipamentoId] : [],
+    comboioIds: filtrosRelatorio.comboioId ? [filtrosRelatorio.comboioId] : [],
+    combustivelIds: filtrosRelatorio.combustivelId ? [filtrosRelatorio.combustivelId] : [],
+    status: filtrosRelatorio.status ? [filtrosRelatorio.status] : [],
+    apenasConferencia: filtrosRelatorio.apenasConferencia,
+    texto: filtrosRelatorio.texto,
+  }), [filtrosRelatorio]);
+  const relatorioCombustivel = useMemo(() => buildFuelReport({
+    records: ativos, equipamentos, empresas, comboios, combustiveis,
+  }, filtrosRelatorioAplicados), [ativos, comboios, combustiveis, empresas, equipamentos, filtrosRelatorioAplicados]);
   const cartoesDoDia = useMemo(() => montarQuadro({ dia, equipamentos, registros, gruposEquipe, abastecimentos }), [abastecimentos, dia, equipamentos, gruposEquipe, registros]);
   const cartoesDoForm = useMemo(
     () => (form.data === dia ? cartoesDoDia : montarQuadro({ dia: form.data, equipamentos, registros, gruposEquipe, abastecimentos })),
@@ -261,16 +293,16 @@ export default function CombustivelOperacionalTab({
       ].filter(Boolean).join(' ')).includes(termo);
     });
   }, [ativos, comboioPorId, empresaPorId, filtrosHistorico, nomeCombustivel, porId]);
-  const analyticsHistorico = useMemo(() => buildFuelHistoryAnalytics({
-    records: historicoFiltrado, equipamentos, empresas, comboios, combustiveis, referenceDate: hoje(),
-  }), [comboios, combustiveis, equipamentos, empresas, historicoFiltrado]);
+  const relatorioHistorico = useMemo(() => buildFuelReport({
+    records: historicoFiltrado, equipamentos, empresas, comboios, combustiveis,
+  }), [comboios, combustiveis, empresas, equipamentos, historicoFiltrado]);
   const totalPaginasHistorico = Math.max(1, Math.ceil(historicoFiltrado.length / TAMANHO_PAGINA_HISTORICO));
   const paginaHistoricoAtual = Math.min(paginaHistorico, totalPaginasHistorico - 1);
   const historicoPaginado = historicoFiltrado.slice(
     paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO,
     (paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO,
   );
-  const totalLitrosHistorico = historicoFiltrado.reduce((total, item) => total + Number(item.quantidadeLitros || 0), 0);
+  const totalLitrosHistorico = relatorioHistorico.totalLitros;
   const maquinasHistorico = new Set(historicoFiltrado.map(item => item.equipamentoId || item.prefixoInformado).filter(Boolean)).size;
   const empresasHistorico = new Set(historicoFiltrado.map(item => porId.get(item.equipamentoId)?.empresaId).filter(Boolean)).size;
 
@@ -289,19 +321,7 @@ export default function CombustivelOperacionalTab({
     setPaginaHistorico(0);
   };
 
-  const linhasHistoricoExportacao = () => historicoFiltrado.map(item => {
-    const maquina = porId.get(item.equipamentoId);
-    const empresaId = maquina?.empresaId || '';
-    return {
-      data: dataCurta(item.data), hora: item.hora || '', prefixo: maquina?.prefixo || item.prefixoInformado || '',
-      equipamento: maquina?.nome || '', empresa: empresaPorId.get(empresaId) || '',
-      comboio: comboioPorId.get(item.comboioId) || item.comboioId || '',
-      combustivel: nomeCombustivel.get(item.tipoCombustivelId) || '', litros: Number(item.quantidadeLitros || 0),
-      bombaInicial: item.bombaInicial > 0 ? item.bombaInicial : '', bombaFinal: item.bombaFinal > 0 ? item.bombaFinal : '',
-      km: item.kmInicial > 0 ? item.kmInicial : '', horimetro: item.horimetroInicial > 0 ? item.horimetroInicial : '',
-      origem: item.origem || '', status: item.revisaoStatus || item.status || '', observacao: item.observacao || '',
-    };
-  });
+  const linhasHistoricoExportacao = () => relatorioHistorico.linhasExcel;
 
   const exportarHistoricoExcel = async () => {
     setExportandoHistorico('excel');
@@ -315,18 +335,19 @@ export default function CombustivelOperacionalTab({
       ], filtrosHistoricoAplicados);
       const worksheet = workbook.addWorksheet('HISTÓRICO', { views: [{ showGridLines: false }] });
       worksheet.columns = [
-        { header: 'Data', key: 'data', width: 13 }, { header: 'Hora', key: 'hora', width: 9 },
-        { header: 'Prefixo', key: 'prefixo', width: 13 }, { header: 'Equipamento', key: 'equipamento', width: 24 },
-        { header: 'Empresa', key: 'empresa', width: 24 }, { header: 'Comboio', key: 'comboio', width: 18 },
-        { header: 'Combustível', key: 'combustivel', width: 18 }, { header: 'Litros', key: 'litros', width: 13 },
-        { header: 'Bomba inicial', key: 'bombaInicial', width: 15 }, { header: 'Bomba final', key: 'bombaFinal', width: 15 },
-        { header: 'KM', key: 'km', width: 14 }, { header: 'Horímetro', key: 'horimetro', width: 14 },
-        { header: 'Origem', key: 'origem', width: 14 }, { header: 'Revisão', key: 'status', width: 14 },
-        { header: 'Observação', key: 'observacao', width: 30 },
+        { header: 'Aba', key: 'aba', width: 16 }, { header: 'Linha', key: 'linha', width: 9 },
+        { header: 'Dia', key: 'dia', width: 8 }, { header: 'Data', key: 'data', width: 13 },
+        { header: 'Prefixo', key: 'prefixo', width: 13 }, { header: 'Descrição do equipamento', key: 'descricao', width: 28 },
+        { header: 'KM inicial', key: 'kmInicial', width: 14 }, { header: 'Horímetro', key: 'horimetro', width: 14 },
+        { header: 'Litros', key: 'litros', width: 13 }, { header: 'Hora', key: 'hora', width: 9 },
+        { header: 'Comboio', key: 'comboio', width: 18 }, { header: 'Tipo de combustível', key: 'tipoCombustivel', width: 20 },
+        { header: 'Empresa', key: 'empresa', width: 24 }, { header: 'Bomba inicial', key: 'bombaInicial', width: 15 },
+        { header: 'Bomba final', key: 'bombaFinal', width: 15 }, { header: 'Status', key: 'status', width: 18 },
+        { header: 'Observação', key: 'observacao', width: 32 },
       ];
-      worksheet.getRow(4).values = ['Data', 'Hora', 'Prefixo', 'Equipamento', 'Empresa', 'Comboio', 'Combustível', 'Litros', 'Bomba inicial', 'Bomba final', 'KM', 'Horímetro', 'Origem', 'Revisão', 'Observação'];
+      worksheet.getRow(4).values = ['Aba', 'Linha', 'Dia', 'Data', 'Prefixo', 'Descrição do equipamento', 'KM inicial', 'Horímetro', 'Litros', 'Hora', 'Comboio', 'Tipo de combustível', 'Empresa', 'Bomba inicial', 'Bomba final', 'Status', 'Observação'];
       linhasHistoricoExportacao().forEach(linha => worksheet.addRow(linha));
-      styleCorporateWorksheet(worksheet, { title: 'Histórico de Combustível', headerRow: 4, lastColumn: 15, dataStartRow: 5, recordCount: historicoFiltrado.length, filters: filtrosHistoricoAplicados });
+      styleCorporateWorksheet(worksheet, { title: 'Histórico de Combustível', headerRow: 4, lastColumn: 17, dataStartRow: 5, recordCount: historicoFiltrado.length, filters: filtrosHistoricoAplicados });
       await downloadCorporateWorkbook(workbook, `RENEA_historico_combustivel_${hoje()}.xlsx`);
       setAviso(`${historicoFiltrado.length} registro(s) exportado(s) para Excel.`);
     } catch (falha) {
@@ -347,18 +368,20 @@ export default function CombustivelOperacionalTab({
           ? `${filtrosHistorico.dataInicio ? dataCurta(filtrosHistorico.dataInicio) : 'Início'} a ${filtrosHistorico.dataFim ? dataCurta(filtrosHistorico.dataFim) : 'Hoje'}`
           : 'Todo o período', filters: filtrosHistoricoAplicados,
         columns: [
-          { header: 'Data', dataKey: 'data' }, { header: 'Hora', dataKey: 'hora' }, { header: 'Prefixo', dataKey: 'prefixo' },
+          { header: 'Aba', dataKey: 'aba' }, { header: 'Linha', dataKey: 'linha' },
+          { header: 'Data', dataKey: 'data' }, { header: 'Prefixo', dataKey: 'prefixo' },
           { header: 'Empresa', dataKey: 'empresa' }, { header: 'Comboio', dataKey: 'comboio' },
-          { header: 'Combustível', dataKey: 'combustivel' }, { header: 'Litros', dataKey: 'litros' },
+          { header: 'Combustível', dataKey: 'tipoCombustivel' }, { header: 'Litros', dataKey: 'litros' },
           { header: 'Bomba inicial', dataKey: 'bombaInicial' }, { header: 'Bomba final', dataKey: 'bombaFinal' },
-          { header: 'KM', dataKey: 'km' }, { header: 'Horímetro', dataKey: 'horimetro' }, { header: 'Revisão', dataKey: 'status' },
+          { header: 'KM', dataKey: 'kmInicial' }, { header: 'Horímetro', dataKey: 'horimetro' }, { header: 'Status', dataKey: 'status' },
         ],
         rows: linhas.map(linha => ({
           ...linha,
+          data: dataCurta(linha.data),
           litros: litrosTexto(linha.litros),
           bombaInicial: typeof linha.bombaInicial === 'number' ? numeroTexto(linha.bombaInicial) : '',
           bombaFinal: typeof linha.bombaFinal === 'number' ? numeroTexto(linha.bombaFinal) : '',
-          km: typeof linha.km === 'number' ? numeroTexto(linha.km) : '',
+          kmInicial: typeof linha.kmInicial === 'number' ? numeroTexto(linha.kmInicial) : '',
           horimetro: typeof linha.horimetro === 'number' ? numeroTexto(linha.horimetro) : '',
         })),
         summary: [
@@ -409,6 +432,12 @@ export default function CombustivelOperacionalTab({
   }, { scope: escopo, dependencies: [view, dia] });
 
   const vistas = [['resumo', 'Resumo', Fuel], ['novo', 'Lançar', Plus], ['historico', 'Histórico', History]] as const;
+  const abasDashboard = [
+    ['resumo', 'Resumo', PieChart],
+    ['planilha', 'Planilha', FileSpreadsheet],
+    ['ranking', 'Ranking', BarChart3],
+    ['conferencia', 'Conferência', AlertTriangle],
+  ] as const;
 
   return (
     <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'space-y-4' : 'mx-auto flex h-[calc(100dvh-7rem)] min-h-[34rem] w-full max-w-[96rem] flex-col overflow-hidden'}>
@@ -428,29 +457,45 @@ export default function CombustivelOperacionalTab({
       </p>
 
       {view === 'resumo' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-dashboard">
+        <section data-comb-reveal aria-label="Filtros do relatório de combustível" className={`${CARTAO} shrink-0 p-3`}>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.2fr_repeat(5,minmax(0,1fr))_auto]">
+            <label className="sm:col-span-2 lg:col-span-1"><span className={`${ROTULO} mb-1 block`}>Busca do relatório</span><span className="relative block"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input value={filtrosRelatorio.texto} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, texto: event.target.value }))} placeholder="Prefixo, empresa, comboio, aba..." className={`${CAMPO} pl-9`} /></span></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Competência</span><select value={filtrosRelatorio.competencia} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, competencia: event.target.value }))} className={CAMPO}><option value="">Todas</option>{competenciasDisponiveis.map(item => <option key={item.chave} value={item.chave}>{item.rotulo}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Empresa</span><select value={filtrosRelatorio.empresaId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, empresaId: event.target.value }))} className={CAMPO}><option value="">Todas</option>{empresas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Equipamento</span><select value={filtrosRelatorio.equipamentoId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, equipamentoId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{equipamentos.map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Comboio</span><select value={filtrosRelatorio.comboioId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, comboioId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+            <label><span className={`${ROTULO} mb-1 block`}>Combustível</span><select value={filtrosRelatorio.combustivelId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, combustivelId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+            <div className="flex items-end gap-2">
+              <button type="button" aria-pressed={filtrosRelatorio.apenasConferencia} onClick={() => setFiltrosRelatorio(atual => ({ ...atual, apenasConferencia: !atual.apenasConferencia }))} className={`${filtrosRelatorio.apenasConferencia ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} min-h-10 px-3`}><AlertTriangle className="size-4" aria-hidden="true" />Conferir</button>
+              <button type="button" onClick={() => setFiltrosRelatorio(FILTROS_RELATORIO_VAZIOS)} disabled={!Object.values(filtrosRelatorio).some(Boolean)} title="Limpar filtros do relatório" className={`${BOTAO_SECUNDARIO} min-h-10 px-3`}><RotateCcw className="size-4" aria-hidden="true" /></button>
+            </div>
+          </div>
+        </section>
         <div className="grid shrink-0 grid-cols-4 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white">
           {[
-            ['Lançamentos', analyticsCombustivel.totalRegistros.toLocaleString('pt-BR')],
-            ['Volume abastecido', litrosTexto(analyticsCombustivel.totalLitros)],
-            ['Empresas', analyticsCombustivel.porEmpresa.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
-            ['Equipamentos', analyticsCombustivel.porEquipamento.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
+            ['Lançamentos', relatorioCombustivel.totalRegistros.toLocaleString('pt-BR')],
+            ['Volume abastecido', litrosTexto(relatorioCombustivel.totalLitros)],
+            ['Conferência', relatorioCombustivel.totalConferencia.toLocaleString('pt-BR')],
+            ['Equipamentos', relatorioCombustivel.porEquipamento.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
           ].map(([titulo, valor]) => <div key={titulo} className="min-w-0 px-2 py-2 sm:px-3"><p className="truncate text-[9px] font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">{titulo}</p><p className="mt-0.5 truncate text-sm font-black tabular-nums text-slate-950 sm:text-lg">{valor}</p></div>)}
         </div>
-        <nav aria-label="Painéis do resumo de combustível" className="grid shrink-0 grid-cols-2 rounded-lg bg-slate-100 p-1">
-          <button type="button" aria-pressed={abaDashboard === 'consumo'} onClick={() => setAbaDashboard('consumo')} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-bold ${abaDashboard === 'consumo' ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><PieChart className="size-4" aria-hidden="true" />Distribuição e consumo</button>
-          <button type="button" aria-pressed={abaDashboard === 'ranking'} onClick={() => setAbaDashboard('ranking')} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-bold ${abaDashboard === 'ranking' ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><BarChart3 className="size-4" aria-hidden="true" />Rankings e quantidades</button>
+        <nav aria-label="Painéis do resumo de combustível" className="grid shrink-0 grid-cols-4 rounded-lg bg-slate-100 p-1">
+          {abasDashboard.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={abaDashboard === id} onClick={() => setAbaDashboard(id)} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-1 text-[11px] font-bold sm:px-2 sm:text-xs ${abaDashboard === id ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
         </nav>
-        {abaDashboard === 'consumo' ? <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-consumo">
-          <GraficoRosca titulo="Consumo por empresa" grupos={analyticsCombustivel.porEmpresa} vazio="Sem abastecimentos por empresa." />
-          <GraficoRosca titulo="Consumo por combustível" grupos={analyticsCombustivel.porCombustivel} vazio="Sem tipo de combustível informado." />
-          <GraficoRosca titulo="Consumo por comboio" grupos={analyticsCombustivel.porComboio} vazio="Sem comboio vinculado." />
-          <GraficoMeses grupos={analyticsCombustivel.porMes} />
-        </div> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-ranking">
-          <GraficoBarras titulo="Top empresas" grupos={analyticsCombustivel.porEmpresa} medida="litros" vazio="Sem volume por empresa." />
-          <GraficoBarras titulo="Top equipamentos" grupos={analyticsCombustivel.porEquipamento} medida="litros" vazio="Sem volume por equipamento." />
-          <GraficoBarras titulo="Lançamentos por comboio" grupos={analyticsCombustivel.porComboio} medida="registros" vazio="Sem comboios com lançamento." />
-          <GraficoBarras titulo="Volume por combustível" grupos={analyticsCombustivel.porCombustivel} medida="litros" vazio="Sem tipos de combustível." />
+        {abaDashboard === 'resumo' && <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-consumo">
+          <GraficoRosca titulo="Consumo por empresa" grupos={relatorioCombustivel.porEmpresa} vazio="Sem abastecimentos por empresa." />
+          <GraficoRosca titulo="Consumo por combustível" grupos={relatorioCombustivel.porCombustivel} vazio="Sem tipo de combustível informado." />
+          <GraficoRosca titulo="Consumo por comboio" grupos={relatorioCombustivel.porComboio} vazio="Sem comboio vinculado." />
+          <GraficoBarras titulo="Competências" grupos={relatorioCombustivel.porCompetencia} medida="litros" vazio="Sem competência com lançamento." />
         </div>}
+        {abaDashboard === 'planilha' && <TabelaPlanilhaCombustivel linhas={relatorioCombustivel.linhasExcel.slice(0, 120)} total={relatorioCombustivel.linhasExcel.length} />}
+        {abaDashboard === 'ranking' && <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 xl:grid-cols-4 xl:grid-rows-1" data-testid="combustivel-dashboard-ranking">
+          <GraficoBarras titulo="Top empresas" grupos={relatorioCombustivel.porEmpresa} medida="litros" vazio="Sem volume por empresa." />
+          <GraficoBarras titulo="Top equipamentos" grupos={relatorioCombustivel.porEquipamento} medida="litros" vazio="Sem volume por equipamento." />
+          <GraficoBarras titulo="Lançamentos por comboio" grupos={relatorioCombustivel.porComboio} medida="registros" vazio="Sem comboios com lançamento." />
+          <GraficoBarras titulo="Volume por combustível" grupos={relatorioCombustivel.porCombustivel} medida="litros" vazio="Sem tipos de combustível." />
+        </div>}
+        {abaDashboard === 'conferencia' && <TabelaPlanilhaCombustivel linhas={relatorioCombustivel.linhasExcel.filter(item => item.status === 'Conferência necessária').slice(0, 120)} total={relatorioCombustivel.totalConferencia} destaqueConferencia />}
       </div>}
 
       {view === 'novo' && (
@@ -709,6 +754,46 @@ function GraficoRosca({ titulo, grupos, vazio }: { titulo: string; grupos: FuelH
           <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: CORES_GRAFICO_COMBUSTIVEL[indice % CORES_GRAFICO_COMBUSTIVEL.length] }} /><span className="min-w-0 flex-1 truncate text-slate-600">{item.nome}</span><span className="shrink-0 font-semibold tabular-nums text-slate-800">{item.percentual}%</span>
         </li>)}
       </ul>
+    </div>}
+  </section>;
+}
+
+function TabelaPlanilhaCombustivel({ linhas, total, destaqueConferencia = false }: { linhas: FuelReportExcelRow[]; total: number; destaqueConferencia?: boolean }) {
+  return <section className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden`} data-testid="combustivel-planilha">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+      <div>
+        <h3 className="text-sm font-bold text-slate-900">{destaqueConferencia ? 'Linhas para conferência' : 'Visualização no formato da planilha'}</h3>
+        <p className="text-xs text-slate-500">{linhas.length.toLocaleString('pt-BR')} de {total.toLocaleString('pt-BR')} linha(s) exibidas</p>
+      </div>
+      {total > linhas.length && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">Use os filtros para refinar</span>}
+    </header>
+    {linhas.length === 0 ? <div className="grid min-h-0 flex-1 place-items-center px-4 py-12 text-center text-sm text-slate-500">Nenhum lançamento encontrado para os filtros atuais.</div> : <div className="min-h-0 flex-1 overflow-auto">
+      <table className="w-full min-w-[1320px] text-left text-xs">
+        <thead className="sticky top-0 z-[1] bg-slate-50 text-[10px] font-black uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="px-3 py-3">Aba</th><th className="px-3 py-3">Linha</th><th className="px-3 py-3">Data</th><th className="px-3 py-3">Prefixo</th><th className="px-3 py-3">Descrição do equipamento</th><th className="px-3 py-3 text-right">KM inicial</th><th className="px-3 py-3 text-right">Horímetro</th><th className="px-3 py-3 text-right">Litros</th><th className="px-3 py-3">Hora</th><th className="px-3 py-3">Comboio</th><th className="px-3 py-3">Tipo de combustível</th><th className="px-3 py-3">Empresa</th><th className="px-3 py-3 text-right">Bomba inicial</th><th className="px-3 py-3 text-right">Bomba final</th><th className="px-3 py-3">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {linhas.map((linha, index) => <tr key={`${linha.aba}-${linha.linha}-${linha.prefixo}-${linha.data}-${index}`} className={linha.status === 'Conferência necessária' ? 'bg-amber-50/55 hover:bg-amber-50' : 'hover:bg-emerald-50/40'}>
+            <td className="whitespace-nowrap px-3 py-2 font-bold text-slate-700">{linha.aba}</td>
+            <td className="px-3 py-2 font-mono text-slate-500">{linha.linha || '—'}</td>
+            <td className="whitespace-nowrap px-3 py-2">{dataCurta(linha.data)}</td>
+            <td className="whitespace-nowrap px-3 py-2 font-mono font-black text-slate-950">{linha.prefixo || '—'}</td>
+            <td className="max-w-56 truncate px-3 py-2 text-slate-600">{linha.descricao || '—'}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{typeof linha.kmInicial === 'number' ? numeroTexto(linha.kmInicial) : '—'}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{typeof linha.horimetro === 'number' ? numeroTexto(linha.horimetro) : '—'}</td>
+            <td className="px-3 py-2 text-right font-black tabular-nums text-slate-950">{litrosTexto(linha.litros)}</td>
+            <td className="whitespace-nowrap px-3 py-2 font-mono">{linha.hora || '—'}</td>
+            <td className="max-w-36 truncate px-3 py-2">{linha.comboio || '—'}</td>
+            <td className="max-w-40 truncate px-3 py-2">{linha.tipoCombustivel || '—'}</td>
+            <td className="max-w-44 truncate px-3 py-2">{linha.empresa || '—'}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{typeof linha.bombaInicial === 'number' ? numeroTexto(linha.bombaInicial) : '—'}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{typeof linha.bombaFinal === 'number' ? numeroTexto(linha.bombaFinal) : '—'}</td>
+            <td className="px-3 py-2">{linha.status === 'Conferência necessária' ? <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-900">Conferir</span> : <span className="text-slate-500">{linha.status || 'OK'}</span>}</td>
+          </tr>)}
+        </tbody>
+      </table>
     </div>}
   </section>;
 }

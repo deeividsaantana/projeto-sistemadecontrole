@@ -120,6 +120,7 @@ import './equipmentPersonGuard.test';
 import './typeAhead.test';
 import './equipmentPresentation.test';
 import './fuelImportIdentity.test';
+import './fuelReport.test';
 import './august2026OperationalSeed.test';
 import './canonicalIdentity.test';
 import './importMerge.test';
