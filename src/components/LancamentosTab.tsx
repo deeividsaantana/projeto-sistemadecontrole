@@ -87,6 +87,8 @@ interface LancamentosTabProps {
   gruposEquipe?: GrupoEquipe[];
   usuario?: string;
   onOpenControle?: () => void;
+  combustivelInicial?: 'resumo' | 'novo' | 'historico' | 'relatorio';
+  combustivelListaSomente?: boolean;
 }
 
 type Mode = 'abastecimentos' | 'lubrificacoes';
@@ -111,6 +113,8 @@ export default function LancamentosTab({
   gruposEquipe,
   usuario,
   onOpenControle,
+  combustivelInicial,
+  combustivelListaSomente = false,
 }: LancamentosTabProps) {
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
@@ -1279,6 +1283,8 @@ export default function LancamentosTab({
           onOpenSpreadsheetImport={() => fileInputRef.current?.click()}
           isParsingSpreadsheet={isParsingImport}
           openHistorySignal={openFuelHistorySignal}
+          initialView={combustivelInicial}
+          listaSomente={combustivelListaSomente}
         />
         <input
           ref={fileInputRef}

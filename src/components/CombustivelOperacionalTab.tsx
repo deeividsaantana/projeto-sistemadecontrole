@@ -43,6 +43,8 @@ interface Props {
   onOpenSpreadsheetImport: () => void;
   isParsingSpreadsheet: boolean;
   openHistorySignal?: number;
+  initialView?: View;
+  listaSomente?: boolean;
 }
 
 type View = 'resumo' | 'novo' | 'historico' | 'relatorio';
@@ -137,12 +139,12 @@ function addFuelRankingWorksheet(workbook: { addWorksheet: (name: string, option
 export default function CombustivelOperacionalTab({
   empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
   onSaveAbastecimento, onDeleteAbastecimento, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
-  openHistorySignal = 0,
+  openHistorySignal = 0, initialView = 'resumo', listaSomente = false,
 }: Props) {
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   const prefixoRef = useRef<HTMLInputElement>(null);
-  const [view, setView] = useState<View>('resumo');
+  const [view, setView] = useState<View>(listaSomente ? 'historico' : initialView);
   const [dia, setDia] = useState(hoje);
   const [filtrosHistorico, setFiltrosHistorico] = useState<FiltrosHistorico>(FILTROS_HISTORICO_VAZIOS);
   const [filtrosRelatorio, setFiltrosRelatorio] = useState<FiltrosRelatorio>(FILTROS_RELATORIO_VAZIOS);
@@ -162,6 +164,10 @@ export default function CombustivelOperacionalTab({
   useEffect(() => {
     if (openHistorySignal > 0) setView('historico');
   }, [openHistorySignal]);
+
+  useEffect(() => {
+    if (listaSomente) setView('historico');
+  }, [listaSomente]);
 
   const ativos = useMemo(() => abastecimentos
     .filter(item => !item.inativoEm && item.status !== 'Cancelado')
@@ -561,8 +567,8 @@ export default function CombustivelOperacionalTab({
   ] as const;
 
   return (
-    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'space-y-4' : 'mx-auto flex h-[calc(100dvh-7rem)] min-h-[34rem] w-full max-w-[96rem] flex-col overflow-hidden'}>
-      {view !== 'novo' && <div data-comb-reveal className="mb-2 shrink-0">
+    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'space-y-4' : `mx-auto flex w-full flex-col overflow-hidden ${listaSomente ? 'h-[calc(100dvh-5.25rem)] max-w-none' : 'h-[calc(100dvh-7rem)] min-h-[34rem] max-w-[96rem]'}`}>
+      {view !== 'novo' && !listaSomente && <div data-comb-reveal className="mb-2 shrink-0">
         <PageHeader eyebrow="Frota" title="Combustível" className="mb-2" actions={<>
           <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`}><Droplets className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Lubrificação</span></button>
           <button type="button" onClick={() => abrirNovo()} className={`${BOTAO_PRIMARIO} min-h-10 px-3 sm:px-4`} data-testid="combustivel-novo"><Plus className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Novo abastecimento</span><span className="sm:hidden">Lançar</span><kbd title="Atalho de teclado: N" aria-label="Atalho de teclado: N" className="inline-flex rounded-md bg-white/15 px-1.5 font-mono text-xs">N</kbd></button>
@@ -763,14 +769,14 @@ export default function CombustivelOperacionalTab({
         </form>
       )}
 
-      {view === 'historico' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-historico">
-        <section data-comb-reveal className={`${CARTAO} overflow-hidden`}>
-          <div className="flex shrink-0 flex-col gap-2 border-b border-slate-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      {view === 'historico' && <div className={`flex min-h-0 flex-1 flex-col ${listaSomente ? 'gap-1' : 'gap-2'}`} data-testid="combustivel-historico">
+        <section data-comb-reveal className={`${CARTAO} overflow-hidden ${listaSomente ? 'shrink-0 rounded-lg' : ''}`}>
+          <div className={`flex shrink-0 flex-col gap-2 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between ${listaSomente ? 'px-3 py-2' : 'px-3 py-2'}`}>
             <div className="flex items-center gap-3">
               <span className="hidden size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d] sm:grid"><History className="size-5" aria-hidden="true" /></span>
               <div>
-                <h2 className="text-base font-bold text-slate-950">Histórico de abastecimentos</h2>
-                <p className="text-xs text-slate-500">Do mais recente ao mais antigo</p>
+                <h2 className="text-base font-bold text-slate-950">{listaSomente ? 'Lista de abastecimentos' : 'Histórico de abastecimentos'}</h2>
+                <p className="text-xs text-slate-500">{listaSomente ? 'Visualização direta para conferência operacional' : 'Do mais recente ao mais antigo'}</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
@@ -780,15 +786,15 @@ export default function CombustivelOperacionalTab({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
+          {!listaSomente && <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
             <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Registros</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{historicoFiltrado.length.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">no resultado filtrado</p></div>
             <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Volume total</p><p className="mt-1 text-2xl font-bold tabular-nums text-[#176b4d]">{litrosTexto(totalLitrosHistorico)}</p><p className="text-xs text-slate-500">somatório dos litros</p></div>
             <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Equipamentos</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{maquinasHistorico.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">com abastecimento</p></div>
             <div className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Empresas</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{empresasHistorico.toLocaleString('pt-BR')}</p><p className="text-xs text-slate-500">no resultado filtrado</p></div>
-          </div>
+          </div>}
         </section>
 
-        <section data-comb-reveal aria-label="Filtros do histórico" className={`${CARTAO} shrink-0 p-2`}>
+        <section data-comb-reveal aria-label="Filtros do histórico" className={`${CARTAO} shrink-0 ${listaSomente ? 'rounded-lg p-1.5' : 'p-2'}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input ref={buscaRef} value={filtrosHistorico.texto} onChange={event => atualizarFiltroHistorico('texto', event.target.value)} placeholder="Buscar prefixo, empresa, comboio…" className={`${CAMPO} pl-9`} data-testid="combustivel-busca" /></span>
@@ -807,8 +813,8 @@ export default function CombustivelOperacionalTab({
           {erro && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
         </section>
 
-        <section data-comb-reveal aria-label="Registros de combustível" className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden`}>
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+        <section data-comb-reveal aria-label="Registros de combustível" className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden ${listaSomente ? 'rounded-lg' : ''}`}>
+          <header className={`flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 ${listaSomente ? 'px-3 py-2' : 'px-4 py-3'}`}>
             <div><h3 className="text-sm font-bold text-slate-900">Lançamentos</h3><p className="text-xs text-slate-500">Exportação inclui todos os resultados filtrados.</p></div>
             <span className="text-xs font-semibold tabular-nums text-slate-500">{historicoFiltrado.length ? `${paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO + 1}–${Math.min((paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO, historicoFiltrado.length)} de ${historicoFiltrado.length}` : '0 registros'}</span>
           </header>
@@ -916,34 +922,64 @@ function ListaHistoricoCombustivel({ itens, porId, empresaPorId, comboioPorId, n
   nomeCombustivel: ReadonlyMap<string, string>;
   onExcluir: (item: Abastecimento) => void;
 }) {
-  return <div className="min-h-0 flex-1 overflow-auto p-3">
-    <ul className="grid gap-2 xl:grid-cols-2">
+  return <div className="min-h-0 flex-1 overflow-auto">
+    <div className="sticky top-0 z-10 hidden border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[9rem_minmax(15rem,1.5fr)_minmax(13rem,1fr)_8rem_9rem_8rem_8rem_5rem] lg:gap-3">
+      <span>Data / hora</span>
+      <span>Equipamento</span>
+      <span>Empresa / comboio</span>
+      <span>Litros</span>
+      <span>Bomba</span>
+      <span>KM</span>
+      <span>Horímetro</span>
+      <span className="text-right">Ações</span>
+    </div>
+    <ul className="divide-y divide-slate-100">
       {itens.map(item => {
         const maquina = porId.get(item.equipamentoId);
         const empresa = maquina ? empresaPorId.get(maquina.empresaId) : '';
         const revisaoPendente = item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || item.alertas?.some(alerta => alerta.severidade !== 'info');
-        return <li key={item.id} data-comb-reveal className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-emerald-200 hover:bg-emerald-50/30">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-500">{dataCurta(item.data)} · {item.hora || 'Sem hora'}</p>
-              <h4 className="mt-1 truncate font-mono text-lg font-black text-slate-950">{maquina?.prefixo || item.prefixoInformado || 'Sem cadastro'}</h4>
-              <p className="truncate text-sm text-slate-600">{maquina?.nome || 'Equipamento não cadastrado'}</p>
+        return <li key={item.id} data-comb-reveal className="bg-white px-4 py-3 transition hover:bg-emerald-50/35 lg:grid lg:grid-cols-[9rem_minmax(15rem,1.5fr)_minmax(13rem,1fr)_8rem_9rem_8rem_8rem_5rem] lg:items-center lg:gap-3">
+          <div className="flex items-start justify-between gap-3 lg:block">
+            <div>
+              <p className="font-mono text-sm font-black tabular-nums text-slate-950">{dataCurta(item.data)}</p>
+              <p className="mt-0.5 font-mono text-xs font-semibold tabular-nums text-slate-500">{item.hora || 'Sem hora'}</p>
             </div>
-            <div className="flex items-start justify-between gap-2 sm:flex-col sm:items-end">
-              <strong className="text-xl font-black tabular-nums text-[#176b4d]">{litrosTexto(Number(item.quantidadeLitros || 0))}</strong>
-              <button type="button" onClick={() => onExcluir(item)} aria-label={`Excluir abastecimento de ${maquina?.prefixo || item.prefixoInformado || 'máquina'}`} title="Excluir abastecimento" className={`grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-rose-300 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button>
+            <span className="lg:hidden">{revisaoPendente ? <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-800">Conferir</span> : <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-800">OK</span>}</span>
+          </div>
+          <div className="mt-2 min-w-0 lg:mt-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="font-mono text-base font-black leading-tight text-slate-950">{maquina?.prefixo || item.prefixoInformado || 'Sem cadastro'}</h4>
+              {revisaoPendente ? <span className="hidden rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-800 lg:inline-flex">Conferir</span> : <span className="hidden rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-800 lg:inline-flex">OK</span>}
+            </div>
+            <p className="mt-0.5 truncate text-sm font-semibold text-slate-700" title={maquina?.nome || 'Equipamento não cadastrado'}>{maquina?.nome || 'Equipamento não cadastrado'}</p>
+            <p className="mt-0.5 truncate text-xs text-slate-500 lg:hidden">{nomeCombustivel.get(item.tipoCombustivelId) || 'Combustível não informado'}</p>
+          </div>
+          <div className="mt-2 min-w-0 text-sm lg:mt-0">
+            <p className="truncate font-semibold text-slate-800" title={empresa || undefined}>{empresa || 'Empresa não informada'}</p>
+            <p className="truncate text-xs font-semibold text-slate-500" title={comboioPorId.get(item.comboioId) || undefined}>{comboioPorId.get(item.comboioId) || 'Comboio não informado'}</p>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:contents">
+            <div className="rounded-lg bg-emerald-50 px-3 py-2 lg:rounded-none lg:bg-transparent lg:p-0">
+              <p className="text-[10px] font-black uppercase text-emerald-700 lg:hidden">Litros</p>
+              <strong className="text-lg font-black tabular-nums text-[#176b4d] lg:text-base">{litrosTexto(Number(item.quantidadeLitros || 0))}</strong>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 lg:rounded-none lg:bg-transparent lg:p-0">
+              <p className="text-[10px] font-black uppercase text-slate-400 lg:hidden">Bomba</p>
+              <p className="font-mono text-sm font-semibold tabular-nums text-slate-800">{item.bombaInicial > 0 ? numeroTexto(item.bombaInicial) : '—'} → {item.bombaFinal > 0 ? numeroTexto(item.bombaFinal) : '—'}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 lg:rounded-none lg:bg-transparent lg:p-0">
+              <p className="text-[10px] font-black uppercase text-slate-400 lg:hidden">KM</p>
+              <p className="font-mono text-sm font-semibold tabular-nums text-slate-800">{item.kmInicial > 0 ? numeroTexto(item.kmInicial) : '—'}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 lg:rounded-none lg:bg-transparent lg:p-0">
+              <p className="text-[10px] font-black uppercase text-slate-400 lg:hidden">Horímetro</p>
+              <p className="font-mono text-sm font-semibold tabular-nums text-slate-800">{item.horimetroInicial > 0 ? numeroTexto(item.horimetroInicial) : '—'}</p>
+            </div>
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 sm:col-span-1 lg:justify-end lg:rounded-none lg:bg-transparent lg:p-0">
+              <span className="truncate text-xs font-semibold text-slate-500 lg:hidden">{item.responsavel || nomeCombustivel.get(item.tipoCombustivelId) || 'Sem responsável'}</span>
+              <button type="button" onClick={() => onExcluir(item)} aria-label={`Excluir abastecimento de ${maquina?.prefixo || item.prefixoInformado || 'máquina'}`} title="Excluir abastecimento" className={`grid size-9 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-rose-300 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button>
             </div>
           </div>
-          <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
-            <div><dt className="font-black uppercase text-slate-400">Empresa</dt><dd className="truncate font-semibold text-slate-700">{empresa || '—'}</dd></div>
-            <div><dt className="font-black uppercase text-slate-400">Comboio</dt><dd className="truncate font-semibold text-slate-700">{comboioPorId.get(item.comboioId) || '—'}</dd></div>
-            <div><dt className="font-black uppercase text-slate-400">Combustível</dt><dd className="truncate font-semibold text-slate-700">{nomeCombustivel.get(item.tipoCombustivelId) || '—'}</dd></div>
-            <div><dt className="font-black uppercase text-slate-400">Responsável</dt><dd className="truncate font-semibold text-slate-700">{item.responsavel || '—'}</dd></div>
-            <div><dt className="font-black uppercase text-slate-400">Bomba</dt><dd className="font-mono text-slate-700">{item.bombaInicial > 0 ? numeroTexto(item.bombaInicial) : '—'} → {item.bombaFinal > 0 ? numeroTexto(item.bombaFinal) : '—'}</dd></div>
-            <div><dt className="font-black uppercase text-slate-400">KM</dt><dd className="font-mono text-slate-700">{item.kmInicial > 0 ? numeroTexto(item.kmInicial) : '—'}</dd></div>
-            <div><dt className="font-black uppercase text-slate-400">Horímetro</dt><dd className="font-mono text-slate-700">{item.horimetroInicial > 0 ? numeroTexto(item.horimetroInicial) : '—'}</dd></div>
-            <div><dt className="font-black uppercase text-slate-400">Status</dt><dd>{revisaoPendente ? <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-800">Conferir</span> : <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-800">OK</span>}</dd></div>
-          </dl>
         </li>;
       })}
     </ul>

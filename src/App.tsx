@@ -451,6 +451,24 @@ const mergePresenceRecords = (current: PresencaApontamento[], incoming: Presenca
   return Array.from(indexed.values());
 };
 
+const getInitialTabFromUrl = () => {
+  if (typeof window === 'undefined') return 'dashboard';
+  const params = new URLSearchParams(window.location.search);
+  return params.get('tab') || params.get('aba') || 'dashboard';
+};
+
+const getCombustivelViewFromUrl = (): 'resumo' | 'novo' | 'historico' | 'relatorio' | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  const view = new URLSearchParams(window.location.search).get('combustivel');
+  return view === 'resumo' || view === 'novo' || view === 'historico' || view === 'relatorio' ? view : undefined;
+};
+
+const isCombustivelListOnlyUrl = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('lista') === '1' || params.get('lista') === 'true';
+};
+
 export default function App() {
   // Login State
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -470,7 +488,9 @@ export default function App() {
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState<boolean>(false);
 
   // Navigation State
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => getInitialTabFromUrl());
+  const combustivelViewInicial = getCombustivelViewFromUrl();
+  const combustivelListaSomente = activeTab === 'lancamentos' && combustivelViewInicial === 'historico' && isCombustivelListOnlyUrl();
   // Parte de Materiais pedida por outro lugar (aviso, busca); a vez remonta a tela na parte certa.
   const [materiaisPedido, setMateriaisPedido] = useState<{ secao?: SecaoMateriais; vez: number }>({ vez: 0 });
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
@@ -5121,7 +5141,7 @@ export default function App() {
           onLogout={() => void handleLogout()}
         />
         {/* Dynamic Inner Tab Viewport */}
-        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
+        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : combustivelListaSomente ? 'p-1 sm:p-2' : 'p-3 sm:p-4 lg:p-5'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (
@@ -5251,6 +5271,8 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 usuario={activeUserName}
                 onOpenControle={allowedTabs.includes('controle-equipamentos') ? () => navigateTo('controle-equipamentos') : undefined}
+                combustivelInicial={combustivelViewInicial}
+                combustivelListaSomente={combustivelListaSomente}
               />
             )}
 
