@@ -4,6 +4,8 @@ import type { Abastecimento, Comboio, Empresa, Equipamento, TipoCombustivel } fr
 import {
   buildFuelReport,
   filterFuelReportRecords,
+  getFuelCompetencePeriodLabel,
+  getFuelRecordCompetence,
   type FuelReportFilters,
 } from '../src/modules/frota/fuelReport';
 
@@ -140,4 +142,19 @@ test('relatorio soma por competencia e preserva linhas de conferencia', () => {
   assert.equal(report.linhasExcel[0].aba, 'JULHO 2026');
   assert.equal(report.linhasExcel[0].status, 'Conferência necessária');
   assert.equal(report.linhasExcel[1].prefixo, 'CB001');
+});
+
+test('competencia do combustivel segue ciclo operacional de 21 a 20', () => {
+  assert.equal(getFuelRecordCompetence({ data: '2026-09-20', competencia: '2026-09' }), '2026-09');
+  assert.equal(getFuelRecordCompetence({ data: '2026-09-21', competencia: '2026-09' }), '2026-10');
+  assert.equal(getFuelCompetencePeriodLabel('2026-10'), '21/09 a 20/10');
+});
+
+test('relatorio aceita intervalo livre de datas', () => {
+  const filtrados = filterFuelReportRecords(abastecimentos, {
+    dataInicio: '2026-07-01',
+    dataFim: '2026-07-31',
+  }, { equipamentos, empresas, comboios, combustiveis });
+
+  assert.deepEqual(filtrados.map(item => item.id), ['fuel-2']);
 });

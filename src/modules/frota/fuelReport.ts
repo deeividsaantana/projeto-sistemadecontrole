@@ -3,6 +3,8 @@ import { getOperationalFuelLiters } from '../../utils/fuelAnalyticsSafety';
 
 export interface FuelReportFilters {
   competencias?: readonly string[];
+  dataInicio?: string;
+  dataFim?: string;
   empresaIds?: readonly string[];
   equipamentoIds?: readonly string[];
   comboioIds?: readonly string[];
@@ -63,14 +65,31 @@ export interface FuelReport {
 
 const removeAccents = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
+const toIsoMonth = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
 export const getFuelRecordCompetence = (record: Pick<Abastecimento, 'competencia' | 'data'>) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(record.data || '')) {
+    const date = new Date(`${record.data}T12:00:00`);
+    if (date.getDate() >= 21) date.setMonth(date.getMonth() + 1);
+    return toIsoMonth(date);
+  }
   if (record.competencia && /^\d{4}-\d{2}$/.test(record.competencia)) return record.competencia;
-  return /^\d{4}-\d{2}/.test(record.data || '') ? record.data.slice(0, 7) : 'sem-data';
+  return 'sem-data';
+};
+
+export const getFuelCompetencePeriodLabel = (competence: string) => {
+  if (!/^\d{4}-\d{2}$/.test(competence)) return '';
+  const [year, month] = competence.split('-').map(Number);
+  const start = new Date(year, month - 2, 21, 12);
+  const end = new Date(year, month - 1, 20, 12);
+  const format = (date: Date) => date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  return `${format(start)} a ${format(end)}`;
 };
 
 const competenceLabel = (competence: string) => {
   if (!/^\d{4}-\d{2}$/.test(competence)) return 'Sem data';
-  return new Date(`${competence}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase();
+  const month = new Date(`${competence}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase();
+  return `${month} · ${getFuelCompetencePeriodLabel(competence)}`;
 };
 
 export const isFuelRecordReviewRequired = (record: Abastecimento) => {
@@ -103,6 +122,8 @@ export const filterFuelReportRecords = (
 
   return records.filter(record => {
     if (!isActiveFuelRecord(record)) return false;
+    if (filters.dataInicio && record.data < filters.dataInicio) return false;
+    if (filters.dataFim && record.data > filters.dataFim) return false;
     const equipamento = equipamentos.get(record.equipamentoId);
     const empresaId = equipamento?.empresaId || '';
     if (competencias.size && !competencias.has(getFuelRecordCompetence(record))) return false;

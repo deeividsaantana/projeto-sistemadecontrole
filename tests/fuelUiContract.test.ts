@@ -18,13 +18,27 @@ test('combustivel history and report avoid forced desktop-only wide tables', () 
   assert.doesNotMatch(source, /min-w-\[1180px\]/);
   assert.doesNotMatch(source, /min-w-\[1320px\]/);
   assert.match(source, /listaSomente/);
-  assert.match(source, /h-\[calc\(100dvh-5\.25rem\)\]/);
+  assert.match(source, /h-\[calc\(100dvh-1rem\)\]/);
 });
 
 test('combustivel excel export is organized as a workbook report', () => {
-  assert.match(source, /addFuelRankingWorksheet/);
+  assert.match(source, /addFuelSupplyWorksheet/);
+  assert.match(source, /workbook\.addWorksheet\('FORNECIMENTO DIESEL'/);
+  assert.match(source, /'Data', key: 'data'/);
+  assert.match(source, /'Prefixo', key: 'prefixo'/);
+  assert.match(source, /'Descrição do equipamento', key: 'descricao'/);
+  assert.match(source, /'KM inicial', key: 'kmInicial'/);
+  assert.match(source, /'Horímetro', key: 'horimetro'/);
+  assert.match(source, /'Litros', key: 'litros'/);
+  assert.match(source, /'Hora', key: 'hora'/);
+  assert.match(source, /'Comboio', key: 'comboio'/);
+  assert.match(source, /'Tipo de combustível', key: 'tipoCombustivel'/);
+  assert.match(source, /'Empresa', key: 'empresa'/);
+  assert.match(source, /'Bomba inicial', key: 'bombaInicial'/);
+  assert.match(source, /'Bomba final', key: 'bombaFinal'/);
   assert.match(source, /workbook\.addWorksheet\('CONFERÊNCIA'/);
-  assert.match(source, /workbook\.addWorksheet\('LANÇAMENTOS'/);
+  assert.doesNotMatch(source, /workbook\.addWorksheet\('LANÇAMENTOS'/);
+  assert.doesNotMatch(source, /workbook\.addWorksheet\('RANKING/);
 });
 
 test('combustivel can open a dedicated list-only route by query string', () => {

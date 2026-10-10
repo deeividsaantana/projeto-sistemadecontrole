@@ -491,6 +491,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>(() => getInitialTabFromUrl());
   const combustivelViewInicial = getCombustivelViewFromUrl();
   const combustivelListaSomente = activeTab === 'lancamentos' && combustivelViewInicial === 'historico' && isCombustivelListOnlyUrl();
+  useEffect(() => {
+    const targetTab = getInitialTabFromUrl();
+    if (targetTab !== activeTab && (getCombustivelViewFromUrl() || isCombustivelListOnlyUrl())) {
+      setActiveTab(targetTab);
+    }
+  }, [activeTab]);
   // Parte de Materiais pedida por outro lugar (aviso, busca); a vez remonta a tela na parte certa.
   const [materiaisPedido, setMateriaisPedido] = useState<{ secao?: SecaoMateriais; vez: number }>({ vez: 0 });
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
@@ -5111,13 +5117,13 @@ export default function App() {
 
       {/* Desktop ERP shell: the sidebar is the single source of navigation. */}
       <div className="erp-shell">
-        <DesktopSidebar
+        {!combustivelListaSomente && <DesktopSidebar
           activeTab={activeTab}
           groups={filteredNavigationGroups}
           onNavigate={tab => navigateTo(tab)}
-        />
+        />}
         <main className="erp-workspace" id="main-workspace">
-        <DesktopTopBar
+        {!combustivelListaSomente && <DesktopTopBar
           activeTab={activeTab}
           groups={filteredNavigationGroups}
           menuSearch={menuSearch}
@@ -5139,7 +5145,7 @@ export default function App() {
           onClearNotifications={handleClearNotifications}
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
           onLogout={() => void handleLogout()}
-        />
+        />}
         {/* Dynamic Inner Tab Viewport */}
         <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : combustivelListaSomente ? 'p-1 sm:p-2' : 'p-3 sm:p-4 lg:p-5'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
