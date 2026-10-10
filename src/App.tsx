@@ -489,8 +489,9 @@ export default function App() {
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>(() => getInitialTabFromUrl());
-  const combustivelViewInicial = getCombustivelViewFromUrl();
-  const combustivelListaSomente = activeTab === 'lancamentos' && combustivelViewInicial === 'historico' && isCombustivelListOnlyUrl();
+  const combustivelUrlView = getCombustivelViewFromUrl();
+  const combustivelListaSomente = activeTab === 'lancamentos' && isCombustivelListOnlyUrl();
+  const combustivelViewInicial = combustivelListaSomente ? 'historico' : combustivelUrlView;
   useEffect(() => {
     const targetTab = getInitialTabFromUrl();
     if (targetTab !== activeTab && (getCombustivelViewFromUrl() || isCombustivelListOnlyUrl())) {

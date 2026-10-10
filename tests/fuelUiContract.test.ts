@@ -18,7 +18,7 @@ test('combustivel history and report avoid forced desktop-only wide tables', () 
   assert.doesNotMatch(source, /min-w-\[1180px\]/);
   assert.doesNotMatch(source, /min-w-\[1320px\]/);
   assert.match(source, /listaSomente/);
-  assert.match(source, /h-\[calc\(100dvh-1rem\)\]/);
+  assert.match(source, /h-\[calc\(100dvh-0\.5rem\)\]/);
 });
 
 test('combustivel excel export is organized as a workbook report', () => {
@@ -52,5 +52,13 @@ test('combustivel can open a dedicated list-only route by query string', () => {
   assert.match(appSource, /getInitialTabFromUrl/);
   assert.match(appSource, /getCombustivelViewFromUrl/);
   assert.match(appSource, /combustivelListaSomente/);
+  assert.match(appSource, /activeTab === 'lancamentos' && isCombustivelListOnlyUrl\(\)/);
+  assert.match(appSource, /combustivelListaSomente \? 'historico' : combustivelUrlView/);
   assert.match(appSource, /combustivelInicial=\{combustivelViewInicial\}/);
+});
+
+test('combustivel direct list prioritizes viewport and dense operational rows', () => {
+  assert.match(source, /tamanhoPaginaHistorico = listaSomente \? 100 : TAMANHO_PAGINA_HISTORICO/);
+  assert.match(source, /compacto=\{listaSomente\}/);
+  assert.match(source, /ListaHistoricoCombustivel\(\{[^}]*compacto = false/s);
 });

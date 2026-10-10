@@ -422,11 +422,12 @@ export default function CombustivelOperacionalTab({
   const relatorioHistorico = useMemo(() => buildFuelReport({
     records: historicoFiltrado, equipamentos, empresas, comboios, combustiveis,
   }), [comboios, combustiveis, empresas, equipamentos, historicoFiltrado]);
-  const totalPaginasHistorico = Math.max(1, Math.ceil(historicoFiltrado.length / TAMANHO_PAGINA_HISTORICO));
+  const tamanhoPaginaHistorico = listaSomente ? 100 : TAMANHO_PAGINA_HISTORICO;
+  const totalPaginasHistorico = Math.max(1, Math.ceil(historicoFiltrado.length / tamanhoPaginaHistorico));
   const paginaHistoricoAtual = Math.min(paginaHistorico, totalPaginasHistorico - 1);
   const historicoPaginado = historicoFiltrado.slice(
-    paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO,
-    (paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO,
+    paginaHistoricoAtual * tamanhoPaginaHistorico,
+    (paginaHistoricoAtual + 1) * tamanhoPaginaHistorico,
   );
   const totalLitrosHistorico = relatorioHistorico.totalLitros;
   const maquinasHistorico = new Set(historicoFiltrado.map(item => item.equipamentoId || item.prefixoInformado).filter(Boolean)).size;
@@ -636,7 +637,7 @@ export default function CombustivelOperacionalTab({
   ];
 
   return (
-    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'w-full max-w-none space-y-3' : `mx-auto flex w-full flex-col overflow-hidden ${listaSomente ? 'h-[calc(100dvh-1rem)] max-w-none' : 'h-[calc(100dvh-6rem)] min-h-[34rem] max-w-none'}`}>
+    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'w-full max-w-none space-y-3' : `mx-auto flex w-full flex-col overflow-hidden ${listaSomente ? 'h-[calc(100dvh-0.5rem)] max-w-none' : 'h-[calc(100dvh-6rem)] min-h-[34rem] max-w-none'}`}>
       {view !== 'novo' && !listaSomente && <div data-comb-reveal className="mb-2 shrink-0">
         <PageHeader eyebrow="Frota" title="Combustível" className="mb-2" actions={<>
           <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`}><Droplets className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Lubrificação</span></button>
@@ -866,7 +867,7 @@ export default function CombustivelOperacionalTab({
         </form>
       )}
 
-      {view === 'historico' && <div className={`flex min-h-0 flex-1 flex-col ${listaSomente ? 'gap-1' : 'gap-2'}`} data-testid="combustivel-historico">
+      {view === 'historico' && <div className={`flex min-h-0 flex-1 flex-col ${listaSomente ? 'gap-1 bg-slate-50' : 'gap-2'}`} data-testid="combustivel-historico">
         {!listaSomente && <section data-comb-reveal className={`${CARTAO} overflow-hidden`}>
           <div className={`flex shrink-0 flex-col gap-2 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between ${listaSomente ? 'px-3 py-2' : 'px-3 py-2'}`}>
             <div className="flex items-center gap-3">
@@ -891,16 +892,16 @@ export default function CombustivelOperacionalTab({
           </div>}
         </section>}
 
-        <section data-comb-reveal aria-label="Filtros do histórico" className={`${CARTAO} shrink-0 ${listaSomente ? 'rounded-lg p-2' : 'p-2'}`}>
-          {listaSomente && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+        <section data-comb-reveal aria-label="Filtros do histórico" className={listaSomente ? 'shrink-0 border-b border-slate-200 bg-white px-2 py-1.5 shadow-sm' : `${CARTAO} shrink-0 p-2`}>
+          {listaSomente && <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
             <div className="min-w-0">
-              <h1 className="text-lg font-black leading-tight text-slate-950">Lista de abastecimentos</h1>
-              <p className="text-xs font-semibold text-slate-500">{historicoFiltrado.length.toLocaleString('pt-BR')} registro(s) · {litrosTexto(totalLitrosHistorico)} · {maquinasHistorico.toLocaleString('pt-BR')} equipamento(s)</p>
+              <h1 className="text-base font-black leading-tight text-slate-950">Lista de abastecimentos</h1>
+              <p className="text-[11px] font-semibold text-slate-500">{historicoFiltrado.length.toLocaleString('pt-BR')} registros · {litrosTexto(totalLitrosHistorico)} · {maquinasHistorico.toLocaleString('pt-BR')} equipamentos</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={onOpenSpreadsheetImport} disabled={isParsingSpreadsheet} className={`${BOTAO_SECUNDARIO} min-h-9 px-3`}><FileSpreadsheet className="size-4" aria-hidden="true" />{isParsingSpreadsheet ? 'Lendo…' : 'Importar'}</button>
-              <button type="button" onClick={exportarHistoricoExcel} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_SECUNDARIO} min-h-9 px-3`}><Download className="size-4" aria-hidden="true" />{exportandoHistorico === 'excel' ? 'Gerando…' : 'Excel'}</button>
-              <button type="button" onClick={exportarHistoricoPdf} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_PRIMARIO} min-h-9 px-3`}><FileText className="size-4" aria-hidden="true" />{exportandoHistorico === 'pdf' ? 'Gerando…' : 'PDF'}</button>
+              <button type="button" onClick={onOpenSpreadsheetImport} disabled={isParsingSpreadsheet} className={`${BOTAO_SECUNDARIO} min-h-8 px-2.5 text-xs`}><FileSpreadsheet className="size-4" aria-hidden="true" />{isParsingSpreadsheet ? 'Lendo…' : 'Importar'}</button>
+              <button type="button" onClick={exportarHistoricoExcel} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_SECUNDARIO} min-h-8 px-2.5 text-xs`}><Download className="size-4" aria-hidden="true" />{exportandoHistorico === 'excel' ? 'Gerando…' : 'Excel'}</button>
+              <button type="button" onClick={exportarHistoricoPdf} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_PRIMARIO} min-h-8 px-2.5 text-xs`}><FileText className="size-4" aria-hidden="true" />{exportandoHistorico === 'pdf' ? 'Gerando…' : 'PDF'}</button>
             </div>
           </div>}
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -921,19 +922,19 @@ export default function CombustivelOperacionalTab({
           {erro && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
         </section>
 
-        <section data-comb-reveal aria-label="Registros de combustível" className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden ${listaSomente ? 'rounded-lg' : ''}`}>
-          <div className={`flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 ${listaSomente ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
-            <span className="text-xs font-semibold tabular-nums text-slate-600">{historicoFiltrado.length ? `${paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO + 1}–${Math.min((paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO, historicoFiltrado.length)} de ${historicoFiltrado.length}` : '0 registros'}</span>
+        <section data-comb-reveal aria-label="Registros de combustível" className={listaSomente ? 'flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border border-slate-200 bg-white' : `${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+          <div className={`flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 ${listaSomente ? 'px-3 py-1' : 'px-4 py-2'}`}>
+            <span className="text-xs font-semibold tabular-nums text-slate-600">{historicoFiltrado.length ? `${paginaHistoricoAtual * tamanhoPaginaHistorico + 1}–${Math.min((paginaHistoricoAtual + 1) * tamanhoPaginaHistorico, historicoFiltrado.length)} de ${historicoFiltrado.length}` : '0 registros'}</span>
             <span className="text-xs font-semibold text-slate-500">Excel usa todos os resultados filtrados.</span>
           </div>
           {historicoPaginado.length === 0
             ? <div className="px-4 py-14 text-center"><History className="mx-auto size-8 text-slate-300" aria-hidden="true" /><p className="mt-3 font-semibold text-slate-700">Nenhum abastecimento encontrado</p><p className="mt-1 text-sm text-slate-500">Ajuste os filtros ou limpe a busca para consultar outros lançamentos.</p></div>
-            : <ListaHistoricoCombustivel itens={historicoPaginado} porId={porId} empresaPorId={empresaPorId} comboioPorId={comboioPorId} nomeCombustivel={nomeCombustivel} onExcluir={setExcluindo} />}
-          <footer className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+            : <ListaHistoricoCombustivel itens={historicoPaginado} porId={porId} empresaPorId={empresaPorId} comboioPorId={comboioPorId} nomeCombustivel={nomeCombustivel} onExcluir={setExcluindo} compacto={listaSomente} />}
+          <footer className={`flex items-center justify-between gap-3 border-t border-slate-100 ${listaSomente ? 'px-3 py-2' : 'px-4 py-3'}`}>
             <p className="text-xs text-slate-500">Página {paginaHistoricoAtual + 1} de {totalPaginasHistorico}</p>
             <div className="flex items-center gap-2">
-              <button type="button" aria-label="Página anterior" title="50 lançamentos anteriores" onClick={() => setPaginaHistorico(Math.max(0, paginaHistoricoAtual - 1))} disabled={paginaHistoricoAtual === 0} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronLeft className="size-4" aria-hidden="true" /></button>
-              <button type="button" aria-label="Próxima página" title="Próximos 50 lançamentos" onClick={() => setPaginaHistorico(Math.min(totalPaginasHistorico - 1, paginaHistoricoAtual + 1))} disabled={paginaHistoricoAtual >= totalPaginasHistorico - 1} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronRight className="size-4" aria-hidden="true" /></button>
+              <button type="button" aria-label="Página anterior" title={`${tamanhoPaginaHistorico} lançamentos anteriores`} onClick={() => setPaginaHistorico(Math.max(0, paginaHistoricoAtual - 1))} disabled={paginaHistoricoAtual === 0} className={`grid ${listaSomente ? 'size-9' : 'size-10'} place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronLeft className="size-4" aria-hidden="true" /></button>
+              <button type="button" aria-label="Próxima página" title={`Próximos ${tamanhoPaginaHistorico} lançamentos`} onClick={() => setPaginaHistorico(Math.min(totalPaginasHistorico - 1, paginaHistoricoAtual + 1))} disabled={paginaHistoricoAtual >= totalPaginasHistorico - 1} className={`grid ${listaSomente ? 'size-9' : 'size-10'} place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronRight className="size-4" aria-hidden="true" /></button>
             </div>
           </footer>
         </section>
@@ -1022,16 +1023,17 @@ function GraficoRosca({ titulo, grupos, vazio }: { titulo: string; grupos: FuelH
   </section>;
 }
 
-function ListaHistoricoCombustivel({ itens, porId, empresaPorId, comboioPorId, nomeCombustivel, onExcluir }: {
+function ListaHistoricoCombustivel({ itens, porId, empresaPorId, comboioPorId, nomeCombustivel, onExcluir, compacto = false }: {
   itens: readonly Abastecimento[];
   porId: ReadonlyMap<string, Equipamento>;
   empresaPorId: ReadonlyMap<string, string>;
   comboioPorId: ReadonlyMap<string, string>;
   nomeCombustivel: ReadonlyMap<string, string>;
   onExcluir: (item: Abastecimento) => void;
+  compacto?: boolean;
 }) {
   return <div className="min-h-0 flex-1 overflow-auto">
-    <div className="sticky top-0 z-10 hidden border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[9rem_minmax(15rem,1.5fr)_minmax(13rem,1fr)_8rem_9rem_8rem_8rem_5rem] lg:gap-3">
+    <div className={`sticky top-0 z-10 hidden border-b border-slate-200 bg-slate-50 px-4 text-[11px] font-black uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[7.5rem_minmax(13rem,1.35fr)_minmax(12rem,1fr)_7rem_8.5rem_7rem_7rem_4.5rem] lg:gap-3 ${compacto ? 'py-1.5' : 'py-2'}`}>
       <span>Data / hora</span>
       <span>Equipamento</span>
       <span>Empresa / comboio</span>
@@ -1046,7 +1048,7 @@ function ListaHistoricoCombustivel({ itens, porId, empresaPorId, comboioPorId, n
         const maquina = porId.get(item.equipamentoId);
         const empresa = maquina ? empresaPorId.get(maquina.empresaId) : '';
         const revisaoPendente = item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || item.alertas?.some(alerta => alerta.severidade !== 'info');
-        return <li key={item.id} data-comb-reveal className="bg-white px-4 py-3 transition hover:bg-emerald-50/35 lg:grid lg:grid-cols-[9rem_minmax(15rem,1.5fr)_minmax(13rem,1fr)_8rem_9rem_8rem_8rem_5rem] lg:items-center lg:gap-3">
+        return <li key={item.id} data-comb-reveal className={`bg-white px-4 transition hover:bg-emerald-50/35 lg:grid lg:grid-cols-[7.5rem_minmax(13rem,1.35fr)_minmax(12rem,1fr)_7rem_8.5rem_7rem_7rem_4.5rem] lg:items-center lg:gap-3 ${compacto ? 'py-2' : 'py-3'}`}>
           <div className="flex items-start justify-between gap-3 lg:block">
             <div>
               <p className="font-mono text-sm font-black tabular-nums text-slate-950">{dataCurta(item.data)}</p>
@@ -1056,10 +1058,10 @@ function ListaHistoricoCombustivel({ itens, porId, empresaPorId, comboioPorId, n
           </div>
           <div className="mt-2 min-w-0 lg:mt-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h4 className="font-mono text-base font-black leading-tight text-slate-950">{maquina?.prefixo || item.prefixoInformado || 'Sem cadastro'}</h4>
+              <h4 className={`font-mono font-black leading-tight text-slate-950 ${compacto ? 'text-sm' : 'text-base'}`}>{maquina?.prefixo || item.prefixoInformado || 'Sem cadastro'}</h4>
               {revisaoPendente ? <span className="hidden rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-800 lg:inline-flex">Conferir</span> : <span className="hidden rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-800 lg:inline-flex">OK</span>}
             </div>
-            <p className="mt-0.5 truncate text-sm font-semibold text-slate-700" title={maquina?.nome || 'Equipamento não cadastrado'}>{maquina?.nome || 'Equipamento não cadastrado'}</p>
+            <p className={`${compacto ? 'text-xs' : 'text-sm'} mt-0.5 truncate font-semibold text-slate-700`} title={maquina?.nome || 'Equipamento não cadastrado'}>{maquina?.nome || 'Equipamento não cadastrado'}</p>
             <p className="mt-0.5 truncate text-xs text-slate-500 lg:hidden">{nomeCombustivel.get(item.tipoCombustivelId) || 'Combustível não informado'}</p>
           </div>
           <div className="mt-2 min-w-0 text-sm lg:mt-0">
@@ -1069,7 +1071,7 @@ function ListaHistoricoCombustivel({ itens, porId, empresaPorId, comboioPorId, n
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:contents">
             <div className="rounded-lg bg-emerald-50 px-3 py-2 lg:rounded-none lg:bg-transparent lg:p-0">
               <p className="text-[10px] font-black uppercase text-emerald-700 lg:hidden">Litros</p>
-              <strong className="text-lg font-black tabular-nums text-[#176b4d] lg:text-base">{litrosTexto(Number(item.quantidadeLitros || 0))}</strong>
+              <strong className={`${compacto ? 'text-base' : 'text-lg'} font-black tabular-nums text-[#176b4d] lg:text-base`}>{litrosTexto(Number(item.quantidadeLitros || 0))}</strong>
             </div>
             <div className="rounded-lg bg-slate-50 px-3 py-2 lg:rounded-none lg:bg-transparent lg:p-0">
               <p className="text-[10px] font-black uppercase text-slate-400 lg:hidden">Bomba</p>
