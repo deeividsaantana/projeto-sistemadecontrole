@@ -35,6 +35,7 @@ export interface CorporateSheetOptions {
   filters?: string[];
   recordCount?: number;
   autoFit?: boolean;
+  showTitleBlock?: boolean;
 }
 
 export const configureCorporateWorkbook = (workbook: ExcelJS.Workbook, subject: string) => {
@@ -141,7 +142,7 @@ export const styleCorporateWorksheet = (
   if (options.autoFit !== false) autoFitCorporateColumns(worksheet);
 
   const filterSummary = options.filters?.filter(Boolean).join(' | ') || 'Sem filtros adicionais';
-  if (options.headerRow >= 3) {
+  if (options.showTitleBlock !== false && options.headerRow >= 3) {
     worksheet.getCell(`A${options.headerRow - 2}`).value = options.title;
     worksheet.getCell(`A${options.headerRow - 2}`).font = {
       bold: true,

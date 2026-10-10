@@ -198,7 +198,7 @@ function addFuelSupplyWorksheet(
     bombaInicial: row.bombaInicial,
     bombaFinal: row.bombaFinal,
   }));
-  styleCorporateWorksheet(worksheet, { title, headerRow: 5, lastColumn: 12, dataStartRow: 6, freezeRows: 5, recordCount: rows.length, filters, autoFit: false });
+  styleCorporateWorksheet(worksheet, { title, headerRow: 5, lastColumn: 12, dataStartRow: 6, freezeRows: 5, recordCount: rows.length, filters, autoFit: false, showTitleBlock: false });
   worksheet.getCell('A2').value = 'RENEA';
   worksheet.getCell('A2').font = { bold: true, size: 22, color: { argb: 'FF0F172A' } };
   worksheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left' };
@@ -636,7 +636,7 @@ export default function CombustivelOperacionalTab({
   ];
 
   return (
-    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'w-full max-w-none space-y-3' : `mx-auto flex w-full flex-col overflow-hidden ${listaSomente ? 'h-[calc(100dvh-1rem)] max-w-none' : 'h-[calc(100dvh-7rem)] min-h-[34rem] max-w-[96rem]'}`}>
+    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'w-full max-w-none space-y-3' : `mx-auto flex w-full flex-col overflow-hidden ${listaSomente ? 'h-[calc(100dvh-1rem)] max-w-none' : 'h-[calc(100dvh-6rem)] min-h-[34rem] max-w-none'}`}>
       {view !== 'novo' && !listaSomente && <div data-comb-reveal className="mb-2 shrink-0">
         <PageHeader eyebrow="Frota" title="Combustível" className="mb-2" actions={<>
           <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`}><Droplets className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Lubrificação</span></button>
@@ -653,17 +653,21 @@ export default function CombustivelOperacionalTab({
       </p>
 
       {view === 'resumo' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-dashboard">
-        <div className="grid shrink-0 grid-cols-4 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white">
-          {[
-            ['Lançamentos', relatorioCombustivel.totalRegistros.toLocaleString('pt-BR')],
-            ['Volume abastecido', litrosTexto(relatorioCombustivel.totalLitros)],
-            ['Conferência', relatorioCombustivel.totalConferencia.toLocaleString('pt-BR')],
-            ['Equipamentos', relatorioCombustivel.porEquipamento.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
-          ].map(([titulo, valor]) => <div key={titulo} className="min-w-0 px-2 py-2 sm:px-3"><p className="truncate text-[9px] font-bold uppercase tracking-wide text-slate-500 sm:text-[10px]">{titulo}</p><p className="mt-0.5 truncate text-sm font-black tabular-nums text-slate-950 sm:text-lg">{valor}</p></div>)}
-        </div>
-        <nav aria-label="Painéis do resumo de combustível" className="grid shrink-0 grid-cols-2 rounded-lg bg-slate-100 p-1">
-          {abasDashboard.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={abaDashboard === id} onClick={() => setAbaDashboard(id)} className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md px-1 text-[11px] font-bold sm:px-2 sm:text-xs ${abaDashboard === id ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
-        </nav>
+        <section className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 xl:flex xl:items-center xl:gap-5">
+              {[
+                ['Registros', relatorioCombustivel.totalRegistros.toLocaleString('pt-BR')],
+                ['Litros', litrosTexto(relatorioCombustivel.totalLitros)],
+                ['A conferir', relatorioCombustivel.totalConferencia.toLocaleString('pt-BR')],
+                ['Equipamentos', relatorioCombustivel.porEquipamento.filter(item => item.litros > 0).length.toLocaleString('pt-BR')],
+              ].map(([titulo, valor]) => <div key={titulo} className="min-w-0"><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{titulo}</p><p className="truncate text-lg font-black tabular-nums text-slate-950">{valor}</p></div>)}
+            </div>
+            <nav aria-label="Painéis do resumo de combustível" className="grid shrink-0 grid-cols-2 rounded-lg bg-slate-100 p-1 xl:w-80">
+              {abasDashboard.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={abaDashboard === id} onClick={() => setAbaDashboard(id)} className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-bold transition ${abaDashboard === id ? 'bg-white text-[#176b4d] shadow-sm' : 'text-slate-600 hover:text-slate-900'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
+            </nav>
+          </div>
+        </section>
         {abaDashboard === 'resumo' && <div className="grid min-h-0 flex-1 gap-2 xl:grid-cols-[1.15fr_0.85fr]" data-testid="combustivel-dashboard-consumo">
           <section className={`${CARTAO} flex min-h-0 flex-col overflow-hidden p-4`}>
             <header className="flex items-start justify-between gap-3">
@@ -708,21 +712,9 @@ export default function CombustivelOperacionalTab({
       </div>}
 
       {view === 'relatorio' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-relatorio">
-        <section data-comb-reveal aria-label="Filtros do relatório de combustível" className={`${CARTAO} shrink-0 overflow-hidden`}>
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-xl bg-blue-50 text-blue-700"><FileSpreadsheet className="size-5" aria-hidden="true" /></span>
-              <div>
-                <h2 className="text-base font-black text-slate-950">Relatório de combustível</h2>
-                <p className="text-xs text-slate-500">Filtros, rankings e linhas no mesmo padrão operacional.</p>
-              </div>
-            </div>
-            <span className="flex flex-wrap gap-2">
-              <button type="button" onClick={exportarRelatorioExcel} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_SECUNDARIO} px-3`}><Download className="size-4" aria-hidden="true" />{exportandoHistorico === 'excel' ? 'Gerando...' : 'Excel'}</button>
-              <button type="button" onClick={() => setFiltrosRelatorio(FILTROS_RELATORIO_VAZIOS)} disabled={!Object.values(filtrosRelatorio).some(Boolean)} title="Limpar filtros do relatório" className={`${BOTAO_SECUNDARIO} px-3`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
-            </span>
-          </header>
-          <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-[1.25fr_repeat(7,minmax(0,1fr))]">
+        <section data-comb-reveal aria-label="Filtros do relatório de combustível" className="shrink-0 rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+            <div className="grid min-w-0 flex-1 gap-2 md:grid-cols-2 xl:grid-cols-[1.15fr_repeat(7,minmax(0,1fr))]">
             <label className="md:col-span-2 xl:col-span-1"><span className={`${ROTULO} mb-1 block`}>Busca</span><span className="relative block"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input value={filtrosRelatorio.texto} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, texto: event.target.value }))} placeholder="Prefixo, empresa, comboio, aba..." className={`${CAMPO} pl-9`} /></span></label>
             <label><span className={`${ROTULO} mb-1 block`}>Competência</span><select value={filtrosRelatorio.competencia} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, competencia: event.target.value }))} className={CAMPO}><option value="">Todas</option>{competenciasDisponiveis.map(item => <option key={item.chave} value={item.chave}>{item.rotulo}</option>)}</select></label>
             <label><span className={`${ROTULO} mb-1 block`}>Data inicial</span><input type="date" value={filtrosRelatorio.dataInicio} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, dataInicio: event.target.value }))} className={CAMPO} /></label>
@@ -731,6 +723,11 @@ export default function CombustivelOperacionalTab({
             <label><span className={`${ROTULO} mb-1 block`}>Equipamento</span><select value={filtrosRelatorio.equipamentoId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, equipamentoId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{equipamentos.map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}</select></label>
             <label><span className={`${ROTULO} mb-1 block`}>Comboio</span><select value={filtrosRelatorio.comboioId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, comboioId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
             <label><span className={`${ROTULO} mb-1 block`}>Combustível</span><select value={filtrosRelatorio.combustivelId} onChange={event => setFiltrosRelatorio(atual => ({ ...atual, combustivelId: event.target.value }))} className={CAMPO}><option value="">Todos</option>{combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+            </div>
+            <span className="grid shrink-0 grid-cols-2 gap-2 xl:w-56">
+              <button type="button" onClick={exportarRelatorioExcel} disabled={Boolean(exportandoHistorico)} className={`${BOTAO_PRIMARIO} min-h-10 justify-center px-3`}><Download className="size-4" aria-hidden="true" />{exportandoHistorico === 'excel' ? 'Gerando...' : 'Excel'}</button>
+              <button type="button" onClick={() => setFiltrosRelatorio(FILTROS_RELATORIO_VAZIOS)} disabled={!Object.values(filtrosRelatorio).some(Boolean)} title="Limpar filtros do relatório" className={`${BOTAO_SECUNDARIO} min-h-10 justify-center px-3`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
+            </span>
           </div>
         </section>
         <div className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -925,10 +922,10 @@ export default function CombustivelOperacionalTab({
         </section>
 
         <section data-comb-reveal aria-label="Registros de combustível" className={`${CARTAO} flex min-h-0 flex-1 flex-col overflow-hidden ${listaSomente ? 'rounded-lg' : ''}`}>
-          <header className={`flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 ${listaSomente ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-            <div><h3 className="text-sm font-bold text-slate-900">Lançamentos</h3><p className="text-xs text-slate-500">Exportação inclui todos os resultados filtrados.</p></div>
-            <span className="text-xs font-semibold tabular-nums text-slate-500">{historicoFiltrado.length ? `${paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO + 1}–${Math.min((paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO, historicoFiltrado.length)} de ${historicoFiltrado.length}` : '0 registros'}</span>
-          </header>
+          <div className={`flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 ${listaSomente ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
+            <span className="text-xs font-semibold tabular-nums text-slate-600">{historicoFiltrado.length ? `${paginaHistoricoAtual * TAMANHO_PAGINA_HISTORICO + 1}–${Math.min((paginaHistoricoAtual + 1) * TAMANHO_PAGINA_HISTORICO, historicoFiltrado.length)} de ${historicoFiltrado.length}` : '0 registros'}</span>
+            <span className="text-xs font-semibold text-slate-500">Excel usa todos os resultados filtrados.</span>
+          </div>
           {historicoPaginado.length === 0
             ? <div className="px-4 py-14 text-center"><History className="mx-auto size-8 text-slate-300" aria-hidden="true" /><p className="mt-3 font-semibold text-slate-700">Nenhum abastecimento encontrado</p><p className="mt-1 text-sm text-slate-500">Ajuste os filtros ou limpe a busca para consultar outros lançamentos.</p></div>
             : <ListaHistoricoCombustivel itens={historicoPaginado} porId={porId} empresaPorId={empresaPorId} comboioPorId={comboioPorId} nomeCombustivel={nomeCombustivel} onExcluir={setExcluindo} />}

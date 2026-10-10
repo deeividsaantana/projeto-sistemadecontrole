@@ -24,6 +24,7 @@ test('combustivel history and report avoid forced desktop-only wide tables', () 
 test('combustivel excel export is organized as a workbook report', () => {
   assert.match(source, /addFuelSupplyWorksheet/);
   assert.match(source, /workbook\.addWorksheet\('FORNECIMENTO DIESEL'/);
+  assert.match(source, /showTitleBlock: false/);
   assert.match(source, /'Data', key: 'data'/);
   assert.match(source, /'Prefixo', key: 'prefixo'/);
   assert.match(source, /'Descrição do equipamento', key: 'descricao'/);
@@ -39,6 +40,12 @@ test('combustivel excel export is organized as a workbook report', () => {
   assert.match(source, /workbook\.addWorksheet\('CONFERÊNCIA'/);
   assert.doesNotMatch(source, /workbook\.addWorksheet\('LANÇAMENTOS'/);
   assert.doesNotMatch(source, /workbook\.addWorksheet\('RANKING/);
+});
+
+test('combustivel avoids stacked repeated section headers in report and list', () => {
+  assert.doesNotMatch(source, /<h2[^>]*>Relatório de combustível<\/h2>/);
+  assert.doesNotMatch(source, /<h3[^>]*>Lançamentos<\/h3><p[^>]*>Exportação inclui todos os resultados filtrados\.<\/p>/);
+  assert.match(source, /Excel usa todos os resultados filtrados/);
 });
 
 test('combustivel can open a dedicated list-only route by query string', () => {
