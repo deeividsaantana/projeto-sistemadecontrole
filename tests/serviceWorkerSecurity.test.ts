@@ -20,7 +20,7 @@ test('service worker exclui Functions e respostas no-store do cache runtime', ()
 });
 
 test('service worker nao prende scripts e estilos de versões anteriores', () => {
-  assert.match(serviceWorker, /renea-erp-shell-v345-premium-workspaces/);
+  assert.match(serviceWorker, /renea-erp-shell-v351-fuel-direct-list/);
   assert.doesNotMatch(serviceWorker, /STATIC_PATHS/);
   assert.doesNotMatch(serviceWorker, /\['script', 'style'/);
 });

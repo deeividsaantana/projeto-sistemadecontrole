@@ -454,6 +454,7 @@ const mergePresenceRecords = (current: PresencaApontamento[], incoming: Presenca
 const getInitialTabFromUrl = () => {
   if (typeof window === 'undefined') return 'dashboard';
   const params = new URLSearchParams(window.location.search);
+  if (params.get('lista') === '1' || params.get('lista') === 'true') return 'lancamentos';
   return params.get('tab') || params.get('aba') || 'dashboard';
 };
 
@@ -490,7 +491,7 @@ export default function App() {
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>(() => getInitialTabFromUrl());
   const combustivelUrlView = getCombustivelViewFromUrl();
-  const combustivelListaSomente = activeTab === 'lancamentos' && isCombustivelListOnlyUrl();
+  const combustivelListaSomente = isCombustivelListOnlyUrl();
   const combustivelViewInicial = combustivelListaSomente ? 'historico' : combustivelUrlView;
   useEffect(() => {
     const targetTab = getInitialTabFromUrl();

@@ -52,7 +52,8 @@ test('combustivel can open a dedicated list-only route by query string', () => {
   assert.match(appSource, /getInitialTabFromUrl/);
   assert.match(appSource, /getCombustivelViewFromUrl/);
   assert.match(appSource, /combustivelListaSomente/);
-  assert.match(appSource, /activeTab === 'lancamentos' && isCombustivelListOnlyUrl\(\)/);
+  assert.match(appSource, /if \(params\.get\('lista'\) === '1' \|\| params\.get\('lista'\) === 'true'\) return 'lancamentos'/);
+  assert.match(appSource, /const combustivelListaSomente = isCombustivelListOnlyUrl\(\)/);
   assert.match(appSource, /combustivelListaSomente \? 'historico' : combustivelUrlView/);
   assert.match(appSource, /combustivelInicial=\{combustivelViewInicial\}/);
 });
