@@ -1268,6 +1268,7 @@ export default function LancamentosTab({
           abastecimentos={abastecimentos}
           onSaveAbastecimento={onSaveAbastecimento}
           onDeleteAbastecimento={onDeleteAbastecimento}
+          onDeleteAbastecimentos={onDeleteAbastecimentos}
           onImportAbastecimentos={onImportAbastecimentos}
           onOpenLubrificacao={() => {
             setMode('lubrificacoes');
