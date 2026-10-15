@@ -1,5 +1,6 @@
 import { captureCloudBaseline, mergeCloudSnapshotsWithBaseline, resolvePublishPayload, type CloudBaseline } from '../cloudMerge';
 import type { CloudData, CloudConnectionStatus, CloudDownloadResult, CloudUploadResult } from '../cloud/types';
+import { protegerContraEncolhimento } from '../cloud/protecaoEncolhimento';
 import { getSupabaseClient } from './client';
 import { resolveSupabaseClientConfig } from './config';
 
@@ -111,7 +112,15 @@ export const uploadSupabaseBackup = async (
         }) as CloudData;
         expectedVersion = remote.updatedAt;
       }
-      return await publishSnapshot(payload, expectedVersion);
+      // Nunca publica por cima da nuvem uma tabela vazia ou muito menor sem
+      // marca de exclusão: é o navegador que perdeu a cópia, não o usuário
+      // que apagou. A base sai do retrato sem os devolvidos, para que o
+      // próximo download os traga de volta para este aparelho.
+      const { retrato, protegidas } = protegerContraEncolhimento(remote.data, payload);
+      const result = await publishSnapshot(retrato as CloudData, expectedVersion);
+      if (protegidas.length === 0) return result;
+      console.warn('Envio teria apagado registros da nuvem; eles foram mantidos:', protegidas);
+      return { ...result, publishedBaseline: captureCloudBaseline(payload), tabelasProtegidas: protegidas };
     } catch (error) {
       if (!isVersionConflict(error) || attempt === MAX_CONFLICT_ATTEMPTS) throw error;
       lastError = error;
