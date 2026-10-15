@@ -42,6 +42,7 @@ import './mapaChuva.test';
 import './recebimentoMaterial.test';
 import './painelPresenca.test';
 import './relatorioPresenca.test';
+import './exportarEquipes.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';
