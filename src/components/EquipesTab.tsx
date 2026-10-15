@@ -3,21 +3,24 @@
  * pendências — e a realocação de colaborador entre equipes.
  */
 import { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRightLeft, HardHat, Truck, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Download, HardHat, Truck, Users } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
+  Empresa,
   Funcionario,
   GrupoEquipe,
   ObraLocal,
   PresencaApontamento,
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
+import { baixarPlanilhaEquipes } from '../utils/exportarEquipesExcel';
 import { recoverTeamGroups, teamRecordMatches } from '../utils/teamIdentity';
 import { Badge, Card, ConfirmDialog, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
 
 interface EquipesTabProps {
   gruposEquipe: GrupoEquipe[];
   funcionarios: Funcionario[];
+  empresas: Empresa[];
   obras: ObraLocal[];
   presencasLink: PresencaApontamento[];
   controlesEquipamentos: ControleEquipamentoDiario[];
@@ -29,6 +32,7 @@ interface EquipesTabProps {
 export default function EquipesTab({
   gruposEquipe,
   funcionarios,
+  empresas,
   obras,
   presencasLink,
   controlesEquipamentos,
@@ -256,6 +260,7 @@ export default function EquipesTab({
               aria-label="Dia das equipes"
               className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-emerald-500"
             />
+            <button type="button" onClick={() => void baixarPlanilhaEquipes(recoveredGroups, funcionarios, empresas, hoje)} title="Baixa um Excel com cada pessoa e a sua equipe" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"><Download className="h-3.5 w-3.5" /> Exportar equipes</button>
             <button type="button" onClick={() => onNavigate('presenca')} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Montar equipe</button>
           </div>
         )}

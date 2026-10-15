@@ -49,6 +49,7 @@ import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServ
 import RelatoriosPresenca from './presenca/RelatoriosPresenca';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import { baixarPlanilhaEquipes } from '../utils/exportarEquipesExcel';
 import { generateUniversalPdfReport } from '../utils/universalPdfReport';
 import type {
   Empresa,
@@ -905,6 +906,8 @@ export default function ControlePresencaTab({
     })),
   });
 
+  const exportEquipesExcel = () => baixarPlanilhaEquipes(safeGroups, safeFuncionarios, safeEmpresas, today);
+
   const exportExcel = () => exportExcelRecords(filteredRecords, recordDate || today, 'Relatório de presença');
   const exportPdf = () => exportPdfRecords(filteredRecords, recordDate || today, 'Relatório de presença', pendingGroups.length);
   const exportDailyExcel = () => exportExcelRecords(dayRecords, referenceDate, 'Relatório da situação do dia');
@@ -1423,6 +1426,7 @@ export default function ControlePresencaTab({
                 />
               </label>
             )}
+            <button type="button" onClick={() => void exportEquipesExcel()} className={SECONDARY_BUTTON} title="Baixa um Excel com cada pessoa e a sua equipe"><Download className="h-4 w-4" /> Exportar equipes</button>
             <button type="button" onClick={openNewGroup} className={PRIMARY_BUTTON}><Plus className="h-4 w-4" /> Nova equipe</button>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

@@ -724,6 +724,7 @@ const screens: Record<string, React.ReactNode> = {
     <EquipesTab
       gruposEquipe={[fx.grupo]}
       funcionarios={fx.equipeFuncionarios}
+      empresas={fx.empresas}
       obras={fx.obras}
       presencasLink={fx.presencasHistorico}
       controlesEquipamentos={fx.controlesEquipamentos}

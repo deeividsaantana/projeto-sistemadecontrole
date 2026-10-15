@@ -5609,6 +5609,7 @@ export default function App() {
               <EquipesTab
                 gruposEquipe={gruposEquipe}
                 funcionarios={funcionarios}
+                empresas={empresas}
                 obras={obras}
                 presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
