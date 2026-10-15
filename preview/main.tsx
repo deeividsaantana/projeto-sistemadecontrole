@@ -436,6 +436,32 @@ const equipesPainel = [fx.grupo, ...fx.equipesPresenca,
     ...fx.grupo, id: `painel-extra-${i}`, nome: `Equipe ${nome}`, frenteServico: `Ramo ${(i + 3) * 100}`, token: `painel-extra-${i}`,
   }))];
 
+// Combustível com estado de verdade, para lançar, corrigir e excluir no preview.
+function CombustivelVivo() {
+  const [lista, setLista] = React.useState(() => [...fx.abastecimentos, ...fx.abastecimentosConsumo] as never[]);
+  type Item = { id: string };
+  return (
+    <LancamentosTab
+      empresas={fx.empresas}
+      comboios={fx.comboios}
+      combustiveis={fx.combustiveis}
+      lubrificantes={fx.lubrificantes}
+      abastecimentos={lista}
+      lubrificacoes={fx.lubrificacoes}
+      equipamentos={[...fx.equipamentos, ...fx.equipamentosQuadro]}
+      registrosFrota={fx.controlesQuadro}
+      usuario="Deivid"
+      onOpenControle={noop}
+      onSaveAbastecimento={(item, novo) => setLista(atual => (novo ? [...atual, item as never] : atual.map(x => ((x as Item).id === item.id ? item as never : x))))}
+      onDeleteAbastecimento={id => setLista(atual => atual.filter(x => (x as Item).id !== id))}
+      onDeleteAbastecimentos={ids => setLista(atual => atual.filter(x => !ids.includes((x as Item).id)))}
+      onImportAbastecimentos={noopImportAbastecimentos}
+      onSaveLubrificacao={noop}
+      onDeleteLubrificacao={noop}
+    />
+  );
+}
+
 const screens: Record<string, React.ReactNode> = {
   'meu-dia': <MeuDiaPreview />,
   sidebar: (
@@ -550,17 +576,19 @@ const screens: Record<string, React.ReactNode> = {
       equipamentos={fx.equipamentos}
     />
   ),
-  combustivel: (
+  combustivel: <CombustivelVivo />,
+  'combustivel-consumo': (
     <LancamentosTab
       empresas={fx.empresas}
       comboios={fx.comboios}
       combustiveis={fx.combustiveis}
       lubrificantes={fx.lubrificantes}
-      abastecimentos={[...fx.abastecimentos, ...fx.abastecimentosQuadro as never[]]}
+      abastecimentos={fx.abastecimentosConsumo}
       lubrificacoes={fx.lubrificacoes}
-      equipamentos={[...fx.equipamentos, ...fx.equipamentosQuadro]}
+      equipamentos={fx.equipamentosQuadro}
       registrosFrota={fx.controlesQuadro}
       usuario="Deivid"
+      combustivelInicial="consumo"
       onOpenControle={noop}
       onSaveAbastecimento={noop}
       onDeleteAbastecimento={noop}

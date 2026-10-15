@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 const sourcePath = join(process.cwd(), 'src', 'components', 'CombustivelOperacionalTab.tsx');
 const source = readFileSync(sourcePath, 'utf8');
 const appSource = readFileSync(join(process.cwd(), 'src', 'App.tsx'), 'utf8');
+const historicoSource = readFileSync(join(process.cwd(), 'src', 'components', 'combustivel', 'HistoricoCombustivel.tsx'), 'utf8');
 
 test('combustivel expose relatorio as a primary tab instead of a dashboard subtab', () => {
   assert.match(source, /type View = 'resumo' \| 'novo' \| 'historico' \| 'relatorio'/);
@@ -45,7 +46,8 @@ test('combustivel excel export is organized as a workbook report', () => {
 test('combustivel avoids stacked repeated section headers in report and list', () => {
   assert.doesNotMatch(source, /<h2[^>]*>Relatório de combustível<\/h2>/);
   assert.doesNotMatch(source, /<h3[^>]*>Lançamentos<\/h3><p[^>]*>Exportação inclui todos os resultados filtrados\.<\/p>/);
-  assert.match(source, /Excel usa todos os resultados filtrados/);
+  assert.match(historicoSource, /Excel usa todos os resultados filtrados/);
+  assert.match(historicoSource, /itens: filtrados/);
 });
 
 test('combustivel can open a dedicated list-only route by query string', () => {
@@ -59,7 +61,7 @@ test('combustivel can open a dedicated list-only route by query string', () => {
 });
 
 test('combustivel direct list prioritizes viewport and dense operational rows', () => {
-  assert.match(source, /tamanhoPaginaHistorico = listaSomente \? 100 : TAMANHO_PAGINA_HISTORICO/);
   assert.match(source, /compacto=\{listaSomente\}/);
-  assert.match(source, /ListaHistoricoCombustivel\(\{[^}]*compacto = false/s);
+  assert.match(historicoSource, /compacto = false/);
+  assert.match(historicoSource, /compacto \? \{ \.\.\.salvas, tamanhoPagina: Math\.max\(salvas\.tamanhoPagina, 100\) \}/);
 });

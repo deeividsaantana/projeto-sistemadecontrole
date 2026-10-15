@@ -87,7 +87,7 @@ interface LancamentosTabProps {
   gruposEquipe?: GrupoEquipe[];
   usuario?: string;
   onOpenControle?: () => void;
-  combustivelInicial?: 'resumo' | 'novo' | 'historico' | 'relatorio';
+  combustivelInicial?: 'resumo' | 'novo' | 'historico' | 'relatorio' | 'consumo';
   combustivelListaSomente?: boolean;
 }
 
@@ -1268,6 +1268,7 @@ export default function LancamentosTab({
           abastecimentos={abastecimentos}
           onSaveAbastecimento={onSaveAbastecimento}
           onDeleteAbastecimento={onDeleteAbastecimento}
+          onDeleteAbastecimentos={onDeleteAbastecimentos}
           onImportAbastecimentos={onImportAbastecimentos}
           onOpenLubrificacao={() => {
             setMode('lubrificacoes');

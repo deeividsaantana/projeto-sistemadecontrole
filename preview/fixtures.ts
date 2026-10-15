@@ -376,3 +376,31 @@ export const abastecimentosQuadro = FROTA_QUADRO.map((_, i) => ({
   id: `qa-${i + 1}`, data: hojeQuadro, hora: '06:30', equipamentoId: `qf-${i + 1}`, horimetroInicial: i % 5 === 4 ? 0 : 1200 + ((i * 3457) % 17000),
   kmInicial: 0, bombaInicial: 0, quantidadeLitros: 120, bombaFinal: 0, tipoCombustivelId: '', comboioId: '', responsavel: '', observacao: '',
 }));
+
+/**
+ * Diesel por máquina: 60 dias de abastecimento a cada 2 dias. LO279 passa a
+ * gastar mais no último mês, TE030 tem um horímetro digitado errado, CP076 roda
+ * em km e GH016 não tem leitura.
+ */
+const diasAtrasConsumo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toLocaleDateString('sv-SE'); };
+const PERFIS_CONSUMO: Array<[string, number, 'h' | 'km' | '-']> = [
+  ['qf-1', 18, 'h'], ['qf-2', 9, 'h'], ['qf-3', 24, 'h'], ['qf-6', 7, 'h'], ['qf-7', 2.6, 'km'], ['qf-8', 16, 'h'], ['qf-10', 12, 'h'], ['qf-13', 0, '-'],
+];
+export const abastecimentosConsumo: Abastecimento[] = PERFIS_CONSUMO.flatMap(([equipamentoId, base, unidade], m) => {
+  let leitura = unidade === 'km' ? 40000 : 2000 + m * 500;
+  return Array.from({ length: 30 }, (_, i) => {
+    const horas = 16 + ((i * 7 + m * 3) % 5);
+    const percorrido = unidade === 'km' ? horas * 18 : horas;
+    leitura += percorrido;
+    const fator = equipamentoId === 'qf-1' && i >= 20 ? 1.45 : 1 + (((i * 13 + m) % 7) - 3) / 50;
+    const litros = unidade === 'km' ? Math.round(percorrido / base * fator) : Math.round(horas * base * fator);
+    const lida = equipamentoId === 'qf-3' && i === 25 ? leitura - 400 : leitura;
+    return {
+      id: `cons-${m}-${i}`, data: diasAtrasConsumo(60 - i * 2), hora: '07:10', equipamentoId,
+      horimetroInicial: unidade === 'h' ? lida : 0,
+      kmInicial: unidade === 'km' ? lida : 0,
+      bombaInicial: 0, quantidadeLitros: litros || 60, bombaFinal: 0,
+      tipoCombustivelId: 'tc-1', comboioId: 'cmb-1', responsavel: 'Comboio 1', observacao: '',
+    } as Abastecimento;
+  });
+});
