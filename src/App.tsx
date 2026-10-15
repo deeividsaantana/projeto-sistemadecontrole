@@ -458,10 +458,10 @@ const getInitialTabFromUrl = () => {
   return params.get('tab') || params.get('aba') || 'dashboard';
 };
 
-const getCombustivelViewFromUrl = (): 'resumo' | 'novo' | 'historico' | 'relatorio' | undefined => {
+const getCombustivelViewFromUrl = (): 'resumo' | 'novo' | 'historico' | 'relatorio' | 'consumo' | undefined => {
   if (typeof window === 'undefined') return undefined;
   const view = new URLSearchParams(window.location.search).get('combustivel');
-  return view === 'resumo' || view === 'novo' || view === 'historico' || view === 'relatorio' ? view : undefined;
+  return view === 'resumo' || view === 'novo' || view === 'historico' || view === 'relatorio' || view === 'consumo' ? view : undefined;
 };
 
 const isCombustivelListOnlyUrl = () => {

@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CheckCircle2, Download, Droplets, FileSpreadsheet, FileText, Filter, Fuel, History, Info, PieChart, Plus, RotateCcw, Save, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CheckCircle2, Download, Droplets, FileSpreadsheet, FileText, Filter, Fuel, Gauge, History, Info, PieChart, Plus, RotateCcw, Save, Search, Trash2 } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../types';
 import type { FuelImportedMasterData } from '../utils/fuelMasterDataImport';
 import { ConfirmDialog, isoDay } from '../shared/ui';
@@ -19,6 +19,7 @@ import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '.
 import { normalizeQuickTime } from '../utils/combustivelValidation';
 import { buildMacroFuelingRecord, getDefaultDieselFuelId, parseFuelFormNumber, resolveMacroPumpReadings } from '../utils/fuelMacroForm';
 import type { FuelHistoryGroup } from '../modules/frota/fuelHistoryAnalytics';
+import ConsumoPorMaquina from './combustivel/ConsumoPorMaquina';
 import { buildFuelReport, getFuelCompetencePeriodLabel, getFuelRecordCompetence, type FuelReportExcelRow, type FuelReportFilters, type FuelReportGroup } from '../modules/frota/fuelReport';
 
 interface Props {
@@ -47,7 +48,7 @@ interface Props {
   listaSomente?: boolean;
 }
 
-type View = 'resumo' | 'novo' | 'historico' | 'relatorio';
+type View = 'resumo' | 'novo' | 'historico' | 'relatorio' | 'consumo';
 
 interface Formulario {
   data: string;
@@ -610,7 +611,7 @@ export default function CombustivelOperacionalTab({
     gsap.fromTo(raiz.querySelectorAll('[data-comb-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' });
   }, { scope: escopo, dependencies: [view, dia, agrupamentoRelatorio] });
 
-  const vistas = [['resumo', 'Resumo', Fuel], ['novo', 'Lançar', Plus], ['historico', 'Histórico', History], ['relatorio', 'Relatório', FileSpreadsheet]] as const;
+  const vistas = [['resumo', 'Resumo', Fuel], ['novo', 'Lançar', Plus], ['historico', 'Histórico', History], ['relatorio', 'Relatório', FileSpreadsheet], ['consumo', 'Por máquina', Gauge]] as const;
   const abasDashboard = [
     ['resumo', 'Resumo', PieChart],
     ['ranking', 'Ranking', BarChart3],
@@ -637,13 +638,13 @@ export default function CombustivelOperacionalTab({
   ];
 
   return (
-    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'w-full max-w-none space-y-3' : `mx-auto flex w-full flex-col overflow-hidden ${listaSomente ? 'h-[calc(100dvh-0.5rem)] max-w-none' : 'h-[calc(100dvh-6rem)] min-h-[34rem] max-w-none'}`}>
+    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível" className={view === 'novo' ? 'w-full max-w-none space-y-3' : view === 'consumo' ? 'mx-auto flex w-full max-w-none flex-col xl:h-[calc(100dvh-6rem)] xl:min-h-[34rem] xl:overflow-hidden' : `mx-auto flex w-full flex-col overflow-hidden ${listaSomente ? 'h-[calc(100dvh-0.5rem)] max-w-none' : 'h-[calc(100dvh-6rem)] min-h-[34rem] max-w-none'}`}>
       {view !== 'novo' && !listaSomente && <div data-comb-reveal className="mb-2 shrink-0">
         <PageHeader eyebrow="Frota" title="Combustível" className="mb-2" actions={<>
           <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`}><Droplets className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Lubrificação</span></button>
           <button type="button" onClick={() => abrirNovo()} className={`${BOTAO_PRIMARIO} min-h-10 px-3 sm:px-4`} data-testid="combustivel-novo"><Plus className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Novo abastecimento</span><span className="sm:hidden">Lançar</span><kbd title="Atalho de teclado: N" aria-label="Atalho de teclado: N" className="inline-flex rounded-md bg-white/15 px-1.5 font-mono text-xs">N</kbd></button>
         </>} />
-        <nav aria-label="Área de combustível" className="grid w-full grid-cols-2 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:grid-cols-4">
+        <nav aria-label="Área de combustível" className="grid w-full grid-cols-3 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:grid-cols-5">
           {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? abrirNovo() : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-bold transition sm:gap-2 sm:px-3 sm:text-sm ${view === id ? 'bg-white text-[#176b4d] shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}><Icone className="size-4" aria-hidden="true" />{rotulo}</button>)}
         </nav>
       </div>}
@@ -711,6 +712,9 @@ export default function CombustivelOperacionalTab({
           </section>)}
         </div>}
       </div>}
+
+      {view === 'consumo' && erro && <p role="alert" className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200">{erro}</p>}
+      {view === 'consumo' && <ConsumoPorMaquina abastecimentos={ativos} equipamentos={equipamentos} empresas={empresas} onErro={setErro} onAviso={setAviso} />}
 
       {view === 'relatorio' && <div className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-relatorio">
         <section data-comb-reveal aria-label="Filtros do relatório de combustível" className="shrink-0 rounded-xl border border-slate-200 bg-white p-3">

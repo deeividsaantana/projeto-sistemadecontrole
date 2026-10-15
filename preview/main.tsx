@@ -570,6 +570,27 @@ const screens: Record<string, React.ReactNode> = {
       onDeleteLubrificacao={noop}
     />
   ),
+  'combustivel-consumo': (
+    <LancamentosTab
+      empresas={fx.empresas}
+      comboios={fx.comboios}
+      combustiveis={fx.combustiveis}
+      lubrificantes={fx.lubrificantes}
+      abastecimentos={fx.abastecimentosConsumo}
+      lubrificacoes={fx.lubrificacoes}
+      equipamentos={fx.equipamentosQuadro}
+      registrosFrota={fx.controlesQuadro}
+      usuario="Deivid"
+      combustivelInicial="consumo"
+      onOpenControle={noop}
+      onSaveAbastecimento={noop}
+      onDeleteAbastecimento={noop}
+      onDeleteAbastecimentos={noop}
+      onImportAbastecimentos={noopImportAbastecimentos}
+      onSaveLubrificacao={noop}
+      onDeleteLubrificacao={noop}
+    />
+  ),
   'modo-campo': (
     <ModoCampoTab
       presencasLink={fx.presencasHistorico}
