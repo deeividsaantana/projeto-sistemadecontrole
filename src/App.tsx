@@ -176,6 +176,7 @@ import { fetchAllPresenceSubmissions } from './supabase/submissionRecovery';
 import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
+import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
 import {
   addPublicPresenceMember,
   deletePublicPresenceRecords,
@@ -1141,10 +1142,14 @@ export default function App() {
       
       const nowStr = new Date(uploadResult.updatedAt).toLocaleString('pt-BR');
       setLastCloudSync(nowStr);
+      // A nuvem ficou com registros que este aparelho não tem (a trava contra
+      // apagar em massa os manteve). Sem marcar esta versão como conhecida,
+      // o próximo download traz esses registros de volta para cá.
+      const protegidas = uploadResult.tabelasProtegidas ?? [];
       try {
         commitStorageBatch(localStorage, [
           { key: 'renea_last_cloud_sync', value: nowStr },
-          { key: 'renea_last_cloud_sync_iso', value: uploadResult.updatedAt },
+          ...(protegidas.length ? [] : [{ key: 'renea_last_cloud_sync_iso', value: uploadResult.updatedAt }]),
           { key: STORAGE_KEYS.cloudBaseline, value: JSON.stringify(uploadResult.publishedBaseline) },
         ]);
       } catch (storageError) {
@@ -1153,6 +1158,14 @@ export default function App() {
         console.warn('A nuvem foi atualizada, mas o horário local não pôde ser salvo:', storageError);
       }
       setIsCloudConnected(true);
+      if (protegidas.length) {
+        pendingRemoteVersionRef.current = uploadResult.updatedAt;
+        const devolvidos = protegidas.reduce((total, item) => total + item.devolvidos, 0);
+        return {
+          success: true,
+          message: `${uploadResult.totalRecords.toLocaleString('pt-BR')} registros atualizados. ${devolvidos.toLocaleString('pt-BR')} registros que faltavam neste aparelho foram mantidos na nuvem e voltam para cá.`,
+        };
+      }
       return {
         success: true,
         message: `${uploadResult.totalRecords.toLocaleString('pt-BR')} registros atualizados com segurança.`,
@@ -1206,6 +1219,12 @@ export default function App() {
         data.exclusoes = mergeCloudTable(remoteExclusoes, localExclusoes);
         Object.assign(data, aplicarExclusoes(data));
         const downloadedBaseline = captureCloudBaseline(data);
+        // A nuvem veio vazia ou muito menor numa tabela que este aparelho tem
+        // cheia, sem marca de exclusão: foi outro navegador que perdeu a cópia
+        // e publicou por cima. Este aparelho guarda o que tem e devolve à
+        // nuvem logo depois do download, em vez de apagar a própria cópia.
+        const { retrato: dadosProtegidos, protegidas: devolverParaNuvem } = protegerContraEncolhimento(readLocalCloudTables(), data);
+        Object.assign(data, dadosProtegidos);
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
         const nowStr = Number.isNaN(syncDate.getTime())
@@ -1404,6 +1423,15 @@ export default function App() {
         // Acabou de igualar com a nuvem: este é o retrato que serve de base
         // para diferenciar exclusões locais de novidades dos colegas depois.
         cloudBaselineRef.current = downloadedBaseline;
+        if (devolverParaNuvem.length) {
+          console.warn('A nuvem chegou sem registros que este aparelho tem; eles serão devolvidos:', devolverParaNuvem);
+          queueMicrotask(() => { void handleUploadToSupabase(); });
+          const devolvidos = devolverParaNuvem.reduce((total, item) => total + item.devolvidos, 0);
+          return {
+            success: true,
+            message: `Dados atualizados. ${devolvidos.toLocaleString('pt-BR')} registros que faltavam na nuvem foram mantidos neste aparelho e estão sendo devolvidos.`,
+          };
+        }
         return {
           success: true,
           message: `Dados atualizados com sucesso (${backup.totalRecords.toLocaleString('pt-BR')} registros).`,

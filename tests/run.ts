@@ -46,6 +46,7 @@ import './exportarEquipes.test';
 import './usuariosSupabase.test';
 import './consumoPorEquipamento.test';
 import './historicoCombustivel.test';
+import './protecaoEncolhimento.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';
