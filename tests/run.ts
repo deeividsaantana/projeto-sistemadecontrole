@@ -43,6 +43,7 @@ import './recebimentoMaterial.test';
 import './painelPresenca.test';
 import './relatorioPresenca.test';
 import './exportarEquipes.test';
+import './usuariosSupabase.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';
 import './manutencao.test';

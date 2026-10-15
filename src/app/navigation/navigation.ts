@@ -209,6 +209,17 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   leitura: ['dashboard', 'relatorios'],
 };
 
+/**
+ * Perfil do app a partir da associação no Supabase. O banco só guarda admin,
+ * editor e viewer; quem é editor e foi criado como operador traz isso em
+ * app_metadata.role. Mesma regra de appRoleFor em api/_shared/supabase-admin.js.
+ */
+export const roleFromMembership = (membershipRole: unknown, claimedRole?: unknown): UserRole => {
+  if (membershipRole === 'editor') return claimedRole === 'operador' ? 'operador' : 'gestor';
+  if (membershipRole === 'viewer') return 'leitura';
+  return normalizeUserRole(membershipRole);
+};
+
 export const normalizeUserRole = (value: unknown): UserRole => {
   if (value === 'administrador') return 'admin';
   return value === 'gestor' || value === 'operador' || value === 'leitura' || value === 'admin'

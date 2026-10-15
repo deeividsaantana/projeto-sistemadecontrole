@@ -222,7 +222,7 @@ import {
   ALL_NAVIGATION_ITEMS,
   SIDEBAR_NAVIGATION_GROUPS,
   ROLE_ACCESS,
-  normalizeUserRole,
+  roleFromMembership,
   type UserRole,
 } from './app/navigation/navigation';
 import { NavigationMenu } from './app/shell/NavigationMenu';
@@ -968,7 +968,7 @@ export default function App() {
         setLoginError('Sua conta existe, mas ainda não foi autorizada para acessar o sistema.');
         return;
       }
-      setCurrentUserRole(normalizeUserRole(membership.role));
+      setCurrentUserRole(roleFromMembership(membership.role, user.app_metadata?.role));
       setCurrentUser(user);
       setIsLoggedIn(true);
     } catch (error) {
