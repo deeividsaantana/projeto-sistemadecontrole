@@ -20,7 +20,7 @@ export const requireSupabaseUser = async event => {
     .from('organization_members').select('organization_id, role').eq('user_id', data.user.id).limit(1).maybeSingle();
   if (membershipError) throw membershipError;
   if (!membership) { const denied = new Error('Sua conta não possui autorização de equipe.'); denied.statusCode = 403; throw denied; }
-  const role = membership.role === 'editor' ? 'gestor' : membership.role === 'viewer' ? 'leitura' : membership.role;
+  const role = appRoleFor(membership.role, data.user.app_metadata?.role);
   return { uid: data.user.id, email: data.user.email || '', name: data.user.user_metadata?.full_name || data.user.email || '', role, organizationId: membership.organization_id };
 };
 export const requireStaffUser = requireSupabaseUser;
@@ -96,5 +96,60 @@ const makeCollection = path => {
 const makeBatch = () => { const actions = []; return { set(ref, data, options) { actions.push(() => ref.set(data, options)); }, update(ref, data) { actions.push(() => ref.update(data)); }, delete(ref) { actions.push(() => ref.delete()); }, async commit() { for (const action of actions) await action(); } }; };
 export const getAdminDb = () => ({ collection: makeCollection, batch: makeBatch, async runTransaction(callback) { const transaction = { get: ref => ref.get(), set: (ref, data, options) => ref.set(data, options), update: (ref, data) => ref.update(data), delete: ref => ref.delete(), create: (ref, data) => ref.set(data) }; return callback(transaction); } });
 export const enforceRateLimit = async (_database, _event, _bucket, _limit, _windowSeconds, _identity = '') => {};
-export const getAdminAuth = () => { const client = getSupabaseAdmin(); return { async getUserByEmail(email) { const { data, error } = await client.auth.admin.listUsers({ page: 1, perPage: 1000 }); if (error) throw error; const user = data.users.find(item => item.email?.toLowerCase() === email.toLowerCase()); if (!user) { const error = new Error('Usuário não encontrado.'); error.code = 'auth/user-not-found'; throw error; } return user; }, async getUser(id) { const { data, error } = await client.auth.admin.getUserById(id); if (error) throw error; return data.user; }, async createUser(input) { const { data, error } = await client.auth.admin.createUser(input); if (error) throw error; return data.user; }, async updateUser(id, input) { const { data, error } = await client.auth.admin.updateUserById(id, input); if (error) throw error; return data.user; }, async setCustomUserClaims() {} }; };
+// Mantém a forma do antigo Firebase Admin (uid, displayName, disabled e
+// claims) para api/master-data.js, traduzindo para o Supabase: e-mail já
+// confirmado, nome em user_metadata, bloqueio por ban_duration e o perfil
+// gravado em organization_members, que é o que libera o login no app.
+// organization_members só aceita admin, editor e viewer (é o que o banco
+// confere para gravar). O perfil do app (gestor, operador) fica em app_metadata.
+export const membershipRoleFor = role => role === 'admin' ? 'admin' : role === 'leitura' ? 'viewer' : 'editor';
+export const appRoleFor = (membershipRole, claimedRole) => {
+  if (membershipRole === 'admin') return 'admin';
+  if (membershipRole === 'editor') return claimedRole === 'operador' ? 'operador' : 'gestor';
+  if (membershipRole === 'viewer') return 'leitura';
+  return membershipRole;
+};
+const adaptAuthUser = user => user && Object.assign(user, {
+  uid: user.id,
+  displayName: user.user_metadata?.full_name || null,
+  disabled: Boolean(user.banned_until && new Date(user.banned_until) > new Date()),
+  customClaims: user.app_metadata || {},
+});
+export const getAdminAuth = () => {
+  const client = getSupabaseAdmin();
+  return {
+    async getUserByEmail(email) {
+      const { data, error } = await client.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (error) throw error;
+      const user = data.users.find(item => item.email?.toLowerCase() === email.toLowerCase());
+      if (!user) { const notFound = new Error('Usuário não encontrado.'); notFound.code = 'auth/user-not-found'; throw notFound; }
+      return adaptAuthUser(user);
+    },
+    async getUser(id) {
+      const { data, error } = await client.auth.admin.getUserById(id);
+      if (error) throw error;
+      return adaptAuthUser(data.user);
+    },
+    async createUser({ email, password, displayName }) {
+      const { data, error } = await client.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: displayName } });
+      if (error) throw error;
+      return adaptAuthUser(data.user);
+    },
+    async updateUser(id, { disabled }) {
+      const { data, error } = await client.auth.admin.updateUserById(id, { ban_duration: disabled ? '876000h' : 'none' });
+      if (error) throw error;
+      return adaptAuthUser(data.user);
+    },
+    async setCustomUserClaims(id, claims = {}) {
+      if (!id || !claims.organization_id || !claims.role) throw new Error('Usuário sem organização ou perfil para autorizar.');
+      const { error: metadataError } = await client.auth.admin.updateUserById(id, { email_confirm: true, app_metadata: { role: claims.role, organization_id: claims.organization_id } });
+      if (metadataError) throw metadataError;
+      const { error } = await client.from('organization_members').upsert(
+        { organization_id: claims.organization_id, user_id: id, role: membershipRoleFor(claims.role) },
+        { onConflict: 'organization_id,user_id' },
+      );
+      if (error) throw error;
+    },
+  };
+};
 export const getAdminBucket = () => ({ file: path => ({ async save(bytes, options = {}) { const { error } = await getSupabaseAdmin().storage.from(process.env.SUPABASE_OPERATIONAL_ATTACHMENTS_BUCKET || 'operational-attachments').upload(path, bytes, { contentType: options.contentType, upsert: true }); if (error) throw error; } }) });
