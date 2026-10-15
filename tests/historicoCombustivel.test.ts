@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  agruparHistorico, colunasValidas, COLUNAS_PADRAO, intervaloDoPeriodo, ordenarHistorico, proximaOrdem, ORDEM_PADRAO,
+  ABA_TUDO, abasDoHistorico, agruparHistorico, colunasValidas, COLUNAS_PADRAO, intervaloDaAba, ordenarHistorico, proximaOrdem, ORDEM_PADRAO,
 } from '../src/modules/frota/historicoCombustivel';
 import type { Abastecimento } from '../src/types';
 
@@ -15,13 +15,11 @@ const nomes = {
   comboio: (a: Abastecimento) => (a.comboioId === 'c-1' ? 'Comboio 01' : ''),
 };
 
-test('períodos rápidos seguem o mês do diesel (21 a 20)', () => {
-  assert.deepEqual(intervaloDoPeriodo('hoje', '2026-10-15'), { dataInicio: '2026-10-15', dataFim: '2026-10-15' });
-  assert.deepEqual(intervaloDoPeriodo('7dias', '2026-10-03'), { dataInicio: '2026-09-27', dataFim: '2026-10-03' });
-  assert.deepEqual(intervaloDoPeriodo('competencia', '2026-10-15'), { dataInicio: '2026-09-21', dataFim: '2026-10-20' });
-  assert.deepEqual(intervaloDoPeriodo('competencia', '2026-10-25'), { dataInicio: '2026-10-21', dataFim: '2026-11-20' });
-  assert.deepEqual(intervaloDoPeriodo('competencia-anterior', '2026-01-10'), { dataInicio: '2025-11-21', dataFim: '2025-12-20' });
-  assert.deepEqual(intervaloDoPeriodo('tudo', '2026-10-15'), { dataInicio: '', dataFim: '' });
+test('abas por mês do diesel (21 a 20), com o mês atual sempre presente', () => {
+  assert.deepEqual(intervaloDaAba('2026-10'), { dataInicio: '2026-09-21', dataFim: '2026-10-20' });
+  assert.deepEqual(intervaloDaAba('2026-01'), { dataInicio: '2025-12-21', dataFim: '2026-01-20' });
+  assert.deepEqual(intervaloDaAba(ABA_TUDO), { dataInicio: '', dataFim: '' });
+  assert.deepEqual(abasDoHistorico([item({ data: '2026-06-20' }), item({ data: '2026-06-21' }), item({ data: '2026-08-30' })], '2026-10-25'), ['2026-06', '2026-07', '2026-09', '2026-11']);
 });
 
 test('ordena por coluna, com prefixo em ordem natural e empate do mais recente', () => {
@@ -30,11 +28,11 @@ test('ordena por coluna, com prefixo em ordem natural e empate do mais recente',
     item({ id: '2', equipamentoId: 'e-2', quantidadeLitros: 200, hora: '09:00' }),
     item({ id: '3', equipamentoId: 'e-2', quantidadeLitros: 80, hora: '10:00' }),
   ];
-  assert.deepEqual(ordenarHistorico(lista, { coluna: 'equipamento', direcao: 'asc' }, nomes).map(a => a.id), ['3', '2', '1']);
+  assert.deepEqual(ordenarHistorico(lista, { coluna: 'prefixo', direcao: 'asc' }, nomes).map(a => a.id), ['3', '2', '1']);
   assert.deepEqual(ordenarHistorico(lista, { coluna: 'litros', direcao: 'desc' }, nomes).map(a => a.id), ['2', '3', '1']);
-  assert.deepEqual(ordenarHistorico(lista, ORDEM_PADRAO, nomes).map(a => a.id), ['3', '2', '1']);
-  assert.deepEqual(proximaOrdem(ORDEM_PADRAO, 'data'), { coluna: 'data', direcao: 'asc' });
-  assert.deepEqual(proximaOrdem(ORDEM_PADRAO, 'equipamento'), { coluna: 'equipamento', direcao: 'asc' });
+  assert.deepEqual(ordenarHistorico(lista, ORDEM_PADRAO, nomes).map(a => a.id), ['1', '2', '3']);
+  assert.deepEqual(proximaOrdem(ORDEM_PADRAO, 'data'), { coluna: 'data', direcao: 'desc' });
+  assert.deepEqual(proximaOrdem(ORDEM_PADRAO, 'prefixo'), { coluna: 'prefixo', direcao: 'asc' });
   assert.deepEqual(proximaOrdem(ORDEM_PADRAO, 'litros'), { coluna: 'litros', direcao: 'desc' });
 });
 
@@ -51,6 +49,6 @@ test('agrupa com subtotal e mantém a ordem da lista', () => {
 });
 
 test('colunas guardadas: fixas sempre, desconhecidas fora, lixo volta ao padrão', () => {
-  assert.deepEqual(colunasValidas(['observacao', 'xyz']), ['data', 'equipamento', 'litros', 'observacao']);
+  assert.deepEqual(colunasValidas(['observacao', 'xyz']), ['data', 'prefixo', 'litros', 'observacao']);
   assert.deepEqual(colunasValidas('quebrado'), COLUNAS_PADRAO);
 });

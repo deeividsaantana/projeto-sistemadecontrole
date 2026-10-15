@@ -18,7 +18,7 @@ import type { FuelHistoryGroup } from '../modules/frota/fuelHistoryAnalytics';
 import ConsumoPorMaquina from './combustivel/ConsumoPorMaquina';
 import HistoricoCombustivel, { type FiltrosExportacao } from './combustivel/HistoricoCombustivel';
 import LancamentoCombustivel from './combustivel/LancamentoCombustivel';
-import { buildFuelReport, getFuelCompetencePeriodLabel, getFuelRecordCompetence, type FuelReportExcelRow, type FuelReportFilters, type FuelReportGroup } from '../modules/frota/fuelReport';
+import { buildFuelReport, getFuelCompetencePeriodLabel, getFuelRecordCompetence, type FuelReportExcelRow, type FuelReportFilters } from '../modules/frota/fuelReport';
 
 interface Props {
   empresas: Empresa[];
@@ -75,118 +75,6 @@ const litrosTexto = (valor: number) => `${valor.toLocaleString('pt-BR', { maximu
 const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 type AgrupamentoRelatorio = 'competencia' | 'empresa' | 'equipamento' | 'comboio' | 'combustivel';
 
-function addFuelMonthWorksheet(
-  workbook: { addWorksheet: (name: string, options?: unknown) => any },
-  grupos: readonly FuelReportGroup[],
-  styleCorporateWorksheet: (worksheet: any, options: any) => void,
-  filters: readonly string[],
-) {
-  const worksheet = workbook.addWorksheet('MÊS', { views: [{ showGridLines: false }] });
-  worksheet.columns = [
-    { header: 'Mês operacional', key: 'mes', width: 26 },
-    { header: 'Período', key: 'periodo', width: 18 },
-    { header: 'Registros', key: 'registros', width: 12 },
-    { header: 'Litros', key: 'litros', width: 14 },
-    { header: 'Conferência', key: 'conferencia', width: 14 },
-    { header: 'Participação', key: 'percentual', width: 14 },
-  ];
-  worksheet.getRow(4).values = ['Mês operacional', 'Período', 'Registros', 'Litros', 'Conferência', 'Participação'];
-  grupos.forEach(grupo => worksheet.addRow({
-    mes: grupo.nome.split(' · ')[0] || grupo.nome,
-    periodo: getFuelCompetencePeriodLabel(grupo.chave),
-    registros: grupo.registros,
-    litros: grupo.litros,
-    conferencia: grupo.conferencia,
-    percentual: `${grupo.percentual}%`,
-  }));
-  styleCorporateWorksheet(worksheet, { title: 'Mês operacional do combustível', headerRow: 4, lastColumn: 6, dataStartRow: 5, recordCount: grupos.length, filters });
-}
-
-const fuelSupplyColumns = [
-  { header: 'Data', key: 'data', width: 13 },
-  { header: 'Prefixo', key: 'prefixo', width: 12 },
-  { header: 'Descrição do equipamento', key: 'descricao', width: 32 },
-  { header: 'KM inicial', key: 'kmInicial', width: 13 },
-  { header: 'Horímetro', key: 'horimetro', width: 13 },
-  { header: 'Litros', key: 'litros', width: 11 },
-  { header: 'Hora', key: 'hora', width: 10 },
-  { header: 'Comboio', key: 'comboio', width: 17 },
-  { header: 'Tipo de combustível', key: 'tipoCombustivel', width: 26 },
-  { header: 'Empresa', key: 'empresa', width: 24 },
-  { header: 'Bomba inicial', key: 'bombaInicial', width: 15 },
-  { header: 'Bomba final', key: 'bombaFinal', width: 15 },
-] as const;
-
-function addFuelSupplyWorksheet(
-  workbook: { addWorksheet: (name: string, options?: unknown) => any },
-  title: string,
-  rows: readonly FuelReportExcelRow[],
-  filters: readonly string[],
-  styleCorporateWorksheet: (worksheet: any, options: any) => void,
-) {
-  const worksheet = workbook.addWorksheet('FORNECIMENTO DIESEL', { views: [{ showGridLines: false }] });
-  worksheet.columns = fuelSupplyColumns.map(column => ({ ...column }));
-  worksheet.mergeCells('A2:C3');
-  worksheet.mergeCells('D2:I3');
-  worksheet.mergeCells('J2:J3');
-  worksheet.mergeCells('K2:L2');
-  worksheet.getCell('A2').value = 'RENEA';
-  worksheet.getCell('A2').font = { bold: true, size: 22, color: { argb: 'FF0F172A' } };
-  worksheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left' };
-  worksheet.getCell('D2').value = title;
-  worksheet.getCell('D2').font = { bold: true, size: 15, color: { argb: 'FF000000' } };
-  worksheet.getCell('D2').alignment = { vertical: 'middle', horizontal: 'center' };
-  worksheet.getCell('J2').value = filters.filter(Boolean).join(' | ') || 'Sem filtros adicionais';
-  worksheet.getCell('J2').font = { italic: true, size: 9, color: { argb: 'FF64748B' } };
-  worksheet.getCell('J2').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-  worksheet.getCell('K2').value = 'SUBTOTAL';
-  worksheet.getCell('K2').font = { bold: true, size: 10, color: { argb: 'FF000000' } };
-  worksheet.getCell('K2').alignment = { vertical: 'middle', horizontal: 'center' };
-  worksheet.getCell('K3').value = rows.reduce((total, row) => total + row.litros, 0);
-  worksheet.getCell('K3').numFmt = '#,##0.00';
-  worksheet.getCell('K3').font = { bold: true, size: 11, color: { argb: 'FF000000' } };
-  worksheet.getCell('K3').alignment = { vertical: 'middle', horizontal: 'center' };
-  worksheet.getRow(5).values = fuelSupplyColumns.map(column => column.header);
-  rows.forEach(row => worksheet.addRow({
-    data: dataCurta(row.data),
-    prefixo: row.prefixo,
-    descricao: row.descricao,
-    kmInicial: row.kmInicial,
-    horimetro: row.horimetro,
-    litros: row.litros,
-    hora: row.hora,
-    comboio: row.comboio,
-    tipoCombustivel: row.tipoCombustivel,
-    empresa: row.empresa,
-    bombaInicial: row.bombaInicial,
-    bombaFinal: row.bombaFinal,
-  }));
-  styleCorporateWorksheet(worksheet, { title, headerRow: 5, lastColumn: 12, dataStartRow: 6, freezeRows: 5, recordCount: rows.length, filters, autoFit: false, showTitleBlock: false });
-  worksheet.getCell('A2').value = 'RENEA';
-  worksheet.getCell('A2').font = { bold: true, size: 22, color: { argb: 'FF0F172A' } };
-  worksheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left' };
-  worksheet.getCell('D2').value = title;
-  worksheet.getCell('D2').font = { bold: true, size: 15, color: { argb: 'FF000000' } };
-  worksheet.getCell('D2').alignment = { vertical: 'middle', horizontal: 'center' };
-  worksheet.getCell('J2').value = filters.filter(Boolean).join(' | ') || 'Sem filtros adicionais';
-  worksheet.getCell('J2').font = { italic: true, size: 9, color: { argb: 'FF64748B' } };
-  worksheet.getCell('J2').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-  worksheet.getCell('K2').value = 'SUBTOTAL';
-  worksheet.getCell('K3').value = rows.reduce((total, row) => total + row.litros, 0);
-  for (let rowNumber = 6; rowNumber <= worksheet.rowCount; rowNumber += 1) {
-    worksheet.getCell(`F${rowNumber}`).numFmt = '#,##0.00';
-    worksheet.getCell(`K${rowNumber}`).numFmt = '#,##0.00';
-    worksheet.getCell(`L${rowNumber}`).numFmt = '#,##0.00';
-    worksheet.getCell(`D${rowNumber}`).numFmt = '#,##0';
-    worksheet.getCell(`E${rowNumber}`).numFmt = '#,##0';
-  }
-  worksheet.getColumn(6).alignment = { horizontal: 'right', vertical: 'middle' };
-  worksheet.getColumn(11).alignment = { horizontal: 'right', vertical: 'middle' };
-  worksheet.getColumn(12).alignment = { horizontal: 'right', vertical: 'middle' };
-  worksheet.views = [{ state: 'frozen', ySplit: 5, showGridLines: false }];
-  return worksheet;
-}
-
 export default function CombustivelOperacionalTab({
   empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
   onSaveAbastecimento, onDeleteAbastecimento, onDeleteAbastecimentos, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
@@ -226,8 +114,6 @@ export default function CombustivelOperacionalTab({
     .sort((a, b) => `${b.data}${b.hora}`.localeCompare(`${a.data}${a.hora}`)), [abastecimentos]);
   const porId = useMemo(() => new Map(equipamentos.map(item => [item.id, item])), [equipamentos]);
   const empresaPorId = useMemo(() => new Map<string, string>(empresas.map(item => [item.id, item.nome])), [empresas]);
-  const comboioPorId = useMemo(() => new Map(comboios.map(item => [item.id, item.nome])), [comboios]);
-  const nomeCombustivel = useMemo(() => new Map(combustiveis.map(item => [item.id, item.nome])), [combustiveis]);
   const competenciasDisponiveis = useMemo(() => {
     const chaves = new Set(ativos.map(item => getFuelRecordCompetence(item)).filter(Boolean));
     return [...chaves].sort((a, b) => b.localeCompare(a)).map(chave => ({
@@ -252,50 +138,43 @@ export default function CombustivelOperacionalTab({
   const relatorioCombustivel = useMemo(() => buildFuelReport({
     records: ativos, equipamentos, empresas, comboios, combustiveis,
   }, filtrosRelatorioAplicados), [ativos, comboios, combustiveis, empresas, equipamentos, filtrosRelatorioAplicados]);
-  const filtrosRelatorioAplicadosTexto = useMemo(() => [
-    filtrosRelatorio.competencia ? `Competência: ${competenciasDisponiveis.find(item => item.chave === filtrosRelatorio.competencia)?.rotulo || filtrosRelatorio.competencia}` : '',
-    filtrosRelatorio.dataInicio ? `Data inicial: ${dataCurta(filtrosRelatorio.dataInicio)}` : '',
-    filtrosRelatorio.dataFim ? `Data final: ${dataCurta(filtrosRelatorio.dataFim)}` : '',
-    filtrosRelatorio.empresaId ? `Empresa: ${empresaPorId.get(filtrosRelatorio.empresaId) || filtrosRelatorio.empresaId}` : '',
-    filtrosRelatorio.equipamentoId ? `Equipamento: ${porId.get(filtrosRelatorio.equipamentoId)?.prefixo || filtrosRelatorio.equipamentoId}` : '',
-    filtrosRelatorio.comboioId ? `Comboio: ${comboioPorId.get(filtrosRelatorio.comboioId) || filtrosRelatorio.comboioId}` : '',
-    filtrosRelatorio.combustivelId ? `Combustível: ${nomeCombustivel.get(filtrosRelatorio.combustivelId) || filtrosRelatorio.combustivelId}` : '',
-    filtrosRelatorio.apenasConferencia ? 'Somente conferência' : '',
-    filtrosRelatorio.texto.trim() ? `Busca: ${filtrosRelatorio.texto.trim()}` : '',
-  ].filter(Boolean), [comboioPorId, competenciasDisponiveis, empresaPorId, filtrosRelatorio, nomeCombustivel, porId]);
+
+  /**
+   * Excel no modelo da planilha "FORNECIMENTO DIESEL": Resumo Geral,
+   * Equipamentos e uma aba por mês do diesel. A aba CONFERÊNCIA só entra
+   * quando há lançamento para conferir.
+   */
+  const exportarPlanilha = async (linhas: FuelReportExcelRow[], assunto: string, arquivo: string) => {
+    const { configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook } = await import('../utils/excelCorporate');
+    const { preencherPlanilhaDiesel } = await import('../modules/frota/exportarPlanilhaDiesel');
+    const workbook = await createCorporateWorkbook();
+    configureCorporateWorkbook(workbook, assunto);
+    preencherPlanilhaDiesel(workbook, linhas, equipamentos.map(item => ({
+      prefixo: item.prefixo,
+      nome: item.nome,
+      familia: item.familia || item.tipo || '',
+      empresa: empresaPorId.get(item.empresaId) || '',
+      status: item.status,
+    })));
+    const aConferir = linhas.filter(linha => linha.status === 'Conferência necessária');
+    if (aConferir.length) {
+      const conferencia = workbook.addWorksheet('CONFERÊNCIA', { views: [{ state: 'frozen', ySplit: 1 }] });
+      conferencia.columns = [
+        { header: 'Data', key: 'data', width: 13 }, { header: 'Prefixo', key: 'prefixo', width: 12 },
+        { header: 'Descrição do equipamento', key: 'descricao', width: 32 }, { header: 'Litros', key: 'litros', width: 11 },
+        { header: 'Comboio', key: 'comboio', width: 16 }, { header: 'Empresa', key: 'empresa', width: 22 },
+        { header: 'Observação', key: 'observacao', width: 48 },
+      ];
+      conferencia.getRow(1).font = { bold: true };
+      aConferir.forEach(linha => conferencia.addRow({ ...linha, data: dataCurta(linha.data) }));
+    }
+    await downloadCorporateWorkbook(workbook, arquivo);
+  };
 
   const exportarRelatorioExcel = async () => {
     setExportandoHistorico('excel');
     try {
-      const { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } = await import('../utils/excelCorporate');
-      const workbook = await createCorporateWorkbook();
-      configureCorporateWorkbook(workbook, 'Relatório de combustível');
-      const tituloFornecimento = filtrosRelatorio.competencia
-        ? `FORNECIMENTO DIESEL - ${competenciasDisponiveis.find(item => item.chave === filtrosRelatorio.competencia)?.rotulo || filtrosRelatorio.competencia}`
-        : 'FORNECIMENTO DIESEL';
-      addFuelSupplyWorksheet(workbook, tituloFornecimento, relatorioCombustivel.linhasExcel, filtrosRelatorioAplicadosTexto, styleCorporateWorksheet);
-      addCorporateSummarySheet(workbook, 'Relatório de Combustível', [
-        ['Registros filtrados', relatorioCombustivel.totalRegistros],
-        ['Volume total', `${numeroTexto(relatorioCombustivel.totalLitros)} L`],
-        ['Conferência', relatorioCombustivel.totalConferencia],
-        ['Equipamentos', relatorioCombustivel.porEquipamento.filter(item => item.litros > 0).length],
-      ], filtrosRelatorioAplicadosTexto);
-      addFuelMonthWorksheet(workbook, relatorioCombustivel.porCompetencia, styleCorporateWorksheet, filtrosRelatorioAplicadosTexto);
-      const conferencia = workbook.addWorksheet('CONFERÊNCIA', { views: [{ showGridLines: false }] });
-      conferencia.columns = [
-        { header: 'Aba', key: 'aba', width: 16 }, { header: 'Linha', key: 'linha', width: 9 },
-        { header: 'Data', key: 'data', width: 13 }, { header: 'Prefixo', key: 'prefixo', width: 13 },
-        { header: 'Descrição do equipamento', key: 'descricao', width: 30 }, { header: 'Litros', key: 'litros', width: 13 },
-        { header: 'Comboio', key: 'comboio', width: 18 }, { header: 'Empresa', key: 'empresa', width: 26 },
-        { header: 'Status', key: 'status', width: 20 }, { header: 'Observação', key: 'observacao', width: 36 },
-      ];
-      conferencia.getRow(4).values = ['Aba', 'Linha', 'Data', 'Prefixo', 'Descrição do equipamento', 'Litros', 'Comboio', 'Empresa', 'Status', 'Observação'];
-      relatorioCombustivel.linhasExcel.filter(linha => linha.status === 'Conferência necessária').forEach(linha => conferencia.addRow({
-        aba: linha.aba, linha: linha.linha, data: linha.data, prefixo: linha.prefixo, descricao: linha.descricao,
-        litros: linha.litros, comboio: linha.comboio, empresa: linha.empresa, status: linha.status, observacao: linha.observacao,
-      }));
-      styleCorporateWorksheet(conferencia, { title: 'Conferência de Combustível', headerRow: 4, lastColumn: 10, dataStartRow: 5, recordCount: relatorioCombustivel.totalConferencia, filters: filtrosRelatorioAplicadosTexto });
-      await downloadCorporateWorkbook(workbook, `RENEA_relatorio_combustivel_${hoje()}.xlsx`);
+      await exportarPlanilha(relatorioCombustivel.linhasExcel, 'Relatório de combustível', `FORNECIMENTO DIESEL - RELATORIO ${hoje()}.xlsx`);
       setAviso(`${relatorioCombustivel.totalRegistros} registro(s) exportado(s) para Excel.`);
     } catch (falha) {
       setErro(falha instanceof Error ? `Falha ao exportar Excel: ${falha.message}` : 'Falha ao exportar Excel.');
@@ -304,36 +183,11 @@ export default function CombustivelOperacionalTab({
     }
   };
 
-  const exportarHistoricoExcel = async ({ itens, filtros }: FiltrosExportacao) => {
+  const exportarHistoricoExcel = async ({ itens }: FiltrosExportacao) => {
     setExportandoHistorico('excel');
     try {
       const relatorio = buildFuelReport({ records: itens, equipamentos, empresas, comboios, combustiveis });
-      const maquinas = new Set(itens.map(item => item.equipamentoId || item.prefixoInformado).filter(Boolean)).size;
-      const empresasNoFiltro = new Set(itens.map(item => porId.get(item.equipamentoId)?.empresaId).filter(Boolean)).size;
-      const { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } = await import('../utils/excelCorporate');
-      const workbook = await createCorporateWorkbook();
-      configureCorporateWorkbook(workbook, 'Histórico de abastecimentos');
-      addFuelSupplyWorksheet(workbook, 'FORNECIMENTO DIESEL - HISTÓRICO', relatorio.linhasExcel, filtros, styleCorporateWorksheet);
-      addCorporateSummarySheet(workbook, 'Histórico de Combustível', [
-        ['Registros filtrados', itens.length], ['Volume total', `${numeroTexto(relatorio.totalLitros)} L`],
-        ['Equipamentos', maquinas], ['Empresas', empresasNoFiltro],
-      ], filtros);
-      addFuelMonthWorksheet(workbook, relatorio.porCompetencia, styleCorporateWorksheet, filtros);
-      const conferencia = workbook.addWorksheet('CONFERÊNCIA', { views: [{ showGridLines: false }] });
-      conferencia.columns = [
-        { header: 'Aba', key: 'aba', width: 16 }, { header: 'Linha', key: 'linha', width: 9 },
-        { header: 'Data', key: 'data', width: 13 }, { header: 'Prefixo', key: 'prefixo', width: 13 },
-        { header: 'Descrição do equipamento', key: 'descricao', width: 30 }, { header: 'Litros', key: 'litros', width: 13 },
-        { header: 'Comboio', key: 'comboio', width: 18 }, { header: 'Empresa', key: 'empresa', width: 26 },
-        { header: 'Status', key: 'status', width: 20 }, { header: 'Observação', key: 'observacao', width: 36 },
-      ];
-      conferencia.getRow(4).values = ['Aba', 'Linha', 'Data', 'Prefixo', 'Descrição do equipamento', 'Litros', 'Comboio', 'Empresa', 'Status', 'Observação'];
-      relatorio.linhasExcel.filter(linha => linha.status === 'Conferência necessária').forEach(linha => conferencia.addRow({
-        aba: linha.aba, linha: linha.linha, data: linha.data, prefixo: linha.prefixo, descricao: linha.descricao,
-        litros: linha.litros, comboio: linha.comboio, empresa: linha.empresa, status: linha.status, observacao: linha.observacao,
-      }));
-      styleCorporateWorksheet(conferencia, { title: 'Conferência de Combustível', headerRow: 4, lastColumn: 10, dataStartRow: 5, recordCount: relatorio.totalConferencia, filters: filtros });
-      await downloadCorporateWorkbook(workbook, `RENEA_historico_combustivel_${hoje()}.xlsx`);
+      await exportarPlanilha(relatorio.linhasExcel, 'Histórico de abastecimentos', `FORNECIMENTO DIESEL - ${hoje()}.xlsx`);
       setAviso(`${itens.length} registro(s) exportado(s) para Excel.`);
     } catch (falha) {
       setErro(falha instanceof Error ? `Falha ao exportar Excel: ${falha.message}` : 'Falha ao exportar Excel.');
