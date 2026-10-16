@@ -82,7 +82,6 @@ import './permissoes.test';
 import './diagnostico.test';
 import './notificacoes.test';
 import './assistente.test';
-import './modoCampoPresenca.test';
 import './paginacao.test';
 import './imagem.test';
 import './notificationService.test';

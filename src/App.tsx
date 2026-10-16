@@ -138,7 +138,6 @@ const PermissoesTab = lazy(() => import('./components/PermissoesTab'));
 const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
 const NotificacoesTab = lazy(() => import('./components/NotificacoesTab'));
 const AssistenteTab = lazy(() => import('./components/AssistenteTab'));
-const ModoCampoTab = lazy(() => import('./components/ModoCampoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -5344,16 +5343,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'modo-campo' && (
-              <ModoCampoTab
-                presencasLink={presencasLinkAtivas}
-                controlesEquipamentos={controleEquipamentosDiario}
-                producao={producaoRegistros}
-                ocorrencias={ocorrencias}
-                nuvemConectada={isCloudConnected}
-                onNavigate={navigateTo}
-              />
-            )}
 
             {activeTab === 'assistente' && (
               <AssistenteTab
