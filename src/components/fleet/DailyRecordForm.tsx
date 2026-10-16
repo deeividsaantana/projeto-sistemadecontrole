@@ -33,6 +33,7 @@ import { classifyOperationalFleet, findEmployeeTeam, lookupDriverByCode, lookupE
 import { getOperationalToday } from '../../fleet/time';
 import { normalizeEmployeeCode, normalizePrefix } from '../../utils/canonicalIdentity';
 import { ConfirmDialog, Modal } from '../../shared/ui';
+import { lancamentoDoDia, operadorEmOutroEquipamento } from '../../fleet/duplicidadeDiaria';
 
 interface Props {
   record?: FleetPersistedRecord;
@@ -171,6 +172,7 @@ export default function DailyRecordForm({
   const [submitError, setSubmitError] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmarFecharSemSalvar, setConfirmarFecharSemSalvar] = useState(false);
+  const [confirmouOperador, setConfirmouOperador] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const employeeCodeFieldRef = useRef<HTMLInputElement>(null);
   const prefixFieldRef = useRef<HTMLInputElement>(null);
@@ -253,6 +255,26 @@ export default function DailyRecordForm({
       { label: 'Entrada na manutenção', ok: Boolean(form.maintenanceEntryTime) },
     ] : []),
   ];
+  // Trava de lançamento repetido: um lançamento por equipamento por dia, e
+  // aviso quando o mesmo operador já está em outro equipamento no dia.
+  const lancamentoExistente = useMemo(
+    () => (form.equipmentId || form.prefix.trim())
+      ? lancamentoDoDia(records, { id: record?.id || form.id, data: form.date, equipamentoId: form.equipmentId, prefixo: form.prefix })
+      : undefined,
+    [form.date, form.equipmentId, form.id, form.prefix, record?.id, records],
+  );
+  const operadorOcupado = useMemo(
+    () => operadorEmOutroEquipamento(records, {
+      id: record?.id || form.id,
+      data: form.date,
+      equipamentoId: form.equipmentId,
+      prefixo: form.prefix,
+      codigoFuncionario: form.employeeCode,
+      nomeMotorista: form.employeeName,
+    }).filter(item => item.id !== lancamentoExistente?.id),
+    [form.date, form.employeeCode, form.employeeName, form.equipmentId, form.id, form.prefix, lancamentoExistente?.id, record?.id, records],
+  );
+  useEffect(() => setConfirmouOperador(false), [form.employeeCode, form.employeeName, form.date]);
   const readyToSave = requiredChecks.every(item => item.ok);
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm(current => ({ ...current, [key]: value }));
@@ -367,6 +389,12 @@ export default function DailyRecordForm({
     if (form.releaseTime && !form.maintenanceEntryTime) {
       errors.push('A liberação exige uma entrada na manutenção.');
     }
+    if (record && lancamentoExistente) {
+      errors.push(`${form.prefix} já tem outro lançamento nesse dia. Troque o equipamento ou a data, ou edite o outro lançamento.`);
+    }
+    if (operadorOcupado.length && !confirmouOperador) {
+      errors.push(`${form.employeeName || 'Este operador'} já está lançado nesse dia no ${operadorOcupado.map(item => item.prefixo).join(' e ')}. Confirme a troca de caminhão para salvar.`);
+    }
     return errors;
   };
   const handleSubmit = async (event: React.FormEvent) => {
@@ -381,10 +409,10 @@ export default function DailyRecordForm({
     setSaving(true);
     try {
       const now = new Date().toISOString();
-      const key = `${form.date}|${form.equipmentId || normalizePrefix(form.prefix)}`;
       // A lista chega tipada como o registro base, mas o módulo grava o formato
       // estendido — por isso a leitura dos campos extras precisa do tipo certo.
-      const existing = record || (records.find(item => item.chave === key) as FleetPersistedRecord | undefined);
+      const existing = record || (lancamentoExistente as FleetPersistedRecord | undefined);
+      const key = existing?.chave || `${form.date}|${form.equipmentId || normalizePrefix(form.prefix)}`;
       const previousStatus = existing ? normalizeOperationalStatus(existing.status) : undefined;
       const nextLegacyStatus = toLegacyDailyStatus(form.operationalStatus);
       const timelineEvent: EventoControleEquipamentoDiario = {
@@ -485,6 +513,12 @@ export default function DailyRecordForm({
                 {!form.employeeId && !form.temporaryDriver && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500"><span>Não encontrou?</span>{onOpenDriverRegistry&&<button type="button" onClick={onOpenDriverRegistry} className="font-black text-emerald-700 hover:underline">Abrir mini lista</button>}<button type="button" onClick={()=>{update('temporaryDriver',true);setEmployeeLookupError('')}} className="inline-flex items-center gap-1 font-black text-emerald-700 hover:underline"><UserPlus size={13}/>Adicionar motorista manual</button></div>}
                 {form.temporaryDriver && <div className="mt-3 grid gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 sm:grid-cols-2"><label className="text-xs font-bold text-sky-900">Nome do motorista<input value={form.employeeName} onChange={event => update('employeeName', event.target.value.toUpperCase())} placeholder="Nome completo" className="mt-1 h-11 w-full rounded-lg border border-sky-200 bg-white px-3"/></label><p className="self-end text-xs leading-5 text-sky-800">Será marcado para vínculo posterior no cadastro.</p></div>}
                 {employeeLookupError && <div className="mt-3 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-900"><AlertCircle size={17} className="mt-0.5 shrink-0"/><span>{employeeLookupError}</span></div>}
+                {operadorOcupado.length > 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-900" data-testid="frota-operador-ocupado">
+                    <p className="flex gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0"/><span>{form.employeeName || 'Este operador'} já está lançado nesse dia no {operadorOcupado.map(item => `${item.prefixo}${item.horaSaida ? ` (saída ${item.horaSaida})` : ''}`).join(' e ')}.</span></p>
+                    <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-white px-3 font-bold ring-1 ring-inset ring-amber-200"><input type="checkbox" checked={confirmouOperador} onChange={event => setConfirmouOperador(event.target.checked)} className="size-4 accent-[#176b4d]"/>Ele trocou de caminhão, lançar mesmo assim</label>
+                  </div>
+                )}
               </section>
 
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.05)] sm:p-5">
@@ -495,6 +529,15 @@ export default function DailyRecordForm({
                 </div>
                 {selectedEquipment && <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-slate-50 p-3 text-xs"><span className="font-black text-slate-900">{classifyOperationalFleet(selectedEquipment).equipmentType}</span><span className="text-slate-600">{form.equipmentCompany || 'Empresa não informada'}</span>{form.plate && <span className="font-mono text-slate-600">Placa {form.plate}</span>}</div>}
                 {equipmentLookupError && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800"><span>{equipmentLookupError}</span>{onOpenEquipmentRegistry&&<button type="button" onClick={onOpenEquipmentRegistry} className="rounded-lg border border-rose-200 bg-white px-3 py-2">Cadastrar equipamento</button>}</div>}
+                {lancamentoExistente && (
+                  <div className={`mt-3 flex gap-2 rounded-xl border p-3 text-xs font-semibold leading-5 ${record ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`} data-testid="frota-lancamento-existente">
+                    <AlertCircle size={17} className="mt-0.5 shrink-0"/>
+                    <span>
+                      <strong>{lancamentoExistente.prefixo} já foi lançado em {form.date.split('-').reverse().join('/')}</strong>: {lancamentoExistente.status}{lancamentoExistente.horaSaida ? `, saída ${lancamentoExistente.horaSaida}` : ''}{lancamentoExistente.nomeMotorista ? `, ${lancamentoExistente.nomeMotorista}` : ''}.{' '}
+                      {record ? 'Não dá para ter dois lançamentos do mesmo equipamento no dia: troque o equipamento ou a data.' : 'Salvar atualiza esse lançamento; não entra um segundo.'}
+                    </span>
+                  </div>
+                )}
               </section>
 
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.05)] sm:p-5">

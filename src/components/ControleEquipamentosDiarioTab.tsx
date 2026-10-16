@@ -61,6 +61,7 @@ import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/Fle
 import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
+import { repetidosPorDia } from '../fleet/duplicidadeDiaria';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from './cadastros/estilos';
 
 interface Props {
@@ -294,6 +295,7 @@ export default function ControleEquipamentosDiarioTab({
       .sort((left, right) => right.total - left.total || left.nome.localeCompare(right.nome, 'pt-BR'));
   }, [registros, filters.date]);
   const historyByDate = useMemo(() => {
+    const repetidos = repetidosPorDia(registros);
     const dates = [...new Set(registros.map(record => record.data).filter(Boolean))]
       .sort((left, right) => right.localeCompare(left));
     return dates.map(date => {
@@ -305,6 +307,7 @@ export default function ControleEquipamentosDiarioTab({
         maintenance: daily.filter(record => record.status === 'Em manutenção' || record.status === 'Aguardando manutenção').length,
         available: daily.filter(record => record.status === 'Disponível').length,
         pending: daily.filter(record => record.status === 'A confirmar').length,
+        repeated: repetidos.get(date) || [],
       };
     });
   }, [registros]);
@@ -704,6 +707,7 @@ export default function ControleEquipamentosDiarioTab({
                       {item.maintenance > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200">{item.maintenance} manutenção</span>}
                       {item.available > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-inset ring-amber-200">{item.available} à disposição</span>}
                       {item.pending > 0 && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[#f26a2e] ring-1 ring-inset ring-orange-200">{item.pending} a confirmar</span>}
+                      {item.repeated.length > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200" title={`Lançados mais de uma vez: ${item.repeated.join(', ')}`}>{item.repeated.length} repetido(s): {item.repeated.slice(0, 3).join(', ')}{item.repeated.length > 3 ? '…' : ''}</span>}
                     </span>
                     <span className="sm:text-right">
                       <span className="block text-lg font-bold tabular-nums text-slate-900">{item.total ? `${disponibilidade}%` : '—'}</span>

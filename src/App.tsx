@@ -83,6 +83,7 @@ import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
+import { juntarComLancamentoDoDia } from './fleet/duplicidadeDiaria';
 import { aplicarCadastroSge, type PreviaCadastroSge } from './fleet/sgeApontamentos';
 import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
@@ -4097,7 +4098,11 @@ export default function App() {
     );
   };
 
-  const handleSaveControleEquipamentoDiario = (registro: ControleEquipamentoDiario, isNew: boolean) => {
+  const handleSaveControleEquipamentoDiario = (registroRecebido: ControleEquipamentoDiario, isNewRecebido: boolean) => {
+    // Equipamento que já tem lançamento no dia não ganha outro: o novo atualiza o existente.
+    const { registro, novo: isNew } = isNewRecebido
+      ? juntarComLancamentoDoDia(controleEquipamentosDiario, registroRecebido)
+      : { registro: registroRecebido, novo: false };
     const maintenance = garantirOrdemAutomaticaDaFrota(registro, ordensServico, activeUserName);
     const registroVinculado = maintenance.registro;
     const updated = isNew
@@ -4127,11 +4132,16 @@ export default function App() {
     let abertas = 0;
     const porId = new Map(controleEquipamentosDiario.map(item => [item.id, item]));
     const novos: ControleEquipamentoDiario[] = [];
-    itens.forEach(({ registro, novo }) => {
+    itens.forEach(item => {
+      const { registro, novo } = item.novo
+        ? juntarComLancamentoDoDia([...novos, ...porId.values()], item.registro)
+        : item;
       const maintenance = garantirOrdemAutomaticaDaFrota(registro, ordens, activeUserName);
       ordens = maintenance.ordens;
       if (maintenance.criada) abertas += 1;
-      if (novo && !porId.has(maintenance.registro.id)) novos.push(maintenance.registro);
+      const naFila = novos.findIndex(atual => atual.id === maintenance.registro.id);
+      if (naFila >= 0) novos[naFila] = maintenance.registro;
+      else if (novo && !porId.has(maintenance.registro.id)) novos.push(maintenance.registro);
       else porId.set(maintenance.registro.id, maintenance.registro);
     });
     const updated = [...novos, ...controleEquipamentosDiario.map(item => porId.get(item.id) || item)];
