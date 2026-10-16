@@ -71,7 +71,7 @@ const loadOpenSubmissions = async (database, today) => {
 const loadView = async database => {
   const today = dateInSaoPaulo(0);
   const [snapshot, pendentes] = await Promise.all([
-    loadCloudSnapshot(database, SNAPSHOT_TABLES, { cacheTtlMs: 5_000, allowLegacyFallback: true }),
+    loadCloudSnapshot(database, SNAPSHOT_TABLES, { cacheTtlMs: 5_000 }),
     loadOpenSubmissions(database, today),
   ]);
   return buildFieldView({

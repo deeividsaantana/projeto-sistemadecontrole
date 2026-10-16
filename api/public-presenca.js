@@ -63,7 +63,7 @@ const todayInSaoPaulo = () => new Intl.DateTimeFormat('en-CA', {
 }).format(new Date());
 // A configuração pública pode ser reutilizada por poucos segundos sem perder
 // a sensação de tempo real. O cabeçalho no-store continua impedindo cache do
-// navegador; esta janela curta evita leituras excessivas no Firestore.
+// navegador; esta janela curta evita leituras excessivas no banco.
 const SNAPSHOT_CACHE_TTL_MS = 3000;
 let cachedSnapshot = null;
 let cachedSnapshotUntil = 0;
@@ -75,8 +75,6 @@ const loadPresenceSnapshot = async database => {
   if (!snapshotRequest) {
     snapshotRequest = loadCloudSnapshot(database, ['gruposEquipe', 'funcionarios', 'empresas', 'obras'], {
       cacheTtlMs: SNAPSHOT_CACHE_TTL_MS,
-      allowLegacyFallback: true,
-      skipIntegrityCheck: true,
     })
       .then(snapshot => {
         cachedSnapshot = snapshot;
