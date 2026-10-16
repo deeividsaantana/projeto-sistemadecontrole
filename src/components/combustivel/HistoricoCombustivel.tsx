@@ -395,7 +395,7 @@ export default function HistoricoCombustivel({
           )}
         </section>
 
-        <section data-comb-reveal aria-label="Resultado" className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
+        <section data-comb-reveal aria-label="Resultado" className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
           {[
             ['Abastecimentos', filtrados.length.toLocaleString('pt-BR'), textoPeriodo, 'text-slate-950'],
             ['Litros', litrosTexto(totalLitros), filtrados.length ? `média ${litrosTexto(totalLitros / filtrados.length)}` : 'nenhum lançamento', 'text-[#176b4d]'],
@@ -422,14 +422,15 @@ export default function HistoricoCombustivel({
         )}
 
         <section data-comb-reveal aria-label="Abastecimentos" className={`${CARTAO} flex min-h-[22rem] flex-1 flex-col overflow-hidden`}>
-          <header className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-slate-200 px-3 py-2" data-testid="historico-titulo">
+          <header className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-slate-200 px-3 py-1.5 lg:hidden" data-testid="historico-titulo">
             <h3 className="text-sm font-black uppercase tracking-wide text-slate-900">{tituloLista}</h3>
             <p className="text-sm font-semibold text-slate-500">
-              {/^\d{4}-\d{2}$/.test(filtros.aba) ? `${getFuelCompetencePeriodLabel(filtros.aba)} · ` : ''}Total <span className="font-black tabular-nums text-[#176b4d]">{litrosTexto(totalLitros)}</span>
+              {/^\d{4}-\d{2}$/.test(filtros.aba) ? `${getFuelCompetencePeriodLabel(filtros.aba)} · ` : ''}
+              Total <span className="font-black tabular-nums text-[#176b4d]">{litrosTexto(totalLitros)}</span>
             </p>
           </header>
           <div ref={listaRef} className="min-h-0 flex-1 overflow-auto" data-testid="combustivel-lista-historico">
-            <div className="sticky top-0 z-10 hidden items-center gap-2 border-b border-slate-300 bg-slate-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-slate-500 lg:grid" style={{ gridTemplateColumns: gradeColunas }}>
+            <div className="sticky top-0 z-10 hidden items-center gap-2 border-b border-slate-300 bg-slate-100 px-3 py-0.5 text-[11px] font-black uppercase leading-tight tracking-wide text-slate-500 lg:grid" style={{ gridTemplateColumns: gradeColunas }}>
               <button type="button" onClick={alternarPagina} aria-label={todosDaPaginaMarcados ? 'Desmarcar a página' : 'Marcar a página'} className={`grid size-8 place-items-center rounded-md text-slate-500 hover:text-[#176b4d] ${FOCO}`}>
                 {todosDaPaginaMarcados ? <CheckSquare className="size-4" aria-hidden="true" /> : <Square className="size-4" aria-hidden="true" />}
               </button>
@@ -450,7 +451,7 @@ export default function HistoricoCombustivel({
                 <div key={grupo.chave} role="rowgroup">
                   {preferencias.agrupamento !== 'nenhum' && (
                     <button type="button" aria-expanded={!fechado} onClick={() => setFechados(atual => { const proximo = new Set(atual); if (proximo.has(grupo.chave)) proximo.delete(grupo.chave); else proximo.add(grupo.chave); return proximo; })}
-                      className={`sticky top-0 z-[5] flex w-full items-center gap-2 border-b border-slate-200 bg-emerald-50 px-3 py-2 text-left text-sm lg:top-[2.6rem] ${FOCO}`}>
+                      className={`sticky top-0 z-[5] flex w-full items-center gap-2 border-b border-slate-200 bg-emerald-50 px-3 py-2 text-left text-sm lg:top-[2.25rem] ${FOCO}`}>
                       <ChevronDown className={`size-4 shrink-0 text-[#176b4d] transition ${fechado ? '-rotate-90' : ''}`} aria-hidden="true" />
                       <span className="min-w-0 flex-1 truncate font-black text-slate-900">{preferencias.agrupamento === 'dia' ? dataLonga(grupo.rotulo) : grupo.rotulo}</span>
                       <span className="shrink-0 text-xs font-semibold text-slate-500">{total?.itens.length ?? grupo.itens.length} abast.</span>
@@ -463,8 +464,8 @@ export default function HistoricoCombustivel({
                       const ativo = item.id === abertoId;
                       return (
                         <li key={item.id} className={`group relative transition-colors ${ativo ? 'bg-emerald-50' : marcado ? 'bg-emerald-50/50' : `${indice % 2 ? 'bg-[#f7f8f6]' : 'bg-white'} hover:bg-emerald-50/40`}`}>
-                          <div className="hidden min-h-12 items-center gap-2 px-3 lg:grid" style={{ gridTemplateColumns: gradeColunas }}>
-                            <button type="button" onClick={() => alternarSelecao(item.id)} aria-pressed={marcado} aria-label={`${marcado ? 'Desmarcar' : 'Marcar'} ${nomes.prefixo(item)} de ${dataCurta(item.data)}`} className={`relative z-[2] grid size-8 place-items-center rounded-md ${marcado ? 'text-[#176b4d]' : 'text-slate-400 hover:text-slate-700'} ${FOCO}`}>
+                          <div className="hidden h-7 items-center gap-2 px-3 lg:grid" style={{ gridTemplateColumns: gradeColunas }}>
+                            <button type="button" onClick={() => alternarSelecao(item.id)} aria-pressed={marcado} aria-label={`${marcado ? 'Desmarcar' : 'Marcar'} ${nomes.prefixo(item)} de ${dataCurta(item.data)}`} className={`relative z-[2] grid size-7 place-items-center rounded-md ${marcado ? 'text-[#176b4d]' : 'text-slate-400 hover:text-slate-700'} ${FOCO}`}>
                               {marcado ? <CheckSquare className="size-4" aria-hidden="true" /> : <Square className="size-4" aria-hidden="true" />}
                             </button>
                             {colunas.map(coluna => celula(coluna.id, item))}
@@ -498,7 +499,9 @@ export default function HistoricoCombustivel({
               );
             })}
           </div>
-          <nav ref={abasRef} aria-label="Meses" className="relative order-first flex shrink-0 items-end gap-1 overflow-x-auto border-b border-slate-200 bg-slate-100 px-2 pt-1 lg:order-none lg:border-b-0 lg:border-t" data-testid="historico-abas">
+          {/* No computador as abas de mês e a paginação dividem uma barra só, para sobrar altura para as linhas. */}
+          <div className="contents lg:flex lg:shrink-0 lg:items-center lg:border-t lg:border-slate-200 lg:bg-slate-100">
+          <nav ref={abasRef} aria-label="Meses" className="relative order-first flex shrink-0 items-end gap-1 overflow-x-auto border-b border-slate-200 bg-slate-100 px-2 pt-1 lg:order-none lg:min-w-0 lg:flex-1 lg:self-end lg:border-b-0" data-testid="historico-abas">
             {[...abas, ABA_TUDO].map(aba => {
               const ativa = filtros.aba === aba;
               return (
@@ -510,9 +513,10 @@ export default function HistoricoCombustivel({
               );
             })}
           </nav>
-          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2">
-            <p className="text-xs font-semibold tabular-nums text-slate-500">
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2 lg:flex-nowrap lg:border-t-0 lg:py-1">
+            <p className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-500 lg:text-sm">
               {filtrados.length ? `${paginaAtual * preferencias.tamanhoPagina + 1}–${Math.min((paginaAtual + 1) * preferencias.tamanhoPagina, filtrados.length)} de ${filtrados.length.toLocaleString('pt-BR')}` : '0 abastecimentos'}
+              <span className="hidden lg:inline"> · {maquinas.toLocaleString('pt-BR')} máquinas{conferir ? <> · <span className="font-bold text-[#f26a2e]">{conferir.toLocaleString('pt-BR')} a conferir</span></> : ''} · Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span></span>
             </p>
             <div className="flex items-center gap-2">
               <label className="flex items-center gap-1 text-xs font-semibold text-slate-500">
@@ -526,6 +530,7 @@ export default function HistoricoCombustivel({
               <button type="button" aria-label="Próxima página" onClick={() => setPagina(Math.min(totalPaginas - 1, paginaAtual + 1))} disabled={paginaAtual >= totalPaginas - 1} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronRight className="size-4" aria-hidden="true" /></button>
             </div>
           </footer>
+          </div>
         </section>
       </div>
 
