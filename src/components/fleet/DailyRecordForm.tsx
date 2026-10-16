@@ -483,7 +483,8 @@ export default function DailyRecordForm({
         onClose={pedirFechar}
         busy={saving}
         size="xl"
-        telaCheia="fleet-lancamento"
+        telaCheia="frota-lancamento"
+        telaCheiaPadrao
         initialFocusRef={preset?.codigoFuncionario && !preset.prefixo ? prefixFieldRef : employeeCodeFieldRef}
         title={record ? `Editar lançamento · ${record.prefixo}` : 'Registrar situação da frota'}
         description={(

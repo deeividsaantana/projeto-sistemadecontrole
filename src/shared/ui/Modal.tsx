@@ -30,12 +30,17 @@ interface ModalProps {
    * lembrada neste aparelho: quem lança o dia inteiro abre sempre grande.
    */
   telaCheia?: string;
+  /** Abre em tela cheia enquanto a pessoa não tiver escolhido outra coisa neste aparelho. */
+  telaCheiaPadrao?: boolean;
 }
 
 const chaveTelaCheia = (nome: string) => `modal-tela-cheia:${nome}`;
-const lerTelaCheia = (nome?: string) => {
+const lerTelaCheia = (nome?: string, padrao = false) => {
   if (!nome) return false;
-  try { return localStorage.getItem(chaveTelaCheia(nome)) === '1'; } catch { return false; }
+  try {
+    const salvo = localStorage.getItem(chaveTelaCheia(nome));
+    return salvo === null ? padrao : salvo === '1';
+  } catch { return padrao; }
 };
 
 const sizeClass: Record<ModalSize, string> = {
@@ -67,9 +72,10 @@ export function Modal({
   children,
   className,
   telaCheia,
+  telaCheiaPadrao = false,
 }: ModalProps) {
   const panelRef = useRef<HTMLElement>(null);
-  const [cheia, setCheia] = useState(() => lerTelaCheia(telaCheia));
+  const [cheia, setCheia] = useState(() => lerTelaCheia(telaCheia, telaCheiaPadrao));
   const alternarTelaCheia = () => {
     const proxima = !cheia;
     setCheia(proxima);

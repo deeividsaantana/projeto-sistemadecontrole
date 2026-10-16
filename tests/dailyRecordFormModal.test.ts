@@ -9,7 +9,8 @@ test('Controle de Frotas usa o Modal padrão em vez do drawer feito à mão', ()
   assert.match(fonte, /import\s*\{\s*ConfirmDialog,\s*Modal\s*\}\s*from\s*'\.\.\/\.\.\/shared\/ui'/);
   assert.doesNotMatch(fonte, /createPortal/);
   assert.doesNotMatch(fonte, /fleet-entry-dialog/);
-  assert.match(fonte, /<Modal[\s\S]*telaCheia="fleet-lancamento"/);
+  // Abre em tela cheia sozinho; o botão continua para quem quiser diminuir.
+  assert.match(fonte, /<Modal[\s\S]*telaCheia="frota-lancamento"\s+telaCheiaPadrao/);
 });
 
 test('Controle de Frotas mantém os atalhos Alt+1..4/Alt+P/Alt+M e Ctrl+Enter', () => {
