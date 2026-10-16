@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { migrarEfetivoObra3 } from '../src/utils/migracaoEfetivoObra3';
 import type { FrenteServico, Funcionario, GrupoEquipe } from '../src/types';
@@ -74,4 +75,9 @@ test('link geral em equipe que continua ativa não é movido à toa', () => {
   const r = migrarEfetivoObra3([], [antiga], [], [], [equipe('900')], []);
   assert.equal(r.grupos[0].tokenGeral, 'geral-x');
   assert.equal(r.resumo.tokenGeralPreservado, false, 'não houve transferência');
+});
+
+test('navegador sem equipes guardadas não roda a passagem (equipes vêm da nuvem)', () => {
+  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /efetivoObra3V1\) && savedGruposEquipe === null\) \{\s*writeStoredFlag/);
 });
