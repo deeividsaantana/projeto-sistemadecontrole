@@ -6,9 +6,10 @@
  * Teclas, fora de campo de texto: N novo abastecimento, / busca no histórico.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { BarChart3, CalendarDays, CheckCircle2, Download, Droplets, FileSpreadsheet, Fuel, Gauge, History, Maximize2, Minimize2, PieChart, Plus, RotateCcw, Search } from 'lucide-react';
+import { BarChart3, CalendarDays, CheckCircle2, Download, Droplets, FileSpreadsheet, Fuel, Gauge, History, Maximize2, Minimize2, PieChart, Plus, RotateCcw, Search, X } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../types';
 import type { FuelImportedMasterData } from '../utils/fuelMasterDataImport';
 import { ConfirmDialog, isoDay } from '../shared/ui';
@@ -91,8 +92,10 @@ export default function CombustivelOperacionalTab({
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
   /** Lançamento aberto: a chave remonta o formulário a cada novo pedido. */
-  const [lancamento, setLancamento] = useState<{ chave: number; emEdicao?: Abastecimento; prefixo?: string; comboioId?: string }>({ chave: 0 });
+  const [lancamento, setLancamento] = useState<{ chave: number; emEdicao?: Abastecimento; prefixo?: string; comboioId?: string; daLista?: boolean }>({ chave: 0 });
   const [vistaAnterior, setVistaAnterior] = useState<View>('resumo');
+  /** A janela de lançamento mostra o formulário ou a lista, do mesmo tamanho. */
+  const [abaJanela, setAbaJanela] = useState<'lancar' | 'lista'>('lancar');
   const [telaCheia, setTelaCheia] = useState(() => {
     try { return window.localStorage.getItem(CHAVE_TELA_CHEIA) === '1'; } catch { return false; }
   });
@@ -236,14 +239,23 @@ export default function CombustivelOperacionalTab({
     }
   };
 
-  const abrirNovo = (pedido: { emEdicao?: Abastecimento; prefixo?: string; comboioId?: string } = {}) => {
+  const abrirNovo = (pedido: { emEdicao?: Abastecimento; prefixo?: string; comboioId?: string; daLista?: boolean } = {}) => {
     if (view !== 'novo') setVistaAnterior(view);
     setLancamento({ chave: Date.now(), ...pedido });
+    setAbaJanela('lancar');
     setErro('');
     setView('novo');
   };
 
-  const fecharLancamento = () => setView(lancamento.emEdicao ? vistaAnterior : vistaAnterior === 'novo' ? 'resumo' : vistaAnterior);
+  const fecharLancamento = () => {
+    // Correção aberta pela lista da janela volta para a lista, não fecha tudo.
+    if (lancamento.daLista && abaJanela === 'lancar') {
+      setLancamento({ chave: Date.now() });
+      setAbaJanela('lista');
+      return;
+    }
+    setView(vistaAnterior === 'novo' ? 'resumo' : vistaAnterior);
+  };
 
   const excluirConfirmado = () => {
     if (excluindo.length === 1) onDeleteAbastecimento(excluindo[0].id);
@@ -265,6 +277,10 @@ export default function CombustivelOperacionalTab({
       const alvo = event.target as HTMLElement | null;
       if (event.key === 'Escape' && telaCheia && !excluindo.length && !alvo?.matches('input, textarea, select')) {
         setTelaCheia(false);
+        return;
+      }
+      if (view === 'novo' && abaJanela === 'lista' && event.key === 'Escape' && !excluindo.length && !alvo?.matches('input, textarea, select')) {
+        fecharLancamento();
         return;
       }
       if (view === 'novo' || alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey || excluindo.length) return;
@@ -435,25 +451,69 @@ export default function CombustivelOperacionalTab({
         </div>
       </div>}
 
-      {view === 'novo' && (
-        <LancamentoCombustivel
-          key={lancamento.chave}
-          abastecimentos={ativos}
-          equipamentos={equipamentos}
-          empresas={empresas}
-          comboios={comboios}
-          combustiveis={combustiveis}
-          registros={registros}
-          gruposEquipe={gruposEquipe}
-          usuario={usuario}
-          emEdicao={lancamento.emEdicao}
-          prefixoInicial={lancamento.prefixo}
-          comboioInicial={lancamento.comboioId}
-          onSalvar={onSaveAbastecimento}
-          onEditar={item => abrirNovo({ emEdicao: item })}
-          onFechar={fecharLancamento}
-          onAviso={setAviso}
-        />
+      {view === 'novo' && createPortal(
+        <section aria-labelledby="janela-lancamento-titulo" className="fixed inset-0 z-[100] flex flex-col bg-[#f7f8f6]" data-testid="combustivel-janela">
+          <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 bg-white px-3 py-2 sm:px-6">
+            <span className="hidden size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d] sm:grid"><Fuel className="size-5" aria-hidden="true" /></span>
+            <div className="min-w-0 flex-1 md:flex-none">
+              <h2 id="janela-lancamento-titulo" className="truncate text-base font-black text-slate-950 sm:text-lg">{lancamento.emEdicao && abaJanela === 'lancar' ? 'Corrigir abastecimento' : 'Lançamento de abastecimento'}</h2>
+              <p className="hidden truncate text-xs font-semibold text-slate-500 sm:block">Fornecimento diesel · Enter passa de campo · Ctrl + S salva · Esc fecha</p>
+            </div>
+            <button type="button" onClick={fecharLancamento} aria-label="Fechar" title="Fechar (Esc)" className={`${BOTAO_SECUNDARIO} order-2 size-11 shrink-0 px-0 md:order-3`}><X className="size-5" aria-hidden="true" /></button>
+            <nav aria-label="Lançar ou ver lançamentos" className="order-3 grid w-full grid-cols-2 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 md:order-2 md:mx-auto md:w-auto md:min-w-[22rem]">
+              {([['lancar', 'Lançar', Plus], ['lista', 'Ver lançamentos', History]] as const).map(([id, rotulo, Icone]) => (
+                <button key={id} type="button" aria-pressed={abaJanela === id} onClick={() => setAbaJanela(id)} data-testid={`combustivel-janela-${id}`}
+                  className={`inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-bold transition ${abaJanela === id ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'} ${FOCO}`}>
+                  <Icone className="size-4" aria-hidden="true" />{rotulo}
+                </button>
+              ))}
+            </nav>
+          </header>
+          <p role="status" aria-live="polite" className={`${aviso ? 'mx-3 mt-2 sm:mx-6' : 'sr-only'} flex shrink-0 items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`}>
+            {aviso && <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />}
+            {aviso}
+          </p>
+          {abaJanela === 'lancar' ? (
+            <LancamentoCombustivel
+              key={lancamento.chave}
+              abastecimentos={ativos}
+              equipamentos={equipamentos}
+              empresas={empresas}
+              comboios={comboios}
+              combustiveis={combustiveis}
+              registros={registros}
+              gruposEquipe={gruposEquipe}
+              usuario={usuario}
+              emEdicao={lancamento.emEdicao}
+              prefixoInicial={lancamento.prefixo}
+              comboioInicial={lancamento.comboioId}
+              onSalvar={onSaveAbastecimento}
+              onFechar={fecharLancamento}
+              onAviso={setAviso}
+            />
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col px-2 py-2 sm:px-4">
+              <HistoricoCombustivel
+                abastecimentos={ativos}
+                equipamentos={equipamentos}
+                empresas={empresas}
+                comboios={comboios}
+                combustiveis={combustiveis}
+                buscaRef={buscaRef}
+                exportando={exportandoHistorico}
+                isParsingSpreadsheet={isParsingSpreadsheet}
+                compacto
+                onImportar={onOpenSpreadsheetImport}
+                onExportarExcel={dados => void exportarHistoricoExcel(dados)}
+                onExportarPdf={dados => void exportarHistoricoPdf(dados)}
+                onEditar={item => abrirNovo({ emEdicao: item, daLista: true })}
+                onRepetir={item => abrirNovo({ prefixo: porId.get(item.equipamentoId)?.prefixo || item.prefixoInformado || '', comboioId: item.comboioId, daLista: true })}
+                onExcluir={setExcluindo}
+              />
+            </div>
+          )}
+        </section>,
+        document.body,
       )}
 
       {view === 'historico' && (
