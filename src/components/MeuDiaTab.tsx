@@ -1,24 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertOctagon, Gauge, HardHat, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, Flag, ListChecks, ListTodo, Moon, NotebookPen, type LucideIcon } from 'lucide-react';
-import type { Abastecimento, BlocoRotina, ControleEquipamentoDiario, Equipamento, FrenteServico, Material, MovimentoMaterial, ModeloRotina, PendenciaRotina, PlanejamentoItem, RegistroProducao, RotinaDiaria, ServicoObra } from '../types';
+import { AlertOctagon, Gauge, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, Flag, ListChecks, ListTodo, Moon, NotebookPen, type LucideIcon } from 'lucide-react';
+import type { Abastecimento, BlocoRotina, ControleEquipamentoDiario, Equipamento, Material, MovimentoMaterial, ModeloRotina, PendenciaRotina, RotinaDiaria } from '../types';
 import { blocosDaPessoa, concluidasNoDia, contarPorPrioridade, diaFechado, idDaRotina, pendenciasAbertas, prioridadesDeOntem, progresso, rotinaVazia, temModeloProprio } from '../modules/rotina/checklistDiario';
 import { formatarData } from '../utils/formato';
 import { CountUp, PageHeader, isoDay } from '../shared/ui';
 import { ChecklistDoDia } from './meuDia/ChecklistDoDia';
 import { PendenciasDoDia, type AcaoPendencia } from './meuDia/PendenciasDoDia';
-import { FrentesDoDia } from './meuDia/FrentesDoDia';
 import { ObraNoDia } from './meuDia/ObraNoDia';
 import { BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from './cadastros/estilos';
 import './meuDia/MeuDia.css';
 
-type Parte = 'checklist' | 'obra' | 'frentes' | 'pendencias' | 'anotacoes' | 'fechamento';
+type Parte = 'checklist' | 'obra' | 'pendencias' | 'anotacoes' | 'fechamento';
 
 const PARTES: ReadonlyArray<{ id: Parte; nome: string; Icone: LucideIcon }> = [
   { id: 'checklist', nome: 'Checklist', Icone: ListChecks },
   { id: 'obra', nome: 'Obra no dia', Icone: Gauge },
-  { id: 'frentes', nome: 'Frentes', Icone: HardHat },
   { id: 'pendencias', nome: 'Pendências', Icone: ListTodo },
   { id: 'anotacoes', nome: 'Anotações', Icone: NotebookPen },
   { id: 'fechamento', nome: 'Fechamento', Icone: Moon },
@@ -45,14 +43,6 @@ interface Props {
   onSaveRotina: (rotina: RotinaDiaria) => void;
   onSavePendencia: (pendencia: PendenciaRotina, descricao: string, acao: AcaoPendencia) => void;
   onSaveModelo: (modelo: ModeloRotina, descricao: string) => void;
-  /** Avanço físico por frente: sai da produção lançada e do previsto de Planejamento. */
-  frentes: readonly FrenteServico[];
-  servicos: readonly ServicoObra[];
-  producao: readonly RegistroProducao[];
-  planos: readonly PlanejamentoItem[];
-  /** Só vem para quem pode lançar produção ou planejar. */
-  onSaveProducao?: (registro: RegistroProducao, isNew: boolean) => void;
-  onSavePlano?: (plano: PlanejamentoItem, isNew: boolean) => void;
   /** O que o sistema já sabe do dia: materiais, envios, frota e diesel. */
   materiais: readonly Material[];
   movimentosMaterial: readonly MovimentoMaterial[];
@@ -97,7 +87,7 @@ function Anotacao({ rotulo, ajuda, valor, onGravar, linhas = 4 }: { rotulo: stri
   );
 }
 
-export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, onSaveRotina, onSavePendencia, onSaveModelo, frentes, servicos, producao, planos, onSaveProducao, onSavePlano, materiais, movimentosMaterial, abastecimentos, controlesFrota, equipamentos, onIrPara }: Props) {
+export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, onSaveRotina, onSavePendencia, onSaveModelo, materiais, movimentosMaterial, abastecimentos, controlesFrota, equipamentos, onIrPara }: Props) {
   const pessoa = responsavel.trim() || 'Sem nome';
   const hoje = isoDay(new Date());
   const [dia, setDia] = useState(hoje);
@@ -195,7 +185,7 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
         </section>
       )}
 
-      <nav data-meu-dia-reveal className="grid grid-cols-3 gap-1 rounded-2xl sm:grid-cols-6 border border-slate-200 bg-white p-1" aria-label="Partes do meu dia">
+      <nav data-meu-dia-reveal className="grid grid-cols-3 gap-1 rounded-2xl sm:grid-cols-5 border border-slate-200 bg-white p-1" aria-label="Partes do meu dia">
         {PARTES.map(({ id, nome, Icone }) => {
           const ativa = parte === id;
           const numero = id === 'pendencias' ? abertas.length : null;
@@ -223,9 +213,6 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
           <ObraNoDia dia={dia} materiais={materiais} movimentos={movimentosMaterial} abastecimentos={abastecimentos} controles={controlesFrota} equipamentos={equipamentos} onIrPara={onIrPara} />
         )}
 
-        {parte === 'frentes' && (
-          <FrentesDoDia dia={dia} responsavel={pessoa} frentes={frentes} servicos={servicos} registros={producao} planos={planos} onSaveProducao={onSaveProducao} onSavePlano={onSavePlano} />
-        )}
 
         {parte === 'pendencias' && (
           <PendenciasDoDia dia={dia} responsavel={pessoa} pendencias={pendencias} onSalvar={onSavePendencia} />

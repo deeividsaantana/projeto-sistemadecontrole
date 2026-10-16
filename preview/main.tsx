@@ -361,22 +361,9 @@ function MateriaisPreview() {
   );
 }
 
-function MeuDiaPreview() {
+function PlanejamentoPreview() {
   const hoje = new Date().toISOString().slice(0, 10);
   const ontem = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-  const [rotinas, setRotinas] = React.useState<RotinaDiaria[]>(() => [
-    { id: `${ontem}:Deivid Santana`, dia: ontem, responsavel: 'Deivid Santana', feitos: [], levantar: '', duvida: '', aprendi: '', amanha: ['Cobrar a nota da brita da Pedra Forte', 'Conferir o aterro do Ramo 900 com a topografia', 'Fechar o diesel da semana'], criadoEm: ontem, atualizadoEm: ontem },
-    { id: `${hoje}:Deivid Santana`, dia: hoje, responsavel: 'Deivid Santana', feitos: ['inicio-1', 'inicio-2', 'inicio-5', 'projeto-1'], levantar: '', duvida: '', aprendi: '', amanha: ['', '', ''], criadoEm: hoje, atualizadoEm: hoje },
-  ]);
-  const base = { responsavel: 'Deivid Santana', criadoEm: `${ontem}T10:00:00Z`, atualizadoEm: `${ontem}T10:00:00Z` };
-  const [pendencias, setPendencias] = React.useState<PendenciaRotina[]>(() => [
-    { ...base, id: 'p1', titulo: 'Escavadeira EH-12 parada sem justificativa no Ramo 700', prioridade: 'critico', tipo: 'campo', frente: 'Ramo 700', dia: ontem },
-    { ...base, id: 'p2', titulo: 'Cobrar a nota fiscal da brita do dia 25', prioridade: 'importante', tipo: 'cobrar', dependeDe: 'Pedra Forte', prazo: ontem, dia: ontem },
-    { ...base, id: 'p3', titulo: 'Atualizar a planilha de medição do Ramo 900', prioridade: 'importante', tipo: 'medicao', frente: 'Ramo 900', dia: hoje },
-    { ...base, id: 'p4', titulo: 'Conferir o consumo de diesel dos caminhões', prioridade: 'acompanhar', tipo: 'planilha', dia: hoje },
-    { ...base, id: 'p5', titulo: 'Organizar as fotos da semana por ramo', prioridade: 'rotina', tipo: 'outro', dia: hoje },
-  ]);
-  const [modelos, setModelos] = React.useState<ModeloRotina[]>([]);
   const carimbo = { criadoEm: `${ontem}T10:00:00Z`, atualizadoEm: `${ontem}T10:00:00Z`, ativo: true };
   const inicioMes = `${hoje.slice(0, 8)}01`;
   const fimMes = new Date(Date.UTC(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)), 0)).toISOString().slice(0, 10);
@@ -402,6 +389,39 @@ function MeuDiaPreview() {
   ]);
   const trocar = <T extends { id: string }>(lista: T[], item: T) => (lista.some(atual => atual.id === item.id) ? lista.map(atual => (atual.id === item.id ? item : atual)) : [...lista, item]);
   return (
+    <PlanejamentoTab
+      planos={planos}
+      servicos={servicos}
+      producao={producao}
+      obras={fx.obras}
+      frentes={frentes}
+      gruposEquipe={[fx.grupo]}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSave={plano => setPlanos(atual => trocar(atual, plano))}
+      onSaveProducao={registro => setProducao(atual => [registro, ...atual])}
+    />
+  );
+}
+
+function MeuDiaPreview() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ontem = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const [rotinas, setRotinas] = React.useState<RotinaDiaria[]>(() => [
+    { id: `${ontem}:Deivid Santana`, dia: ontem, responsavel: 'Deivid Santana', feitos: [], levantar: '', duvida: '', aprendi: '', amanha: ['Cobrar a nota da brita da Pedra Forte', 'Conferir o aterro do Ramo 900 com a topografia', 'Fechar o diesel da semana'], criadoEm: ontem, atualizadoEm: ontem },
+    { id: `${hoje}:Deivid Santana`, dia: hoje, responsavel: 'Deivid Santana', feitos: ['inicio-1', 'inicio-2', 'inicio-5', 'projeto-1'], levantar: '', duvida: '', aprendi: '', amanha: ['', '', ''], criadoEm: hoje, atualizadoEm: hoje },
+  ]);
+  const base = { responsavel: 'Deivid Santana', criadoEm: `${ontem}T10:00:00Z`, atualizadoEm: `${ontem}T10:00:00Z` };
+  const [pendencias, setPendencias] = React.useState<PendenciaRotina[]>(() => [
+    { ...base, id: 'p1', titulo: 'Escavadeira EH-12 parada sem justificativa no Ramo 700', prioridade: 'critico', tipo: 'campo', frente: 'Ramo 700', dia: ontem },
+    { ...base, id: 'p2', titulo: 'Cobrar a nota fiscal da brita do dia 25', prioridade: 'importante', tipo: 'cobrar', dependeDe: 'Pedra Forte', prazo: ontem, dia: ontem },
+    { ...base, id: 'p3', titulo: 'Atualizar a planilha de medição do Ramo 900', prioridade: 'importante', tipo: 'medicao', frente: 'Ramo 900', dia: hoje },
+    { ...base, id: 'p4', titulo: 'Conferir o consumo de diesel dos caminhões', prioridade: 'acompanhar', tipo: 'planilha', dia: hoje },
+    { ...base, id: 'p5', titulo: 'Organizar as fotos da semana por ramo', prioridade: 'rotina', tipo: 'outro', dia: hoje },
+  ]);
+  const [modelos, setModelos] = React.useState<ModeloRotina[]>([]);
+  const trocar = <T extends { id: string }>(lista: T[], item: T) => (lista.some(atual => atual.id === item.id) ? lista.map(atual => (atual.id === item.id ? item : atual)) : [...lista, item]);
+  return (
     <MeuDiaTab
       responsavel="Deivid Santana"
       rotinas={rotinas}
@@ -410,12 +430,6 @@ function MeuDiaPreview() {
       onSaveRotina={rotina => setRotinas(atual => trocar(atual, rotina))}
       onSavePendencia={pendencia => setPendencias(atual => trocar(atual, pendencia))}
       onSaveModelo={modelo => setModelos(atual => trocar(atual, modelo))}
-      frentes={frentes}
-      servicos={servicos}
-      producao={producao}
-      planos={planos}
-      onSaveProducao={registro => setProducao(atual => [registro, ...atual])}
-      onSavePlano={plano => setPlanos(atual => [plano, ...atual])}
       materiais={fx.materiaisObra}
       movimentosMaterial={[
         ...fx.movimentosMateriaisObra.map((item, posicao) => (posicao < 6 ? { ...item, data: hoje } : item)),
@@ -678,19 +692,7 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
-  planejamento: (
-    <PlanejamentoTab
-      planos={[]}
-      servicos={[]}
-      producao={[]}
-      obras={fx.obras}
-      frentes={[]}
-      gruposEquipe={[fx.grupo]}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-    />
-  ),
+  planejamento: <PlanejamentoPreview />,
   'diario-obra': (
     <DiarioObraTab
       diarios={fx.diariosChuva}

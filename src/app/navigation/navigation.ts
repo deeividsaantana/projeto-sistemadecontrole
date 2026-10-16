@@ -1,5 +1,6 @@
 import {
   CalendarRange,
+  Target,
   ClipboardCheck,
   ClipboardList,
   FolderPlus,
@@ -58,7 +59,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Operação',
     items: [
       { id: 'modo-campo', label: 'Modo Campo', icon: Smartphone },
-      { id: 'planejamento', label: 'Planejamento', icon: CalendarRange },
+      { id: 'planejamento', label: 'Previsto x Executado', icon: Target },
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],

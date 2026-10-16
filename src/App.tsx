@@ -5557,6 +5557,7 @@ export default function App() {
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'planejamento', 'editar')}
                 onSave={handleSavePlanejamento}
+                onSaveProducao={pode(currentUserRole, 'producao', 'editar') ? handleSaveProducao : undefined}
               />
             )}
 
@@ -5585,12 +5586,6 @@ export default function App() {
                 onSaveRotina={handleSaveRotinaDiaria}
                 onSavePendencia={handleSavePendenciaRotina}
                 onSaveModelo={handleSaveModeloRotina}
-                frentes={frentesServico}
-                servicos={servicosObra}
-                producao={producaoRegistros}
-                planos={planejamentoItens}
-                onSaveProducao={pode(currentUserRole, 'producao', 'editar') ? handleSaveProducao : undefined}
-                onSavePlano={pode(currentUserRole, 'planejamento', 'editar') ? handleSavePlanejamento : undefined}
                 materiais={materiaisCadastro}
                 movimentosMaterial={materiaisMovimentos}
                 abastecimentos={abastecimentos}
