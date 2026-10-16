@@ -37,6 +37,8 @@ import { lancamentoDoDia, operadorEmOutroEquipamento } from '../../fleet/duplici
 
 interface Props {
   record?: FleetPersistedRecord;
+  /** Lançamento novo já com dia, prefixo ou matrícula (vindo da conferência do dia). */
+  preset?: Partial<Pick<ControleEquipamentoDiario, 'data' | 'prefixo' | 'codigoFuncionario'>>;
   records: ControleEquipamentoDiario[];
   equipment: Equipamento[];
   employees: Funcionario[];
@@ -148,6 +150,7 @@ const nowTime = () => new Date().toLocaleTimeString('pt-BR', {
 
 export default function DailyRecordForm({
   record,
+  preset,
   records,
   equipment,
   employees,
@@ -163,7 +166,7 @@ export default function DailyRecordForm({
 }: Props) {
   const initialSnapshot = useRef<FormState | null>(null);
   const [form, setForm] = useState<FormState>(() => {
-    const initial = initialForm(record, equipment, employees, companies, teams);
+    const initial = initialForm(record || (preset as FleetPersistedRecord | undefined), equipment, employees, companies, teams);
     initialSnapshot.current = initial;
     return initial;
   });
@@ -481,7 +484,7 @@ export default function DailyRecordForm({
         busy={saving}
         size="xl"
         telaCheia="fleet-lancamento"
-        initialFocusRef={employeeCodeFieldRef}
+        initialFocusRef={preset?.codigoFuncionario && !preset.prefixo ? prefixFieldRef : employeeCodeFieldRef}
         title={record ? `Editar lançamento · ${record.prefixo}` : 'Registrar situação da frota'}
         description={(
           <>

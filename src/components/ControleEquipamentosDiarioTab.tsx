@@ -201,6 +201,7 @@ export default function ControleEquipamentosDiarioTab({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingRecord, setEditingRecord] = useState<FleetPersistedRecord>();
   const [formOpen, setFormOpen] = useState(false);
+  const [formPreset, setFormPreset] = useState<{ prefixo?: string; codigoFuncionario?: string }>();
   const [detailState, setDetailState] = useState<FleetCurrentState>();
   const [confirmation, setConfirmation] = useState<ConfirmationState>();
   const [confirmationBusy, setConfirmationBusy] = useState(false);
@@ -340,8 +341,9 @@ export default function ControleEquipamentosDiarioTab({
     setMessageTone('success');
     setMessage(`${nome} salvo na lista de motoristas.`);
   };
-  const openNewRecord = () => {
+  const openNewRecord = (preset?: { prefixo?: string; codigoFuncionario?: string }) => {
     setEditingRecord(undefined);
+    setFormPreset(preset);
     setFormOpen(true);
   };
   useEffect(() => {
@@ -576,7 +578,6 @@ export default function ControleEquipamentosDiarioTab({
         <PageHeader
           eyebrow="Frota"
           title="Controle de Frotas"
-          description="Lançamento do dia de cada frota: quem saiu, quem está em manutenção e o que falta informar."
           actions={<div className="flex w-full min-w-0 flex-col gap-2.5">
             {/* Linha principal: escolher a vista e lançar. É o que se usa toda hora. */}
             <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-between">
@@ -593,7 +594,7 @@ export default function ControleEquipamentosDiarioTab({
                   </button>
                 ))}
               </nav>
-              <button type="button" onClick={openNewRecord} className={`${BOTAO_PRIMARIO} w-full px-5 sm:w-auto`} data-testid="frota-novo">
+              <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} w-full px-5 sm:w-auto`} data-testid="frota-novo">
                 <Plus className="size-5" aria-hidden="true" />
                 Novo lançamento
                 <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
@@ -657,7 +658,7 @@ export default function ControleEquipamentosDiarioTab({
       {aviso}
       {activeView === 'today' && <div data-fleet-view className="space-y-4">
         <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
-        <FleetDailyReference records={registros} date={filters.date} drivers={operationalDrivers} onAddDrivers={onAddOperationalDrivers}/>
+        <FleetDailyReference records={registros} date={filters.date} drivers={operationalDrivers} onAddDrivers={onAddOperationalDrivers} onLancar={openNewRecord}/>
         {viewModel.integrityWarnings.length > 0 && (
           <details open={viewModel.integrityWarnings.length <= 3} className={`group overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia">
             <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
@@ -789,7 +790,7 @@ export default function ControleEquipamentosDiarioTab({
       <ConfirmDialog open={Boolean(driverExclusao)} title={`Excluir ${driverExclusao?.nome || 'motorista'}?`} description="Ele sai da lista de motoristas da frota. Os lançamentos já feitos com ele continuam como estão." confirmLabel="Excluir motorista" tone="danger" onCancel={() => setDriverExclusao(null)} onConfirm={() => { if (driverExclusao) onDeleteOperationalDriver?.(driverExclusao.id); setDriverExclusao(null); }}/>
       <FleetBulkActions count={selectedIds.length} onClear={() => setSelectedIds([])} onDelete={() => setConfirmation({ kind: 'delete', ids: selectedIds })} onExport={() => void handleExcel(true)} onChangeStatus={status => setConfirmation({ kind: 'status', ids: selectedIds, status })}/>
       <FleetReportLayout viewModel={viewModel}/>
-      {formOpen && <DailyRecordForm record={editingRecord} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} registeredBy={registeredBy} onSave={handleSaved} onClose={() => { setFormOpen(false); setEditingRecord(undefined); }} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenDriverRegistry={() => { setFormOpen(false); setEditingRecord(undefined); setActiveView('registry'); }} onOpenEquipmentRegistry={() => { setFormOpen(false); setEditingRecord(undefined); onOpenEquipmentRegistration?.(); }} onOpenMaintenance={onOpenMaintenance}/>}
+      {formOpen && <DailyRecordForm record={editingRecord} preset={editingRecord ? undefined : { data: filters.date, ...formPreset }} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} registeredBy={registeredBy} onSave={handleSaved} onClose={() => { setFormOpen(false); setEditingRecord(undefined); }} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenDriverRegistry={() => { setFormOpen(false); setEditingRecord(undefined); setActiveView('registry'); }} onOpenEquipmentRegistry={() => { setFormOpen(false); setEditingRecord(undefined); onOpenEquipmentRegistration?.(); }} onOpenMaintenance={onOpenMaintenance}/>}
       <FleetDetailDrawer state={detailState} onClose={() => setDetailState(undefined)} onEdit={openEdit}/>
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.kind === 'delete' ? `Excluir ${confirmation.ids.length} lançamento(s)?` : `Mudar ${confirmation?.ids.length || 0} lançamento(s)?`} description={confirmation?.kind === 'delete' ? 'Some só o lançamento deste dia. A máquina continua cadastrada e o histórico de alterações fica registrado.' : `A situação passa para "${confirmation?.status}" e cada lançamento ganha um registro no histórico.`} confirmLabel={confirmation?.kind === 'delete' ? 'Excluir lançamentos' : 'Mudar situação'} tone={confirmation?.kind === 'delete' ? 'danger' : 'warning'} busy={confirmationBusy} onCancel={() => setConfirmation(undefined)} onConfirm={executeConfirmation}/>
       <FleetImportPreviewModal

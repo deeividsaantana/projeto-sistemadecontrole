@@ -19,6 +19,7 @@ interface Props {
   drivers: Funcionario[];
   /** Grava em Motoristas quem veio na lista colada e ainda não estava lá. */
   onAddDrivers?: (drivers: Funcionario[]) => void;
+  onLancar?: (preset: { codigoFuncionario?: string }) => void;
   /** Troca entre Equipamentos e Operadores, no cabeçalho do cartão. */
   alternador: ReactNode;
 }
@@ -54,10 +55,13 @@ const tom = (item: OperationalDriverReferenceStatus): { cartao: string; texto: s
   return { cartao: 'border-emerald-200 bg-emerald-50/70', texto: 'text-emerald-700' };
 };
 
-const DriverChip = ({ item }: { item: OperationalDriverReferenceStatus }) => {
+const DriverChip = ({ item, onLancar }: { item: OperationalDriverReferenceStatus; onLancar?: Props['onLancar'] }) => {
   const { cartao, texto } = tom(item);
+  const lancavel = !item.informed && Boolean(onLancar);
+  const Raiz = lancavel ? 'button' : 'div';
   return (
-    <li className={`flex min-h-14 min-w-0 flex-col items-start justify-between gap-1 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:gap-3 ${cartao}`} title={`${item.matricula} · ${item.nome}`}>
+    <li className="min-w-0" title={`${item.matricula} · ${item.nome}`}>
+    <Raiz {...(lancavel ? { type: 'button' as const, onClick: () => onLancar?.({ codigoFuncionario: item.matricula }), 'aria-label': `Lançar ${item.nome}` } : {})} className={`flex min-h-14 w-full min-w-0 flex-col items-start justify-between gap-1 rounded-xl border px-3 py-2 text-left sm:flex-row sm:items-center sm:gap-3 ${cartao} ${lancavel ? `transition duration-200 hover:border-[#176b4d] hover:shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] active:scale-[0.98] ${FOCO}` : ''}`}>
       <div className="w-full min-w-0 sm:w-auto">
         <strong className="block truncate text-sm font-bold text-slate-950">{nomeCurto(item.nome)}</strong>
         <span className="block font-mono text-[11px] font-semibold text-slate-500">{item.matricula}</span>
@@ -71,11 +75,12 @@ const DriverChip = ({ item }: { item: OperationalDriverReferenceStatus }) => {
             : item.departureTime ? <small className="block text-[11px] font-semibold">{item.departureTime}</small> : null)}
         </span>
       </span>
+    </Raiz>
     </li>
   );
 };
 
-export default function FleetDriverReference({ records, date, drivers, onAddDrivers, alternador }: Props) {
+export default function FleetDriverReference({ records, date, drivers, onAddDrivers, onLancar, alternador }: Props) {
   const [visibility, setVisibility] = useState<VisibilityFilter>('pending');
   const [aberto, setAberto] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -170,10 +175,6 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
               <button key={id} type="button" aria-pressed={visibility === id} onClick={() => setVisibility(id)} className={`min-h-10 rounded-xl px-3 text-xs font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${visibility === id ? 'bg-white text-[#176b4d] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}>{label}</button>
             ))}
           </div>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#f7f8f6] px-3 py-2 text-sm text-slate-700">
-          <p><strong>Fechamento:</strong> {reconciliation.informed} lançados + {reconciliation.missing} a confirmar = {reconciliation.total} operadores esperados.</p>
           <button type="button" onClick={() => { setEditing(value => !value); setColando(false); }} className={BOTAO_SECUNDARIO} data-testid="frota-operadores-editar">
             {editing ? <Save className="size-4" aria-hidden="true"/> : <Pencil className="size-4" aria-hidden="true"/>}
             {editing ? 'Concluir edição' : 'Editar relação'}
@@ -245,12 +246,14 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
           </section>
         )}
 
+        {onLancar && reconciliation.missing > 0 && visibility !== 'informed' && <p className="mt-3 text-xs font-semibold text-slate-500">Toque em quem está “A confirmar” para lançar direto.</p>}
+
         {reconciliation.missing === 0 && visibility === 'pending' ? (
           <div className="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="size-5" aria-hidden="true"/><div><strong className="block text-sm">Todos os operadores lançados</strong><span className="text-xs">Os {reconciliation.total} operadores esperados aparecem em algum lançamento nesta data.</span></div></div>
         ) : visibleItems.length ? (
           <article className="mt-4 rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
             <header className="mb-1.5 flex items-center justify-between gap-3 rounded-[0.9rem] bg-white px-3 py-2.5"><div className="flex items-center gap-2"><UserRound className="size-4 text-[#176b4d]" aria-hidden="true"/><h3 className="text-sm font-bold uppercase tracking-wide text-slate-950">Operadores de basculante</h3></div><span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{reconciliation.informed}/{reconciliation.total}</span></header>
-            <ul className="grid grid-cols-2 gap-1.5 p-1 lg:grid-cols-3 2xl:grid-cols-4" data-testid="frota-operadores-lista">{visiveis.map(item => <DriverChip key={item.matricula} item={item}/>)}</ul>
+            <ul data-conferencia-lista className="grid grid-cols-2 gap-1.5 p-1 lg:grid-cols-3 2xl:grid-cols-4" data-testid="frota-operadores-lista">{visiveis.map(item => <DriverChip key={item.matricula} item={item} onLancar={onLancar}/>)}</ul>
             {(restantes > 0 || aberto) && (
               <button type="button" onClick={() => setAberto(value => !value)} aria-expanded={aberto} className={`mt-1 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-slate-700 ring-1 ring-slate-200 transition hover:text-[#176b4d] hover:ring-emerald-300 ${FOCO}`}>
                 {aberto ? 'Mostrar menos' : `Ver os outros ${restantes} operadores`}
@@ -264,7 +267,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
 
         {(reconciliation.unexpectedDrivers.length > 0 || reconciliation.duplicateDrivers.length > 0) && (
           <div className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
-            {reconciliation.unexpectedDrivers.length > 0 && <p className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sky-800"><strong>Lançados fora da relação:</strong> {reconciliation.unexpectedDrivers.join(', ')}</p>}
+            {reconciliation.unexpectedDrivers.length > 0 && <details className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sky-800"><summary className={`cursor-pointer font-bold ${FOCO}`}>{reconciliation.unexpectedDrivers.length} operador(es) de basculante fora da relação</summary><p className="mt-1">{reconciliation.unexpectedDrivers.join(', ')}</p></details>}
             {reconciliation.duplicateDrivers.length > 0 && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-800"><strong>Operador em mais de um caminhão no dia:</strong> {reconciliation.duplicateDrivers.join(', ')}</p>}
           </div>
         )}
