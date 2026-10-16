@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, ClipboardPaste, Pencil, Rotat
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from '../cadastros/estilos';
 import type { ControleEquipamentoDiario, Funcionario } from '../../types';
 import {
+  lerRelacaoOperadoresGuardada,
   normalizeDriverCode,
   OPERATIONAL_DRIVER_REFERENCE,
   parseDriverList,
@@ -35,16 +36,6 @@ const nomeCurto = (nome: string): string => {
   const partes = nome.toLocaleLowerCase('pt-BR').split(' ').filter(parte => parte && !['da', 'de', 'do', 'das', 'dos', 'e'].includes(parte));
   const curto = partes.length > 1 ? `${partes[0]} ${partes[partes.length - 1]}` : partes.join(' ');
   return curto.replace(/(^|\s)\S/g, letra => letra.toLocaleUpperCase('pt-BR'));
-};
-
-const lerRelacaoGuardada = (): OperationalDriverReferenceItem[] | null => {
-  try {
-    const raw = localStorage.getItem(OPERATIONAL_DRIVER_REFERENCE_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return Array.isArray(parsed) && parsed.length ? parsed : null;
-  } catch {
-    return null;
-  }
 };
 
 const guardarRelacao = (relacao: OperationalDriverReferenceItem[] | null) => {
@@ -91,7 +82,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
   const [colando, setColando] = useState(false);
   const [textoColado, setTextoColado] = useState('');
   const [escolhido, setEscolhido] = useState('');
-  const [relacaoGuardada, setRelacaoGuardada] = useState(lerRelacaoGuardada);
+  const [relacaoGuardada, setRelacaoGuardada] = useState(lerRelacaoOperadoresGuardada);
   const reference = relacaoGuardada || OPERATIONAL_DRIVER_REFERENCE;
 
   const trocarRelacao = (proxima: OperationalDriverReferenceItem[] | null) => {

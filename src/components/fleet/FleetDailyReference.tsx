@@ -4,8 +4,8 @@ import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CARTAO, FOCO } from '../cadastros/est
 import type { ControleEquipamentoDiario, Funcionario } from '../../types';
 import FleetDriverReference from './FleetDriverReference';
 import {
+  lerRelacaoEquipamentos,
   reconcileOperationalFleetDay,
-  OPERATIONAL_FLEET_REFERENCE,
   OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY,
   type OperationalFleetReferenceGroup,
   type OperationalFleetReferenceStatus,
@@ -69,13 +69,7 @@ function EquipamentosDoDia({ records, date, alternador }: Pick<Props, 'records' 
    */
   const [gruposAbertos, setGruposAbertos] = useState<OperationalFleetReferenceGroup[]>([]);
   const [editing, setEditing] = useState(false);
-  const [reference, setReference] = useState(() => {
-    try {
-      const raw = localStorage.getItem(OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      return Array.isArray(parsed) && parsed.length ? parsed : [...OPERATIONAL_FLEET_REFERENCE];
-    } catch { return [...OPERATIONAL_FLEET_REFERENCE]; }
-  });
+  const [reference, setReference] = useState(lerRelacaoEquipamentos);
   useEffect(() => {
     if (!editing) return;
     localStorage.setItem(OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY, JSON.stringify(reference));

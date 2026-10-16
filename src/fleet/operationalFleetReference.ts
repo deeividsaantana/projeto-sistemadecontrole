@@ -37,6 +37,17 @@ export const OPERATIONAL_FLEET_REFERENCE: readonly OperationalFleetReferenceItem
   ...SUPPORT_FLEET,
 ];
 
+/** A relação escolhida na conferência do dia, ou a padrão quando o aparelho não tem nenhuma. */
+export const lerRelacaoEquipamentos = (): OperationalFleetReferenceItem[] => {
+  try {
+    const raw = localStorage.getItem(OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) && parsed.length ? parsed : [...OPERATIONAL_FLEET_REFERENCE];
+  } catch {
+    return [...OPERATIONAL_FLEET_REFERENCE];
+  }
+};
+
 export interface OperationalFleetReferenceStatus extends OperationalFleetReferenceItem {
   informed: boolean;
   recordCount: number;

@@ -62,6 +62,7 @@ import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import { repetidosPorDia } from '../fleet/duplicidadeDiaria';
+import { montarConferenciaDoDia } from '../fleet/conferenciaDoDia';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from './cadastros/estilos';
 
 interface Props {
@@ -397,7 +398,7 @@ export default function ControleEquipamentosDiarioTab({
     setMessageTone('info');
     setMessage('Gerando relatório operacional em PDF...');
     try {
-      const result = await generateFleetPdf(viewModel);
+      const result = await generateFleetPdf(viewModel, montarConferenciaDoDia(registros, filters.date));
       setMessageTone('success');
       setMessage(`${result.fileName} gerado com ${result.rows} CB(s) em ${result.pages} página(s).`);
     } catch (error) {
@@ -416,7 +417,7 @@ export default function ControleEquipamentosDiarioTab({
       const report = selectionOnly
         ? buildSelectionViewModel(viewModel, selectedStates)
         : viewModel;
-      const result = await exportFleetExcel(report);
+      const result = await exportFleetExcel(report, selectionOnly ? undefined : montarConferenciaDoDia(registros, filters.date));
       setMessageTone('success');
       setMessage(`${result.fileName} gerado com as abas ${result.sheets.join(', ')}.`);
     } catch (error) {

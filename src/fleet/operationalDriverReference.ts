@@ -55,6 +55,20 @@ export const OPERATIONAL_DRIVER_REFERENCE: readonly OperationalDriverReferenceIt
   ['103587', 'AGUINALDO BRAZ PAULO'],
 ] as const).map(([matricula, nome]) => ({ matricula, nome }));
 
+/** A relação escolhida na conferência do dia, ou a da planilha quando o aparelho não tem nenhuma. */
+export const lerRelacaoOperadoresGuardada = (): OperationalDriverReferenceItem[] | null => {
+  try {
+    const raw = localStorage.getItem(OPERATIONAL_DRIVER_REFERENCE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) && parsed.length ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+export const lerRelacaoOperadores = (): readonly OperationalDriverReferenceItem[] =>
+  lerRelacaoOperadoresGuardada() || OPERATIONAL_DRIVER_REFERENCE;
+
 /**
  * Lê a lista colada do Excel ou digitada: uma pessoa por linha, com matrícula
  * (só números) e nome em qualquer ordem, separados por tabulação, ponto e
