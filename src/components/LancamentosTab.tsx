@@ -89,6 +89,8 @@ interface LancamentosTabProps {
   onOpenControle?: () => void;
   combustivelInicial?: 'novo' | 'historico';
   combustivelListaSomente?: boolean;
+  /** A aba Relatórios abre o Combustível já no consumo por máquina. */
+  combustivelPorMaquina?: boolean;
 }
 
 type Mode = 'abastecimentos' | 'lubrificacoes';
@@ -115,6 +117,7 @@ export default function LancamentosTab({
   onOpenControle,
   combustivelInicial,
   combustivelListaSomente = false,
+  combustivelPorMaquina = false,
 }: LancamentosTabProps) {
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
@@ -1286,6 +1289,7 @@ export default function LancamentosTab({
           openHistorySignal={openFuelHistorySignal}
           initialView={combustivelInicial}
           listaSomente={combustivelListaSomente}
+          porMaquinaInicial={combustivelPorMaquina}
         />
         <input
           ref={fileInputRef}

@@ -102,6 +102,7 @@ import {
   shouldResetLocalFuel,
 } from './utils/localFuelReset';
 import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
+import type { DestinoRelatorio } from './components/RelatoriosTab';
 
 // Subcomponents Imports
 import Dashboard from './components/Dashboard';
@@ -505,6 +506,8 @@ export default function App() {
   }, [activeTab]);
   // Parte de Materiais pedida por outro lugar (aviso, busca); a vez remonta a tela na parte certa.
   const [materiaisPedido, setMateriaisPedido] = useState<{ secao?: SecaoMateriais; vez: number }>({ vez: 0 });
+  /** Aba aberta pela aba Relatórios: ela já entra na parte de relatório. */
+  const [relatorioPedido, setRelatorioPedido] = useState<DestinoRelatorio | ''>('');
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
   // o controle é renderizado na barra superior, ao lado do estado da nuvem.
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -5049,6 +5052,7 @@ export default function App() {
   const navigateTo = (tab: string, closeMobile = false) => {
     // Check if it's a primary module (top-level tab)
     let targetTab = tab;
+    setRelatorioPedido('');
     if (tab === 'tickets-jazida') setMateriaisPedido(atual => ({ secao: 'viagens', vez: atual.vez + 1 }));
     else if (tab === 'materiais') setMateriaisPedido(atual => (atual.secao ? { secao: undefined, vez: atual.vez } : atual));
     if (!allowedTabs.includes(tab)) {
@@ -5073,6 +5077,12 @@ export default function App() {
     // anterior — quem entrou em Controle de Presença agora quer o dado de
     // agora, não o de até 60 segundos atrás.
     void pullRemoteChanges();
+  };
+
+  const abrirRelatorio = (aba: DestinoRelatorio) => {
+    navigateTo(aba);
+    if (aba === 'materiais') setMateriaisPedido(atual => ({ secao: 'relatorios', vez: atual.vez + 1 }));
+    else setRelatorioPedido(aba);
   };
 
   const renderNavigation = (mobile = false) => (
@@ -5341,6 +5351,7 @@ export default function App() {
                 onOpenControle={allowedTabs.includes('controle-equipamentos') ? () => navigateTo('controle-equipamentos') : undefined}
                 combustivelInicial={combustivelViewInicial}
                 combustivelListaSomente={combustivelListaSomente}
+                combustivelPorMaquina={relatorioPedido === 'lancamentos'}
               />
             )}
 
@@ -5438,30 +5449,13 @@ export default function App() {
 
             {activeTab === 'relatorios' && (
               <RelatoriosTab
-                dados={{
-                  equipamentos,
-                  controlesEquipamentos: controleEquipamentosDiario,
-                  gruposEquipe,
-                  presencasLink,
-                  listasPresenca,
-                  obras,
-                  ordensServico,
-                  ticketsJazida,
-                  fichasFvs,
-                  inspecoes,
-                  naoConformidades,
-                  documentos,
-                  treinamentos,
-                  planejamento: planejamentoItens,
-                  producao: producaoRegistros,
-                  medicoes,
-                  materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentosVigentes,
-                  ocorrencias,
-                  servicos: servicosObra,
-                  lancamentosCusto,
-                  abastecimentos,
-                }}
+                abastecimentos={abastecimentosAtivos}
+                controlesEquipamentos={controleEquipamentosDiario}
+                presencas={presencasLinkAtivas}
+                movimentosMaterial={materiaisMovimentosVigentes}
+                cravacoes={controleEstacas.cravacoes}
+                podeAbrir={aba => allowedTabs.includes(aba)}
+                onAbrir={abrirRelatorio}
               />
             )}
 
@@ -5814,6 +5808,7 @@ export default function App() {
                 onDeletePresencaLink={handleDeletePresencaLink}
                 onResetPresencaDia={handleResetPresencaDia}
                 onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
+                viewInicial={relatorioPedido === 'presenca' ? 'relatorios' : undefined}
               />
             )}
 
@@ -5823,6 +5818,7 @@ export default function App() {
                 obras={obras}
                 onChange={handleChangeControleEstacas}
                 responsavel={activeUserName}
+                secaoInicial={relatorioPedido === 'estacas' ? 'relatorios' : undefined}
               />
             )}
 
