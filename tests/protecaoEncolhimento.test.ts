@@ -39,3 +39,21 @@ test('exclusão desfeita volta a proteger e auditoria fica de fora', () => {
   assert.deepEqual(protegidas, [{ tabela: 'equipamentos', devolvidos: 40 }]);
   assert.deepEqual(protegerContraEncolhimento(null, publicando).protegidas, []);
 });
+
+test('abastecimento igual com outro id não volta em dobro', () => {
+  const linha = (id: string, i: number) => ({
+    id, data: '2026-10-10', hora: `11:${String(i % 60).padStart(2, '0')}`, prefixoInformado: `LO${i}`,
+    quantidadeLitros: 46 + i, bombaInicial: 1000 + i, bombaFinal: 1046 + i * 2,
+  });
+  const antigos = Array.from({ length: 300 }, (_, i) => linha(`antigo-${i}`, i));
+  const novos = Array.from({ length: 300 }, (_, i) => linha(`import-novo-${i}`, i));
+  const soNoAparelho = Array.from({ length: 100 }, (_, i) => linha(`manual-${i}`, 1000 + i));
+
+  // Download no aparelho que guardou a importação antiga: a nuvem tem a nova.
+  const { retrato, protegidas } = protegerContraEncolhimento({ abastecimentos: [...antigos, ...soNoAparelho] }, { abastecimentos: novos });
+  assert.equal((retrato.abastecimentos as unknown[]).length, 400);
+  assert.deepEqual(protegidas, [{ tabela: 'abastecimentos', devolvidos: 100 }]);
+
+  // Só cópias da mesma planilha: nada volta.
+  assert.deepEqual(protegerContraEncolhimento({ abastecimentos: antigos }, { abastecimentos: novos }).protegidas, []);
+});
