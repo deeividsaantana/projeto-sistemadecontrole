@@ -85,7 +85,6 @@ import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEqu
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
 import { juntarComLancamentoDoDia } from './fleet/duplicidadeDiaria';
 import { aplicarCadastroSge, type PreviaCadastroSge } from './fleet/sgeApontamentos';
-import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
 import { useOfflineQueueCount } from './hooks/useOfflineQueue';
 import {
@@ -105,8 +104,6 @@ import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
 
 // Subcomponents Imports
 import Dashboard from './components/Dashboard';
-const ConsultaGeralTab = lazy(() => import('./components/ConsultaGeralTab'));
-const PeriodoTab = lazy(() => import('./components/PeriodoTab'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
 const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
@@ -115,29 +112,14 @@ const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRe
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
 const QuadroFrotaTab = lazy(() => import('./components/QuadroFrotaTab'));
-const FrotaTab = lazy(() => import('./components/FrotaTab'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
-const HorasParadasTab = lazy(() => import('./components/HorasParadasTab'));
-const ChecklistTab = lazy(() => import('./components/ChecklistTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
-const EquipesTab = lazy(() => import('./components/EquipesTab'));
-const ApontamentosTab = lazy(() => import('./components/ApontamentosTab'));
-const DdsTreinamentosTab = lazy(() => import('./components/DdsTreinamentosTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
-const PendenciasTab = lazy(() => import('./components/PendenciasTab'));
-const IndicadoresTab = lazy(() => import('./components/IndicadoresTab'));
-const CustosTab = lazy(() => import('./components/CustosTab'));
-const OrcamentoTab = lazy(() => import('./components/OrcamentoTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
-const TimelineTab = lazy(() => import('./components/TimelineTab'));
-const AuditoriaTab = lazy(() => import('./components/AuditoriaTab'));
-const PermissoesTab = lazy(() => import('./components/PermissoesTab'));
 const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
-const NotificacoesTab = lazy(() => import('./components/NotificacoesTab'));
-const AssistenteTab = lazy(() => import('./components/AssistenteTab'));
 const ModoCampoTab = lazy(() => import('./components/ModoCampoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
@@ -206,7 +188,7 @@ import {
 import { commitStorageBatch, isStorageQuotaExceededError } from './utils/resilientStorage';
 import { retirarPendentesDaReserva } from './utils/reservaArmazenamento';
 import { parseStoredJson, readStoredFlag, writeStorageValue, writeStoredFlag } from './data/localStore';
-import { ordemDoChecklist, MODELO_CHECKLIST_PADRAO } from './utils/checklist';
+import { MODELO_CHECKLIST_PADRAO } from './utils/checklist';
 import { STORAGE_KEYS } from './data/storageKeys';
 import { describeInvalidBackup, validateSystemBackup } from './utils/systemBackup';
 import type { MasterWorkbookReviewRow } from './masterData/masterWorkbook';
@@ -223,6 +205,7 @@ import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
   SIDEBAR_NAVIGATION_GROUPS,
+  MODULE_REDIRECTS,
   ROLE_ACCESS,
   roleFromMembership,
   type UserRole,
@@ -236,7 +219,6 @@ import { pode } from './utils/permissoes';
 import {
   alertasVisiveis,
   carregarPreferencias,
-  salvarPreferencias,
   type PreferenciasNotificacao,
 } from './utils/notificacoes';
 import { DesktopSidebar } from './app/shell/DesktopSidebar';
@@ -511,7 +493,7 @@ export default function App() {
   const [menuSearch, setMenuSearch] = useState<string>('');
   // Preferência de notificação é do dispositivo: fica no navegador e não sobe
   // para a nuvem, senão silenciar no celular apagaria o alerta do gestor.
-  const [preferenciasNotificacao, setPreferenciasNotificacao] = useState<PreferenciasNotificacao>(
+  const [preferenciasNotificacao] = useState<PreferenciasNotificacao>(
     () => typeof localStorage === 'undefined' ? { categoriasSilenciadas: [], mostrarSistema: true } : carregarPreferencias(localStorage),
   );
 
@@ -2123,42 +2105,6 @@ export default function App() {
     );
   };
 
-  const handleVincularOperadorEquipamento = (funcionarioId: string, equipamentoId: string, observacao = '') => {
-    const funcionario = funcionarios.find(item => item.id === funcionarioId);
-    const equipamento = equipamentos.find(item => item.id === equipamentoId);
-    if (!funcionario || !equipamento) return;
-    const now = new Date().toISOString();
-    const closedLinks = vinculosOperadorEquipamento.map(link =>
-      link.status === 'ATIVO' && (link.funcionarioId === funcionarioId || link.equipamentoId === equipamentoId)
-        ? { ...link, status: 'ENCERRADO' as const, fimEm: now, atualizadoEm: now }
-        : link,
-    );
-    const link: VinculoOperadorEquipamento = {
-      id: `vinculo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      funcionarioId,
-      funcionarioNome: funcionario.nome,
-      equipamentoId,
-      equipamentoPrefixo: equipamento.prefixo,
-      inicioEm: now,
-      status: 'ATIVO',
-      responsavelAlteracao: activeUserName,
-      observacao,
-      criadoEm: now,
-      atualizadoEm: now,
-    };
-    const nextLinks = [link, ...closedLinks];
-    const nextEquipment = equipamentos.map(item => {
-      if (item.id === equipamentoId) return { ...item, operadorResponsavelId: funcionarioId, operadorResponsavelNome: funcionario.nome, operadorResponsavelDesde: new Date().toLocaleDateString('sv-SE'), atualizadoEm: now };
-      if (item.operadorResponsavelId === funcionarioId) return { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined, operadorResponsavelDesde: undefined, atualizadoEm: now };
-      return item;
-    });
-    setVinculosOperadorEquipamento(nextLinks);
-    setEquipamentos(nextEquipment);
-    writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
-    writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(nextEquipment));
-    addNotification('Vínculo operacional atualizado', `${funcionario.nome} vinculado ao equipamento ${equipamento.prefixo}.`, 'success', 'Sistema Local');
-  };
-
   const handleAplicarCadastroSge = (previa: PreviaCadastroSge) => {
     if (!previa.alteracoes.length) return;
     const now = new Date().toISOString();
@@ -2202,18 +2148,6 @@ export default function App() {
       },
       { registroId: 'sge-cadastro', valorAnterior: previa.alteracoes.map(item => ({ prefixo: item.prefixo, motorista: item.motorista?.antes, horimetro: item.horimetro?.antes })), valorNovo: previa.alteracoes.map(item => ({ prefixo: item.prefixo, motorista: item.motorista?.depois, horimetro: item.horimetro?.depois })), tipoOperacao: 'UPDATE' },
     );
-  };
-
-  const handleEncerrarVinculoOperadorEquipamento = (vinculoId: string) => {
-    const current = vinculosOperadorEquipamento.find(link => link.id === vinculoId && link.status === 'ATIVO');
-    if (!current) return;
-    const now = new Date().toISOString();
-    const nextLinks = vinculosOperadorEquipamento.map(link => link.id === vinculoId ? { ...link, status: 'ENCERRADO' as const, fimEm: now, atualizadoEm: now } : link);
-    const nextEquipment = equipamentos.map(item => item.id === current.equipamentoId ? { ...item, operadorResponsavelId: undefined, operadorResponsavelNome: undefined, operadorResponsavelDesde: undefined, atualizadoEm: now } : item);
-    setVinculosOperadorEquipamento(nextLinks);
-    setEquipamentos(nextEquipment);
-    writeStorageValue(localStorage, 'renea_vinculos_operador_equipamento', JSON.stringify(nextLinks));
-    writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(nextEquipment));
   };
 
   const handleDeleteEquipamento = (id: string) => {
@@ -3793,61 +3727,6 @@ export default function App() {
     );
   };
 
-  const handleSaveChecklist = (checklist: ChecklistEquipamento) => {
-    // Item crítico reprovado tira o equipamento de operação: a OS sai junto do
-    // checklist, sem depender de alguém abrir depois.
-    const numeroOrdem = `OS-${String(ordensServico.length + 1).padStart(4, '0')}`;
-    const ordem = ordemDoChecklist(checklist, numeroOrdem);
-    const registro = ordem ? { ...checklist, ordemServicoNumero: ordem.numero } : checklist;
-    const proximosChecklists = [registro, ...checklists];
-    const proximasOrdens = ordem ? [ordem, ...ordensServico] : ordensServico;
-    saveAndLog(
-      'Checklist',
-      'Criou',
-      `Checklist de ${checklist.prefixo}${ordem ? ` reprovou item crítico e abriu a ${ordem.numero}` : ' sem item crítico reprovado'}.`,
-      historyLogs,
-      () => {
-        setChecklists(proximosChecklists);
-        writeStorageValue(localStorage, STORAGE_KEYS.checklists, JSON.stringify(proximosChecklists));
-        if (ordem) {
-          setOrdensServico(proximasOrdens);
-          writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(proximasOrdens));
-        }
-      },
-    );
-  };
-
-  const handleSaveApontamento = (apontamento: ApontamentoOperacional, isNew: boolean) => {
-    const updated = isNew
-      ? [apontamento, ...apontamentosOperacionais]
-      : apontamentosOperacionais.map(item => item.id === apontamento.id ? apontamento : item);
-    saveAndLog(
-      'Apontamentos',
-      isNew ? 'Criou' : 'Editou',
-      `${isNew ? 'Lançou' : 'Editou'} ${apontamento.horas} h de ${apontamento.funcionarioNome} em ${apontamento.data}.`,
-      historyLogs,
-      () => {
-        setApontamentosOperacionais(updated);
-        writeStorageValue(localStorage, STORAGE_KEYS.apontamentosOperacionais, JSON.stringify(updated));
-      },
-    );
-  };
-
-  const handleDeleteApontamento = (id: string) => {
-    const alvo = apontamentosOperacionais.find(item => item.id === id);
-    const updated = apontamentosOperacionais.filter(item => item.id !== id);
-    saveAndLog(
-      'Apontamentos',
-      'Excluiu',
-      `Excluiu o apontamento de ${alvo?.funcionarioNome || id}${alvo ? ` em ${alvo.data}` : ''}.`,
-      historyLogs,
-      () => {
-        setApontamentosOperacionais(updated);
-        writeStorageValue(localStorage, STORAGE_KEYS.apontamentosOperacionais, JSON.stringify(updated));
-      },
-    );
-  };
-
   // Alertas do sino: derivados dos mesmos registros das pendências, filtrando só
   // gravidade alta. Não são salvos, então nunca sobra alerta de algo resolvido.
   const alertasSistema = useMemo(() => alertasDoSistema({
@@ -3875,31 +3754,10 @@ export default function App() {
     ocorrencias,
   }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentosVigentes, ocorrencias]);
 
-  const handleSaveOrcamento = (item: OrcamentoItem, isNew: boolean) => {
-    const updated = isNew ? [item, ...orcamentoItens] : orcamentoItens.map(atual => atual.id === item.id ? item : atual);
-    saveAndLog('Orçamento', isNew ? 'Criou' : 'Editou', `${isNew ? 'Orçou' : 'Editou'} ${item.categoria} em ${item.competencia}: R$ ${item.valorOrcado}.`, historyLogs, () => {
-      setOrcamentoItens(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.orcamentoItens, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveLancamentoCusto = (lancamento: LancamentoCusto, isNew: boolean) => {
-    const updated = isNew ? [lancamento, ...lancamentosCusto] : lancamentosCusto.map(item => item.id === lancamento.id ? lancamento : item);
-    saveAndLog('Custos', isNew ? 'Criou' : 'Editou', `${isNew ? 'Lançou' : 'Editou'} ${lancamento.categoria}: ${lancamento.descricao} (R$ ${lancamento.valor}).`, historyLogs, () => {
-      setLancamentosCusto(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.lancamentosCusto, JSON.stringify(updated));
-    });
-  };
-
   const alertasDoSino = useMemo(
     () => alertasVisiveis(alertasSistema, preferenciasNotificacao),
     [alertasSistema, preferenciasNotificacao],
   );
-
-  const handleAlterarPreferenciasNotificacao = (preferencias: PreferenciasNotificacao) => {
-    setPreferenciasNotificacao(preferencias);
-    salvarPreferencias(localStorage, preferencias);
-  };
 
   const handleSavePlanejamento = (plano: PlanejamentoItem, isNew: boolean) => {
     const updated = isNew ? [plano, ...planejamentoItens] : planejamentoItens.map(item => item.id === plano.id ? plano : item);
@@ -4037,30 +3895,6 @@ export default function App() {
         writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updatedMovements));
       },
     );
-  };
-
-  const handleSaveDds = (registro: RegistroDDS) => {
-    const updated = [registro, ...registrosDds];
-    saveAndLog('DDS', 'Criou', `Registrou o DDS "${registro.tema}" com ${registro.participantesIds.length} participante(s).`, historyLogs, () => {
-      setRegistrosDds(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.registrosDds, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveTreinamento = (treinamento: Treinamento) => {
-    const updated = [treinamento, ...treinamentos];
-    saveAndLog('Treinamentos', 'Criou', `Registrou ${treinamento.nome} para ${treinamento.funcionarioNome}.`, historyLogs, () => {
-      setTreinamentos(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.treinamentos, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveModeloChecklist = (modelo: ModeloChecklist) => {
-    // Mudar o modelo muda o que a operação verifica todo dia: precisa de rastro.
-    saveAndLog('Checklist', 'Editou', `Alterou o modelo ${modelo.nome} (${modelo.itens.length} itens).`, historyLogs, () => {
-      setModeloChecklist(modelo);
-      writeStorageValue(localStorage, STORAGE_KEYS.modelosChecklist, JSON.stringify([modelo]));
-    });
   };
 
   const handleSaveOrdemServico = (ordem: OrdemServico, isNew: boolean) => {
@@ -4259,684 +4093,6 @@ export default function App() {
     );
   };
 
-  // Administration helpers
-  const handleImportData = (imported: {
-    empresas?: Empresa[];
-    obras?: ObraLocal[];
-    equipamentos?: Equipamento[];
-    funcionarios?: Funcionario[];
-    motoristasOperacionais?: Funcionario[];
-    comboios?: Comboio[];
-    canteiros?: Canteiro[];
-    combustiveis?: TipoCombustivel[];
-    lubrificantes?: ProdutoLubrificacao[];
-    etapas?: EtapaServico[];
-    abastecimentos?: Abastecimento[];
-    lubrificacoes?: Lubrificacao[];
-    ticketsJazida?: TicketJazida[];
-    listasPresenca?: ListaPresenca[];
-    ordensServico?: OrdemServico[];
-    gruposEquipe?: GrupoEquipe[];
-    presencasLink?: PresencaApontamento[];
-    historicoPresencas?: HistoricoPresenca[];
-    controleEquipamentosDiario?: ControleEquipamentoDiario[];
-    controleEstacas?: ControleEstacas;
-    periodosArquivados?: PeriodoArquivado[];
-    masterDataReviewQueue?: MasterWorkbookReviewRow[];
-    notifications?: AppNotification[];
-    historyLogs?: HistoryLog[];
-  }) => {
-    // Backups de versões anteriores não possuem todas as tabelas atuais. Uma
-    // tabela ausente preserva o conteúdo deste navegador em vez de apagá-lo.
-    const nextEmpresas = imported.empresas ?? empresas;
-    const nextObras = imported.obras ?? obras;
-    const nextEquipamentos = imported.equipamentos ?? equipamentos;
-    const nextFuncionarios = imported.funcionarios ?? funcionarios;
-    const nextMotoristasOperacionais = imported.motoristasOperacionais ?? motoristasOperacionais;
-    const nextComboios = imported.comboios ?? comboios;
-    const nextCanteiros = imported.canteiros ?? canteiros;
-    const nextCombustiveis = imported.combustiveis ?? combustiveis;
-    const nextLubrificantes = imported.lubrificantes ?? lubrificantes;
-    const nextEtapas = imported.etapas ?? etapas;
-    const nextAbastecimentos = imported.abastecimentos ?? abastecimentos;
-    const nextLubrificacoes = imported.lubrificacoes ?? lubrificacoes;
-    const nextTicketsJazida = imported.ticketsJazida ?? ticketsJazida;
-    const nextListasPresenca = imported.listasPresenca ?? listasPresenca;
-    const nextOrdensServico = imported.ordensServico ?? ordensServico;
-    const nextGruposEquipe = imported.gruposEquipe ?? gruposEquipe;
-    const nextPresencasLink = imported.presencasLink ?? presencasLink;
-    const nextHistoricoPresencas = imported.historicoPresencas ?? historicoPresencas;
-    const nextControleEquipamentosDiario = imported.controleEquipamentosDiario ?? controleEquipamentosDiario;
-    const nextControleEstacas = imported.controleEstacas ?? controleEstacas;
-    const nextPeriodosArquivados = imported.periodosArquivados ?? periodosArquivados;
-    const nextMasterDataReviewQueue = imported.masterDataReviewQueue ?? parseStoredJson<MasterWorkbookReviewRow[]>(
-      localStorage.getItem('renea_master_data_review_queue'),
-      'renea_master_data_review_queue',
-      [],
-    );
-    const nextNotifications = imported.notifications ?? notifications;
-    const restoreLog: HistoryLog = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleString('pt-BR'),
-      usuario: activeUserName,
-      acao: 'Editou',
-      tela: 'Banco de Dados',
-      descricao: 'Restaurou backup completo do sistema com sucesso.'
-    };
-    const logs = [restoreLog, ...(imported.historyLogs ?? historyLogs)];
-
-    commitStorageBatch(localStorage, [
-      { key: 'renea_empresas', value: JSON.stringify(nextEmpresas) },
-      { key: 'renea_obras', value: JSON.stringify(nextObras) },
-      { key: 'renea_equipamentos', value: JSON.stringify(nextEquipamentos) },
-      { key: 'renea_funcionarios', value: JSON.stringify(nextFuncionarios) },
-      { key: STORAGE_KEYS.motoristasOperacionais, value: JSON.stringify(nextMotoristasOperacionais) },
-      { key: 'renea_comboios', value: JSON.stringify(nextComboios) },
-      { key: 'renea_canteiros', value: JSON.stringify(nextCanteiros) },
-      { key: 'renea_combustiveis', value: JSON.stringify(nextCombustiveis) },
-      { key: 'renea_lubrificantes', value: JSON.stringify(nextLubrificantes) },
-      { key: 'renea_etapas', value: JSON.stringify(nextEtapas) },
-      { key: 'renea_abastecimentos', value: JSON.stringify(nextAbastecimentos) },
-      { key: 'renea_lubrificacoes', value: JSON.stringify(nextLubrificacoes) },
-      { key: 'renea_tickets_jazida', value: JSON.stringify(nextTicketsJazida) },
-      { key: 'renea_listas_presenca', value: JSON.stringify(nextListasPresenca) },
-      { key: 'renea_ordens_servico', value: JSON.stringify(nextOrdensServico) },
-      { key: 'renea_grupos_equipes', value: JSON.stringify(nextGruposEquipe) },
-      { key: 'renea_presencas_link', value: JSON.stringify(nextPresencasLink) },
-      { key: 'renea_historico_presencas', value: JSON.stringify(nextHistoricoPresencas) },
-      { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(nextControleEquipamentosDiario) },
-      { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
-      { key: 'renea_periodos_arquivados', value: JSON.stringify(nextPeriodosArquivados) },
-      { key: 'renea_master_data_review_queue', value: JSON.stringify(nextMasterDataReviewQueue) },
-      { key: 'renea_notifications', value: JSON.stringify(nextNotifications) },
-      { key: 'renea_history_logs', value: JSON.stringify(logs) },
-    ]);
-
-    setEmpresas(nextEmpresas);
-    setObras(nextObras);
-    setEquipamentos(nextEquipamentos);
-    setFuncionarios(nextFuncionarios);
-    setMotoristasOperacionais(nextMotoristasOperacionais);
-    setComboios(nextComboios);
-    setCanteiros(nextCanteiros);
-    setCombustiveis(nextCombustiveis);
-    setLubrificantes(nextLubrificantes);
-    setEtapas(nextEtapas);
-    setAbastecimentos(nextAbastecimentos);
-    setLubrificacoes(nextLubrificacoes);
-    setTicketsJazida(nextTicketsJazida);
-    setListasPresenca(nextListasPresenca);
-    setOrdensServico(nextOrdensServico);
-    setGruposEquipe(nextGruposEquipe);
-    setPresencasLink(nextPresencasLink);
-    setHistoricoPresencas(nextHistoricoPresencas);
-    setControleEquipamentosDiario(nextControleEquipamentosDiario);
-    setControleEstacas(nextControleEstacas);
-    setPeriodosArquivados(nextPeriodosArquivados);
-    setNotifications(nextNotifications);
-    setHistoryLogs(logs);
-  };
-
-  const handleApplySelectiveReset = (
-    scopeKeys: string[],
-    mode: 'clear' | 'default'
-  ): { success: boolean; message: string } => {
-    const uniqueScopes = Array.from(new Set(scopeKeys)).filter(Boolean);
-    if (uniqueScopes.length === 0) {
-      return { success: false, message: 'Selecione ao menos uma aba ou grupo de dados para excluir.' };
-    }
-
-    const labels: Record<string, string> = {
-      empresas: 'Empresas',
-      obras: 'Obras/Locais',
-      equipamentos: 'Equipamentos',
-      funcionarios: 'Funcionários',
-      motoristasOperacionais: 'Motoristas operacionais',
-      comboios: 'Comboios',
-      canteiros: 'Canteiros',
-      combustiveis: 'Tipos de combustível',
-      lubrificantes: 'Lubrificantes/Etapas',
-      etapas: 'Etapas de serviço',
-      abastecimentos: 'Abastecimentos',
-      lubrificacoes: 'Lubrificações',
-      presenca: 'Presença',
-      ticketsJazida: 'Tickets Jazida',
-      estacas: 'Estacas',
-      controleEquipamentos: 'Controle de basculantes',
-      manutencao: 'Manutenção',
-      periodosArquivados: 'Arquivos de períodos',
-    };
-
-    const nextValue = <T,>(defaultValue: T[]): T[] => (mode === 'default' ? defaultValue : []);
-    const persist = <T,>(key: string, value: T[], setter: (items: T[]) => void) => {
-      setter(value);
-      writeStorageValue(localStorage, key, JSON.stringify(value));
-    };
-
-    try {
-      writeStorageValue(localStorage, STORAGE_KEYS.lastDeletionRecovery, JSON.stringify({
-        schemaVersion: 1,
-        createdAt: new Date().toISOString(),
-        scopes: uniqueScopes,
-        labels: uniqueScopes.map(key => labels[key] || key),
-        backup: JSON.parse(handleExportFullData()),
-      }));
-    } catch {
-      return {
-        success: false,
-        message: 'A exclusão foi cancelada porque não foi possível criar o backup automático de recuperação.',
-      };
-    }
-
-    saveAndLog(
-      'Banco de Dados',
-      mode === 'clear' ? 'Excluiu' : 'Editou',
-      `${mode === 'clear' ? 'Zerou' : 'Restaurou para o padrão'} os dados selecionados: ${uniqueScopes.map(key => labels[key] || key).join(', ')}.`,
-      historyLogs,
-      () => {
-        uniqueScopes.forEach(scope => {
-          switch (scope) {
-            case 'empresas':
-              persist('renea_empresas', nextValue(INITIAL_EMPRESAS), setEmpresas);
-              break;
-            case 'obras':
-              persist('renea_obras', nextValue(INITIAL_OBRAS), setObras);
-              break;
-            case 'equipamentos':
-              persist('renea_equipamentos', nextValue(INITIAL_EQUIPAMENTOS), setEquipamentos);
-              persist('renea_vinculos_operador_equipamento', [], setVinculosOperadorEquipamento);
-              break;
-            case 'funcionarios':
-              persist('renea_funcionarios', nextValue(INITIAL_FUNCIONARIOS), setFuncionarios);
-              break;
-            case 'motoristasOperacionais':
-              persist(STORAGE_KEYS.motoristasOperacionais, nextValue([...OPERATIONAL_DRIVERS]), setMotoristasOperacionais);
-              break;
-            case 'comboios':
-              persist('renea_comboios', nextValue(INITIAL_COMBOIOS), setComboios);
-              break;
-            case 'canteiros':
-              persist('renea_canteiros', nextValue(INITIAL_CANTEIROS), setCanteiros);
-              break;
-            case 'combustiveis':
-              persist('renea_combustiveis', nextValue(INITIAL_TIPOS_COMBUSTIVEL), setCombustiveis);
-              break;
-            case 'lubrificantes':
-              persist('renea_lubrificantes', nextValue(INITIAL_PRODUTOS_LUBRIFICACAO), setLubrificantes);
-              break;
-            case 'etapas':
-              persist('renea_etapas', nextValue(INITIAL_ETAPAS_SERVICO), setEtapas);
-              break;
-            case 'abastecimentos':
-              persist('renea_abastecimentos', nextValue(INITIAL_ABASTECIMENTOS), setAbastecimentos);
-              break;
-            case 'lubrificacoes':
-              persist('renea_lubrificacoes', nextValue(INITIAL_LUBRIFICACOES), setLubrificacoes);
-              break;
-            case 'presenca':
-              persist('renea_listas_presenca', nextValue(INITIAL_PRESENCAS), setListasPresenca);
-              persist('renea_grupos_equipes', nextValue(INITIAL_GRUPOS_EQUIPES), setGruposEquipe);
-              persist('renea_presencas_link', nextValue(INITIAL_PRESENCAS_LINK), setPresencasLink);
-              persist('renea_historico_presencas', nextValue(INITIAL_HISTORICO_PRESENCAS), setHistoricoPresencas);
-              break;
-            case 'ticketsJazida':
-              persist('renea_tickets_jazida', nextValue(INITIAL_TICKETS_JAZIDA), setTicketsJazida);
-              break;
-            case 'estacas': {
-              const next = mode === 'default' ? INITIAL_CONTROLE_ESTACAS : { lotes: [], cravacoes: [] };
-              setControleEstacas(next);
-              writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(next));
-              break;
-            }
-            case 'controleEquipamentos':
-              persist('renea_controle_equipamentos_diario', nextValue(INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO), setControleEquipamentosDiario);
-              break;
-            case 'manutencao':
-              persist('renea_ordens_servico', nextValue(INITIAL_ORDENS_SERVICO), setOrdensServico);
-              break;
-            case 'periodosArquivados':
-              persist('renea_periodos_arquivados', [], setPeriodosArquivados);
-              break;
-            default:
-              break;
-          }
-        });
-        writeStorageValue(localStorage, 'renea_colaboradores_planilha_v1', 'true');
-        writeStorageValue(localStorage, 'renea_planilhas_operacionais_v2', 'true');
-      }
-    );
-
-    return {
-      success: true,
-      message: `${mode === 'clear' ? 'Dados zerados' : 'Padrões restaurados'} para: ${uniqueScopes.map(key => labels[key] || key).join(', ')}.`,
-    };
-  };
-
-  const handleDeleteTabData = (tabId: string): { success: boolean; message: string } => {
-    const scopesByTab: Record<string, string[]> = {
-      cadastros: ['empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios', 'canteiros', 'combustiveis', 'lubrificantes', 'etapas'],
-      lancamentos: ['abastecimentos', 'lubrificacoes'],
-      'controle-equipamentos': ['controleEquipamentos'],
-      'tickets-jazida': ['ticketsJazida'],
-      estacas: ['estacas'],
-      manutencao: ['manutencao'],
-      presenca: ['presenca'],
-      'periodos-arquivados': ['periodosArquivados'],
-    };
-    const scopes = scopesByTab[tabId];
-    if (!scopes) return { success: false, message: 'A aba selecionada não possui um conjunto de dados excluível.' };
-    return handleApplySelectiveReset(scopes, 'clear');
-  };
-
-  const isDateInRange = (date: string | undefined, start: string, end: string) => (
-    Boolean(date) && (!start || String(date) >= start) && (!end || String(date) <= end)
-  );
-
-  const splitByArchivePeriod = <T,>(
-    items: T[],
-    getDate: (item: T) => string | undefined,
-    start: string,
-    end: string
-  ) => {
-    const selected: T[] = [];
-    const remaining: T[] = [];
-    items.forEach(item => {
-      if (isDateInRange(getDate(item), start, end)) selected.push(item);
-      else remaining.push(item);
-    });
-    return { selected, remaining };
-  };
-
-  const mergeByIdKeepingLatest = <T extends { id: string }>(current: T[], incoming: T[]) => {
-    const map = new Map(current.map(item => [item.id, item]));
-    incoming.forEach(item => map.set(item.id, item));
-    return Array.from(map.values());
-  };
-
-  const persistArchivedOperationData = (data: PeriodoArquivado['dados']) => {
-    const nextAbastecimentos = mergeByIdKeepingLatest(abastecimentos, data.abastecimentos);
-    const nextLubrificacoes = mergeByIdKeepingLatest(lubrificacoes, data.lubrificacoes);
-    const nextTicketsJazida = mergeByIdKeepingLatest(ticketsJazida, data.ticketsJazida);
-    const nextListasPresenca = mergeByIdKeepingLatest(listasPresenca, data.listasPresenca);
-    const nextOrdensServico = mergeByIdKeepingLatest(ordensServico, data.ordensServico);
-    const nextPresencasLink = mergeByIdKeepingLatest(presencasLink, data.presencasLink);
-    const nextHistoricoPresencas = mergeByIdKeepingLatest(historicoPresencas, data.historicoPresencas);
-    const nextControleEquipamentosDiario = mergeByIdKeepingLatest(controleEquipamentosDiario, data.controleEquipamentosDiario || []);
-    const nextControleEstacas: ControleEstacas = data.estacas
-      ? {
-          lotes: mergeByIdKeepingLatest(controleEstacas.lotes, data.estacas.lotes),
-          cravacoes: mergeByIdKeepingLatest(controleEstacas.cravacoes, data.estacas.cravacoes),
-        }
-      : controleEstacas;
-
-    commitStorageBatch(localStorage, [
-      { key: 'renea_abastecimentos', value: JSON.stringify(nextAbastecimentos) },
-      { key: 'renea_lubrificacoes', value: JSON.stringify(nextLubrificacoes) },
-      { key: 'renea_tickets_jazida', value: JSON.stringify(nextTicketsJazida) },
-      { key: 'renea_listas_presenca', value: JSON.stringify(nextListasPresenca) },
-      { key: 'renea_ordens_servico', value: JSON.stringify(nextOrdensServico) },
-      { key: 'renea_presencas_link', value: JSON.stringify(nextPresencasLink) },
-      { key: 'renea_historico_presencas', value: JSON.stringify(nextHistoricoPresencas) },
-      { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(nextControleEquipamentosDiario) },
-      { key: 'renea_controle_estacas', value: JSON.stringify(nextControleEstacas) },
-    ]);
-
-    setAbastecimentos(nextAbastecimentos);
-    setLubrificacoes(nextLubrificacoes);
-    setTicketsJazida(nextTicketsJazida);
-    setListasPresenca(nextListasPresenca);
-    setOrdensServico(nextOrdensServico);
-    setPresencasLink(nextPresencasLink);
-    setHistoricoPresencas(nextHistoricoPresencas);
-    setControleEquipamentosDiario(nextControleEquipamentosDiario);
-    setControleEstacas(nextControleEstacas);
-  };
-
-  const handleArchivePeriod = (
-    dataInicio: string,
-    dataFim: string,
-    nome?: string
-  ): { success: boolean; message: string } => {
-    if (!dataInicio || !dataFim) {
-      return { success: false, message: 'Informe data inicial e data final para arquivar o período.' };
-    }
-    if (dataInicio > dataFim) {
-      return { success: false, message: 'A data inicial não pode ser maior que a data final.' };
-    }
-
-    const splitAbastecimentos = splitByArchivePeriod<Abastecimento>(abastecimentos, item => item.data, dataInicio, dataFim);
-    const splitLubrificacoes = splitByArchivePeriod<Lubrificacao>(lubrificacoes, item => item.data, dataInicio, dataFim);
-    const splitTicketsJazida = splitByArchivePeriod<TicketJazida>(ticketsJazida, item => item.data, dataInicio, dataFim);
-    const splitListasPresenca = splitByArchivePeriod<ListaPresenca>(listasPresenca, item => item.data, dataInicio, dataFim);
-    const splitOrdensServico = splitByArchivePeriod<OrdemServico>(ordensServico, item => item.dataAbertura, dataInicio, dataFim);
-    const splitPresencasLink = splitByArchivePeriod<PresencaApontamento>(presencasLink, item => item.data, dataInicio, dataFim);
-    const splitHistoricoPresencas = splitByArchivePeriod<HistoricoPresenca>(historicoPresencas, item => item.data, dataInicio, dataFim);
-    const splitControleEquipamentosDiario = splitByArchivePeriod<ControleEquipamentoDiario>(controleEquipamentosDiario, item => item.data, dataInicio, dataFim);
-    const splitEstacasLotes = splitByArchivePeriod<ControleEstacas['lotes'][number]>(controleEstacas.lotes, item => item.data, dataInicio, dataFim);
-    const splitEstacasCravacoes = splitByArchivePeriod<ControleEstacas['cravacoes'][number]>(controleEstacas.cravacoes, item => item.data, dataInicio, dataFim);
-
-    const dados: PeriodoArquivado['dados'] = {
-      abastecimentos: splitAbastecimentos.selected,
-      lubrificacoes: splitLubrificacoes.selected,
-      ticketsJazida: splitTicketsJazida.selected,
-      listasPresenca: splitListasPresenca.selected,
-      ordensServico: splitOrdensServico.selected,
-      presencasLink: splitPresencasLink.selected,
-      historicoPresencas: splitHistoricoPresencas.selected,
-      controleEquipamentosDiario: splitControleEquipamentosDiario.selected,
-      estacas: {
-        lotes: splitEstacasLotes.selected,
-        cravacoes: splitEstacasCravacoes.selected,
-      },
-    };
-
-    const resumo: Record<string, number> = Object.fromEntries(
-      Object.entries(dados).map(([key, value]) => [
-        key,
-        Array.isArray(value) ? value.length : value.lotes.length + value.cravacoes.length,
-      ])
-    );
-    const total = Object.values(resumo).reduce((sum, value) => sum + Number(value || 0), 0);
-    if (total === 0) {
-      return { success: false, message: 'Nenhum lançamento datado foi encontrado nesse período.' };
-    }
-
-    const archive: PeriodoArquivado = {
-      id: `periodo-${Date.now()}`,
-      nome: nome?.trim() || `Fechamento ${dataInicio.split('-').reverse().join('/')} a ${dataFim.split('-').reverse().join('/')}`,
-      dataInicio,
-      dataFim,
-      criadoEm: new Date().toISOString(),
-      criadoPor: activeUserName,
-      versao: '3.0',
-      status: 'Fechado',
-      checksum: calculateSnapshotChecksum(dados),
-      resumo,
-      dados,
-    };
-    const nextArchives = [archive, ...periodosArquivados];
-
-    saveAndLog(
-      'Arquivo de Períodos',
-      'Criou',
-      `Arquivou ${total} registro(s) de ${dataInicio} a ${dataFim}. Os dados saíram da operação ativa e não entram no dashboard até serem puxados de volta.`,
-      historyLogs,
-      () => {
-        commitStorageBatch(localStorage, [
-          { key: 'renea_abastecimentos', value: JSON.stringify(splitAbastecimentos.remaining) },
-          { key: 'renea_lubrificacoes', value: JSON.stringify(splitLubrificacoes.remaining) },
-          { key: 'renea_tickets_jazida', value: JSON.stringify(splitTicketsJazida.remaining) },
-          { key: 'renea_listas_presenca', value: JSON.stringify(splitListasPresenca.remaining) },
-          { key: 'renea_ordens_servico', value: JSON.stringify(splitOrdensServico.remaining) },
-          { key: 'renea_presencas_link', value: JSON.stringify(splitPresencasLink.remaining) },
-          { key: 'renea_historico_presencas', value: JSON.stringify(splitHistoricoPresencas.remaining) },
-          { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(splitControleEquipamentosDiario.remaining) },
-          { key: 'renea_controle_estacas', value: JSON.stringify({ lotes: splitEstacasLotes.remaining, cravacoes: splitEstacasCravacoes.remaining }) },
-          { key: 'renea_periodos_arquivados', value: JSON.stringify(nextArchives) },
-        ]);
-        setAbastecimentos(splitAbastecimentos.remaining);
-        setLubrificacoes(splitLubrificacoes.remaining);
-        setTicketsJazida(splitTicketsJazida.remaining);
-        setListasPresenca(splitListasPresenca.remaining);
-        setOrdensServico(splitOrdensServico.remaining);
-        setPresencasLink(splitPresencasLink.remaining);
-        setHistoricoPresencas(splitHistoricoPresencas.remaining);
-        setControleEquipamentosDiario(splitControleEquipamentosDiario.remaining);
-        setControleEstacas({ lotes: splitEstacasLotes.remaining, cravacoes: splitEstacasCravacoes.remaining });
-        setPeriodosArquivados(nextArchives);
-      }
-    );
-
-    return { success: true, message: `Período arquivado com ${total} registro(s). O dashboard ficou limpo para o próximo lançamento.` };
-  };
-
-  const handleRestoreArchivedPeriod = (id: string): { success: boolean; message: string } => {
-    const archive = periodosArquivados.find(item => item.id === id);
-    if (!archive) return { success: false, message: 'Arquivo de período não encontrado.' };
-    if (!isSnapshotIntact(archive)) {
-      return { success: false, message: 'O snapshot foi alterado após o fechamento e precisa de revisão antes da restauração.' };
-    }
-    const total = (Object.values(archive.resumo || {}) as number[]).reduce((sum, value) => sum + Number(value || 0), 0);
-
-    saveAndLog(
-      'Arquivo de Períodos',
-      'Criou',
-      `Puxou ${total} registro(s) do arquivo "${archive.nome}" para a operação ativa. O arquivo continua guardado.`,
-      historyLogs,
-      () => persistArchivedOperationData(archive.dados)
-    );
-
-    return { success: true, message: `Período "${archive.nome}" puxado para a operação ativa. Ele continua salvo no arquivo.` };
-  };
-
-  const handleDeleteArchivedPeriod = (id: string): { success: boolean; message: string } => {
-    const archive = periodosArquivados.find(item => item.id === id);
-    if (!archive) return { success: false, message: 'Arquivo de período não encontrado.' };
-    const nextArchives = periodosArquivados.filter(item => item.id !== id);
-
-    saveAndLog(
-      'Arquivo de Períodos',
-      'Excluiu',
-      `Excluiu permanentemente o arquivo de período "${archive.nome}".`,
-      historyLogs,
-      () => {
-        setPeriodosArquivados(nextArchives);
-        writeStorageValue(localStorage, 'renea_periodos_arquivados', JSON.stringify(nextArchives));
-      }
-    );
-
-    return { success: true, message: `Arquivo "${archive.nome}" excluído.` };
-  };
-
-  const handleExportFullData = (): string => {
-    return JSON.stringify({
-      schemaVersion: 2,
-      application: 'Sistema RENEA',
-      exportedAt: new Date().toISOString(),
-      empresas,
-      obras,
-      equipamentos,
-      funcionarios,
-      motoristasOperacionais,
-      comboios,
-      canteiros,
-      combustiveis,
-      lubrificantes,
-      etapas,
-      abastecimentos,
-      lubrificacoes,
-      ticketsJazida,
-      listasPresenca,
-      ordensServico,
-      gruposEquipe,
-      presencasLink,
-      historicoPresencas,
-      controleEquipamentosDiario,
-      controleEstacas,
-      periodosArquivados,
-      masterDataReviewQueue: parseStoredJson<MasterWorkbookReviewRow[]>(
-        localStorage.getItem('renea_master_data_review_queue'),
-        'renea_master_data_review_queue',
-        [],
-      ),
-      notifications,
-      historyLogs
-    }, null, 2);
-  };
-
-  const handleImportFullData = (importedJson: string): boolean => {
-    try {
-      const parsed = JSON.parse(importedJson);
-      const validation = validateSystemBackup(parsed);
-      if (!validation.valid) return false;
-      handleImportData(parsed);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  };
-
-  const handleRestoreLastDeletion = (): { success: boolean; message: string } => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.lastDeletionRecovery);
-      if (!raw) return { success: false, message: 'Nenhum backup automático de exclusão foi encontrado neste dispositivo.' };
-      const parsed = JSON.parse(raw) as { labels?: string[]; backup?: unknown };
-      if (!parsed.backup || !handleImportFullData(JSON.stringify(parsed.backup))) {
-        return { success: false, message: 'O último backup automático não passou na validação de integridade.' };
-      }
-      const label = Array.isArray(parsed.labels) && parsed.labels.length ? ` (${parsed.labels.join(', ')})` : '';
-      return { success: true, message: `Dados anteriores à última exclusão restaurados com sucesso${label}.` };
-    } catch {
-      return { success: false, message: 'Não foi possível ler o último backup automático de exclusão.' };
-    }
-  };
-
-  // Importação seletiva: o usuário escolhe exatamente o período (data início/fim)
-  // que deseja importar do arquivo de backup. Registros com data (abastecimentos,
-  // lubrificações e listas de presença fora do intervalo são ignoradas.
-  // Cadastros sem data (empresas, equipamentos, funcionários, etc.) são mesclados
-  // por ID, sem apagar o que já existe no sistema.
-  const handleImportFilteredByDate = (
-    importedJson: string,
-    dataInicio: string,
-    dataFim: string
-  ): { success: boolean; message: string } => {
-    try {
-      const parsed = JSON.parse(importedJson);
-      const validation = validateSystemBackup(parsed, false);
-      if (!validation.valid) return { success: false, message: describeInvalidBackup(validation) };
-
-      const inRange = (data: string) => (!dataInicio || data >= dataInicio) && (!dataFim || data <= dataFim);
-
-      const mergeById = <T extends { id: string }>(current: T[], incoming: T[] | undefined): T[] => {
-        if (!incoming || incoming.length === 0) return current;
-        const map = new Map(current.map(item => [item.id, item]));
-        incoming.forEach(item => map.set(item.id, item));
-        return Array.from(map.values());
-      };
-
-      // Cadastros base mesclados por ID (não são datados, então são sempre importados)
-      const newEmpresas = mergeById(empresas, parsed.empresas);
-      const newObras = mergeById(obras, parsed.obras);
-      const newEquipamentos = mergeById(equipamentos, parsed.equipamentos);
-      const newFuncionarios = mergeById(funcionarios, parsed.funcionarios);
-      const newComboios = mergeById(comboios, parsed.comboios);
-      const newCanteiros = mergeById(canteiros, parsed.canteiros);
-      const newCombustiveis = mergeById(combustiveis, parsed.combustiveis);
-      const newLubrificantes = mergeById(lubrificantes, parsed.lubrificantes);
-      const newEtapas = mergeById(etapas, parsed.etapas);
-      const newGruposEquipe = mergeById(gruposEquipe, parsed.gruposEquipe);
-      const newHistoricoPresencas = mergeById(historicoPresencas, parsed.historicoPresencas);
-      const currentMasterReviewQueue = parseStoredJson<MasterWorkbookReviewRow[]>(
-        localStorage.getItem('renea_master_data_review_queue'),
-        'renea_master_data_review_queue',
-        [],
-      );
-      const reviewQueueIndex = new Map(currentMasterReviewQueue.map(row => [
-        `${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`,
-        row,
-      ]));
-      (Array.isArray(parsed.masterDataReviewQueue) ? parsed.masterDataReviewQueue : []).forEach(
-        (row: MasterWorkbookReviewRow) => {
-          reviewQueueIndex.set(
-            `${row.entity}|${row.sheetName}|${row.rowNumber}|${row.canonicalKey}`,
-            row,
-          );
-        },
-      );
-      const newMasterDataReviewQueue = Array.from(reviewQueueIndex.values());
-
-      // Registros datados: só entram os que caem dentro do período escolhido
-      const incomingAbastecimentos = (parsed.abastecimentos || []).filter((x: Abastecimento) => inRange(x.data));
-      const incomingLubrificacoes = (parsed.lubrificacoes || []).filter((x: Lubrificacao) => inRange(x.data));
-      const incomingPresencas = (parsed.listasPresenca || []).filter((x: ListaPresenca) => inRange(x.data));
-      const incomingOrdensServico = (parsed.ordensServico || []).filter((x: OrdemServico) => inRange(x.dataAbertura));
-      const incomingPresencasLink = (parsed.presencasLink || []).filter((x: PresencaApontamento) => inRange(x.data));
-      const incomingTicketsJazida = (parsed.ticketsJazida || []).filter((x: TicketJazida) => inRange(x.data));
-      const incomingControleEquipamentosDiario = (parsed.controleEquipamentosDiario || []).filter((x: ControleEquipamentoDiario) => inRange(x.data));
-      const incomingEstacasLotes = (parsed.controleEstacas?.lotes || []).filter((x: ControleEstacas['lotes'][number]) => inRange(x.data));
-      const incomingEstacasCravacoes = (parsed.controleEstacas?.cravacoes || []).filter((x: ControleEstacas['cravacoes'][number]) => inRange(x.data));
-
-      const newAbastecimentos = mergeById(abastecimentos, incomingAbastecimentos);
-      const newLubrificacoes = mergeById(lubrificacoes, incomingLubrificacoes);
-      const newListasPresenca = mergeById(listasPresenca, incomingPresencas);
-      const newOrdensServico = mergeById(ordensServico, incomingOrdensServico);
-      const newPresencasLink = mergeById(presencasLink, incomingPresencasLink);
-      const newTicketsJazida = mergeById(ticketsJazida, incomingTicketsJazida);
-      const newControleEquipamentosDiario = mergeById(controleEquipamentosDiario, incomingControleEquipamentosDiario);
-      const newControleEstacas: ControleEstacas = {
-        lotes: mergeById(controleEstacas.lotes, incomingEstacasLotes),
-        cravacoes: mergeById(controleEstacas.cravacoes, incomingEstacasCravacoes),
-      };
-
-      const totalImportados = incomingAbastecimentos.length + incomingLubrificacoes.length + incomingPresencas.length + incomingOrdensServico.length + incomingPresencasLink.length + incomingTicketsJazida.length + incomingControleEquipamentosDiario.length + incomingEstacasLotes.length + incomingEstacasCravacoes.length;
-      const logMsg = `Importou seletivamente ${totalImportados} registro(s) datado(s) entre ${dataInicio || 'início'} e ${dataFim || 'fim'}, além dos cadastros base.`;
-      const newLog: HistoryLog = {
-        id: `log-${Date.now()}`,
-        timestamp: new Date().toLocaleString('pt-BR'),
-        usuario: activeUserName,
-        acao: 'Criou',
-        tela: 'Banco de Dados',
-        descricao: logMsg
-      };
-      const updatedHistory = [newLog, ...historyLogs];
-
-      commitStorageBatch(localStorage, [
-        { key: 'renea_empresas', value: JSON.stringify(newEmpresas) },
-        { key: 'renea_obras', value: JSON.stringify(newObras) },
-        { key: 'renea_equipamentos', value: JSON.stringify(newEquipamentos) },
-        { key: 'renea_funcionarios', value: JSON.stringify(newFuncionarios) },
-        { key: 'renea_comboios', value: JSON.stringify(newComboios) },
-        { key: 'renea_canteiros', value: JSON.stringify(newCanteiros) },
-        { key: 'renea_combustiveis', value: JSON.stringify(newCombustiveis) },
-        { key: 'renea_lubrificantes', value: JSON.stringify(newLubrificantes) },
-        { key: 'renea_etapas', value: JSON.stringify(newEtapas) },
-        { key: 'renea_abastecimentos', value: JSON.stringify(newAbastecimentos) },
-        { key: 'renea_lubrificacoes', value: JSON.stringify(newLubrificacoes) },
-        { key: 'renea_tickets_jazida', value: JSON.stringify(newTicketsJazida) },
-        { key: 'renea_listas_presenca', value: JSON.stringify(newListasPresenca) },
-        { key: 'renea_ordens_servico', value: JSON.stringify(newOrdensServico) },
-        { key: 'renea_grupos_equipes', value: JSON.stringify(newGruposEquipe) },
-        { key: 'renea_presencas_link', value: JSON.stringify(newPresencasLink) },
-        { key: 'renea_historico_presencas', value: JSON.stringify(newHistoricoPresencas) },
-        { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(newControleEquipamentosDiario) },
-        { key: 'renea_controle_estacas', value: JSON.stringify(newControleEstacas) },
-        { key: 'renea_master_data_review_queue', value: JSON.stringify(newMasterDataReviewQueue) },
-      { key: 'renea_history_logs', value: JSON.stringify(updatedHistory) },
-      ]);
-
-      setEmpresas(newEmpresas);
-      setObras(newObras);
-      setEquipamentos(newEquipamentos);
-      setFuncionarios(newFuncionarios);
-      setComboios(newComboios);
-      setCanteiros(newCanteiros);
-      setCombustiveis(newCombustiveis);
-      setLubrificantes(newLubrificantes);
-      setEtapas(newEtapas);
-      setAbastecimentos(newAbastecimentos);
-      setLubrificacoes(newLubrificacoes);
-      setTicketsJazida(newTicketsJazida);
-      setListasPresenca(newListasPresenca);
-      setOrdensServico(newOrdensServico);
-      setGruposEquipe(newGruposEquipe);
-      setPresencasLink(newPresencasLink);
-      setHistoricoPresencas(newHistoricoPresencas);
-      setControleEquipamentosDiario(newControleEquipamentosDiario);
-      setControleEstacas(newControleEstacas);
-    setHistoryLogs(updatedHistory);
-
-      addNotification('Importação por Período Concluída', logMsg, 'success', 'Sistema Local');
-
-      return { success: true, message: `Importação concluída! ${totalImportados} registro(s) do período selecionado foram adicionados/atualizados.` };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Falha ao ler ou processar o arquivo de backup.',
-      };
-    }
-  };
-
   if (externalTicketLink) {
     return (
       <Suspense fallback={<ScreenLoadingFallback label="Abrindo tickets..." />}>
@@ -5036,24 +4192,14 @@ export default function App() {
     }))
     .filter(group => group.items.length > 0);
 
-  // Frentes e produção vivem na parte Frentes do Meu dia: links da busca, da
-  // timeline e das pendências que apontam para elas abrem ali.
-  const SUB_TAB_MAPPING: Record<string, string> = {
-    frentes: 'meu-dia',
-    producao: 'meu-dia',
-    // Os tickets da jazida moraram numa aba própria até 28/09/2026; agora são
-    // a parte Viagens da jazida dentro de Materiais.
-    'tickets-jazida': 'materiais',
-  };
-
   const navigateTo = (tab: string, closeMobile = false) => {
     // Check if it's a primary module (top-level tab)
     let targetTab = tab;
     if (tab === 'tickets-jazida') setMateriaisPedido(atual => ({ secao: 'viagens', vez: atual.vez + 1 }));
     else if (tab === 'materiais') setMateriaisPedido(atual => (atual.secao ? { secao: undefined, vez: atual.vez } : atual));
     if (!allowedTabs.includes(tab)) {
-      // Check if it's a sub-tab that should route to a parent module
-      const parentTab = SUB_TAB_MAPPING[tab];
+      // Endereço antigo abre a tela onde aquele dado mora hoje.
+      const parentTab = MODULE_REDIRECTS[tab];
       if (parentTab && allowedTabs.includes(parentTab)) {
         // Route to parent tab instead of defaulting to dashboard
         targetTab = parentTab;
@@ -5246,35 +4392,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'periodo' && (
-              <PeriodoTab
-                presencas={presencasLink}
-                controlesEquipamentos={controleEquipamentosDiario}
-                abastecimentos={abastecimentosAtivos}
-                ticketsJazida={ticketsJazidaAtivos}
-                equipamentos={equipamentos}
-              />
-            )}
-
-            {activeTab === 'consulta-geral' && (
-              <ConsultaGeralTab
-                empresas={empresas}
-                obras={obras}
-                equipamentos={equipamentos}
-                funcionarios={funcionarios}
-                abastecimentos={abastecimentosAtivos}
-                tickets={ticketsJazida}
-                ordensServico={ordensServico}
-                controlesEquipamentos={controleEquipamentosDiario}
-                gruposEquipe={gruposEquipe}
-                presencas={presencasLink}
-                vinculos={vinculosOperadorEquipamento}
-                onLink={handleVincularOperadorEquipamento}
-                onUnlink={handleEncerrarVinculoOperadorEquipamento}
-                onNavigate={navigateTo}
-              />
-            )}
-
             {activeTab === 'cadastros' && allowedTabs.includes('cadastros') && (
               <CadastrosTab
                 empresas={empresas}
@@ -5355,84 +4472,13 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'assistente' && (
-              <AssistenteTab
-                dados={{
-                  equipamentos,
-                  funcionarios,
-                  obras,
-                  frentes: frentesServico,
-                  servicos: servicosObra,
-                  materiais: materiaisCadastro,
-                  controlesEquipamentos: controleEquipamentosDiario,
-                  gruposEquipe,
-                  presencasLink,
-                  listasPresenca,
-                  ordensServico,
-                  ticketsJazida,
-                  fichasFvs,
-                  inspecoes,
-                  naoConformidades,
-                  documentos,
-                  treinamentos,
-                  planejamento: planejamentoItens,
-                  producao: producaoRegistros,
-                  medicoes,
-                  movimentosMaterial: materiaisMovimentosVigentes,
-                  ocorrencias,
-                  abastecimentos,
-                  historyLogs,
-                }}
-                onNavigate={navigateTo}
-              />
-            )}
-
-            {activeTab === 'notificacoes' && (
-              <NotificacoesTab
-                notificacoes={notifications}
-                alertas={alertasSistema}
-                preferencias={preferenciasNotificacao}
-                onPreferenciasChange={handleAlterarPreferenciasNotificacao}
-                onMarcarTodasLidas={handleMarkAllAsRead}
-                onNavigate={navigateTo}
-              />
-            )}
-
             {activeTab === 'administracao' && (
               <AdministracaoTab
                 ultimaSincronizacao={lastCloudSync}
                 nuvemConectada={isCloudConnected}
                 gruposEquipe={gruposEquipe}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
-                onNavigate={navigateTo}
-              />
-            )}
-
-            {activeTab === 'permissoes' && (
-              <PermissoesTab />
-            )}
-
-            {activeTab === 'auditoria' && (
-              <AuditoriaTab logs={historyLogs} />
-            )}
-
-            {activeTab === 'timeline' && (
-              <TimelineTab
-                fontes={{
-                  abastecimentos,
-                  controlesEquipamentos: controleEquipamentosDiario,
-                  ordensServico,
-                  ticketsJazida,
-                  producao: producaoRegistros,
-                  fichasFvs,
-                  inspecoes,
-                  naoConformidades,
-                  ocorrencias,
-                  medicoes,
-                  historyLogs,
-                }}
-                equipamentos={equipamentos}
-                onNavigate={navigateTo}
+                logs={historyLogs}
               />
             )}
 
@@ -5462,87 +4508,6 @@ export default function App() {
                   lancamentosCusto,
                   abastecimentos,
                 }}
-              />
-            )}
-
-            {activeTab === 'orcamento' && (
-              <OrcamentoTab
-                orcamentos={orcamentoItens}
-                lancamentos={lancamentosCusto}
-                abastecimentos={abastecimentosAtivos}
-                ordensServico={ordensServico}
-                obras={obras}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'orcamento', 'editar')}
-                onSave={handleSaveOrcamento}
-              />
-            )}
-
-            {activeTab === 'custos' && (
-              <CustosTab
-                lancamentos={lancamentosCusto}
-                abastecimentos={abastecimentosAtivos}
-                ordensServico={ordensServico}
-                obras={obras}
-                frentes={frentesServico}
-                equipamentos={equipamentos}
-                empresas={empresas}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'custos', 'editar')}
-                onSave={handleSaveLancamentoCusto}
-              />
-            )}
-
-            {activeTab === 'indicadores' && (
-              <IndicadoresTab
-                dados={{
-                  equipamentos,
-                  controlesEquipamentos: controleEquipamentosDiario,
-                  gruposEquipe,
-                  presencasLink,
-                  listasPresenca,
-                  obras,
-                  ordensServico,
-                  ticketsJazida,
-                  fichasFvs,
-                  inspecoes,
-                  naoConformidades,
-                  documentos,
-                  treinamentos,
-                  planejamento: planejamentoItens,
-                  producao: producaoRegistros,
-                  medicoes,
-                  materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentosVigentes,
-                  ocorrencias,
-                }}
-              />
-            )}
-
-            {activeTab === 'pendencias' && (
-              <PendenciasTab
-                dados={{
-                  equipamentos,
-                  controlesEquipamentos: controleEquipamentosDiario,
-                  gruposEquipe,
-                  presencasLink,
-                  listasPresenca,
-                  obras,
-                  ordensServico,
-                  ticketsJazida,
-                  fichasFvs,
-                  inspecoes,
-                  naoConformidades,
-                  documentos,
-                  treinamentos,
-                  planejamento: planejamentoItens,
-                  producao: producaoRegistros,
-                  medicoes,
-                  materiais: materiaisCadastro,
-                  movimentosMaterial: materiaisMovimentosVigentes,
-                  ocorrencias,
-                }}
-                onNavigate={navigateTo}
               />
             )}
 
@@ -5640,45 +4605,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'dds-treinamentos' && (
-              <DdsTreinamentosTab
-                registrosDds={registrosDds}
-                treinamentos={treinamentos}
-                funcionarios={funcionarios}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'dds-treinamentos', 'editar')}
-                onSaveDds={handleSaveDds}
-                onSaveTreinamento={handleSaveTreinamento}
-              />
-            )}
-
-            {activeTab === 'apontamentos' && (
-              <ApontamentosTab
-                apontamentos={apontamentosOperacionais}
-                funcionarios={funcionarios}
-                gruposEquipe={gruposEquipe}
-                etapas={etapas}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'apontamentos', 'editar')}
-                onSave={handleSaveApontamento}
-                onDelete={handleDeleteApontamento}
-              />
-            )}
-
-            {activeTab === 'equipes' && (
-              <EquipesTab
-                gruposEquipe={gruposEquipe}
-                funcionarios={funcionarios}
-                empresas={empresas}
-                obras={obras}
-                presencasLink={presencasLinkAtivas}
-                controlesEquipamentos={controleEquipamentosDiario}
-                podeRealocar={['admin', 'gestor'].includes(currentUserRole)}
-                onSaveGrupoEquipe={handleSaveGrupoEquipe}
-                onNavigate={navigateTo}
-              />
-            )}
-
             {activeTab === 'colaboradores' && (
               <ColaboradoresTab
                 funcionarios={funcionarios}
@@ -5697,26 +4623,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'checklist' && (
-              <ChecklistTab
-                checklists={checklists}
-                modelo={modeloChecklist}
-                equipamentos={equipamentos}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'checklist', 'editar')}
-                onSave={handleSaveChecklist}
-                onSaveModelo={handleSaveModeloChecklist}
-              />
-            )}
-
-            {activeTab === 'horas-paradas' && (
-              <HorasParadasTab
-                controlesEquipamentos={controleEquipamentosDiario}
-                ordensServico={ordensServico}
-                equipamentos={equipamentos}
-              />
-            )}
-
             {activeTab === 'manutencao' && (
               <ManutencaoTab
                 ordensServico={ordensServico}
@@ -5727,21 +4633,6 @@ export default function App() {
                 historyLogs={historyLogs}
                 onSave={handleSaveOrdemServico}
                 onDelete={handleDeleteOrdemServico}
-              />
-            )}
-
-            {activeTab === 'frota' && (
-              <FrotaTab
-                equipamentos={equipamentos}
-                empresas={empresas}
-                obras={obras}
-                funcionarios={funcionarios}
-                gruposEquipe={gruposEquipe}
-                controlesEquipamentos={controleEquipamentosDiario}
-                ordensServico={ordensServico}
-                abastecimentos={abastecimentosAtivos}
-                ticketsJazida={ticketsJazidaAtivos}
-                onNavigate={navigateTo}
               />
             )}
 

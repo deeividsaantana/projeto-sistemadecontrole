@@ -19,13 +19,8 @@ export default defineConfig(() => {
     build: {
       target: 'es2022',
       rollupOptions: {
-        // next.html serve o novo frontend em reconstrução (src/next/), isolado
-        // do index.html de produção — sem link algum apontando pra ele, só
-        // entra no build pra manter o typecheck/build deste diretório honesto
-        // no `npm run verify`, sem já expor nada aos usuários do ERP atual.
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          next: path.resolve(__dirname, 'next.html'),
         },
         output: {
           manualChunks(id) {

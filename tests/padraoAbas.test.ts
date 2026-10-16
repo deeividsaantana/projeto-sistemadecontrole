@@ -21,23 +21,11 @@ type Regra = 'pageHeader' | 'gsap' | 'movimentoReduzido' | 'corForaDaPaleta';
 const PALETA = new Set(['#176b4d', '#f26a2e', '#718087', '#f7f8f6']);
 
 const PENDENCIAS: Record<string, readonly Regra[]> = {
-  ConfiguracoesTab: ['pageHeader', 'gsap', 'movimentoReduzido'],
-  DdsTreinamentosTab: ['gsap', 'movimentoReduzido'],
   DiarioObraTab: ['gsap', 'movimentoReduzido'],
-  EquipesTab: ['gsap', 'movimentoReduzido'],
-  FrotaTab: ['gsap', 'movimentoReduzido'],
-  HorasParadasTab: ['gsap', 'movimentoReduzido'],
-  IndicadoresTab: ['gsap', 'movimentoReduzido', 'corForaDaPaleta'],
   ManutencaoTab: ['gsap', 'movimentoReduzido'],
-  NotificacoesTab: ['gsap', 'movimentoReduzido'],
-  OrcamentoTab: ['gsap', 'movimentoReduzido'],
-  PendenciasTab: ['gsap', 'movimentoReduzido'],
-  PeriodoTab: ['gsap', 'movimentoReduzido', 'corForaDaPaleta'],
-  PermissoesTab: ['gsap', 'movimentoReduzido'],
   PlanejamentoTab: ['gsap', 'movimentoReduzido'],
   RelatoriosTab: ['gsap', 'movimentoReduzido'],
   TicketsJazidaTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
-  TimelineTab: ['gsap', 'movimentoReduzido'],
 };
 
 const components = new URL('../src/components/', import.meta.url);
@@ -81,11 +69,13 @@ test('toda aba do menu abre uma tela e toda aba principal tem permissão', async
   assert.deepEqual(semTela, [], 'aba no menu sem tela no App.tsx');
   const semPermissao = PRIMARY_MODULE_IDS.filter(id => !ROLE_ACCESS.admin.includes(id));
   assert.deepEqual(semPermissao, [], 'aba principal sem permissão em ROLE_ACCESS');
+  // Tela que o App monta e nenhum perfil abre é código morto: o App manda
+  // quem tenta para o Painel. Foram 18 até 16/10/2026 (auditoria das abas, G6).
+  const inalcancaveis = [...app.matchAll(/activeTab === '([a-z-]+)' &&/g)]
+    .map(match => match[1])
+    .filter(id => !ROLE_ACCESS.admin.includes(id));
+  assert.deepEqual(inalcancaveis, [], 'tela no App.tsx que nenhum perfil consegue abrir');
 });
-
-// Telas que só aparecem no preview/ e nenhum usuário abre no app. Esperam
-// decisão: voltar para o menu ou sair do projeto. A lista só diminui.
-const TELAS_SEM_CAMINHO = new Set(['ConfiguracoesTab']);
 
 test('toda tela *Tab.tsx é aberta por algum arquivo', () => {
   const fontes = ['../src/App.tsx', ...readdirSync(components)
@@ -94,7 +84,7 @@ test('toda tela *Tab.tsx é aberta por algum arquivo', () => {
     .map(path => readFileSync(new URL(path, import.meta.url), 'utf8'))
     .join('\n');
   const orfas = telas
-    .filter(tela => tela !== 'Dashboard' && !TELAS_SEM_CAMINHO.has(tela))
+    .filter(tela => tela !== 'Dashboard')
     .filter(tela => !new RegExp(`['/]${tela}['"]`).test(fontes));
   assert.deepEqual(orfas, [], 'tela que nenhum arquivo abre: remova ou ligue ao menu');
 });

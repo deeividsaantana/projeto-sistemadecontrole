@@ -20,11 +20,8 @@ test('foto acima do limite é recusada para não quebrar a sincronização', () 
   assert.match(String(validarFoto(dataUrl(LIMITE_FOTO_BYTES + 10_000))), /grande demais/);
 });
 
-test('as telas com foto reduzem a imagem antes de guardar', () => {
+test('o diário de obra reduz a foto antes de guardar', () => {
   const diario = readFileSync(new URL('../src/components/DiarioObraTab.tsx', import.meta.url), 'utf8');
-  const checklist = readFileSync(new URL('../src/components/ChecklistTab.tsx', import.meta.url), 'utf8');
-  [diario, checklist].forEach(fonte => {
-    assert.match(fonte, /comprimirImagem\(/);
-    assert.match(fonte, /validarFoto\(/);
-  });
+  assert.match(diario, /comprimirImagem\(/);
+  assert.match(diario, /validarFoto\(/);
 });
