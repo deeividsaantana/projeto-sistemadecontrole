@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useGSAP } from '@gsap/react';
-import { gsap } from 'gsap';
-import { AlertTriangle, CheckCircle2, ChevronDown, ClipboardCheck, Pencil, Plus, Save, Trash2, Truck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Pencil, Plus, Save, Trash2, Truck } from 'lucide-react';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CARTAO, FOCO } from '../cadastros/estilos';
-import type { ControleEquipamentoDiario, Funcionario } from '../../types';
-import FleetDriverReference from './FleetDriverReference';
+import type { ControleEquipamentoDiario } from '../../types';
 import {
   lerRelacaoEquipamentos,
   reconcileOperationalFleetDay,
@@ -16,22 +13,15 @@ import {
 interface Props {
   records: ControleEquipamentoDiario[];
   date: string;
-  drivers: Funcionario[];
-  onAddDrivers?: (drivers: Funcionario[]) => void;
+  /** Avisa a tela quando a relação muda, para o número na aba acompanhar. */
+  onRelacaoChange?: () => void;
   /** Abre o lançamento novo já com o prefixo ou a matrícula de quem falta. */
   onLancar?: (preset: { prefixo?: string; codigoFuncionario?: string }) => void;
 }
 
-type Conferencia = 'equipamentos' | 'operadores';
-
-const CHAVE_CONFERENCIA = 'renea_frota_conferencia';
-
 type VisibilityFilter = 'pending' | 'all' | 'informed';
 
 const GROUPS: readonly OperationalFleetReferenceGroup[] = ['Basculantes', 'Apoio'];
-
-/** Quantos equipamentos cada grupo mostra antes de pedir para abrir o resto. */
-const LIMITE_POR_GRUPO = 8;
 
 const formatDate = (date: string): string => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
@@ -73,21 +63,24 @@ const FleetChip = ({ item, onLancar }: { item: OperationalFleetReferenceStatus; 
   );
 };
 
-function EquipamentosDoDia({ records, date, alternador, onLancar }: Pick<Props, 'records' | 'date' | 'onLancar'> & { alternador: ReactNode }) {
+/**
+ * Aba Equipamentos do Controle de Frotas: a relação escolhida à mão (os
+ * basculantes e o apoio) conferida contra os lançamentos do dia. Ocupa a tela
+ * inteira, então mostra todos de uma vez, em grade que se ajusta à largura.
+ */
+export default function FleetDailyReference({ records, date, onLancar, onRelacaoChange }: Props) {
   const [visibility, setVisibility] = useState<VisibilityFilter>('pending');
-  /**
-   * A relação-base tem 39 equipamentos. Listar todos de uma vez empurra os
-   * filtros e a tabela para 2.000 px abaixo no celular, e o operador que abre a
-   * tela para lançar precisa rolar tudo antes de chegar no que veio fazer.
-   * Cada grupo mostra os primeiros e abre o resto sob demanda.
-   */
-  const [gruposAbertos, setGruposAbertos] = useState<OperationalFleetReferenceGroup[]>([]);
   const [editing, setEditing] = useState(false);
   const [reference, setReference] = useState(lerRelacaoEquipamentos);
   useEffect(() => {
     if (!editing) return;
-    localStorage.setItem(OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY, JSON.stringify(reference));
-  }, [editing, reference]);
+    try {
+      localStorage.setItem(OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY, JSON.stringify(reference));
+    } catch {
+      // Sem memória do aparelho a relação vale só nesta visita.
+    }
+    onRelacaoChange?.();
+  }, [editing, reference, onRelacaoChange]);
   const reconciliation = useMemo(
     () => reconcileOperationalFleetDay(records, date, reference),
     [date, records, reference],
@@ -108,7 +101,6 @@ function EquipamentosDoDia({ records, date, alternador, onLancar }: Pick<Props, 
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Conferência do dia · {formatDate(date)}</p>
             <h2 id="fleet-reference-title" className="mt-0.5 text-lg font-bold text-slate-950">Relação operacional do dia</h2>
             <p className="mt-0.5 text-sm text-slate-500">{reference.length} equipamentos esperados. Quem não foi lançado aparece como “A confirmar”.</p>
-            <div className="mt-2">{alternador}</div>
           </div>
         </div>
         <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-[#f7f8f6] text-center sm:grid-cols-4">
@@ -144,33 +136,16 @@ function EquipamentosDoDia({ records, date, alternador, onLancar }: Pick<Props, 
         {reconciliation.missing === 0 && visibility === 'pending' ? (
           <div className="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="size-5" aria-hidden="true"/><div><strong className="block text-sm">Relação completa</strong><span className="text-xs">Os {reconciliation.total} equipamentos foram informados nesta data.</span></div></div>
         ) : (
-          /* items-start: sem isso os dois grupos esticam até a altura do maior e o
-             de Apoio, com 7 itens ao lado de 32, vira um cartão com meio metro
-             de vazio. */
-          <div className="mt-4 grid items-start gap-4 xl:grid-cols-2">
+          <div className="mt-4 grid gap-4">
             {GROUPS.map(group => {
               const groupItems = visibleItems.filter(item => item.group === group);
               const allGroupItems = reconciliation.items.filter(item => item.group === group);
               const informed = allGroupItems.filter(item => item.informed).length;
               if (!groupItems.length) return null;
-              const aberto = gruposAbertos.includes(group);
-              const visiveis = aberto ? groupItems : groupItems.slice(0, LIMITE_POR_GRUPO);
-              const restantes = groupItems.length - visiveis.length;
               return (
                 <article key={group} className="rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
                   <header className="mb-1.5 flex items-center justify-between gap-3 rounded-[0.9rem] bg-white px-3 py-2.5"><div className="flex items-center gap-2"><Truck className="size-4 text-[#176b4d]" aria-hidden="true"/><h3 className="text-sm font-bold uppercase tracking-wide text-slate-950">{group}</h3></div><span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{informed}/{allGroupItems.length}</span></header>
-                  <ul data-conferencia-lista className="grid grid-cols-2 gap-1.5 p-1">{visiveis.map(item => <FleetChip key={item.prefix} item={item} onLancar={onLancar}/>)}</ul>
-                  {(restantes > 0 || aberto) && (
-                    <button
-                      type="button"
-                      onClick={() => setGruposAbertos(atual => aberto ? atual.filter(item => item !== group) : [...atual, group])}
-                      aria-expanded={aberto}
-                      className={`mt-1 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-slate-700 ring-1 ring-slate-200 transition hover:text-[#176b4d] hover:ring-emerald-300 ${FOCO}`}
-                    >
-                      {aberto ? 'Mostrar menos' : `Ver os outros ${restantes} de ${group}`}
-                      <ChevronDown className={`size-4 transition duration-300 ${aberto ? 'rotate-180' : ''}`} aria-hidden="true"/>
-                    </button>
-                  )}
+                  <ul className="grid grid-cols-2 gap-1.5 p-1 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6" data-testid="frota-equipamentos-lista">{groupItems.map(item => <FleetChip key={item.prefix} item={item} onLancar={onLancar}/>)}</ul>
                 </article>
               );
             })}
@@ -185,56 +160,5 @@ function EquipamentosDoDia({ records, date, alternador, onLancar }: Pick<Props, 
         )}
       </div>
     </section>
-  );
-}
-
-/**
- * A conferência do dia tem duas relações escolhidas à mão: os equipamentos
- * (basculantes e apoio) e os operadores. Uma por vez, para o cartão não dobrar
- * de tamanho; a escolha fica lembrada no aparelho.
- */
-export default function FleetDailyReference({ records, date, drivers, onAddDrivers, onLancar }: Props) {
-  const [conferencia, setConferenciaState] = useState<Conferencia>(() => {
-    try {
-      return localStorage.getItem(CHAVE_CONFERENCIA) === 'operadores' ? 'operadores' : 'equipamentos';
-    } catch {
-      return 'equipamentos';
-    }
-  });
-  const setConferencia = (proxima: Conferencia) => {
-    setConferenciaState(proxima);
-    try {
-      localStorage.setItem(CHAVE_CONFERENCIA, proxima);
-    } catch {
-      // Sem memória do aparelho a escolha vale só nesta visita.
-    }
-  };
-  // Ao trocar entre Equipamentos e Operadores, os cartões entram em cascata
-  // curta: dá para ver que a lista mudou sem a tela "piscar".
-  const raizRef = useRef<HTMLDivElement>(null);
-  useGSAP(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    gsap.fromTo(
-      '[data-conferencia-lista] > li',
-      { autoAlpha: 0, y: 8 },
-      { autoAlpha: 1, y: 0, duration: 0.3, stagger: 0.02, ease: 'power2.out', clearProps: 'transform,visibility,opacity' },
-    );
-  }, { scope: raizRef, dependencies: [conferencia] });
-  const alternador = (
-    <div className="inline-grid grid-cols-2 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200" role="group" aria-label="O que conferir">
-      {([
-        ['equipamentos', 'Equipamentos'],
-        ['operadores', 'Operadores'],
-      ] as const).map(([id, label]) => (
-        <button key={id} type="button" aria-pressed={conferencia === id} onClick={() => setConferencia(id)} data-testid={`frota-conferir-${id}`} className={`min-h-9 rounded-lg px-3 text-xs font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${conferencia === id ? 'bg-white text-[#176b4d] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}>{label}</button>
-      ))}
-    </div>
-  );
-  return (
-    <div ref={raizRef}>
-      {conferencia === 'operadores'
-        ? <FleetDriverReference records={records} date={date} drivers={drivers} onAddDrivers={onAddDrivers} onLancar={onLancar} alternador={alternador}/>
-        : <EquipamentosDoDia records={records} date={date} alternador={alternador} onLancar={onLancar}/>}
-    </div>
   );
 }

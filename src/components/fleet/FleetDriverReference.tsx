@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, ClipboardPaste, Pencil, RotateCcw, Save, Trash2, UserRound, Users } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { AlertTriangle, CheckCircle2, ClipboardPaste, Pencil, RotateCcw, Save, Trash2, UserRound, Users } from 'lucide-react';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from '../cadastros/estilos';
 import type { ControleEquipamentoDiario, Funcionario } from '../../types';
 import {
@@ -20,13 +20,11 @@ interface Props {
   /** Grava em Motoristas quem veio na lista colada e ainda não estava lá. */
   onAddDrivers?: (drivers: Funcionario[]) => void;
   onLancar?: (preset: { codigoFuncionario?: string }) => void;
-  /** Troca entre Equipamentos e Operadores, no cabeçalho do cartão. */
-  alternador: ReactNode;
+  /** Avisa a tela quando a relação muda, para o número na aba acompanhar. */
+  onRelacaoChange?: () => void;
 }
 
 type VisibilityFilter = 'pending' | 'all' | 'informed';
-
-const LIMITE = 12;
 
 const formatDate = (date: string): string => /^\d{4}-\d{2}-\d{2}$/.test(date)
   ? new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR')
@@ -80,9 +78,9 @@ const DriverChip = ({ item, onLancar }: { item: OperationalDriverReferenceStatus
   );
 };
 
-export default function FleetDriverReference({ records, date, drivers, onAddDrivers, onLancar, alternador }: Props) {
+/** Aba Operadores do Controle de Frotas, em tela cheia, com a mesma conferência dos equipamentos. */
+export default function FleetDriverReference({ records, date, drivers, onAddDrivers, onLancar, onRelacaoChange }: Props) {
   const [visibility, setVisibility] = useState<VisibilityFilter>('pending');
-  const [aberto, setAberto] = useState(false);
   const [editing, setEditing] = useState(false);
   const [colando, setColando] = useState(false);
   const [textoColado, setTextoColado] = useState('');
@@ -93,6 +91,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
   const trocarRelacao = (proxima: OperationalDriverReferenceItem[] | null) => {
     setRelacaoGuardada(proxima);
     guardarRelacao(proxima);
+    onRelacaoChange?.();
   };
 
   const reconciliation = useMemo(
@@ -103,8 +102,6 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
   const visibleItems = visibility === 'all'
     ? reconciliation.items
     : reconciliation.items.filter(item => visibility === 'informed' ? item.informed : !item.informed);
-  const visiveis = aberto ? visibleItems : visibleItems.slice(0, LIMITE);
-  const restantes = visibleItems.length - visiveis.length;
 
   const codigosNaRelacao = new Set(reference.map(item => normalizeDriverCode(item.matricula)));
   const foraDaRelacao = drivers.filter(driver =>
@@ -149,7 +146,6 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Conferência do dia · {formatDate(date)}</p>
             <h2 id="driver-reference-title" className="mt-0.5 text-lg font-bold text-slate-950">Operadores do dia</h2>
             <p className="mt-0.5 text-sm text-slate-500">{reference.length} operadores esperados{relacaoGuardada ? ', relação escolhida à mão' : ', lista de operadores de basculante de 16/10/2026'}.</p>
-            <div className="mt-2">{alternador}</div>
           </div>
         </div>
         <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-[#f7f8f6] text-center sm:grid-cols-4">
@@ -253,13 +249,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
         ) : visibleItems.length ? (
           <article className="mt-4 rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
             <header className="mb-1.5 flex items-center justify-between gap-3 rounded-[0.9rem] bg-white px-3 py-2.5"><div className="flex items-center gap-2"><UserRound className="size-4 text-[#176b4d]" aria-hidden="true"/><h3 className="text-sm font-bold uppercase tracking-wide text-slate-950">Operadores de basculante</h3></div><span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{reconciliation.informed}/{reconciliation.total}</span></header>
-            <ul data-conferencia-lista className="grid grid-cols-2 gap-1.5 p-1 lg:grid-cols-3 2xl:grid-cols-4" data-testid="frota-operadores-lista">{visiveis.map(item => <DriverChip key={item.matricula} item={item} onLancar={onLancar}/>)}</ul>
-            {(restantes > 0 || aberto) && (
-              <button type="button" onClick={() => setAberto(value => !value)} aria-expanded={aberto} className={`mt-1 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-slate-700 ring-1 ring-slate-200 transition hover:text-[#176b4d] hover:ring-emerald-300 ${FOCO}`}>
-                {aberto ? 'Mostrar menos' : `Ver os outros ${restantes} operadores`}
-                <ChevronDown className={`size-4 transition duration-300 ${aberto ? 'rotate-180' : ''}`} aria-hidden="true"/>
-              </button>
-            )}
+            <ul className="grid grid-cols-2 gap-1.5 p-1 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6" data-testid="frota-operadores-lista">{visibleItems.map(item => <DriverChip key={item.matricula} item={item} onLancar={onLancar}/>)}</ul>
           </article>
         ) : (
           <p className="mt-4 rounded-2xl bg-[#f7f8f6] p-6 text-center text-sm text-slate-500">Nenhum operador nesta lista.</p>
