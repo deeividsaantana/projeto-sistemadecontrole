@@ -48,6 +48,7 @@ import './usuariosSupabase.test';
 import './consumoPorEquipamento.test';
 import './historicoCombustivel.test';
 import './protecaoEncolhimento.test';
+import './mudancasNuvem.test';
 import './planilhaDiesel.test';
 import './navigation.test';
 import './situacaoDiariaRastreabilidade.test';

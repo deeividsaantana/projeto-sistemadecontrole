@@ -1,6 +1,8 @@
 import { captureCloudBaseline, mergeCloudSnapshotsWithBaseline, resolvePublishPayload, type CloudBaseline } from '../cloudMerge';
 import type { CloudData, CloudConnectionStatus, CloudDownloadResult, CloudUploadResult } from '../cloud/types';
 import { protegerContraEncolhimento } from '../cloud/protecaoEncolhimento';
+import { aplicarMudancasNasAssinaturas, calcularMudancas, capturarAssinaturas } from '../cloud/mudancasNuvem';
+import { guardarAssinaturas, lerAssinaturas } from '../cloud/assinaturasGuardadas';
 import { getSupabaseClient } from './client';
 import { resolveSupabaseClientConfig } from './config';
 
@@ -58,6 +60,8 @@ export const downloadSupabaseBackup = async (): Promise<CloudDownloadResult> => 
 
   if (error) throw normalizeSupabaseError(error);
   if (!data) return { data: null, source: 'none', updatedAt: '', totalRecords: 0 };
+  // O próximo envio compara com esta versão e manda só o que mudou.
+  void guardarAssinaturas(organizationId, capturarAssinaturas(data.payload, data.updated_at));
   return {
     data: data.payload,
     source: 'supabase',
@@ -81,6 +85,7 @@ const publishSnapshot = async (
   if (error) throw normalizeSupabaseError(error);
   const published = Array.isArray(result) ? result[0] : result;
   const updatedAt = String(published?.published_at || new Date().toISOString());
+  void guardarAssinaturas(organizationId, capturarAssinaturas(data, updatedAt));
   return {
     updatedAt,
     totalRecords: Number(published?.total_records ?? countRecords(data)),
@@ -90,11 +95,82 @@ const publishSnapshot = async (
   };
 };
 
+// Fica falso na sessão se o banco ainda não tiver a função de envio por
+// mudança: aí todo envio vai inteiro, como antes.
+let envioPorMudancaDisponivel = true;
+
+const funcaoAusente = (error: unknown) => {
+  const texto = `${(error as { code?: unknown })?.code ?? ''} ${(error as { message?: unknown })?.message ?? ''}`;
+  return texto.includes('PGRST202') || texto.includes('apply_erp_snapshot_changes') || texto.includes('CLOUD_SNAPSHOT_MISSING');
+};
+
+const mesmaVersao = (a: string, b: string) => Boolean(a) && Boolean(b) && (a === b || Date.parse(a) === Date.parse(b));
+
+/**
+ * Manda só o que mudou desde a versão que o aparelho conhece. Devolve null
+ * quando não dá (sem assinaturas dessa versão, banco sem a função): aí quem
+ * chama faz o envio inteiro.
+ */
+const enviarSoMudancas = async (data: CloudData, knownCloudVersion: string): Promise<CloudUploadResult | null> => {
+  if (!envioPorMudancaDisponivel || !knownCloudVersion) return null;
+  const organizationId = resolveSupabaseClientConfig().organizationId;
+  const assinaturas = await lerAssinaturas(organizationId);
+  if (!assinaturas || !mesmaVersao(assinaturas.versao, knownCloudVersion)) return null;
+  const calculo = calcularMudancas(data, assinaturas);
+  if (!calculo) return null;
+  const { mudancas, protegidas, total } = calculo;
+
+  if (total === 0) {
+    return {
+      updatedAt: knownCloudVersion,
+      totalRecords: countRecords(data),
+      writtenDocuments: 0,
+      reusedDocuments: 1,
+      publishedBaseline: captureCloudBaseline(data),
+      ...(protegidas.length ? { tabelasProtegidas: protegidas } : {}),
+    };
+  }
+
+  const { data: result, error } = await getSupabaseClient().rpc('apply_erp_snapshot_changes', {
+    p_organization_id: organizationId,
+    p_changes: mudancas,
+  });
+  if (error) {
+    if (funcaoAusente(error)) {
+      envioPorMudancaDisponivel = false;
+      return null;
+    }
+    throw normalizeSupabaseError(error);
+  }
+  const publicado = Array.isArray(result) ? result[0] : result;
+  const updatedAt = String(publicado?.published_at || new Date().toISOString());
+  const anterior = String(publicado?.previous_updated_at || '');
+  const nuvemTinhaNovidades = !mesmaVersao(anterior, knownCloudVersion);
+  // Se outro aparelho publicou no meio, a nuvem tem o que este não viu: as
+  // assinaturas deixam de valer até o próximo download.
+  void guardarAssinaturas(
+    organizationId,
+    nuvemTinhaNovidades ? null : aplicarMudancasNasAssinaturas(assinaturas, mudancas, updatedAt),
+  );
+  return {
+    updatedAt,
+    totalRecords: Number(publicado?.total_records ?? countRecords(data)),
+    writtenDocuments: total,
+    reusedDocuments: 0,
+    publishedBaseline: captureCloudBaseline(data),
+    ...(protegidas.length ? { tabelasProtegidas: protegidas } : {}),
+    ...(nuvemTinhaNovidades ? { nuvemTinhaNovidades } : {}),
+  };
+};
+
 export const uploadSupabaseBackup = async (
   data: CloudData,
   knownCloudVersion = '',
   baseline?: CloudBaseline,
 ): Promise<CloudUploadResult> => {
+  const soMudancas = await enviarSoMudancas(data, knownCloudVersion);
+  if (soMudancas) return soMudancas;
+
   let payload = data;
   let expectedVersion = knownCloudVersion;
   let lastError: unknown;

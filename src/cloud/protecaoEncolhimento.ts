@@ -54,7 +54,7 @@ const idDe = (item: unknown): string => {
 };
 
 /** Ids que saíram da operação para um período arquivado, por tabela do retrato. */
-const idsArquivados = (retrato: Retrato): Map<string, Set<string>> => {
+export const idsArquivados = (retrato: Retrato): Map<string, Set<string>> => {
   const porTabela = new Map<string, Set<string>>();
   const guardar = (tabela: string, itens: unknown) => {
     if (!Array.isArray(itens)) return;
