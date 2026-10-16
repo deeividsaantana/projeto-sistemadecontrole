@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardList, Rows3, SlidersHorizontal, type LucideIcon } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardList, Receipt, Rows3, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import { numero } from '../../utils/formato';
 import { CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
 import FormLancamento from './FormLancamento';
 import GradeViagens from './GradeViagens';
+import LerNota from './LerNota';
 
-type Aba = 'um' | 'varios';
+type Aba = 'um' | 'varios' | 'nota';
 
 const ABAS: ReadonlyArray<{ id: Aba; nome: string; ajuda: string; Icone: LucideIcon }> = [
   { id: 'um', nome: 'Um lançamento', ajuda: 'Uma entrega, um uso ou uma viagem', Icone: ClipboardList },
   { id: 'varios', nome: 'Várias viagens', ajuda: 'Uma linha por viagem, como na planilha', Icone: Rows3 },
+  { id: 'nota', nome: 'Ler nota', ajuda: 'Foto ou PDF da nota fiscal', Icone: Receipt },
 ];
 
 const ICONE_TIPO: Record<TipoMovimentoMaterial, LucideIcon> = {
@@ -83,7 +85,7 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
   useGSAP(() => {
     if (!trocou.current) { trocou.current = true; return; }
     if (reduzMovimento()) return;
-    gsap.fromTo('[data-lancar-conteudo]', { opacity: 0, x: aba === 'varios' ? 16 : -16 }, { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out', clearProps: 'transform,opacity' });
+    gsap.fromTo('[data-lancar-conteudo]', { opacity: 0, x: aba === 'um' ? -16 : 16 }, { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out', clearProps: 'transform,opacity' });
   }, { scope: raiz, dependencies: [aba] });
 
   // O que acabou de ser lançado pisca verde na lista: a pessoa vê que foi.
@@ -97,7 +99,7 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
 
   return (
     <div ref={raiz} className="space-y-4">
-      <div role="tablist" aria-label="Como lançar" data-materiais-reveal className="grid grid-cols-2 gap-2">
+      <div role="tablist" aria-label="Como lançar" data-materiais-reveal className="grid grid-cols-3 gap-2">
         {ABAS.map(({ id, nome, ajuda, Icone }) => {
           const ativa = aba === id;
           return (
@@ -112,9 +114,9 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
                 ? 'border-[#176b4d] bg-[#176b4d] text-white shadow-sm'
                 : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
             >
-              <Icone className="size-5 shrink-0 sm:size-6" aria-hidden="true" />
+              <Icone className="hidden size-5 shrink-0 sm:block sm:size-6" aria-hidden="true" />
               <span className="min-w-0">
-                <span className="block text-base font-bold">{nome}</span>
+                <span className="block text-sm font-bold sm:text-base">{nome}</span>
                 <span className={`hidden text-sm sm:block ${ativa ? 'text-white/80' : 'text-slate-500'}`}>{ajuda}</span>
               </span>
             </button>
@@ -179,6 +181,10 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
               </button>
             </div>
           </aside>
+        </div>
+      ) : aba === 'nota' ? (
+        <div data-lancar-conteudo>
+          <LerNota hoje={hoje} materiais={materiais} empresas={empresas} responsavel={responsavel} onSalvar={onSalvarVarios} />
         </div>
       ) : (
         <div data-lancar-conteudo>
