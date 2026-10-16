@@ -866,7 +866,12 @@ export default function App() {
       // o RENEA aberto ficaria com as equipes antigas para sempre. A função é
       // conservadora de propósito: ninguém é apagado, e o token do link
       // público de presença é preservado equipe por equipe.
-      if (!readStoredFlag(localStorage, STORAGE_KEYS.efetivoObra3V1)) {
+      // Navegador sem dados ainda vai baixar as equipes da nuvem: rodar a
+      // passagem sobre a semente criava uma equipe nova por encarregado, que
+      // depois subia para a nuvem em dobro (16/10/2026). Aí só grava a marca.
+      if (!readStoredFlag(localStorage, STORAGE_KEYS.efetivoObra3V1) && savedGruposEquipe === null) {
+        writeStoredFlag(localStorage, STORAGE_KEYS.efetivoObra3V1, true);
+      } else if (!readStoredFlag(localStorage, STORAGE_KEYS.efetivoObra3V1)) {
         const migrado = migrarEfetivoObra3(
           parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS),
           securedPublicLinks.gruposEquipe,
