@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, ClipboardCheck, Pencil, Plus, Save, Trash2, Truck } from 'lucide-react';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CARTAO, FOCO } from '../cadastros/estilos';
-import type { ControleEquipamentoDiario } from '../../types';
+import type { ControleEquipamentoDiario, Funcionario } from '../../types';
+import FleetDriverReference from './FleetDriverReference';
 import {
   reconcileOperationalFleetDay,
   OPERATIONAL_FLEET_REFERENCE,
@@ -13,7 +14,13 @@ import {
 interface Props {
   records: ControleEquipamentoDiario[];
   date: string;
+  drivers: Funcionario[];
+  onAddDrivers?: (drivers: Funcionario[]) => void;
 }
+
+type Conferencia = 'equipamentos' | 'operadores';
+
+const CHAVE_CONFERENCIA = 'renea_frota_conferencia';
 
 type VisibilityFilter = 'pending' | 'all' | 'informed';
 
@@ -52,7 +59,7 @@ const FleetChip = ({ item }: { item: OperationalFleetReferenceStatus }) => (
   </li>
 );
 
-export default function FleetDailyReference({ records, date }: Props) {
+function EquipamentosDoDia({ records, date, alternador }: Pick<Props, 'records' | 'date'> & { alternador: ReactNode }) {
   const [visibility, setVisibility] = useState<VisibilityFilter>('pending');
   /**
    * A relação-base tem 39 equipamentos. Listar todos de uma vez empurra os
@@ -93,6 +100,7 @@ export default function FleetDailyReference({ records, date }: Props) {
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Conferência do dia · {formatDate(date)}</p>
             <h2 id="fleet-reference-title" className="mt-0.5 text-lg font-bold text-slate-950">Relação operacional do dia</h2>
             <p className="mt-0.5 text-sm text-slate-500">{reference.length} equipamentos esperados. Quem não foi lançado aparece como “A confirmar”.</p>
+            <div className="mt-2">{alternador}</div>
           </div>
         </div>
         <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-[#f7f8f6] text-center sm:grid-cols-4">
@@ -169,4 +177,40 @@ export default function FleetDailyReference({ records, date }: Props) {
       </div>
     </section>
   );
+}
+
+/**
+ * A conferência do dia tem duas relações escolhidas à mão: os equipamentos
+ * (basculantes e apoio) e os operadores. Uma por vez, para o cartão não dobrar
+ * de tamanho; a escolha fica lembrada no aparelho.
+ */
+export default function FleetDailyReference({ records, date, drivers, onAddDrivers }: Props) {
+  const [conferencia, setConferenciaState] = useState<Conferencia>(() => {
+    try {
+      return localStorage.getItem(CHAVE_CONFERENCIA) === 'operadores' ? 'operadores' : 'equipamentos';
+    } catch {
+      return 'equipamentos';
+    }
+  });
+  const setConferencia = (proxima: Conferencia) => {
+    setConferenciaState(proxima);
+    try {
+      localStorage.setItem(CHAVE_CONFERENCIA, proxima);
+    } catch {
+      // Sem memória do aparelho a escolha vale só nesta visita.
+    }
+  };
+  const alternador = (
+    <div className="inline-grid grid-cols-2 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200" role="group" aria-label="O que conferir">
+      {([
+        ['equipamentos', 'Equipamentos'],
+        ['operadores', 'Operadores'],
+      ] as const).map(([id, label]) => (
+        <button key={id} type="button" aria-pressed={conferencia === id} onClick={() => setConferencia(id)} data-testid={`frota-conferir-${id}`} className={`min-h-9 rounded-lg px-3 text-xs font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${conferencia === id ? 'bg-white text-[#176b4d] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}>{label}</button>
+      ))}
+    </div>
+  );
+  return conferencia === 'operadores'
+    ? <FleetDriverReference records={records} date={date} drivers={drivers} onAddDrivers={onAddDrivers} alternador={alternador}/>
+    : <EquipamentosDoDia records={records} date={date} alternador={alternador}/>;
 }

@@ -81,6 +81,8 @@ interface Props {
   onOpenEquipmentRegistration?: () => void;
   onSaveOperationalDriver?: (driver: Funcionario, isNew: boolean) => void;
   onDeleteOperationalDriver?: (id: string) => void;
+  /** Inclui vários motoristas de uma vez (lista de operadores colada na conferência). */
+  onAddOperationalDrivers?: (drivers: Funcionario[]) => void;
   canApproveFleet?: boolean;
   /** Nome de quem está usando o sistema; grava a autoria do lançamento. */
   registeredBy?: string;
@@ -164,6 +166,7 @@ export default function ControleEquipamentosDiarioTab({
   operationalDrivers: operationalDriversProp,
   onSaveOperationalDriver,
   onDeleteOperationalDriver,
+  onAddOperationalDrivers,
   canApproveFleet = false,
   registeredBy = 'Operação',
   onApproveFleetRecord,
@@ -650,7 +653,7 @@ export default function ControleEquipamentosDiarioTab({
       {aviso}
       {activeView === 'today' && <div data-fleet-view className="space-y-4">
         <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
-        <FleetDailyReference records={registros} date={filters.date}/>
+        <FleetDailyReference records={registros} date={filters.date} drivers={operationalDrivers} onAddDrivers={onAddOperationalDrivers}/>
         {viewModel.integrityWarnings.length > 0 && (
           <details open={viewModel.integrityWarnings.length <= 3} className={`group overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia">
             <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">

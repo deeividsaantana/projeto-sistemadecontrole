@@ -2275,6 +2275,22 @@ export default function App() {
     }, { registroId: item.id, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' });
   };
 
+  const handleAddOperationalDrivers = (items: Funcionario[]) => {
+    const matriculas = new Set(motoristasOperacionais.map(driver => String(driver.matricula || '').trim()));
+    const novos = items.filter(item => {
+      const matricula = String(item.matricula || '').trim();
+      if (!matricula || !item.nome.trim() || matriculas.has(matricula)) return false;
+      matriculas.add(matricula);
+      return true;
+    });
+    if (!novos.length) return;
+    const next = [...motoristasOperacionais, ...novos];
+    saveAndLog('Motoristas operacionais', 'Criou', `Incluiu ${novos.length} motorista(s) pela lista de operadores do Controle de Frotas.`, historyLogs, () => {
+      setMotoristasOperacionais(next);
+      writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
+    }, { tipoOperacao: 'CREATE' });
+  };
+
   const handleDeleteOperationalDriver = (id: string) => {
     const next = motoristasOperacionais.filter(driver => driver.id !== id);
     saveAndLog('Motoristas operacionais', 'Excluiu', `Excluiu o motorista operacional "${id}".`, historyLogs, () => {
@@ -5761,6 +5777,7 @@ export default function App() {
                 onOpenEmployeeRegistration={() => navigateTo('cadastros')}
                 onOpenEquipmentRegistration={() => navigateTo('cadastros')}
                 onSaveOperationalDriver={handleSaveOperationalDriver}
+                onAddOperationalDrivers={handleAddOperationalDrivers}
                 onDeleteOperationalDriver={handleDeleteOperationalDriver}
                 canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
                 registeredBy={activeUserName}
