@@ -117,8 +117,10 @@ const enviarSoMudancas = async (data: CloudData, knownCloudVersion: string): Pro
   const assinaturas = await lerAssinaturas(organizationId);
   if (!assinaturas || !mesmaVersao(assinaturas.versao, knownCloudVersion)) return null;
   const calculo = calcularMudancas(data, assinaturas);
-  if (!calculo) return null;
-  const { mudancas, protegidas, total } = calculo;
+  // Saída em massa sem marca (navegador que perdeu a cópia) segue pelo envio
+  // inteiro, que já sabe segurar a nuvem e trazer os registros de volta.
+  if (!calculo || calculo.protegidas.length > 0) return null;
+  const { mudancas, total } = calculo;
 
   if (total === 0) {
     return {
@@ -127,7 +129,6 @@ const enviarSoMudancas = async (data: CloudData, knownCloudVersion: string): Pro
       writtenDocuments: 0,
       reusedDocuments: 1,
       publishedBaseline: captureCloudBaseline(data),
-      ...(protegidas.length ? { tabelasProtegidas: protegidas } : {}),
     };
   }
 
@@ -158,7 +159,6 @@ const enviarSoMudancas = async (data: CloudData, knownCloudVersion: string): Pro
     writtenDocuments: total,
     reusedDocuments: 0,
     publishedBaseline: captureCloudBaseline(data),
-    ...(protegidas.length ? { tabelasProtegidas: protegidas } : {}),
     ...(nuvemTinhaNovidades ? { nuvemTinhaNovidades } : {}),
   };
 };
