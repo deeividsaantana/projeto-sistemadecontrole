@@ -1,67 +1,43 @@
-import crypto from 'node:crypto';
+import { getSupabaseAdmin } from './supabase-admin.js';
 
-const CLOUD_COLLECTION = 'sistemarenea_cloud';
-const MANIFEST_ID = 'main_data_v2';
-const LEGACY_ID = 'main_data';
-const INTERMEDIATE_META_ID = 'meta';
-const INTERMEDIATE_TABLE_IDS = [
-  'empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios', 'combustiveis',
-  'lubrificantes', 'etapas', 'abastecimentos', 'lubrificacoes', 'ticketsJazida',
-  'listasPresenca', 'ordensServico', 'gruposEquipe', 'presencasLink', 'historicoPresencas',
-  'checklists', 'modelosChecklist', 'apontamentosOperacionais', 'registrosDds', 'treinamentos',
-  'apontamentoRamos', 'apontamentoRamoRegistros', 'materiaisCadastro', 'materiaisRegistros', 'materiaisMovimentos', 'frentesServico', 'diariosObra', 'servicosObra', 'producaoRegistros', 'planejamentoItens', 'modelosFvs', 'fichasFvs', 'inspecoes', 'naoConformidades', 'medicoes', 'documentos', 'ocorrencias', 'lancamentosCusto', 'orcamentoItens',
-  'controleEquipamentosDiario', 'periodosArquivados', 'notifications', 'historyLogs',
-];
-
+// Os links de campo leem o mesmo retrato que o app publica em erp_snapshots.
+// Antes liam o formato antigo do Firestore em legacy_documents, que ninguém
+// atualiza desde a mudança para o Supabase (08/10/2026).
+const SNAPSHOT_TABLE = 'erp_snapshots';
 const SNAPSHOT_CACHE_TTL_MS = 30_000;
+const NOME_DE_TABELA = /^[A-Za-z][A-Za-z0-9_]*$/;
 const snapshotCache = new Map();
 const snapshotRequests = new Map();
 
-const hashText = value => crypto.createHash('sha256').update(value).digest('hex');
+const organizationId = () => process.env.SUPABASE_ORGANIZATION_ID || 'renea';
 
-const loadDocuments = async (database, ids) => {
-  const results = [];
-  for (let index = 0; index < ids.length; index += 50) {
-    const batch = ids.slice(index, index + 50);
-    const snapshots = await Promise.all(batch.map(id => database.collection(CLOUD_COLLECTION).doc(id).get()));
-    results.push(...snapshots);
+/** Pede ao banco só as chaves do retrato que o link usa, não o JSON inteiro. */
+export const selecaoDoRetrato = tables => {
+  if (!tables) return 'payload';
+  for (const table of tables) {
+    if (!NOME_DE_TABELA.test(table)) throw new Error(`Tabela do retrato inválida: ${table}`);
   }
-  return results;
+  return tables.map(table => `${table}:payload->${table}`).join(',');
 };
 
-const loadManifestSnapshot = async (database, manifest, requestedTables, options = {}) => {
-  const data = {};
-  const allowedTables = requestedTables ? new Set(requestedTables) : null;
-  // As tabelas eram lidas uma depois da outra. Somadas, as idas ao Firestore
-  // viravam a maior parte da espera do link. Elas não dependem entre si.
-  const pedidos = Object.entries(manifest.chunks || {})
-    .filter(([table]) => !allowedTables || allowedTables.has(table));
-  await Promise.all(pedidos.map(async ([table, ids]) => {
-    if (!Array.isArray(ids) || ids.length === 0) {
-      data[table] = [];
-      return;
-    }
-    const snapshots = await loadDocuments(database, ids);
-    const rows = [];
-    for (const snapshot of snapshots) {
-      const chunk = snapshot.data();
-      if (!snapshot.exists || chunk?.kind !== 'chunk' || typeof chunk.payload !== 'string') {
-        throw new Error(`Bloco de nuvem ausente ou inválido: ${snapshot.id}`);
-      }
-      const parsed = JSON.parse(chunk.payload);
-      if (!Array.isArray(parsed)) throw new Error(`Bloco de nuvem inválido: ${snapshot.id}`);
-      rows.push(...parsed);
-    }
-    const expectedHash = manifest.tableHashes?.[table];
-    if (!options.skipIntegrityCheck && expectedHash && hashText(JSON.stringify(rows)) !== expectedHash) {
-      throw new Error(`Falha de integridade na tabela ${table}.`);
-    }
-    data[table] = rows;
-  }));
-  return data;
+const loadCloudSnapshotUncached = async (tables, options = {}) => {
+  const client = options.client || getSupabaseAdmin();
+  const { data, error } = await client
+    .from(SNAPSHOT_TABLE)
+    .select(selecaoDoRetrato(tables))
+    .eq('organization_id', organizationId())
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return {};
+  if (!tables) return data.payload && typeof data.payload === 'object' ? data.payload : {};
+  const snapshot = {};
+  for (const table of tables) {
+    if (Array.isArray(data[table])) snapshot[table] = data[table];
+  }
+  return snapshot;
 };
 
-export const loadCloudSnapshot = async (database, requestedTables, options = {}) => {
+export const loadCloudSnapshot = async (_database, requestedTables, options = {}) => {
   const cacheTtlMs = Number.isFinite(options.cacheTtlMs)
     ? Math.max(0, options.cacheTtlMs)
     : SNAPSHOT_CACHE_TTL_MS;
@@ -69,13 +45,12 @@ export const loadCloudSnapshot = async (database, requestedTables, options = {})
     ? [...new Set(requestedTables)].sort()
     : null;
   const cacheKey = tables ? tables.join(',') : '*';
-  const now = Date.now();
   const cached = snapshotCache.get(cacheKey);
-  if (cacheTtlMs > 0 && cached && now < cached.until) return cached.data;
+  if (cacheTtlMs > 0 && cached && Date.now() < cached.until) return cached.data;
   const pending = snapshotRequests.get(cacheKey);
   if (pending) return pending;
 
-  const request = loadCloudSnapshotUncached(database, tables, options)
+  const request = loadCloudSnapshotUncached(tables, options)
     .then(data => {
       if (cacheTtlMs > 0) snapshotCache.set(cacheKey, { data, until: Date.now() + cacheTtlMs });
       return data;
@@ -83,50 +58,4 @@ export const loadCloudSnapshot = async (database, requestedTables, options = {})
     .finally(() => snapshotRequests.delete(cacheKey));
   snapshotRequests.set(cacheKey, request);
   return request;
-};
-
-const loadCloudSnapshotUncached = async (database, requestedTables, options = {}) => {
-  const collection = database.collection(CLOUD_COLLECTION);
-  const manifestSnapshot = await collection.doc(MANIFEST_ID).get();
-  if (manifestSnapshot.exists) {
-    const manifest = manifestSnapshot.data();
-    if (manifest?.kind !== 'manifest' || !manifest.chunks) throw new Error('Manifesto de nuvem inválido.');
-    try {
-      return await loadManifestSnapshot(database, manifest, requestedTables, options);
-    } catch (error) {
-      // Links públicos não podem ficar indisponíveis por um manifesto novo
-      // publicado antes de todos os blocos. O fallback é opt-in e mantém a
-      // validação rígida para os demais consumidores do snapshot.
-      if (!options.allowLegacyFallback) throw error;
-      const legacySnapshot = await collection.doc(LEGACY_ID).get();
-      if (legacySnapshot.exists) return legacySnapshot.data() || {};
-      const directIds = ['gruposEquipe', 'funcionarios', 'empresas', 'obras'];
-      const directSnapshots = await Promise.all(directIds.map(id => collection.doc(id).get()));
-      const directData = {};
-      directSnapshots.forEach(snapshot => {
-        const value = snapshot.data()?.value;
-        if (snapshot.exists && Array.isArray(value)) directData[snapshot.id] = value;
-      });
-      if (Object.keys(directData).length > 0) return directData;
-      throw error;
-    }
-  }
-
-  const metaSnapshot = await collection.doc(INTERMEDIATE_META_ID).get();
-  if (metaSnapshot.exists) {
-    const tableIds = requestedTables
-      ? INTERMEDIATE_TABLE_IDS.filter(table => requestedTables.includes(table))
-      : INTERMEDIATE_TABLE_IDS;
-    const tableSnapshots = await loadDocuments(database, tableIds);
-    const data = {};
-    tableSnapshots.forEach(snapshot => {
-      const value = snapshot.data()?.value;
-      if (snapshot.exists && Array.isArray(value)) data[snapshot.id] = value;
-    });
-    if (Object.keys(data).length > 0) return data;
-  }
-
-  const legacySnapshot = await collection.doc(LEGACY_ID).get();
-  if (legacySnapshot.exists) return legacySnapshot.data() || {};
-  return {};
 };

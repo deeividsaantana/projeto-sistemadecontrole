@@ -25,6 +25,7 @@ import './registryCommands.test';
 import './registryDependencies.test';
 import './registryImportMerge.test';
 import './publicPresenceBackend.test';
+import './cloudSnapshotLinks.test';
 import './publicPresenceEdit.test';
 import './publicPresenceHistory.test';
 import './publicPresenceTeamMembers.test';
