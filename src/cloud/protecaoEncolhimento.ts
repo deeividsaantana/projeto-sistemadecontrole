@@ -1,4 +1,5 @@
 import { TABELA_EXCLUSOES, estaExcluido, exclusoesAtivas } from './exclusoes';
+import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
 
 /**
  * Trava contra publicar uma lista vazia ou muito menor por cima da nuvem.
@@ -22,6 +23,19 @@ export const FRACAO_PARA_PROTEGER = 0.2;
 const TABELAS_FORA_DA_TRAVA = new Set(['historyLogs', 'notifications', 'presencasLink', 'masterDataReviewQueue', TABELA_EXCLUSOES]);
 
 type Retrato = Record<string, unknown>;
+
+/**
+ * O mesmo abastecimento pode existir com dois ids: um aparelho guardou a
+ * importação antiga da planilha e a nuvem recebeu a mesma linha de outra
+ * importação. Devolver pelo id duplicava o diesel (16/10/2026). Para essas
+ * tabelas, o que já existe do outro lado com o mesmo conteúdo não volta.
+ */
+const CHAVE_DE_CONTEUDO: Record<string, (item: unknown) => string> = {
+  abastecimentos: item => {
+    if (!item || typeof item !== 'object') return '';
+    return isPublishableFuelImport(item) ? buildFuelImportKey(item) : '';
+  },
+};
 
 export interface TabelaProtegida {
   tabela: string;
@@ -89,13 +103,16 @@ export const protegerContraEncolhimento = <T extends Retrato>(
     const locais = Array.isArray(valorLocal) ? valorLocal : [];
     const idsLocais = new Set(locais.map(idDe).filter(Boolean));
     const arquivadosDaTabela = arquivados.get(tabela);
+    const chaveDe = CHAVE_DE_CONTEUDO[tabela];
+    const chavesLocais = chaveDe ? new Set(locais.map(chaveDe).filter(Boolean)) : null;
 
     const sumidos = valorNuvem.filter(item => {
       const id = idDe(item);
       return Boolean(id)
         && !idsLocais.has(id)
         && !estaExcluido(ativas, tabela, id)
-        && !arquivadosDaTabela?.has(id);
+        && !arquivadosDaTabela?.has(id)
+        && !(chavesLocais && chaveDe && chavesLocais.has(chaveDe(item)));
     });
     if (sumidos.length < MINIMO_PARA_PROTEGER || sumidos.length < valorNuvem.length * FRACAO_PARA_PROTEGER) continue;
 
