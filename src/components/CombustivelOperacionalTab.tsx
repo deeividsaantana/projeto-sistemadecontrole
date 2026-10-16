@@ -459,7 +459,7 @@ export default function CombustivelOperacionalTab({
               <h2 id="janela-lancamento-titulo" className="truncate text-base font-black text-slate-950 sm:text-lg">{lancamento.emEdicao && abaJanela === 'lancar' ? 'Corrigir abastecimento' : 'Lançamento de abastecimento'}</h2>
               <p className="hidden truncate text-xs font-semibold text-slate-500 sm:block">Fornecimento diesel · Enter passa de campo · Ctrl + S salva · Esc fecha</p>
             </div>
-            <button type="button" onClick={fecharLancamento} aria-label="Fechar" title="Fechar (Esc)" className={`${BOTAO_SECUNDARIO} order-2 size-11 shrink-0 px-0 md:order-3`}><X className="size-5" aria-hidden="true" /></button>
+            <button type="button" onClick={fecharLancamento} aria-label="Fechar" title="Fechar (Esc)" className={`${BOTAO_SECUNDARIO} order-2 size-11 shrink-0 px-0 md:order-3`}><X className="size-5 shrink-0" aria-hidden="true" /></button>
             <nav aria-label="Lançar ou ver lançamentos" className="order-3 grid w-full grid-cols-2 gap-1 rounded-xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 md:order-2 md:mx-auto md:w-auto md:min-w-[22rem]">
               {([['lancar', 'Lançar', Plus], ['lista', 'Ver lançamentos', History]] as const).map(([id, rotulo, Icone]) => (
                 <button key={id} type="button" aria-pressed={abaJanela === id} onClick={() => setAbaJanela(id)} data-testid={`combustivel-janela-${id}`}
