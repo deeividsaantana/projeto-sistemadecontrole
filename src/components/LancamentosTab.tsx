@@ -87,7 +87,7 @@ interface LancamentosTabProps {
   gruposEquipe?: GrupoEquipe[];
   usuario?: string;
   onOpenControle?: () => void;
-  combustivelInicial?: 'resumo' | 'novo' | 'historico' | 'relatorio' | 'consumo';
+  combustivelInicial?: 'novo' | 'historico';
   combustivelListaSomente?: boolean;
 }
 

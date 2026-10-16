@@ -8,11 +8,12 @@ const source = readFileSync(sourcePath, 'utf8');
 const appSource = readFileSync(join(process.cwd(), 'src', 'App.tsx'), 'utf8');
 const historicoSource = readFileSync(join(process.cwd(), 'src', 'components', 'combustivel', 'HistoricoCombustivel.tsx'), 'utf8');
 
-test('combustivel expose relatorio as a primary tab instead of a dashboard subtab', () => {
-  assert.match(source, /type View = 'resumo' \| 'novo' \| 'historico' \| 'relatorio'/);
-  assert.match(source, /\['relatorio', 'Relatório', FileSpreadsheet\]/);
-  assert.match(source, /data-testid="combustivel-relatorio"/);
-  assert.doesNotMatch(source, /abaDashboard.*'planilha'|combustivel-planilha|TabelaPlanilhaCombustivel/s);
+test('combustivel has only two screens: lançar and lançamentos', () => {
+  assert.match(source, /type View = 'novo' \| 'historico';/);
+  assert.match(source, /\['novo', 'Lançar', Plus\], \['historico', 'Lançamentos', History\]/);
+  assert.match(source, /data-testid="combustivel-numeros"/);
+  assert.doesNotMatch(source, /createPortal|combustivel-relatorio|combustivel-dashboard|abaJanela|abaDashboard/);
+  assert.doesNotMatch(source, /combustivel-planilha|TabelaPlanilhaCombustivel/);
 });
 
 test('combustivel history and report avoid forced desktop-only wide tables', () => {
