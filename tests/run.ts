@@ -203,3 +203,4 @@ import './dailyRecordFormModal.test';
 import './quadroFrotaSelecaoMultipla.test';
 import './quadroFrotaPainelModal.test';
 import './exclusaoEquipe.test';
+import './leituraNota.test';
