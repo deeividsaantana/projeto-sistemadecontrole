@@ -396,9 +396,9 @@ export default function LancamentoCombustivel({
             </p>
           )}
           <div className="ml-auto grid w-full grid-cols-[1fr_1fr_1.4fr] gap-2 sm:flex sm:w-auto">
-            <button type="button" onClick={onFechar} className={`${BOTAO_SECUNDARIO} px-4`}><X className="size-4" aria-hidden="true" />{emEdicao ? 'Cancelar' : 'Fechar'}</button>
-            <button type="button" onClick={emEdicao ? () => setForm(formularioInicial()) : limpar} className={`${BOTAO_SECUNDARIO} px-4`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
-            <button type="submit" className={`${BOTAO_PRIMARIO} px-6 sm:min-w-40`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />{emEdicao ? 'Salvar correção' : 'Salvar'}</button>
+            <button type="button" onClick={onFechar} className={`${BOTAO_SECUNDARIO} min-w-0 px-2 sm:px-4`}><X className="size-4" aria-hidden="true" />{emEdicao ? 'Cancelar' : 'Fechar'}</button>
+            <button type="button" onClick={emEdicao ? () => setForm(formularioInicial()) : limpar} className={`${BOTAO_SECUNDARIO} min-w-0 px-2 sm:px-4`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
+            <button type="submit" className={`${BOTAO_PRIMARIO} min-w-0 px-2 sm:min-w-40 sm:px-6`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />{emEdicao ? 'Salvar correção' : 'Salvar'}</button>
           </div>
         </div>
       </footer>

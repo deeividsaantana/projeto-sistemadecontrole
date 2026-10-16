@@ -459,10 +459,12 @@ const getInitialTabFromUrl = () => {
   return params.get('tab') || params.get('aba') || 'dashboard';
 };
 
-const getCombustivelViewFromUrl = (): 'resumo' | 'novo' | 'historico' | 'relatorio' | 'consumo' | undefined => {
+const getCombustivelViewFromUrl = (): 'novo' | 'historico' | undefined => {
   if (typeof window === 'undefined') return undefined;
   const view = new URLSearchParams(window.location.search).get('combustivel');
-  return view === 'resumo' || view === 'novo' || view === 'historico' || view === 'relatorio' || view === 'consumo' ? view : undefined;
+  if (view === 'novo') return 'novo';
+  // Endereços antigos (resumo, relatório, por máquina) caem na lista.
+  return view ? 'historico' : undefined;
 };
 
 const isCombustivelListOnlyUrl = () => {
