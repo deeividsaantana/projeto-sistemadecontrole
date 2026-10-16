@@ -1,4 +1,4 @@
-import type { ControleEquipamentoDiario, Funcionario } from '../types';
+import type { ControleEquipamentoDiario } from '../types';
 import { normalizePrefix } from '../utils/canonicalIdentity';
 
 /** Um operador que a obra espera ver lançado todo dia no Controle de Frotas. */
@@ -9,7 +9,7 @@ export interface OperationalDriverReferenceItem {
 
 export const OPERATIONAL_DRIVER_REFERENCE_STORAGE_KEY = 'renea_referencia_operadores_frota';
 
-const semAcento = (texto: string): string => texto.normalize('NFD').replace(/[̀-ͯ]/g, '');
+const semAcento = (texto: string): string => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 export const normalizeDriverName = (nome: string): string =>
   semAcento(String(nome ?? '')).toLocaleUpperCase('pt-BR').replace(/\s+/g, ' ').trim();
@@ -17,18 +17,43 @@ export const normalizeDriverName = (nome: string): string =>
 export const normalizeDriverCode = (matricula: unknown): string =>
   String(matricula ?? '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
 
-const ehAtivo = (driver: Funcionario): boolean =>
-  driver.ativo !== false && !['INATIVO', 'DESMOBILIZADO'].includes(String(driver.status || '').toUpperCase());
-
 /**
- * Sem relação escolhida à mão, a conferência espera os operadores de caminhão
- * basculante ativos da lista de Motoristas da frota.
+ * Relação dos operadores de caminhão basculante ativos, da planilha
+ * "lista_operadores.xlsx" enviada em 16/10/2026. Vale enquanto ninguém escolhe
+ * outra relação na conferência do dia.
  */
-export const defaultDriverReference = (drivers: readonly Funcionario[]): OperationalDriverReferenceItem[] =>
-  drivers
-    .filter(driver => ehAtivo(driver) && normalizeDriverName(driver.cargo).includes('BASCULANTE'))
-    .map(driver => ({ matricula: String(driver.matricula || '').trim(), nome: normalizeDriverName(driver.nome) }))
-    .sort((left, right) => left.nome.localeCompare(right.nome, 'pt-BR'));
+export const OPERATIONAL_DRIVER_REFERENCE: readonly OperationalDriverReferenceItem[] = ([
+  ['101564', 'EUDES DOS SANTOS MATHEUS'],
+  ['101671', 'ANDERSON PEIXOTO DA SILVA'],
+  ['101788', 'CELSON SIQUEIRA SILVA'],
+  ['101979', 'WEDLEY PEREIRA DOS SANTOS'],
+  ['101990', 'FABIANO ALVES NUNES'],
+  ['102016', 'JOSE APARECIDO FIRMINO'],
+  ['102022', 'EDUARDO SOARES DE OLIVEIRA'],
+  ['102023', 'GENIVALDO MANOEL DOS SANTOS'],
+  ['102064', 'NELSON TADEU DOS SANTOS'],
+  ['102146', 'EDMILSON ALVES DA SILVA'],
+  ['102147', 'RONALDO SOARES DE OLIVEIRA'],
+  ['102148', 'GLEISSON SANTOS DE JESUS'],
+  ['102512', 'ARENILSON TEIXEIRA DOS SANTOS'],
+  ['102515', 'RICARDO DE BARROS'],
+  ['102861', 'HELIO EVARISTO LUCAS'],
+  ['102863', 'ELADIO COSTA SILVA'],
+  ['103038', 'APARECIDO MEIRA DA SILVA'],
+  ['103109', 'JOSUE XAVIER FRANCISCO'],
+  ['103174', 'JOSE RICARDO GARCIA'],
+  ['103177', 'ADILSON PIRES DA CRUZ'],
+  ['103206', 'EDUARDO ROMUALDO DA SILVA'],
+  ['103240', 'JACONIAS ALVES DE OLIVEIRA'],
+  ['103393', 'CELSO FERREIRA DE CARVALHO'],
+  ['103438', 'RONALDO SEVERINO DE SANTANA'],
+  ['103440', 'JORGE ROBERTO DA SILVA CARNEIRO'],
+  ['103506', 'MARCO ANTONIO DE AVILA'],
+  ['103564', 'CLAYTON BORGES DOS SANTOS'],
+  ['103577', 'ANDERSON DONIZETE DE PAULA'],
+  ['103585', 'DIOGENES GILA BATISTA'],
+  ['103587', 'AGUINALDO BRAZ PAULO'],
+] as const).map(([matricula, nome]) => ({ matricula, nome }));
 
 /**
  * Lê a lista colada do Excel ou digitada: uma pessoa por linha, com matrícula

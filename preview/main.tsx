@@ -545,6 +545,7 @@ const screens: Record<string, React.ReactNode> = {
       onDeleteMany={noop}
       onOpenEmployeeRegistration={noop}
       onOpenEquipmentRegistration={noop}
+      onAddOperationalDrivers={noop}
       canApproveFleet
       onNavigate={noop}
     />

@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import type { ControleEquipamentoDiario } from '../src/types';
-import { OPERATIONAL_DRIVERS } from '../src/fleet/operationalDrivers';
 import {
-  defaultDriverReference,
+  OPERATIONAL_DRIVER_REFERENCE,
   parseDriverList,
   reconcileOperationalDriversDay,
 } from '../src/fleet/operationalDriverReference';
@@ -31,11 +30,11 @@ const makeRecord = (prefixo: string, codigoFuncionario: string, nomeMotorista: s
   ...extra,
 });
 
-// Sem relação escolhida, vale quem é operador de basculante ativo na lista de Motoristas.
-const padrao = defaultDriverReference(OPERATIONAL_DRIVERS);
-assert.equal(padrao.length, 32);
-assert.ok(padrao.every(item => item.matricula && item.nome));
-assert.equal(defaultDriverReference([{ ...OPERATIONAL_DRIVERS[0], ativo: false }]).length, 0);
+// Relação padrão: a planilha de 16/10/2026, sem matrícula repetida.
+assert.equal(OPERATIONAL_DRIVER_REFERENCE.length, 30);
+assert.equal(new Set(OPERATIONAL_DRIVER_REFERENCE.map(item => item.matricula)).size, 30);
+assert.equal(OPERATIONAL_DRIVER_REFERENCE.find(item => item.matricula === '102016')?.nome, 'JOSE APARECIDO FIRMINO');
+assert.equal(OPERATIONAL_DRIVER_REFERENCE.find(item => item.matricula === '103587')?.nome, 'AGUINALDO BRAZ PAULO');
 
 // Lista colada do Excel: matrícula e nome em qualquer ordem, com ou sem a função.
 const colada = parseDriverList([

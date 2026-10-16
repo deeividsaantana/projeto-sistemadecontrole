@@ -3,8 +3,8 @@ import { AlertTriangle, CheckCircle2, ChevronDown, ClipboardPaste, Pencil, Rotat
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from '../cadastros/estilos';
 import type { ControleEquipamentoDiario, Funcionario } from '../../types';
 import {
-  defaultDriverReference,
   normalizeDriverCode,
+  OPERATIONAL_DRIVER_REFERENCE,
   parseDriverList,
   reconcileOperationalDriversDay,
   OPERATIONAL_DRIVER_REFERENCE_STORAGE_KEY,
@@ -92,8 +92,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
   const [textoColado, setTextoColado] = useState('');
   const [escolhido, setEscolhido] = useState('');
   const [relacaoGuardada, setRelacaoGuardada] = useState(lerRelacaoGuardada);
-  const padrao = useMemo(() => defaultDriverReference(drivers), [drivers]);
-  const reference = relacaoGuardada || padrao;
+  const reference = relacaoGuardada || OPERATIONAL_DRIVER_REFERENCE;
 
   const trocarRelacao = (proxima: OperationalDriverReferenceItem[] | null) => {
     setRelacaoGuardada(proxima);
@@ -117,24 +116,29 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
   const codigosEmMotoristas = new Set(drivers.map(driver => normalizeDriverCode(driver.matricula)));
   const lista = useMemo(() => parseDriverList(textoColado), [textoColado]);
   const novosEmMotoristas = lista.itens.filter(item => !codigosEmMotoristas.has(normalizeDriverCode(item.matricula)));
+  /** Da relação, quem ainda não pode ser escolhido no lançamento por faltar em Motoristas. */
+  const faltamEmMotoristas = reference.filter(item => !codigosEmMotoristas.has(normalizeDriverCode(item.matricula)));
+
+  const incluirEmMotoristas = (itens: readonly OperationalDriverReferenceItem[]) => {
+    if (!itens.length || !onAddDrivers) return;
+    const agora = Date.now();
+    onAddDrivers(itens.map((item, index) => ({
+      id: `motorista-operacional-${agora}-${index}`,
+      matricula: item.matricula,
+      nome: item.nome,
+      cargo: 'OPERADOR DE CAMINHAO BASCULANTE',
+      telefone: '',
+      empresaId: drivers[0]?.empresaId || 'emp-1',
+      ativo: true,
+      status: 'ATIVO',
+      area: 'FROTAS OPERACIONAIS',
+      divisao: 'OPERAÇÃO',
+    })));
+  };
 
   const aplicarListaColada = () => {
     if (!lista.itens.length) return;
-    if (novosEmMotoristas.length && onAddDrivers) {
-      const agora = Date.now();
-      onAddDrivers(novosEmMotoristas.map((item, index) => ({
-        id: `motorista-operacional-${agora}-${index}`,
-        matricula: item.matricula,
-        nome: item.nome,
-        cargo: 'OPERADOR DE CAMINHAO BASCULANTE',
-        telefone: '',
-        empresaId: drivers[0]?.empresaId || 'emp-1',
-        ativo: true,
-        status: 'ATIVO',
-        area: 'FROTAS OPERACIONAIS',
-        divisao: 'OPERAÇÃO',
-      })));
-    }
+    incluirEmMotoristas(novosEmMotoristas);
     trocarRelacao(lista.itens);
     setTextoColado('');
     setColando(false);
@@ -148,7 +152,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Conferência do dia · {formatDate(date)}</p>
             <h2 id="driver-reference-title" className="mt-0.5 text-lg font-bold text-slate-950">Operadores do dia</h2>
-            <p className="mt-0.5 text-sm text-slate-500">{reference.length} operadores esperados{relacaoGuardada ? ', relação escolhida à mão' : ', todos os de basculante ativos em Motoristas'}.</p>
+            <p className="mt-0.5 text-sm text-slate-500">{reference.length} operadores esperados{relacaoGuardada ? ', relação escolhida à mão' : ', lista de operadores de basculante de 16/10/2026'}.</p>
             <div className="mt-2">{alternador}</div>
           </div>
         </div>
@@ -184,6 +188,13 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
             {editing ? 'Concluir edição' : 'Editar relação'}
           </button>
         </div>
+
+        {faltamEmMotoristas.length > 0 && onAddDrivers && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="frota-operadores-faltam">
+            <p><strong>{faltamEmMotoristas.length} operador(es) da relação não estão em Motoristas</strong> e por isso não aparecem no lançamento: {faltamEmMotoristas.map(item => nomeCurto(item.nome)).join(', ')}.</p>
+            <button type="button" onClick={() => incluirEmMotoristas(faltamEmMotoristas)} className={BOTAO_PRIMARIO}>Incluir em Motoristas</button>
+          </div>
+        )}
 
         {editing && (
           <section className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3" aria-label="Editor da relação de operadores">
