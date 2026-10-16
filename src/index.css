@@ -2050,7 +2050,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   padding: 1.15rem 1.25rem;
   border: 1px solid #dbe5df;
   border-left: 4px solid #0b8a63;
-  border-radius: 8px;
+  border-radius: 1rem;
   background: #fff;
 }
 
