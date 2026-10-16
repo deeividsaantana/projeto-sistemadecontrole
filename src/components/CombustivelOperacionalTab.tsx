@@ -249,23 +249,31 @@ export default function CombustivelOperacionalTab({
   const vistas = [['novo', 'Lançar', Plus], ['historico', 'Lançamentos', History]] as const;
   const cartoes = [
     { titulo: 'Hoje', valor: litrosTexto(numeros.litrosHoje), detalhe: `${numeros.lancamentosHoje} lançamento(s)` },
-    { titulo: 'Este mês', valor: litrosTexto(numeros.litrosMes), detalhe: `${numeros.maquinasMes} máquina(s)` },
+    { titulo: 'Mês', valor: litrosTexto(numeros.litrosMes), detalhe: `${numeros.maquinasMes} máquina(s)` },
     { titulo: 'A conferir', valor: numeros.aConferir.toLocaleString('pt-BR'), detalhe: numeros.aConferir ? 'Abra e corrija' : 'Tudo certo', alerta: numeros.aConferir > 0 },
   ];
 
   return (
     <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível"
       className={`w-full max-w-none flex-col ${telaCheia ? 'fixed inset-0 z-40 block overflow-y-auto bg-[#f7f8f6] p-2 sm:p-3 xl:flex xl:overflow-hidden' : listaSomente ? 'flex h-[calc(100dvh-0.5rem)] overflow-hidden' : 'flex xl:h-[calc(100dvh-6rem)] xl:min-h-[34rem] xl:overflow-hidden'}`}>
-      {!listaSomente && <div data-comb-reveal className="mb-2 shrink-0">
-        <PageHeader eyebrow="Frota" title="Combustível" className={telaCheia ? 'mb-1' : 'mb-2'} actions={<>
-          <button type="button" onClick={() => setTelaCheia(atual => !atual)} aria-pressed={telaCheia} title={telaCheia ? 'Sair da tela cheia (Esc)' : 'Usar a tela toda'} className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`} data-testid="combustivel-tela-cheia">
-            {telaCheia ? <Minimize2 className="size-4" aria-hidden="true" /> : <Maximize2 className="size-4" aria-hidden="true" />}<span className="hidden sm:inline">{telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}</span>
+      {!listaSomente && <div data-comb-reveal className="mb-1.5 shrink-0">
+        <PageHeader title="Combustível" className="mb-0 !items-center !gap-2 !p-0 [&_h1]:!text-lg [&_.renea-page-actions]:!flex-wrap" actions={<>
+          <nav aria-label="Área de combustível" className="grid grid-cols-2 gap-1 rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200">
+            {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? (view === 'novo' ? undefined : abrirNovo()) : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-bold transition ${view === id ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:bg-[#f7f8f6] hover:text-slate-900'} ${FOCO}`}><Icone className="size-4 shrink-0" aria-hidden="true" />{id === 'novo' && lancamento.emEdicao && view === 'novo' ? 'Corrigindo' : rotulo}</button>)}
+          </nav>
+          {view === 'historico' && <ul className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex" data-testid="combustivel-numeros">
+            {cartoes.map(cartao => <li key={cartao.titulo} title={cartao.detalhe} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 ring-inset ${cartao.alerta ? 'bg-amber-50 text-amber-900 ring-amber-200' : 'bg-white text-slate-600 ring-slate-200'}`}>
+              {cartao.titulo} <strong className="tabular-nums text-slate-950">{cartao.valor}</strong>
+            </li>)}
+          </ul>}
+          {view === 'historico' && <button type="button" aria-pressed={porMaquina} onClick={() => setPorMaquina(atual => !atual)} title={porMaquina ? 'Voltar para a lista' : 'Consumo por máquina'} className={`${BOTAO_SECUNDARIO} min-h-9 px-2.5`} data-testid="combustivel-por-maquina">
+            {porMaquina ? <History className="size-4" aria-hidden="true" /> : <Gauge className="size-4" aria-hidden="true" />}<span className="hidden xl:inline">{porMaquina ? 'Lista' : 'Por máquina'}</span>
+          </button>}
+          <button type="button" onClick={() => setTelaCheia(atual => !atual)} aria-pressed={telaCheia} aria-label={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'} title={telaCheia ? 'Sair da tela cheia (Esc)' : 'Usar a tela toda'} className={`${BOTAO_SECUNDARIO} hidden size-9 shrink-0 justify-center !px-0 sm:inline-flex`} data-testid="combustivel-tela-cheia">
+            {telaCheia ? <Minimize2 className="size-4 shrink-0" aria-hidden="true" /> : <Maximize2 className="size-4 shrink-0" aria-hidden="true" />}
           </button>
-          <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 justify-center px-0 sm:w-auto sm:px-3`}><Droplets className="size-4" aria-hidden="true" /><span className="hidden lg:inline">Lubrificação</span></button>
+          <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-9 shrink-0 justify-center !px-0`}><Droplets className="size-4 shrink-0" aria-hidden="true" /></button>
         </>} />
-        <nav aria-label="Área de combustível" className="grid w-full grid-cols-2 gap-1 rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200 sm:max-w-md">
-          {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? (view === 'novo' ? undefined : abrirNovo()) : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-2 text-sm font-bold transition ${view === id ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:bg-[#f7f8f6] hover:text-slate-900'} ${FOCO}`}><Icone className="size-4 shrink-0" aria-hidden="true" />{id === 'novo' && lancamento.emEdicao && view === 'novo' ? 'Corrigindo' : rotulo}{id === 'novo' && <kbd title="Atalho de teclado: N" aria-label="Atalho de teclado: N" className={`hidden rounded-md px-1.5 font-mono text-xs sm:inline-flex ${view === id ? 'bg-white/15' : 'bg-slate-100'}`}>N</kbd>}</button>)}
-        </nav>
       </div>}
 
       <p role="status" aria-live="polite" className={`${aviso ? 'mb-2' : 'sr-only'} flex shrink-0 items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`} data-testid="combustivel-aviso">
@@ -295,18 +303,6 @@ export default function CombustivelOperacionalTab({
 
       {view === 'historico' && (
         <>
-          {!listaSomente && <div className="mb-2 grid shrink-0 grid-cols-3 gap-2" data-testid="combustivel-numeros">
-            {cartoes.map(cartao => <div key={cartao.titulo} data-comb-reveal className={`min-w-0 rounded-xl border px-3 py-2 sm:px-4 ${cartao.alerta ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
-              <p className="text-xs font-bold text-slate-500">{cartao.titulo}</p>
-              <p className="truncate text-lg font-black tabular-nums text-slate-950 sm:text-xl">{cartao.valor}</p>
-              <p className={`truncate text-xs font-semibold ${cartao.alerta ? 'text-amber-800' : 'text-slate-500'}`}>{cartao.detalhe}</p>
-            </div>)}
-          </div>}
-          {!listaSomente && <div className="mb-2 flex shrink-0 justify-end">
-            <button type="button" aria-pressed={porMaquina} onClick={() => setPorMaquina(atual => !atual)} className={`${BOTAO_SECUNDARIO} min-h-10 px-3`} data-testid="combustivel-por-maquina">
-              {porMaquina ? <><History className="size-4" aria-hidden="true" />Voltar para a lista</> : <><Gauge className="size-4" aria-hidden="true" />Consumo por máquina</>}
-            </button>
-          </div>}
           {erro && <p role="alert" className="mb-2 shrink-0 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
           {porMaquina && !listaSomente
             ? <ConsumoPorMaquina abastecimentos={ativos} equipamentos={equipamentos} empresas={empresas} onErro={setErro} onAviso={setAviso} />

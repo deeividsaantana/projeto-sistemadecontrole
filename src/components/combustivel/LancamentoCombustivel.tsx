@@ -74,7 +74,7 @@ const CAMPO_GRANDE = `min-h-12 w-full rounded-xl border border-slate-200 bg-whit
 /** Uma linha do formulário da planilha: nome à esquerda, campo à direita. */
 function Linha({ rotulo, para, dica, children }: { rotulo: string; para?: string; dica?: ReactNode; children: ReactNode }) {
   return (
-    <div data-lanc-reveal className="grid gap-1 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-start sm:gap-3">
+    <div data-lanc-reveal className="grid gap-1 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-start sm:gap-3 lg:grid-cols-[9rem_minmax(0,1fr)]">
       {para
         ? <label htmlFor={para} className="text-sm font-bold text-slate-700 sm:pt-3">{rotulo}</label>
         : <span className="text-sm font-bold text-slate-700 sm:pt-3">{rotulo}</span>}
@@ -290,7 +290,7 @@ export default function LancamentoCombustivel({
     <form ref={raiz} onFocus={event => { const alvo = event.target as HTMLElement; if (alvo instanceof HTMLInputElement && alvo.dataset.campo !== undefined && alvo.id !== 'lanc-prefixo') alvo.select(); }}
       onSubmit={event => { event.preventDefault(); salvar(); }} className="flex min-h-0 flex-1 flex-col" data-testid="combustivel-form" noValidate>
       <div ref={corpoRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-6">
-        <section className={`${CARTAO} mx-auto w-full max-w-4xl p-4 sm:px-6 sm:py-5`}>
+        <section className={`${CARTAO} w-full p-4 sm:px-6 sm:py-5 lg:min-h-full lg:text-base [&_input]:lg:min-h-12 [&_input]:lg:text-base [&_select]:lg:min-h-12 [&_select]:lg:text-base`}>
           <div className="grid gap-2.5">
             <div className="grid gap-3 md:grid-cols-2 md:gap-x-6">
               <Linha rotulo="Mês">
@@ -389,7 +389,7 @@ export default function LancamentoCombustivel({
       </div>
 
       <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 sm:px-6">
-        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2">
           {!emEdicao && lancadosAgora.length > 0 && (
             <p className="w-full text-sm font-bold text-slate-600 sm:w-auto sm:flex-1" data-testid="lanc-lancados">
               {lancadosAgora.length} lançado(s) agora · <span className="tabular-nums text-[#176b4d]">{litrosTexto(totalLancado)}</span>

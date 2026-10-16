@@ -94,6 +94,18 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
       .filter(item => !termo || semAcento(`${item.prefixo} ${item.nome} ${item.empresa}`).includes(termo));
   }, [busca, filtroSituacao, linhas]);
   const maquina = linhas.find(item => item.chave === selecionada) || null;
+  const porEmpresa = useMemo(() => {
+    const grupos = new Map<string, { nome: string; litros: number; maquinas: number; abastecimentos: number }>();
+    for (const linha of linhas) {
+      const nome = linha.empresa || 'Sem empresa';
+      const grupo = grupos.get(nome) ?? { nome, litros: 0, maquinas: 0, abastecimentos: 0 };
+      grupo.litros += linha.litros;
+      grupo.maquinas += 1;
+      grupo.abastecimentos += linha.abastecimentos;
+      grupos.set(nome, grupo);
+    }
+    return [...grupos.values()].sort((a, b) => b.litros - a.litros);
+  }, [linhas]);
   const totalLitros = linhas.reduce((soma, item) => soma + item.litros, 0);
 
   useGSAP(() => {
@@ -247,7 +259,7 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
                 ))}
               </ul>
               <div className="hidden overflow-x-auto md:block xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-                <table className="w-full min-w-[40rem] text-sm">
+                <table className="w-full min-w-[40rem] text-sm 2xl:text-base">
                   <caption className="sr-only">Consumo de diesel por máquina</caption>
                   <thead className="sticky top-0 z-10 bg-[#f7f8f6] text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                     <tr>
@@ -285,9 +297,25 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
         </section>
 
         {maquina ? <FichaMaquina maquina={maquina} onVoltar={() => setSelecionada(null)} /> : (
-          <aside className={`${CARTAO} hidden flex-col items-center justify-center gap-2 p-6 text-center xl:flex`}>
-            <Gauge className="size-8 text-slate-300" aria-hidden="true" />
-            <p className="text-sm font-semibold text-slate-600">Escolha uma máquina na lista para ver cada abastecimento e o gráfico de consumo.</p>
+          <aside aria-label="Consumo por empresa" className={`${CARTAO} hidden min-h-0 flex-col overflow-hidden xl:flex`} data-testid="consumo-empresas">
+            <header className="border-b border-slate-100 px-4 py-3">
+              <h3 className="text-base font-black text-slate-950">Por empresa</h3>
+              <p className="text-sm text-slate-500">Litros no período. Toque numa máquina ao lado para ver os detalhes dela.</p>
+            </header>
+            {porEmpresa.length === 0 ? <p className="p-6 text-center text-sm text-slate-500">Sem abastecimentos no período.</p> : (
+              <ol className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+                {porEmpresa.map(item => (
+                  <li key={item.nome}>
+                    <div className="flex items-baseline justify-between gap-2 text-sm">
+                      <span className="min-w-0 truncate font-bold text-slate-900" title={item.nome}>{item.nome}</span>
+                      <span className="shrink-0 font-black tabular-nums text-[#176b4d]">{litros(item.litros)}</span>
+                    </div>
+                    <p className="text-xs text-slate-500">{item.maquinas} máquina(s) · {item.abastecimentos} abastecimento(s)</p>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><span className="block h-full rounded-full bg-[#176b4d]" style={{ width: `${Math.max(3, item.litros / (porEmpresa[0].litros || 1) * 100)}%` }} /></div>
+                  </li>
+                ))}
+              </ol>
+            )}
           </aside>
         )}
       </div>
