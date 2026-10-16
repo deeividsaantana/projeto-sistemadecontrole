@@ -80,3 +80,35 @@ for (const name of ['OPERAÇÃO', 'MANUTENÇÃO', 'À DISPOSIÇÃO', 'A CONFIRMA
   ));
   assert.equal(sheet?.getRow(1).font?.name, 'Aptos Narrow');
 }
+
+// Com a conferência do dia, a planilha ganha a aba OPERADORES e o resumo usa
+// a relação de equipamentos escolhida (não a fixa do código).
+const { montarConferenciaDoDia, linhasDaConferencia, avisosDaConferencia } = await import('../src/fleet/conferenciaDoDia');
+const registroCb = (prefixo: string, codigoFuncionario: string, nomeMotorista: string) => ({
+  id: `${prefixo}-${codigoFuncionario}`, chave: `2026-08-12|${prefixo}`, data: '2026-08-12', funcionarioId: '',
+  codigoFuncionario, nomeMotorista, equipamentoId: '', prefixo, familia: 'Basculantes', status: 'Em operação' as const,
+  horaSaida: '07:05', horaEntradaManutencao: '', horaLiberacao: '', observacao: '', origem: 'SISTEMA' as const,
+  revisao: [], criadoEm: '2026-08-12T10:00:00.000Z', atualizadoEm: '2026-08-12T10:00:00.000Z',
+});
+const conferencia = montarConferenciaDoDia(
+  [registroCb('CB726', '103177', 'ADILSON PIRES DA CRUZ'), registroCb('CB727', '103177', 'ADILSON PIRES DA CRUZ')],
+  '2026-08-12',
+  [{ prefix: 'CB726', group: 'Basculantes', equipmentType: 'Caminhão Basculante' }, { prefix: 'CB730', group: 'Basculantes', equipmentType: 'Caminhão Basculante' }],
+  [{ matricula: '103177', nome: 'ADILSON PIRES DA CRUZ' }, { matricula: '101671', nome: 'ANDERSON PEIXOTO DA SILVA' }],
+);
+assert.deepEqual(linhasDaConferencia(conferencia), [
+  ['Equipamentos', 2, 1, 1, 'CB730'],
+  ['Operadores', 2, 1, 1, 'ANDERSON PEIXOTO DA SILVA'],
+]);
+assert.deepEqual(avisosDaConferencia(conferencia), [
+  'Operador em mais de um caminhão: ADILSON PIRES DA CRUZ.',
+]);
+const comConferencia = await buildFleetWorkbook(viewModel, {}, conferencia);
+assert.deepEqual(
+  comConferencia.worksheets.map(sheet => sheet.name),
+  ['RESUMO', 'OPERAÇÃO', 'MANUTENÇÃO', 'À DISPOSIÇÃO', 'A CONFIRMAR', 'OPERADORES', 'HISTÓRICO'],
+);
+const operadores = comConferencia.getWorksheet('OPERADORES');
+assert.equal(operadores?.getCell('B2').value, 'ADILSON PIRES DA CRUZ');
+assert.equal(operadores?.getCell('D2').value, 'CB726 + CB727');
+assert.equal(operadores?.getCell('C3').value, 'A confirmar');

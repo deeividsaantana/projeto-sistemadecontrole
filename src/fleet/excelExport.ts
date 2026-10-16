@@ -2,7 +2,8 @@ import type ExcelJS from 'exceljs';
 import { createCorporateWorkbook } from '../utils/excelCorporate';
 import type { FleetCurrentState, FleetReportViewModel } from './domain';
 import { summarizeFleetCategories } from './categorySummary';
-import { OPERATIONAL_FLEET_REFERENCE } from './operationalFleetReference';
+import { OPERATIONAL_FLEET_REFERENCE, type OperationalFleetReferenceItem } from './operationalFleetReference';
+import { avisosDaConferencia, linhasDaConferencia, type ConferenciaDoDia } from './conferenciaDoDia';
 import { normalizePrefix } from '../utils/canonicalIdentity';
 import { OBRA } from '../config/obra';
 // Keep these as runtime URLs rather than static asset imports. The Excel exporter
@@ -300,6 +301,7 @@ const createSummarySheet = (
   workbook: ExcelJS.Workbook,
   viewModel: FleetReportViewModel,
   logos: { renea?: string; spmar?: string } = {},
+  reference: readonly OperationalFleetReferenceItem[] = OPERATIONAL_FLEET_REFERENCE,
 ): void => {
   const sheet = workbook.addWorksheet('RESUMO', { views: [{ showGridLines: false }] });
   sheet.columns = [
@@ -308,25 +310,25 @@ const createSummarySheet = (
   ];
   const statesByPrefix = new Map(viewModel.allRows.map(state => [normalizePrefix(state.equipment.prefix), state]));
   const stateFor = (prefix: string) => statesByPrefix.get(normalizePrefix(prefix));
-  const basculantes = OPERATIONAL_FLEET_REFERENCE.filter(item => item.group === 'Basculantes');
-  const support = OPERATIONAL_FLEET_REFERENCE.filter(item => item.group === 'Apoio');
-  const countStatus = (items: ReadonlyArray<typeof OPERATIONAL_FLEET_REFERENCE[number]>, status: string) =>
+  const basculantes = reference.filter(item => item.group === 'Basculantes');
+  const support = reference.filter(item => item.group === 'Apoio');
+  const countStatus = (items: readonly OperationalFleetReferenceItem[], status: string) =>
     items.filter(item => stateFor(item.prefix)?.operationalStatus === status).length;
-  const operating = countStatus(OPERATIONAL_FLEET_REFERENCE, 'Em operação');
-  const maintenance = OPERATIONAL_FLEET_REFERENCE.filter(item => {
+  const operating = countStatus(reference, 'Em operação');
+  const maintenance = reference.filter(item => {
     const status = stateFor(item.prefix)?.operationalStatus;
     return status === 'Em manutenção' || status === 'Aguardando manutenção';
   }).length;
-  const missing = OPERATIONAL_FLEET_REFERENCE.filter(item => !stateFor(item.prefix)).length;
-  const available = OPERATIONAL_FLEET_REFERENCE.filter(item => {
+  const missing = reference.filter(item => !stateFor(item.prefix)).length;
+  const available = reference.filter(item => {
     const status = stateFor(item.prefix)?.operationalStatus;
     return status === 'À disposição' || status === 'Aguardando motorista';
   }).length;
-  const statusLabel = (item: typeof OPERATIONAL_FLEET_REFERENCE[number]) => {
+  const statusLabel = (item: OperationalFleetReferenceItem) => {
     const state = stateFor(item.prefix);
     return state?.operationalStatus || 'A confirmar';
   };
-  const relationRows = OPERATIONAL_FLEET_REFERENCE.map(item => {
+  const relationRows = reference.map(item => {
     const state = stateFor(item.prefix);
     return [
       viewModel.reportDateLabel,
@@ -393,7 +395,7 @@ const createSummarySheet = (
   sheet.getRow(7).height = 22;
   ['GRUPO', 'Em operação', 'Em manutenção', 'À disposição / Falta de Motorista', 'Situação a confirmar'].forEach((label, index) => { sheet.getCell(8, index + 1).value = label; });
   sheet.mergeCells('F8:I8');
-  sheet.getCell('F8').value = OPERATIONAL_FLEET_REFERENCE.filter(item => {
+  sheet.getCell('F8').value = reference.filter(item => {
     const state = stateFor(item.prefix);
     return !state || state.operationalStatus === 'À disposição' || state.operationalStatus === 'Aguardando motorista';
   }).map(item => item.prefix).join(', ') || 'Nenhum equipamento';
@@ -543,9 +545,52 @@ const createHistorySheet = (
   }
 };
 
+/**
+ * Aba OPERADORES: cada operador da relação do dia, com o caminhão em que foi
+ * lançado ou "A confirmar", e o fechamento das duas relações no fim.
+ */
+const createOperatorsSheet = (workbook: ExcelJS.Workbook, conferencia: ConferenciaDoDia): void => {
+  const rows = conferencia.operadores.items.map(item => [
+    item.matricula,
+    item.nome,
+    item.informed ? (item.operationalStatus || 'Lançado') : 'A confirmar',
+    item.prefixes.join(' + '),
+    item.departureTime || '',
+  ] as Array<string | number | Date | null>);
+  createDataSheet(workbook, {
+    name: 'OPERADORES',
+    tableName: 'OperadoresDoDia',
+    columns: ['Matrícula', 'Operador', 'Status Atual', 'Caminhão', 'Saída'],
+    widths: [14, 40, 22, 20, 12],
+    rows,
+    statusColumn: 3,
+  });
+  const sheet = workbook.getWorksheet('OPERADORES');
+  if (!sheet) return;
+  let linha = rows.length + 4;
+  sheet.getCell(linha, 1).value = 'CONFERÊNCIA DA RELAÇÃO';
+  sheet.getCell(linha, 1).font = { bold: true, color: { argb: 'FF176B4D' } };
+  linha += 1;
+  ['Relação', 'Esperados', 'Lançados', 'A confirmar', 'Quem falta lançar'].forEach((titulo, indice) => {
+    sheet.getCell(linha, indice + 1).value = titulo;
+    sheet.getCell(linha, indice + 1).font = { bold: true };
+  });
+  linhasDaConferencia(conferencia).forEach(valores => {
+    linha += 1;
+    valores.forEach((valor, indice) => { sheet.getCell(linha, indice + 1).value = valor; });
+    sheet.getCell(linha, 5).alignment = { wrapText: true, vertical: 'top' };
+  });
+  avisosDaConferencia(conferencia).forEach(aviso => {
+    linha += 1;
+    sheet.getCell(linha, 1).value = aviso;
+    sheet.getCell(linha, 1).font = { bold: true, color: { argb: 'FF9F1239' } };
+  });
+};
+
 export const buildFleetWorkbook = async (
   viewModel: FleetReportViewModel,
   logos: { renea?: string; spmar?: string } = {},
+  conferencia?: ConferenciaDoDia,
 ): Promise<ExcelJS.Workbook> => {
   const workbook = await createCorporateWorkbook();
   workbook.creator = 'RENEA Infraestrutura';
@@ -554,7 +599,7 @@ export const buildFleetWorkbook = async (
   workbook.modified = new Date();
   workbook.properties.date1904 = false;
   workbook.calcProperties.fullCalcOnLoad = true;
-  createSummarySheet(workbook, viewModel, logos);
+  createSummarySheet(workbook, viewModel, logos, conferencia?.equipamentos.items);
   createDataSheet(workbook, {
     name: 'OPERAÇÃO',
     tableName: 'OperacaoCBs',
@@ -633,15 +678,17 @@ export const buildFleetWorkbook = async (
     statusColumn: 6,
     wrapColumns: [10],
   });
+  if (conferencia) createOperatorsSheet(workbook, conferencia);
   createHistorySheet(workbook, viewModel);
   return workbook;
 };
 
 export const exportFleetExcel = async (
   viewModel: FleetReportViewModel,
+  conferencia?: ConferenciaDoDia,
 ): Promise<FleetExcelResult> => {
   const [renea, spmar] = await Promise.all([loadImageBase64(reneaLogoUrl), loadImageBase64(spmarLogoUrl)]);
-  const workbook = await buildFleetWorkbook(viewModel, { renea, spmar });
+  const workbook = await buildFleetWorkbook(viewModel, { renea, spmar }, conferencia);
   const buffer = await workbook.xlsx.writeBuffer();
   const fileName = `RELATORIO_FROTAS_ALTO_TIETE_${viewModel.reportDate}.xlsx`;
   const blob = new Blob([buffer], {

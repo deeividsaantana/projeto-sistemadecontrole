@@ -12,6 +12,7 @@ import reneaLogoUrl from '../assets/images/renea_logo_new.png';
 import spmarLogoUrl from '../assets/images/spmar_logo.png';
 import { summarizeFleetCategories } from './categorySummary';
 import { OBRA } from '../config/obra';
+import { avisosDaConferencia, linhasDaConferencia, type ConferenciaDoDia } from './conferenciaDoDia';
 
 const PAGE_WIDTH = 297;
 const PAGE_HEIGHT = 210;
@@ -268,16 +269,6 @@ const maintenanceRows = (rows: FleetCurrentState[]): PdfRow[] => rows.map(state 
   reason: state.maintenanceReason || state.note || 'Não informado',
 }));
 
-const availableRows = (rows: FleetCurrentState[]): PdfRow[] => rows.map(state => ({
-  employeeCode: state.driver?.employeeCode || '—',
-  driver: state.driver?.employeeName || 'Sem motorista',
-  prefix: state.equipment.prefix,
-  status: state.operationalStatus,
-  since: state.availableSince || state.releaseTime || 'Não informado',
-  stopped: state.stoppedDurationLabel,
-  note: state.note || '—',
-}));
-
 const applyStatusCell = (
   data: CellHookData,
   statusColumn: number,
@@ -422,6 +413,7 @@ const drawMaintenanceTable = (
   document: jsPDF,
   rows: FleetCurrentState[],
   startY: number,
+  redrawHeader: () => void,
 ): number => {
   const titleEnd = drawTableTitle(document, 'Frotas em manutenção', startY);
   const body: RowInput[] = rows.length
@@ -448,52 +440,47 @@ const drawMaintenanceTable = (
       4: { cellWidth: 151 },
     },
     didParseCell: data => applyStatusCell(data, 3),
+    didDrawPage: data => {
+      if (data.pageNumber > 1) redrawHeader();
+    },
   });
   return (document as JsPdfWithAutoTable).lastAutoTable.finalY;
 };
 
-const drawAvailableTable = (
+/**
+ * Fechamento das duas relações escolhidas na conferência do dia: quantos
+ * equipamentos e operadores eram esperados, quantos foram lançados e quem
+ * falta, mais os avisos de lançamento repetido.
+ */
+const drawConferenceTable = (
   document: jsPDF,
-  rows: FleetCurrentState[],
+  conferencia: ConferenciaDoDia,
   startY: number,
+  redrawHeader: () => void,
 ): number => {
-  const titleEnd = drawTableTitle(document, 'Frotas à disposição', startY);
-  const body: RowInput[] = rows.length
-    ? availableRows(rows)
-    : [['—', 'Nenhum CB à disposição.', '—', '—', '—', '—', '—']];
+  const titleEnd = drawTableTitle(document, 'Conferência da relação do dia', startY);
+  const avisos = avisosDaConferencia(conferencia);
+  const body: RowInput[] = [
+    ...linhasDaConferencia(conferencia).map(([relacao, esperados, lancados, faltam, quem]) => [
+      relacao, String(esperados), String(lancados), String(faltam), quem,
+    ]),
+    ...(avisos.length ? [[{ content: `Atenção: ${avisos.join(' ')}`, colSpan: 5, styles: { textColor: '#9F1239', fillColor: '#FFF1F2', fontStyle: 'bold' as const } }]] : []),
+  ];
   autoTable(document, {
     ...commonTableOptions,
     startY: titleEnd,
-    head: [[
-      'MATRÍCULA',
-      'NOME / MOTORISTA',
-      'PREFIXO',
-      'STATUS ATUAL',
-      'DESDE',
-      'TEMPO PARADO',
-      'OBSERVAÇÃO',
-    ]],
+    head: [['RELAÇÃO', 'ESPERADOS', 'LANÇADOS', 'A CONFIRMAR', 'QUEM FALTA LANÇAR']],
     body,
-    columns: rows.length ? [
-      { header: 'MATRÍCULA', dataKey: 'employeeCode' },
-      { header: 'NOME / MOTORISTA', dataKey: 'driver' },
-      { header: 'PREFIXO', dataKey: 'prefix' },
-      { header: 'STATUS ATUAL', dataKey: 'status' },
-      { header: 'DESDE', dataKey: 'since' },
-      { header: 'TEMPO PARADO', dataKey: 'stopped' },
-      { header: 'OBSERVAÇÃO', dataKey: 'note' },
-    ] : undefined,
-    bodyStyles: { fillColor: '#F4FAFD' },
     columnStyles: {
-      0: { cellWidth: 22, halign: 'center' },
-      1: { cellWidth: 54 },
-      2: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
-      3: { cellWidth: 30, halign: 'center' },
-      4: { cellWidth: 25, halign: 'center' },
-      5: { cellWidth: 25, halign: 'center' },
-      6: { cellWidth: 101 },
+      0: { cellWidth: 28, fontStyle: 'bold' },
+      1: { cellWidth: 22, halign: 'center' },
+      2: { cellWidth: 22, halign: 'center' },
+      3: { cellWidth: 24, halign: 'center', textColor: '#B45309', fontStyle: 'bold' },
+      4: { cellWidth: CONTENT_WIDTH - 96 },
     },
-    didParseCell: data => applyStatusCell(data, 3),
+    didDrawPage: data => {
+      if (data.pageNumber > 1) redrawHeader();
+    },
   });
   return (document as JsPdfWithAutoTable).lastAutoTable.finalY;
 };
@@ -572,6 +559,7 @@ const buildFleetPdfDocument = async (
   reneaLogo?: string,
   spmarLogo?: string,
   compress = false,
+  conferencia?: ConferenciaDoDia,
 ): Promise<jsPDF> => {
   const [JsPdf, autoTableModule] = await Promise.all([loadJsPdf(), loadAutoTable()]);
   autoTable = autoTableModule;
@@ -585,27 +573,33 @@ const buildFleetPdfDocument = async (
   y = drawMetricStrip(document, viewModel, y);
   y = drawCategorySummary(document, viewModel, y);
   y = drawOperationTable(document, viewModel.allRows, y, viewModel, reneaLogo, spmarLogo);
-  y = ensureSectionRoom(
-    document,
-    viewModel,
-    y + 4,
-    17,
-    reneaLogo,
-    spmarLogo,
-  );
-  drawPendingBanner(document, viewModel, y);
+  const redrawHeader = () => { drawHeader(document, viewModel, reneaLogo, spmarLogo); };
+  if (viewModel.maintenance.length) {
+    y = ensureSectionRoom(document, viewModel, y + 4, 20, reneaLogo, spmarLogo);
+    y = drawMaintenanceTable(document, viewModel.maintenance, y, redrawHeader);
+  }
+  // Com a conferência, o quadro da relação já diz quem falta; a faixa de
+  // pendências fica só para o relatório sem relação (Quadro da Frota).
+  if (conferencia) {
+    y = ensureSectionRoom(document, viewModel, y + 4, 26, reneaLogo, spmarLogo);
+    drawConferenceTable(document, conferencia, y, redrawHeader);
+  } else {
+    y = ensureSectionRoom(document, viewModel, y + 4, 17, reneaLogo, spmarLogo);
+    drawPendingBanner(document, viewModel, y);
+  }
   addPageFooters(document, viewModel);
   return document;
 };
 
 export const generateFleetPdf = async (
   viewModel: FleetReportViewModel,
+  conferencia?: ConferenciaDoDia,
 ): Promise<FleetPdfResult> => {
   const [reneaLogo, spmarLogo] = await Promise.all([
     loadImageData(reneaLogoUrl),
     loadImageData(spmarLogoUrl),
   ]);
-  const document = await buildFleetPdfDocument(viewModel, reneaLogo, spmarLogo, true);
+  const document = await buildFleetPdfDocument(viewModel, reneaLogo, spmarLogo, true, conferencia);
   const fileName = `RELATORIO_DIARIO_SITUACAO_OPERACIONAL_FROTAS_${viewModel.reportDate}.pdf`;
   document.save(fileName);
   return {

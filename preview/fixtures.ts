@@ -404,3 +404,24 @@ export const abastecimentosConsumo: Abastecimento[] = PERFIS_CONSUMO.flatMap(([e
     } as Abastecimento;
   });
 });
+
+/**
+ * Conferência de operadores: 20 basculantes da relação lançados hoje com
+ * operadores da lista de Motoristas; um deles aparece em dois caminhões.
+ */
+import { OPERATIONAL_DRIVERS } from '../src/fleet/operationalDrivers';
+import { OPERATIONAL_FLEET_REFERENCE } from '../src/fleet/operationalFleetReference';
+const operadoresBasculante = OPERATIONAL_DRIVERS.filter(driver => driver.cargo.includes('BASCULANTE'));
+export const controlesBasculantes: ControleEquipamentoDiario[] = OPERATIONAL_FLEET_REFERENCE
+  .filter(item => item.group === 'Basculantes')
+  .slice(0, 21)
+  .map((item, i) => {
+    const operador = operadoresBasculante[i === 20 ? 0 : i * 1];
+    return {
+      id: `cb-${i + 1}`, chave: `${hojeQuadro}|${item.prefix}`, data: hojeQuadro, funcionarioId: operador.id,
+      codigoFuncionario: operador.matricula || '', nomeMotorista: operador.nome, equipamentoId: '', prefixo: item.prefix,
+      familia: 'Basculantes', status: i % 9 === 4 ? 'Em manutenção' : 'Em operação', horaSaida: `07:${String(10 + i).padStart(2, '0')}`,
+      horaEntradaManutencao: '', horaLiberacao: '', observacao: '', origem: 'SISTEMA', revisao: [],
+      criadoEm: `${hojeQuadro}T10:00:00.000Z`, atualizadoEm: `${hojeQuadro}T10:${String(i).padStart(2, '0')}:00.000Z`,
+    } as ControleEquipamentoDiario;
+  });

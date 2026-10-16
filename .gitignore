@@ -49,3 +49,6 @@ tmp/
 *.log
 RENEA/
 pnpm-lock.yaml
+
+# Cópias de trabalho dos agentes do Claude Code: nunca versionar.
+.claude/worktrees/

@@ -156,6 +156,8 @@ import './fleetReportService.test';
 import './fleetImportService.test';
 import './fleetExcelExport.test';
 import './operationalDrivers.test';
+import './operationalDriverReference.test';
+import './duplicidadeDiaria.test';
 import './weeklyFleetReport.test';
 import './operationalFleetReference.test';
 import './sidebarNavigation.test';

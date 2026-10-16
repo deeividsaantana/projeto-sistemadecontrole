@@ -83,6 +83,7 @@ import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
+import { juntarComLancamentoDoDia } from './fleet/duplicidadeDiaria';
 import { aplicarCadastroSge, type PreviaCadastroSge } from './fleet/sgeApontamentos';
 import { calculateSnapshotChecksum, isSnapshotIntact } from './utils/snapshotIntegrity';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
@@ -2275,6 +2276,22 @@ export default function App() {
     }, { registroId: item.id, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' });
   };
 
+  const handleAddOperationalDrivers = (items: Funcionario[]) => {
+    const matriculas = new Set(motoristasOperacionais.map(driver => String(driver.matricula || '').trim()));
+    const novos = items.filter(item => {
+      const matricula = String(item.matricula || '').trim();
+      if (!matricula || !item.nome.trim() || matriculas.has(matricula)) return false;
+      matriculas.add(matricula);
+      return true;
+    });
+    if (!novos.length) return;
+    const next = [...motoristasOperacionais, ...novos];
+    saveAndLog('Motoristas operacionais', 'Criou', `Incluiu ${novos.length} motorista(s) pela lista de operadores do Controle de Frotas.`, historyLogs, () => {
+      setMotoristasOperacionais(next);
+      writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
+    }, { tipoOperacao: 'CREATE' });
+  };
+
   const handleDeleteOperationalDriver = (id: string) => {
     const next = motoristasOperacionais.filter(driver => driver.id !== id);
     saveAndLog('Motoristas operacionais', 'Excluiu', `Excluiu o motorista operacional "${id}".`, historyLogs, () => {
@@ -4081,7 +4098,11 @@ export default function App() {
     );
   };
 
-  const handleSaveControleEquipamentoDiario = (registro: ControleEquipamentoDiario, isNew: boolean) => {
+  const handleSaveControleEquipamentoDiario = (registroRecebido: ControleEquipamentoDiario, isNewRecebido: boolean) => {
+    // Equipamento que já tem lançamento no dia não ganha outro: o novo atualiza o existente.
+    const { registro, novo: isNew } = isNewRecebido
+      ? juntarComLancamentoDoDia(controleEquipamentosDiario, registroRecebido)
+      : { registro: registroRecebido, novo: false };
     const maintenance = garantirOrdemAutomaticaDaFrota(registro, ordensServico, activeUserName);
     const registroVinculado = maintenance.registro;
     const updated = isNew
@@ -4111,11 +4132,16 @@ export default function App() {
     let abertas = 0;
     const porId = new Map(controleEquipamentosDiario.map(item => [item.id, item]));
     const novos: ControleEquipamentoDiario[] = [];
-    itens.forEach(({ registro, novo }) => {
+    itens.forEach(item => {
+      const { registro, novo } = item.novo
+        ? juntarComLancamentoDoDia([...novos, ...porId.values()], item.registro)
+        : item;
       const maintenance = garantirOrdemAutomaticaDaFrota(registro, ordens, activeUserName);
       ordens = maintenance.ordens;
       if (maintenance.criada) abertas += 1;
-      if (novo && !porId.has(maintenance.registro.id)) novos.push(maintenance.registro);
+      const naFila = novos.findIndex(atual => atual.id === maintenance.registro.id);
+      if (naFila >= 0) novos[naFila] = maintenance.registro;
+      else if (novo && !porId.has(maintenance.registro.id)) novos.push(maintenance.registro);
       else porId.set(maintenance.registro.id, maintenance.registro);
     });
     const updated = [...novos, ...controleEquipamentosDiario.map(item => porId.get(item.id) || item)];
@@ -5761,6 +5787,7 @@ export default function App() {
                 onOpenEmployeeRegistration={() => navigateTo('cadastros')}
                 onOpenEquipmentRegistration={() => navigateTo('cadastros')}
                 onSaveOperationalDriver={handleSaveOperationalDriver}
+                onAddOperationalDrivers={handleAddOperationalDrivers}
                 onDeleteOperationalDriver={handleDeleteOperationalDriver}
                 canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
                 registeredBy={activeUserName}

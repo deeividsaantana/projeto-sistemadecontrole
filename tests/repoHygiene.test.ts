@@ -21,6 +21,16 @@ test('nenhum zip, log, backup ou saída local versionada', { skip: trackedFiles 
   assert.deepEqual(forbidden, []);
 });
 
+// Pasta de outra cópia do repositório entra como submódulo sem endereço e
+// derruba o clone de quem baixa os submódulos (o deploy do Netlify era um).
+test('nenhum submódulo solto versionado', { skip: trackedFiles === null }, () => {
+  const soltos = execFileSync('git', ['ls-files', '-s'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(linha => linha.startsWith('160000 '))
+    .map(linha => linha.split('\t')[1]);
+  assert.deepEqual(soltos, []);
+});
+
 // Testes que existem mas ainda falham. Cada um precisa de correção própria
 // antes de entrar em tests/run.ts; esta lista só pode diminuir.
 // - materialsAnalytics: unidade 'TON' não conta como tonelada no resumo.
