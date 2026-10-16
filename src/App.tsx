@@ -1921,6 +1921,7 @@ export default function App() {
     servicosObra: { lista: servicosObra, setLista: setServicosObra as (next: never[]) => void, storageKey: STORAGE_KEYS.servicosObra, tela: 'Serviços da obra' },
     // Tickets repetidos vão para a Lixeira sozinhos; daqui eles voltam se restaurados.
     ticketsJazida: { lista: ticketsJazida as never[], setLista: setTicketsJazida as (next: never[]) => void, storageKey: 'renea_tickets_jazida', tela: 'Tickets Jazida' },
+    gruposEquipe: { lista: gruposEquipe as never[], setLista: setGruposEquipe as (next: never[]) => void, storageKey: 'renea_grupos_equipes', tela: 'Grupos / Equipes' },
   });
 
   const usosDoCadastroAtual = (tabela: string, id: string) => usosDoCadastro(tabela, id, {
@@ -3454,21 +3455,19 @@ export default function App() {
     );
   };
 
+  // Sem a marca em `exclusoes`, a próxima sincronização juntava a lista do
+  // aparelho com a da nuvem e a equipe excluída voltava (16/10/2026).
   const handleDeleteGrupoEquipe = (id: string) => {
     const grupo = gruposEquipe.find(item => item.id === id);
     if (!grupo) return;
-    const updated = gruposEquipe.filter(item => item.id !== id);
-
-    saveAndLog(
-      'Grupos / Equipes',
-      'Excluiu',
-      `Excluiu o grupo "${grupo.nome}" e desativou seu link de presença.`,
-      historyLogs,
-      () => {
-        setGruposEquipe(updated);
-        writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(updated));
-      }
-    );
+    excluirCadastros({
+      tabela: 'gruposEquipe',
+      storageKey: 'renea_grupos_equipes',
+      tela: 'Grupos / Equipes',
+      itens: [{ item: grupo, rotulo: grupo.nome }],
+      lista: gruposEquipe,
+      setLista: setGruposEquipe,
+    });
   };
 
   // Sincronização das equipes com a planilha do efetivo. Chega já conferida
