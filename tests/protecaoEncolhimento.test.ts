@@ -57,3 +57,23 @@ test('abastecimento igual com outro id não volta em dobro', () => {
   // Só cópias da mesma planilha: nada volta.
   assert.deepEqual(protegerContraEncolhimento({ abastecimentos: antigos }, { abastecimentos: novos }).protegidas, []);
 });
+
+test('marca de exclusão da nuvem nunca some num envio, e o excluído não volta', () => {
+  // 16/10/2026: um aparelho sem as marcas publicou por cima e as 23 equipes
+  // apagadas voltaram. A marca é o que impede a volta; ela não pode cair.
+  const equipes = lista('grp', 40);
+  const marcas = equipes.slice(0, 23).map(item => ({ id: `exc-${item.id}`, tabela: 'gruposEquipe', registroId: item.id, excluidoEm: '2026-10-16T11:46:05Z' }));
+  const nuvem = { gruposEquipe: equipes.slice(23), exclusoes: marcas };
+  const marcaNova = { id: 'exc-grp-30', tabela: 'gruposEquipe', registroId: 'grp-30', excluidoEm: '2026-10-16T21:00:00Z' };
+  const publicando = { gruposEquipe: equipes.filter(item => item.id !== 'grp-30'), exclusoes: [marcaNova] };
+
+  const { retrato, protegidas } = protegerContraEncolhimento(nuvem, publicando);
+  assert.equal((retrato.exclusoes as unknown[]).length, 24, 'soma as marcas da nuvem às do aparelho');
+  assert.deepEqual((retrato.gruposEquipe as Array<{ id: string }>).map(item => item.id), equipes.slice(23).map(item => item.id).filter(id => id !== 'grp-30'));
+  assert.deepEqual(protegidas, [{ tabela: 'exclusoes', devolvidos: 23 }]);
+  assert.equal(publicando.exclusoes.length, 1, 'não mexe no retrato original');
+
+  // Com todas as marcas no aparelho, nada muda.
+  const completo = { gruposEquipe: equipes.slice(23), exclusoes: marcas };
+  assert.equal(protegerContraEncolhimento(nuvem, completo).retrato, completo);
+});
