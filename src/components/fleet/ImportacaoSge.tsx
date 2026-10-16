@@ -27,8 +27,6 @@ interface Props {
   empresas?: readonly Empresa[];
   onImport: (registros: ControleEquipamentoDiario[]) => void;
   onApplyCadastroSge?: (previa: PreviaCadastroSge) => void;
-  /** No Quadro da Frota a planilha serve para atualizar o cadastro; os lançamentos vêm desmarcados. */
-  importarLancamentosPorPadrao?: boolean;
   onMensagem: (tom: TomMensagemSge, texto: string) => void;
   /** O botão de abrir fica a cargo de cada tela, para caber no menu dela. */
   gatilho: (abrir: () => void) => ReactNode;
@@ -98,8 +96,7 @@ const lerLinhasSge = async (arquivo: File): Promise<LinhaBrutaSge[]> => {
 };
 
 /**
- * Importação do "Equipamentos Apontados" do SGE, igual no Controle de Frotas e
- * no Quadro da Frota: lê a planilha, mostra a prévia (lançamentos do dia e
+ * Importação do "Equipamentos Apontados" do SGE no Controle de Frotas: lê a planilha, mostra a prévia (lançamentos do dia e
  * cadastro dos equipamentos) e só grava o que ficar marcado.
  */
 export default function ImportacaoSge({
@@ -110,7 +107,6 @@ export default function ImportacaoSge({
   empresas = [],
   onImport,
   onApplyCadastroSge,
-  importarLancamentosPorPadrao = true,
   onMensagem,
   gatilho,
 }: Props) {
@@ -119,7 +115,7 @@ export default function ImportacaoSge({
   const [cadastro, setCadastro] = useState<PreviaCadastroSge>();
   const [arquivo, setArquivo] = useState('');
   const [atualizarCadastro, setAtualizarCadastro] = useState(true);
-  const [importarLancamentos, setImportarLancamentos] = useState(importarLancamentosPorPadrao);
+  const [importarLancamentos, setImportarLancamentos] = useState(true);
 
   const ler = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -132,7 +128,7 @@ export default function ImportacaoSge({
       setPrevia(preverImportacaoSge({ linhas, equipamentos, registros, motoristas }));
       setCadastro(onApplyCadastroSge ? preverCadastroSge({ linhas, equipamentos, funcionarios, empresas }) : undefined);
       setAtualizarCadastro(true);
-      setImportarLancamentos(importarLancamentosPorPadrao);
+      setImportarLancamentos(true);
       onMensagem('info', '');
     } catch (error) {
       onMensagem('error', error instanceof Error ? error.message : 'Falha ao validar o apontamento do SGE.');

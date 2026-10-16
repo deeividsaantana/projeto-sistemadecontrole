@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const tab = readFileSync(new URL('../src/components/QuadroFrotaTab.tsx', import.meta.url), 'utf-8');
+const tab = readFileSync(new URL('../src/components/quadroFrota/QuadroFrota.tsx', import.meta.url), 'utf-8');
 const cartao = readFileSync(new URL('../src/components/quadroFrota/CartaoArrastavel.tsx', import.meta.url), 'utf-8');
 const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf-8');
 

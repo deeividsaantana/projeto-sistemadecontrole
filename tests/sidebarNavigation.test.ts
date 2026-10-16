@@ -6,10 +6,10 @@ import {
   isPrimaryModule,
 } from '../src/app/navigation/navigation';
 
-test('sidebar expõe os 16 módulos primários do ERP', () => {
+test('sidebar expõe os 15 módulos primários do ERP', () => {
   const rendered = SIDEBAR_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id));
   assert.deepEqual(rendered, [...PRIMARY_MODULE_IDS]);
-  assert.equal(rendered.length, 16);
+  assert.equal(rendered.length, 15);
   assert.equal(isPrimaryModule('manutencao'), true);
   assert.equal(isPrimaryModule('central-operacional'), false);
   // Controle de Estacas voltou à navegação principal em 2026-09-22. Os

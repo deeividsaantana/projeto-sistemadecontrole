@@ -12,7 +12,6 @@ const primaryScreens = [
   ['diario-obra', 'src/components/DiarioObraTab.tsx'],
   ['estacas', 'src/components/EstacasTab.tsx'],
   ['controle-equipamentos', 'src/components/ControleEquipamentosDiarioTab.tsx'],
-  ['quadro-frota', 'src/components/QuadroFrotaTab.tsx'],
   ['manutencao', 'src/components/ManutencaoTab.tsx'],
   ['lancamentos', 'src/components/LancamentosTab.tsx'],
   ['colaboradores', 'src/components/ColaboradoresTab.tsx'],
@@ -22,7 +21,7 @@ const primaryScreens = [
   ['administracao', 'src/components/AdministracaoTab.tsx'],
 ] as const;
 
-test('as 16 abas primarias usam o mesmo envelope de tamanho', () => {
+test('as 15 abas primarias usam o mesmo envelope de tamanho', () => {
   const css = read('src/index.css');
   assert.match(css, /width:\s*min\(100%,\s*96rem\)/);
   assert.match(css, /min-height:\s*calc\(100vh - 7rem\)/);

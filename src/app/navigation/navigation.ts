@@ -7,7 +7,6 @@ import {
   Hammer,
   HardHat,
   LayoutDashboard,
-  LayoutGrid,
   SunMedium,
   Package,
   TimerOff,
@@ -68,7 +67,6 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'frota', label: 'Frota', icon: Truck },
       { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
-      { id: 'quadro-frota', label: 'Quadro da Frota', icon: LayoutGrid },
       { id: 'manutencao', label: 'Manutenção', icon: Wrench },
       { id: 'horas-paradas', label: 'Horas Paradas', icon: TimerOff },
       { id: 'checklist', label: 'Checklist', icon: ClipboardCheck },
@@ -130,8 +128,6 @@ export const PRIMARY_MODULE_IDS = [
   // 2026-09-28.
   'estacas',
   'controle-equipamentos',
-  // Pedido em 2026-09-28: todos os equipamentos do dia em cartões, por frente.
-  'quadro-frota',
   'manutencao',
   'lancamentos',
   'colaboradores',

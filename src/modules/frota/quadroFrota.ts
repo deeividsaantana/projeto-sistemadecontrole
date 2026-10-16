@@ -19,9 +19,10 @@ export const CANTEIROS: readonly string[] = CANTEIROS_ATIVOS;
 export type GrupoStatus = 'operando' | 'manutencao' | 'parado' | 'sem-lancamento';
 
 export const ROTULO_GRUPO: Record<GrupoStatus, string> = {
-  operando: 'Operando',
+  // Mesmos nomes do Controle de Frotas, para a mesma situação ter um nome só.
+  operando: 'Em operação',
   manutencao: 'Manutenção',
-  parado: 'Parado',
+  parado: 'À disposição',
   'sem-lancamento': 'Sem lançamento',
 };
 

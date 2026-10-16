@@ -8,7 +8,7 @@
  * continua no cadastro).
  */
 import { useEffect, useId, useMemo, useState } from 'react';
-import { CheckCheck, CopyCheck, History, ListChecks, MapPin, PauseCircle, PlayCircle, RotateCcw, Save, Trash2, Wrench, X } from 'lucide-react';
+import { CheckCheck, ChevronDown, CopyCheck, History, ListChecks, MapPin, PauseCircle, PlayCircle, RotateCcw, Save, Trash2, Wrench, X } from 'lucide-react';
 import type { ControleEquipamentoDiario, Equipamento, Funcionario, StatusControleEquipamentoDiario } from '../../types';
 import {
   CANTEIROS,
@@ -26,13 +26,14 @@ import { TOM } from './CartaoEquipamento';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from '../cadastros/estilos';
 
 const RAPIDAS: ReadonlyArray<{ status: StatusControleEquipamentoDiario; rotulo: string; Icone: typeof PlayCircle; ligado: string }> = [
-  { status: 'Em operação', rotulo: 'Operando', Icone: PlayCircle, ligado: 'bg-[#176b4d] text-white shadow-sm' },
+  { status: 'Em operação', rotulo: 'Em operação', Icone: PlayCircle, ligado: 'bg-[#176b4d] text-white shadow-sm' },
   { status: 'Em manutenção', rotulo: 'Manutenção', Icone: Wrench, ligado: 'bg-rose-600 text-white shadow-sm' },
-  { status: 'Disponível', rotulo: 'Parado', Icone: PauseCircle, ligado: 'bg-amber-400 text-amber-950 shadow-sm' },
+  { status: 'Disponível', rotulo: 'À disposição', Icone: PauseCircle, ligado: 'bg-amber-400 text-amber-950 shadow-sm' },
 ];
 
 const EM_MANUTENCAO = new Set<string>(['Em manutenção', 'Aguardando manutenção']);
 const CAMPO_LINHA = `${CAMPO} min-h-10 text-sm`;
+const LINHAS_POR_VEZ = 40;
 const horaAgora = () => new Date().toTimeString().slice(0, 5);
 
 interface Props {
@@ -57,12 +58,16 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
   const [erros, setErros] = useState<ReadonlyMap<string, string>>(() => new Map());
   const [marcadas, setMarcadas] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
+  // Linhas desenhadas de uma vez; cada uma tem vários campos, e as 233
+  // máquinas juntas travavam o celular. Marcar todas continua valendo para todas.
+  const [linhasNaTela, setLinhasNaTela] = useState(LINHAS_POR_VEZ);
 
   // Trocar de dia recomeça: rascunho de um dia não vale para outro.
   useEffect(() => {
     setRascunhos(new Map());
     setErros(new Map());
     setMarcadas(new Set());
+    setLinhasNaTela(LINHAS_POR_VEZ);
   }, [dia]);
 
   const gravado = useMemo(() => new Map(cartoes.map(cartao => [cartao.equipamentoId, rascunhoDoCartao(cartao)])), [cartoes]);
@@ -223,7 +228,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
           <span>Operador</span>
         </div>
         <ul className="divide-y divide-slate-100">
-          {cartoes.map(cartao => {
+          {cartoes.slice(0, linhasNaTela).map(cartao => {
             const id = cartao.equipamentoId;
             const atual = valor(id);
             const mudou = rascunhos.has(id) && rascunhoMudou(atual, gravado.get(id)!);
@@ -303,6 +308,14 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
             );
           })}
         </ul>
+        {cartoes.length > linhasNaTela && (
+          <div className="border-t border-slate-100 p-2">
+            <button type="button" onClick={() => setLinhasNaTela(atual => atual + LINHAS_POR_VEZ)} className={`${BOTAO_SECUNDARIO} w-full`} data-testid="lancar-mostrar-mais">
+              <ChevronDown className="size-4" aria-hidden="true" />
+              Mostrar mais {Math.min(LINHAS_POR_VEZ, cartoes.length - linhasNaTela)} de {cartoes.length - linhasNaTela} máquinas
+            </button>
+          </div>
+        )}
         <datalist id={idLista}>
           {operadores.map(nome => <option key={nome} value={nome} />)}
         </datalist>
