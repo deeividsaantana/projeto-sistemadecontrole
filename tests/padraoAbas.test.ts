@@ -23,7 +23,6 @@ const PALETA = new Set(['#176b4d', '#f26a2e', '#718087', '#f7f8f6']);
 const PENDENCIAS: Record<string, readonly Regra[]> = {
   ConfiguracoesTab: ['pageHeader', 'gsap', 'movimentoReduzido'],
   DdsTreinamentosTab: ['gsap', 'movimentoReduzido'],
-  DiarioObraTab: ['gsap', 'movimentoReduzido'],
   EquipesTab: ['gsap', 'movimentoReduzido'],
   FrotaTab: ['gsap', 'movimentoReduzido'],
   HorasParadasTab: ['gsap', 'movimentoReduzido'],
@@ -34,7 +33,6 @@ const PENDENCIAS: Record<string, readonly Regra[]> = {
   PendenciasTab: ['gsap', 'movimentoReduzido'],
   PeriodoTab: ['gsap', 'movimentoReduzido', 'corForaDaPaleta'],
   PermissoesTab: ['gsap', 'movimentoReduzido'],
-  RelatoriosTab: ['gsap', 'movimentoReduzido'],
   TicketsJazidaTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
   TimelineTab: ['gsap', 'movimentoReduzido'],
 };

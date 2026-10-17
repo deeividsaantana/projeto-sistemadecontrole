@@ -4,6 +4,8 @@
  * dos próprios módulos, para o diário nunca divergir da operação.
  */
 import { useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { Camera, CloudRain, NotebookPen, Users } from 'lucide-react';
 import MapaChuva from './MapaChuva';
 import type {
@@ -55,8 +57,16 @@ export default function DiarioObraTab({
   const [dia, setDia] = useState(hoje);
   const [obraId, setObraId] = useState('');
   const inputFoto = useRef<HTMLInputElement>(null);
-  const escopoMotion = useEntradaDeLista<HTMLDivElement>([dia, obraId]);
+  const escopo = useRef<HTMLDivElement>(null);
+  // Indicadores renascem a cada troca de dia; o resto da tela só entra uma vez.
+  const escopoIndicadores = useEntradaDeLista<HTMLElement>([dia, obraId]);
   const [erro, setErro] = useState('');
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(raiz.querySelectorAll('[data-diario-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo });
 
   // Soft delete: diário inativado sai da tela sem sumir do histórico.
   const ativos = useMemo(() => diarios.filter(item => item.ativo !== false), [diarios]);
@@ -134,30 +144,33 @@ export default function DiarioObraTab({
   };
 
   return (
-    <div ref={escopoMotion} id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Diário de Obra"
-        description="O dia consolidado. Clima, visitas e fotos são registrados aqui; o resto vem dos módulos."
-        actions={(
-          <div className="flex flex-wrap items-center gap-2">
-            <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} aria-label="Obra" className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-emerald-500">
-              <option value="">Obra geral</option>
-              {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-            </select>
-            <input type="date" value={dia} onChange={event => { setDia(event.target.value || hoje); setRascunho({}); }} aria-label="Dia do diário" className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-emerald-500" />
-          </div>
-        )}
-      />
+    <div ref={escopo} id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div data-diario-reveal>
+        <PageHeader
+          eyebrow="Obra"
+          title="Diário de Obra"
+          description="O dia consolidado. Clima, visitas e fotos são registrados aqui; o resto vem dos módulos."
+          actions={(
+            <div className="flex flex-wrap items-center gap-2">
+              <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} aria-label="Obra" className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-emerald-500">
+                <option value="">Obra geral</option>
+                {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+              </select>
+              <input type="date" value={dia} onChange={event => { setDia(event.target.value || hoje); setRascunho({}); }} aria-label="Dia do diário" className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-emerald-500" />
+            </div>
+          )}
+        />
+      </div>
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section ref={escopoIndicadores} className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Presentes', valor: String(resumo.presentes) },
           { label: 'Equipes com apontamento', valor: String(resumo.equipes) },
           { label: 'Frota informada', valor: String(resumo.frota.length) },
           { label: 'Horas apontadas', valor: `${resumo.horasApontadas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` },
         ].map(item => (
-          <div key={item.label} data-linha-lista className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+          <div key={item.label} data-linha-lista className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[11px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
         ))}
@@ -165,7 +178,7 @@ export default function DiarioObraTab({
 
       <input ref={inputFoto} type="file" accept="image/*" capture="environment" hidden onChange={event => void receberFoto(event.target.files?.[0])} />
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div data-diario-reveal className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card
           className="min-w-0"
           title={`Registro do dia · ${formatarData(dia)}`}
@@ -278,35 +291,37 @@ export default function DiarioObraTab({
         </Card>
       </div>
 
-      <Card className="mt-4" title="Diários registrados" flush>
-        {ativos.length === 0 ? (
-          <EmptyState icon={NotebookPen} title="Nenhum diário registrado" description="Registre o clima e as observações do dia." />
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {[...ativos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 15).map(item => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => { setDia(item.data); setObraId(item.obraId || ''); setRascunho({}); }}
-                  className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-xs transition-colors hover:bg-slate-50"
-                >
-                  <span className="min-w-0">
-                    <strong className="block text-slate-800">{formatarData(item.data)}</strong>
-                    <span className="block truncate text-[10px] text-slate-400">
-                      {obras.find(obra => obra.id === item.obraId)?.nome || 'Obra geral'}
-                      {item.visitas ? ` · visitas: ${item.visitas}` : ''}
+      <div data-diario-reveal className="mt-4">
+        <Card title="Diários registrados" flush>
+          {ativos.length === 0 ? (
+            <EmptyState icon={NotebookPen} title="Nenhum diário registrado" description="Registre o clima e as observações do dia." />
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {[...ativos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 15).map(item => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => { setDia(item.data); setObraId(item.obraId || ''); setRascunho({}); }}
+                    className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-xs transition-colors hover:bg-slate-50"
+                  >
+                    <span className="min-w-0">
+                      <strong className="block text-slate-800">{formatarData(item.data)}</strong>
+                      <span className="block truncate text-[11px] text-slate-400">
+                        {obras.find(obra => obra.id === item.obraId)?.nome || 'Obra geral'}
+                        {item.visitas ? ` · visitas: ${item.visitas}` : ''}
+                      </span>
                     </span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <CloudRain className="h-3.5 w-3.5 text-slate-400" />
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone(item.climaManha)}`}>{item.climaManha}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <CloudRain className="h-3.5 w-3.5 text-slate-400" />
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(item.climaManha)}`}>{item.climaManha}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
 
       {/* O mapa fica na mesma aba do diário porque é o mesmo assunto: quem
           lança o pluviômetro é quem consulta o acumulado. A sidebar é aprovada
