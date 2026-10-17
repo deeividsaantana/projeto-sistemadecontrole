@@ -775,6 +775,22 @@ const screens: Record<string, React.ReactNode> = {
       onAlterarSituacao={noop}
     />
   ),
+  // Efetivo grande para ver a lista em lotes de 50.
+  'colaboradores-lote': (
+    <ColaboradoresTab
+      funcionarios={Array.from({ length: 130 }, (_, indice) => ({
+        ...fx.equipeFuncionarios[indice % fx.equipeFuncionarios.length],
+        id: `lote-${indice}`,
+        nome: `${fx.equipeFuncionarios[indice % fx.equipeFuncionarios.length].nome} ${String(indice + 1).padStart(3, '0')}`,
+      }))}
+      empresas={fx.empresas}
+      gruposEquipe={[fx.grupo]}
+      presencasLink={[]}
+      controlesEquipamentos={[]}
+      ticketsJazida={[]}
+      onNavigate={noop}
+    />
+  ),
   checklist: (
     <ChecklistTab
       checklists={[]}

@@ -1,4 +1,4 @@
-import { TABELA_EXCLUSOES, estaExcluido, exclusoesAtivas } from './exclusoes';
+import { TABELA_EXCLUSOES, aplicarExclusoes, estaExcluido, exclusoesAtivas } from './exclusoes';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
 
 /**
@@ -14,6 +14,11 @@ import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImport
  * foi para um período arquivado e qualquer exclusão pequena (menos de 20
  * registros ou menos de 20% da tabela). O que passar disso sem explicação
  * volta para o retrato antes de publicar.
+ *
+ * As marcas de exclusão nunca diminuem: a que está na nuvem e falta no
+ * aparelho volta sempre, em qualquer quantidade, e o cadastro que ela marca
+ * sai do retrato. Sem isso um aparelho que não tinha as marcas publicava por
+ * cima e os excluídos voltavam (23 equipes, 16/10/2026).
  */
 
 export const MINIMO_PARA_PROTEGER = 20;
@@ -119,6 +124,18 @@ export const protegerContraEncolhimento = <T extends Retrato>(
     retrato ??= { ...publicando };
     retrato[tabela] = [...locais, ...sumidos];
     protegidas.push({ tabela, devolvidos: sumidos.length });
+  }
+
+  const marcasNuvem = Array.isArray(nuvem[TABELA_EXCLUSOES]) ? nuvem[TABELA_EXCLUSOES] as unknown[] : [];
+  const marcasLocais = Array.isArray(publicando[TABELA_EXCLUSOES]) ? publicando[TABELA_EXCLUSOES] as unknown[] : [];
+  const idsMarcasLocais = new Set(marcasLocais.map(idDe).filter(Boolean));
+  const marcasQueFaltam = marcasNuvem.filter(item => {
+    const id = idDe(item);
+    return Boolean(id) && !idsMarcasLocais.has(id);
+  });
+  if (marcasQueFaltam.length > 0) {
+    retrato = aplicarExclusoes({ ...(retrato ?? publicando), [TABELA_EXCLUSOES]: [...marcasLocais, ...marcasQueFaltam] });
+    protegidas.push({ tabela: TABELA_EXCLUSOES, devolvidos: marcasQueFaltam.length });
   }
 
   return { retrato: (retrato ?? publicando) as T, protegidas };

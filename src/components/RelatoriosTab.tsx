@@ -107,7 +107,7 @@ export default function RelatoriosTab({
     <div ref={escopo} id="relatorios-tab" data-testid="relatorios-tab" className="erp-module space-y-4">
       <div data-relatorios-reveal>
         <PageHeader
-          eyebrow="Gestão"
+          eyebrow="Consulta"
           title="Relatórios"
           description="Escolha o relatório. Ele abre na aba onde o dado é lançado, com os mesmos números de lá."
         />
