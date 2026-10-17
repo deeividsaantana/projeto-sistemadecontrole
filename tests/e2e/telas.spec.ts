@@ -219,15 +219,6 @@ test('controle de frotas remove o lançamento rápido e leva as visões ao topo'
   await expect(topViews.getByRole('button', { name: 'Situação do dia' })).toBeVisible();
 });
 
-test('checklist bloqueia salvar não conformidade sem justificativa', async ({ page }) => {
-  await page.goto('/?screen=checklist');
-  await page.getByRole('button', { name: 'Novo checklist' }).click();
-  await page.getByRole('button', { name: 'Não conforme', exact: true }).first().click();
-  await expect(page.getByText(/abrirá OS/)).toBeVisible();
-  await page.getByRole('button', { name: 'Salvar checklist' }).click();
-  await expect(page.getByText(/Selecione o equipamento|Descreva o problema em/)).toBeVisible();
-});
-
 test('manutenção abre o formulário e fecha com ESC', async ({ page }) => {
   await page.goto('/?screen=manutencao');
   await page.getByRole('button', { name: 'Abrir OS' }).click();

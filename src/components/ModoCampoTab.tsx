@@ -10,8 +10,8 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
-  ClipboardCheck,
   CloudOff,
+  Fuel,
   NotebookPen,
   PackageCheck,
   Users,
@@ -39,7 +39,7 @@ const ACOES: Array<{ tab: string; rotulo: string; icone: typeof Activity }> = [
   { tab: 'controle-equipamentos', rotulo: 'Frota do dia', icone: Activity },
   { tab: 'presenca', rotulo: 'Presença', icone: Users },
   { tab: 'meu-dia', rotulo: 'Lançar produção', icone: BarChart3 },
-  { tab: 'checklist', rotulo: 'Checklist', icone: ClipboardCheck },
+  { tab: 'lancamentos', rotulo: 'Combustível', icone: Fuel },
   { tab: 'diario-obra', rotulo: 'Diário de obra', icone: NotebookPen },
   { tab: 'materiais', rotulo: 'Materiais', icone: PackageCheck },
 ];
