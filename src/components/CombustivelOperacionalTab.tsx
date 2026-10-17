@@ -45,6 +45,8 @@ interface Props {
   openHistorySignal?: number;
   initialView?: View;
   listaSomente?: boolean;
+  /** Abre já no consumo por máquina (pedido pela aba Relatórios). */
+  porMaquinaInicial?: boolean;
 }
 
 /** Duas telas só: lançar e ver os lançamentos (com o consumo no topo). */
@@ -60,12 +62,12 @@ const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFr
 export default function CombustivelOperacionalTab({
   empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
   onSaveAbastecimento, onDeleteAbastecimento, onDeleteAbastecimentos, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
-  openHistorySignal = 0, initialView = 'historico', listaSomente = false,
+  openHistorySignal = 0, initialView = 'historico', listaSomente = false, porMaquinaInicial = false,
 }: Props) {
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
-  const [view, setView] = useState<View>(listaSomente ? 'historico' : initialView);
-  const [porMaquina, setPorMaquina] = useState(false);
+  const [view, setView] = useState<View>(listaSomente || porMaquinaInicial ? 'historico' : initialView);
+  const [porMaquina, setPorMaquina] = useState(porMaquinaInicial && !listaSomente);
   const [exportandoHistorico, setExportandoHistorico] = useState<'' | 'excel' | 'pdf'>('');
   const [excluindo, setExcluindo] = useState<Abastecimento[]>([]);
   const [erro, setErro] = useState('');
@@ -255,7 +257,7 @@ export default function CombustivelOperacionalTab({
 
   return (
     <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível"
-      className={`w-full max-w-none flex-col ${telaCheia ? 'fixed inset-0 z-40 block overflow-y-auto bg-[#f7f8f6] p-2 sm:p-3 xl:flex xl:overflow-hidden' : listaSomente ? 'flex h-[calc(100dvh-0.5rem)] overflow-hidden' : 'flex xl:h-[calc(100dvh-6rem)] xl:min-h-[34rem] xl:overflow-hidden'}`}>
+      className={`w-full max-w-none flex-col ${telaCheia ? 'fixed inset-0 z-[90] block overflow-y-auto bg-[#f7f8f6] p-2 sm:p-3 xl:flex xl:overflow-hidden' : listaSomente ? 'flex h-[calc(100dvh-0.5rem)] overflow-hidden' : 'flex xl:h-[calc(100dvh-6.5rem)] xl:min-h-[34rem] xl:overflow-hidden'}`}>
       {!listaSomente && <div data-comb-reveal className="mb-1.5 shrink-0">
         <PageHeader title="Combustível" className="mb-0 !items-center !gap-2 !p-0 [&_h1]:!text-lg [&_.renea-page-actions]:!flex-wrap" actions={<>
           <nav aria-label="Área de combustível" className="grid grid-cols-2 gap-1 rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200">

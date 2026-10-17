@@ -1,200 +1,170 @@
 /**
- * Central de relatórios. Cada relatório é leitura montada na hora pelas mesmas
- * funções das telas dos módulos — por isso nunca mostra número diferente do que
- * o módulo mostra. Exporta em Excel pelo formato corporativo já usado no
- * sistema, carregado só quando alguém exporta de fato.
+ * Índice dos relatórios que têm dado de verdade. Cada relatório mora na aba
+ * onde o dado é lançado (Combustível, Controle de Frotas, Presença, Materiais,
+ * Estacas); aqui a pessoa vê quanto dado existe por trás e abre direto na
+ * parte de relatório daquela aba. Áreas que ainda não têm lançamento no app
+ * aparecem como vazias, sem tabela de mentira.
  */
-import { useMemo, useState } from 'react';
-import { Download, FileBarChart, FileText, Printer } from 'lucide-react';
-import { montarRelatorios, type ContextoRelatorios, type Relatorio } from '../utils/relatorios';
-import { EmptyState, PageHeader, PeriodFilter, TableBody, TableHead, TableShell, buildPeriod, type PeriodValue } from '../shared/ui';
+import { useMemo, useRef } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
+import { ChevronRight, Fuel, Hammer, Lock, Package, Truck, Users, type LucideIcon } from 'lucide-react';
+import type { Abastecimento, ControleEquipamentoDiario, CravacaoEstaca, MovimentoMaterial, PresencaApontamento } from '../types';
+import { PageHeader } from '../shared/ui';
+import { resumirBase, textoBase, type BaseRelatorio } from '../utils/centralRelatorios';
+import { CARTAO, FOCO } from './cadastros/estilos';
+
+/** Abas que sabem abrir já na parte de relatório. */
+export type DestinoRelatorio = 'lancamentos' | 'controle-equipamentos' | 'presenca' | 'materiais' | 'estacas';
 
 interface RelatoriosTabProps {
-  dados: Omit<ContextoRelatorios, 'hoje' | 'inicio' | 'fim'>;
+  abastecimentos: Abastecimento[];
+  controlesEquipamentos: ControleEquipamentoDiario[];
+  presencas: PresencaApontamento[];
+  movimentosMaterial: MovimentoMaterial[];
+  cravacoes: CravacaoEstaca[];
+  podeAbrir: (aba: DestinoRelatorio) => boolean;
+  onAbrir: (aba: DestinoRelatorio) => void;
 }
 
-const somarDias = (data: string, dias: number) => {
-  const base = new Date(`${data}T00:00:00`);
-  base.setDate(base.getDate() + dias);
-  return base.toISOString().slice(0, 10);
-};
+interface ItemRelatorio {
+  aba: DestinoRelatorio;
+  titulo: string;
+  onde: string;
+  oQueMostra: string;
+  Icone: LucideIcon;
+  base: BaseRelatorio;
+  unidade: [string, string];
+}
 
-const diasEntre = (inicio: string, fim: string) =>
-  Math.round((new Date(`${fim}T00:00:00`).getTime() - new Date(`${inicio}T00:00:00`).getTime()) / 86_400_000) + 1;
+/** Relatórios que ainda não existem porque o app não recebe esses lançamentos. */
+const SEM_LANCAMENTO = ['Produção e avanço físico', 'Planejamento', 'Custos', 'Medições', 'Qualidade (FVS e não conformidades)', 'Ocorrências e horas paradas'];
 
-export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
-  const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
-  const [selecionado, setSelecionado] = useState('producao-por-servico');
-  const [exportando, setExportando] = useState(false);
-  const [exportandoPdf, setExportandoPdf] = useState(false);
-  const [erro, setErro] = useState('');
+export default function RelatoriosTab({
+  abastecimentos, controlesEquipamentos, presencas, movimentosMaterial, cravacoes, podeAbrir, onAbrir,
+}: RelatoriosTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
 
-  const relatorios = useMemo(() => {
-    const dias = diasEntre(period.from, period.to);
-    return montarRelatorios({
-      ...dados,
-      hoje: new Date().toISOString().slice(0, 10),
-      inicio: period.from,
-      fim: period.to,
-      inicioAnterior: somarDias(period.from, -dias),
-      fimAnterior: somarDias(period.from, -1),
-    });
-  }, [dados, period.from, period.to]);
+  const itens = useMemo<ItemRelatorio[]>(() => [
+    {
+      aba: 'lancamentos',
+      titulo: 'Diesel por máquina',
+      onde: 'Combustível',
+      oQueMostra: 'Litros, horas ou km, consumo médio e quem gasta acima do normal. Exporta em Excel.',
+      Icone: Fuel,
+      base: resumirBase(abastecimentos),
+      unidade: ['abastecimento', 'abastecimentos'],
+    },
+    {
+      aba: 'controle-equipamentos',
+      titulo: 'Relatório do dia da frota',
+      onde: 'Controle de Frotas',
+      oQueMostra: 'Equipamentos e operadores do dia, com conferência. No topo da aba, botão Relatórios: PDF ou Excel.',
+      Icone: Truck,
+      base: resumirBase(controlesEquipamentos),
+      unidade: ['lançamento', 'lançamentos'],
+    },
+    {
+      aba: 'presenca',
+      titulo: 'Presença por período',
+      onde: 'Presença e Controle',
+      oQueMostra: 'Como foi o período, presença por equipe, por empresa e por pessoa. Exporta em Excel.',
+      Icone: Users,
+      base: resumirBase(presencas),
+      unidade: ['envio de presença', 'envios de presença'],
+    },
+    {
+      aba: 'materiais',
+      titulo: 'Materiais e estoque',
+      onde: 'Materiais e Estoque',
+      oQueMostra: 'Tabelas por material, fornecedor, ramo e mês, prontas para imprimir.',
+      Icone: Package,
+      base: resumirBase(movimentosMaterial),
+      unidade: ['movimento', 'movimentos'],
+    },
+    {
+      aba: 'estacas',
+      titulo: 'Estacas prancha',
+      onde: 'Controle de Estacas',
+      oQueMostra: 'Por frente, dia a dia e estaca por estaca, prontas para imprimir.',
+      Icone: Hammer,
+      base: resumirBase(cravacoes),
+      unidade: ['cravação', 'cravações'],
+    },
+  ], [abastecimentos, controlesEquipamentos, presencas, movimentosMaterial, cravacoes]);
 
-  const relatorio: Relatorio = relatorios.find(item => item.id === selecionado) || relatorios[0];
-
-  const exportar = async () => {
-    setExportando(true);
-    setErro('');
-    try {
-      const {
-        addCorporateSummarySheet,
-        configureCorporateWorkbook,
-        createCorporateWorkbook,
-        downloadCorporateWorkbook,
-        styleCorporateWorksheet,
-      } = await import('../utils/excelCorporate');
-      const workbook = await createCorporateWorkbook();
-      configureCorporateWorkbook(workbook, relatorio.titulo);
-      const planilha = workbook.addWorksheet(relatorio.titulo.slice(0, 30));
-      planilha.addRow(relatorio.colunas);
-      relatorio.linhas.forEach(linha => planilha.addRow(linha));
-      styleCorporateWorksheet(planilha, {
-        title: relatorio.titulo,
-        headerRow: 1,
-        lastColumn: relatorio.colunas.length,
-      });
-      addCorporateSummarySheet(
-        workbook,
-        relatorio.titulo,
-        [['Linhas', relatorio.linhas.length], ['Período', `${period.from} a ${period.to}`]],
-        [relatorio.descricao],
-      );
-      await downloadCorporateWorkbook(workbook, `${relatorio.id}-${period.from}-a-${period.to}`);
-    } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : 'Não foi possível gerar a planilha.');
-    } finally {
-      setExportando(false);
-    }
-  };
-
-  const exportarPdf = async () => {
-    setExportandoPdf(true);
-    setErro('');
-    try {
-      const { generateUniversalPdfReport } = await import('../utils/universalPdfReport');
-      const columns = relatorio.colunas.map((header, index) => ({ header, dataKey: `coluna_${index}` }));
-      await generateUniversalPdfReport({
-        title: relatorio.titulo,
-        subtitle: relatorio.descricao,
-        columns,
-        rows: relatorio.linhas.map(linha => Object.fromEntries(linha.map((valor, index) => [`coluna_${index}`, valor]))),
-        work: 'Rodoanel Complexo do Alto Tietê · Alça',
-        period: `${period.from.split('-').reverse().join('/')} a ${period.to.split('-').reverse().join('/')}`,
-        filters: [`Período: ${period.from} a ${period.to}`],
-        summary: [
-          { label: 'Linhas', value: relatorio.linhas.length },
-          { label: 'Relatório', value: relatorio.titulo },
-        ],
-      });
-    } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : 'Não foi possível gerar o PDF.');
-    } finally {
-      setExportandoPdf(false);
-    }
-  };
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(
+      raiz.querySelectorAll('[data-relatorios-reveal]'),
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.45, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' },
+    );
+  }, { scope: escopo });
 
   return (
-    <div id="relatorios-tab" className="reports-workspace min-h-full w-full px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Relatórios"
-        description="Leitura consolidada dos módulos, com os mesmos números das telas de origem."
-        actions={(
-          <div className="flex flex-wrap items-center gap-2 print:hidden">
-            <PeriodFilter value={period} onChange={setPeriod} />
-            <button
-              type="button"
-              onClick={() => void exportarPdf()}
-              disabled={exportandoPdf || relatorio.linhas.length === 0}
-              className="reports-export-pdf inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-emerald-700 bg-white px-3 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-50 disabled:opacity-50"
-            >
-              <FileText className="h-4 w-4" /> {exportandoPdf ? 'Gerando…' : 'PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-            >
-              <Printer className="h-4 w-4" /> Imprimir
-            </button>
-            <button
-              type="button"
-              onClick={() => void exportar()}
-              disabled={exportando || relatorio.linhas.length === 0}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800 disabled:opacity-50"
-            >
-              <Download className="h-4 w-4" /> {exportando ? 'Gerando…' : 'Excel'}
-            </button>
-          </div>
-        )}
-      />
-
-      <section className="reports-command mt-4 print:hidden" aria-label="Escolha do relatório">
-        <div>
-          <span>Biblioteca de relatórios</span>
-          <strong>{relatorios.length} leituras disponíveis</strong>
-        </div>
-        <p>Os números são montados a partir dos registros operacionais, sem bases paralelas.</p>
-      </section>
-
-      <div className="reports-catalog mt-3 flex flex-wrap gap-1.5 print:hidden">
-        {relatorios.map(item => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setSelecionado(item.id)}
-            aria-pressed={item.id === relatorio.id}
-            className={`min-h-10 rounded-lg border px-3 text-xs font-bold transition-colors ${item.id === relatorio.id
-              ? 'border-emerald-600 bg-emerald-700 text-white'
-              : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
-          >
-            {item.titulo}
-          </button>
-        ))}
+    <div ref={escopo} id="relatorios-tab" data-testid="relatorios-tab" className="erp-module space-y-4">
+      <div data-relatorios-reveal>
+        <PageHeader
+          eyebrow="Consulta"
+          title="Relatórios"
+          description="Escolha o relatório. Ele abre na aba onde o dado é lançado, com os mesmos números de lá."
+        />
       </div>
 
-      <section className="reports-preview mt-4 rounded-lg border border-slate-200 bg-white">
-        <header className="border-b border-slate-100 px-4 py-3">
-          <h2 className="text-sm font-bold text-slate-800">{relatorio.titulo}</h2>
-          <p className="text-[11px] text-slate-500">
-            {relatorio.descricao} · {period.from.split('-').reverse().join('/')} a {period.to.split('-').reverse().join('/')} · {relatorio.linhas.length} linha(s)
-          </p>
-        </header>
-        {relatorio.linhas.length === 0 ? (
-          <EmptyState icon={FileBarChart} title="Sem dados no período" description="Ajuste o período ou registre as informações no módulo de origem." />
-        ) : (
-          <TableShell minWidth={Math.max(720, relatorio.colunas.length * 150)}>
-            <TableHead>
-              <tr>
-                {relatorio.colunas.map(coluna => <th key={coluna} className="p-3">{coluna}</th>)}
-              </tr>
-            </TableHead>
-            <TableBody>
-              {relatorio.linhas.map((linha, indice) => (
-                <tr key={`${relatorio.id}-${indice}`} className="transition-colors hover:bg-slate-50">
-                  {linha.map((celula, coluna) => (
-                    <td key={`${relatorio.colunas[coluna]}`} className={`p-3 ${coluna === 0 ? 'font-bold text-slate-800' : typeof celula === 'number' ? 'font-mono text-slate-700' : 'text-slate-600'}`}>
-                      {typeof celula === 'number' ? celula.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : celula}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </TableBody>
-          </TableShell>
-        )}
-      </section>
+      <ul className="grid gap-3 lg:grid-cols-2" aria-label="Relatórios disponíveis">
+        {itens.map(item => {
+          const liberado = podeAbrir(item.aba);
+          const vazio = item.base.total === 0;
+          return (
+            <li key={item.aba} data-relatorios-reveal className="min-w-0">
+              <button
+                type="button"
+                disabled={!liberado}
+                onClick={() => onAbrir(item.aba)}
+                data-testid={`relatorio-${item.aba}`}
+                className={`${CARTAO} group flex h-full w-full items-start gap-3 p-4 text-left transition duration-200 enabled:hover:border-emerald-500 enabled:hover:shadow-sm enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-50 ${FOCO}`}
+              >
+                <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${liberado ? 'bg-emerald-50 text-[#176b4d]' : 'bg-slate-100 text-slate-400'}`}>
+                  <item.Icone className="size-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold text-slate-500">em {item.onde}</span>
+                  <span className="mt-0.5 block text-base font-bold text-slate-900">{item.titulo}</span>
+                  <span className="mt-1 block text-sm leading-snug text-slate-600 [text-wrap:pretty]">{item.oQueMostra}</span>
+                  <span className={`mt-2 inline-flex rounded-lg px-2 py-1 text-xs font-bold tabular-nums ${vazio ? 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200' : 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200'}`}>
+                    {textoBase(item.base, ...item.unidade)}
+                  </span>
+                  {!liberado && (
+                    <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                      <Lock className="size-3.5" aria-hidden="true" /> Seu perfil não abre esta aba.
+                    </span>
+                  )}
+                </span>
+                {liberado && (
+                  <span className="hidden shrink-0 items-center gap-1 self-center text-sm font-bold text-[#176b4d] sm:flex">
+                    Abrir <ChevronRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
+                )}
+                {liberado && <ChevronRight className="size-5 shrink-0 self-center text-[#176b4d] sm:hidden" aria-hidden="true" />}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
 
-      {erro && <p className="mt-2 text-xs font-bold text-rose-700">{erro}</p>}
+      <section data-relatorios-reveal aria-labelledby="relatorios-sem-dado" className={`${CARTAO} p-4`}>
+        <h2 id="relatorios-sem-dado" className="text-sm font-bold text-slate-900">Ainda sem relatório</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Não há lançamentos destas áreas no app, então não há o que somar. O relatório entra aqui quando elas forem usadas.
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-1.5">
+          {SEM_LANCAMENTO.map(area => (
+            <li key={area} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{area}</li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

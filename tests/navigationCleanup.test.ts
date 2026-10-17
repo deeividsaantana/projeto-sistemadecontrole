@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ROLE_ACCESS, PRIMARY_MODULE_IDS, ALL_NAVIGATION_ITEMS, AUXILIARY_MODULE_DESTINATIONS } from '../src/app/navigation/navigation';
+import { ROLE_ACCESS, PRIMARY_MODULE_IDS, ALL_NAVIGATION_ITEMS, MODULE_REDIRECTS } from '../src/app/navigation/navigation';
 
 test('ROLE_ACCESS cleanup', async (suite) => {
   await suite.test('admin should have access only to primary modules', () => {
@@ -60,20 +60,20 @@ test('ALL_NAVIGATION_ITEMS cleanup', async (suite) => {
   });
 });
 
-test('Auxiliary module redirection', async (suite) => {
-  await suite.test('should map all auxiliary modules to primary modules', () => {
-    const primarySet = new Set(PRIMARY_MODULE_IDS);
+test('endereços antigos abrem a tela onde o dado mora hoje', async (suite) => {
+  await suite.test('todo redirecionamento leva a uma tela do menu', () => {
+    const primarySet = new Set<string>(PRIMARY_MODULE_IDS);
 
-    Object.values(AUXILIARY_MODULE_DESTINATIONS).forEach((destination: any) => {
+    Object.values(MODULE_REDIRECTS).forEach(destination => {
       assert.strictEqual(primarySet.has(destination), true, `${destination} not in PRIMARY_MODULE_IDS`);
     });
   });
 
-  await suite.test('periodo should redirect to relatorios', () => {
-    assert.strictEqual(AUXILIARY_MODULE_DESTINATIONS['periodo'], 'relatorios');
-  });
-
-  await suite.test('consulta-geral should redirect to dashboard', () => {
-    assert.strictEqual(AUXILIARY_MODULE_DESTINATIONS['consulta-geral'], 'dashboard');
+  await suite.test('telas cortadas que tinham dado levam ao lugar novo', () => {
+    assert.strictEqual(MODULE_REDIRECTS['tickets-jazida'], 'materiais');
+    assert.strictEqual(MODULE_REDIRECTS.frota, 'controle-equipamentos');
+    assert.strictEqual(MODULE_REDIRECTS.equipes, 'presenca');
+    assert.strictEqual(MODULE_REDIRECTS.auditoria, 'administracao');
+    assert.strictEqual(MODULE_REDIRECTS.permissoes, 'administracao');
   });
 });

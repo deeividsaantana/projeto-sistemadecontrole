@@ -85,7 +85,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
 
   if (!avanco.length) {
     return (
-      <div data-meu-dia-reveal className={`${CARTAO} p-4`}>
+      <div data-previsto-reveal className={`${CARTAO} p-4`}>
         <EmptyState icon={HardHat} title="Nenhuma frente em andamento" description="Cadastre as frentes e os serviços em Cadastros, no grupo Obra. A produção lançada aparece aqui com o avanço." />
       </div>
     );
@@ -95,7 +95,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
 
   return (
     <div className="space-y-4">
-      <div data-meu-dia-reveal className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div data-previsto-reveal className="grid grid-cols-3 gap-2 sm:gap-3">
         <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Trabalharam no dia</p><strong className="text-2xl font-black tabular-nums text-slate-900">{resumo.trabalharam}</strong></div>
         <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Sem produção lançada</p><strong className={`text-2xl font-black tabular-nums ${resumo.semProducao ? 'text-[#f26a2e]' : 'text-slate-900'}`}>{resumo.semProducao}</strong></div>
         <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Serviços sem previsto</p><strong className="text-2xl font-black tabular-nums text-slate-900">{resumo.semPrevisto}</strong></div>
@@ -103,7 +103,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
 
       <div className="grid items-start gap-3 lg:grid-cols-2">
         {avanco.map(grupo => (
-          <article key={grupo.nome} data-meu-dia-reveal className={`${CARTAO} overflow-hidden`}>
+          <article key={grupo.nome} data-previsto-reveal className={`${CARTAO} overflow-hidden`}>
             <header className="flex flex-wrap items-start gap-3 border-b border-slate-100 bg-[#f7f8f6] px-4 py-3">
               <div className="min-w-0 flex-1 basis-40">
                 <h3 className="break-words text-base font-bold text-slate-900">{grupo.nome}</h3>
@@ -140,7 +140,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
         ))}
       </div>
 
-      <p data-meu-dia-reveal className="flex items-start gap-2 px-1 text-sm text-slate-500">
+      <p data-previsto-reveal className="flex items-start gap-2 px-1 text-sm text-slate-500">
         <TrendingUp className="mt-0.5 size-4 shrink-0 text-[#718087]" aria-hidden="true" />
         Avanço = acumulado ÷ previsto × 100. Falta = previsto − acumulado. O acumulado conta a produção da frente desde o início do previsto.
       </p>
@@ -174,7 +174,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
               <label className="block space-y-1.5">
                 <span className={ROTULO}>Previsto até</span>
                 <input type="date" className={CAMPO} value={formulario.ate} min={dia} onChange={event => setFormulario({ ...formulario, ate: event.target.value })} />
-                <span className="block text-xs text-slate-500">Começa em {formatarData(dia)}. Aparece também em Planejamento.</span>
+                <span className="block text-xs text-slate-500">Começa em {formatarData(dia)}.</span>
               </label>
             )}
             <label className="block space-y-1.5">
