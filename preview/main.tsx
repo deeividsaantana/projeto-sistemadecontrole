@@ -25,7 +25,6 @@ import DiarioObraTab from '../src/components/DiarioObraTab';
 import PlanejamentoTab from '../src/components/PlanejamentoTab';
 import RelatoriosTab from '../src/components/RelatoriosTab';
 import AdministracaoTab from '../src/components/AdministracaoTab';
-import ModoCampoTab from '../src/components/ModoCampoTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -559,16 +558,6 @@ const screens: Record<string, React.ReactNode> = {
       onImportAbastecimentos={noopImportAbastecimentos}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
-    />
-  ),
-  'modo-campo': (
-    <ModoCampoTab
-      presencasLink={fx.presencasHistorico}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      producao={[]}
-      ocorrencias={[]}
-      nuvemConectada
-      onNavigate={noop}
     />
   ),
   administracao: (

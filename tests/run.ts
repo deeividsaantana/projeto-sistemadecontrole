@@ -77,7 +77,6 @@ import './auditoria.test';
 import './permissoes.test';
 import './diagnostico.test';
 import './notificacoes.test';
-import './modoCampoPresenca.test';
 import './paginacao.test';
 import './imagem.test';
 import './notificationService.test';

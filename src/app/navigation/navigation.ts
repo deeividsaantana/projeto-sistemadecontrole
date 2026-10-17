@@ -13,7 +13,6 @@ import {
   Activity,
   Users,
   NotebookPen,
-  Smartphone,
   FileBarChart,
   Database,
   type LucideIcon,
@@ -38,7 +37,6 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
-      { id: 'modo-campo', label: 'Modo Campo', icon: Smartphone },
       { id: 'planejamento', label: 'Previsto x Executado', icon: Target },
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
@@ -90,7 +88,6 @@ export const PRIMARY_MODULE_IDS = [
   // Rotina do assistente de engenharia, pedida em 2026-09-27: checklist do
   // dia, pendências com prioridade e fechamento do dia.
   'meu-dia',
-  'modo-campo',
   'planejamento',
   'diario-obra',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage

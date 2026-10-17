@@ -121,7 +121,6 @@ const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
-const ModoCampoTab = lazy(() => import('./components/ModoCampoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4469,17 +4468,6 @@ export default function App() {
                 combustivelInicial={combustivelViewInicial}
                 combustivelListaSomente={combustivelListaSomente}
                 combustivelPorMaquina={relatorioPedido === 'lancamentos'}
-              />
-            )}
-
-            {activeTab === 'modo-campo' && (
-              <ModoCampoTab
-                presencasLink={presencasLinkAtivas}
-                controlesEquipamentos={controleEquipamentosDiario}
-                producao={producaoRegistros}
-                ocorrencias={ocorrencias}
-                nuvemConectada={isCloudConnected}
-                onNavigate={navigateTo}
               />
             )}
 
