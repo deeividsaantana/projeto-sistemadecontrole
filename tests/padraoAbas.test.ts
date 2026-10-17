@@ -21,10 +21,8 @@ type Regra = 'pageHeader' | 'gsap' | 'movimentoReduzido' | 'corForaDaPaleta';
 const PALETA = new Set(['#176b4d', '#f26a2e', '#718087', '#f7f8f6']);
 
 const PENDENCIAS: Record<string, readonly Regra[]> = {
-  DiarioObraTab: ['gsap', 'movimentoReduzido'],
   ManutencaoTab: ['gsap', 'movimentoReduzido'],
   PlanejamentoTab: ['gsap', 'movimentoReduzido'],
-  RelatoriosTab: ['gsap', 'movimentoReduzido'],
   TicketsJazidaTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
 };
 

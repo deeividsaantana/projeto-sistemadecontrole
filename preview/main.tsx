@@ -26,7 +26,6 @@ import PlanejamentoTab from '../src/components/PlanejamentoTab';
 import RelatoriosTab from '../src/components/RelatoriosTab';
 import AdministracaoTab from '../src/components/AdministracaoTab';
 import ModoCampoTab from '../src/components/ModoCampoTab';
-import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -623,6 +622,22 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
       responsavel="Preview"
       onAlterarSituacao={noop}
+    />
+  ),
+  // Efetivo grande para ver a lista em lotes de 50.
+  'colaboradores-lote': (
+    <ColaboradoresTab
+      funcionarios={Array.from({ length: 130 }, (_, indice) => ({
+        ...fx.equipeFuncionarios[indice % fx.equipeFuncionarios.length],
+        id: `lote-${indice}`,
+        nome: `${fx.equipeFuncionarios[indice % fx.equipeFuncionarios.length].nome} ${String(indice + 1).padStart(3, '0')}`,
+      }))}
+      empresas={fx.empresas}
+      gruposEquipe={[fx.grupo]}
+      presencasLink={[]}
+      controlesEquipamentos={[]}
+      ticketsJazida={[]}
+      onNavigate={noop}
     />
   ),
   manutencao: (

@@ -93,10 +93,12 @@ const guardarPreferencias = (preferencias: Preferencias) => {
   }
 };
 
+// Somadas com as colunas da planilha, as larguras mínimas cabem num notebook
+// de 1366 px com o menu aberto (cerca de 1.080 px de tabela) em zoom 100%.
 const LARGURA: Record<ColunaHistorico, string> = {
-  data: '5.6rem', prefixo: '4.4rem', descricao: 'minmax(8rem,1.6fr)', km: '4.6rem', horimetro: '4.8rem', litros: '4.2rem',
-  hora: '3.4rem', comboio: 'minmax(4.4rem,0.6fr)', combustivel: 'minmax(5.5rem,1fr)', empresa: 'minmax(5rem,0.8fr)',
-  bombaInicial: '5.4rem', bombaFinal: '5.4rem', responsavel: 'minmax(6rem,0.8fr)', observacao: 'minmax(7rem,1.2fr)',
+  data: '5.4rem', prefixo: '4.2rem', descricao: 'minmax(7rem,1.6fr)', km: '4.4rem', horimetro: '4.4rem', litros: '3.6rem',
+  hora: '3rem', comboio: 'minmax(4rem,0.6fr)', combustivel: 'minmax(5rem,1fr)', empresa: 'minmax(4.5rem,0.8fr)',
+  bombaInicial: '4.6rem', bombaFinal: '4.6rem', responsavel: 'minmax(5rem,0.8fr)', observacao: 'minmax(6rem,1.2fr)',
 };
 const NUMERICAS: ReadonlySet<ColunaHistorico> = new Set(['km', 'horimetro', 'litros', 'bombaInicial', 'bombaFinal']);
 
@@ -185,7 +187,7 @@ export default function HistoricoCombustivel({
   const grupos = agruparHistorico(daPagina, preferencias.agrupamento, nomes);
   const totaisGrupo = useMemo(() => new Map(agruparHistorico(filtrados, preferencias.agrupamento, nomes).map(grupo => [grupo.chave, grupo])), [filtrados, nomes, preferencias.agrupamento]);
   const colunas = COLUNAS_HISTORICO.filter(item => preferencias.colunas.includes(item.id));
-  const gradeColunas = `2.5rem ${colunas.map(item => LARGURA[item.id]).join(' ')} 2.5rem`;
+  const gradeColunas = `2rem ${colunas.map(item => LARGURA[item.id]).join(' ')} 1.5rem`;
   const aberto = abertoId ? abastecimentos.find(item => item.id === abertoId) : undefined;
   const selecionadosLista = filtrados.filter(item => selecionados.has(item.id));
   const todosDaPaginaMarcados = daPagina.length > 0 && daPagina.every(item => selecionados.has(item.id));
