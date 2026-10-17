@@ -639,7 +639,7 @@ const screens: Record<string, React.ReactNode> = {
     />
   ),
   relatorios: (
-    <RelatoriosTab dados={{ equipamentos: fx.equipamentos, obras: fx.obras, abastecimentos: fx.abastecimentos, ordensServico: fx.ordensServico }} />
+    <RelatoriosTab abastecimentos={fx.abastecimentos} controlesEquipamentos={fx.controlesEquipamentos} presencas={fx.registrosEnviados} movimentosMaterial={[]} cravacoes={[]} podeAbrir={aba => aba !== 'estacas'} onAbrir={noop} />
   ),
   orcamento: (
     <OrcamentoTab

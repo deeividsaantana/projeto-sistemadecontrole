@@ -74,7 +74,7 @@ import './indicadores.test';
 import './custos.test';
 import './orcamento.test';
 import './cronograma.test';
-import './relatorios.test';
+import './centralRelatorios.test';
 import './buscaGlobal.test';
 import './timeline.test';
 import './auditoria.test';
