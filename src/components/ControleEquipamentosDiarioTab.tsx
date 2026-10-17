@@ -92,17 +92,17 @@ interface Props {
   /** Nome de quem está usando o sistema; grava a autoria do lançamento. */
   registeredBy?: string;
   onApproveFleetRecord?: (id: string, status: 'APROVADO' | 'REJEITADO') => void;
-  /** Abre outra aba do sistema (Quadro da Frota). */
-  onNavigate?: (aba: string) => void;
+  /** Vista Quadro: as mesmas máquinas do dia em cartões por canteiro, no dia escolhido aqui. */
+  quadro?: (dia: string, verSituacao: () => void) => React.ReactNode;
 }
 
 type ConfirmationState =
   | { kind: 'delete'; ids: string[] }
   | { kind: 'status'; ids: string[]; status: FleetOperationalStatus };
 
-type FleetView = 'today' | 'equipamentos' | 'operadores' | 'history' | 'registry';
+type FleetView = 'today' | 'quadro' | 'equipamentos' | 'operadores' | 'history' | 'registry';
 
-const VISTAS_GUARDAVEIS: readonly FleetView[] = ['equipamentos', 'operadores', 'history', 'registry'];
+const VISTAS_GUARDAVEIS: readonly FleetView[] = ['quadro', 'equipamentos', 'operadores', 'history', 'registry'];
 
 const CHAVE_VISTA = 'renea_frota_vista';
 const vistaGuardada = (): FleetView => {
@@ -177,7 +177,7 @@ export default function ControleEquipamentosDiarioTab({
   canApproveFleet = false,
   registeredBy = 'Operação',
   onApproveFleetRecord,
-  onNavigate,
+  quadro,
 }: Props) {
   const pageRef = useRef<HTMLElement>(null);
   const operationalDrivers = useMemo(() => [...(operationalDriversProp || OPERATIONAL_DRIVERS)], [operationalDriversProp]);
@@ -379,14 +379,15 @@ export default function ControleEquipamentosDiarioTab({
       if (event.key === 'n') {
         event.preventDefault();
         openNewRecord();
-      } else if (event.key === '?') {
+      } else if (event.key === '?' && activeView !== 'quadro') {
+        // No Quadro o "?" abre a lista de atalhos do próprio quadro.
         event.preventDefault();
         setAtalhosAberto(true);
       }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [atalhosAberto]);
+  }, [atalhosAberto, activeView]);
   const openEdit = (state: FleetCurrentState) => {
     const raw = registros.find(record => record.id === state.recordId) as FleetPersistedRecord | undefined;
     if (!raw) {
@@ -584,6 +585,7 @@ export default function ControleEquipamentosDiarioTab({
   );
   const vistas: ReadonlyArray<readonly [FleetView, string, string, typeof CalendarDays, number]> = [
     ['today', 'Situação do dia', 'Dia', CalendarDays, 0],
+    ...(quadro ? [['quadro', 'Quadro', 'Quadro', LayoutGrid, 0] as const] : []),
     ['equipamentos', 'Equipamentos', 'Equip.', ClipboardCheck, conferenciaDoDia.equipamentos.missing],
     ['operadores', 'Operadores', 'Operad.', Users, conferenciaDoDia.operadores.missing],
     ['history', 'Histórico', 'Histórico', History, 0],
@@ -610,7 +612,7 @@ export default function ControleEquipamentosDiarioTab({
               {/* Cada aba ocupa a tela inteira. No celular as cinco cabem lado a
                   lado com ícone em cima e nome curto embaixo; o número laranja
                   é quem ainda falta lançar no dia. */}
-              <nav className="grid w-full grid-cols-5 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 lg:flex lg:w-auto" aria-label="Abas do controle de frotas" data-testid="frota-abas">
+              <nav className={`grid w-full ${quadro ? 'grid-cols-6' : 'grid-cols-5'} gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 lg:flex lg:w-auto`} aria-label="Abas do controle de frotas" data-testid="frota-abas">
                 {vistas.map(([id, label, curto, Icon, pendentes]) => (
                   <button
                     key={id}
@@ -642,17 +644,11 @@ export default function ControleEquipamentosDiarioTab({
                 <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
               </label>
               <div className="grid grid-cols-2 gap-2 sm:contents">
-              {onNavigate && (
-                <button type="button" onClick={() => onNavigate('quadro-frota')} className={`${BOTAO_SECUNDARIO} w-full px-3 sm:w-auto`} data-testid="frota-abrir-quadro">
-                  <LayoutGrid className="size-4" aria-hidden="true" />
-                  Quadro
-                </button>
-              )}
               <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-              <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
+              {activeView !== 'quadro' && <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
                 <Keyboard className="size-4" aria-hidden="true" />
                 <kbd className="text-xs">?</kbd>
-              </button>
+              </button>}
               <details className="erp-fleet-menu group relative w-full sm:w-auto" data-testid="frota-relatorios">
                 <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer px-3 list-none sm:w-auto [&::-webkit-details-marker]:hidden`}>
                   <FileSpreadsheet className="size-4" aria-hidden="true" />
@@ -714,6 +710,9 @@ export default function ControleEquipamentosDiarioTab({
         )}
         <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} locations={canteirosDoDia} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
         <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state => setConfirmation({ kind: 'delete', ids: [state.recordId] })} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
+      </div>}
+      {activeView === 'quadro' && quadro && <div data-fleet-view>
+        <React.Suspense fallback={<p className="p-8 text-center text-sm text-slate-500">Abrindo o quadro…</p>}>{quadro(filters.date, () => setActiveView('today'))}</React.Suspense>
       </div>}
       {activeView === 'equipamentos' && <div data-fleet-view>
         <FleetDailyReference records={registros} date={filters.date} onLancar={openNewRecord} onRelacaoChange={relacaoMudou}/>

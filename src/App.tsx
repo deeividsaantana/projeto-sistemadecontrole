@@ -112,7 +112,7 @@ const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
 const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
-const QuadroFrotaTab = lazy(() => import('./components/QuadroFrotaTab'));
+const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
@@ -4613,30 +4613,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'quadro-frota' && (
-              <QuadroFrotaTab
-                equipamentos={equipamentos}
-                registros={controleEquipamentosDiario}
-                gruposEquipe={gruposEquipe}
-                abastecimentos={abastecimentosAtivos}
-                canteiros={canteirosNomes}
-                frentes={frentesServico}
-                funcionarios={funcionarios}
-                empresas={empresas}
-                ordensServico={ordensServico}
-                operationalDrivers={motoristasOperacionais}
-                podeEditar={pode(currentUserRole, 'controle-equipamentos', 'editar')}
-                usuario={activeUserName}
-                onSave={handleSaveControleEquipamentoDiario}
-                onSaveMany={handleSaveControleEquipamentosEmLote}
-                onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
-                podeRemover={pode(currentUserRole, 'cadastros', 'excluir')}
-                onRemoverEquipamentos={handleRemoverEquipamentosDoQuadro}
-                onNavigate={navigateTo}
-                onImportSge={handleImportControleEquipamentosDiario}
-                onApplyCadastroSge={handleAplicarCadastroSge}
-              />
-            )}
 
             {activeTab === 'controle-equipamentos' && (
               <ControleEquipamentosDiarioTab
@@ -4660,7 +4636,28 @@ export default function App() {
                 canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
                 registeredBy={activeUserName}
                 onApproveFleetRecord={handleApproveControleEquipamentoDiario}
-                onNavigate={navigateTo}
+                quadro={(dia, verSituacao) => (
+                  <QuadroFrota
+                    equipamentos={equipamentos}
+                    registros={controleEquipamentosDiario}
+                    gruposEquipe={gruposEquipe}
+                    abastecimentos={abastecimentosAtivos}
+                    canteiros={canteirosNomes}
+                    frentes={frentesServico}
+                    funcionarios={funcionarios}
+                    operationalDrivers={motoristasOperacionais}
+                    podeEditar={pode(currentUserRole, 'controle-equipamentos', 'editar')}
+                    usuario={activeUserName}
+                    onSave={handleSaveControleEquipamentoDiario}
+                    onSaveMany={handleSaveControleEquipamentosEmLote}
+                    onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
+                    podeRemover={pode(currentUserRole, 'cadastros', 'excluir')}
+                    onRemoverEquipamentos={handleRemoverEquipamentosDoQuadro}
+                    onNavigate={navigateTo}
+                    dia={dia}
+                    onAbrirSituacao={verSituacao}
+                  />
+                )}
               />
             )}
 

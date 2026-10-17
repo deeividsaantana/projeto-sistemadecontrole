@@ -13,7 +13,7 @@ import EstacasTab from '../src/components/EstacasTab';
 import CadastrosTab from '../src/components/CadastrosTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
-import QuadroFrotaTab from '../src/components/QuadroFrotaTab';
+import QuadroFrota from '../src/components/quadroFrota/QuadroFrota';
 import ManutencaoTab from '../src/components/ManutencaoTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
 import MateriaisTab from '../src/components/MateriaisTab';
@@ -30,7 +30,6 @@ import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { PRIMARY_MODULE_IDS, SIDEBAR_NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
 import * as fx from './fixtures';
-import { aplicarCadastroSge } from '../src/fleet/sgeApontamentos';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -42,11 +41,11 @@ const noopImportAbastecimentos = (items: unknown[] = []) => ({
 });
 
 /** Quadro com estado: o que se salva no painel volta para o quadro, como no app. */
-function QuadroFrotaPreview() {
+function QuadroFrotaPreview({ dia, onAbrirSituacao }: { dia: string; onAbrirSituacao: () => void }) {
   const [registros, setRegistros] = React.useState(fx.controlesQuadro);
   const [equipamentos, setEquipamentos] = React.useState(fx.equipamentosQuadro);
   return (
-    <QuadroFrotaTab
+    <QuadroFrota
       equipamentos={equipamentos}
       registros={registros}
       gruposEquipe={[fx.grupo]}
@@ -69,8 +68,8 @@ function QuadroFrotaPreview() {
         setRegistros(atual => atual.filter(item => !registroIds.has(item.id)));
       }}
       onNavigate={noop}
-      onImportSge={novos => setRegistros(atual => [...novos, ...atual])}
-      onApplyCadastroSge={previa => setEquipamentos(atual => aplicarCadastroSge(atual, previa, fx.funcionarios))}
+      dia={dia}
+      onAbrirSituacao={onAbrirSituacao}
     />
   );
 }
@@ -517,7 +516,6 @@ const screens: Record<string, React.ReactNode> = {
       onReserveTicketNumbers={async count => Array.from({ length: count }, (_, i) => String(2400 + i))}
     />
   ),
-  'quadro-frota': <QuadroFrotaPreview />,
   frotas: (
     <ControleEquipamentosDiarioTab
       registros={[...fx.controlesEquipamentos, ...fx.controlesQuadro, ...fx.controlesBasculantes]}
@@ -535,7 +533,7 @@ const screens: Record<string, React.ReactNode> = {
       onOpenEquipmentRegistration={noop}
       onAddOperationalDrivers={noop}
       canApproveFleet
-      onNavigate={noop}
+      quadro={(dia, verSituacao) => <QuadroFrotaPreview dia={dia} onAbrirSituacao={verSituacao} />}
     />
   ),
   combustivel: <CombustivelVivo />,
