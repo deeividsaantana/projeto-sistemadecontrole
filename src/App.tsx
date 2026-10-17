@@ -1154,10 +1154,13 @@ export default function App() {
       // apagar em massa os manteve). Sem marcar esta versão como conhecida,
       // o próximo download traz esses registros de volta para cá.
       const protegidas = uploadResult.tabelasProtegidas ?? [];
+      // Outro aparelho publicou no meio do envio só do que mudou: esta versão
+      // tem o que este aparelho ainda não viu, então também não fica conhecida.
+      const faltaBaixar = protegidas.length > 0 || Boolean(uploadResult.nuvemTinhaNovidades);
       try {
         commitStorageBatch(localStorage, [
           { key: 'renea_last_cloud_sync', value: nowStr },
-          ...(protegidas.length ? [] : [{ key: 'renea_last_cloud_sync_iso', value: uploadResult.updatedAt }]),
+          ...(faltaBaixar ? [] : [{ key: 'renea_last_cloud_sync_iso', value: uploadResult.updatedAt }]),
           { key: STORAGE_KEYS.cloudBaseline, value: JSON.stringify(uploadResult.publishedBaseline) },
         ]);
       } catch (storageError) {
@@ -1166,8 +1169,8 @@ export default function App() {
         console.warn('A nuvem foi atualizada, mas o horário local não pôde ser salvo:', storageError);
       }
       setIsCloudConnected(true);
+      if (faltaBaixar) pendingRemoteVersionRef.current = uploadResult.updatedAt;
       if (protegidas.length) {
-        pendingRemoteVersionRef.current = uploadResult.updatedAt;
         const devolvidos = protegidas.reduce((total, item) => total + item.devolvidos, 0);
         return {
           success: true,
