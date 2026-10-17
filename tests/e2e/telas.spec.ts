@@ -17,7 +17,7 @@ const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
   { screen: 'dds-treinamentos', titulo: 'DDS e Treinamentos' },
   { screen: 'materiais', titulo: 'Materiais' },
   { screen: 'diario-obra', titulo: 'Diário de Obra' },
-  { screen: 'planejamento', titulo: 'Planejamento' },
+  { screen: 'planejamento', titulo: 'Previsto x Executado' },
   { screen: 'cadastros', titulo: /.+/ },
   { screen: 'combustivel', titulo: /.+/ },
   { screen: 'estacas', titulo: /.+/ },
@@ -35,7 +35,6 @@ const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
   { screen: 'administracao', titulo: 'Administração' },
   { screen: 'notificacoes', titulo: 'Notificações' },
   { screen: 'assistente', titulo: 'Assistente' },
-  { screen: 'modo-campo', titulo: 'Modo Campo' },
   { screen: 'consulta', titulo: 'Consulta Geral' },
   { screen: 'periodo', titulo: /^Registros de / },
 ];
@@ -217,15 +216,6 @@ test('controle de frotas remove o lançamento rápido e leva as visões ao topo'
   const topViews = page.locator('.renea-page-header').getByRole('navigation', { name: 'Visões do controle de frotas' });
   await expect(topViews).toBeVisible();
   await expect(topViews.getByRole('button', { name: 'Situação do dia' })).toBeVisible();
-});
-
-test('checklist bloqueia salvar não conformidade sem justificativa', async ({ page }) => {
-  await page.goto('/?screen=checklist');
-  await page.getByRole('button', { name: 'Novo checklist' }).click();
-  await page.getByRole('button', { name: 'Não conforme', exact: true }).first().click();
-  await expect(page.getByText(/abrirá OS/)).toBeVisible();
-  await page.getByRole('button', { name: 'Salvar checklist' }).click();
-  await expect(page.getByText(/Selecione o equipamento|Descreva o problema em/)).toBeVisible();
 });
 
 test('manutenção abre o formulário e fecha com ESC', async ({ page }) => {

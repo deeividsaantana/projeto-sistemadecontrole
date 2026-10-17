@@ -4,6 +4,9 @@
  * nova que ficar fora do backup ou da sincronização aparece aqui em vez de
  * sumir silenciosamente.
  *
+ * Histórico de ações e Permissões eram telas próprias que nenhum perfil
+ * conseguia abrir (os botões daqui caíam no Painel). Viraram seções desta aba.
+ *
  * A gestão de usuários mora aqui porque esta é a única aba de administração no
  * menu. A tela existia solta, sem rota e sem item de menu: ninguém conseguia
  * criar um acesso pelo sistema. Quem decide se a criação vale é o servidor
@@ -12,8 +15,10 @@
 import { useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, CheckCircle2, ClipboardCopy, Database, Link2, MessageCircle, Plus, RotateCcw, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardCopy, Database, History, KeyRound, LayoutDashboard, Link2, MessageCircle, Plus, RotateCcw, ShieldCheck } from 'lucide-react';
 import UsuariosTab from './UsuariosTab';
+import HistoricoAcoes from './administracao/HistoricoAcoes';
+import MatrizPermissoes from './administracao/MatrizPermissoes';
 import { INTERMEDIATE_TABLE_IDS } from '../cloud/types';
 import {
   divergenciasDeRegistro,
@@ -24,7 +29,15 @@ import {
 import { APP_VERSION_LABEL } from '../app/version';
 import { PageHeader, TableBody, TableHead, TableShell } from '../shared/ui';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
-import type { GrupoEquipe } from '../types';
+import type { GrupoEquipe, HistoryLog } from '../types';
+
+type Secao = 'geral' | 'historico' | 'permissoes';
+
+const SECOES: Array<{ id: Secao; label: string; icon: typeof History }> = [
+  { id: 'geral', label: 'Visão geral', icon: LayoutDashboard },
+  { id: 'historico', label: 'Histórico', icon: History },
+  { id: 'permissoes', label: 'Permissões', icon: KeyRound },
+];
 
 interface AdministracaoTabProps {
   ultimaSincronizacao: string;
@@ -32,7 +45,7 @@ interface AdministracaoTabProps {
   totalUsuarios?: number;
   gruposEquipe?: GrupoEquipe[];
   onSaveGrupoEquipe?: (grupo: GrupoEquipe, isNew: boolean) => void;
-  onNavigate: (tab: string) => void;
+  logs?: HistoryLog[];
 }
 
 export default function AdministracaoTab({
@@ -41,9 +54,10 @@ export default function AdministracaoTab({
   totalUsuarios,
   gruposEquipe = [],
   onSaveGrupoEquipe,
-  onNavigate,
+  logs = [],
 }: AdministracaoTabProps) {
   const escopo = useRef<HTMLDivElement>(null);
+  const [secao, setSecao] = useState<Secao>('geral');
   const [linkFeedback, setLinkFeedback] = useState('');
   const volumes = useMemo(
     () => typeof localStorage === 'undefined' ? [] : volumePorColecao(localStorage),
@@ -87,16 +101,35 @@ export default function AdministracaoTab({
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(raiz.querySelectorAll('[data-admin-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
-  }, { scope: escopo });
+  }, { scope: escopo, dependencies: [secao] });
 
   return (
     <div id="administracao-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <div data-admin-reveal>
         <PageHeader
+          eyebrow="Só administrador"
           title="Administração"
-          description="Saúde do armazenamento, registro das coleções e estado da sincronização."
+          description="Acessos, link de presença, histórico de ações e saúde da sincronização."
         />
       </div>
+
+      <nav data-admin-reveal aria-label="Seções da administração" className="mt-4 grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-white p-1.5 sm:flex sm:gap-1.5">
+        {SECOES.map(item => {
+          const Icon = item.icon;
+          const ativa = secao === item.id;
+          return (
+            <button key={item.id} type="button" onClick={() => setSecao(item.id)} aria-current={ativa ? 'page' : undefined} className={`flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-1 text-xs font-bold transition sm:min-w-32 sm:gap-2 sm:px-3 sm:text-sm ${ativa ? 'bg-emerald-700 text-white' : 'text-slate-500 hover:bg-emerald-50 hover:text-slate-900'}`}>
+              <Icon className="h-4 w-4 shrink-0" /> <span className="max-w-full truncate">{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {secao === 'historico' && <div className="mt-4"><HistoricoAcoes logs={logs} /></div>}
+
+      {secao === 'permissoes' && <div className="mt-4"><MatrizPermissoes /></div>}
+
+      {secao === 'geral' && (<>
 
       <section data-admin-reveal className="mt-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="presence-public-link-title">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -170,24 +203,6 @@ export default function AdministracaoTab({
         ))}
       </section>
 
-      <div data-admin-reveal className="mt-4 flex flex-wrap gap-2">
-        {[
-          ['configuracoes', 'Backup, importação e usuários'],
-          ['auditoria', 'Histórico de ações'],
-          ['permissoes', 'Matriz de permissões'],
-          ['cadastros', 'Cadastros auxiliares'],
-        ].map(([tab, rotulo]) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => onNavigate(tab)}
-            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-          >
-            {rotulo}
-          </button>
-        ))}
-      </div>
-
       <div data-admin-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
         <TableShell minWidth={620}>
           <TableHead>
@@ -228,6 +243,7 @@ export default function AdministracaoTab({
           <Database className="h-3.5 w-3.5" /> {totalUsuarios} usuário(s) cadastrado(s) no acesso corporativo.
         </p>
       )}
+      </>)}
     </div>
   );
 }

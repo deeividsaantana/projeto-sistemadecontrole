@@ -142,6 +142,8 @@ interface ControlePresencaTabProps {
    * retrato consolidado sem apagar nada que já esteja presente.
    */
   onRestorePresenceHistory?: () => Promise<{ success: boolean; message: string }>;
+  /** Parte que abre primeiro; a aba Relatórios pede 'relatorios'. */
+  viewInicial?: View;
 }
 
 type View = 'ao-vivo' | 'relatorios' | 'equipes' | 'registros' | 'historico';
@@ -227,6 +229,7 @@ export default function ControlePresencaTab({
   onSyncEquipesPlanilha,
   pendingPublicSubmissionsCount = 0,
   onRestorePresenceHistory,
+  viewInicial,
 }: ControlePresencaTabProps) {
   const today = localToday();
   const safeFuncionarios = useMemo(() => (Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean), [funcionarios]);
@@ -243,7 +246,7 @@ export default function ControlePresencaTab({
   ), [gruposEquipe, safeFuncionarios, safeRecords]);
   const safeHistory = useMemo(() => (Array.isArray(historicoPresencas) ? historicoPresencas : []).filter(Boolean), [historicoPresencas]);
 
-  const [view, setView] = useState<View>('ao-vivo');
+  const [view, setView] = useState<View>(viewInicial ?? 'ao-vivo');
   const [referenceDate, setReferenceDate] = useState(today);
   const [dashboardCompany, setDashboardCompany] = useState('todas');
   const [dashboardGroup, setDashboardGroup] = useState('todos');

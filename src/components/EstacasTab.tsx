@@ -29,11 +29,13 @@ type Props = {
   onChange: (next: ControleEstacas, description: string) => void;
   /** Quem fica registrado no lançamento e na inativação. */
   responsavel?: string;
+  /** Parte que abre primeiro; a aba Relatórios pede 'relatorios'. */
+  secaoInicial?: SecaoEstacas;
 };
 
-export default function EstacasTab({ controle, obras, onChange, responsavel = 'Sistema' }: Props) {
+export default function EstacasTab({ controle, obras, onChange, responsavel = 'Sistema', secaoInicial = 'visao' }: Props) {
   const hoje = isoDay(new Date());
-  const [secao, setSecao] = useState<SecaoEstacas>('visao');
+  const [secao, setSecao] = useState<SecaoEstacas>(secaoInicial);
   const [pedido, setPedido] = useState<PedidoDeCravacao>({});
   const [frenteAtual, setFrenteAtual] = useState('');
   const [planejando, setPlanejando] = useState<{ frente?: string } | null>(null);

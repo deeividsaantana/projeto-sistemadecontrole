@@ -69,7 +69,7 @@
 | # | Aba | Commits | Checklist | Status |
 |---|-----|---------|-----------|--------|
 | 1 | Dashboard | a2a8456..c2741b4 | ✅ 6/6 | COMPLETO |
-| 2 | Modo Campo | — | ⏳ Próximo | TODO |
+| 2 | Modo Campo | — | — | REMOVIDA em 16/10/2026 (repetia o menu e o Painel) |
 | 3 | Central Operacional | — | ⏳ | TODO |
 | 4 | Planejamento | — | ⏳ | TODO |
 | 5 | Lançamentos | — | ⏳ | TODO |
