@@ -1,36 +1,21 @@
 import {
   CalendarRange,
   Target,
-  ClipboardCheck,
   ClipboardList,
   FolderPlus,
-  GraduationCap,
   Hammer,
-  HardHat,
   LayoutDashboard,
   LayoutGrid,
   SunMedium,
   Package,
-  TimerOff,
   UserRound,
   Wrench,
-  Truck,
   Activity,
   Users,
-  Search,
   NotebookPen,
-  ListChecks,
-  Bell,
-  Bot,
   Smartphone,
-  Gauge,
-  Coins,
   FileBarChart,
-  History,
-  ShieldCheck,
-  KeyRound,
   Database,
-  Scale,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -48,11 +33,6 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
       { id: 'meu-dia', label: 'Meu dia', icon: SunMedium },
-      { id: 'consulta-geral', label: 'Consulta Geral', icon: Search },
-      { id: 'periodo', label: 'Registros por Período', icon: CalendarRange },
-      { id: 'pendencias', label: 'Pendências', icon: ListChecks },
-      { id: 'notificacoes', label: 'Notificações', icon: Bell },
-      { id: 'assistente', label: 'Assistente', icon: Bot },
     ],
   },
   {
@@ -67,12 +47,9 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Equipamentos',
     items: [
-      { id: 'frota', label: 'Frota', icon: Truck },
       { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
       { id: 'quadro-frota', label: 'Quadro da Frota', icon: LayoutGrid },
       { id: 'manutencao', label: 'Manutenção', icon: Wrench },
-      { id: 'horas-paradas', label: 'Horas Paradas', icon: TimerOff },
-      { id: 'checklist', label: 'Checklist', icon: ClipboardCheck },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
     ],
   },
@@ -80,10 +57,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Pessoas',
     items: [
       { id: 'colaboradores', label: 'Colaboradores', icon: UserRound },
-      { id: 'equipes', label: 'Equipes', icon: HardHat },
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
-      { id: 'apontamentos', label: 'Apontamentos', icon: ClipboardList },
-      { id: 'dds-treinamentos', label: 'DDS e Treinamentos', icon: GraduationCap },
     ],
   },
   {
@@ -95,11 +69,7 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Análise',
     items: [
-      { id: 'indicadores', label: 'Indicadores', icon: Gauge },
       { id: 'relatorios', label: 'Relatórios', icon: FileBarChart },
-      { id: 'timeline', label: 'Timeline', icon: History },
-      { id: 'custos', label: 'Custos', icon: Coins },
-      { id: 'orcamento', label: 'Orçado x Realizado', icon: Scale },
     ],
   },
   {
@@ -107,15 +77,13 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'cadastros', label: 'Cadastros', icon: FolderPlus },
       { id: 'administracao', label: 'Administração', icon: Database },
-      { id: 'auditoria', label: 'Auditoria', icon: ShieldCheck },
-      { id: 'permissoes', label: 'Permissões', icon: KeyRound },
     ],
   },
 ] as const;
 
 /**
- * Navegação diária enxuta. Os outros módulos permanecem registrados abaixo,
- * com permissões, rotas, dados, busca global e atalhos internos preservados.
+ * Telas que alguém consegue abrir. Toda tela do App precisa estar aqui e no
+ * ROLE_ACCESS; endereço antigo passa por MODULE_REDIRECTS.
  */
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
@@ -151,23 +119,19 @@ const SIDEBAR_MODULE_IDS = new Set<string>(PRIMARY_MODULE_IDS);
 
 export const isPrimaryModule = (id: string) => SIDEBAR_MODULE_IDS.has(id);
 
-export const AUXILIARY_MODULE_DESTINATIONS: Readonly<Record<string, string>> = {
-  'consulta-geral': 'dashboard',
-  periodo: 'relatorios',
-  pendencias: 'dashboard',
-  notificacoes: 'dashboard',
-  assistente: 'dashboard',
+// Endereços antigos que ainda podem chegar por um botão, pela busca do topo ou
+// por um link guardado. Cada um abre a tela onde aquele dado mora hoje; o que
+// não estiver aqui e não for do menu cai no Painel.
+export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
+  // Frentes e produção vivem na parte Frentes do Meu dia.
+  frentes: 'meu-dia',
+  producao: 'meu-dia',
+  // Os tickets da jazida moraram numa aba própria até 28/09/2026; agora são
+  // a parte Viagens da jazida dentro de Materiais.
   'tickets-jazida': 'materiais',
+  // Telas antigas cortadas em 16/10/2026 (auditoria das abas, G6/G7).
   frota: 'controle-equipamentos',
-  'horas-paradas': 'controle-equipamentos',
-  checklist: 'controle-equipamentos',
-  equipes: 'colaboradores',
-  apontamentos: 'presenca',
-  'dds-treinamentos': 'colaboradores',
-  indicadores: 'dashboard',
-  timeline: 'dashboard',
-  custos: 'relatorios',
-  orcamento: 'relatorios',
+  equipes: 'presenca',
   auditoria: 'administracao',
   permissoes: 'administracao',
 };

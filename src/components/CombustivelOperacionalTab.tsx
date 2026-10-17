@@ -45,6 +45,8 @@ interface Props {
   openHistorySignal?: number;
   initialView?: View;
   listaSomente?: boolean;
+  /** Abre já no consumo por máquina (pedido pela aba Relatórios). */
+  porMaquinaInicial?: boolean;
 }
 
 /** Duas telas só: lançar e ver os lançamentos (com o consumo no topo). */
@@ -60,12 +62,12 @@ const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFr
 export default function CombustivelOperacionalTab({
   empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
   onSaveAbastecimento, onDeleteAbastecimento, onDeleteAbastecimentos, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
-  openHistorySignal = 0, initialView = 'historico', listaSomente = false,
+  openHistorySignal = 0, initialView = 'historico', listaSomente = false, porMaquinaInicial = false,
 }: Props) {
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
-  const [view, setView] = useState<View>(listaSomente ? 'historico' : initialView);
-  const [porMaquina, setPorMaquina] = useState(false);
+  const [view, setView] = useState<View>(listaSomente || porMaquinaInicial ? 'historico' : initialView);
+  const [porMaquina, setPorMaquina] = useState(porMaquinaInicial && !listaSomente);
   const [exportandoHistorico, setExportandoHistorico] = useState<'' | 'excel' | 'pdf'>('');
   const [excluindo, setExcluindo] = useState<Abastecimento[]>([]);
   const [erro, setErro] = useState('');

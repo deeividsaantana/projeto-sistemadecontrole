@@ -60,7 +60,7 @@ export const buscarGlobal = (busca: string, fontes: FontesBusca): ResultadoBusca
   const grupos: Array<ResultadoBusca[]> = [
     (fontes.equipamentos || [])
       .filter(item => combina(termo, item.prefixo, item.modelo, item.tipo, item.seriePlaca))
-      .map(item => ({ id: `eq-${item.id}`, tipo: 'Equipamento', titulo: item.prefixo, subtitulo: [item.tipo, item.modelo].filter(Boolean).join(' · '), tab: 'frota' })),
+      .map(item => ({ id: `eq-${item.id}`, tipo: 'Equipamento', titulo: item.prefixo, subtitulo: [item.tipo, item.modelo].filter(Boolean).join(' · '), tab: 'controle-equipamentos' })),
     (fontes.funcionarios || [])
       .filter(item => item.ativo !== false && combina(termo, item.nome, item.matricula, item.cargo))
       .map(item => ({ id: `fn-${item.id}`, tipo: 'Colaborador', titulo: item.nome, subtitulo: [item.matricula, item.cargo].filter(Boolean).join(' · '), tab: 'colaboradores' })),

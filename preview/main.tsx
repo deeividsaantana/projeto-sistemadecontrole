@@ -1,4 +1,4 @@
-import type { EtapaServico, FrenteServico, ModeloRotina, PendenciaRotina, PlanejamentoItem, PrevistoMaterial, RegistroProducao, RotinaDiaria, ServicoObra } from '../src/types';
+import type { EtapaServico, HistoryLog, FrenteServico, ModeloRotina, PendenciaRotina, PlanejamentoItem, PrevistoMaterial, RegistroProducao, RotinaDiaria, ServicoObra } from '../src/types';
 import MeuDiaTab from '../src/components/MeuDiaTab';
 import { planoCargaSge } from '../src/modules/materials/locaisSge';
 import React from 'react';
@@ -9,22 +9,13 @@ import UsuariosTab from '../src/components/UsuariosTab';
 import PresencaTempoRealPublica from '../src/components/PresencaTempoRealPublica';
 import Dashboard from '../src/components/Dashboard';
 import LancamentosTab from '../src/components/LancamentosTab';
-import PeriodoTab from '../src/components/PeriodoTab';
-import ConsultaGeralTab from '../src/components/ConsultaGeralTab';
-import ConfiguracoesTab from '../src/components/ConfiguracoesTab';
 import EstacasTab from '../src/components/EstacasTab';
 import CadastrosTab from '../src/components/CadastrosTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
 import QuadroFrotaTab from '../src/components/QuadroFrotaTab';
-import FrotaTab from '../src/components/FrotaTab';
 import ManutencaoTab from '../src/components/ManutencaoTab';
-import HorasParadasTab from '../src/components/HorasParadasTab';
-import ChecklistTab from '../src/components/ChecklistTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
-import EquipesTab from '../src/components/EquipesTab';
-import ApontamentosTab from '../src/components/ApontamentosTab';
-import DdsTreinamentosTab from '../src/components/DdsTreinamentosTab';
 import MateriaisTab from '../src/components/MateriaisTab';
 import type { SecaoMateriais } from '../src/components/materiais/MateriaisSecoes';
 import MateriaisUtilizacaoPanel from '../src/components/MateriaisUtilizacaoPanel';
@@ -32,19 +23,9 @@ import MaterialLinkApontador from '../src/components/MaterialLinkApontador';
 import { buildFieldView } from '../api/_shared/material-usage.js';
 import DiarioObraTab from '../src/components/DiarioObraTab';
 import PlanejamentoTab from '../src/components/PlanejamentoTab';
-import PendenciasTab from '../src/components/PendenciasTab';
-import IndicadoresTab from '../src/components/IndicadoresTab';
-import CustosTab from '../src/components/CustosTab';
-import OrcamentoTab from '../src/components/OrcamentoTab';
 import RelatoriosTab from '../src/components/RelatoriosTab';
-import TimelineTab from '../src/components/TimelineTab';
-import AuditoriaTab from '../src/components/AuditoriaTab';
-import PermissoesTab from '../src/components/PermissoesTab';
 import AdministracaoTab from '../src/components/AdministracaoTab';
-import NotificacoesTab from '../src/components/NotificacoesTab';
-import AssistenteTab from '../src/components/AssistenteTab';
 import ModoCampoTab from '../src/components/ModoCampoTab';
-import { MODELO_CHECKLIST_PADRAO } from '../src/utils/checklist';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -476,6 +457,12 @@ function CombustivelVivo() {
   );
 }
 
+const historicoPreview: HistoryLog[] = [
+  { id: 'h1', timestamp: `${new Date().toISOString().slice(0, 10)}T08:12:00`, usuario: 'Deivid', acao: 'Criou', tela: 'Combustível', descricao: 'Abastecimento de 180 L na ESC-04' },
+  { id: 'h2', timestamp: `${new Date().toISOString().slice(0, 10)}T09:40:00`, usuario: 'Deivid', acao: 'Editou', tela: 'Cadastros', descricao: 'Equipamento CB-12 mudou de obra' },
+  { id: 'h3', timestamp: `${new Date().toISOString().slice(0, 10)}T10:05:00`, usuario: 'Gestor', acao: 'Excluiu', tela: 'Presença', descricao: 'Registro repetido da equipe SILLAME' },
+];
+
 const screens: Record<string, React.ReactNode> = {
   'meu-dia': <MeuDiaPreview />,
   sidebar: (
@@ -517,18 +504,6 @@ const screens: Record<string, React.ReactNode> = {
   usuarios: <UsuariosTab />,
   cadastros: <CadastrosPreview />,
   estacas: <EstacasPreview />,
-  configuracoes: (
-    <ConfiguracoesTab
-      historyLogs={[]}
-      onImportFullData={() => true}
-      onImportFilteredByDate={() => ({ success: true, message: 'ok' })}
-      onExportFullData={() => '{}'}
-      periodosArquivados={[]}
-      onArchivePeriod={() => ({ success: true, message: 'ok' })}
-      onRestoreArchivedPeriod={() => ({ success: true, message: 'ok' })}
-      onDeleteTabData={() => ({ success: true, message: 'ok' })}
-    />
-  ),
   jazida: (
     <TicketsJazidaTab
       tickets={fx.ticketsJazida}
@@ -564,33 +539,6 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
-  consulta: (
-    <ConsultaGeralTab
-      empresas={fx.empresas}
-      obras={fx.obras}
-      equipamentos={fx.equipamentos}
-      funcionarios={fx.funcionarios}
-      abastecimentos={fx.abastecimentos}
-      tickets={fx.ticketsJazida}
-      ordensServico={fx.ordensServico}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      gruposEquipe={[fx.grupo]}
-      presencas={fx.presencasHistorico}
-      vinculos={[]}
-      onLink={noop}
-      onUnlink={noop}
-      onNavigate={noop}
-    />
-  ),
-  periodo: (
-    <PeriodoTab
-      presencas={fx.registrosEnviados}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      abastecimentos={fx.abastecimentos}
-      ticketsJazida={fx.ticketsJazida}
-      equipamentos={fx.equipamentos}
-    />
-  ),
   combustivel: <CombustivelVivo />,
   'combustivel-consumo': (
     <LancamentosTab
@@ -623,74 +571,11 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
-  assistente: (
-    <AssistenteTab dados={{ equipamentos: fx.equipamentos, obras: fx.obras }} onNavigate={noop} />
-  ),
-  notificacoes: (
-    <NotificacoesTab
-      notificacoes={[]}
-      alertas={[]}
-      preferencias={{ categoriasSilenciadas: [], mostrarSistema: true }}
-      onPreferenciasChange={noop}
-      onMarcarTodasLidas={noop}
-      onNavigate={noop}
-    />
-  ),
   administracao: (
-    <AdministracaoTab ultimaSincronizacao="" nuvemConectada={false} onNavigate={noop} />
-  ),
-  permissoes: (
-    <PermissoesTab />
-  ),
-  auditoria: (
-    <AuditoriaTab logs={[]} />
-  ),
-  timeline: (
-    <TimelineTab
-      fontes={{ abastecimentos: fx.abastecimentos, ordensServico: fx.ordensServico, controlesEquipamentos: fx.controlesEquipamentos }}
-      equipamentos={fx.equipamentos}
-      onNavigate={noop}
-    />
+    <AdministracaoTab ultimaSincronizacao="" nuvemConectada={false} logs={historicoPreview} />
   ),
   relatorios: (
-    <RelatoriosTab dados={{ equipamentos: fx.equipamentos, obras: fx.obras, abastecimentos: fx.abastecimentos, ordensServico: fx.ordensServico }} />
-  ),
-  orcamento: (
-    <OrcamentoTab
-      orcamentos={[]}
-      lancamentos={[]}
-      abastecimentos={fx.abastecimentos}
-      ordensServico={fx.ordensServico}
-      obras={fx.obras}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-    />
-  ),
-  custos: (
-    <CustosTab
-      lancamentos={[]}
-      abastecimentos={fx.abastecimentos}
-      ordensServico={fx.ordensServico}
-      obras={fx.obras}
-      frentes={[]}
-      equipamentos={fx.equipamentos}
-      empresas={fx.empresas}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-    />
-  ),
-  indicadores: (
-    <IndicadoresTab
-      dados={{ equipamentos: fx.equipamentos, obras: fx.obras, controlesEquipamentos: fx.controlesEquipamentos }}
-    />
-  ),
-  pendencias: (
-    <PendenciasTab
-      dados={{ equipamentos: fx.equipamentos, obras: fx.obras, gruposEquipe: [fx.grupo] }}
-      onNavigate={noop}
-    />
+    <RelatoriosTab abastecimentos={fx.abastecimentos} controlesEquipamentos={fx.controlesEquipamentos} presencas={fx.registrosEnviados} movimentosMaterial={[]} cravacoes={[]} podeAbrir={aba => aba !== 'estacas'} onAbrir={noop} />
   ),
   planejamento: <PlanejamentoPreview />,
   'diario-obra': (
@@ -728,42 +613,6 @@ const screens: Record<string, React.ReactNode> = {
       submitUse={async () => ({ message: 'Uso salvo.' })}
     />
   ),
-  'dds-treinamentos': (
-    <DdsTreinamentosTab
-      registrosDds={[]}
-      treinamentos={[]}
-      funcionarios={fx.equipeFuncionarios}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSaveDds={noop}
-      onSaveTreinamento={noop}
-    />
-  ),
-  apontamentos: (
-    <ApontamentosTab
-      apontamentos={[]}
-      funcionarios={fx.equipeFuncionarios}
-      gruposEquipe={[fx.grupo]}
-      etapas={[]}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-      onDelete={noop}
-    />
-  ),
-  equipes: (
-    <EquipesTab
-      gruposEquipe={[fx.grupo]}
-      funcionarios={fx.equipeFuncionarios}
-      empresas={fx.empresas}
-      obras={fx.obras}
-      presencasLink={fx.presencasHistorico}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      podeRealocar
-      onSaveGrupoEquipe={noop}
-      onNavigate={noop}
-    />
-  ),
   colaboradores: (
     <ColaboradoresTab
       funcionarios={fx.equipeFuncionarios}
@@ -793,24 +642,6 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
-  checklist: (
-    <ChecklistTab
-      checklists={[]}
-      modelo={MODELO_CHECKLIST_PADRAO}
-      equipamentos={fx.equipamentos}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-      onSaveModelo={noop}
-    />
-  ),
-  'horas-paradas': (
-    <HorasParadasTab
-      controlesEquipamentos={fx.controlesEquipamentos}
-      ordensServico={fx.ordensServico}
-      equipamentos={fx.equipamentos}
-    />
-  ),
   manutencao: (
     <ManutencaoTab
       ordensServico={fx.ordensServico}
@@ -820,20 +651,6 @@ const screens: Record<string, React.ReactNode> = {
       podeEditar
       onSave={noop}
       onDelete={noop}
-    />
-  ),
-  frota: (
-    <FrotaTab
-      equipamentos={fx.equipamentos}
-      empresas={fx.empresas}
-      obras={fx.obras}
-      funcionarios={fx.funcionarios}
-      gruposEquipe={[fx.grupo]}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      ordensServico={fx.ordensServico}
-      abastecimentos={fx.abastecimentos}
-      ticketsJazida={fx.ticketsJazida}
-      onNavigate={noop}
     />
   ),
   painel: (
