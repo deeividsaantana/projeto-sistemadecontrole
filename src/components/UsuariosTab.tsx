@@ -152,7 +152,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
           </header>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] text-left text-sm">
-              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
+              <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
                 <tr><th className="p-3">Usuário</th><th className="p-3">Perfil</th><th className="p-3">Status</th><th className="p-3">Ações</th></tr>
               </thead>
               <tbody>

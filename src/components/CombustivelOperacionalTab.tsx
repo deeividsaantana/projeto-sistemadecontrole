@@ -259,7 +259,7 @@ export default function CombustivelOperacionalTab({
     <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível"
       className={`w-full max-w-none flex-col ${telaCheia ? 'fixed inset-0 z-[90] block overflow-y-auto bg-[#f7f8f6] p-2 sm:p-3 xl:flex xl:overflow-hidden' : listaSomente ? 'flex h-[calc(100dvh-0.5rem)] overflow-hidden' : 'flex xl:h-[calc(100dvh-6.5rem)] xl:min-h-[34rem] xl:overflow-hidden'}`}>
       {!listaSomente && <div data-comb-reveal className="mb-1.5 shrink-0">
-        <PageHeader title="Combustível" className="mb-0 !items-center !gap-2 !p-0 [&_h1]:!text-lg [&_.renea-page-actions]:!flex-wrap" actions={<>
+        <PageHeader eyebrow="Frota" title="Combustível" className="mb-0 !items-center !gap-2 !p-0 [&_h1]:!text-lg [&_.renea-page-actions]:!flex-wrap" actions={<>
           <nav aria-label="Área de combustível" className="grid grid-cols-2 gap-1 rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200">
             {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? (view === 'novo' ? undefined : abrirNovo()) : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-bold transition ${view === id ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:bg-[#f7f8f6] hover:text-slate-900'} ${FOCO}`}><Icone className="size-4 shrink-0" aria-hidden="true" />{id === 'novo' && lancamento.emEdicao && view === 'novo' ? 'Corrigindo' : rotulo}</button>)}
           </nav>

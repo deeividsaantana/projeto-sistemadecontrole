@@ -136,7 +136,7 @@ export default function AdministracaoTab({
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><Link2 className="h-5 w-5" /></span>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Presença em campo</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-emerald-800">Presença em campo</p>
               <h2 id="presence-public-link-title" className="text-base font-black text-slate-900">Link oficial de registro</h2>
             </div>
           </div>
@@ -184,7 +184,7 @@ export default function AdministracaoTab({
           { label: 'Coleções vazias', valor: String(resumo.vazias) },
         ].map(item => (
           <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <p className="text-[11px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
         ))}
@@ -197,7 +197,7 @@ export default function AdministracaoTab({
           { label: 'Última sincronização', valor: ultimaSincronizacao || 'Ainda não sincronizou nesta sessão' },
         ].map(item => (
           <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1 block truncate text-sm font-bold text-slate-800">{item.valor}</strong>
           </div>
         ))}

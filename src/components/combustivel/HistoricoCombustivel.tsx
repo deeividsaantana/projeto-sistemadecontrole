@@ -354,7 +354,7 @@ export default function HistoricoCombustivel({
                     {COLUNAS_HISTORICO.map(item => (
                       <label key={item.id} className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-semibold ${item.fixa ? 'text-slate-400' : 'text-slate-700 hover:bg-[#f7f8f6]'}`}>
                         <input type="checkbox" checked={preferencias.colunas.includes(item.id)} disabled={item.fixa} onChange={() => alternarColuna(item.id)} className="size-4 accent-[#176b4d]" />
-                        {item.rotulo}{item.fixa && <span className="ml-auto text-[10px] font-bold uppercase">sempre</span>}
+                        {item.rotulo}{item.fixa && <span className="ml-auto text-[11px] font-bold uppercase">sempre</span>}
                       </label>
                     ))}
                   </div>
