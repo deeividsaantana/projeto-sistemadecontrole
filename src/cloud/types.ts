@@ -11,6 +11,8 @@ export interface CloudUploadResult {
   publishedBaseline?: CloudBaseline;
   /** Tabelas em que o envio ia apagar muita coisa sem explicação e a nuvem foi preservada. */
   tabelasProtegidas?: Array<{ tabela: string; devolvidos: number }>;
+  /** Outro aparelho publicou desde a versão conhecida: falta baixar a nuvem. */
+  nuvemTinhaNovidades?: boolean;
 }
 export interface CloudDownloadResult { data: CloudData | null; source: string; updatedAt: string; totalRecords: number; }
 
