@@ -16,9 +16,9 @@ import { TOM, numero } from './CartaoEquipamento';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, ROTULO } from '../cadastros/estilos';
 
 const RAPIDAS: ReadonlyArray<{ status: StatusControleEquipamentoDiario; rotulo: string; tecla: string; Icone: typeof PlayCircle; ligado: string }> = [
-  { status: 'Em operação', rotulo: 'Operando', tecla: 'O', Icone: PlayCircle, ligado: 'border-[#176b4d] bg-emerald-50 text-[#176b4d]' },
+  { status: 'Em operação', rotulo: 'Em operação', tecla: 'O', Icone: PlayCircle, ligado: 'border-[#176b4d] bg-emerald-50 text-[#176b4d]' },
   { status: 'Em manutenção', rotulo: 'Manutenção', tecla: 'M', Icone: Wrench, ligado: 'border-rose-500 bg-rose-50 text-rose-700' },
-  { status: 'Disponível', rotulo: 'Parado', tecla: 'P', Icone: PauseCircle, ligado: 'border-amber-400 bg-amber-50 text-amber-800' },
+  { status: 'Disponível', rotulo: 'À disposição', tecla: 'P', Icone: PauseCircle, ligado: 'border-amber-400 bg-amber-50 text-amber-800' },
 ];
 
 const EM_MANUTENCAO = new Set<StatusControleEquipamentoDiario>(['Em manutenção', 'Aguardando manutenção']);

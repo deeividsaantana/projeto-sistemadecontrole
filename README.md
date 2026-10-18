@@ -37,7 +37,6 @@ Consulte `docs/INSTRUCOES_CONTAS_FIREBASE.md` e `docs/ARQUITETURA_MIGRACAO_SUPAB
 ## Estrutura do repositório
 
 - `src/`: aplicação React (telas em `src/components`, regras puras em `src/utils`).
-- `src/next/`: novo frontend em construção, servido por `next.html`.
 - `preview/`: harness de telas sem login, usado pelos testes E2E.
 - `server/`: servidor Express do Render.
 - `api/`: handlers HTTP da API (links públicos, presença, cadastros), servidos em `/api/`.

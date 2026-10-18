@@ -13,7 +13,6 @@ const TELAS_AUDITADAS = [
   'consulta',
   'periodo',
   'combustivel',
-  'modo-campo',
   'notificacoes',
   'administracao',
   'permissoes',

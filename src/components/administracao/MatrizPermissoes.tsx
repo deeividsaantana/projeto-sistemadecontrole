@@ -1,16 +1,16 @@
 /**
- * Permissões: mostra a matriz efetiva de cada papel, exatamente a mesma função
- * que as telas usam para decidir o que exibir. É documentação viva da regra, não
- * um cadastro paralelo.
+ * Permissões, dentro da Administração: a matriz efetiva de cada perfil, pela
+ * mesma função que as telas usam para decidir o que exibir. É documentação viva
+ * da regra, não um cadastro paralelo.
  *
- * A tela deixa explícito que esconder botão não é segurança: quem recusa a
- * gravação é a regra do Firestore, pela claim de papel do usuário.
+ * Deixa explícito que esconder botão não é segurança: quem recusa a gravação é
+ * o servidor, pelo perfil gravado na conta.
  */
 import { useMemo, useState } from 'react';
 import { Check, KeyRound, Minus, ShieldAlert } from 'lucide-react';
-import { ALL_NAVIGATION_ITEMS, ROLE_ACCESS, type UserRole } from '../app/navigation/navigation';
-import { CAPACIDADES_CONHECIDAS, pode } from '../utils/permissoes';
-import { PageHeader, TableBody, TableHead, TableShell } from '../shared/ui';
+import { ALL_NAVIGATION_ITEMS, ROLE_ACCESS, type UserRole } from '../../app/navigation/navigation';
+import { CAPACIDADES_CONHECIDAS, pode } from '../../utils/permissoes';
+import { TableBody, TableHead, TableShell } from '../../shared/ui';
 
 const PAPEIS: UserRole[] = ['admin', 'gestor', 'operador', 'leitura'];
 
@@ -28,7 +28,7 @@ const ROTULO_CAPACIDADE: Record<string, string> = {
   excluir: 'Excluir',
 };
 
-export default function PermissoesTab() {
+export default function MatrizPermissoes() {
   const [papel, setPapel] = useState<UserRole>('gestor');
 
   const modulos = useMemo(
@@ -38,21 +38,18 @@ export default function PermissoesTab() {
   const semAcesso = ALL_NAVIGATION_ITEMS.length - modulos.length;
 
   return (
-    <div id="permissoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
-      <PageHeader
-        title="Permissões"
-        description="O que cada papel enxerga e pode fazer, pela mesma regra que as telas usam."
-      />
+    <div id="administracao-permissoes" className="space-y-4">
+      <p data-admin-reveal className="text-xs text-slate-500">O que cada perfil enxerga e pode fazer, pela mesma regra que as telas usam.</p>
 
-      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+      <div data-admin-reveal className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
         <p className="flex items-start gap-2 text-xs font-bold text-amber-900">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          Interface não é segurança: esconder um botão só evita erro de operação. Quem recusa a gravação é a regra do
-          Firestore, pela claim de papel da conta — mudar o papel exige alterar a claim, não a tela.
+          Esconder um botão só evita erro de operação. Quem recusa a gravação é o servidor, pelo perfil gravado na
+          conta. Para mudar o que alguém pode fazer, troque o perfil da pessoa em Acessos.
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
+      <div data-admin-reveal className="flex flex-wrap gap-1.5">
         {PAPEIS.map(item => (
           <button
             key={item}
@@ -68,7 +65,7 @@ export default function PermissoesTab() {
         ))}
       </div>
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-admin-reveal className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Telas visíveis', valor: String(modulos.length) },
           { label: 'Telas ocultas', valor: String(semAcesso) },
@@ -82,7 +79,7 @@ export default function PermissoesTab() {
         ))}
       </section>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-admin-reveal className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <TableShell minWidth={720}>
           <TableHead>
             <tr>
@@ -112,7 +109,7 @@ export default function PermissoesTab() {
         </TableShell>
       </div>
 
-      <p className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
+      <p className="flex items-center gap-2 text-[11px] text-slate-500">
         <KeyRound className="h-3.5 w-3.5" />
         Medição e orçamento só são aprovados pelo administrador; a operação registra o que acontece em campo, mas não
         decide medição, orçamento, contrato ou tratativa de não conformidade.

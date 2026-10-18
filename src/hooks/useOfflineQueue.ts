@@ -4,7 +4,7 @@ import { listOfflineCommands } from '../utils/offlineQueue';
 /**
  * Conta comandos na fila offline (IndexedDB + fallback localStorage).
  * Ouve 'renea-offline-queue-change' (disparado por enqueue/remove),
- * mudanças de conexão e um poll de 30s — mesmo padrão de ModoCampoTab.
+ * mudanças de conexão e um poll de 30s.
  */
 export function useOfflineQueueCount(pollMs = 30_000): number {
   const [count, setCount] = useState(0);

@@ -14,7 +14,6 @@ telas está em `docs/superpowers/CHECKLIST_REDESIGN_ABAS.md`.
 | `src/utils/` | Regras de domínio puras e testáveis. | JSX, `fetch`, SDK de banco. |
 | `src/app/` | Shell, navegação, rotas e providers do app. | Telas. |
 | `src/cloud/`, `src/supabase/`, `src/firebase*.ts` | Gateway de nuvem e implementações por provedor. | Lógica de tela. |
-| `src/next/` | Novo frontend em construção, servido por `next.html`. | Código do app atual. |
 | `api/` | Handlers HTTP da API, servidos em `/api/` pelo `server/`. | Código do navegador. |
 | `server/` | Servidor Express da Render. | Regras de negócio (ficam em `api/`). |
 | `functions/` | Empacotamento da API para o Cloud Functions. | Lógica própria. |
