@@ -46,9 +46,9 @@ export function TeamActivity({ view, onNavigate }: { view: DashboardGeneralViewM
 
   return <div ref={scope} className="dashboard-detail-grid">
     <section className="dashboard-detail-panel" aria-labelledby="dashboard-teams-title" data-dashboard-reveal>
-      <div className="dashboard-detail-panel__head"><div><p className="dashboard-detail-panel__kicker">Pessoas em campo</p><h2 id="dashboard-teams-title">Equipes e apontamentos</h2></div><button type="button" className="dashboard-detail-panel__open" onClick={() => onNavigate('Equipes')} aria-label="Abrir equipes"><ArrowUpRight size={18} /></button></div>
+      <div className="dashboard-detail-panel__head"><div><p className="dashboard-detail-panel__kicker">Pessoas em campo</p><h2 id="dashboard-teams-title">Equipes e apontamentos</h2></div><button type="button" className="dashboard-detail-panel__open" onClick={() => onNavigate('presenca')} aria-label="Abrir equipes"><ArrowUpRight size={18} /></button></div>
       <div className="dashboard-team-summary"><div><strong>{view.teams.withRecords}<span> / {view.teams.total}</span></strong><p>equipes com registro no período</p></div><div className="dashboard-team-summary__date"><span>Último envio</span><strong>{formatDate(lastDate)}</strong></div></div>
-      {view.teams.items.length ? <div className="dashboard-team-list">{equipesVisiveis.map((team, index) => <button key={team.id} type="button" className="dashboard-team" onClick={() => onNavigate('Equipes')} data-team-row data-team-extra={index >= PRIMEIRAS_EQUIPES || undefined}>
+      {view.teams.items.length ? <div className="dashboard-team-list">{equipesVisiveis.map((team, index) => <button key={team.id} type="button" className="dashboard-team" onClick={() => onNavigate('presenca')} data-team-row data-team-extra={index >= PRIMEIRAS_EQUIPES || undefined}>
         <span className="dashboard-team__badge"><Users size={17} /></span>
         <span className="dashboard-team__main"><span className="dashboard-team__top"><strong>{team.name}</strong><small>{formatDate(team.lastDate)}</small></span><span className="dashboard-team__front">{team.front}</span><span className="dashboard-team__bar"><span className="dashboard-team__bar-fill" style={{ width: `${team.reported / maxRecords * 100}%` }} /></span></span>
         <span className="dashboard-team__count"><strong>{team.reported ? team.present : '—'}</strong><small>{team.reported ? 'presenças' : 'sem registro'}</small></span>
@@ -63,9 +63,9 @@ export function TeamActivity({ view, onNavigate }: { view: DashboardGeneralViewM
       <div className="dashboard-detail-panel__head"><div><p className="dashboard-detail-panel__kicker">Resumo do período</p><h2 id="dashboard-activity-title">Movimento da operação</h2></div><HardHat size={20} aria-hidden="true" /></div>
       <p className="dashboard-detail-panel__intro">Os valores abaixo vêm dos lançamentos existentes. Abra um módulo para conferir os detalhes.</p>
       <div className="dashboard-activity-list">
-        <ActivityLink title="Produção" measure={view.production} target="Produção" onNavigate={onNavigate} icon={HardHat} />
-        <ActivityLink title="Combustível" measure={view.fuel} target="Combustível" onNavigate={onNavigate} icon={Fuel} />
-        <ActivityLink title="Presenças" measure={view.presence} target="Presença" onNavigate={onNavigate} icon={Users} />
+        <ActivityLink title="Produção" measure={view.production} target="producao" onNavigate={onNavigate} icon={HardHat} />
+        <ActivityLink title="Combustível" measure={view.fuel} target="lancamentos" onNavigate={onNavigate} icon={Fuel} />
+        <ActivityLink title="Presenças" measure={view.presence} target="presenca" onNavigate={onNavigate} icon={Users} />
       </div>
       <p className="dashboard-detail-panel__note">Sem lançamento significa que não há registro para o recorte selecionado.</p>
     </section>

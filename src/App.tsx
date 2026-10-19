@@ -206,8 +206,8 @@ import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
   SIDEBAR_NAVIGATION_GROUPS,
-  MODULE_REDIRECTS,
   ROLE_ACCESS,
+  destinoDaAba,
   roleFromMembership,
   type UserRole,
 } from './app/navigation/navigation';
@@ -261,6 +261,7 @@ import {
   X,
   LogOut,
   FolderPlus,
+  Search,
 } from 'lucide-react';
 
 import { AppNotification } from './types';
@@ -490,6 +491,32 @@ export default function App() {
   const combustivelUrlView = getCombustivelViewFromUrl();
   const combustivelListaSomente = isCombustivelListOnlyUrl();
   const combustivelViewInicial = combustivelListaSomente ? 'historico' : combustivelUrlView;
+  // A aba fica no endereço (?tab=): o F5 reabre a mesma tela e o voltar do
+  // navegador ou do Android volta para a tela anterior em vez de sair do app
+  // (M9). Roda antes do efeito do Combustível abaixo, que lê o mesmo endereço.
+  const abaJaNoEndereco = useRef(false);
+  useEffect(() => {
+    if (!isLoggedIn || isTicketLinkUrl() || getPresenceTokenFromUrl()) return;
+    const url = new URL(window.location.href);
+    const anterior = url.searchParams.get('tab');
+    if (activeTab !== 'lancamentos') {
+      url.searchParams.delete('combustivel');
+      url.searchParams.delete('lista');
+    }
+    url.searchParams.delete('aba');
+    url.searchParams.set('tab', activeTab);
+    const primeira = !abaJaNoEndereco.current;
+    abaJaNoEndereco.current = true;
+    if (url.href === window.location.href) return;
+    // A primeira tela e a troca forçada pelo perfil não viram um passo do voltar.
+    const substituir = primeira || !anterior || !ROLE_ACCESS[currentUserRole].includes(anterior);
+    window.history[substituir ? 'replaceState' : 'pushState'](null, '', url);
+  }, [activeTab, isLoggedIn, currentUserRole]);
+  useEffect(() => {
+    const voltar = () => setActiveTab(getInitialTabFromUrl());
+    window.addEventListener('popstate', voltar);
+    return () => window.removeEventListener('popstate', voltar);
+  }, []);
   useEffect(() => {
     const targetTab = getInitialTabFromUrl();
     if (targetTab !== activeTab && (getCombustivelViewFromUrl() || isCombustivelListOnlyUrl())) {
@@ -504,6 +531,7 @@ export default function App() {
   // o controle é renderizado na barra superior, ao lado do estado da nuvem.
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [menuSearch, setMenuSearch] = useState<string>('');
+  const [pesquisaAberta, setPesquisaAberta] = useState(false);
   // Preferência de notificação é do dispositivo: fica no navegador e não sobe
   // para a nuvem, senão silenciar no celular apagaria o alerta do gestor.
   const [preferenciasNotificacao] = useState<PreferenciasNotificacao>(
@@ -646,7 +674,10 @@ export default function App() {
   }, [activeTab, isLoggedIn, currentUser, externalTicketLink, externalPresenceToken]);
 
   useEffect(() => {
-    if (isLoggedIn && !ROLE_ACCESS[currentUserRole].includes(activeTab)) setActiveTab('dashboard');
+    // Endereço antigo guardado (F5, favorito) abre a tela onde o dado mora hoje.
+    if (isLoggedIn && !ROLE_ACCESS[currentUserRole].includes(activeTab)) {
+      setActiveTab(destinoDaAba(activeTab, ROLE_ACCESS[currentUserRole]) || 'dashboard');
+    }
   }, [activeTab, currentUserRole, isLoggedIn]);
 
   // Hydrate states from localstorage on mount
@@ -3791,9 +3822,12 @@ export default function App() {
     ocorrencias,
   }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentosVigentes, ocorrencias]);
 
+  // Alerta sem tela para resolver (FVS, documentos e outras que saíram do
+  // app) ou de tela que o perfil não abre fica fora do sino (M6, M7).
   const alertasDoSino = useMemo(
-    () => alertasVisiveis(alertasSistema, preferenciasNotificacao),
-    [alertasSistema, preferenciasNotificacao],
+    () => alertasVisiveis(alertasSistema, preferenciasNotificacao)
+      .filter(alerta => destinoDaAba(alerta.tab, ROLE_ACCESS[currentUserRole]) !== null),
+    [alertasSistema, preferenciasNotificacao, currentUserRole],
   );
 
   const handleSavePlanejamento = (plano: PlanejamentoItem, isNew: boolean) => {
@@ -4231,24 +4265,19 @@ export default function App() {
     }))
     .filter(group => group.items.length > 0);
 
+  const podeAbrir = useCallback(
+    (tab: string) => destinoDaAba(tab, ROLE_ACCESS[currentUserRole]) !== null,
+    [currentUserRole],
+  );
+
   const navigateTo = (tab: string, closeMobile = false) => {
-    // Check if it's a primary module (top-level tab)
-    let targetTab = tab;
     setRelatorioPedido('');
+    // A busca do menu não fica filtrada depois de escolher a tela (B6).
+    setMenuSearch('');
     if (tab === 'tickets-jazida') setMateriaisPedido(atual => ({ secao: 'viagens', vez: atual.vez + 1 }));
     else if (tab === 'materiais') setMateriaisPedido(atual => (atual.secao ? { secao: undefined, vez: atual.vez } : atual));
-    if (!allowedTabs.includes(tab)) {
-      // Endereço antigo abre a tela onde aquele dado mora hoje.
-      const parentTab = MODULE_REDIRECTS[tab];
-      if (parentTab && allowedTabs.includes(parentTab)) {
-        // Route to parent tab instead of defaulting to dashboard
-        targetTab = parentTab;
-      } else {
-        // Unknown tab - default to dashboard
-        targetTab = 'dashboard';
-      }
-    }
-    setActiveTab(targetTab);
+    // Endereço antigo abre a tela onde aquele dado mora hoje.
+    setActiveTab(destinoDaAba(tab, allowedTabs) || 'dashboard');
     if (closeMobile) setIsMobileMenuOpen(false);
     window.requestAnimationFrame(() => {
       document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
@@ -4308,15 +4337,28 @@ export default function App() {
         )}
 
         <div className="flex items-center gap-1">
+          {/* No celular não há atalho de teclado: a lupa abre a mesma pesquisa (M8). */}
           <button
             type="button"
-            onClick={() => navigateTo('cadastros', true)}
-            title="Abrir cadastros auxiliares"
-            aria-label="Abrir cadastros auxiliares"
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200'}`}
+            onClick={() => setPesquisaAberta(true)}
+            title="Pesquisar em todo o sistema"
+            aria-label="Pesquisar em todo o sistema"
+            className="cursor-pointer rounded-xl p-2.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800"
           >
-            <FolderPlus className="w-5 h-5" />
+            <Search className="w-5 h-5" />
           </button>
+
+          {allowedTabs.includes('cadastros') && (
+            <button
+              type="button"
+              onClick={() => navigateTo('cadastros', true)}
+              title="Abrir cadastros auxiliares"
+              aria-label="Abrir cadastros auxiliares"
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200'}`}
+            >
+              <FolderPlus className="w-5 h-5" />
+            </button>
+          )}
 
           {/* Notification Bell Mobile: antes só alternava um estado que só o
               painel do cabeçalho desktop (oculto em telas menores que 1024px)
@@ -4630,6 +4672,7 @@ export default function App() {
                 ticketsJazida={ticketsJazidaAtivos}
                 checklists={checklists}
                 onNavigate={navigateTo}
+                podeAbrir={podeAbrir}
                 responsavel={activeUserName}
                 onAlterarSituacao={(proximo, descricao) => {
                   handleSaveFuncionario(proximo, false);
@@ -4665,9 +4708,8 @@ export default function App() {
                 onImport={handleImportControleEquipamentosDiario}
                 onApplyCadastroSge={handleAplicarCadastroSge}
                 onDeleteMany={podeExcluirLancamento ? ids => handleDeleteControleEquipamentosDiario(ids, true) : undefined}
-                onOpenMaintenance={() => navigateTo('manutencao')}
-                onOpenEmployeeRegistration={() => navigateTo('cadastros')}
-                onOpenEquipmentRegistration={() => navigateTo('cadastros')}
+                onOpenMaintenance={podeAbrir('manutencao') ? () => navigateTo('manutencao') : undefined}
+                onOpenEquipmentRegistration={podeAbrir('cadastros') ? () => navigateTo('cadastros') : undefined}
                 onSaveOperationalDriver={handleSaveOperationalDriver}
                 onAddOperationalDrivers={handleAddOperationalDrivers}
                 onDeleteOperationalDriver={podeExcluirCadastro ? handleDeleteOperationalDriver : undefined}
@@ -4692,6 +4734,7 @@ export default function App() {
                     podeRemover={pode(currentUserRole, 'cadastros', 'excluir')}
                     onRemoverEquipamentos={handleRemoverEquipamentosDoQuadro}
                     onNavigate={navigateTo}
+                    podeAbrir={podeAbrir}
                     dia={dia}
                     onAbrirSituacao={verSituacao}
                   />
@@ -4757,6 +4800,9 @@ export default function App() {
           documentos,
           ocorrencias,
         }}
+        aberto={pesquisaAberta}
+        onAbertoChange={setPesquisaAberta}
+        podeAbrir={podeAbrir}
         onNavigate={navigateTo}
       />
       <ToastViewport toasts={activeToasts} />

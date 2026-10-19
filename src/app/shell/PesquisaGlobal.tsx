@@ -2,14 +2,19 @@
  * Pesquisa global (atalho "/" ou Ctrl+K). Trabalha sobre o que já está em
  * memória — nenhuma consulta nova ao banco — e leva até a tela de origem, sem
  * exibir uma cópia do registro. O atalho não dispara enquanto o foco está em
- * campo de texto, para não atrapalhar quem está digitando.
+ * campo de texto, para não atrapalhar quem está digitando. No celular, que não
+ * tem teclado físico, abre pelo botão de lupa do topo. Só aparece resultado de
+ * tela que o perfil abre (M8).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CornerDownLeft, Search } from 'lucide-react';
+import { CornerDownLeft, Search, X } from 'lucide-react';
 import { buscarGlobal, type FontesBusca } from '../../utils/buscaGlobal';
 
 interface PesquisaGlobalProps {
   fontes: FontesBusca;
+  aberto: boolean;
+  onAbertoChange: (aberto: boolean) => void;
+  podeAbrir: (tab: string) => boolean;
   onNavigate: (tab: string) => void;
 }
 
@@ -20,13 +25,15 @@ const editando = (alvo: EventTarget | null) => {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || elemento.isContentEditable;
 };
 
-export function PesquisaGlobal({ fontes, onNavigate }: PesquisaGlobalProps) {
-  const [aberto, setAberto] = useState(false);
+export function PesquisaGlobal({ fontes, aberto, onAbertoChange: setAberto, podeAbrir, onNavigate }: PesquisaGlobalProps) {
   const [termo, setTermo] = useState('');
   const [indice, setIndice] = useState(0);
   const campoRef = useRef<HTMLInputElement>(null);
 
-  const resultados = useMemo(() => aberto ? buscarGlobal(termo, fontes) : [], [aberto, termo, fontes]);
+  const resultados = useMemo(
+    () => aberto ? buscarGlobal(termo, fontes).filter(resultado => podeAbrir(resultado.tab)) : [],
+    [aberto, termo, fontes, podeAbrir],
+  );
 
   useEffect(() => {
     const abrirPorAtalho = (evento: KeyboardEvent) => {
@@ -35,16 +42,17 @@ export function PesquisaGlobal({ fontes, onNavigate }: PesquisaGlobalProps) {
       if (atalhoBarra || atalhoK) {
         evento.preventDefault();
         setAberto(true);
-        setTermo('');
-        setIndice(0);
       }
     };
     document.addEventListener('keydown', abrirPorAtalho);
     return () => document.removeEventListener('keydown', abrirPorAtalho);
-  }, []);
+  }, [setAberto]);
 
   useEffect(() => {
-    if (aberto) campoRef.current?.focus();
+    if (!aberto) return;
+    setTermo('');
+    setIndice(0);
+    campoRef.current?.focus();
   }, [aberto]);
 
   if (!aberto) return null;
@@ -85,10 +93,12 @@ export function PesquisaGlobal({ fontes, onNavigate }: PesquisaGlobalProps) {
             value={termo}
             onChange={event => { setTermo(event.target.value); setIndice(0); }}
             onKeyDown={aoTeclar}
-            placeholder="Buscar equipamento, colaborador, OS, FVS, NC, documento…"
+            placeholder="Buscar máquina, colaborador, OS, material…"
             className="min-h-12 w-full bg-transparent text-sm text-slate-800 outline-none"
           />
-          <kbd className="shrink-0 rounded border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">ESC</kbd>
+          <button type="button" onClick={() => setAberto(false)} aria-label="Fechar pesquisa" className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+            <X className="h-4 w-4" />
+          </button>
         </label>
 
         <div className="max-h-80 overflow-y-auto">
