@@ -203,3 +203,4 @@ import './leituraNota.test';
 import './linkDeCampoFila.test';
 import './nuvemNaoPerdeNovidade.test';
 import './ticketsUmaTabela.test';
+import './historicoVersoesNuvem.test';
