@@ -114,7 +114,8 @@ interface ControlePresencaTabProps {
   presencasLink: PresencaApontamento[];
   historicoPresencas: HistoricoPresenca[];
   onSaveGrupoEquipe: (grupo: GrupoEquipe, isNew: boolean) => void;
-  onDeleteGrupoEquipe: (id: string) => void;
+  /** Sem ele, não aparece Excluir equipe: só o administrador exclui cadastro. */
+  onDeleteGrupoEquipe?: (id: string) => void;
   onUpdatePresencaLink: (id: string, status: PresencaStatus, observacao: string, motivo: string) => void;
   /** Lançar a presença de uma equipe que não usou o link. */
   onLancarPresencaManual?: (
@@ -1471,7 +1472,7 @@ export default function ControlePresencaTab({
                   <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-slate-500">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:border-emerald-700 hover:text-emerald-800" aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" /></button></div>
                   <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><strong className="text-2xl font-black text-slate-900">{members.length}</strong><span className="ml-2 text-xs text-slate-500">colaboradores</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="text-sm font-black text-slate-900">{group.linkAtivo ? 'Disponível' : 'Pausado'}</strong><span className="mt-1 block text-xs text-slate-500">link da equipe</span></div></div>
                   {group.token && <div className="mt-4 flex gap-2"><button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} flex-1`}><ClipboardCopy className="h-4 w-4" /> Copiar</button><button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} flex-1`}><MessageCircle className="h-4 w-4" /> Enviar</button></div>}
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4"><button type="button" onClick={() => setEquipeExcluindo(group)} className="inline-flex min-h-9 items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900"><Trash2 className="h-3.5 w-3.5" /> Excluir</button><button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950"><RotateCcw className="h-3.5 w-3.5" /> Renovar token</button></div>
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">{onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className="inline-flex min-h-9 items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900"><Trash2 className="h-3.5 w-3.5" /> Excluir</button>}<button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className="ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950"><RotateCcw className="h-3.5 w-3.5" /> Renovar token</button></div>
                 </article>
               );
             })}
@@ -1661,7 +1662,7 @@ export default function ControlePresencaTab({
         title={`Excluir ${equipeExcluindo?.nome || 'a equipe'}?`}
         description="O link de presença desta equipe para de funcionar. A equipe vai para a Lixeira de Cadastros, de onde o administrador pode devolver com o mesmo link."
         confirmLabel="Excluir equipe"
-        onConfirm={() => { if (equipeExcluindo) onDeleteGrupoEquipe(equipeExcluindo.id); setFeedback(`Equipe ${equipeExcluindo?.nome || ''} excluída. Ela fica na Lixeira de Cadastros.`); setEquipeExcluindo(null); }}
+        onConfirm={() => { if (equipeExcluindo) onDeleteGrupoEquipe?.(equipeExcluindo.id); setFeedback(`Equipe ${equipeExcluindo?.nome || ''} excluída. Ela fica na Lixeira de Cadastros.`); setEquipeExcluindo(null); }}
         onCancel={() => setEquipeExcluindo(null)}
       />
       <ConfirmDialog

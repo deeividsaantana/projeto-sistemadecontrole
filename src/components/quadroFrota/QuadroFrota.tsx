@@ -58,7 +58,8 @@ interface Props {
   usuario: string;
   onSave: (registro: ControleEquipamentoDiario, novo: boolean) => void;
   onSaveMany: (itens: Array<{ registro: ControleEquipamentoDiario; novo: boolean }>) => void;
-  onDeleteMany: (ids: string[]) => void;
+  /** Sem ele, não aparece Excluir lançamento: só o administrador exclui (A7). */
+  onDeleteMany?: (ids: string[]) => void;
   /** Mesma permissão de excluir em Cadastros; quem não tem não desmobiliza pelo quadro. */
   podeRemover?: boolean;
   /** Desmobiliza as máquinas (saem do quadro pra sempre) e apaga o lançamento de hoje, se houver. */
@@ -243,6 +244,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     setModoSelecao(false);
   };
   const excluirSelecionados = () => {
+    if (!onDeleteMany) return;
     onDeleteMany(selecionadosExcluiveis.map(cartao => cartao.registroId!));
     setAviso(`${selecionadosExcluiveis.length} lançamento(s) do dia excluído(s). As máquinas continuam no cadastro.`);
     setConfirmarExclusaoSelecao(false);
@@ -544,10 +546,10 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => setConfirmarExclusaoSelecao(true)} disabled={selecionadosExcluiveis.length === 0} className={`${podeRemover && onRemoverEquipamentos ? '' : 'ml-auto'} inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="quadro-excluir-sel">
+                {onDeleteMany && <button type="button" onClick={() => setConfirmarExclusaoSelecao(true)} disabled={selecionadosExcluiveis.length === 0} className={`${podeRemover && onRemoverEquipamentos ? '' : 'ml-auto'} inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="quadro-excluir-sel">
                   <Trash2 className="size-4" aria-hidden="true" />
                   Excluir lançamento{selecionadosExcluiveis.length ? ` (${selecionadosExcluiveis.length})` : ''}
-                </button>
+                </button>}
                 {podeRemover && onRemoverEquipamentos && (
                   <button type="button" onClick={() => setRemocaoPendente(cartoesSelecionados)} disabled={cartoesSelecionados.length === 0} className={`ml-auto inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="quadro-remover-sel">
                     <Trash2 className="size-4" aria-hidden="true" />

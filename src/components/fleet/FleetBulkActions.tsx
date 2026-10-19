@@ -7,7 +7,8 @@ import { BOTAO_PERIGO_LEVE, BOTAO_SECUNDARIO, CAMPO, FOCO } from '../cadastros/e
 interface Props {
   count: number;
   onClear: () => void;
-  onDelete: () => void;
+  /** Sem ele, não aparece Excluir. */
+  onDelete?: () => void;
   onExport: () => void;
   onChangeStatus: (status: FleetOperationalStatus) => void;
 }
@@ -50,7 +51,7 @@ export default function FleetBulkActions({
         {FLEET_STATUS_DEFINITIONS.filter(item => item.key !== 'unclassified' && !rapidas.has(item.value)).map(item => <option key={item.value}>{item.value}</option>)}
       </select>
       <button type="button" onClick={onExport} className={`${BOTAO_SECUNDARIO} px-3`}><Download className="size-4" aria-hidden="true" />Exportar</button>
-      <button type="button" onClick={onDelete} className={`${BOTAO_PERIGO_LEVE} px-3`}><Trash2 className="size-4" aria-hidden="true" />Excluir</button>
+      {onDelete && <button type="button" onClick={onDelete} className={`${BOTAO_PERIGO_LEVE} px-3`}><Trash2 className="size-4" aria-hidden="true" />Excluir</button>}
       <button type="button" onClick={onClear} className={`grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`} aria-label="Tirar seleção"><X className="size-4" aria-hidden="true" /></button>
     </aside>
   );

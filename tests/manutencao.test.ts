@@ -212,6 +212,6 @@ test('a tela de manutenção está ligada aos handlers do App', () => {
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   assert.match(app, /activeTab === 'manutencao'/);
   assert.match(app, /onSave=\{handleSaveOrdemServico\}/);
-  assert.match(app, /onDelete=\{handleDeleteOrdemServico\}/);
+  assert.match(app, /onDelete=\{podeExcluirLancamento \? handleDeleteOrdemServico : undefined\}/);
   assert.match(app, /setOrdensServico\(updated\)/);
 });

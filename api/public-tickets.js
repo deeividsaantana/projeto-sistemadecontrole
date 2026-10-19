@@ -8,7 +8,7 @@ import {
   jsonResponse,
   parseJsonBody,
   requestIpHash,
-  requireStaffUser,
+  requireManagerUser,
   serverTimestamp,
 } from './_shared/supabase-admin.js';
 import {
@@ -249,7 +249,7 @@ export const handler = async event => {
     const method = String(event.httpMethod || 'GET').toUpperCase();
     const action = String(event.queryStringParameters?.action || '');
     if (method === 'GET' && action === 'link') {
-      await requireStaffUser(event);
+      await requireManagerUser(event);
       return jsonResponse(200, {
         success: true,
         data: { path: buildPublicTicketPath(PUBLIC_TICKET_ACCESS_TOKEN) },

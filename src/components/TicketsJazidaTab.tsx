@@ -71,8 +71,9 @@ interface TicketsJazidaTabProps {
   /** Quem fica registrado na importação com prévia/lote/lineage. */
   responsavel?: string;
   onSaveTicket: (item: TicketJazida, isNew: boolean) => void;
-  onDeleteTicket: (id: string) => void;
-  onDeleteTickets: (ids: string[]) => void;
+  /** Sem eles, a tela não mostra Excluir: só o administrador exclui (A7). */
+  onDeleteTicket?: (id: string) => void;
+  onDeleteTickets?: (ids: string[]) => void;
   onImportTickets: (items: TicketJazida[]) => void;
   onReserveTicketNumber: () => Promise<string>;
   onReserveTicketNumbers: (count: number) => Promise<string[]>;
@@ -2335,7 +2336,7 @@ export default function TicketsJazidaTab({
       <div className="bg-white border border-[#e2e8e4] rounded-lg overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] bg-white px-5 py-3 text-xs">
           <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredTickets.length > 0 && filteredTickets.every(item => selectedTicketIds.includes(item.id))} onChange={event => setSelectedTicketIds(event.target.checked ? filteredTickets.map(item => item.id) : [])} /> Selecionar visíveis ({selectedTicketIds.length})</label>
-          <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>
+          {onDeleteTickets && <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
@@ -2409,7 +2410,7 @@ export default function TicketsJazidaTab({
                           )}
                           <button onClick={() => handleOpenEdit(t)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 font-bold text-emerald-700 hover:bg-emerald-500/20 cursor-pointer"><Edit className="w-3.5 h-3.5" />{(t.statusFluxo || 'Enviado') === 'Rascunho' ? 'Continuar' : 'Editar'}</button>
                           {(t.statusFluxo || 'Enviado') === 'Enviado' && <button onClick={() => handleMoveTicketToDraft(t)} title="Retirar da conferência de devolvidos e continuar editando depois" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 font-bold text-amber-700 hover:bg-amber-500/20 cursor-pointer"><RotateCcw className="w-3.5 h-3.5" />Rascunho</button>}
-                          <button onClick={() => setDeleteConfirmId(t.id)} title="Excluir ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          {onDeleteTicket && <button onClick={() => setDeleteConfirmId(t.id)} title="Excluir ticket" className="p-1.5 bg-[#f7f9f8] text-[#3d4a44] hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
                         </div>
                       </td>
                     </tr>
@@ -2612,7 +2613,7 @@ export default function TicketsJazidaTab({
           <div className="bg-white border border-rose-500/30 rounded-lg p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
             <p className="text-xs text-[#3d4a44]">Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.</p>
             <div className="flex gap-2.5">
-              <button onClick={() => { onDeleteTicket(deleteConfirmId); setDeleteConfirmId(null); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-[#14231e] font-bold text-xs rounded-xl cursor-pointer">Excluir</button>
+              <button onClick={() => { onDeleteTicket?.(deleteConfirmId); setDeleteConfirmId(null); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-[#14231e] font-bold text-xs rounded-xl cursor-pointer">Excluir</button>
               <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 bg-[#f7f9f8] hover:bg-[#f2f5f3] text-[#3d4a44] font-bold text-xs rounded-xl cursor-pointer">Cancelar</button>
             </div>
           </div>
@@ -2624,7 +2625,7 @@ export default function TicketsJazidaTab({
         title={`Inativar ${selectedTicketIds.length} ticket(s)?`}
         description="Os tickets saem das telas e dos totais, mas continuam guardados e podem voltar."
         confirmLabel="Inativar"
-        onConfirm={() => { onDeleteTickets(selectedTicketIds); setSelectedTicketIds([]); setConfirmandoInativacao(false); }}
+        onConfirm={() => { onDeleteTickets?.(selectedTicketIds); setSelectedTicketIds([]); setConfirmandoInativacao(false); }}
         onCancel={() => setConfirmandoInativacao(false)}
       />
 

@@ -44,7 +44,8 @@ interface Props {
   onExportarPdf: (dados: FiltrosExportacao) => void;
   onEditar: (item: Abastecimento) => void;
   onRepetir: (item: Abastecimento) => void;
-  onExcluir: (itens: Abastecimento[]) => void;
+  /** Sem ele, quem não pode excluir não vê o botão. */
+  onExcluir?: (itens: Abastecimento[]) => void;
 }
 
 interface Filtros {
@@ -418,7 +419,7 @@ export default function HistoricoCombustivel({
             <span>{selecionadosLista.length} selecionado(s) · {litrosTexto(selecionadosLista.reduce((soma, item) => soma + Number(item.quantidadeLitros || 0), 0))}</span>
             <span className="ml-auto flex gap-2">
               <button type="button" onClick={() => setSelecionados(new Set())} className={`inline-flex min-h-9 items-center gap-1 rounded-lg px-3 text-white/90 hover:bg-white/10 ${FOCO}`}><X className="size-4" aria-hidden="true" />Desmarcar</button>
-              <button type="button" onClick={() => onExcluir(selecionadosLista)} className={`inline-flex min-h-9 items-center gap-1 rounded-lg bg-white px-3 font-bold text-rose-700 hover:bg-rose-50 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" />Excluir</button>
+              {onExcluir && <button type="button" onClick={() => onExcluir(selecionadosLista)} className={`inline-flex min-h-9 items-center gap-1 rounded-lg bg-white px-3 font-bold text-rose-700 hover:bg-rose-50 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" />Excluir</button>}
             </span>
           </div>
         )}
@@ -574,8 +575,8 @@ export default function HistoricoCombustivel({
           </div>
           <footer className="grid grid-cols-2 gap-2 border-t border-slate-100 p-3">
             <button type="button" onClick={() => onEditar(aberto)} className={`${BOTAO_PRIMARIO} col-span-2`} data-testid="historico-editar"><Pencil className="size-4" aria-hidden="true" />Editar</button>
-            <button type="button" onClick={() => onRepetir(aberto)} className={`${BOTAO_SECUNDARIO} whitespace-nowrap px-2`} title="Abre um lançamento novo já com a máquina e o comboio"><Copy className="size-4" aria-hidden="true" />Lançar outro</button>
-            <button type="button" onClick={() => onExcluir([aberto])} className={BOTAO_PERIGO_LEVE}><Trash2 className="size-4" aria-hidden="true" />Excluir</button>
+            <button type="button" onClick={() => onRepetir(aberto)} className={`${BOTAO_SECUNDARIO} whitespace-nowrap px-2 ${onExcluir ? '' : 'col-span-2'}`} title="Abre um lançamento novo já com a máquina e o comboio"><Copy className="size-4" aria-hidden="true" />Lançar outro</button>
+            {onExcluir && <button type="button" onClick={() => onExcluir([aberto])} className={BOTAO_PERIGO_LEVE}><Trash2 className="size-4" aria-hidden="true" />Excluir</button>}
           </footer>
         </aside>
       )}

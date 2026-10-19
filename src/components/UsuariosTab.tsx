@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { Plus, RefreshCw, UserRound } from 'lucide-react';
-import { Button, EmptyState, IconButton, PageHeader, TextInput } from '../shared/ui';
+import { Button, ConfirmDialog, EmptyState, IconButton, PageHeader, TextInput } from '../shared/ui';
 import {
   createManagedUser,
   loadManagedUsers,
@@ -11,12 +11,32 @@ import {
   type ManagedUserRole,
 } from '../services/masterDataApi';
 
-const roles: Array<{ value: ManagedUserRole; label: string }> = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'gestor', label: 'Gestor' },
-  { value: 'operador', label: 'Operador' },
-  { value: 'leitura', label: 'Visualização' },
+const roles: Array<{ value: ManagedUserRole; label: string; faz: string }> = [
+  { value: 'admin', label: 'Administrador', faz: 'Pode tudo, inclusive excluir e cuidar dos usuários.' },
+  { value: 'gestor', label: 'Gestor', faz: 'Lança, aprova e zera o dia de presença, mas não exclui.' },
+  { value: 'operador', label: 'Operador', faz: 'Lança em campo, mas não aprova nem exclui.' },
+  { value: 'leitura', label: 'Visualização', faz: 'Só consulta, não lança nada.' },
 ];
+
+type Mudanca = { user: ManagedUser; changes: Partial<Pick<ManagedUser, 'role' | 'active'>> };
+
+/** Texto da confirmação: o que muda para a pessoa, em palavras de obra (M12). */
+const textoDaMudanca = ({ user, changes }: Mudanca) => {
+  if (changes.active === false) {
+    return {
+      titulo: `Inativar ${user.fullName}?`,
+      descricao: 'A pessoa não consegue mais entrar no sistema. O que ela lançou continua. Para devolver o acesso, toque em Reativar.',
+      botao: 'Inativar',
+    };
+  }
+  const novo = roles.find(role => role.value === changes.role);
+  const deixaDeSerAdmin = user.role === 'admin' && changes.role !== 'admin' ? ' Perde o perfil de administrador.' : '';
+  return {
+    titulo: `Mudar ${user.fullName} para ${novo?.label || changes.role}?`,
+    descricao: `${novo?.faz || ''}${deixaDeSerAdmin}`,
+    botao: 'Mudar perfil',
+  };
+};
 
 interface UsuariosTabProps {
   /** Dentro da Administração o cabeçalho próprio sai: quem manda no título da
@@ -32,6 +52,8 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [erroLista, setErroLista] = useState('');
+  const [pendente, setPendente] = useState<Mudanca | null>(null);
   const [form, setForm] = useState({ fullName: '', email: '', password: '', role: 'operador' as ManagedUserRole });
 
   const refresh = async () => {
@@ -69,7 +91,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
 
   const updateUser = async (user: ManagedUser, changes: Partial<Pick<ManagedUser, 'role' | 'active'>>) => {
     setSaving(true);
-    setError('');
+    setErroLista('');
     try {
       await updateManagedUser({
         uid: user.userId,
@@ -78,11 +100,13 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
       });
       await refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Não foi possível atualizar usuário.');
+      setErroLista(caught instanceof Error ? caught.message : 'Não foi possível atualizar usuário.');
     } finally {
       setSaving(false);
+      setPendente(null);
     }
   };
+  const confirmacao = pendente ? textoDaMudanca(pendente) : null;
 
   const selectClass = 'h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100';
   const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-500';
@@ -150,6 +174,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
               className={loading ? '[&>svg]:animate-spin' : undefined}
             />
           </header>
+          {erroLista ? <p role="alert" className="border-b border-rose-100 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700" data-testid="usuarios-erro">{erroLista}</p> : null}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] text-left text-sm">
               <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
@@ -166,7 +191,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
                       <select
                         value={user.role}
                         disabled={saving}
-                        onChange={event => void updateUser(user, { role: event.target.value as ManagedUserRole })}
+                        onChange={event => setPendente({ user, changes: { role: event.target.value as ManagedUserRole } })}
                         className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-medium text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100"
                         aria-label={`Perfil de ${user.fullName}`}
                       >
@@ -183,7 +208,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
                         size="sm"
                         variant={user.active ? 'subtle' : 'secondary'}
                         disabled={saving}
-                        onClick={() => void updateUser(user, { active: !user.active })}
+                        onClick={() => (user.active ? setPendente({ user, changes: { active: false } }) : void updateUser(user, { active: true }))}
                       >
                         {user.active ? 'Inativar' : 'Reativar'}
                       </Button>
@@ -198,6 +223,16 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
             : null}
         </article>
       </div>
+      <ConfirmDialog
+        open={Boolean(confirmacao)}
+        tone="warning"
+        busy={saving}
+        title={confirmacao?.titulo || ''}
+        description={confirmacao?.descricao || ''}
+        confirmLabel={confirmacao?.botao}
+        onConfirm={() => { if (pendente) void updateUser(pendente.user, pendente.changes); }}
+        onCancel={() => setPendente(null)}
+      />
     </section>
   );
 }

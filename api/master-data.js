@@ -12,11 +12,13 @@ import {
   sanitizeSearchTerm,
 } from './_shared/master-data-contract.js';
 import {
+  assertKeepsActiveAdmin,
   cleanString,
   functionErrorResponse,
   getAdminAuth,
   getAdminDb,
   jsonResponse,
+  listOrganizationAdminIds,
   parseJsonBody,
   requireStaffUser,
   serverTimestamp,
@@ -261,6 +263,10 @@ const updateUser = async (body, context) => {
   const role = sanitizeUserRole(body.role);
   const active = body.active !== false;
   const adminAuth = getAdminAuth();
+  if (role !== 'admin' || !active) {
+    const adminIds = await listOrganizationAdminIds(context.organizationId);
+    await assertKeepsActiveAdmin({ uid, role, active, adminIds, getUser: id => adminAuth.getUser(id) });
+  }
   const user = await adminAuth.getUser(uid);
   const before = {
     email: user.email || null,

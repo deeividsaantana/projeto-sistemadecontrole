@@ -76,13 +76,14 @@ interface LancamentosTabProps {
   lubrificacoes: Lubrificacao[];
 
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
-  onDeleteAbastecimento: (id: string) => void;
+  /** Sem os de excluir, a tela não mostra Excluir: só o administrador exclui lançamento (A7). */
+  onDeleteAbastecimento?: (id: string) => void;
   /** Manda para a Lixeira e devolve as exclusões, para o Desfazer. */
-  onDeleteAbastecimentos: (ids: string[]) => string[];
+  onDeleteAbastecimentos?: (ids: string[]) => string[];
   onRestaurarAbastecimentos?: (exclusaoIds: string[]) => { ok: boolean; mensagem: string };
   onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[], cadastrosImportados?: Partial<FuelImportedMasterData>) => ImportAbastecimentosResult;
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
-  onDeleteLubrificacao: (id: string) => void;
+  onDeleteLubrificacao?: (id: string) => void;
   onOpenCadastros?: () => void;
   /** Lançamentos do Controle de Frotas: dão operador, canteiro e situação ao abastecimento. */
   registrosFrota?: ControleEquipamentoDiario[];
@@ -978,8 +979,8 @@ export default function LancamentosTab({
   };
 
   const executeDeletion = (id: string) => {
-    if (mode === 'abastecimentos') onDeleteAbastecimento(id);
-    else if (mode === 'lubrificacoes') onDeleteLubrificacao(id);
+    if (mode === 'abastecimentos') onDeleteAbastecimento?.(id);
+    else if (mode === 'lubrificacoes') onDeleteLubrificacao?.(id);
 
     setDeleteConfirmId(null);
   };
@@ -1811,7 +1812,7 @@ export default function LancamentosTab({
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3 text-xs">
               <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredAbastecimentos.length > 0 && filteredAbastecimentos.every(item => selectedAbastecimentoIds.includes(item.id))} onChange={event => setSelectedAbastecimentoIds(event.target.checked ? filteredAbastecimentos.map(item => item.id) : [])} /> Selecionar visíveis ({selectedAbastecimentoIds.length})</label>
-              <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>
+              {onDeleteAbastecimentos && <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>}
             </div>
             <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -1903,7 +1904,7 @@ export default function LancamentosTab({
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button onClick={() => handleOpenEdit(ab)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(ab.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            {onDeleteAbastecimento && <button onClick={() => handleDeleteTrigger(ab.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
                           </div>
                         </td>
                       </tr>
@@ -1964,7 +1965,7 @@ export default function LancamentosTab({
                         <td className="py-4 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button onClick={() => handleOpenEdit(lub)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteTrigger(lub.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                            {onDeleteLubrificacao && <button onClick={() => handleDeleteTrigger(lub.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
                           </div>
                         </td>
                       </tr>
@@ -2046,7 +2047,7 @@ export default function LancamentosTab({
         title={`Inativar ${selectedAbastecimentoIds.length} abastecimento(s)?`}
         description="Os abastecimentos saem das telas e dos totais e vão para a Lixeira de Cadastros, de onde o administrador pode devolver."
         confirmLabel="Inativar"
-        onConfirm={() => { onDeleteAbastecimentos(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); setConfirmandoInativacao(false); }}
+        onConfirm={() => { onDeleteAbastecimentos?.(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); setConfirmandoInativacao(false); }}
         onCancel={() => setConfirmandoInativacao(false)}
       />
 

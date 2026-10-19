@@ -80,7 +80,8 @@ interface Props {
   onImport: (registros: ControleEquipamentoDiario[]) => void;
   /** Grava motorista e horímetro no cadastro dos equipamentos, a partir do apontamento do SGE. */
   onApplyCadastroSge?: (previa: PreviaCadastroSge) => void;
-  onDeleteMany: (ids: string[]) => void;
+  /** Sem ele, a tela não mostra Excluir: só o administrador exclui (A7). */
+  onDeleteMany?: (ids: string[]) => void;
   onOpenMaintenance?: () => void;
   onOpenEmployeeRegistration: () => void;
   onOpenEquipmentRegistration?: () => void;
@@ -541,7 +542,7 @@ export default function ControleEquipamentosDiarioTab({
     setConfirmationBusy(true);
     try {
       if (confirmation.kind === 'delete') {
-        onDeleteMany(confirmation.ids);
+        onDeleteMany?.(confirmation.ids);
         setSelectedIds(ids => ids.filter(id => !confirmation.ids.includes(id)));
         setMessageTone('success');
         setMessage(`${confirmation.ids.length} lançamento(s) excluído(s) com confirmação.`);
@@ -709,7 +710,7 @@ export default function ControleEquipamentosDiarioTab({
           </details>
         )}
         <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} locations={canteirosDoDia} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
-        <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={state => setConfirmation({ kind: 'delete', ids: [state.recordId] })} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
+        <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={onDeleteMany ? state => setConfirmation({ kind: 'delete', ids: [state.recordId] }) : undefined} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
       </div>}
       {activeView === 'quadro' && quadro && <div data-fleet-view>
         <React.Suspense fallback={<p className="p-8 text-center text-sm text-slate-500">Abrindo o quadro…</p>}>{quadro(filters.date, () => setActiveView('today'))}</React.Suspense>
@@ -826,7 +827,7 @@ export default function ControleEquipamentosDiarioTab({
         )}
       </Modal>
       <ConfirmDialog open={Boolean(driverExclusao)} title={`Excluir ${driverExclusao?.nome || 'motorista'}?`} description="Ele sai da lista de motoristas da frota. Os lançamentos já feitos com ele continuam como estão." confirmLabel="Excluir motorista" tone="danger" onCancel={() => setDriverExclusao(null)} onConfirm={() => { if (driverExclusao) onDeleteOperationalDriver?.(driverExclusao.id); setDriverExclusao(null); }}/>
-      <FleetBulkActions count={selectedIds.length} onClear={() => setSelectedIds([])} onDelete={() => setConfirmation({ kind: 'delete', ids: selectedIds })} onExport={() => void handleExcel(true)} onChangeStatus={status => setConfirmation({ kind: 'status', ids: selectedIds, status })}/>
+      <FleetBulkActions count={selectedIds.length} onClear={() => setSelectedIds([])} onDelete={onDeleteMany ? () => setConfirmation({ kind: 'delete', ids: selectedIds }) : undefined} onExport={() => void handleExcel(true)} onChangeStatus={status => setConfirmation({ kind: 'status', ids: selectedIds, status })}/>
       <FleetReportLayout viewModel={viewModel}/>
       {formOpen && <DailyRecordForm record={editingRecord} preset={editingRecord ? undefined : { data: filters.date, ...formPreset }} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} registeredBy={registeredBy} onSave={handleSaved} onClose={() => { setFormOpen(false); setEditingRecord(undefined); }} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenDriverRegistry={() => { setFormOpen(false); setEditingRecord(undefined); setActiveView('registry'); }} onOpenEquipmentRegistry={() => { setFormOpen(false); setEditingRecord(undefined); onOpenEquipmentRegistration?.(); }} onOpenMaintenance={onOpenMaintenance}/>}
       <FleetDetailDrawer state={detailState} onClose={() => setDetailState(undefined)} onEdit={openEdit}/>

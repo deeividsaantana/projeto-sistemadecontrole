@@ -24,6 +24,31 @@ export const requireSupabaseUser = async event => {
   return { uid: data.user.id, email: data.user.email || '', name: data.user.user_metadata?.full_name || data.user.email || '', role, organizationId: membership.organization_id };
 };
 export const requireStaffUser = requireSupabaseUser;
+/** Zerar o dia e entregar o endereço dos links é de gestor ou administrador (M1). */
+export const assertManagerRole = staff => {
+  if (staff.role === 'admin' || staff.role === 'gestor') return staff;
+  const denied = new Error('Só gestor ou administrador pode fazer isso.');
+  denied.statusCode = 403;
+  throw denied;
+};
+export const requireManagerUser = async event => assertManagerRole(await requireSupabaseUser(event));
+
+/**
+ * A obra nunca fica sem administrador ativo (M12): a última conta de admin
+ * não perde o perfil nem é inativada, senão ninguém mais consegue desfazer.
+ */
+export const assertKeepsActiveAdmin = async ({ uid, role, active, adminIds, getUser }) => {
+  if (role === 'admin' && active) return;
+  if (!adminIds.includes(uid)) return;
+  for (const id of adminIds) {
+    if (id === uid) continue;
+    const other = await getUser(id).catch(() => null);
+    if (other && !other.disabled) return;
+  }
+  const error = new Error('Esta é a única conta de administrador ativa. Dê o perfil de administrador a outra pessoa antes de mudar esta.');
+  error.statusCode = 409;
+  throw error;
+};
 
 export const jsonResponse = (statusCode, payload, extraHeaders = {}) => ({ statusCode, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...mergeSecurityHeaders(extraHeaders) }, body: JSON.stringify(payload) });
 export const parseJsonBody = (event, maxBytes = 250_000) => {
@@ -123,6 +148,13 @@ export const enforceRateLimit = async (_database, _event, _bucket, _limit, _wind
 // gravado em organization_members, que é o que libera o login no app.
 // organization_members só aceita admin, editor e viewer (é o que o banco
 // confere para gravar). O perfil do app (gestor, operador) fica em app_metadata.
+/** Contas com perfil de administrador na organização. */
+export const listOrganizationAdminIds = async organizationId => {
+  const { data, error } = await getSupabaseAdmin()
+    .from('organization_members').select('user_id').eq('organization_id', organizationId).eq('role', 'admin');
+  if (error) throw error;
+  return (data || []).map(row => row.user_id);
+};
 export const membershipRoleFor = role => role === 'admin' ? 'admin' : role === 'leitura' ? 'viewer' : 'editor';
 export const appRoleFor = (membershipRole, claimedRole) => {
   if (membershipRole === 'admin') return 'admin';

@@ -2254,6 +2254,7 @@ export default function App() {
   };
 
   const handleDeleteOperationalDriver = (id: string) => {
+    if (exclusaoRecusada(podeExcluirCadastro)) return;
     const next = motoristasOperacionais.filter(driver => driver.id !== id);
     saveAndLog('Motoristas operacionais', 'Excluiu', `Excluiu o motorista operacional "${id}".`, historyLogs, () => {
       setMotoristasOperacionais(next);
@@ -2726,10 +2727,23 @@ export default function App() {
   };
 
   /**
+   * Excluir lançamento é do administrador (A7). A tela já esconde o botão de
+   * quem não pode; a recusa aqui vale para qualquer outro caminho até a ação.
+   */
+  const podeExcluirLancamento = pode(currentUserRole, 'lancamentos', 'excluir');
+  const podeExcluirCadastro = pode(currentUserRole, 'cadastros', 'excluir');
+  const exclusaoRecusada = (permitido: boolean) => {
+    if (permitido) return false;
+    addNotification('Exclusão não permitida', 'Só o administrador pode excluir. Peça a ele.', 'warning', 'Sistema Local');
+    return true;
+  };
+
+  /**
    * Excluir abastecimento manda para a Lixeira (A17), com a marca que impede
    * a volta pela sincronização. Devolve as exclusões para o Desfazer da tela.
    */
   const handleDeleteAbastecimentos = (ids: string[]): string[] => {
+    if (exclusaoRecusada(podeExcluirLancamento)) return [];
     const selected = new Set(ids);
     const itens = abastecimentos
       .filter(item => selected.has(item.id))
@@ -2830,6 +2844,7 @@ export default function App() {
   };
 
   const handleDeleteLubrificacao = (id: string) => {
+    if (exclusaoRecusada(podeExcluirLancamento)) return;
     const item = lubrificacoes.find(x => x.id === id);
     if (!item) return;
     const updated = lubrificacoes.filter(x => x.id !== id);
@@ -2872,6 +2887,7 @@ export default function App() {
   };
 
   const handleDeleteTicketJazida = (id: string) => {
+    if (exclusaoRecusada(podeExcluirLancamento)) return;
     const item = ticketsJazida.find(x => x.id === id);
     if (!item) return;
     const updated = ticketsJazida.filter(x => x.id !== id);
@@ -2890,6 +2906,7 @@ export default function App() {
   };
 
   const handleDeleteTicketsJazida = (ids: string[]) => {
+    if (exclusaoRecusada(podeExcluirLancamento)) return;
     const selected = new Set(ids);
     if (selected.size === 0) return;
     const updated = ticketsJazida.filter(item => !selected.has(item.id));
@@ -3426,6 +3443,7 @@ export default function App() {
   // Sem a marca em `exclusoes`, a próxima sincronização juntava a lista do
   // aparelho com a da nuvem e a equipe excluída voltava (16/10/2026).
   const handleDeleteGrupoEquipe = (id: string) => {
+    if (exclusaoRecusada(podeExcluirCadastro)) return;
     const grupo = gruposEquipe.find(item => item.id === id);
     if (!grupo) return;
     excluirCadastros({
@@ -3937,6 +3955,7 @@ export default function App() {
   };
 
   const handleDeleteOrdemServico = (id: string) => {
+    if (exclusaoRecusada(podeExcluirLancamento)) return;
     const ordem = ordensServico.find(item => item.id === id);
     const updated = ordensServico.filter(item => item.id !== id);
     saveAndLog(
@@ -4078,6 +4097,7 @@ export default function App() {
   };
 
   const handleDeleteControleEquipamentosDiario = (ids: string[], jaConfirmado = false) => {
+    if (exclusaoRecusada(podeExcluirLancamento)) return;
     const uniqueIds = Array.from(new Set(ids));
     if (!uniqueIds.length || (!jaConfirmado && !confirm(`Você está prestes a excluir ${uniqueIds.length} registro(s) do controle de basculantes. Continuar?`))) return;
     const updated = controleEquipamentosDiario.filter(item => !uniqueIds.includes(item.id));
@@ -4472,12 +4492,12 @@ export default function App() {
                 abastecimentos={abastecimentosAtivos}
                 lubrificacoes={lubrificacoes}
                 onSaveAbastecimento={handleSaveAbastecimento}
-                onDeleteAbastecimento={handleDeleteAbastecimento}
-                onDeleteAbastecimentos={handleDeleteAbastecimentos}
+                onDeleteAbastecimento={podeExcluirLancamento ? handleDeleteAbastecimento : undefined}
+                onDeleteAbastecimentos={podeExcluirLancamento ? handleDeleteAbastecimentos : undefined}
                 onRestaurarAbastecimentos={handleRestaurarCadastros}
                 onImportAbastecimentos={handleImportAbastecimentos}
                 onSaveLubrificacao={handleSaveLubrificacao}
-                onDeleteLubrificacao={handleDeleteLubrificacao}
+                onDeleteLubrificacao={podeExcluirLancamento ? handleDeleteLubrificacao : undefined}
                 onOpenCadastros={allowedTabs.includes('cadastros') ? () => navigateTo('cadastros') : undefined}
                 registrosFrota={controleEquipamentosDiario}
                 gruposEquipe={gruposEquipe}
@@ -4572,8 +4592,8 @@ export default function App() {
                     obras={obras}
                     responsavel={activeUserName}
                     onSaveTicket={handleSaveTicketJazida}
-                    onDeleteTicket={handleDeleteTicketJazida}
-                    onDeleteTickets={handleDeleteTicketsJazida}
+                    onDeleteTicket={podeExcluirLancamento ? handleDeleteTicketJazida : undefined}
+                    onDeleteTickets={podeExcluirLancamento ? handleDeleteTicketsJazida : undefined}
                     onImportTickets={handleImportTicketsJazida}
                     onReserveTicketNumber={handleReserveTicketNumber}
                     onReserveTicketNumbers={handleReserveTicketNumbers}
@@ -4627,7 +4647,7 @@ export default function App() {
                 podeEditar={pode(currentUserRole, 'manutencao', 'editar')}
                 historyLogs={historyLogs}
                 onSave={handleSaveOrdemServico}
-                onDelete={handleDeleteOrdemServico}
+                onDelete={podeExcluirLancamento ? handleDeleteOrdemServico : undefined}
               />
             )}
 
@@ -4644,13 +4664,13 @@ export default function App() {
                 onSave={handleSaveControleEquipamentoDiario}
                 onImport={handleImportControleEquipamentosDiario}
                 onApplyCadastroSge={handleAplicarCadastroSge}
-                onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
+                onDeleteMany={podeExcluirLancamento ? ids => handleDeleteControleEquipamentosDiario(ids, true) : undefined}
                 onOpenMaintenance={() => navigateTo('manutencao')}
                 onOpenEmployeeRegistration={() => navigateTo('cadastros')}
                 onOpenEquipmentRegistration={() => navigateTo('cadastros')}
                 onSaveOperationalDriver={handleSaveOperationalDriver}
                 onAddOperationalDrivers={handleAddOperationalDrivers}
-                onDeleteOperationalDriver={handleDeleteOperationalDriver}
+                onDeleteOperationalDriver={podeExcluirCadastro ? handleDeleteOperationalDriver : undefined}
                 canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
                 registeredBy={activeUserName}
                 onApproveFleetRecord={handleApproveControleEquipamentoDiario}
@@ -4668,7 +4688,7 @@ export default function App() {
                     usuario={activeUserName}
                     onSave={handleSaveControleEquipamentoDiario}
                     onSaveMany={handleSaveControleEquipamentosEmLote}
-                    onDeleteMany={ids => handleDeleteControleEquipamentosDiario(ids, true)}
+                    onDeleteMany={podeExcluirLancamento ? ids => handleDeleteControleEquipamentosDiario(ids, true) : undefined}
                     podeRemover={pode(currentUserRole, 'cadastros', 'excluir')}
                     onRemoverEquipamentos={handleRemoverEquipamentosDoQuadro}
                     onNavigate={navigateTo}
@@ -4691,7 +4711,7 @@ export default function App() {
                 pendingPublicSubmissionsCount={pendingPublicSubmissionsCount}
                 onRestorePresenceHistory={handleRestorePresenceHistory}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
-                onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
+                onDeleteGrupoEquipe={podeExcluirCadastro ? handleDeleteGrupoEquipe : undefined}
                 onUpdatePresencaLink={handleUpdatePresencaLink}
                 onLancarPresencaManual={handleLancarPresencaManual}
                 presencasInativas={presencasLinkInativas}

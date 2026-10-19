@@ -6,7 +6,7 @@ import {
   jsonResponse,
   parseJsonBody,
   requestIpHash,
-  requireStaffUser,
+  requireManagerUser,
   serverTimestamp,
 } from './_shared/supabase-admin.js';
 import { constantTimeEquals } from './_shared/public-access.js';
@@ -137,7 +137,7 @@ export const handler = async event => {
     const method = String(event.httpMethod || 'GET').toUpperCase();
     const action = String(event.queryStringParameters?.action || '');
     if (method === 'GET' && action === 'link') {
-      await requireStaffUser(event);
+      await requireManagerUser(event);
       const token = resolveMaterialLinkToken();
       if (!token) {
         return jsonResponse(503, { success: false, message: 'O link de materiais ainda não foi configurado no servidor.' });
