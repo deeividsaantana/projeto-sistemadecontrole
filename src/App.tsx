@@ -160,6 +160,7 @@ import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoR
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
+import { manterNovidadesLocais } from './cloud/novidadesLocais';
 import {
   addPublicPresenceMember,
   deletePublicPresenceRecords,
@@ -400,6 +401,16 @@ const captureBaselineFromLocalStorage = (): CloudBaseline => {
     snapshot[cloudKey] = parseStoredJson(localStorage.getItem(storageKey), storageKey, [] as unknown[]);
   }
   return captureCloudBaseline(snapshot);
+};
+
+/** Só as tabelas que este aparelho realmente tem salvas, sem cair na semente. */
+const readStoredCloudTables = (): Record<string, unknown> => {
+  const snapshot: Record<string, unknown> = {};
+  for (const [cloudKey, storageKey] of CLOUD_STORAGE_KEYS) {
+    if (localStorage.getItem(storageKey) === null) continue;
+    snapshot[cloudKey] = parseStoredJson(localStorage.getItem(storageKey), storageKey, [] as unknown[]);
+  }
+  return snapshot;
 };
 
 const readPersistedCloudBaseline = (): CloudBaseline | undefined => {
@@ -1214,6 +1225,9 @@ export default function App() {
         data.exclusoes = mergeCloudTable(remoteExclusoes, localExclusoes);
         Object.assign(data, aplicarExclusoes(data));
         const downloadedBaseline = captureCloudBaseline(data);
+        // O que este aparelho criou e ainda não subiu fica, e sobe logo depois (C5).
+        const { retrato: comNovidades, mantidas: novidadesLocais } = manterNovidadesLocais(data, readStoredCloudTables(), cloudBaselineRef.current);
+        Object.assign(data, comNovidades);
         // A nuvem veio vazia ou muito menor numa tabela que este aparelho tem
         // cheia, sem marca de exclusão: foi outro navegador que perdeu a cópia
         // e publicou por cima. Este aparelho guarda o que tem e devolve à
@@ -1418,10 +1432,11 @@ export default function App() {
         // Acabou de igualar com a nuvem: este é o retrato que serve de base
         // para diferenciar exclusões locais de novidades dos colegas depois.
         cloudBaselineRef.current = downloadedBaseline;
-        if (devolverParaNuvem.length) {
-          console.warn('A nuvem chegou sem registros que este aparelho tem; eles serão devolvidos:', devolverParaNuvem);
+        if (devolverParaNuvem.length || novidadesLocais.length) {
+          console.warn('A nuvem chegou sem registros que este aparelho tem; eles serão devolvidos:', [...devolverParaNuvem, ...novidadesLocais]);
           queueMicrotask(() => { void handleUploadToSupabase(); });
-          const devolvidos = devolverParaNuvem.reduce((total, item) => total + item.devolvidos, 0);
+          const devolvidos = devolverParaNuvem.reduce((total, item) => total + item.devolvidos, 0)
+            + novidadesLocais.reduce((total, item) => total + item.mantidos, 0);
           return {
             success: true,
             message: `Dados atualizados. ${devolvidos.toLocaleString('pt-BR')} registros que faltavam na nuvem foram mantidos neste aparelho e estão sendo devolvidos.`,
@@ -2989,9 +3004,6 @@ export default function App() {
     gruposEquipe?: GrupoEquipe[];
   } = {}) => handleUploadToSupabase({
     ...overrides,
-    // Este caminho publica o retrato sem o historico: ele e reconstruido a
-    // partir dos proprios lancamentos e nao precisa trafegar aqui.
-    historyLogs: [],
   });
 
   // P0-06: contagem reativa da fila offline + retry manual pelo topbar.
