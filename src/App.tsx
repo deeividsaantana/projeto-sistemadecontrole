@@ -196,6 +196,7 @@ import type { MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
 import { removerEquipamentosDoQuadro } from './modules/frota/quadroFrota';
+import { rotuloAbastecimento } from './modules/frota/lixeiraCombustivel';
 import { usosDoCadastro } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
 import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from './utils/cadastrosCategorias';
@@ -1867,6 +1868,7 @@ export default function App() {
     itens,
     lista,
     setLista,
+    ajustarLista,
   }: {
     tabela: string;
     storageKey: string;
@@ -1874,6 +1876,8 @@ export default function App() {
     itens: Array<{ item: T; rotulo: string }>;
     lista: T[];
     setLista: (next: T[]) => void;
+    /** Recalcula campos derivados da lista que fica (ex.: avisos do diesel). */
+    ajustarLista?: (next: T[]) => T[];
   }) => {
     // Vários de uma vez gravam num lote só: chamadas seguidas enxergariam a
     // mesma lista antiga e só a última exclusão ficaria.
@@ -1886,7 +1890,8 @@ export default function App() {
       agora,
     }));
     const ids = new Set(itens.map(({ item }) => item.id));
-    const updated = lista.filter(x => !ids.has(x.id));
+    const restantes = lista.filter(x => !ids.has(x.id));
+    const updated = ajustarLista ? ajustarLista(restantes) : restantes;
     const nextExclusoes = [...novas, ...exclusoes];
     const nomes = itens.map(({ rotulo }) => `"${rotulo}"`).join(', ');
     saveAndLog(
@@ -1927,6 +1932,8 @@ export default function App() {
     // Tickets repetidos vão para a Lixeira sozinhos; daqui eles voltam se restaurados.
     ticketsJazida: { lista: ticketsJazida as never[], setLista: setTicketsJazida as (next: never[]) => void, storageKey: 'renea_tickets_jazida', tela: 'Tickets Jazida' },
     gruposEquipe: { lista: gruposEquipe as never[], setLista: setGruposEquipe as (next: never[]) => void, storageKey: 'renea_grupos_equipes', tela: 'Grupos / Equipes' },
+    // Abastecimento excluído vai para a Lixeira (A17): o Desfazer e a Lixeira devolvem por aqui.
+    abastecimentos: { lista: abastecimentos as never[], setLista: setAbastecimentos as (next: never[]) => void, storageKey: 'renea_abastecimentos', tela: 'Abastecimentos' },
   });
 
   const usosDoCadastroAtual = (tabela: string, id: string) => usosDoCadastro(tabela, id, {
@@ -2718,21 +2725,28 @@ export default function App() {
     );
   };
 
-  const handleDeleteAbastecimento = (id: string) => {
-    const item = abastecimentos.find(x => x.id === id);
-    if (!item) return;
-    const updated = auditarBaseCombustivel(abastecimentos.filter(x => x.id !== id));
-    saveAndLog(
-      'Abastecimentos',
-      'Excluiu',
-      `Excluiu permanentemente o lançamento de abastecimento ID ${id.substring(0, 8)}.`,
-      historyLogs,
-      () => {
-        setAbastecimentos(updated);
-        writeStorageValue(localStorage, 'renea_abastecimentos', JSON.stringify(updated));
-      }
-    );
+  /**
+   * Excluir abastecimento manda para a Lixeira (A17), com a marca que impede
+   * a volta pela sincronização. Devolve as exclusões para o Desfazer da tela.
+   */
+  const handleDeleteAbastecimentos = (ids: string[]): string[] => {
+    const selected = new Set(ids);
+    const itens = abastecimentos
+      .filter(item => selected.has(item.id))
+      .map(item => ({ item, rotulo: rotuloAbastecimento(item, equipamentos) }));
+    if (itens.length === 0) return [];
+    return excluirCadastros({
+      tabela: 'abastecimentos',
+      storageKey: 'renea_abastecimentos',
+      tela: 'Abastecimentos',
+      itens,
+      lista: abastecimentos,
+      setLista: setAbastecimentos,
+      ajustarLista: auditarBaseCombustivel,
+    });
   };
+
+  const handleDeleteAbastecimento = (id: string) => handleDeleteAbastecimentos([id]);
 
   // Importação de planilha — Prioridade 3: grava em lote (um único registro de histórico)
   const handleImportAbastecimentos = (
@@ -2873,22 +2887,6 @@ export default function App() {
     );
     void deletePublicTicket(db, id)
       .catch(error => console.warn('Falha ao excluir ticket público:', error));
-  };
-
-  const handleDeleteAbastecimentos = (ids: string[]) => {
-    const selected = new Set(ids);
-    if (selected.size === 0) return;
-    const updated = auditarBaseCombustivel(abastecimentos.filter(item => !selected.has(item.id)));
-    saveAndLog(
-      'Abastecimentos',
-      'Excluiu',
-      `Excluiu permanentemente ${selected.size} abastecimento(s).`,
-      historyLogs,
-      () => {
-        setAbastecimentos(updated);
-        writeStorageValue(localStorage, 'renea_abastecimentos', JSON.stringify(updated));
-      }
-    );
   };
 
   const handleDeleteTicketsJazida = (ids: string[]) => {
@@ -4472,6 +4470,7 @@ export default function App() {
                 onSaveAbastecimento={handleSaveAbastecimento}
                 onDeleteAbastecimento={handleDeleteAbastecimento}
                 onDeleteAbastecimentos={handleDeleteAbastecimentos}
+                onRestaurarAbastecimentos={handleRestaurarCadastros}
                 onImportAbastecimentos={handleImportAbastecimentos}
                 onSaveLubrificacao={handleSaveLubrificacao}
                 onDeleteLubrificacao={handleDeleteLubrificacao}

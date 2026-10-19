@@ -1,6 +1,6 @@
 import type { Abastecimento, Equipamento, TipoCombustivel } from '../types';
 import { normalizeQuickTime } from './combustivelValidation';
-import { findLastRecordedPumpForConvoy } from './fuelPumpSequence';
+import { findPreviousPumpForConvoy } from './fuelPumpSequence';
 
 const normalizeFuelText = (value: string) => value
   .normalize('NFD')
@@ -80,7 +80,13 @@ export const buildFuelImportObservation = ({
   motivo?.trim() || '',
 ].filter(Boolean).join(' | ');
 
+/**
+ * Leitor único de número do lançamento de diesel (A16). Vírgula é decimal;
+ * sem vírgula, "1.250" e "45.320" são milhar (três dígitos depois de cada
+ * ponto) e "12.5" é decimal.
+ */
 export const parseFuelFormNumber = (value: unknown, fallback = NaN) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
   let text = String(value ?? '').trim()
     .replace(/['´`\s]/g, '');
 
@@ -94,7 +100,9 @@ export const parseFuelFormNumber = (value: unknown, fallback = NaN) => {
     text = text.replace(new RegExp(`\\${thousandsSeparator}`, 'g'), '');
     text = text.replace(decimalSeparator, '.');
   } else if (comma >= 0) {
-    text = text.replace('.', '').replace(',', '.');
+    text = text.replace(',', '.');
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(text)) {
+    text = text.replace(/\./g, '');
   }
 
   const parsed = Number(text);
@@ -109,21 +117,30 @@ export const getDefaultDieselFuelId = (combustiveis: TipoCombustivel[]) => {
   return s10?.id || combustiveis.find(item => normalizeFuelText(item.nome).includes('diesel'))?.id || combustiveis[0]?.id || '';
 };
 
+/**
+ * Bomba inicial sugerida: a bomba final do abastecimento do mesmo comboio
+ * logo antes da data e hora deste lançamento (A20), não o último da lista.
+ */
 export const resolveMacroPumpReadings = ({
   records,
   comboioId,
+  data,
+  hora,
   litros,
   bombaInicialManual,
 }: {
   records: Abastecimento[];
   comboioId: string;
+  data: string;
+  hora: string;
   litros: unknown;
   bombaInicialManual?: unknown;
 }) => {
   const bombaDigitada = parseFuelFormNumber(bombaInicialManual, NaN);
+  const horaLimpa = normalizeQuickTime(hora);
   const bombaInicial = Number.isFinite(bombaDigitada) && bombaDigitada > 0
     ? bombaDigitada
-    : Number(findLastRecordedPumpForConvoy(records, comboioId)?.bombaFinal || 0);
+    : Number(findPreviousPumpForConvoy(records, comboioId, data, horaLimpa.valid ? horaLimpa.value : '')?.bombaFinal || 0);
   const quantidadeLitros = parseFuelFormNumber(litros, 0);
   return {
     bombaInicial,
@@ -168,7 +185,7 @@ export const buildMacroFuelingRecord = ({
 }): Abastecimento => {
   const normalizedTime = normalizeQuickTime(hora);
   const quantidadeLitros = parseFuelFormNumber(litros, 0);
-  const { bombaInicial, bombaFinal } = resolveMacroPumpReadings({ records, comboioId, litros: quantidadeLitros, bombaInicialManual });
+  const { bombaInicial, bombaFinal } = resolveMacroPumpReadings({ records, comboioId, data, hora, litros: quantidadeLitros, bombaInicialManual });
 
   return {
     id,

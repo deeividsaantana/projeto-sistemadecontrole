@@ -14,6 +14,7 @@ const NOME_DA_TABELA: Record<string, string> = {
   etapas: 'Ramo/trecho',
   frentesServico: 'Frente de serviço',
   servicosObra: 'Serviço da obra',
+  abastecimentos: 'Abastecimento',
 };
 
 const quando = (iso: string) => {

@@ -206,3 +206,4 @@ import './ticketsUmaTabela.test';
 import './historicoVersoesNuvem.test';
 import './frotaDataPlanilha.test';
 import './dataLocalHoje.test';
+import './dieselNumeroBombaExclusao.test';

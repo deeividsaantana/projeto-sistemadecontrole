@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { CheckCircle2, Droplets, Gauge, History, Maximize2, Minimize2, Plus } from 'lucide-react';
+import { CheckCircle2, Droplets, Gauge, History, Maximize2, Minimize2, Plus, Undo2 } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../types';
 import type { FuelImportedMasterData } from '../utils/fuelMasterDataImport';
 import { ConfirmDialog, isoDay } from '../shared/ui';
@@ -34,8 +34,10 @@ interface Props {
   usuario?: string;
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
-  /** Exclui vários de uma vez; sem ele, o histórico só exclui um por vez. */
-  onDeleteAbastecimentos?: (ids: string[]) => void;
+  /** Manda para a Lixeira e devolve as exclusões; sem ele, o histórico só exclui um por vez. */
+  onDeleteAbastecimentos?: (ids: string[]) => string[];
+  /** Desfazer a exclusão: devolve da Lixeira. */
+  onRestaurarAbastecimentos?: (exclusaoIds: string[]) => { ok: boolean; mensagem: string };
   onImportAbastecimentos?: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[], cadastrosImportados?: Partial<FuelImportedMasterData>) => void;
   onOpenLubrificacao: () => void;
   onOpenCadastros?: () => void;
@@ -61,7 +63,7 @@ const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFr
 
 export default function CombustivelOperacionalTab({
   empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
-  onSaveAbastecimento, onDeleteAbastecimento, onDeleteAbastecimentos, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
+  onSaveAbastecimento, onDeleteAbastecimento, onDeleteAbastecimentos, onRestaurarAbastecimentos, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
   openHistorySignal = 0, initialView = 'historico', listaSomente = false, porMaquinaInicial = false,
 }: Props) {
   const escopo = useRef<HTMLElement>(null);
@@ -72,6 +74,9 @@ export default function CombustivelOperacionalTab({
   const [excluindo, setExcluindo] = useState<Abastecimento[]>([]);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
+  /** Exclusões que o Desfazer do aviso ainda devolve. */
+  const [desfazer, setDesfazer] = useState<string[]>([]);
+  const avisoRef = useRef<HTMLParagraphElement>(null);
   /** Lançamento aberto: a chave remonta o formulário a cada novo pedido. */
   const [lancamento, setLancamento] = useState<{ chave: number; emEdicao?: Abastecimento; prefixo?: string; comboioId?: string }>({ chave: 0 });
   const [telaCheia, setTelaCheia] = useState(() => {
@@ -192,19 +197,31 @@ export default function CombustivelOperacionalTab({
   };
 
   const excluirConfirmado = () => {
-    if (excluindo.length === 1) onDeleteAbastecimento(excluindo[0].id);
-    else if (excluindo.length > 1) {
-      if (onDeleteAbastecimentos) onDeleteAbastecimentos(excluindo.map(item => item.id));
-      else setErro('Excluir vários de uma vez não está disponível nesta tela.');
-    }
+    let exclusoes: string[] = [];
+    if (onDeleteAbastecimentos && excluindo.length) exclusoes = onDeleteAbastecimentos(excluindo.map(item => item.id));
+    else if (excluindo.length === 1) onDeleteAbastecimento(excluindo[0].id);
+    else if (excluindo.length > 1) setErro('Excluir vários de uma vez não está disponível nesta tela.');
     if (excluindo.length) setAviso(excluindo.length === 1 ? 'Abastecimento excluído.' : `${excluindo.length} abastecimentos excluídos.`);
+    setDesfazer(onRestaurarAbastecimentos ? exclusoes : []);
     setExcluindo([]);
   };
+  const desfazerExclusao = () => {
+    if (!onRestaurarAbastecimentos || !desfazer.length) return;
+    const resultado = onRestaurarAbastecimentos(desfazer);
+    setDesfazer([]);
+    if (resultado.ok) setAviso(desfazer.length === 1 ? 'Abastecimento devolvido.' : `${desfazer.length} abastecimentos devolvidos.`);
+    else setErro(resultado.mensagem);
+  };
+  // No celular a ficha fica lá embaixo: o aviso com Desfazer vem até a vista.
+  useEffect(() => {
+    if (desfazer.length) avisoRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [desfazer]);
   useEffect(() => {
     if (!aviso) return undefined;
-    const tempo = window.setTimeout(() => setAviso(''), 4000);
+    // Com Desfazer na tela, o aviso fica mais tempo para dar tempo de tocar.
+    const tempo = window.setTimeout(() => { setAviso(''); setDesfazer([]); }, desfazer.length ? 10000 : 4000);
     return () => window.clearTimeout(tempo);
-  }, [aviso]);
+  }, [aviso, desfazer.length]);
 
   useEffect(() => {
     const teclar = (event: KeyboardEvent) => {
@@ -278,9 +295,14 @@ export default function CombustivelOperacionalTab({
         </>} />
       </div>}
 
-      <p role="status" aria-live="polite" className={`${aviso ? 'mb-2' : 'sr-only'} flex shrink-0 items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`} data-testid="combustivel-aviso">
+      <p ref={avisoRef} role="status" aria-live="polite" className={`${aviso ? 'mb-2' : 'sr-only'} flex shrink-0 items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`} data-testid="combustivel-aviso">
         {aviso && <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />}
-        {aviso}
+        <span className="min-w-0 flex-1">{aviso}</span>
+        {aviso && desfazer.length > 0 && (
+          <button type="button" onClick={desfazerExclusao} className={`${BOTAO_SECUNDARIO} min-h-9 shrink-0`} data-testid="combustivel-desfazer">
+            <Undo2 className="size-4" aria-hidden="true" />Desfazer
+          </button>
+        )}
       </p>
 
       {view === 'novo' && <div data-comb-reveal className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-slate-200" data-testid="combustivel-lancar">
@@ -331,7 +353,7 @@ export default function CombustivelOperacionalTab({
       <ConfirmDialog
         open={excluindo.length > 0}
         title={excluindo.length > 1 ? `Excluir ${excluindo.length} abastecimentos?` : `Excluir o abastecimento de ${excluindo[0] ? porId.get(excluindo[0].equipamentoId)?.prefixo || excluindo[0].prefixoInformado || 'máquina' : ''}?`}
-        description={excluindo.length > 1 ? `Somam ${litrosTexto(excluindo.reduce((soma, item) => soma + Number(item.quantidadeLitros || 0), 0))}. Os registros são apagados e não voltam pela sincronização.` : 'O registro é apagado e não volta pela sincronização.'}
+        description={excluindo.length > 1 ? `Somam ${litrosTexto(excluindo.reduce((soma, item) => soma + Number(item.quantidadeLitros || 0), 0))}. Vão para a Lixeira de Cadastros: dá para desfazer logo depois ou o administrador devolve de lá.` : 'Vai para a Lixeira de Cadastros: dá para desfazer logo depois ou o administrador devolve de lá.'}
         confirmLabel={excluindo.length > 1 ? `Excluir ${excluindo.length}` : 'Excluir abastecimento'}
         tone="danger"
         onCancel={() => setExcluindo([])}

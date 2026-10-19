@@ -77,7 +77,9 @@ interface LancamentosTabProps {
 
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
   onDeleteAbastecimento: (id: string) => void;
-  onDeleteAbastecimentos: (ids: string[]) => void;
+  /** Manda para a Lixeira e devolve as exclusões, para o Desfazer. */
+  onDeleteAbastecimentos: (ids: string[]) => string[];
+  onRestaurarAbastecimentos?: (exclusaoIds: string[]) => { ok: boolean; mensagem: string };
   onImportAbastecimentos: (items: Abastecimento[], combustiveisImportados?: TipoCombustivel[], cadastrosImportados?: Partial<FuelImportedMasterData>) => ImportAbastecimentosResult;
   onSaveLubrificacao: (item: Lubrificacao, isNew: boolean) => void;
   onDeleteLubrificacao: (id: string) => void;
@@ -107,6 +109,7 @@ export default function LancamentosTab({
   onSaveAbastecimento,
   onDeleteAbastecimento,
   onDeleteAbastecimentos,
+  onRestaurarAbastecimentos,
   onImportAbastecimentos,
   onSaveLubrificacao,
   onDeleteLubrificacao,
@@ -1272,6 +1275,7 @@ export default function LancamentosTab({
           onSaveAbastecimento={onSaveAbastecimento}
           onDeleteAbastecimento={onDeleteAbastecimento}
           onDeleteAbastecimentos={onDeleteAbastecimentos}
+          onRestaurarAbastecimentos={onRestaurarAbastecimentos}
           onImportAbastecimentos={onImportAbastecimentos}
           onOpenLubrificacao={() => {
             setMode('lubrificacoes');
@@ -2040,7 +2044,7 @@ export default function LancamentosTab({
         open={confirmandoInativacao}
         tone="warning"
         title={`Inativar ${selectedAbastecimentoIds.length} abastecimento(s)?`}
-        description="Os abastecimentos saem das telas e dos totais, mas continuam guardados e podem voltar."
+        description="Os abastecimentos saem das telas e dos totais e vão para a Lixeira de Cadastros, de onde o administrador pode devolver."
         confirmLabel="Inativar"
         onConfirm={() => { onDeleteAbastecimentos(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); setConfirmandoInativacao(false); }}
         onCancel={() => setConfirmandoInativacao(false)}
