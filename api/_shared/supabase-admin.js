@@ -42,15 +42,36 @@ export const requestIpHash = event => {
 };
 export const functionErrorResponse = error => jsonResponse(Number(error?.statusCode) || 500, { success: false, message: Number(error?.statusCode) >= 500 ? 'O serviço está temporariamente indisponível.' : error.message });
 
+/**
+ * Igual ao update do Firestore: 'payload.records' troca só o campo de dentro,
+ * em vez de criar uma chave solta com ponto no nome e deixar o antigo intacto.
+ */
+export const applyFieldUpdates = (document, updates) => {
+  const next = structuredClone(document || {});
+  for (const [path, value] of Object.entries(updates || {})) {
+    const keys = path.split('.');
+    let target = next;
+    for (const key of keys.slice(0, -1)) {
+      if (!target[key] || typeof target[key] !== 'object' || Array.isArray(target[key])) target[key] = {};
+      target = target[key];
+    }
+    target[keys[keys.length - 1]] = value;
+  }
+  return next;
+};
 const valueAt = (value, path) => String(path).split('.').reduce((current, key) => current == null ? undefined : current[key], value);
 const snapshot = (row, ref) => ({ id: row?.id, exists: Boolean(row), ref, data: () => row?.payload || {} });
 const rowStore = () => getSupabaseAdmin().from('legacy_documents');
 const PUBLIC_SUBMISSIONS_COLLECTION = 'sistemarenea_public_submissions';
-const mirrorPublicSubmission = async (id, document) => {
+// A leitura da fila antiga reespelha tudo o que acha (recuperação de envios
+// de antes da fila nova). Essa recuperação não pode reabrir o que o painel já
+// processou. Já uma gravação de verdade (edição de presença pelo link) volta
+// para "pending" de propósito, para o painel incorporar a alteração.
+const mirrorPublicSubmission = async (id, document, { reabrir = false } = {}) => {
   const table = getSupabaseAdmin().from('erp_public_submissions');
   const { data: existing, error: existingError } = await table.select('status').eq('id', id).maybeSingle();
   if (existingError) throw existingError;
-  if (existing?.status === 'processed' && document?.status === 'pending') return;
+  if (!reabrir && existing?.status === 'processed' && document?.status === 'pending') return;
   const { error } = await table.upsert({
     id,
     organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea',
@@ -65,8 +86,8 @@ const makeRef = (path, id = crypto.randomUUID()) => ({
   id,
   path: `${path}/${id}`,
   async get() { const { data, error } = await rowStore().select('id,payload').eq('path', `${path}/${id}`).maybeSingle(); if (error) throw error; return snapshot(data ? { ...data, payload: data.payload } : null, makeRef(path, id)); },
-  async set(payload, options = {}) { const current = options.merge ? await this.get() : null; const next = options.merge ? { ...(current.data() || {}), ...payload } : payload; const { error } = await rowStore().upsert({ id, organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea', collection_path: path, path: `${path}/${id}`, payload: next, updated_at: new Date().toISOString() }); if (error) throw error; if (path === PUBLIC_SUBMISSIONS_COLLECTION) await mirrorPublicSubmission(id, next); },
-  async update(payload) { const current = await this.get(); if (!current.exists) throw new Error('Documento não encontrado.'); await this.set({ ...current.data(), ...payload }); },
+  async set(payload, options = {}) { const current = options.merge ? await this.get() : null; const next = options.merge ? { ...(current.data() || {}), ...payload } : payload; const { error } = await rowStore().upsert({ id, organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea', collection_path: path, path: `${path}/${id}`, payload: next, updated_at: new Date().toISOString() }); if (error) throw error; if (path === PUBLIC_SUBMISSIONS_COLLECTION) await mirrorPublicSubmission(id, next, { reabrir: true }); },
+  async update(payload) { const current = await this.get(); if (!current.exists) throw new Error('Documento não encontrado.'); await this.set(applyFieldUpdates(current.data(), payload)); },
   async delete() { const { error } = await rowStore().delete().eq('path', `${path}/${id}`); if (error) throw error; },
   collection(child) { return makeCollection(`${path}/${id}/${child}`); },
 });
