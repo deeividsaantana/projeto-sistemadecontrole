@@ -4,10 +4,12 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import {
   AlertTriangle,
+  Archive,
   ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ClipboardCopy,
   Download,
@@ -22,6 +24,7 @@ import {
   RotateCcw,
   Search,
   Trash2,
+  Undo2,
   Users,
   X,
   PieChart,
@@ -120,7 +123,11 @@ interface ControlePresencaTabProps {
     situacoes: SituacaoLancada[],
     observacaoDia: string,
   ) => void;
-  onDeletePresencaLink?: (ids: string[]) => void;
+  /** Registros inativados, para ver e reativar. */
+  presencasInativas?: PresencaApontamento[];
+  /** Inativa (não apaga): sai das telas e dos relatórios e volta com Reativar. */
+  onInativarPresencaLink?: (ids: string[]) => void;
+  onReativarPresencaLink?: (ids: string[]) => void;
   /** Apaga os envios e a reserva do dia, liberando um novo apontamento. */
   onResetPresencaDia?: (grupoId: string, data: string) => Promise<{ success: boolean; message: string }>;
   /** Grava a sincronização já conferida pelo administrativo. */
@@ -224,7 +231,9 @@ export default function ControlePresencaTab({
   onDeleteGrupoEquipe,
   onUpdatePresencaLink,
   onLancarPresencaManual,
-  onDeletePresencaLink,
+  presencasInativas = [],
+  onInativarPresencaLink,
+  onReativarPresencaLink,
   onResetPresencaDia,
   onSyncEquipesPlanilha,
   pendingPublicSubmissionsCount = 0,
@@ -239,6 +248,7 @@ export default function ControlePresencaTab({
   const teamCompanies = useMemo(() => companiesForTeams(safeEmpresas, safeFuncionarios), [safeEmpresas, safeFuncionarios]);
   const safeObras = useMemo(() => (Array.isArray(obras) ? obras : []).filter(Boolean), [obras]);
   const safeRecords = useMemo(() => (Array.isArray(presencasLink) ? presencasLink : []).filter(Boolean).map(normalizeRecord), [presencasLink]);
+  const inativos = useMemo(() => (Array.isArray(presencasInativas) ? presencasInativas : []).filter(Boolean).map(normalizeRecord), [presencasInativas]);
   const safeGroups = useMemo(() => recoverTeamGroups(
     (Array.isArray(gruposEquipe) ? gruposEquipe : []).filter(Boolean).map(normalizeGroup),
     safeRecords,
@@ -275,6 +285,12 @@ export default function ControlePresencaTab({
   const [membrosAoAbrir, setMembrosAoAbrir] = useState<string[] | null>(null);
   const [editingRecord, setEditingRecord] = useState<PresencaApontamento | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  /** Lista mostra os inativados, para reativar. */
+  const [verInativos, setVerInativos] = useState(false);
+  /** Últimos inativados, para o Desfazer do aviso. */
+  const [desfazerInativacao, setDesfazerInativacao] = useState<string[]>([]);
+  /** Equipe esperando confirmação para excluir (A29): um toque errado não apaga. */
+  const [equipeExcluindo, setEquipeExcluindo] = useState<GrupoEquipe | null>(null);
   const [editStatus, setEditStatus] = useState<PresencaStatus>('Presente');
   const [editObservation, setEditObservation] = useState('');
   const [editReason, setEditReason] = useState('');
@@ -630,14 +646,14 @@ export default function ControlePresencaTab({
 
   const filteredRecords = useMemo(() => {
     const query = recordSearch.trim().toLocaleLowerCase('pt-BR');
-    return safeRecords
+    return (verInativos ? inativos : safeRecords)
       .filter(record => !recordDate || record.data === recordDate)
       .filter(record => recordGroup === 'todos' || record.grupoId === recordGroup)
       .filter(record => recordStatus === 'todos' || record.status === recordStatus)
       .filter(record => !query || [record.funcionarioNome, record.funcao, record.responsavel, record.frenteServico]
         .some(value => value.toLocaleLowerCase('pt-BR').includes(query)))
       .sort((a, b) => `${b.data} ${b.horaEnvio}`.localeCompare(`${a.data} ${a.horaEnvio}`));
-  }, [recordDate, recordGroup, recordSearch, recordStatus, safeRecords]);
+  }, [inativos, recordDate, recordGroup, recordSearch, recordStatus, safeRecords, verInativos]);
 
   const exportRows = filteredRecords.map(record => [
     record.data,
@@ -936,10 +952,24 @@ export default function ControlePresencaTab({
   };
 
   const confirmarInativacaoRegistros = () => {
-    onDeletePresencaLink?.(selectedRecordIds);
-    setFeedback(`${selectedRecordIds.length} registro(s) de presença enviado(s) para exclusão permanente.`);
+    onInativarPresencaLink?.(selectedRecordIds);
+    setFeedback(`${selectedRecordIds.length} registro(s) de presença inativado(s). Eles ficam em "Inativados" e podem voltar.`);
+    setDesfazerInativacao(selectedRecordIds);
     setSelectedRecordIds([]);
     setConfirmandoInativacao(false);
+  };
+
+  const reativarRegistros = (ids: string[]) => {
+    if (ids.length === 0) return;
+    onReativarPresencaLink?.(ids);
+    setFeedback(`${ids.length} registro(s) de presença reativado(s).`);
+    setDesfazerInativacao([]);
+    setSelectedRecordIds([]);
+  };
+
+  const alternarInativos = () => {
+    setVerInativos(atual => !atual);
+    setSelectedRecordIds([]);
   };
 
   const navItems: Array<{ id: View; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -1036,9 +1066,10 @@ export default function ControlePresencaTab({
       </section>
 
       {feedback && (
-        <div role="status" className="flex items-start justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          <span>{feedback}</span>
-          <button type="button" onClick={() => setFeedback('')} aria-label="Fechar mensagem" className="rounded-lg p-1 hover:bg-emerald-100"><X className="h-4 w-4" /></button>
+        <div role="status" className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <span className="min-w-0 flex-1">{feedback}</span>
+          {desfazerInativacao.length > 0 && <button type="button" onClick={() => reativarRegistros(desfazerInativacao)} className={`${SECONDARY_BUTTON} shrink-0`} data-testid="presenca-desfazer"><Undo2 className="h-4 w-4" />Desfazer</button>}
+          <button type="button" onClick={() => { setFeedback(''); setDesfazerInativacao([]); }} aria-label="Fechar mensagem" className="rounded-lg p-1 hover:bg-emerald-100"><X className="h-4 w-4" /></button>
         </div>
       )}
 
@@ -1440,7 +1471,7 @@ export default function ControlePresencaTab({
                   <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-slate-500">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:border-emerald-700 hover:text-emerald-800" aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" /></button></div>
                   <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><strong className="text-2xl font-black text-slate-900">{members.length}</strong><span className="ml-2 text-xs text-slate-500">colaboradores</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="text-sm font-black text-slate-900">{group.linkAtivo ? 'Disponível' : 'Pausado'}</strong><span className="mt-1 block text-xs text-slate-500">link da equipe</span></div></div>
                   {group.token && <div className="mt-4 flex gap-2"><button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} flex-1`}><ClipboardCopy className="h-4 w-4" /> Copiar</button><button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} flex-1`}><MessageCircle className="h-4 w-4" /> Enviar</button></div>}
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4"><button type="button" onClick={() => onDeleteGrupoEquipe(group.id)} className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900"><Trash2 className="h-3.5 w-3.5" /> Excluir</button><button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950"><RotateCcw className="h-3.5 w-3.5" /> Renovar token</button></div>
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4"><button type="button" onClick={() => setEquipeExcluindo(group)} className="inline-flex min-h-9 items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900"><Trash2 className="h-3.5 w-3.5" /> Excluir</button><button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950"><RotateCcw className="h-3.5 w-3.5" /> Renovar token</button></div>
                 </article>
               );
             })}
@@ -1467,8 +1498,11 @@ export default function ControlePresencaTab({
                 Zerar o dia
               </button>
             )}
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void exportExcel()} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={() => void exportPdf()} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{onRestorePresenceHistory && <button type="button" onClick={() => void restoreHistory()} disabled={restoringHistory} className={`${SECONDARY_BUTTON} disabled:cursor-not-allowed disabled:opacity-60`} title="Busca de novo todos os envios já feitos pelo link público e traz de volta dias que sumiram, sem apagar nada"><RotateCcw className={`h-4 w-4 ${restoringHistory ? 'animate-spin' : ''}`} /><span className="hidden sm:inline">{restoringHistory ? 'Recuperando...' : 'Recuperar histórico'}</span></button>}{selectedRecordIds.length > 0 && <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800"><Trash2 className="h-4 w-4" /> Excluir ({selectedRecordIds.length})</button>}</div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void exportExcel()} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={() => void exportPdf()} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{onRestorePresenceHistory && <button type="button" onClick={() => void restoreHistory()} disabled={restoringHistory} className={`${SECONDARY_BUTTON} disabled:cursor-not-allowed disabled:opacity-60`} title="Busca de novo todos os envios já feitos pelo link público e traz de volta dias que sumiram, sem apagar nada"><RotateCcw className={`h-4 w-4 ${restoringHistory ? 'animate-spin' : ''}`} /><span className="hidden sm:inline">{restoringHistory ? 'Recuperando...' : 'Recuperar histórico'}</span></button>}{(verInativos || inativos.length > 0) && <button type="button" onClick={alternarInativos} aria-pressed={verInativos} className={SECONDARY_BUTTON} data-testid="presenca-ver-inativos">{verInativos ? <><ChevronLeft className="h-4 w-4" />Voltar aos ativos</> : <><Archive className="h-4 w-4" />Inativados ({inativos.length})</>}</button>}{selectedRecordIds.length > 0 && (verInativos
+              ? <button type="button" onClick={() => reativarRegistros(selectedRecordIds)} className={PRIMARY_BUTTON} data-testid="presenca-reativar"><RotateCcw className="h-4 w-4" /> Reativar ({selectedRecordIds.length})</button>
+              : <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800" data-testid="presenca-inativar"><Archive className="h-4 w-4" /> Inativar ({selectedRecordIds.length})</button>)}</div>
           </div>
+          {verInativos && <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900" data-testid="presenca-aviso-inativos">Mostrando os registros inativados. Marque os que devem voltar e toque em Reativar.</p>}
           <label className="flex min-h-11 items-center gap-2 px-1 text-xs font-bold text-slate-600"><input type="checkbox" checked={filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id))} onChange={event => setSelectedRecordIds(event.target.checked ? filteredRecords.map(record => record.id) : [])} className="h-4 w-4 accent-emerald-700" /> Selecionar registros filtrados</label>
           <div className="grid gap-3">
             {filteredRecords.length === 0 ? <div className={`${PANEL} px-5 py-14 text-center text-sm text-slate-500`}>Nenhum registro encontrado para os filtros selecionados.</div> : filteredRecords.map(record => {
@@ -1622,10 +1656,19 @@ export default function ControlePresencaTab({
       </div>
 
       <ConfirmDialog
+        open={Boolean(equipeExcluindo)}
+        tone="danger"
+        title={`Excluir ${equipeExcluindo?.nome || 'a equipe'}?`}
+        description="O link de presença desta equipe para de funcionar. A equipe vai para a Lixeira de Cadastros, de onde o administrador pode devolver com o mesmo link."
+        confirmLabel="Excluir equipe"
+        onConfirm={() => { if (equipeExcluindo) onDeleteGrupoEquipe(equipeExcluindo.id); setFeedback(`Equipe ${equipeExcluindo?.nome || ''} excluída. Ela fica na Lixeira de Cadastros.`); setEquipeExcluindo(null); }}
+        onCancel={() => setEquipeExcluindo(null)}
+      />
+      <ConfirmDialog
         open={confirmandoInativacao}
         tone="warning"
         title={`Inativar ${selectedRecordIds.length} registro(s) de presença?`}
-        description="Os apontamentos saem das telas e dos relatórios, mas continuam guardados e podem voltar."
+        description="Os apontamentos saem das telas e dos relatórios, mas continuam guardados. Para trazer de volta, abra Inativados e toque em Reativar."
         confirmLabel="Inativar"
         onConfirm={confirmarInativacaoRegistros}
         onCancel={() => setConfirmandoInativacao(false)}
