@@ -171,14 +171,14 @@ export const montarQuadro = ({ dia, equipamentos, registros, gruposEquipe, abast
     }
   });
 
-  const horimetros = new Map<string, { valor: number; data: string }>();
+  // Vale a leitura mais recente (data e hora), não a maior já digitada (M31):
+  // um 15230 no lugar de 1523 deixa de ficar para sempre no quadro.
+  const horimetros = new Map<string, { valor: number; data: string; quando: string }>();
   abastecimentos.forEach(item => {
     if (!item.equipamentoId || item.data > dia || !Number.isFinite(item.horimetroInicial) || item.horimetroInicial <= 0) return;
+    const quando = `${item.data}T${item.hora || ''}`;
     const atual = horimetros.get(item.equipamentoId);
-    horimetros.set(item.equipamentoId, {
-      valor: Math.max(atual?.valor ?? 0, item.horimetroInicial),
-      data: atual && atual.data > item.data ? atual.data : item.data,
-    });
+    if (!atual || quando > atual.quando) horimetros.set(item.equipamentoId, { valor: item.horimetroInicial, data: item.data, quando });
   });
   // Leitura do cadastro (apontamento do SGE) só vale se for do dia do quadro ou antes,
   // e só passa na frente do abastecimento quando é mais recente que ele.

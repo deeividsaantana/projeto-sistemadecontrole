@@ -6,6 +6,7 @@
  */
 import type { Abastecimento } from '../../types';
 import { SEM_CANTEIRO, SEM_FRENTE, type CartaoFrota } from './quadroFrota';
+import { parseFuelFormNumber } from '../../utils/fuelMacroForm';
 
 export interface LeituraAnterior {
   data: string;
@@ -71,16 +72,9 @@ export interface AvisoAbastecimento {
   texto: string;
 }
 
-/** Número digitado com vírgula ou ponto; vazio vira indefinido. */
+/** Número digitado com vírgula ou ponto; vazio vira indefinido. Mesmo leitor do lançamento de diesel. */
 export const lerNumero = (texto: string): number | undefined => {
-  const limpo = texto.trim().replace(/\s/g, '');
-  if (!limpo) return undefined;
-  // "1.250,5" e "1250,5" usam vírgula decimal. Sem vírgula, "1.250" é milhar
-  // (três dígitos depois do ponto) e "12.5" é decimal.
-  const normal = limpo.includes(',')
-    ? limpo.replace(/\./g, '').replace(',', '.')
-    : /^\d{1,3}(\.\d{3})+$/.test(limpo) ? limpo.replace(/\./g, '') : limpo;
-  const valor = Number(normal);
+  const valor = parseFuelFormNumber(texto, NaN);
   return Number.isFinite(valor) ? valor : undefined;
 };
 

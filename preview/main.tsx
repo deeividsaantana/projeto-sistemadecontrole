@@ -432,6 +432,8 @@ const equipesPainel = [fx.grupo, ...fx.equipesPresenca,
 // Combustível com estado de verdade, para lançar, corrigir e excluir no preview.
 function CombustivelVivo() {
   const [lista, setLista] = React.useState(() => [...fx.abastecimentos, ...fx.abastecimentosConsumo] as never[]);
+  // Lixeira de mentira: guarda o que saiu para o Desfazer devolver.
+  const lixeira = React.useRef(new Map<string, never[]>());
   type Item = { id: string };
   return (
     <LancamentosTab
@@ -447,7 +449,17 @@ function CombustivelVivo() {
       onOpenControle={noop}
       onSaveAbastecimento={(item, novo) => setLista(atual => (novo ? [...atual, item as never] : atual.map(x => ((x as Item).id === item.id ? item as never : x))))}
       onDeleteAbastecimento={id => setLista(atual => atual.filter(x => (x as Item).id !== id))}
-      onDeleteAbastecimentos={ids => setLista(atual => atual.filter(x => !ids.includes((x as Item).id)))}
+      onDeleteAbastecimentos={ids => {
+        const chave = `exc-${Date.now()}`;
+        lixeira.current.set(chave, lista.filter(x => ids.includes((x as Item).id)));
+        setLista(atual => atual.filter(x => !ids.includes((x as Item).id)));
+        return [chave];
+      }}
+      onRestaurarAbastecimentos={chaves => {
+        const devolvidos = chaves.flatMap(chave => lixeira.current.get(chave) || []);
+        setLista(atual => [...atual, ...devolvidos]);
+        return { ok: devolvidos.length > 0, mensagem: devolvidos.length ? '' : 'Nada para devolver.' };
+      }}
       onImportAbastecimentos={noopImportAbastecimentos}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}
@@ -552,7 +564,7 @@ const screens: Record<string, React.ReactNode> = {
       onOpenControle={noop}
       onSaveAbastecimento={noop}
       onDeleteAbastecimento={noop}
-      onDeleteAbastecimentos={noop}
+      onDeleteAbastecimentos={() => []}
       onImportAbastecimentos={noopImportAbastecimentos}
       onSaveLubrificacao={noop}
       onDeleteLubrificacao={noop}

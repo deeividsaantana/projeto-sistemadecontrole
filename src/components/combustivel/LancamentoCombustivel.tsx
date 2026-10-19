@@ -97,7 +97,7 @@ export default function LancamentoCombustivel({
   const combustivelPadraoId = useMemo(() => getDefaultDieselFuelId(combustiveis), [combustiveis]);
   const outros = useMemo(() => abastecimentos.filter(item => item.id !== emEdicao?.id), [abastecimentos, emEdicao?.id]);
 
-  const bombaInicialDoComboio = (comboioId: string) => paraCampo(resolveMacroPumpReadings({ records: outros, comboioId, litros: 0 }).bombaInicial);
+  const bombaInicialDoComboio = (comboioId: string, data: string, hora: string) => paraCampo(resolveMacroPumpReadings({ records: outros, comboioId, data, hora, litros: 0 }).bombaInicial);
 
   const formularioInicial = (): Formulario => {
     if (emEdicao) {
@@ -110,9 +110,11 @@ export default function LancamentoCombustivel({
     }
     // Comboio da última vez neste aparelho; com um só cadastrado, já vem escolhido.
     const comboioId = comboioInicial ?? (comboios.some(item => item.id === lerLocal(CHAVE_COMBOIO)) ? lerLocal(CHAVE_COMBOIO) : comboios.length === 1 ? comboios[0].id : '');
+    const data = isoDay(new Date());
+    const hora = agoraHora();
     return {
-      data: isoDay(new Date()), hora: agoraHora(), prefixo: prefixoInicial, litros: '', horimetro: '', km: '', comboioId,
-      bombaInicial: bombaInicialDoComboio(comboioId), tipoCombustivelId: combustivelPadraoId,
+      data, hora, prefixo: prefixoInicial, litros: '', horimetro: '', km: '', comboioId,
+      bombaInicial: bombaInicialDoComboio(comboioId, data, hora), tipoCombustivelId: combustivelPadraoId,
     };
   };
 
@@ -136,7 +138,7 @@ export default function LancamentoCombustivel({
   const horimetroDigitado = lerNumero(form.horimetro);
   const kmDigitado = lerNumero(form.km);
   const avisos = contexto ? avisosDoAbastecimento({ contexto, horimetro: horimetroDigitado, km: kmDigitado }).filter(item => item.tom === 'alerta') : [];
-  const bomba = useMemo(() => resolveMacroPumpReadings({ records: outros, comboioId: form.comboioId, litros: form.litros, bombaInicialManual: form.bombaInicial }), [form.bombaInicial, form.comboioId, form.litros, outros]);
+  const bomba = useMemo(() => resolveMacroPumpReadings({ records: outros, comboioId: form.comboioId, data: form.data, hora: form.hora, litros: form.litros, bombaInicialManual: form.bombaInicial }), [form.bombaInicial, form.comboioId, form.data, form.hora, form.litros, outros]);
   const consumo = useMemo(() => {
     if (!equipamento) return undefined;
     return montarConsumoPorEquipamento({ registros: abastecimentos.filter(item => item.equipamentoId === equipamento.id), equipamentos: [equipamento], empresas })[0];
@@ -173,7 +175,12 @@ export default function LancamentoCombustivel({
   }, []);
 
   const mudar = (campo: keyof Formulario, valor: string) => {
-    setForm(atual => (campo === 'comboioId' ? { ...atual, comboioId: valor, bombaInicial: bombaInicialDoComboio(valor) } : { ...atual, [campo]: valor }));
+    setForm(atual => {
+      const proximo = { ...atual, [campo]: valor };
+      // Comboio, data ou hora mudaram: a bomba sugerida acompanha, se ninguém digitou nela.
+      const refazBomba = campo === 'comboioId' || ((campo === 'data' || campo === 'hora') && !emEdicao && !mexidos.has('bombaInicial'));
+      return refazBomba ? { ...proximo, bombaInicial: bombaInicialDoComboio(proximo.comboioId, proximo.data, proximo.hora) } : proximo;
+    });
     if (campo === 'comboioId' && !emEdicao) gravarLocal(CHAVE_COMBOIO, valor);
     setMexidos(atual => new Set(atual).add(campo));
     setErro('');
@@ -212,7 +219,7 @@ export default function LancamentoCombustivel({
   };
 
   const limpar = () => {
-    setForm(atual => ({ ...formularioInicial(), data: atual.data, comboioId: atual.comboioId, bombaInicial: bombaInicialDoComboio(atual.comboioId), tipoCombustivelId: atual.tipoCombustivelId, prefixo: '' }));
+    setForm(atual => ({ ...formularioInicial(), data: atual.data, comboioId: atual.comboioId, bombaInicial: bombaInicialDoComboio(atual.comboioId, atual.data, agoraHora()), tipoCombustivelId: atual.tipoCombustivelId, prefixo: '' }));
     setMexidos(new Set());
     setErro('');
     setStatus('Pronto para novo lançamento.');
@@ -249,7 +256,7 @@ export default function LancamentoCombustivel({
     setStatus(`Salvo: ${equipamento.prefixo}, ${litrosTexto(litros)}. Pronto para o próximo.`);
     setForm(atual => ({
       ...formularioInicial(), data: atual.data, comboioId: atual.comboioId, tipoCombustivelId: atual.tipoCombustivelId,
-      bombaInicial: bomba.bombaFinal > 0 ? paraCampo(bomba.bombaFinal) : bombaInicialDoComboio(atual.comboioId), prefixo: '', hora: agoraHora(),
+      bombaInicial: bomba.bombaFinal > 0 ? paraCampo(bomba.bombaFinal) : bombaInicialDoComboio(atual.comboioId, atual.data, agoraHora()), prefixo: '', hora: agoraHora(),
     }));
     setMexidos(new Set());
     window.setTimeout(() => {
