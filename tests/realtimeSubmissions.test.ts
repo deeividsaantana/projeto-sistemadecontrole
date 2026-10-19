@@ -40,6 +40,11 @@ assert.match(
 );
 assert.match(
   adapter,
+  /mirrorPublicSubmission\(id, next, \{ reabrir: true \}\)/,
+  'uma gravação de verdade (edição de presença pelo link) precisa reabrir o envio para o painel incorporar (C4)',
+);
+assert.match(
+  adapter,
   /if \(path === PUBLIC_SUBMISSIONS_COLLECTION\) await Promise\.all\(rows\.map\(row => mirrorPublicSubmission\(row\.id, row\.payload\)\)\);/,
   'a leitura da fila legada deve recuperar envios pendentes feitos antes da correção',
 );
