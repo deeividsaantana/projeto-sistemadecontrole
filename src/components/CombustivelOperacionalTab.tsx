@@ -33,7 +33,8 @@ interface Props {
   /** Quem está usando o sistema; entra como responsável do lançamento. */
   usuario?: string;
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
-  onDeleteAbastecimento: (id: string) => void;
+  /** Sem os de excluir, a tela não mostra Excluir: só o administrador exclui (A7). */
+  onDeleteAbastecimento?: (id: string) => void;
   /** Manda para a Lixeira e devolve as exclusões; sem ele, o histórico só exclui um por vez. */
   onDeleteAbastecimentos?: (ids: string[]) => string[];
   /** Desfazer a exclusão: devolve da Lixeira. */
@@ -199,7 +200,7 @@ export default function CombustivelOperacionalTab({
   const excluirConfirmado = () => {
     let exclusoes: string[] = [];
     if (onDeleteAbastecimentos && excluindo.length) exclusoes = onDeleteAbastecimentos(excluindo.map(item => item.id));
-    else if (excluindo.length === 1) onDeleteAbastecimento(excluindo[0].id);
+    else if (excluindo.length === 1 && onDeleteAbastecimento) onDeleteAbastecimento(excluindo[0].id);
     else if (excluindo.length > 1) setErro('Excluir vários de uma vez não está disponível nesta tela.');
     if (excluindo.length) setAviso(excluindo.length === 1 ? 'Abastecimento excluído.' : `${excluindo.length} abastecimentos excluídos.`);
     setDesfazer(onRestaurarAbastecimentos ? exclusoes : []);
@@ -345,7 +346,7 @@ export default function CombustivelOperacionalTab({
               onExportarPdf={dados => void exportarHistoricoPdf(dados)}
               onEditar={item => abrirNovo({ emEdicao: item })}
               onRepetir={item => abrirNovo({ prefixo: porId.get(item.equipamentoId)?.prefixo || item.prefixoInformado || '', comboioId: item.comboioId })}
-              onExcluir={setExcluindo}
+              onExcluir={onDeleteAbastecimento || onDeleteAbastecimentos ? setExcluindo : undefined}
             />}
         </>
       )}

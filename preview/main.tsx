@@ -574,6 +574,25 @@ const screens: Record<string, React.ReactNode> = {
     />
   ),
   combustivel: <CombustivelVivo />,
+  // Operador: o App não manda os de excluir, então a tela não mostra Excluir (A7).
+  'combustivel-operador': (
+    <LancamentosTab
+      empresas={fx.empresas}
+      comboios={fx.comboios}
+      combustiveis={fx.combustiveis}
+      lubrificantes={fx.lubrificantes}
+      abastecimentos={[...fx.abastecimentos, ...fx.abastecimentosConsumo] as never[]}
+      lubrificacoes={fx.lubrificacoes}
+      equipamentos={[...fx.equipamentos, ...fx.equipamentosQuadro]}
+      registrosFrota={fx.controlesQuadro}
+      usuario="José"
+      combustivelInicial="historico"
+      onOpenControle={noop}
+      onSaveAbastecimento={noop}
+      onImportAbastecimentos={noopImportAbastecimentos}
+      onSaveLubrificacao={noop}
+    />
+  ),
   'combustivel-consumo': (
     <LancamentosTab
       empresas={fx.empresas}

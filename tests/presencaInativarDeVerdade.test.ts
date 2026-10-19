@@ -35,5 +35,5 @@ test('C8: o painel não apaga presença na origem do link; apagar fica só no Ze
 test('A29: excluir equipe pede confirmação antes', () => {
   const tela = ler('src/components/ControlePresencaTab.tsx');
   assert.doesNotMatch(tela, /onClick=\{\(\) => onDeleteGrupoEquipe\(/);
-  assert.match(tela, /onConfirm=\{\(\) => \{ if \(equipeExcluindo\) onDeleteGrupoEquipe\(equipeExcluindo\.id\)/);
+  assert.match(tela, /onConfirm=\{\(\) => \{ if \(equipeExcluindo\) onDeleteGrupoEquipe\?\.\(equipeExcluindo\.id\)/);
 });

@@ -52,7 +52,8 @@ interface ManutencaoTabProps {
   /** Histórico geral do sistema; a tela filtra o que é de manutenção. */
   historyLogs?: HistoryLog[];
   onSave: (ordem: OrdemServico, isNew: boolean) => void;
-  onDelete: (id: string) => void;
+  /** Sem ele, a tela não mostra Excluir: só o administrador exclui (A7). */
+  onDelete?: (id: string) => void;
 }
 
 const TIPOS: OrdemServico['tipo'][] = ['Corretiva', 'Preventiva', 'Preditiva', 'Revisão'];
@@ -625,7 +626,7 @@ export default function ManutencaoTab({
                             Editar
                           </button>
                         )}
-                        {podeEditar && (
+                        {podeEditar && onDelete && (
                           <button
                             type="button"
                             onClick={() => setExclusao(ordem)}
@@ -790,7 +791,7 @@ export default function ManutencaoTab({
         confirmLabel="Excluir ordem"
         onCancel={() => setExclusao(null)}
         onConfirm={() => {
-          if (exclusao) onDelete(exclusao.id);
+          if (exclusao) onDelete?.(exclusao.id);
           setExclusao(null);
         }}
       />

@@ -8,7 +8,7 @@ import {
   jsonResponse,
   parseJsonBody,
   requestIpHash,
-  requireStaffUser,
+  requireManagerUser,
   serverTimestamp,
   stableHash,
 } from './_shared/supabase-admin.js';
@@ -803,7 +803,7 @@ export const handler = async event => {
     // público e autenticado por token de link, esta ação exige conta de equipe:
     // ela remove a reserva do dia e libera um novo envio pelo link.
     if (method === 'DELETE') {
-      const staff = await requireStaffUser(event);
+      const staff = await requireManagerUser(event);
       const grupoId = cleanString(event.queryStringParameters?.grupoId, 160);
       const date = cleanString(event.queryStringParameters?.data, 10);
       if (!grupoId || !isIsoDate(date)) {

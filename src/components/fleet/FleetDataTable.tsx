@@ -22,7 +22,8 @@ interface Props {
   onSelectionChange: (ids: string[]) => void;
   onEdit: (state: FleetCurrentState) => void;
   onDetails: (state: FleetCurrentState) => void;
-  onDelete: (state: FleetCurrentState) => void;
+  /** Sem ele, não aparece Excluir. */
+  onDelete?: (state: FleetCurrentState) => void;
   canApprove?: boolean;
   onApprove?: (state: FleetCurrentState, status: 'APROVADO' | 'REJEITADO') => void;
 }
@@ -162,7 +163,7 @@ export default function FleetDataTable({
             onSelect={selected => toggleRow(row.recordId, selected)}
             onEdit={() => onEdit(row)}
             onDetails={() => onDetails(row)}
-            onDelete={() => onDelete(row)}
+            onDelete={onDelete ? () => onDelete(row) : undefined}
             canApprove={canApprove}
             onApprove={onApprove ? status => onApprove(row, status) : undefined}
           />
@@ -235,7 +236,7 @@ export default function FleetDataTable({
                         <button type="button" onClick={() => onApprove(row, 'REJEITADO')} aria-label={`Rejeitar ${row.equipment.prefix}`} title="Rejeitar" className={`${ICONE} border-rose-200 text-rose-700 hover:bg-rose-50`}><X className="size-4" aria-hidden="true" /></button>
                       </>}
                       <button type="button" onClick={() => onEdit(row)} aria-label={`Editar ${row.equipment.prefix}`} title="Editar" className={`${ICONE} border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-[#176b4d]`}><Pencil className="size-4" aria-hidden="true" /></button>
-                      <button type="button" onClick={() => onDelete(row)} aria-label={`Excluir ${row.equipment.prefix}`} title="Excluir" className={`${ICONE} border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-700`}><Trash2 className="size-4" aria-hidden="true" /></button>
+                      {onDelete && <button type="button" onClick={() => onDelete(row)} aria-label={`Excluir ${row.equipment.prefix}`} title="Excluir" className={`${ICONE} border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-700`}><Trash2 className="size-4" aria-hidden="true" /></button>}
                     </div>
                   </td>
                 </tr>

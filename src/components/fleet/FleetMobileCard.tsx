@@ -9,7 +9,7 @@ interface Props {
   onSelect: (selected: boolean) => void;
   onEdit: () => void;
   onDetails: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   canApprove?: boolean;
   onApprove?: (status: 'APROVADO' | 'REJEITADO') => void;
 }
@@ -71,7 +71,7 @@ export default function FleetMobileCard({
       <div className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
         <button type="button" onClick={onDetails} className={BOTAO_SECUNDARIO}><Eye className="size-4" aria-hidden="true" />Detalhes</button>
         <button type="button" onClick={onEdit} className={BOTAO_SECUNDARIO}><Pencil className="size-4" aria-hidden="true" />Editar</button>
-        <button type="button" onClick={onDelete} aria-label={`Excluir ${state.equipment.prefix}`} className={`${BOTAO_SECUNDARIO} px-3 text-slate-500 hover:border-rose-300 hover:text-rose-700`}><Trash2 className="size-4" aria-hidden="true" /></button>
+        {onDelete && <button type="button" onClick={onDelete} aria-label={`Excluir ${state.equipment.prefix}`} className={`${BOTAO_SECUNDARIO} px-3 text-slate-500 hover:border-rose-300 hover:text-rose-700`}><Trash2 className="size-4" aria-hidden="true" /></button>}
       </div>
     </article>
   );

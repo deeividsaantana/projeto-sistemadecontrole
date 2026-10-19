@@ -48,7 +48,8 @@ interface Props {
   operadores: readonly string[];
   usuario: string;
   onSaveMany: (itens: Array<{ registro: ControleEquipamentoDiario; novo: boolean }>) => void;
-  onDeleteMany: (ids: string[]) => void;
+  /** Sem ele, não aparece Excluir lançamento: só o administrador exclui (A7). */
+  onDeleteMany?: (ids: string[]) => void;
   onAviso: (texto: string) => void;
 }
 
@@ -143,6 +144,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
   };
 
   const excluir = () => {
+    if (!onDeleteMany) return;
     onDeleteMany(excluiveis.map(cartao => cartao.registroId!));
     setConfirmarExclusao(false);
     setMarcadas(new Set());
@@ -207,10 +209,10 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
                 </button>
               ))}
             </div>
-            <button type="button" onClick={() => setConfirmarExclusao(true)} disabled={excluiveis.length === 0} className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="lancar-excluir">
+            {onDeleteMany && <button type="button" onClick={() => setConfirmarExclusao(true)} disabled={excluiveis.length === 0} className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-sm font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 ${FOCO}`} data-testid="lancar-excluir">
               <Trash2 className="size-4" aria-hidden="true" />
               Excluir lançamento{excluiveis.length ? ` (${excluiveis.length})` : ''}
-            </button>
+            </button>}
           </div>
         )}
       </div>
