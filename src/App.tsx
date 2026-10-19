@@ -163,7 +163,6 @@ import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
 import { manterNovidadesLocais } from './cloud/novidadesLocais';
 import {
   addPublicPresenceMember,
-  deletePublicPresenceRecords,
   resetPresenceDay,
   removePublicPresenceMember,
   updatePublicPresenceDayNote,
@@ -177,7 +176,7 @@ import {
 } from './publicApi';
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
-import { estaAtivo, somenteAtivos } from './utils/inativacao';
+import { estaAtivo, inativar, reativar, somenteAtivos } from './utils/inativacao';
 import { aplicarPresencaManual, montarPresencaManual, type SituacaoLancada } from './utils/presencaManual';
 import { aplicarSituacao, descreverMudanca, type MudancaDeSituacao } from './utils/situacaoColaborador';
 import {
@@ -608,6 +607,7 @@ export default function App() {
   const abastecimentosAtivos = useMemo(() => somenteAtivos(abastecimentos), [abastecimentos]);
   const ticketsJazidaAtivos = useMemo(() => somenteAtivos(ticketsJazida), [ticketsJazida]);
   const presencasLinkAtivas = useMemo(() => somenteAtivos(presencasLink), [presencasLink]);
+  const presencasLinkInativas = useMemo(() => presencasLink.filter(item => !estaAtivo(item)), [presencasLink]);
   const [historicoPresencas, setHistoricoPresencas] = useState<HistoricoPresenca[]>([]);
   const [controleEquipamentosDiario, setControleEquipamentosDiario] = useState<ControleEquipamentoDiario[]>([]);
   const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
@@ -3705,29 +3705,33 @@ export default function App() {
     void handleUploadToSupabase();
   };
 
-  const handleDeletePresencaLink = async (ids: string[]) => {
-    const selected = new Set(ids);
-    const targetMap = new Map<string, string[]>();
-    presencasLink.filter(item => selected.has(item.id)).forEach(item => {
-      const legacyMatch = /^plink-(.+)-\d+$/.exec(item.id);
-      const submissionDocId = item.submissionDocId || (legacyMatch ? `presence_${legacyMatch[1]}` : '');
-      if (!submissionDocId) return;
-      targetMap.set(submissionDocId, [...(targetMap.get(submissionDocId) || []), item.id]);
-    });
-    try {
-      if (targetMap.size > 0) {
-        await deletePublicPresenceRecords(Array.from(targetMap, ([submissionDocId, recordIds]) => ({ submissionDocId, recordIds })));
-      }
-    } catch (error) {
-      addNotification('Exclusão não concluída', error instanceof Error ? error.message : 'A fonte pública não confirmou a exclusão.', 'error', 'Sistema Local');
-      return;
-    }
-    const updatedPresencas = presencasLink.filter(item => !selected.has(item.id));
-    setPresencasLink(updatedPresencas);
-    writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updatedPresencas));
-    addNotification('Presenças excluídas', `${ids.length} registro(s) foram excluídos permanentemente.`, 'success', 'Sistema Local');
-    void uploadLocalSnapshotToSupabase();
+  /**
+   * "Inativar presença" inativa de verdade (C8): o registro sai das telas e dos
+   * relatórios, fica guardado e volta com Reativar. Nada é apagado aqui nem na
+   * origem do link; apagar o dia inteiro fica só no "Zerar o dia".
+   */
+  const alterarAtividadePresenca = (ids: string[], ativar: boolean) => {
+    const alvos = new Set(ids);
+    const afetados = presencasLink.filter(item => alvos.has(item.id) && estaAtivo(item) !== ativar);
+    if (afetados.length === 0) return;
+    const agora = new Date().toISOString();
+    const trocados = ativar ? reativar(presencasLink, ids) : inativar(presencasLink, ids, activeUserName, agora);
+    // updatedAt carimbado: na mesclagem com a nuvem vale a versão mais recente.
+    const updated = trocados.map(item => (afetados.some(alvo => alvo.id === item.id) ? { ...item, updatedAt: agora, atualizadoPor: activeUserName } : item));
+    const nomes = afetados.slice(0, 5).map(item => `${item.funcionarioNome} (${item.data.split('-').reverse().join('/')})`).join(', ');
+    saveAndLog(
+      'Controle de Presença',
+      'Editou',
+      `${ativar ? 'Reativou' : 'Inativou'} ${afetados.length} registro(s) de presença: ${nomes}${afetados.length > 5 ? '…' : ''}.`,
+      historyLogs,
+      () => {
+        setPresencasLink(updated);
+        writeStorageValue(localStorage, 'renea_presencas_link', JSON.stringify(updated));
+      },
+    );
   };
+  const handleInativarPresencaLink = (ids: string[]) => alterarAtividadePresenca(ids, false);
+  const handleReativarPresencaLink = (ids: string[]) => alterarAtividadePresenca(ids, true);
 
   const handleChangeControleEstacas = (next: ControleEstacas, description: string) => {
     saveAndLog(
@@ -4690,7 +4694,9 @@ export default function App() {
                 onDeleteGrupoEquipe={handleDeleteGrupoEquipe}
                 onUpdatePresencaLink={handleUpdatePresencaLink}
                 onLancarPresencaManual={handleLancarPresencaManual}
-                onDeletePresencaLink={handleDeletePresencaLink}
+                presencasInativas={presencasLinkInativas}
+                onInativarPresencaLink={handleInativarPresencaLink}
+                onReativarPresencaLink={handleReativarPresencaLink}
                 onResetPresencaDia={handleResetPresencaDia}
                 onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
                 viewInicial={relatorioPedido === 'presenca' ? 'relatorios' : undefined}

@@ -12,6 +12,7 @@ import LancamentosTab from '../src/components/LancamentosTab';
 import EstacasTab from '../src/components/EstacasTab';
 import CadastrosTab from '../src/components/CadastrosTab';
 import ControlePresencaTab from '../src/components/ControlePresencaTab';
+import { inativar, reativar, somenteAtivos } from '../src/utils/inativacao';
 import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamentosDiarioTab';
 import QuadroFrota from '../src/components/quadroFrota/QuadroFrota';
 import ManutencaoTab from '../src/components/ManutencaoTab';
@@ -429,6 +430,30 @@ const equipesPainel = [fx.grupo, ...fx.equipesPresenca,
     ...fx.grupo, id: `painel-extra-${i}`, nome: `Equipe ${nome}`, frenteServico: `Ramo ${(i + 3) * 100}`, token: `painel-extra-${i}`,
   }))];
 
+// Presença do painel com estado, para inativar, desfazer e reativar no preview.
+function PresencaAdminViva() {
+  const [lista, setLista] = React.useState(() => [...fx.presencasHistorico]);
+  const [equipes, setEquipes] = React.useState(() => [...fx.equipesPresenca]);
+  const trocar = (ids: string[], ativar: boolean) => setLista(atual => (ativar ? reativar(atual, ids) : inativar(atual, ids, 'Deivid')));
+  return (
+    <ControlePresencaTab
+      empresas={fx.empresas}
+      funcionarios={fx.efetivoPresenca}
+      obras={fx.obras}
+      gruposEquipe={equipes}
+      presencasLink={somenteAtivos(lista)}
+      presencasInativas={lista.filter(item => item.inativoEm)}
+      historicoPresencas={[]}
+      onSaveGrupoEquipe={noop}
+      onDeleteGrupoEquipe={id => setEquipes(atual => atual.filter(item => item.id !== id))}
+      onUpdatePresencaLink={noop}
+      onLancarPresencaManual={noop}
+      onInativarPresencaLink={ids => trocar(ids, false)}
+      onReativarPresencaLink={ids => trocar(ids, true)}
+    />
+  );
+}
+
 // Combustível com estado de verdade, para lançar, corrigir e excluir no preview.
 function CombustivelVivo() {
   const [lista, setLista] = React.useState(() => [...fx.abastecimentos, ...fx.abastecimentosConsumo] as never[]);
@@ -673,20 +698,7 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
-  'presenca-admin': (
-    <ControlePresencaTab
-      empresas={fx.empresas}
-      funcionarios={fx.efetivoPresenca}
-      obras={fx.obras}
-      gruposEquipe={fx.equipesPresenca}
-      presencasLink={fx.presencasHistorico}
-      historicoPresencas={[]}
-      onSaveGrupoEquipe={noop}
-      onDeleteGrupoEquipe={noop}
-      onUpdatePresencaLink={noop}
-      onLancarPresencaManual={noop}
-    />
-  ),
+  'presenca-admin': <PresencaAdminViva />,
   presenca: (
     <PresencaTempoRealPublica
       token="presenca-exemplo"

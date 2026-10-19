@@ -207,3 +207,4 @@ import './historicoVersoesNuvem.test';
 import './frotaDataPlanilha.test';
 import './dataLocalHoje.test';
 import './dieselNumeroBombaExclusao.test';
+import './presencaInativarDeVerdade.test';
