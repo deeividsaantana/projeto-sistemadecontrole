@@ -201,3 +201,4 @@ import './quadroFrotaPainelModal.test';
 import './exclusaoEquipe.test';
 import './leituraNota.test';
 import './linkDeCampoFila.test';
+import './nuvemNaoPerdeNovidade.test';

@@ -35,7 +35,7 @@ type Retrato = Record<string, unknown>;
  * importação. Devolver pelo id duplicava o diesel (16/10/2026). Para essas
  * tabelas, o que já existe do outro lado com o mesmo conteúdo não volta.
  */
-const CHAVE_DE_CONTEUDO: Record<string, (item: unknown) => string> = {
+export const CHAVE_DE_CONTEUDO: Record<string, (item: unknown) => string> = {
   abastecimentos: item => {
     if (!item || typeof item !== 'object') return '';
     return isPublishableFuelImport(item) ? buildFuelImportKey(item) : '';

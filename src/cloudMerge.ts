@@ -179,8 +179,10 @@ export const resolvePublishPayload = ({
 }): CloudSnapshot => {
   // Nuvem ainda vazia: não há nada para preservar.
   if (!remoteUpdatedAt) return localPayload;
-  // Este aparelho já está na versão publicada: pode subir o próprio retrato.
-  if (knownCloudVersion === remoteUpdatedAt) return localPayload;
+  // Este aparelho já está na versão publicada: pode subir o próprio retrato,
+  // menos nas tabelas que só ganham linhas. Um envio com o histórico vazio
+  // ou cortado apagava da nuvem o histórico de todo mundo (C6).
+  if (knownCloudVersion === remoteUpdatedAt) return somarTabelasDeAcrescimo(remoteSnapshot, localPayload);
   return mergeCloudSnapshotsWithBaseline(remoteSnapshot, localPayload, baseline);
 };
 
@@ -208,6 +210,23 @@ export const resolvePublishPayload = ({
  * exclusão sumisse, o registro excluído voltaria.
  */
 const TABELAS_SOMENTE_ACRESCIMO = new Set(['historyLogs', 'presencasLink', TABELA_EXCLUSOES]);
+
+// A presença do link fica de fora: apagar presença aqui (versão já conhecida)
+// precisa continuar apagando na nuvem.
+const SOMAR_MESMO_NA_VERSAO_CONHECIDA = ['historyLogs', TABELA_EXCLUSOES];
+
+const somarTabelasDeAcrescimo = (remote: CloudSnapshot | null | undefined, local: CloudSnapshot): CloudSnapshot => {
+  if (!remote || typeof remote !== 'object') return local;
+  let merged: CloudSnapshot | null = null;
+  for (const key of SOMAR_MESMO_NA_VERSAO_CONHECIDA) {
+    const remoteValue = (remote as CloudSnapshot)[key];
+    if (!Array.isArray(remoteValue) || remoteValue.length === 0) continue;
+    const localValue = Array.isArray(local[key]) ? local[key] as unknown[] : [];
+    merged ??= { ...local };
+    merged[key] = mergeCloudTable(remoteValue, localValue);
+  }
+  return merged ? aplicarExclusoes(merged) : local;
+};
 
 export const mergeCloudSnapshotsWithBaseline = (
   remote: CloudSnapshot | null | undefined,
