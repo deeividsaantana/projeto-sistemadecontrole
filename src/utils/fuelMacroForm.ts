@@ -151,6 +151,7 @@ export const resolveMacroPumpReadings = ({
 export const buildMacroFuelingRecord = ({
   id,
   equipment,
+  prefixo,
   records,
   data,
   hora,
@@ -167,7 +168,9 @@ export const buildMacroFuelingRecord = ({
   nowIso,
 }: {
   id: string;
-  equipment: Equipamento;
+  /** Sem cadastro, o abastecimento fica só com o prefixo digitado. */
+  equipment?: Equipamento;
+  prefixo?: string;
   records: Abastecimento[];
   data: string;
   hora: string;
@@ -191,8 +194,8 @@ export const buildMacroFuelingRecord = ({
     id,
     data,
     hora: normalizedTime.valid ? normalizedTime.value : hora,
-    equipamentoId: equipment.id,
-    prefixoInformado: equipment.prefixo,
+    equipamentoId: equipment?.id || '',
+    prefixoInformado: equipment?.prefixo || (prefixo || '').trim().toUpperCase(),
     horimetroInicial: parseFuelFormNumber(horimetro, 0),
     kmInicial: parseFuelFormNumber(km, 0),
     bombaInicial,

@@ -229,7 +229,8 @@ export default function LancamentoCombustivel({
   function salvar() {
     const hora = normalizeQuickTime(form.hora);
     const litros = parseFuelFormNumber(form.litros, 0);
-    if (!equipamento) { setErro('Escolha a máquina na lista do prefixo.'); prefixoRef.current?.focus(); return; }
+    const prefixo = equipamento?.prefixo || form.prefixo.trim().toUpperCase();
+    if (!prefixo) { setErro('Digite o prefixo da máquina.'); prefixoRef.current?.focus(); return; }
     if (litros <= 0) { setErro('Informe quantos litros foram abastecidos.'); document.getElementById('lanc-litros')?.focus(); return; }
     if (!hora.valid) { setErro('Digite a hora como 1005 ou 10:05.'); document.getElementById('lanc-hora')?.focus(); return; }
     if (!form.comboioId) { setErro('Escolha o comboio que abasteceu.'); document.getElementById('lanc-comboio')?.focus(); return; }
@@ -237,7 +238,7 @@ export default function LancamentoCombustivel({
     if (bomba.bombaInicial <= 0) { setErro('Digite a leitura inicial da bomba deste comboio.'); document.getElementById('lanc-bomba')?.focus(); return; }
     const agora = new Date().toISOString();
     const registro = buildMacroFuelingRecord({
-      id: emEdicao?.id || crypto.randomUUID(), equipment: equipamento, records: [...outros], data: form.data, hora: form.hora,
+      id: emEdicao?.id || crypto.randomUUID(), equipment: equipamento, prefixo, records: [...outros], data: form.data, hora: form.hora,
       litros: form.litros, horimetro: form.horimetro, km: form.km, tipoCombustivelId: form.tipoCombustivelId, comboioId: form.comboioId,
       responsavel: emEdicao?.responsavel || usuario, bombaInicialManual: form.bombaInicial,
       operador: emEdicao?.operadorNome || contexto?.operador || '', local: emEdicao?.localAbastecimento || contexto?.canteiro || contexto?.frente || '',
@@ -246,14 +247,14 @@ export default function LancamentoCombustivel({
     if (emEdicao) {
       // Corrigir não muda de onde o registro veio nem quando nasceu.
       onSalvar({ ...emEdicao, ...registro, origem: emEdicao.origem || registro.origem, criadoEm: emEdicao.criadoEm || registro.criadoEm, alertas: undefined }, false);
-      onAviso(`Abastecimento de ${equipamento.prefixo} corrigido.`);
+      onAviso(`Abastecimento de ${prefixo} corrigido.`);
       onFechar();
       return;
     }
     onSalvar(registro, true);
-    onAviso(`${equipamento.prefixo} abastecido com ${litrosTexto(litros)}.`);
+    onAviso(`${prefixo} abastecido com ${litrosTexto(litros)}${equipamento ? '' : ' (sem cadastro)'}.`);
     setLancadosAgora(atual => [registro.id, ...atual]);
-    setStatus(`Salvo: ${equipamento.prefixo}, ${litrosTexto(litros)}. Pronto para o próximo.`);
+    setStatus(`Salvo: ${prefixo}, ${litrosTexto(litros)}. Pronto para o próximo.`);
     setForm(atual => ({
       ...formularioInicial(), data: atual.data, comboioId: atual.comboioId, tipoCombustivelId: atual.tipoCombustivelId,
       bombaInicial: bomba.bombaFinal > 0 ? paraCampo(bomba.bombaFinal) : bombaInicialDoComboio(atual.comboioId, atual.data, agoraHora()), prefixo: '', hora: agoraHora(),
@@ -387,9 +388,9 @@ export default function LancamentoCombustivel({
               </Linha>
             </div>
 
-            <p role="status" data-lanc-reveal className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold ${erro || naoCadastrado ? 'bg-rose-50 text-rose-700' : avisos.length ? 'bg-amber-50 text-amber-900' : equipamento ? 'bg-emerald-50 text-[#176b4d]' : 'bg-[#f7f8f6] text-slate-600'}`} data-testid="combustivel-status">
+            <p role="status" data-lanc-reveal className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold ${erro ? 'bg-rose-50 text-rose-700' : naoCadastrado || avisos.length ? 'bg-amber-50 text-amber-900' : equipamento ? 'bg-emerald-50 text-[#176b4d]' : 'bg-[#f7f8f6] text-slate-600'}`} data-testid="combustivel-status">
               {erro || naoCadastrado || avisos.length ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <Info className="size-4 shrink-0" aria-hidden="true" />}
-              <span data-testid={erro ? 'combustivel-erro' : undefined}>{erro || (naoCadastrado ? 'Prefixo não encontrado no cadastro.' : avisos[0]?.texto || (equipamento && status.startsWith('Pronto') ? 'Equipamento localizado.' : status))}</span>
+              <span data-testid={erro ? 'combustivel-erro' : undefined}>{erro || (naoCadastrado ? 'Prefixo sem cadastro. Pode lançar assim; o abastecimento fica com o prefixo digitado.' : avisos[0]?.texto || (equipamento && status.startsWith('Pronto') ? 'Equipamento localizado.' : status))}</span>
             </p>
           </div>
         </section>
