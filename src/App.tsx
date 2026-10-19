@@ -5,7 +5,7 @@
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
-import { RouteMotion } from './shared/ui';
+import { RouteMotion, isoDay } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -3747,9 +3747,9 @@ export default function App() {
   // Alertas do sino: derivados dos mesmos registros das pendências, filtrando só
   // gravidade alta. Não são salvos, então nunca sobra alerta de algo resolvido.
   const alertasSistema = useMemo(() => alertasDoSistema({
-    hoje: new Date().toISOString().slice(0, 10),
-    inicio: new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10),
-    fim: new Date().toISOString().slice(0, 10),
+    hoje: isoDay(new Date()),
+    inicio: isoDay(new Date(Date.now() - 30 * 86_400_000)),
+    fim: isoDay(new Date()),
     equipamentos,
     controlesEquipamentos: controleEquipamentosDiario,
     gruposEquipe,

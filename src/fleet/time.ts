@@ -24,10 +24,13 @@ export const normalizeIsoDate = (
   value: unknown,
   fallback = '',
 ): string => {
+  // A planilha chega pelo ExcelJS, que entrega a célula com o dia e a hora
+  // escritos na planilha em UTC. Ler pelo fuso do navegador (-3 h) jogava a
+  // data para o dia anterior (auditoria de 16/10, C7).
   if (value instanceof Date && Number.isFinite(value.getTime())) {
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, '0');
-    const day = String(value.getDate()).padStart(2, '0');
+    const year = value.getUTCFullYear();
+    const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(value.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
   const text = String(value ?? '').trim();
@@ -49,8 +52,9 @@ export const normalizeIsoDate = (
 
 export const parseOperationalTime = (value: unknown): ParsedOperationalTime => {
   if (value instanceof Date && Number.isFinite(value.getTime())) {
-    const hours = value.getHours();
-    const minutes = value.getMinutes();
+    // Mesma regra da data: a hora da célula vem em UTC (C7).
+    const hours = value.getUTCHours();
+    const minutes = value.getUTCMinutes();
     return {
       raw: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
       hours,

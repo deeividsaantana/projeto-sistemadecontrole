@@ -30,7 +30,7 @@ import {
   Download,
   Layers3
 } from 'lucide-react';
-import { ConfirmDialog, CountUp } from '../shared/ui';
+import { ConfirmDialog, CountUp, isoDay } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import type ExcelJS from 'exceljs';
 import { listarMateriais } from '../utils/materiaisJazida';
@@ -328,7 +328,7 @@ export default function TicketsJazidaTab({
   const [batchNumberMode, setBatchNumberMode] = useState<'automatico' | 'manual'>('manual');
   const [batchDirection, setBatchDirection] = useState<'crescente' | 'decrescente'>('crescente');
   const [batchFillMode, setBatchFillMode] = useState<'em-branco' | 'pre-preenchido'>('em-branco');
-  const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
+  const [batchDate, setBatchDate] = useState(isoDay(new Date()));
   const [batchPrefixo, setBatchPrefixo] = useState('');
   const [batchPlaca, setBatchPlaca] = useState('');
   const [batchTipoMaterial, setBatchTipoMaterial] = useState<TipoMaterialJazida>('Solo');
@@ -342,14 +342,14 @@ export default function TicketsJazidaTab({
       ? parseReneaStoredJson<PrintedTicketBatch[]>(saved, [])
       : [];
   });
-  const [controlDate, setControlDate] = useState(new Date().toISOString().split('T')[0]);
+  const [controlDate, setControlDate] = useState(isoDay(new Date()));
   const [operationsOpen, setOperationsOpen] = useState(false);
   const [noteModalNumber, setNoteModalNumber] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
   const [tipoTicket, setTipoTicket] = useState<TipoTicketJazida>('Liberação');
-  const [data, setData] = useState(new Date().toISOString().split('T')[0]);
+  const [data, setData] = useState(isoDay(new Date()));
   const [ticketNumero, setTicketNumero] = useState('');
   const [prefixo, setPrefixo] = useState('');
   const [placa, setPlaca] = useState('');
@@ -463,7 +463,7 @@ export default function TicketsJazidaTab({
     setEditingId(null);
     setValidationError('');
     setTipoTicket(ticketTab);
-    setData(new Date().toISOString().split('T')[0]);
+    setData(isoDay(new Date()));
     setTicketNumero('');
     setPrefixo('');
     setPlaca('');
@@ -808,7 +808,7 @@ export default function TicketsJazidaTab({
     setBatchNumberMode('manual');
     setBatchDirection('crescente');
     setBatchFillMode('em-branco');
-    setBatchDate(new Date().toISOString().split('T')[0]);
+    setBatchDate(isoDay(new Date()));
     setBatchPrefixo('');
     setBatchPlaca('');
     setBatchTipoMaterial('Solo');
@@ -1503,7 +1503,7 @@ export default function TicketsJazidaTab({
         spmarLogoBase64,
       });
       const sufixo = hasFiltrosAtivos ? '_filtrado' : '';
-      await downloadCorporateWorkbook(wb, `CONTROLE DE VIAGEMS JAZIDA SABESP${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      await downloadCorporateWorkbook(wb, `CONTROLE DE VIAGEMS JAZIDA SABESP${sufixo}_${isoDay(new Date())}.xlsx`);
     } catch (err) {
       console.error('Erro ao exportar Excel de tickets jazida:', err);
       setValidationError('Não foi possível exportar o Excel. Tente novamente.');

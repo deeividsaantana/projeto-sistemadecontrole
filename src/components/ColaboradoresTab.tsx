@@ -17,7 +17,7 @@ import type {
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { displayText } from '../utils/displayText';
-import { Badge, Card, EmptyState, Modal, PageHeader, TextInput, statusTone } from '../shared/ui';
+import { Badge, Card, EmptyState, Modal, PageHeader, TextInput, isoDay, statusTone } from '../shared/ui';
 import {
   SITUACOES_COLABORADOR,
   aplicarSituacao,
@@ -146,7 +146,7 @@ export default function ColaboradoresTab({
                     type="button"
                     onClick={() => setMudanca({
                       situacao: situacaoAtual === 'ATIVO' ? 'FÉRIAS' : 'ATIVO',
-                      data: new Date().toISOString().slice(0, 10),
+                      data: isoDay(new Date()),
                       motivo: '',
                     })}
                     className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
