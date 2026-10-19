@@ -13,7 +13,8 @@ const pessoas = [
   { id: 'c-1', nome: 'João Batista', cargo: 'PEDREIRO' },
   { id: 'c-2', nome: 'Maria Aparecida', cargo: 'SERVENTE' },
 ] as Funcionario[];
-const agora = new Date('2026-09-10T13:20:00.000Z');
+// Hora local do aparelho, em qualquer fuso em que o teste rode.
+const agora = new Date(2026, 8, 10, 13, 20);
 
 test('o lançamento manual nasce marcado: não se confunde com o que veio do campo', () => {
   const [registro] = montarPresencaManual({

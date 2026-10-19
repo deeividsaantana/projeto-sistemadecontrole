@@ -50,7 +50,7 @@ import {
 } from '../utils/fuelMasterDataImport';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
+import { ConfirmDialog, CountUp, PageHeader, isoDay } from '../shared/ui';
 
 export interface ImportAbastecimentosResult {
   requested: number;
@@ -715,7 +715,7 @@ export default function LancamentosTab({
 
   // 1. Form Temporary States
   // Shared
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(isoDay(new Date()));
   const [time, setTime] = useState('08:00');
   const [equipamentoId, setEquipamentoId] = useState('');
   const [responsavel, setResponsavel] = useState('');
@@ -780,7 +780,7 @@ export default function LancamentosTab({
   const resetFormFields = () => {
     setEditingId(null);
     setValidationError('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(isoDay(new Date()));
     setTime(new Date().toTimeString().split(' ')[0].substring(0, 5));
     setEquipamentoId('');
     setResponsavel(''); setOperadorNome(''); setLocalAbastecimento('');
@@ -1142,7 +1142,7 @@ export default function LancamentosTab({
       setupCatalogSheet(comboioSheet, ['Comboio', 'Placa', 'Capacidade Litros', 'Responsavel']);
       comboios.forEach(comboio => comboioSheet.addRow([comboio.nome, comboio.placa, comboio.capacidadeLitros, comboio.responsavel]));
 
-      await downloadWorkbookFile(wb, `MODELO_importacao_combustivel_${new Date().toISOString().split('T')[0]}.xlsx`);
+      await downloadWorkbookFile(wb, `MODELO_importacao_combustivel_${isoDay(new Date())}.xlsx`);
     } catch (err) {
       console.error('Erro ao gerar modelo de combustível:', err);
       setValidationError('Não foi possível gerar o modelo de importação. Tente novamente.');
@@ -1217,7 +1217,7 @@ export default function LancamentosTab({
       ], [hasFiltrosAtivos ? 'Filtros da tela aplicados' : 'Base completa']);
 
       const sufixo = hasFiltrosAtivos ? '_filtrado' : '';
-      await downloadWorkbookFile(wb, `RENEA_combustivel${sufixo}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      await downloadWorkbookFile(wb, `RENEA_combustivel${sufixo}_${isoDay(new Date())}.xlsx`);
     } catch (err) {
       console.error('Erro ao exportar Excel de combustível:', err);
       setValidationError('Não foi possível exportar o Excel. Tente novamente.');

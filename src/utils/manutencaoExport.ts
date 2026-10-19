@@ -1,3 +1,4 @@
+import { getOperationalToday } from '../fleet/time';
 import type { Equipamento, OrdemServico } from '../types';
 import {
   addCorporateSummarySheet,
@@ -176,6 +177,6 @@ export const downloadManutencaoWorkbook = async ({
     filtros,
   );
 
-  const carimbo = new Date().toISOString().slice(0, 10);
+  const carimbo = getOperationalToday();
   await downloadCorporateWorkbook(workbook, `MANUTENCAO_${carimbo}.xlsx`);
 };

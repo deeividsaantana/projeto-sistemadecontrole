@@ -16,7 +16,8 @@ export const situacaoVencimento = (
   if (vencimento < hoje) return 'Vencido';
   const limite = new Date(`${hoje}T00:00:00`);
   limite.setDate(limite.getDate() + diasAlerta);
-  return vencimento <= limite.toISOString().slice(0, 10) ? 'Vence em breve' : 'Válido';
+  const limiteDia = `${limite.getFullYear()}-${String(limite.getMonth() + 1).padStart(2, '0')}-${String(limite.getDate()).padStart(2, '0')}`;
+  return vencimento <= limiteDia ? 'Vence em breve' : 'Válido';
 };
 
 export const exigeAtencao = (situacao: SituacaoVencimento) =>

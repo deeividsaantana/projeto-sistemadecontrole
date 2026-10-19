@@ -37,6 +37,7 @@ import {
   TableHead,
   TableShell,
   buildPeriod,
+  isoDay,
   statusTone,
   type PeriodValue,
 } from '../shared/ui';
@@ -76,7 +77,7 @@ const formularioVazio = (equipamentoId = '') => ({
   prioridade: 'Média' as OrdemServico['prioridade'],
   motivo: '',
   descricao: '',
-  dataAbertura: new Date().toISOString().slice(0, 10),
+  dataAbertura: isoDay(new Date()),
   horaAbertura: new Date().toTimeString().slice(0, 5),
   oficina: '',
   solucao: '',
@@ -318,7 +319,7 @@ export default function ManutencaoTab({
     const atualizada: OrdemServico = {
       ...ordem,
       status: proximo,
-      dataConclusao: concluindo ? (ordem.dataConclusao || hoje.toISOString().slice(0, 10)) : ordem.dataConclusao,
+      dataConclusao: concluindo ? (ordem.dataConclusao || isoDay(hoje)) : ordem.dataConclusao,
       horaConclusao: concluindo ? (ordem.horaConclusao || hoje.toTimeString().slice(0, 5)) : ordem.horaConclusao,
     };
     onSave({ ...atualizada, horasParadas: atualizada.dataConclusao ? calcularHorasParadas(atualizada) : undefined }, false);

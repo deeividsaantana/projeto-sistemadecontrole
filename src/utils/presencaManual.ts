@@ -37,7 +37,8 @@ export const montarPresencaManual = (
 ): PresencaApontamento[] => {
   const porId = new Map(funcionarios.map(pessoa => [pessoa.id, pessoa]));
   const iso = agora.toISOString();
-  const hora = iso.slice(11, 16);
+  // Hora de Brasília, como no link; a parte de hora do ISO é UTC (+3 h) (A15).
+  const hora = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
 
   return situacoes
     .filter(item => item.status && porId.has(item.funcionarioId))

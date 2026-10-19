@@ -204,3 +204,5 @@ import './linkDeCampoFila.test';
 import './nuvemNaoPerdeNovidade.test';
 import './ticketsUmaTabela.test';
 import './historicoVersoesNuvem.test';
+import './frotaDataPlanilha.test';
+import './dataLocalHoje.test';
