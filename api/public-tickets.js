@@ -3,6 +3,7 @@ import {
   enforceRateLimit,
   functionErrorResponse,
   getAdminDb,
+  getSupabaseAdmin,
   isIsoDate,
   jsonResponse,
   parseJsonBody,
@@ -14,17 +15,22 @@ import {
   buildPublicTicketPath,
   requirePublicTicketAccess,
 } from './_shared/public-access.js';
+import { loadCloudSnapshot } from './_shared/cloud-snapshot.js';
 
-const TICKETS_COLLECTION = 'sistemarenea_public_tickets';
-const META_COLLECTION = 'sistemarenea_public_meta';
+// Mesma tabela que o app lê e grava (src/supabase/tickets.ts). Antes o link
+// gravava em legacy_documents e o app nunca via os tickets (C2).
+const TICKETS_TABLE = 'erp_public_tickets';
+const TICKET_KIND = 'ticket_public';
 const COUNTER_ID = 'ticket_counter';
 const TICKET_DOCUMENT_PREFIX = 'ticket_public_';
+const organizationId = () => process.env.SUPABASE_ORGANIZATION_ID || 'renea';
 const VALID_TYPES = new Set(['Liberação', 'Recebimento']);
 const VALID_FLOW = new Set(['Rascunho', 'Enviado']);
 const VALID_UNITS = new Set(['m³', 'caçamba']);
 const PUBLIC_TICKET_ACCESS_TOKEN = String(process.env.RENEA_PUBLIC_TICKET_LINK_TOKEN || '');
 
-const safeDocumentId = value => cleanString(value, 160).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 140);
+// Mesmo corte do app (src/supabase/tickets.ts), para o app achar e apagar o mesmo registro.
+const safeDocumentId = value => cleanString(value, 160).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100);
 
 const ticketNumber = value => cleanString(value, 32).replace(/[^0-9A-Za-z._/-]/g, '');
 
@@ -151,15 +157,16 @@ const minimalRelease = ticket => ({
   origemRegistro: 'Link',
 });
 
-const loadAllTickets = async database => {
-  const snapshot = await database.collection(TICKETS_COLLECTION).limit(5000).get();
-  return snapshot.docs.map(document => document.data()?.value).filter(ticket => ticket?.id && ticket?.ticketNumero);
+const loadAllTickets = async () => {
+  const { data, error } = await getSupabaseAdmin().from(TICKETS_TABLE).select('value').eq('kind', TICKET_KIND).limit(5000);
+  if (error) throw error;
+  return (data || []).map(row => row.value).filter(ticket => ticket?.id && ticket?.ticketNumero);
 };
 
-const searchPending = async (database, rawQuery) => {
+const searchPending = async rawQuery => {
   const query = cleanString(rawQuery, 80).toLocaleLowerCase('pt-BR');
   if (query.length < 2) return [];
-  const tickets = await loadAllTickets(database);
+  const tickets = await loadAllTickets();
   const received = new Set(tickets
     .filter(ticket => ticket.tipoTicket === 'Recebimento' && ticket.statusFluxo === 'Enviado')
     .map(ticket => String(ticket.ticketNumero)));
@@ -173,51 +180,67 @@ const searchPending = async (database, rawQuery) => {
     .map(minimalRelease);
 };
 
-const reserveNumber = async database => {
-  const metaRef = database.collection(META_COLLECTION).doc(COUNTER_ID);
-  const existingTickets = await loadAllTickets(database);
-  const highest = existingTickets.reduce((max, ticket) => {
-    const numeric = Number.parseInt(String(ticket.ticketNumero).replace(/\D/g, ''), 10);
-    return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
-  }, 0);
-  return database.runTransaction(async transaction => {
-    const snapshot = await transaction.get(metaRef);
-    const storedNext = Number(snapshot.data()?.nextNumber || 0);
-    const nextNumber = Math.max(storedNext, highest + 1, 1);
-    transaction.set(metaRef, { nextNumber: nextNumber + 1, updatedAt: serverTimestamp() }, { merge: true });
-    return String(nextNumber);
+const highestNumber = tickets => tickets.reduce((max, ticket) => {
+  const numeric = Number.parseInt(String(ticket?.ticketNumero ?? '').replace(/\D/g, ''), 10);
+  return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+}, 0);
+
+/**
+ * O próximo número considera os tickets do link e os do retrato do app: o
+ * escritório também numera tickets, e o link não pode repetir um número já usado.
+ */
+const reserveNumber = async () => {
+  const client = getSupabaseAdmin();
+  const [linkTickets, snapshot, counter] = await Promise.all([
+    loadAllTickets(),
+    loadCloudSnapshot(null, ['ticketsJazida'], { cacheTtlMs: 0 }),
+    client.from(TICKETS_TABLE).select('value').eq('id', COUNTER_ID).maybeSingle(),
+  ]);
+  if (counter.error) throw counter.error;
+  const storedNext = Number(counter.data?.value?.nextNumber || 0);
+  const nextNumber = Math.max(storedNext, highestNumber(linkTickets) + 1, highestNumber(snapshot.ticketsJazida || []) + 1, 1);
+  const { error } = await client.from(TICKETS_TABLE).upsert({
+    id: COUNTER_ID,
+    organization_id: organizationId(),
+    kind: 'meta',
+    value: { nextNumber: nextNumber + 1 },
+    updated_at: serverTimestamp(),
   });
+  if (error) throw error;
+  return String(nextNumber);
 };
 
-const saveTicket = async (database, event, rawTicket) => {
+const saveTicket = async (event, rawTicket) => {
   const ticket = sanitizeTicket(rawTicket || {});
   if (!ticket.dispositivoId) {
     const error = new Error('Identificador do dispositivo não informado.');
     error.statusCode = 400;
     throw error;
   }
-  const reference = database.collection(TICKETS_COLLECTION).doc(`${TICKET_DOCUMENT_PREFIX}${safeDocumentId(ticket.id)}`);
-  await database.runTransaction(async transaction => {
-    const currentSnapshot = await transaction.get(reference);
-    const current = currentSnapshot.data()?.value;
-    if (current?.dispositivoId && current.dispositivoId !== ticket.dispositivoId) {
-      const error = new Error('Este ticket pertence a outro dispositivo.');
-      error.statusCode = 409;
-      throw error;
-    }
-    if (current?.statusFluxo === 'Enviado') {
-      const error = new Error(`O ticket ${ticket.ticketNumero} já foi enviado e não pode ser sobrescrito pelo link público.`);
-      error.statusCode = 409;
-      throw error;
-    }
-    transaction.set(reference, {
-      kind: 'ticket_public',
-      updatedAt: serverTimestamp(),
-      updatedAtIso: ticket.atualizadoEm,
-      sourceIpHash: requestIpHash(event),
-      value: ticket,
-    });
+  const client = getSupabaseAdmin();
+  const id = `${TICKET_DOCUMENT_PREFIX}${safeDocumentId(ticket.id)}`;
+  const { data: existing, error: readError } = await client.from(TICKETS_TABLE).select('value').eq('id', id).maybeSingle();
+  if (readError) throw readError;
+  const current = existing?.value;
+  if (current?.dispositivoId && current.dispositivoId !== ticket.dispositivoId) {
+    const error = new Error('Este ticket pertence a outro dispositivo.');
+    error.statusCode = 409;
+    throw error;
+  }
+  if (current?.statusFluxo === 'Enviado') {
+    const error = new Error(`O ticket ${ticket.ticketNumero} já foi enviado e não pode ser sobrescrito pelo link público.`);
+    error.statusCode = 409;
+    throw error;
+  }
+  const { error } = await client.from(TICKETS_TABLE).upsert({
+    id,
+    organization_id: organizationId(),
+    kind: TICKET_KIND,
+    value: ticket,
+    source_ip_hash: requestIpHash(event),
+    updated_at: serverTimestamp(),
   });
+  if (error) throw error;
   return ticket;
 };
 
@@ -243,16 +266,16 @@ export const handler = async event => {
     await enforceRateLimit(database, event, `public-tickets-${method}`, method === 'GET' ? 180 : 60, method === 'GET' ? 300 : 3600);
 
     if (method === 'GET') {
-      const results = await searchPending(database, event.queryStringParameters?.q || '');
+      const results = await searchPending(event.queryStringParameters?.q || '');
       return jsonResponse(200, { success: true, data: { tickets: results } });
     }
     if (method !== 'POST') return jsonResponse(405, { success: false, message: 'Método não permitido.' }, { Allow: 'GET, POST' });
     if (body.action === 'reserve') {
-      const number = await reserveNumber(database);
+      const number = await reserveNumber();
       return jsonResponse(201, { success: true, data: { ticketNumero: number } });
     }
     if (body.action === 'save') {
-      const ticket = await saveTicket(database, event, body.ticket);
+      const ticket = await saveTicket(event, body.ticket);
       return jsonResponse(201, { success: true, data: { ticket }, message: ticket.statusFluxo === 'Rascunho' ? 'Rascunho salvo.' : `Ticket ${ticket.ticketNumero} enviado com segurança.` });
     }
     return jsonResponse(400, { success: false, message: 'Ação de ticket inválida.' });
