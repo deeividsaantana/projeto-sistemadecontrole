@@ -210,3 +210,4 @@ import './dieselNumeroBombaExclusao.test';
 import './presencaInativarDeVerdade.test';
 import './dieselPrefixoSemCadastro.test';
 import './permissoesNaAcao.test';
+import './navegacaoDestinos.test';

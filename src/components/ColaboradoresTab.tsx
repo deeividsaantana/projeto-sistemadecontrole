@@ -35,6 +35,8 @@ interface ColaboradoresTabProps {
   ticketsJazida: TicketJazida[];
   checklists?: ChecklistEquipamento[];
   onNavigate: (tab: string) => void;
+  /** Quem não abre a aba não vê o botão que leva até ela. */
+  podeAbrir?: (tab: string) => boolean;
   /** Ausente quando o perfil não pode mexer no cadastro: a ação nem aparece. */
   onAlterarSituacao?: (proximo: Funcionario, descricao: string) => void;
   responsavel?: string;
@@ -57,6 +59,7 @@ export default function ColaboradoresTab({
   ticketsJazida,
   checklists = [],
   onNavigate,
+  podeAbrir = () => true,
   onAlterarSituacao,
   responsavel = '',
 }: ColaboradoresTabProps) {
@@ -350,7 +353,7 @@ export default function ColaboradoresTab({
           eyebrow="Pessoas"
           title="Colaboradores"
           description="Efetivo da obra. Abra um colaborador para ver a ficha completa."
-          actions={<button type="button" onClick={() => onNavigate('cadastros')} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Cadastrar colaborador</button>}
+          actions={podeAbrir('cadastros') && <button type="button" onClick={() => onNavigate('cadastros')} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Cadastrar colaborador</button>}
         />
       </div>
 

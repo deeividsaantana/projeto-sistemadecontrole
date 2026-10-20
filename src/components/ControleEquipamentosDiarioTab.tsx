@@ -83,7 +83,6 @@ interface Props {
   /** Sem ele, a tela não mostra Excluir: só o administrador exclui (A7). */
   onDeleteMany?: (ids: string[]) => void;
   onOpenMaintenance?: () => void;
-  onOpenEmployeeRegistration: () => void;
   onOpenEquipmentRegistration?: () => void;
   onSaveOperationalDriver?: (driver: Funcionario, isNew: boolean) => void;
   onDeleteOperationalDriver?: (id: string) => void;
@@ -169,7 +168,6 @@ export default function ControleEquipamentosDiarioTab({
   onApplyCadastroSge,
   onDeleteMany,
   onOpenMaintenance,
-  onOpenEmployeeRegistration,
   onOpenEquipmentRegistration,
   operationalDrivers: operationalDriversProp,
   onSaveOperationalDriver,
@@ -829,7 +827,7 @@ export default function ControleEquipamentosDiarioTab({
       <ConfirmDialog open={Boolean(driverExclusao)} title={`Excluir ${driverExclusao?.nome || 'motorista'}?`} description="Ele sai da lista de motoristas da frota. Os lançamentos já feitos com ele continuam como estão." confirmLabel="Excluir motorista" tone="danger" onCancel={() => setDriverExclusao(null)} onConfirm={() => { if (driverExclusao) onDeleteOperationalDriver?.(driverExclusao.id); setDriverExclusao(null); }}/>
       <FleetBulkActions count={selectedIds.length} onClear={() => setSelectedIds([])} onDelete={onDeleteMany ? () => setConfirmation({ kind: 'delete', ids: selectedIds }) : undefined} onExport={() => void handleExcel(true)} onChangeStatus={status => setConfirmation({ kind: 'status', ids: selectedIds, status })}/>
       <FleetReportLayout viewModel={viewModel}/>
-      {formOpen && <DailyRecordForm record={editingRecord} preset={editingRecord ? undefined : { data: filters.date, ...formPreset }} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} registeredBy={registeredBy} onSave={handleSaved} onClose={() => { setFormOpen(false); setEditingRecord(undefined); }} onOpenEmployeeRegistration={onOpenEmployeeRegistration} onOpenDriverRegistry={() => { setFormOpen(false); setEditingRecord(undefined); setActiveView('registry'); }} onOpenEquipmentRegistry={() => { setFormOpen(false); setEditingRecord(undefined); onOpenEquipmentRegistration?.(); }} onOpenMaintenance={onOpenMaintenance}/>}
+      {formOpen && <DailyRecordForm record={editingRecord} preset={editingRecord ? undefined : { data: filters.date, ...formPreset }} records={registros} equipment={equipamentos} employees={operationalDrivers} companies={empresas} teams={gruposEquipe} maintenanceOrders={ordensServico} registeredBy={registeredBy} onSave={handleSaved} onClose={() => { setFormOpen(false); setEditingRecord(undefined); }} onOpenDriverRegistry={() => { setFormOpen(false); setEditingRecord(undefined); setActiveView('registry'); }} onOpenEquipmentRegistry={onOpenEquipmentRegistration ? () => { setFormOpen(false); setEditingRecord(undefined); onOpenEquipmentRegistration(); } : undefined} onOpenMaintenance={onOpenMaintenance}/>}
       <FleetDetailDrawer state={detailState} onClose={() => setDetailState(undefined)} onEdit={openEdit}/>
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.kind === 'delete' ? `Excluir ${confirmation.ids.length} lançamento(s)?` : `Mudar ${confirmation?.ids.length || 0} lançamento(s)?`} description={confirmation?.kind === 'delete' ? 'Some só o lançamento deste dia. A máquina continua cadastrada e o histórico de alterações fica registrado.' : `A situação passa para "${confirmation?.status}" e cada lançamento ganha um registro no histórico.`} confirmLabel={confirmation?.kind === 'delete' ? 'Excluir lançamentos' : 'Mudar situação'} tone={confirmation?.kind === 'delete' ? 'danger' : 'warning'} busy={confirmationBusy} onCancel={() => setConfirmation(undefined)} onConfirm={executeConfirmation}/>
       <FleetImportPreviewModal

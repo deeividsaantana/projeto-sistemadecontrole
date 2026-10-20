@@ -49,7 +49,6 @@ interface Props {
   registeredBy: string;
   onSave: (record: ControleEquipamentoDiario, isNew: boolean) => void | Promise<void>;
   onClose: () => void;
-  onOpenEmployeeRegistration: () => void;
   onOpenDriverRegistry?: () => void;
   onOpenEquipmentRegistry?: () => void;
   onOpenMaintenance?: () => void;

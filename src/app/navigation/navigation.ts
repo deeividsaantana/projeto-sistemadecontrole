@@ -184,3 +184,14 @@ export const normalizeUserRole = (value: unknown): UserRole => {
     ? value
     : 'leitura';
 };
+
+/**
+ * Tela que abre de verdade para quem tem estas abas: a própria aba, a tela
+ * para onde o endereço antigo foi, ou null. Botão, alerta e resultado de busca
+ * só aparecem quando há destino, para ninguém cair no Painel por engano.
+ */
+export const destinoDaAba = (tab: string, abasPermitidas: readonly string[]): string | null => {
+  if (abasPermitidas.includes(tab)) return tab;
+  const destino = MODULE_REDIRECTS[tab];
+  return destino && abasPermitidas.includes(destino) ? destino : null;
+};

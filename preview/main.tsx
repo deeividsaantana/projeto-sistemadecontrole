@@ -29,7 +29,8 @@ import AdministracaoTab from '../src/components/AdministracaoTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
-import { PRIMARY_MODULE_IDS, SIDEBAR_NAVIGATION_GROUPS } from '../src/app/navigation/navigation';
+import { PRIMARY_MODULE_IDS, ROLE_ACCESS, SIDEBAR_NAVIGATION_GROUPS, destinoDaAba } from '../src/app/navigation/navigation';
+import { PesquisaGlobal } from '../src/app/shell/PesquisaGlobal';
 import * as fx from './fixtures';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
@@ -537,6 +538,16 @@ const screens: Record<string, React.ReactNode> = {
     </div>
   ),
   usuarios: <UsuariosTab />,
+  // Pesquisa aberta como o operador vê: o colaborador aparece, Cadastros não.
+  pesquisa: (
+    <PesquisaGlobal
+      fontes={{ equipamentos: fx.equipamentos, funcionarios: fx.funcionarios, ordensServico: fx.ordensServico }}
+      aberto
+      onAbertoChange={noop}
+      podeAbrir={tab => destinoDaAba(tab, ROLE_ACCESS.operador) !== null}
+      onNavigate={noop}
+    />
+  ),
   cadastros: <CadastrosPreview />,
   estacas: <EstacasPreview />,
   jazida: (
@@ -566,7 +577,6 @@ const screens: Record<string, React.ReactNode> = {
       onImport={noop}
       onApplyCadastroSge={noop}
       onDeleteMany={noop}
-      onOpenEmployeeRegistration={noop}
       onOpenEquipmentRegistration={noop}
       onAddOperationalDrivers={noop}
       canApproveFleet
@@ -761,8 +771,9 @@ const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
 const previewQueryClient = new QueryClient();
 
 // Os links públicos rodam fora do ERP (PublicLinksApp), sem o
-// #main-tab-viewport e os estilos de formulário dele.
-const isPublicScreen = key === 'material-link';
+// #main-tab-viewport e os estilos de formulário dele. A pesquisa também fica
+// fora dele no App.
+const isPublicScreen = key === 'material-link' || key === 'pesquisa';
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
