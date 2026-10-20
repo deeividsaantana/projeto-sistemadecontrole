@@ -77,3 +77,16 @@ test('marca de exclusão da nuvem nunca some num envio, e o excluído não volta
   const completo = { gruposEquipe: equipes.slice(23), exclusoes: marcas };
   assert.equal(protegerContraEncolhimento(nuvem, completo).retrato, completo);
 });
+
+test('tabela que ficaria vazia segura mesmo com poucos registros, com marca passa (A12)', () => {
+  const nuvem = { ordensServico: lista('os', 5), lubrificacoes: lista('lb', 3) };
+  const publicando = {
+    ordensServico: [],
+    lubrificacoes: [],
+    exclusoes: lista('lb', 3).map(item => ({ id: `exc-${item.id}`, tabela: 'lubrificacoes', registroId: item.id, excluidoEm: '2026-10-20T10:00:00Z' })),
+  };
+  const { retrato, protegidas } = protegerContraEncolhimento(nuvem, publicando);
+  assert.deepEqual(protegidas, [{ tabela: 'ordensServico', devolvidos: 5 }]);
+  assert.equal((retrato.ordensServico as unknown[]).length, 5);
+  assert.equal((retrato.lubrificacoes as unknown[]).length, 0);
+});

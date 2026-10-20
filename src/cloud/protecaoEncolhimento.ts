@@ -12,8 +12,8 @@ import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImport
  *
  * Exclusão de verdade continua passando: a que tem marca em `exclusoes`, o que
  * foi para um período arquivado e qualquer exclusão pequena (menos de 20
- * registros ou menos de 20% da tabela). O que passar disso sem explicação
- * volta para o retrato antes de publicar.
+ * registros ou menos de 20% da tabela) que não esvazie a tabela. O que passar
+ * disso sem explicação volta para o retrato antes de publicar.
  *
  * As marcas de exclusão nunca diminuem: a que está na nuvem e falta no
  * aparelho volta sempre, em qualquer quantidade, e o cadastro que ela marca
@@ -23,6 +23,14 @@ import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImport
 
 export const MINIMO_PARA_PROTEGER = 20;
 export const FRACAO_PARA_PROTEGER = 0.2;
+
+/**
+ * Quantos sumiram sem marca decide se a trava segura. Tabela que ficaria vazia
+ * segura sempre: as exclusões de verdade deixam marca, então esvaziar sem marca
+ * é cópia perdida, mesmo com poucos registros (A12).
+ */
+export const encolhimentoSemExplicacao = (sumidos: number, antes: number, depois: number): boolean =>
+  sumidos > 0 && (depois === 0 || (sumidos >= MINIMO_PARA_PROTEGER && sumidos >= antes * FRACAO_PARA_PROTEGER));
 
 /** Tabelas que já só ganham linhas na mesclagem ou que podem ser limpas de propósito. */
 const TABELAS_FORA_DA_TRAVA = new Set(['historyLogs', 'notifications', 'presencasLink', 'masterDataReviewQueue', TABELA_EXCLUSOES]);
@@ -119,7 +127,7 @@ export const protegerContraEncolhimento = <T extends Retrato>(
         && !arquivadosDaTabela?.has(id)
         && !(chavesLocais && chaveDe && chavesLocais.has(chaveDe(item)));
     });
-    if (sumidos.length < MINIMO_PARA_PROTEGER || sumidos.length < valorNuvem.length * FRACAO_PARA_PROTEGER) continue;
+    if (!encolhimentoSemExplicacao(sumidos.length, valorNuvem.length, locais.length)) continue;
 
     retrato ??= { ...publicando };
     retrato[tabela] = [...locais, ...sumidos];

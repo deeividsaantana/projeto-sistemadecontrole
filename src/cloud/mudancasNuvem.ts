@@ -1,5 +1,5 @@
 import { TABELA_EXCLUSOES, estaExcluido, exclusoesAtivas } from './exclusoes';
-import { FRACAO_PARA_PROTEGER, MINIMO_PARA_PROTEGER, idsArquivados, type TabelaProtegida } from './protecaoEncolhimento';
+import { encolhimentoSemExplicacao, idsArquivados, type TabelaProtegida } from './protecaoEncolhimento';
 
 /**
  * Envio só do que mudou.
@@ -120,8 +120,7 @@ export const calcularMudancas = (
       saidas = Object.keys(anteriores).filter(id => !presentes.has(id));
       const semExplicacao = saidas.filter(id => !estaExcluido(ativas, tabela, id) && !arquivados.get(tabela)?.has(id));
       if (!FORA_DA_TRAVA.has(tabela)
-        && semExplicacao.length >= MINIMO_PARA_PROTEGER
-        && semExplicacao.length >= Object.keys(anteriores).length * FRACAO_PARA_PROTEGER) {
+        && encolhimentoSemExplicacao(semExplicacao.length, Object.keys(anteriores).length, valor.length)) {
         const seguradas = new Set(semExplicacao);
         saidas = saidas.filter(id => !seguradas.has(id));
         protegidas.push({ tabela, devolvidos: semExplicacao.length });
