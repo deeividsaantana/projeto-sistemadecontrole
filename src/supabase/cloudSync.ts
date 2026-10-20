@@ -1,8 +1,9 @@
 import { captureCloudBaseline, mergeCloudSnapshotsWithBaseline, resolvePublishPayload, type CloudBaseline } from '../cloudMerge';
 import type { CloudData, CloudConnectionStatus, CloudDownloadResult, CloudUploadResult } from '../cloud/types';
 import { protegerContraEncolhimento } from '../cloud/protecaoEncolhimento';
-import { aplicarMudancasNasAssinaturas, calcularMudancas, capturarAssinaturas } from '../cloud/mudancasNuvem';
+import { aplicarMudancasNasAssinaturas, calcularMudancas, capturarAssinaturas, type AssinaturasNuvem } from '../cloud/mudancasNuvem';
 import { guardarAssinaturas, lerAssinaturas } from '../cloud/assinaturasGuardadas';
+import { manterEdicoesLocais } from '../cloud/edicoesLocais';
 import { getSupabaseClient } from './client';
 import { resolveSupabaseClientConfig } from './config';
 
@@ -111,6 +112,13 @@ const funcaoAusente = (error: unknown) => {
 
 const mesmaVersao = (a: string, b: string) => Boolean(a) && Boolean(b) && (a === b || Date.parse(a) === Date.parse(b));
 
+/** Assinaturas da versão da nuvem que este aparelho conhece, ou null se forem de outra. */
+export const lerAssinaturasDaVersao = async (versao: string): Promise<AssinaturasNuvem | null> => {
+  if (!versao) return null;
+  const assinaturas = await lerAssinaturas(resolveSupabaseClientConfig().organizationId);
+  return assinaturas && mesmaVersao(assinaturas.versao, versao) ? assinaturas : null;
+};
+
 /**
  * Manda só o que mudou desde a versão que o aparelho conhece. Devolve null
  * quando não dá (sem assinaturas dessa versão, banco sem a função): aí quem
@@ -173,6 +181,8 @@ export const uploadSupabaseBackup = async (
   knownCloudVersion = '',
   baseline?: CloudBaseline,
 ): Promise<CloudUploadResult> => {
+  // Lidas antes de qualquer download, que troca as assinaturas pela versão nova.
+  const base = await lerAssinaturasDaVersao(knownCloudVersion);
   const soMudancas = await enviarSoMudancas(data, knownCloudVersion);
   if (soMudancas) return soMudancas;
 
@@ -191,6 +201,8 @@ export const uploadSupabaseBackup = async (
           knownCloudVersion: expectedVersion,
           baseline,
         }) as CloudData;
+        // O que este aparelho editou e a nuvem não mexeu fica com a versão daqui (A13).
+        payload = manterEdicoesLocais(payload, data, base).retrato;
         expectedVersion = remote.updatedAt;
       }
       // Nunca publica por cima da nuvem uma tabela vazia ou muito menor sem
@@ -206,7 +218,7 @@ export const uploadSupabaseBackup = async (
       if (!isVersionConflict(error) || attempt === MAX_CONFLICT_ATTEMPTS) throw error;
       lastError = error;
       const remote = await downloadSupabaseBackup();
-      payload = mergeCloudSnapshotsWithBaseline(remote.data, payload, baseline) as CloudData;
+      payload = manterEdicoesLocais(mergeCloudSnapshotsWithBaseline(remote.data, payload, baseline) as CloudData, data, base).retrato;
       expectedVersion = remote.updatedAt;
     }
   }

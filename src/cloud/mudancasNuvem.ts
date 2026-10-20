@@ -51,7 +51,7 @@ const assinar = (texto: string): string => {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 };
 
-const assinarRegistro = (item: unknown) => assinar(JSON.stringify(item));
+export const assinarRegistro = (item: unknown) => assinar(JSON.stringify(item));
 
 const idDe = (item: unknown): string => {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return '';

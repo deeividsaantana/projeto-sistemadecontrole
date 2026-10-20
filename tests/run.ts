@@ -212,3 +212,4 @@ import './permissoesNaAcao.test';
 import './navegacaoDestinos.test';
 import './contasIguais.test';
 import './appHooksOrdem.test';
+import './edicoesLocais.test';

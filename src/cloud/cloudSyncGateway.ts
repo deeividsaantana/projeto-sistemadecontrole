@@ -34,3 +34,8 @@ export const uploadCloudBackup = async (_database: unknown, data: CloudData, kno
   assertSupabase();
   return (await loadSupabaseSync()).uploadSupabaseBackup(data, knownCloudVersion, baseline);
 };
+
+export const readKnownCloudSignatures = async (knownCloudVersion: string) => {
+  assertSupabase();
+  return (await loadSupabaseSync()).lerAssinaturasDaVersao(knownCloudVersion);
+};
