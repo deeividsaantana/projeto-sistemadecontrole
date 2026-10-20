@@ -28,6 +28,8 @@ export interface ObraLocal {
   endereco: string;
   responsavel: string;
   status: 'Ativa' | 'Concluída' | 'Planejada';
+  /** Quando foi salvo pela última vez: decide entre duas edições do mesmo registro (A13). */
+  atualizadoEm?: string;
 }
 
 export interface Equipamento {
@@ -102,6 +104,8 @@ export interface Comboio {
   placa: string;
   capacidadeLitros: number;
   responsavel: string;
+  /** Quando foi salvo pela última vez: decide entre duas edições do mesmo registro (A13). */
+  atualizadoEm?: string;
 }
 
 export interface TipoCombustivel {
@@ -118,6 +122,8 @@ export interface ProdutoLubrificacao {
 export interface Canteiro {
   id: string;
   nome: string;
+  /** Quando foi salvo pela última vez: decide entre duas edições do mesmo registro (A13). */
+  atualizadoEm?: string;
 }
 
 /** O que o lugar é na obra: decide onde ele aparece e como soma. */
@@ -476,6 +482,8 @@ export interface OrdemServico {
   localChegada?: string;
   movimentacao?: 'Sem movimentação' | 'Mobilização' | 'Desmobilização';
   saiuManutencaoEm?: string;
+  /** Quando foi salvo pela última vez: decide entre duas edições do mesmo registro (A13). */
+  atualizadoEm?: string;
 }
 
 export type RespostaChecklist = 'OK' | 'Atenção' | 'Não conforme' | 'Não aplicável';

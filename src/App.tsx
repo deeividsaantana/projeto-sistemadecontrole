@@ -138,6 +138,7 @@ import {
   downloadCloudBackup,
   formatCloudSyncError,
   getCloudConnectionStatus,
+  readKnownCloudSignatures,
   uploadCloudBackup,
   type CloudData,
 } from './cloud/cloudSyncGateway';
@@ -161,6 +162,7 @@ import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type Clo
 import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
 import { manterNovidadesLocais } from './cloud/novidadesLocais';
+import { manterEdicoesLocais } from './cloud/edicoesLocais';
 import {
   addPublicPresenceMember,
   resetPresenceDay,
@@ -1226,6 +1228,8 @@ export default function App() {
   // Download da nuvem pelo provedor autoritativo da fase atual.
   const handleDownloadFromSupabase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
     try {
+      // Lidas antes do download, que troca as assinaturas pela versão nova (A13).
+      const assinaturasConhecidas = await readKnownCloudSignatures(localStorage.getItem('renea_last_cloud_sync_iso') || '').catch(() => null);
       const backup = await downloadCloudBackup(db);
       if (backup.data) {
         const downloadedData = backup.data;
@@ -1260,6 +1264,9 @@ export default function App() {
         // O que este aparelho criou e ainda não subiu fica, e sobe logo depois (C5).
         const { retrato: comNovidades, mantidas: novidadesLocais } = manterNovidadesLocais(data, readStoredCloudTables(), cloudBaselineRef.current);
         Object.assign(data, comNovidades);
+        // O que foi editado aqui e ainda não subiu fica com a versão daqui (A13).
+        const { retrato: comEdicoes, editadas: edicoesLocais } = manterEdicoesLocais(data, readStoredCloudTables(), assinaturasConhecidas);
+        Object.assign(data, comEdicoes);
         // A nuvem veio vazia ou muito menor numa tabela que este aparelho tem
         // cheia, sem marca de exclusão: foi outro navegador que perdeu a cópia
         // e publicou por cima. Este aparelho guarda o que tem e devolve à
@@ -1464,6 +1471,14 @@ export default function App() {
         // Acabou de igualar com a nuvem: este é o retrato que serve de base
         // para diferenciar exclusões locais de novidades dos colegas depois.
         cloudBaselineRef.current = downloadedBaseline;
+        if (edicoesLocais.length && !devolverParaNuvem.length && !novidadesLocais.length) {
+          queueMicrotask(() => { void handleUploadToSupabase(); });
+          const editados = edicoesLocais.reduce((total, item) => total + item.editados, 0);
+          return {
+            success: true,
+            message: `Dados atualizados. ${editados.toLocaleString('pt-BR')} alterações feitas neste aparelho foram mantidas e estão subindo para a nuvem.`,
+          };
+        }
         if (devolverParaNuvem.length || novidadesLocais.length) {
           console.warn('A nuvem chegou sem registros que este aparelho tem; eles serão devolvidos:', [...devolverParaNuvem, ...novidadesLocais]);
           queueMicrotask(() => { void handleUploadToSupabase(); });
@@ -1865,7 +1880,8 @@ export default function App() {
     );
   };
 
-  const handleSaveObra = (item: ObraLocal, isNew: boolean) => {
+  const handleSaveObra = (recebido: ObraLocal, isNew: boolean) => {
+    const item: ObraLocal = { ...recebido, atualizadoEm: new Date().toISOString() };
     const previous = obras.find(x => x.id === item.id);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
     if (errors.length > 0) {
@@ -2321,7 +2337,8 @@ export default function App() {
     );
   };
 
-  const handleSaveComboio = (item: Comboio, isNew: boolean) => {
+  const handleSaveComboio = (recebido: Comboio, isNew: boolean) => {
+    const item: Comboio = { ...recebido, atualizadoEm: new Date().toISOString() };
     let updated;
     if (isNew) {
       updated = [...comboios, item];
@@ -2359,7 +2376,8 @@ export default function App() {
     );
   };
 
-  const handleSaveCanteiro = (item: Canteiro, isNew: boolean) => {
+  const handleSaveCanteiro = (recebido: Canteiro, isNew: boolean) => {
+    const item: Canteiro = { ...recebido, atualizadoEm: new Date().toISOString() };
     const anterior = isNew ? undefined : canteiros.find(x => x.id === item.id);
     const updated = isNew ? [...canteiros, item] : canteiros.map(x => (x.id === item.id ? item : x));
     saveAndLog(
@@ -3968,7 +3986,9 @@ export default function App() {
     );
   };
 
-  const handleSaveOrdemServico = (ordem: OrdemServico, isNew: boolean) => {
+  const handleSaveOrdemServico = (recebida: OrdemServico, isNew: boolean) => {
+    // A data decide entre esta edição e a de outro aparelho (A13).
+    const ordem: OrdemServico = { ...recebida, atualizadoEm: new Date().toISOString() };
     const updated = isNew ? [ordem, ...ordensServico] : ordensServico.map(item => item.id === ordem.id ? ordem : item);
     const equipamento = equipamentos.find(item => item.id === ordem.equipamentoId);
     const liberacao = liberarMaquinasDaOrdemConcluida(ordem, controleEquipamentosDiario, activeUserName);
