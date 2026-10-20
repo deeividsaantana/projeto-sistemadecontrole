@@ -37,7 +37,9 @@ test('relatório semanal limita o período aos sete dias e separa os status', ()
   assert.equal(report.records.length, 3);
   assert.equal(report.totals.total, 3);
   assert.equal(report.averages.operating, 1 / 7);
-  assert.equal(report.averages.availabilityRate, 150 / 7);
+  // Média só dos dias com dado; A confirmar não entra na conta do dia.
+  assert.equal(report.averages.availabilityRate, 100);
+  assert.equal(report.days[1].availabilityRate, null);
   assert.deepEqual(report.days.at(-1), {
     date: '2026-08-29',
     total: 2,
@@ -45,7 +47,7 @@ test('relatório semanal limita o período aos sete dias e separa os status', ()
     maintenance: 0,
     available: 1,
     pending: 1,
-    availabilityRate: 50,
+    availabilityRate: 100,
   });
 });
 

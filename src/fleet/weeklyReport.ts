@@ -6,6 +6,7 @@ import { loadJsPdf, loadAutoTable } from '../utils/pdfLoader';
 
 import type { ControleEquipamentoDiario } from '../types';
 import { OBRA } from '../config/obra';
+import { disponibilidadeDaFrota } from '../modules/frota/disponibilidade';
 const reneaLogoUrl = new URL('../assets/images/renea_logo_new.png', import.meta.url).href;
 const spmarLogoUrl = new URL('../assets/images/spmar_logo.png', import.meta.url).href;
 
@@ -16,7 +17,8 @@ export interface WeeklyFleetDay {
   maintenance: number;
   available: number;
   pending: number;
-  availabilityRate: number;
+  /** disponibilidadeDaFrota do dia; null quando nada entra na conta. */
+  availabilityRate: number | null;
 }
 
 export interface WeeklyFleetReport {
@@ -25,7 +27,7 @@ export interface WeeklyFleetReport {
   days: WeeklyFleetDay[];
   records: ControleEquipamentoDiario[];
   totals: Omit<WeeklyFleetDay, 'date' | 'availabilityRate'>;
-  averages: Omit<WeeklyFleetDay, 'date' | 'availabilityRate'> & { availabilityRate: number };
+  averages: Omit<WeeklyFleetDay, 'date' | 'availabilityRate'> & { availabilityRate: number | null };
 }
 
 export interface WeeklyExportResult {
@@ -78,7 +80,7 @@ export const buildWeeklyFleetReport = (
       maintenance,
       available,
       pending,
-      availabilityRate: daily.length ? ((operating + available) / daily.length) * 100 : 0,
+      availabilityRate: disponibilidadeDaFrota(daily.map(record => record.status)),
     };
   });
   const totals = days.reduce((sum, day) => ({
@@ -88,13 +90,17 @@ export const buildWeeklyFleetReport = (
     available: sum.available + day.available,
     pending: sum.pending + day.pending,
   }), { total: 0, operating: 0, maintenance: 0, available: 0, pending: 0 });
+  const comDisponibilidade = days.map(day => day.availabilityRate).filter((rate): rate is number => rate !== null);
   const averages = {
     total: totals.total / days.length,
     operating: totals.operating / days.length,
     maintenance: totals.maintenance / days.length,
     available: totals.available / days.length,
     pending: totals.pending / days.length,
-    availabilityRate: days.reduce((sum, day) => sum + day.availabilityRate, 0) / days.length,
+    // Média só dos dias com dado: dia sem lançamento não puxa para 0% (M35).
+    availabilityRate: comDisponibilidade.length
+      ? comDisponibilidade.reduce((sum, rate) => sum + rate, 0) / comDisponibilidade.length
+      : null,
   };
   return { startDate, endDate, days, records: weeklyRecords, totals, averages };
 };
@@ -158,7 +164,7 @@ export const exportWeeklyFleetPdf = async (
       day.maintenance,
       day.available,
       day.pending,
-      day.total ? `${day.availabilityRate.toFixed(1).replace('.', ',')}%` : '—',
+      day.availabilityRate === null ? '—' : `${day.availabilityRate.toFixed(1).replace('.', ',')}%`,
     ]),
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.4, halign: 'center', textColor: '#10223A' },
@@ -170,7 +176,7 @@ export const exportWeeklyFleetPdf = async (
   pdf.setFontSize(9);
   pdf.setTextColor('#252A2F');
   pdf.text(`Acumulado: ${report.totals.total} lançamentos · ${report.totals.operating} em operação · ${report.totals.maintenance} em manutenção · ${report.totals.available} à disposição · ${report.totals.pending} a confirmar`, 9, summaryY);
-  pdf.text(`Média diária: ${report.averages.total.toFixed(1).replace('.', ',')} frotas · ${report.averages.operating.toFixed(1).replace('.', ',')} em operação · disponibilidade média ${report.averages.availabilityRate.toFixed(1).replace('.', ',')}%`, 9, summaryY + 4.5);
+  pdf.text(`Média diária: ${report.averages.total.toFixed(1).replace('.', ',')} frotas · ${report.averages.operating.toFixed(1).replace('.', ',')} em operação · disponibilidade média ${report.averages.availabilityRate === null ? 'sem dados' : `${report.averages.availabilityRate.toFixed(1).replace('.', ',')}%`}`, 9, summaryY + 4.5);
 
   autoTable(pdf, {
     startY: summaryY + 10,
@@ -226,7 +232,7 @@ export const buildWeeklyFleetWorkbook = async (report: WeeklyFleetReport): Promi
   summary.addRow(['Em manutenção', report.totals.maintenance, report.averages.maintenance, '', '', '', '']);
   summary.addRow(['À disposição', report.totals.available, report.averages.available, '', '', '', '']);
   summary.addRow(['A confirmar', report.totals.pending, report.averages.pending, '', '', '', '']);
-  summary.addRow(['Disponibilidade média', '', report.averages.availabilityRate / 100, '', '', '', '']);
+  summary.addRow(['Disponibilidade média', '', report.averages.availabilityRate === null ? 'Sem dados' : report.averages.availabilityRate / 100, '', '', '', '']);
   summary.columns = [
     { header: 'Data', key: 'date', width: 16 },
     { header: 'Total de frotas', key: 'total', width: 18 },
@@ -239,7 +245,7 @@ export const buildWeeklyFleetWorkbook = async (report: WeeklyFleetReport): Promi
   summary.addRows(report.days.map(day => ({
     date: formatDate(day.date), total: day.total, operating: day.operating,
     maintenance: day.maintenance, available: day.available, pending: day.pending,
-    availability: day.total ? day.availabilityRate / 100 : null,
+    availability: day.availabilityRate === null ? null : day.availabilityRate / 100,
   })));
   summary.getRow(3).font = { name: 'Aptos Narrow', bold: true, color: { argb: 'FFFFFFFF' } };
   summary.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10223A' } };

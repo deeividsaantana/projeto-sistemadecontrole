@@ -257,7 +257,7 @@ const createDetailedSummarySheet = (
     ['Indisponíveis', viewModel.metrics.unavailable],
     ['Parados', viewModel.metrics.stopped],
     ['Não classificados', viewModel.metrics.unclassified],
-    ['Disponibilidade', viewModel.metrics.availabilityRate / 100],
+    ['Disponibilidade', viewModel.metrics.availabilityRate === null ? 'Sem dados' : viewModel.metrics.availabilityRate / 100],
     ['Taxa em operação', viewModel.metrics.operatingRate / 100],
     ['Diferença de integridade', viewModel.metrics.integrityDifference],
   ];

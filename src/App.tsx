@@ -4615,7 +4615,7 @@ export default function App() {
                 onSaveModelo={handleSaveModeloRotina}
                 materiais={materiaisCadastro}
                 movimentosMaterial={materiaisMovimentos}
-                abastecimentos={abastecimentos}
+                abastecimentos={abastecimentosAtivos}
                 controlesFrota={controleEquipamentosDiario}
                 equipamentos={equipamentos}
                 onIrPara={aba => { if (allowedTabs.includes(aba)) navigateTo(aba); }}

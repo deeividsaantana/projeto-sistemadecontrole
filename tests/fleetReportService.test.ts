@@ -118,7 +118,8 @@ assert.equal(getOperatingCBs(report), 25);
 assert.equal(getMaintenanceCBs(report), 5);
 assert.equal(getAvailableCBs(report), 1);
 assert.equal(getStoppedHours(report) >= 5.9, true);
-assert.equal(getAvailabilityRate(report), (26 / 32) * 100);
+// A confirmar não entra na conta (disponibilidadeDaFrota): 26 fora da manutenção de 31 com posição.
+assert.equal(getAvailabilityRate(report), (26 / 31) * 100);
 
 const maintenanceOnly = filterFleetStates(report.allRows, {
   ...filters,

@@ -157,7 +157,8 @@ export interface FleetMetrics {
   unclassified: number;
   stoppedMinutes: number;
   stoppedDurationLabel: string;
-  availabilityRate: number;
+  /** Conta única de disponibilidadeDaFrota; null quando nada entra na conta. */
+  availabilityRate: number | null;
   operatingRate: number;
   classifiedTotal: number;
   integrityDifference: number;
@@ -367,7 +368,7 @@ export const createEmptyFleetMetrics = (): FleetMetrics => ({
   unclassified: 0,
   stoppedMinutes: 0,
   stoppedDurationLabel: '—',
-  availabilityRate: 0,
+  availabilityRate: null,
   operatingRate: 0,
   classifiedTotal: 0,
   integrityDifference: 0,
