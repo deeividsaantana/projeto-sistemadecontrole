@@ -364,12 +364,12 @@ export default function HistoricoCombustivel({
       case 'horimetro': return <span key={coluna} className={numerica}>{numeroCelula(item.horimetroInicial)}</span>;
       case 'litros': return <span key={coluna} className="text-right text-[13px] font-black tabular-nums text-[#176b4d]">{numeroTexto(Number(item.quantidadeLitros || 0))}</span>;
       case 'hora': return <span key={coluna} className="font-mono text-[13px] tabular-nums text-slate-700">{item.hora || ''}</span>;
-      case 'comboio': return <span key={coluna} className="truncate text-[13px] text-slate-700">{nomes.comboio(item)}</span>;
+      case 'comboio': return <span key={coluna} className="truncate text-[13px] text-slate-700" title={nomes.comboio(item) || undefined}>{nomes.comboio(item)}</span>;
       case 'combustivel': return <span key={coluna} className="truncate text-[13px] text-slate-700" title={nomeCombustivel.get(item.tipoCombustivelId)}>{nomeCombustivel.get(item.tipoCombustivelId) || ''}</span>;
-      case 'empresa': return <span key={coluna} className={`truncate text-[13px] ${nomes.empresa(item) ? 'text-slate-700' : 'font-bold text-rose-600'}`}>{nomes.empresa(item) || 'NÃO CADASTRADO'}</span>;
+      case 'empresa': return <span key={coluna} className={`truncate text-[13px] ${nomes.empresa(item) ? 'text-slate-700' : 'font-bold text-rose-600'}`} title={nomes.empresa(item) || undefined}>{nomes.empresa(item) || 'NÃO CADASTRADO'}</span>;
       case 'bombaInicial': return <span key={coluna} className={numerica}>{numeroCelula(item.bombaInicial)}</span>;
       case 'bombaFinal': return <span key={coluna} className={numerica}>{numeroCelula(item.bombaFinal)}</span>;
-      case 'responsavel': return <span key={coluna} className="truncate text-[13px] text-slate-600">{item.responsavel || ''}</span>;
+      case 'responsavel': return <span key={coluna} className="truncate text-[13px] text-slate-600" title={item.responsavel || undefined}>{item.responsavel || ''}</span>;
       case 'observacao': return <span key={coluna} className="truncate text-[13px] text-slate-600" title={item.observacao || undefined}>{item.observacao || ''}</span>;
       default: return null;
     }

@@ -88,7 +88,7 @@ export function DataTable<T>({ caption, rows, columns, getRowId, minWidth = 720,
             : visible.length === 0 ? <tr><td colSpan={columns.length} className="p-8 text-center text-slate-600">{emptyMessage}</td></tr>
               : visible.map(row => (
             <tr key={getRowId(row)} className="transition-colors hover:bg-slate-50">
-              {columns.map(column => <td key={column.id} className="p-3">{column.cell(row)}</td>)}
+              {columns.map(column => <td key={column.id} className={column.align === 'right' ? 'p-3 text-right' : 'p-3'}>{column.cell(row)}</td>)}
             </tr>
               ))}
         </TableBody>

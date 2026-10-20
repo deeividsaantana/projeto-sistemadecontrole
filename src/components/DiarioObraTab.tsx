@@ -144,7 +144,7 @@ export default function DiarioObraTab({
   };
 
   return (
-    <div ref={escopo} id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] pb-12">
       <div data-diario-reveal>
         <PageHeader
           eyebrow="Obra"

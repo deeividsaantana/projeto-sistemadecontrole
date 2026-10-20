@@ -333,7 +333,7 @@ export default function ManutencaoTab({
   }, { scope: escopo });
 
   return (
-    <div ref={escopo} id="manutencao-tab" className="min-h-full w-full space-y-3 bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="manutencao-tab" className="min-h-full w-full space-y-3 bg-[#f7f8f6] pb-12">
       <PageHeader
         eyebrow="Frota"
         title="Manutenção"
@@ -571,7 +571,7 @@ export default function ManutencaoTab({
                 <th className="p-3">Problema</th>
                 <th className="p-3">Situação</th>
                 <th className="p-3">Abertura</th>
-                <th className="p-3">Horas paradas</th>
+                <th className="p-3 text-right">Horas paradas</th>
                 <th className="p-3 text-right">Ações</th>
               </tr>
             </TableHead>
@@ -582,7 +582,7 @@ export default function ManutencaoTab({
                 const { Icon: EquipmentIcon, label: equipmentLabel } = presentEquipment(equipamentoPorId.get(ordem.equipamentoId));
                 return (
                   <tr key={ordem.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
-                    <td className="p-3 text-xs font-mono font-bold text-slate-900">{ordem.numero}</td>
+                    <td className="whitespace-nowrap p-3 text-xs font-mono font-bold text-slate-900">{ordem.numero}</td>
                     <td className="p-3">
                       <span className="flex items-center gap-2.5">
                         <span className="grid size-8 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-800" aria-hidden="true">
@@ -599,15 +599,15 @@ export default function ManutencaoTab({
                       <Badge tone={prioridadeTone(ordem.prioridade)} className="mt-1">{ordem.prioridade}</Badge>
                     </td>
                     <td className="p-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
+                      <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
                     </td>
-                    <td className="p-3 text-slate-600">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</td>
-                    <td className="p-3 font-mono text-slate-700">
+                    <td className="whitespace-nowrap p-3 text-slate-600">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</td>
+                    <td className="whitespace-nowrap p-3 text-right font-mono text-slate-700">
                       {horas === undefined ? '—' : `${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}
                       {!isOrdemEncerrada(ordem.status) && horas !== undefined && <span className="ml-1 text-[11px] text-slate-400">em curso</span>}
                     </td>
                     <td className="p-3">
-                      <div className="flex flex-wrap justify-end gap-1.5">
+                      <div className="flex justify-end gap-1.5 whitespace-nowrap">
                         {podeEditar && proximo && (
                           <button
                             type="button"

@@ -611,7 +611,7 @@ export default function ControleEquipamentosDiarioTab({
               {/* Cada aba ocupa a tela inteira. No celular as cinco cabem lado a
                   lado com ícone em cima e nome curto embaixo; o número laranja
                   é quem ainda falta lançar no dia. */}
-              <nav className={`grid w-full ${quadro ? 'grid-cols-6' : 'grid-cols-5'} gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 lg:flex lg:w-auto`} aria-label="Abas do controle de frotas" data-testid="frota-abas">
+              <nav className={`grid w-full ${quadro ? 'grid-cols-6' : 'grid-cols-5'} gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 lg:flex lg:w-auto lg:min-w-0 lg:overflow-x-auto`} aria-label="Abas do controle de frotas" data-testid="frota-abas">
                 {vistas.map(([id, label, curto, Icon, pendentes]) => (
                   <button
                     key={id}
@@ -622,14 +622,14 @@ export default function ControleEquipamentosDiarioTab({
                     aria-label={pendentes ? `${label}, ${pendentes} a confirmar` : label}
                     className={`relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl px-0.5 text-[10.5px] font-bold tracking-tight transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] lg:min-h-11 lg:flex-row lg:gap-2 lg:px-3 lg:text-sm lg:tracking-normal ${activeView === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
                   >
-                    <Icon className="size-5 lg:size-4" aria-hidden="true"/>
-                    <span className="max-w-full truncate lg:hidden">{curto}</span>
-                    <span className="hidden lg:inline">{label}</span>
+                    <Icon className="size-5 lg:hidden xl:block xl:size-4" aria-hidden="true"/>
+                    <span className="max-w-full truncate xl:hidden">{curto}</span>
+                    <span className="hidden xl:inline">{label}</span>
                     {pendentes > 0 && <span className="absolute right-1 top-1 min-w-5 rounded-full bg-[#f26a2e] px-1 text-center text-[10px] font-bold leading-5 tabular-nums text-white lg:static lg:text-[11px]">{pendentes}</span>}
                   </button>
                 ))}
               </nav>
-              <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} w-full px-5 sm:w-auto`} data-testid="frota-novo">
+              <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} w-full shrink-0 whitespace-nowrap px-5 sm:w-auto`} data-testid="frota-novo">
                 <Plus className="size-5" aria-hidden="true" />
                 Novo lançamento
                 <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>

@@ -2188,3 +2188,24 @@ body,
 }
 .renea-table tbody tr:last-child td { border-bottom: 0; }
 .renea-table thead th button { min-height: 1.75rem; }
+
+/* Cabeçalho sem descrição (só rótulo e título) não reserva 22rem para o
+   texto: as ações sobem para a mesma linha do título em vez de abrir uma
+   segunda faixa (Combustível perdia ~50 px de tabela em 1366 px). */
+.renea-page-header__copy:not(:has(> p)) { flex: 0 1 auto; margin-right: auto; }
+
+/* Dentro de tabela, no computador, o botão de linha (ordenar, editar,
+   excluir, aprovar) fica com 32 px: o piso de 40 px dos botões soltos
+   deixava cada linha com o dobro da altura do texto. No toque (abaixo de
+   1024 px) o piso de 44 px continua valendo. */
+@media (min-width: 1024px) {
+  #main-tab-viewport :is(td, th) :is(button, [role="button"]) { min-height: 2rem; }
+}
+
+/* Tabelas montadas à mão nas abas (fora do TableShell): mesma densidade da
+   tabela padrão. Coluna de número (alinhada à direita) e cabeçalho não
+   quebram linha, para "2.000 PC" ou "1.169,4 h" não partirem no meio. */
+#main-tab-viewport table { font-variant-numeric: tabular-nums; }
+#main-tab-viewport table th { white-space: nowrap; }
+#main-tab-viewport table :is(th, td).p-3 { padding: .5rem .75rem; }
+#main-tab-viewport table :is(td, th).text-right { white-space: nowrap; }

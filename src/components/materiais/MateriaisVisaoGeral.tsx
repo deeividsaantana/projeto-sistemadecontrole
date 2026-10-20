@@ -161,7 +161,7 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
                     <strong className="block text-slate-900">{item.material}</strong>
                     <span className="text-xs text-slate-500">{formatarData(item.data)}</span>
                   </td>
-                  <td className="p-3 text-slate-600">{[item.solicitacaoCompra, item.notaFiscal && `NF ${item.notaFiscal}`].filter(Boolean).join(' · ') || '-'}</td>
+                  <td className="p-3 text-slate-600">{[item.solicitacaoCompra, item.notaFiscal && `NF\u00a0${item.notaFiscal}`].filter(Boolean).join(' · ') || '-'}</td>
                   <td className="p-3 text-slate-600">{item.destino || '-'}</td>
                   <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeNota.toLocaleString('pt-BR')}</td>
                   <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeRecebida.toLocaleString('pt-BR')}</td>

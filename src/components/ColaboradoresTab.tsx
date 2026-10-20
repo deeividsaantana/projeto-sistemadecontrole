@@ -126,7 +126,7 @@ export default function ColaboradoresTab({
     ];
 
     return (
-      <div id="colaborador-ficha" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div id="colaborador-ficha" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] pb-12">
         <button
           type="button"
           onClick={() => setSelecionadoId(null)}
@@ -347,7 +347,7 @@ export default function ColaboradoresTab({
   }
 
   return (
-    <div id="colaboradores-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="colaboradores-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] pb-12">
       <div data-colaboradores-reveal>
         <PageHeader
           eyebrow="Pessoas"
