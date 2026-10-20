@@ -135,9 +135,11 @@ const db = undefined;
 import { supabaseAuth as auth, type SupabaseAuthUser as User } from './auth/supabaseAuth';
 import { loadSupabaseMemberships } from './supabase/memberships';
 import {
+  announceCloudVersion,
   downloadCloudBackup,
   formatCloudSyncError,
   getCloudConnectionStatus,
+  listenCloudVersions,
   readKnownCloudSignatures,
   uploadCloudBackup,
   type CloudData,
@@ -434,11 +436,14 @@ const persistCloudBaseline = (baseline: CloudBaseline) => {
 /** Intervalo mínimo entre duas checagens de nuvem, para não pagar uma leitura por clique. */
 const SYNC_CHECK_MIN_INTERVAL_MS = 15_000;
 /**
- * Rede de segurança para quando o ouvinte em tempo real cai sem avisar. Com
- * as checagens ao trocar de tela, voltar à aba e reconectar, este pulso não
- * precisa ser frequente — a cada minuto só gerava leitura cobrada à toa.
+ * Rede de segurança para quando o aviso em tempo real se perde. A checagem só
+ * lê a data da versão (poucos bytes); o retrato inteiro só desce se mudou.
+ * O mesmo pulso reenvia o que não conseguiu subir.
  */
-const SYNC_FALLBACK_INTERVAL_MS = 5 * 60_000;
+const SYNC_FALLBACK_INTERVAL_MS = 30_000;
+
+/** Junta avisos seguidos de outros aparelhos num download só. */
+const AVISO_NUVEM_ESPERA_MS = 1_500;
 
 /** Marca o navegador que ainda não baixou a nuvem nenhuma vez. */
 const AGUARDANDO_PRIMEIRO_DOWNLOAD = 'renea_aguardando_primeiro_download';
@@ -557,6 +562,8 @@ export default function App() {
   const lastSyncCheckAtRef = useRef(0);
   const automaticDownloadInFlightRef = useRef(false);
   const pendingRemoteVersionRef = useRef('');
+  // O último envio falhou: o pulso de checagem tenta de novo sozinho.
+  const uploadPendenteRef = useRef(false);
   const publicTicketIdsRef = useRef<Set<string>>(new Set());
   const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
   const currentUserRoleRef = useRef<UserRole>('admin');
@@ -1198,6 +1205,9 @@ export default function App() {
         console.warn('A nuvem foi atualizada, mas o horário local não pôde ser salvo:', storageError);
       }
       setIsCloudConnected(true);
+      uploadPendenteRef.current = false;
+      // Os outros aparelhos baixam na hora, sem esperar a checagem periódica.
+      announceCloudVersion(uploadResult.updatedAt);
       if (faltaBaixar) pendingRemoteVersionRef.current = uploadResult.updatedAt;
       if (protegidas.length) {
         const devolvidos = protegidas.reduce((total, item) => total + item.devolvidos, 0);
@@ -1212,6 +1222,7 @@ export default function App() {
       };
     } catch (error: unknown) {
       setIsCloudConnected(false);
+      uploadPendenteRef.current = true;
       console.error('Falha ao sincronizar o backup na nuvem:', error);
       if (!navigator.onLine) {
         void enqueueOfflineCommand('supabase-backup', { requestedAt: new Date().toISOString() });
@@ -1603,6 +1614,10 @@ export default function App() {
     isCheckingSyncRef.current = true;
     lastSyncCheckAtRef.current = Date.now();
     try {
+      if (uploadPendenteRef.current && navigator.onLine) {
+        const reenvio = await handleUploadToSupabase();
+        if (!reenvio.success) console.warn('Reenvio para a nuvem ainda pendente:', reenvio.message);
+      }
       const status = await getCloudConnectionStatus(db);
       setIsCloudConnected(status.connected);
 
@@ -1646,13 +1661,21 @@ export default function App() {
         return pullRemoteChanges();
       });
     }, 3_000);
-    // O manifesto dispara a atualização imediatamente quando outro cliente
-    // publica uma nova geração. O intervalo permanece apenas como fallback
-    // para reconectar quando o listener fica offline.
-    let unsubscribeManifest: (() => void) | undefined = () => undefined;
-    // O Supabase usa o intervalo e os eventos de foco/reconexão para atualizar
-    // o retrato, sem listener do provedor legado.
-    const interval = window.setInterval(pullRemoteChanges, SYNC_FALLBACK_INTERVAL_MS);
+    // Outro aparelho avisa pelo canal em tempo real quando publica: baixa na
+    // hora. Avisos em sequência viram um download só, da versão mais nova.
+    let esperaAviso: number | undefined;
+    const pararDeOuvir = listenCloudVersions(versao => {
+      window.clearTimeout(esperaAviso);
+      esperaAviso = window.setTimeout(() => requestAutomaticRemoteSyncRef.current(versao), AVISO_NUVEM_ESPERA_MS);
+    }, () => {
+      lastSyncCheckAtRef.current = 0;
+      void pullRemoteChanges();
+    });
+    // Rede de segurança se o canal cair sem avisar.
+    const interval = window.setInterval(() => {
+      lastSyncCheckAtRef.current = 0;
+      void pullRemoteChanges();
+    }, SYNC_FALLBACK_INTERVAL_MS);
     // O canal em tempo real do Firestore pode cair sem avisar quando o
     // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
     // é um comportamento conhecido do navegador, não um erro para capturar.
@@ -1668,7 +1691,8 @@ export default function App() {
     return () => {
       window.clearTimeout(initialCheck);
       window.clearInterval(interval);
-      unsubscribeManifest();
+      window.clearTimeout(esperaAviso);
+      pararDeOuvir();
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onReconnect);
       window.removeEventListener('focus', onReconnect);

@@ -213,4 +213,5 @@ import './navegacaoDestinos.test';
 import './contasIguais.test';
 import './appHooksOrdem.test';
 import './primeiroDownload.test';
+import './tempoRealNuvem.test';
 import './edicoesLocais.test';
