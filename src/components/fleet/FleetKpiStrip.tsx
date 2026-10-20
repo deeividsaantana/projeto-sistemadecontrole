@@ -29,7 +29,7 @@ const indicadores = (metrics: FleetMetrics): Indicador[] => [
   { id: 'manutencao', titulo: 'Manutenção', valor: metrics.maintenance + metrics.waitingMaintenance, detalhe: 'em reparo ou na fila', Icone: Wrench, tom: 'bg-rose-50 text-rose-700', status: FLEET_OPERATIONAL_STATUS.maintenance },
   { id: 'disposicao', titulo: 'À disposição', valor: metrics.available, detalhe: 'liberadas, sem serviço', Icone: PauseCircle, tom: 'bg-amber-50 text-amber-700', status: FLEET_OPERATIONAL_STATUS.available },
   { id: 'confirmar', titulo: 'A confirmar', valor: metrics.pending, detalhe: 'falta informar', Icone: AlertTriangle, tom: 'bg-orange-50 text-[#f26a2e]', status: FLEET_OPERATIONAL_STATUS.pending },
-  { id: 'disponibilidade', titulo: 'Disponível', valor: Math.round(metrics.availabilityRate), sufixo: '%', detalhe: 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
+  { id: 'disponibilidade', titulo: 'Disponível', valor: Math.round(metrics.availabilityRate ?? 0), sufixo: '%', texto: metrics.availabilityRate === null ? '—' : undefined, detalhe: metrics.availabilityRate === null ? 'nada lançado no dia' : 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
   { id: 'paradas', titulo: 'Horas paradas', valor: 0, texto: metrics.stoppedDurationLabel, detalhe: 'somadas no dia', Icone: Clock3, tom: 'bg-slate-100 text-slate-700' },
 ];
 

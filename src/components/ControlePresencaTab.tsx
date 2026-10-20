@@ -1599,6 +1599,16 @@ export default function ControlePresencaTab({
                   </ul>
                 </div>
               )}
+              {syncPlan.colaboradoresReativados.length > 0 && (
+                <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                  <p className="text-xs font-bold text-emerald-900">{syncPlan.colaboradoresReativados.length} colaborador(es) de volta na planilha: voltam ao efetivo como ATIVO</p>
+                  <ul className="mt-1 max-h-40 space-y-0.5 overflow-y-auto text-xs text-emerald-900">
+                    {syncPlan.colaboradoresReativados.map(item => (
+                      <li key={item.id}>{item.nome}{item.matricula ? ` · ${item.matricula}` : ''}{item.cargo ? ` · ${item.cargo}` : ''}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {syncPlan.ignoradas.length > 0 && (
                 <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs font-bold text-amber-900">{syncPlan.ignoradas.length} linha(s) ignorada(s)</p>

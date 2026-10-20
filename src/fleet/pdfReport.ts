@@ -126,7 +126,7 @@ const metricDefinitions = (
   { label: 'À DISPOSIÇÃO', value: viewModel.metrics.available, fill: '#FFFFFF' },
   { label: 'A CONFIRMAR', value: viewModel.metrics.pending, fill: '#FFFFFF' },
   { label: 'HORAS PARADAS', value: viewModel.metrics.stoppedDurationLabel, fill: '#FFFFFF' },
-  { label: 'DISPONIBILIDADE', value: `${viewModel.metrics.availabilityRate.toFixed(1).replace('.', ',')}%`, fill: '#FFFFFF' },
+  { label: 'DISPONIBILIDADE', value: viewModel.metrics.availabilityRate === null ? 'Sem dados' : `${viewModel.metrics.availabilityRate.toFixed(1).replace('.', ',')}%`, fill: '#FFFFFF' },
 ];
 
 const drawMetricStrip = (

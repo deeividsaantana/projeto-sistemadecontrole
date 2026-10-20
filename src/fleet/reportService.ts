@@ -4,6 +4,7 @@ import { reconcileFleetRecords } from './reconciliation';
 import { assertFleetStatusPartition, sortFleetStatesByStatus } from './status';
 import { formatBrazilianDate, formatDurationMinutes } from './time';
 import { OBRA } from '../config/obra';
+import { disponibilidadeDaFrota } from '../modules/frota/disponibilidade';
 import {
   normalizeComparable,
   normalizeEmployeeCode,
@@ -111,7 +112,6 @@ export const calculateFleetMetrics = (
     0,
   );
   const partition = assertFleetStatusPartition(states);
-  const availableFleet = operating + available + waitingDriver;
   return {
     total: states.length,
     operating,
@@ -127,7 +127,7 @@ export const calculateFleetMetrics = (
     stoppedDurationLabel: formatDurationMinutes(
       stoppedMinutes > 0 ? stoppedMinutes : undefined,
     ),
-    availabilityRate: states.length ? (availableFleet / states.length) * 100 : 0,
+    availabilityRate: disponibilidadeDaFrota(states.map(state => state.operationalStatus)),
     operatingRate: states.length ? (operating / states.length) * 100 : 0,
     classifiedTotal: partition.classified,
     integrityDifference: partition.difference,
@@ -257,7 +257,7 @@ export const getAvailableCBs = (viewModel: FleetReportViewModel): number =>
 export const getStoppedHours = (viewModel: FleetReportViewModel): number =>
   viewModel.metrics.stoppedMinutes / 60;
 
-export const getAvailabilityRate = (viewModel: FleetReportViewModel): number =>
+export const getAvailabilityRate = (viewModel: FleetReportViewModel): number | null =>
   viewModel.metrics.availabilityRate;
 
 export const getCurrentFleetState = (

@@ -112,6 +112,8 @@ interface Indicador {
   titulo: string;
   valor: number;
   sufixo?: string;
+  /** Mostrado no lugar do número quando não há dado ("—"), nunca 0. */
+  texto?: string;
   detalhe: string;
   Icone: LucideIcon;
   tom: string;
@@ -201,7 +203,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     { id: 'manutencao', titulo: 'Manutenção', valor: indicadores.manutencao, detalhe: 'em reparo', Icone: Wrench, tom: 'bg-rose-50 text-rose-700', filtro: { grupo: 'manutencao' } },
     { id: 'parado', titulo: 'À disposição', valor: indicadores.parado, detalhe: 'sem serviço', Icone: PauseCircle, tom: 'bg-amber-50 text-amber-700', filtro: { grupo: 'parado' } },
     { id: 'sem-lancamento', titulo: 'Sem lançamento', valor: indicadores.semLancamento, detalhe: 'falta atualizar', Icone: AlertTriangle, tom: 'bg-slate-100 text-slate-600', filtro: { grupo: 'sem-lancamento' } },
-    { id: 'disponibilidade', titulo: 'Disponibilidade', valor: indicadores.disponibilidade ?? 0, sufixo: indicadores.disponibilidade === null ? '' : '%', detalhe: indicadores.disponibilidade === null ? 'nada lançado no dia' : 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
+    { id: 'disponibilidade', titulo: 'Disponibilidade', valor: indicadores.disponibilidade ?? 0, sufixo: '%', texto: indicadores.disponibilidade === null ? '—' : undefined, detalhe: indicadores.disponibilidade === null ? 'nada lançado no dia' : 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
     { id: 'com-operador', titulo: 'Com operador', valor: indicadores.comOperador, detalhe: 'operadores no dia', Icone: UserCheck, tom: 'bg-emerald-50 text-[#176b4d]', filtro: { operador: 'com' } },
     { id: 'sem-operador', titulo: 'Sem operador', valor: indicadores.semOperador, detalhe: 'aguardando', Icone: UserX, tom: 'bg-orange-50 text-[#f26a2e]', filtro: { operador: 'sem' } },
     { id: 'abasteceu-sem-lancar', titulo: 'Abasteceu sem lançar', valor: abastecidasSemLancar.length, detalhe: 'confira no Combustível', Icone: Fuel, tom: 'bg-amber-50 text-amber-700', aoClicar: abastecidasSemLancar.length && podeAbrir('lancamentos') ? () => onNavigate('lancamentos') : undefined },
@@ -384,7 +386,9 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
                 <span className="min-w-0 text-[11px] font-bold text-slate-500 sm:text-[10px] sm:uppercase sm:tracking-[0.06em] sm:[overflow-wrap:anywhere]">{item.titulo}</span>
                 <span className={`grid size-6 shrink-0 place-items-center rounded-full max-sm:hidden ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
               </span>
-              <CountUp value={item.valor} suffix={item.sufixo} className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900" />
+              {item.texto !== undefined
+                ? <span className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900">{item.texto}</span>
+                : <CountUp value={item.valor} suffix={item.sufixo} className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900" />}
               <span className="block truncate text-[11px] text-slate-500">{item.detalhe}</span>
             </>
           );

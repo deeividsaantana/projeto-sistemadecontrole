@@ -1,6 +1,6 @@
 import type { Funcionario, GrupoEquipe } from '../types';
 import { cleanImportValue, normalizeImportText } from './importHelpers';
-import { aplicarSituacao, estaNoEfetivo } from './situacaoColaborador';
+import { aplicarSituacao, estaNoEfetivo, situacaoAtualDe } from './situacaoColaborador';
 
 /**
  * Sincronização das equipes de presença com a planilha de efetivo da obra.
@@ -48,6 +48,8 @@ export interface TeamSyncPlan {
    * apagado: o registro continua existindo, só sai do efetivo.
    */
   colaboradoresParaDesmobilizar: Funcionario[];
+  /** Quem estava desmobilizado e voltou para a planilha: volta ao efetivo. */
+  colaboradoresReativados: Funcionario[];
   /** Linhas descartadas, com o motivo, para o administrativo conferir. */
   ignoradas: Array<{ linha: number; motivo: string }>;
   resumo: {
@@ -194,6 +196,14 @@ export const buildTeamSyncPlan = ({
 
   const presentes = matriculasNaPlanilha ?? new Set(linhas.map(linha => linha.matricula));
   const hoje = agoraIso.slice(0, 10);
+  // A planilha é o efetivo das empresas que aparecem nela (as de quem ela
+  // lista). Terceirizado de outra empresa não está na planilha e não saiu da
+  // obra por isso (M37).
+  const empresasDaPlanilha = new Set<string>(empresaId ? [empresaId] : []);
+  presentes.forEach(matricula => {
+    const empresa = porMatricula.get(matricula)?.empresaId;
+    if (empresa) empresasDaPlanilha.add(empresa);
+  });
   // Quem tem matrícula, está no efetivo hoje e não aparece em nenhuma linha
   // da planilha saiu da obra. O cadastro nunca é apagado, só a situação muda.
   const colaboradoresParaDesmobilizar = cadastro
@@ -201,6 +211,7 @@ export const buildTeamSyncPlan = ({
       const chave = normalizeRegistration(employee.matricula);
       if (!chave) return false;
       if (presentes.has(chave)) return false;
+      if (employee.empresaId && !empresasDaPlanilha.has(employee.empresaId)) return false;
       return estaNoEfetivo(employee);
     })
     .map(employee => aplicarSituacao(employee, {
@@ -216,12 +227,17 @@ export const buildTeamSyncPlan = ({
 
   const colaboradoresNovos: Funcionario[] = [];
   const colaboradoresAtualizados: Funcionario[] = [];
+  const colaboradoresReativados: Funcionario[] = [];
   const resolvido = new Map<string, Funcionario>();
   vinculo.forEach((linha, matricula) => {
     const existente = porMatricula.get(matricula);
     if (existente) {
+      // Quem tinha saído e voltou para a planilha volta ao efetivo (M37).
+      const base = situacaoAtualDe(existente) === 'DESMOBILIZADO'
+        ? aplicarSituacao(existente, { situacao: 'ATIVO', data: hoje, motivo: 'Voltou na planilha de efetivo sincronizada' }, agoraIso)
+        : existente;
       const atualizado: Funcionario = {
-        ...existente,
+        ...base,
         ...(linha.nome ? { nome: linha.nome } : {}),
         ...(linha.funcao ? { cargo: linha.funcao } : {}),
         liderMatricula: linha.matriculaLider || undefined,
@@ -230,6 +246,7 @@ export const buildTeamSyncPlan = ({
         responsavelArea: linha.responsavel || undefined,
       };
       colaboradoresAtualizados.push(atualizado);
+      if (base !== existente) colaboradoresReativados.push(atualizado);
       resolvido.set(matricula, atualizado);
       return;
     }
@@ -390,6 +407,7 @@ export const buildTeamSyncPlan = ({
     colaboradoresNovos,
     colaboradoresAtualizados,
     colaboradoresParaDesmobilizar,
+    colaboradoresReativados,
     ignoradas,
     resumo: {
       criar: conta('criar'),

@@ -10,6 +10,7 @@ import type { FleetPersistedRecord } from '../../fleet/domain';
 import { classifyOperationalFleet } from '../../fleet/reconciliation';
 import { CANTEIROS_ATIVOS, contemTermo } from '../../utils/frenteServico';
 import { inactivateEquipamento } from '../../masterData/registryCommands';
+import { disponibilidadeDaFrota } from './disponibilidade';
 
 export const SEM_FRENTE = 'Sem frente';
 export const SEM_CANTEIRO = 'Sem canteiro';
@@ -238,15 +239,15 @@ export const calcularIndicadores = (cartoes: readonly CartaoFrota[]): Indicadore
   const conta = (grupo: GrupoStatus) => cartoes.filter(item => item.grupo === grupo).length;
   const semLancamento = conta('sem-lancamento');
   const manutencao = conta('manutencao');
-  const lancados = cartoes.length - semLancamento;
   const comOperador = cartoes.filter(item => item.operador).length;
+  const disponibilidade = disponibilidadeDaFrota(cartoes.map(item => item.status));
   return {
     total: cartoes.length,
     operando: conta('operando'),
     manutencao,
     parado: conta('parado'),
     semLancamento,
-    disponibilidade: lancados > 0 ? Math.round(((lancados - manutencao) / lancados) * 100) : null,
+    disponibilidade: disponibilidade === null ? null : Math.round(disponibilidade),
     comOperador,
     semOperador: cartoes.length - comOperador,
   };

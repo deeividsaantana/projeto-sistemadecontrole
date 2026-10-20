@@ -1,4 +1,5 @@
 import type { ControleEquipamentoDiario, Equipamento, RegistroProducao } from '../types';
+import { disponibilidadeDaFrota } from '../modules/frota/disponibilidade';
 
 export type FleetState = 'operating' | 'available' | 'maintenance' | 'pending' | 'unknown';
 
@@ -80,7 +81,7 @@ export function fleetSummary(rows: FleetRow[]) {
     total: rows.length,
     confirmed,
     coverage: rows.length ? confirmed / rows.length * 100 : null,
-    availability: confirmed ? (counts.operating + counts.available) / confirmed * 100 : null,
+    availability: disponibilidadeDaFrota(rows.map(row => row.record?.status)),
   };
 }
 
