@@ -4288,10 +4288,8 @@ export default function App() {
     }))
     .filter(group => group.items.length > 0);
 
-  const podeAbrir = useCallback(
-    (tab: string) => destinoDaAba(tab, ROLE_ACCESS[currentUserRole]) !== null,
-    [currentUserRole],
-  );
+  // Função comum: um hook aqui, depois dos retornos antecipados, derrubava o app ao entrar.
+  const podeAbrir = (tab: string) => destinoDaAba(tab, ROLE_ACCESS[currentUserRole]) !== null;
 
   const navigateTo = (tab: string, closeMobile = false) => {
     setRelatorioPedido('');

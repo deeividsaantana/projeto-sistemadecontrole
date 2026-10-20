@@ -211,3 +211,4 @@ import './dieselPrefixoSemCadastro.test';
 import './permissoesNaAcao.test';
 import './navegacaoDestinos.test';
 import './contasIguais.test';
+import './appHooksOrdem.test';
