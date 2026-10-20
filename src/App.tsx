@@ -1261,17 +1261,27 @@ export default function App() {
         data.exclusoes = mergeCloudTable(remoteExclusoes, localExclusoes);
         Object.assign(data, aplicarExclusoes(data));
         const downloadedBaseline = captureCloudBaseline(data);
+        // Aparelho esperando o primeiro download não tem cópia confiável: o que
+        // está nele é semente ou sobra de uma cópia que perdeu as marcas. Vale a
+        // nuvem como está; manter "novidades" daqui repetia lançamentos na nuvem.
+        const copiaLocalConfiavel = !localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD);
         // O que este aparelho criou e ainda não subiu fica, e sobe logo depois (C5).
-        const { retrato: comNovidades, mantidas: novidadesLocais } = manterNovidadesLocais(data, readStoredCloudTables(), cloudBaselineRef.current);
+        const { retrato: comNovidades, mantidas: novidadesLocais } = copiaLocalConfiavel
+          ? manterNovidadesLocais(data, readStoredCloudTables(), cloudBaselineRef.current)
+          : { retrato: data, mantidas: [] };
         Object.assign(data, comNovidades);
         // O que foi editado aqui e ainda não subiu fica com a versão daqui (A13).
-        const { retrato: comEdicoes, editadas: edicoesLocais } = manterEdicoesLocais(data, readStoredCloudTables(), assinaturasConhecidas);
+        const { retrato: comEdicoes, editadas: edicoesLocais } = copiaLocalConfiavel
+          ? manterEdicoesLocais(data, readStoredCloudTables(), assinaturasConhecidas)
+          : { retrato: data, editadas: [] };
         Object.assign(data, comEdicoes);
         // A nuvem veio vazia ou muito menor numa tabela que este aparelho tem
         // cheia, sem marca de exclusão: foi outro navegador que perdeu a cópia
         // e publicou por cima. Este aparelho guarda o que tem e devolve à
         // nuvem logo depois do download, em vez de apagar a própria cópia.
-        const { retrato: dadosProtegidos, protegidas: devolverParaNuvem } = protegerContraEncolhimento(readLocalCloudTables(), data);
+        const { retrato: dadosProtegidos, protegidas: devolverParaNuvem } = copiaLocalConfiavel
+          ? protegerContraEncolhimento(readLocalCloudTables(), data)
+          : { retrato: data, protegidas: [] };
         Object.assign(data, dadosProtegidos);
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
@@ -1521,9 +1531,12 @@ export default function App() {
 
         // Um snapshot antigo pode ter sido enfileirado enquanto uma
         // recuperação/publicação estava em andamento. Nunca baixe uma versão
-        // igual ou anterior à que este aparelho acabou de publicar.
+        // igual ou anterior à que este aparelho acabou de publicar. Aparelho
+        // esperando o primeiro download baixa sempre: com a mesma versão ele
+        // ficava travado, sem baixar e sem enviar nada, só com aviso no sino.
         if (
-          localCloudVersion
+          !localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD)
+          && localCloudVersion
           && requestedVersion
           && Date.parse(requestedVersion) <= Date.parse(localCloudVersion)
         ) {
