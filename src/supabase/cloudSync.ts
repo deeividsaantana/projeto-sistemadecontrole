@@ -24,7 +24,12 @@ const isVersionConflict = (error: unknown) => {
   return message.includes('CLOUD_VERSION_CONFLICT');
 };
 
+// O banco recusa o envio que apagaria registros sem marca de exclusão (A14).
+const NUVEM_RECUSOU_ENCOLHIMENTO = 'A nuvem recusou o envio porque ele apagaria registros sem exclusão marcada. Nada foi perdido: baixe a nuvem e tente de novo.';
+
 const normalizeSupabaseError = (error: unknown): Error => {
+  const texto = String((error as { message?: unknown })?.message ?? error ?? '');
+  if (texto.includes('CLOUD_SHRINK_REFUSED')) return new Error(NUVEM_RECUSOU_ENCOLHIMENTO, { cause: error });
   if (error instanceof Error) return error;
   if (error && typeof error === 'object' && 'message' in error) {
     return new Error(String((error as { message?: unknown }).message || 'Falha no Supabase.'));

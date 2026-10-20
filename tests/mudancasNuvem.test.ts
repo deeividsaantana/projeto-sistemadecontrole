@@ -62,3 +62,16 @@ test('assinaturas seguem as mudanças para a próxima versão', () => {
   assert.deepEqual(proximas, capturarAssinaturas(aparelho, 'v2'));
   assert.deepEqual(calcularMudancas(aparelho, proximas)!.total, 0);
 });
+
+test('esvaziar tabela pequena sem marca não vai (A12)', () => {
+  const nuvem = { ordensServico: lista('os', 4) };
+  const calculo = calcularMudancas({ ordensServico: [] }, capturarAssinaturas(nuvem, 'v1')!);
+  assert.ok(calculo);
+  assert.deepEqual(calculo.mudancas, {});
+  assert.deepEqual(calculo.protegidas, [{ tabela: 'ordensServico', devolvidos: 4 }]);
+  const comMarca = calcularMudancas({
+    ordensServico: [],
+    exclusoes: lista('os', 4).map(item => ({ id: `exc-${item.id}`, tabela: 'ordensServico', registroId: item.id, excluidoEm: '2026-10-20T10:00:00Z' })),
+  }, capturarAssinaturas(nuvem, 'v1')!);
+  assert.deepEqual(comMarca?.mudancas.ordensServico, { delete: lista('os', 4).map(item => item.id) });
+});

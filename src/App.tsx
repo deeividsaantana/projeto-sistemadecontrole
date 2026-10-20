@@ -1965,6 +1965,11 @@ export default function App() {
     gruposEquipe: { lista: gruposEquipe as never[], setLista: setGruposEquipe as (next: never[]) => void, storageKey: 'renea_grupos_equipes', tela: 'Grupos / Equipes' },
     // Abastecimento excluído vai para a Lixeira (A17): o Desfazer e a Lixeira devolvem por aqui.
     abastecimentos: { lista: abastecimentos as never[], setLista: setAbastecimentos as (next: never[]) => void, storageKey: 'renea_abastecimentos', tela: 'Abastecimentos' },
+    // Lançamentos excluídos também deixam marca e voltam pela Lixeira (A12).
+    lubrificacoes: { lista: lubrificacoes as never[], setLista: setLubrificacoes as (next: never[]) => void, storageKey: 'renea_lubrificacoes', tela: 'Lubrificações' },
+    ordensServico: { lista: ordensServico as never[], setLista: setOrdensServico as (next: never[]) => void, storageKey: 'renea_ordens_servico', tela: 'Manutenção' },
+    controleEquipamentosDiario: { lista: controleEquipamentosDiario as never[], setLista: setControleEquipamentosDiario as (next: never[]) => void, storageKey: 'renea_controle_equipamentos_diario', tela: 'Controle Diário de Equipamentos' },
+    motoristasOperacionais: { lista: motoristasOperacionais as never[], setLista: setMotoristasOperacionais as (next: never[]) => void, storageKey: STORAGE_KEYS.motoristasOperacionais, tela: 'Motoristas operacionais' },
   });
 
   const usosDoCadastroAtual = (tabela: string, id: string) => usosDoCadastro(tabela, id, {
@@ -2286,11 +2291,16 @@ export default function App() {
 
   const handleDeleteOperationalDriver = (id: string) => {
     if (exclusaoRecusada(podeExcluirCadastro)) return;
-    const next = motoristasOperacionais.filter(driver => driver.id !== id);
-    saveAndLog('Motoristas operacionais', 'Excluiu', `Excluiu o motorista operacional "${id}".`, historyLogs, () => {
-      setMotoristasOperacionais(next);
-      writeStorageValue(localStorage, STORAGE_KEYS.motoristasOperacionais, JSON.stringify(next));
-    }, { registroId: id, tipoOperacao: 'DELETE' });
+    const motorista = motoristasOperacionais.find(driver => driver.id === id);
+    if (!motorista) return;
+    excluirCadastros({
+      tabela: 'motoristasOperacionais',
+      storageKey: STORAGE_KEYS.motoristasOperacionais,
+      tela: 'Motoristas operacionais',
+      itens: [{ item: motorista, rotulo: motorista.nome || id }],
+      lista: motoristasOperacionais,
+      setLista: setMotoristasOperacionais,
+    });
   };
 
   const handleDeleteFuncionario = (id: string) => {
@@ -2878,17 +2888,16 @@ export default function App() {
     if (exclusaoRecusada(podeExcluirLancamento)) return;
     const item = lubrificacoes.find(x => x.id === id);
     if (!item) return;
-    const updated = lubrificacoes.filter(x => x.id !== id);
-    saveAndLog(
-      'Lubrificações', 
-      'Excluiu', 
-      `Excluiu lançamento de lubrificação ID ${id.substring(0, 8)}.`,
-      historyLogs,
-      () => {
-        setLubrificacoes(updated);
-        writeStorageValue(localStorage, 'renea_lubrificacoes', JSON.stringify(updated));
-      }
-    );
+    // Com marca de exclusão (A12): vai para a Lixeira e não volta de outro aparelho.
+    const prefixo = equipamentos.find(equipamento => equipamento.id === item.equipamentoId)?.prefixo;
+    excluirCadastros({
+      tabela: 'lubrificacoes',
+      storageKey: 'renea_lubrificacoes',
+      tela: 'Lubrificações',
+      itens: [{ item, rotulo: `Lubrificação ${[prefixo, item.data].filter(Boolean).join(' em ')}` }],
+      lista: lubrificacoes,
+      setLista: setLubrificacoes,
+    });
   };
 
   // Tickets Jazida / Liberação de Material — Prioridade 6
@@ -2917,43 +2926,34 @@ export default function App() {
       .catch(error => console.warn('Falha ao espelhar ticket no link público:', error));
   };
 
+  // Com marca de exclusão (A12, M20): vai para a Lixeira e não volta de outro aparelho.
+  const excluirTickets = (itens: TicketJazida[]) => {
+    excluirCadastros({
+      tabela: 'ticketsJazida',
+      storageKey: 'renea_tickets_jazida',
+      tela: 'Tickets Jazida',
+      itens: itens.map(item => ({ item, rotulo: `Ticket ${item.ticketNumero || item.id}${item.data ? ` de ${item.data}` : ''}` })),
+      lista: ticketsJazida,
+      setLista: setTicketsJazida,
+    });
+    itens.forEach(item => {
+      void deletePublicTicket(db, item.id).catch(error => console.warn('Falha ao excluir ticket público:', error));
+    });
+  };
+
   const handleDeleteTicketJazida = (id: string) => {
     if (exclusaoRecusada(podeExcluirLancamento)) return;
     const item = ticketsJazida.find(x => x.id === id);
     if (!item) return;
-    const updated = ticketsJazida.filter(x => x.id !== id);
-    saveAndLog(
-      'Tickets Jazida',
-      'Excluiu',
-      `Excluiu ticket de ${item.tipoTicket || 'Liberação'} Nº ${item.ticketNumero}.`,
-      historyLogs,
-      () => {
-        setTicketsJazida(updated);
-        writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(updated));
-      }
-    );
-    void deletePublicTicket(db, id)
-      .catch(error => console.warn('Falha ao excluir ticket público:', error));
+    excluirTickets([item]);
   };
 
   const handleDeleteTicketsJazida = (ids: string[]) => {
     if (exclusaoRecusada(podeExcluirLancamento)) return;
     const selected = new Set(ids);
-    if (selected.size === 0) return;
-    const updated = ticketsJazida.filter(item => !selected.has(item.id));
-    saveAndLog(
-      'Tickets Jazida',
-      'Excluiu',
-      `Excluiu permanentemente ${selected.size} ticket(s).`,
-      historyLogs,
-      () => {
-        setTicketsJazida(updated);
-        writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(updated));
-      }
-    );
-    ids.forEach(id => {
-      void deletePublicTicket(db, id).catch(error => console.warn('Falha ao excluir ticket público:', error));
-    });
+    const itens = ticketsJazida.filter(item => selected.has(item.id));
+    if (itens.length === 0) return;
+    excluirTickets(itens);
   };
 
   const handleImportTicketsJazida = (novosItens: TicketJazida[]) => {
@@ -3991,17 +3991,15 @@ export default function App() {
   const handleDeleteOrdemServico = (id: string) => {
     if (exclusaoRecusada(podeExcluirLancamento)) return;
     const ordem = ordensServico.find(item => item.id === id);
-    const updated = ordensServico.filter(item => item.id !== id);
-    saveAndLog(
-      'Manutenção',
-      'Excluiu',
-      `Excluiu a ordem de serviço ${ordem?.numero || id}.`,
-      historyLogs,
-      () => {
-        setOrdensServico(updated);
-        writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(updated));
-      },
-    );
+    if (!ordem) return;
+    excluirCadastros({
+      tabela: 'ordensServico',
+      storageKey: 'renea_ordens_servico',
+      tela: 'Manutenção',
+      itens: [{ item: ordem, rotulo: `Ordem de serviço ${ordem.numero || id}` }],
+      lista: ordensServico,
+      setLista: setOrdensServico,
+    });
   };
 
   const handleSaveControleEquipamentoDiario = (registroRecebido: ControleEquipamentoDiario, isNewRecebido: boolean) => {
@@ -4134,10 +4132,16 @@ export default function App() {
     if (exclusaoRecusada(podeExcluirLancamento)) return;
     const uniqueIds = Array.from(new Set(ids));
     if (!uniqueIds.length || (!jaConfirmado && !confirm(`Você está prestes a excluir ${uniqueIds.length} registro(s) do controle de basculantes. Continuar?`))) return;
-    const updated = controleEquipamentosDiario.filter(item => !uniqueIds.includes(item.id));
-    saveAndLog('Controle Diário de Equipamentos', 'Excluiu', `Excluiu ${uniqueIds.length} registro(s) em uma única operação.`, historyLogs, () => {
-      setControleEquipamentosDiario(updated);
-      writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
+    const selecionados = new Set(uniqueIds);
+    excluirCadastros({
+      tabela: 'controleEquipamentosDiario',
+      storageKey: 'renea_controle_equipamentos_diario',
+      tela: 'Controle Diário de Equipamentos',
+      itens: controleEquipamentosDiario
+        .filter(item => selecionados.has(item.id))
+        .map(item => ({ item, rotulo: `${item.prefixo || 'Lançamento da frota'} em ${item.data}` })),
+      lista: controleEquipamentosDiario,
+      setLista: setControleEquipamentosDiario,
     });
   };
 
@@ -4150,17 +4154,36 @@ export default function App() {
     const { alvos, equipamentosAtualizados: updatedEquipamentos, registrosAtualizados: updatedControle } = removerEquipamentosDoQuadro(equipamentos, controleEquipamentosDiario, itens);
     if (!alvos.length) return;
     const mudouControle = updatedControle.length !== controleEquipamentosDiario.length;
+    // O lançamento do dia que sai deixa marca (A12): vai para a Lixeira e não volta de outro aparelho.
+    const ficam = new Set(updatedControle.map(item => item.id));
+    const agora = new Date().toISOString();
+    const novasExclusoes = controleEquipamentosDiario
+      .filter(item => !ficam.has(item.id))
+      .map(item => criarExclusao({
+        tabela: 'controleEquipamentosDiario',
+        registro: item as unknown as { id: string } & Record<string, unknown>,
+        rotulo: `${item.prefixo || 'Lançamento da frota'} em ${item.data}`,
+        usuario: activeUserName,
+        agora,
+      }));
+    const nextExclusoes = [...novasExclusoes, ...exclusoes];
     saveAndLog(
       'Quadro da Frota',
       'Desmobilizou',
       `Removeu ${alvos.length} equipamento(s) do Quadro da Frota: ${alvos.map(item => item.prefixo).join(', ')}.`,
       historyLogs,
       () => {
+        commitStorageBatch(localStorage, [
+          { key: 'renea_equipamentos', value: JSON.stringify(updatedEquipamentos) },
+          ...(mudouControle ? [
+            { key: 'renea_controle_equipamentos_diario', value: JSON.stringify(updatedControle) },
+            { key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) },
+          ] : []),
+        ]);
         setEquipamentos(updatedEquipamentos);
-        writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(updatedEquipamentos));
         if (mudouControle) {
           setControleEquipamentosDiario(updatedControle);
-          writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updatedControle));
+          setExclusoes(nextExclusoes);
         }
       },
     );
