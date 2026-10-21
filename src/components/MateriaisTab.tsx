@@ -2,7 +2,7 @@
  * Materiais: cadastro, movimentação e estoque. O saldo é sempre a soma dos
  * movimentos — não existe contador guardado para divergir do histórico.
  */
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { locaisParaEscolher, rotuloDoLocal } from '../modules/materials/locaisSge';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -24,8 +24,6 @@ import GradeViagens from './materiais/GradeViagens';
 import LancarMateriais from './materiais/LancarMateriais';
 import FichaMaterial from './materiais/FichaMaterial';
 import LocaisMateriais, { type ExcluirLocal } from './materiais/LocaisMateriais';
-import GraficosMateriais from './materiais/GraficosMateriais';
-import RelatoriosMateriais from './materiais/RelatoriosMateriais';
 import ApontadoresMateriais from './materiais/ApontadoresMateriais';
 import { enviosDoCampo } from '../modules/materials/apontadores';
 import PrevistoMateriais from './materiais/PrevistoMateriais';
@@ -39,12 +37,17 @@ import {
   ConfirmDialog,
   DataTable,
   FilterBar,
+  LoadingState,
   Modal,
   PageHeader,
   isoDay,
   type DataTableColumn,
 } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
+
+// Gráficos e Relatórios só baixam quando a seção é aberta (M10).
+const GraficosMateriais = lazy(() => import('./materiais/GraficosMateriais'));
+const RelatoriosMateriais = lazy(() => import('./materiais/RelatoriosMateriais'));
 
 interface MateriaisTabProps {
   materiais: Material[];
@@ -549,18 +552,22 @@ export default function MateriaisTab({
           )}
 
           {aba === 'relatorios' && (
-            <RelatoriosMateriais hoje={hoje} materiais={materiais} movimentos={movimentosVigentes} etapas={etapas} />
+            <Suspense fallback={<LoadingState message="Abrindo relatórios..." />}>
+              <RelatoriosMateriais hoje={hoje} materiais={materiais} movimentos={movimentosVigentes} etapas={etapas} />
+            </Suspense>
           )}
 
           {aba === 'graficos' && (
-            <GraficosMateriais
-              hoje={hoje}
-              movimentos={movimentosVigentes}
-              etapas={etapas}
-              onVerMovimentos={termoGrafico => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoGrafico); }}
-              onVerBotaFora={() => escolherSecao('botafora')}
-              onIrParaLocais={() => escolherSecao('locais')}
-            />
+            <Suspense fallback={<LoadingState message="Abrindo gráficos..." />}>
+              <GraficosMateriais
+                hoje={hoje}
+                movimentos={movimentosVigentes}
+                etapas={etapas}
+                onVerMovimentos={termoGrafico => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoGrafico); }}
+                onVerBotaFora={() => escolherSecao('botafora')}
+                onIrParaLocais={() => escolherSecao('locais')}
+              />
+            </Suspense>
           )}
 
           {aba === 'previsto' && (
