@@ -99,3 +99,22 @@ test('cinza #718087 e laranja #f26a2e não viram cor de letra', () => {
   const fora = fontesDoApp.filter(({ fonte }) => letraClara.test(fonte)).map(({ arquivo }) => arquivo);
   assert.deepEqual(fora, [], 'use #5b6870 (cinza) ou #c2410c (laranja) como cor de letra');
 });
+
+// Auditoria de front (21/10/2026, A9): piso de 12px para texto. 11px só no
+// rótulo de cabeçalho de tabela em maiúsculas; o relatório impresso da frota
+// segue a medida do papel.
+test('nenhum texto abaixo de 12px', () => {
+  const tamanhos = (trecho: string) => [...trecho.matchAll(/text-\[(\d+(?:\.\d+)?)px\]|font-size:\s*(\d*\.?\d+)(px|rem)/g)]
+    .map(([, classe, valor, unidade]) => classe ? Number(classe) : Number(valor) * (unidade === 'rem' ? 16 : 1))
+    .filter(tamanho => tamanho < 12);
+  // Na folha de estilo a regra é o bloco inteiro; no componente, a linha.
+  const trechos = (arquivo: string, fonte: string) => arquivo.endsWith('.css')
+    ? [...fonte.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map(([bloco, seletor]) => ({ trecho: bloco, cabecalho: /(^|[\s>,])th\b/.test(seletor) }))
+    : fonte.split('\n').map(linha => ({ trecho: linha, cabecalho: /<th(ead)?\b/.test(linha) }));
+  const fora = fontesDoApp
+    .filter(({ arquivo }) => !arquivo.endsWith('FleetReportLayout.tsx'))
+    .flatMap(({ arquivo, fonte }) => trechos(arquivo, fonte).flatMap(({ trecho, cabecalho }) => tamanhos(trecho)
+      .filter(tamanho => !(tamanho >= 11 && cabecalho && trecho.includes('uppercase')))
+      .map(tamanho => `${arquivo} (${tamanho}px): ${trecho.trim().slice(0, 60)}`)));
+  assert.deepEqual(fora, [], 'use text-xs (12px) ou maior');
+});
