@@ -219,7 +219,7 @@ export default function PlanejamentoTab({
               <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
               {atrasados.length} previsto(s) com prazo vencido e meta não atingida
             </p>
-            <p className="mt-1 text-[11px] text-amber-800">
+            <p className="mt-1 text-xs text-amber-800">
               {atrasados.slice(0, 5).map(item => `${item.plano.servicoDescricao} (faltam ${numero(item.saldo)} ${item.plano.unidade})`).join(' · ')}
             </p>
           </div>
@@ -276,7 +276,7 @@ export default function PlanejamentoTab({
                         <div className="h-1.5 flex-1 rounded-full bg-slate-100">
                           <div className={`h-1.5 rounded-full ${item.atrasado ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, item.aderencia)}%` }} />
                         </div>
-                        <span className="font-mono text-[11px] font-bold text-slate-700">{item.aderencia}%</span>
+                        <span className="font-mono text-xs font-bold text-slate-700">{item.aderencia}%</span>
                       </div>
                     </td>
                     <td className="p-3">
@@ -284,7 +284,7 @@ export default function PlanejamentoTab({
                     </td>
                     {podeEditar && (
                       <td className="p-3 text-right">
-                        <button type="button" onClick={() => abrir(item.plano)} className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Editar</button>
+                        <button type="button" onClick={() => abrir(item.plano)} className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Editar</button>
                       </td>
                     )}
                   </tr>
@@ -359,7 +359,7 @@ export default function PlanejamentoTab({
             Observação
             <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
           </label>
-          <p className="sm:col-span-2 text-[11px] text-slate-500">
+          <p className="sm:col-span-2 text-xs text-slate-500">
             O executado não é digitado: soma a produção lançada do mesmo serviço no período, filtrada por frente e equipe quando informadas.
           </p>
           {erro && <p className="sm:col-span-2 text-xs font-bold text-rose-700">{erro}</p>}

@@ -149,7 +149,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
           { rotulo: 'Dias sem diário', valor: String(dados.diasSemDiario) },
         ].map(item => (
           <div key={item.rotulo} className="min-w-0 rounded-lg border border-[#e2e8e4] p-3">
-            <p className="text-[11px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.rotulo}</p>
+            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.rotulo}</p>
             <strong className="mt-1 block truncate text-xl font-black tabular-nums text-[#101a22]">{item.valor}</strong>
           </div>
         ))}
@@ -158,7 +158,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
       <div className="px-4 pb-4 sm:px-5 sm:pb-5">
         <div className="grid grid-cols-7 gap-1.5" role="grid" aria-label={`Mapa de chuvas de ${dados.rotulo}`}>
           {DIAS_SEMANA.map((letra, indice) => (
-            <span key={`${letra}-${indice}`} className="pb-1 text-center text-[11px] font-bold uppercase text-slate-400" aria-hidden="true">
+            <span key={`${letra}-${indice}`} className="pb-1 text-center text-xs font-bold uppercase text-slate-400" aria-hidden="true">
               {letra}
             </span>
           ))}
@@ -178,7 +178,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
                 className="mapa-chuva__dia flex min-h-14 flex-col items-center justify-center rounded-lg border p-1"
                 style={{ background: cor.fundo, color: cor.texto, borderColor: cor.borda }}
               >
-                <span className="text-[11px] font-bold leading-none">{dia.dia}</span>
+                <span className="text-xs font-bold leading-none">{dia.dia}</span>
                 <strong className="mt-0.5 text-sm font-black leading-none tabular-nums">
                   {dia.milimetros === null ? '—' : dia.milimetros.toLocaleString('pt-BR')}
                 </strong>
@@ -192,7 +192,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
 
         <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
           {(Object.keys(ROTULO_FAIXA) as FaixaChuva[]).map(faixa => (
-            <li key={faixa} className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+            <li key={faixa} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
               <span
                 className="inline-block h-3 w-3 rounded border"
                 style={{ background: CORES_FAIXA[faixa].fundo, borderColor: CORES_FAIXA[faixa].borda }}
@@ -201,7 +201,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
               {ROTULO_FAIXA[faixa]}
             </li>
           ))}
-          <li className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+          <li className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
             <Umbrella className="h-3 w-3" aria-hidden="true" /> Dia impraticável
           </li>
         </ul>

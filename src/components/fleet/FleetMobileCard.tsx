@@ -56,7 +56,7 @@ export default function FleetMobileCard({
       <dl className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-[#f7f8f6] p-2 text-xs">
         {fatos.map(([rotulo, valor]) => (
           <div key={rotulo} className="min-w-0">
-            <dt className="text-[11px] font-semibold text-slate-500">{rotulo}</dt>
+            <dt className="text-xs font-semibold text-slate-500">{rotulo}</dt>
             <dd className="mt-0.5 truncate font-bold text-slate-800">{valor}</dd>
           </div>
         ))}

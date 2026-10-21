@@ -105,10 +105,10 @@ export default function RegistryScreen<T extends { id: string }>({ config, items
       />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[9px] font-black uppercase text-slate-500">Total</p><strong className="text-xl text-slate-800">{state.scoped.length}</strong></div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[9px] font-black uppercase text-slate-500">Filtrados</p><strong className="text-xl text-slate-800">{state.filtered.length}</strong></div>
-        <div className={`rounded-xl border p-3 ${state.duplicateCount > 0 ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}><p className="text-[9px] font-black uppercase text-slate-500">Possíveis duplicados</p><strong className="text-xl text-slate-800">{state.duplicateCount}</strong></div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[9px] font-black uppercase text-slate-500">Página</p><strong className="text-xl text-slate-800">{state.page}/{state.totalPages}</strong></div>
+        <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-xs font-black uppercase text-slate-500">Total</p><strong className="text-xl text-slate-800">{state.scoped.length}</strong></div>
+        <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-xs font-black uppercase text-slate-500">Filtrados</p><strong className="text-xl text-slate-800">{state.filtered.length}</strong></div>
+        <div className={`rounded-xl border p-3 ${state.duplicateCount > 0 ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}><p className="text-xs font-black uppercase text-slate-500">Possíveis duplicados</p><strong className="text-xl text-slate-800">{state.duplicateCount}</strong></div>
+        <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-xs font-black uppercase text-slate-500">Página</p><strong className="text-xl text-slate-800">{state.page}/{state.totalPages}</strong></div>
       </div>
 
       <FilterBar actions={<button type="button" onClick={startBatch} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-700">Adicionar linhas</button>}>
@@ -126,7 +126,7 @@ export default function RegistryScreen<T extends { id: string }>({ config, items
               {config.fields.map(field => (
                 <FieldInput key={field.key} field={field} value={fieldValue(draft, field)} onChange={value => updateBatchRow(index, field.key, value)} />
               ))}
-              {batchErrors[index] && <p className="sm:col-span-4 text-[10px] font-bold text-rose-600">{batchErrors[index]}</p>}
+              {batchErrors[index] && <p className="sm:col-span-4 text-xs font-bold text-rose-600">{batchErrors[index]}</p>}
             </div>
           ))}
           <div className="flex justify-end gap-2">
@@ -183,7 +183,7 @@ export default function RegistryScreen<T extends { id: string }>({ config, items
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {config.fields.map(field => (
-            <label key={field.key} className="space-y-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <label key={field.key} className="space-y-1 text-xs font-bold uppercase tracking-wider text-slate-400">
               {field.label}{field.required ? ' *' : ''}
               <FieldInput field={field} value={fieldValue(formDraft, field)} onChange={value => setFormDraft(current => ({ ...current, [field.key]: value }))} />
             </label>

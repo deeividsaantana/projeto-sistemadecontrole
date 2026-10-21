@@ -4412,7 +4412,7 @@ export default function App() {
         />
 
         <div
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
           title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
         >
           <span className={`w-2 h-2 rounded-full shrink-0 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
@@ -4420,7 +4420,7 @@ export default function App() {
         </div>
         {pendingCount > 0 && (
           <span
-            className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"
+            className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700"
             title={`${pendingCount} pendência(s) offline aguardando envio`}
             aria-live="polite"
           >
@@ -4496,7 +4496,7 @@ export default function App() {
                 <button type="button" onClick={() => { void handleLogout(); setIsMobileMenuOpen(false); }} className="w-full py-3 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold text-xs flex items-center justify-center gap-2">
                   <LogOut className="w-4 h-4" /> Sair da conta
                 </button>
-                <p className="mt-3 text-center text-[10px] text-slate-500">{APP_VERSION_LABEL}</p>
+                <p className="mt-3 text-center text-xs text-slate-500">{APP_VERSION_LABEL}</p>
               </div>
             </nav>
           </div>

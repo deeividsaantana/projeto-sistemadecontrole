@@ -143,7 +143,7 @@ export default function ColaboradoresTab({
             description={[selecionado.matricula && `Matrícula ${selecionado.matricula}`, selecionado.cargo, empresa].filter(Boolean).join(' · ')}
             actions={(
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(situacaoAtual)}`}>{situacaoAtual}</span>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(situacaoAtual)}`}>{situacaoAtual}</span>
                 {onAlterarSituacao && (
                   <button
                     type="button"
@@ -165,9 +165,9 @@ export default function ColaboradoresTab({
         <section data-colaboradores-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           {indicadores.map(item => (
             <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
               <strong className="mt-1.5 block text-lg font-black leading-tight text-slate-900">{item.valor}</strong>
-              <span className="text-[11px] text-slate-400">{item.detalhe}</span>
+              <span className="text-xs text-slate-400">{item.detalhe}</span>
             </div>
           ))}
         </section>
@@ -188,7 +188,7 @@ export default function ColaboradoresTab({
                 ['Desmobilização', formatarData(selecionado.dataDesmobilizacao)],
               ].map(([rotulo, valor]) => (
                 <div key={rotulo} className="min-w-0">
-                  <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{rotulo}</dt>
+                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">{rotulo}</dt>
                   <dd className="mt-0.5 break-words font-medium text-slate-800">{valor}</dd>
                 </div>
               ))}
@@ -213,9 +213,9 @@ export default function ColaboradoresTab({
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
                       <span className="block text-slate-600">{formatarData(item.data)} · {item.horaEnvio}</span>
-                      <span className="block truncate text-[11px] text-slate-400">{item.grupoNome}{item.frenteServico ? ` · ${item.frenteServico}` : ''}</span>
+                      <span className="block truncate text-xs text-slate-400">{item.grupoNome}{item.frenteServico ? ` · ${item.frenteServico}` : ''}</span>
                     </span>
-                    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(item.status)}`}>{item.status}</span>
+                    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
                   </li>
                 ))}
               </ul>
@@ -237,9 +237,9 @@ export default function ColaboradoresTab({
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
                       <strong className="block font-mono text-slate-900">{item.prefixo}</strong>
-                      <span className="block text-[11px] text-slate-400">{formatarData(item.data)}</span>
+                      <span className="block text-xs text-slate-400">{formatarData(item.data)}</span>
                     </span>
-                    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(item.status)}`}>{item.status}</span>
+                    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
                   </li>
                 ))}
               </ul>
@@ -260,7 +260,7 @@ export default function ColaboradoresTab({
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
                       <strong className="block font-mono text-slate-900">Ticket {item.ticketNumero || '—'}</strong>
-                      <span className="block truncate text-[11px] text-slate-400">{item.prefixo} · {item.tipoMaterial}</span>
+                      <span className="block truncate text-xs text-slate-400">{item.prefixo} · {item.tipoMaterial}</span>
                     </span>
                     <span className="shrink-0 text-slate-600">{formatarData(item.data)}</span>
                   </li>
@@ -269,7 +269,7 @@ export default function ColaboradoresTab({
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
                       <strong className="block text-slate-900">Checklist {item.prefixo}</strong>
-                      {item.ordemServicoNumero && <span className="block text-[11px] text-rose-600">abriu {item.ordemServicoNumero}</span>}
+                      {item.ordemServicoNumero && <span className="block text-xs text-rose-600">abriu {item.ordemServicoNumero}</span>}
                     </span>
                     <span className="shrink-0 text-slate-600">{formatarData(item.data)}</span>
                   </li>
@@ -311,7 +311,7 @@ export default function ColaboradoresTab({
         >
           <div className="space-y-3">
             <label className="block space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Situação</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Situação</span>
               <select
                 value={mudanca?.situacao || 'ATIVO'}
                 onChange={event => setMudanca(atual => atual && { ...atual, situacao: event.target.value as SituacaoColaborador })}
@@ -321,7 +321,7 @@ export default function ColaboradoresTab({
               </select>
             </label>
             <label className="block space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">A partir de</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">A partir de</span>
               <TextInput
                 type="date"
                 value={mudanca?.data || ''}
@@ -329,14 +329,14 @@ export default function ColaboradoresTab({
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Motivo</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Motivo</span>
               <TextInput
                 placeholder="Fim de contrato, férias programadas, atestado…"
                 value={mudanca?.motivo || ''}
                 onChange={event => setMudanca(atual => atual && { ...atual, motivo: event.target.value })}
               />
             </label>
-            <p className="text-[11px] leading-5 text-slate-500">
+            <p className="text-xs leading-5 text-slate-500">
               Desmobilizado e inativo tiram a pessoa do efetivo disponível e guardam a data de saída.
               Férias e afastamento mantêm a pessoa no efetivo — ela volta.
             </p>
@@ -407,10 +407,10 @@ export default function ColaboradoresTab({
                       {item.matricula && <Badge tone="neutral">{item.matricula}</Badge>}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(situacaoItem)}`}>{situacaoItem}</span>
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(situacaoItem)}`}>{situacaoItem}</span>
                       {equipe && <Badge tone="info">{displayText(equipe.nome, 'Equipe sem nome')}</Badge>}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                       <span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{displayText(item.liderNome, 'Sem encarregado')}</span>
                       <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{empresas.find(empresa => empresa.id === item.empresaId)?.nome || 'Sem empresa'}</span>
                     </div>

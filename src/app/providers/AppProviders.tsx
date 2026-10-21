@@ -49,16 +49,16 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
               <div className="grid size-10 place-items-center rounded-full bg-emerald-50 text-emerald-700"><ShieldCheck size={20} strokeWidth={2.1} /></div>
               <div>
                 <p className="text-sm font-black tracking-[-0.03em] text-slate-900">RENEA</p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Controle de obra</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Controle de obra</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700"><i className="size-2 rounded-full bg-emerald-500" />Dados preservados</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-emerald-700"><i className="size-2 rounded-full bg-emerald-500" />Dados preservados</span>
           </header>
 
           <div className="mt-9 grid gap-7 sm:grid-cols-[auto_1fr] sm:items-start">
             <div className="grid size-14 place-items-center rounded-full border border-amber-200 bg-amber-50 text-amber-600"><AlertTriangle size={26} strokeWidth={1.8} /></div>
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Recuperação necessária</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Recuperação necessária</p>
               <h1 id="interface-error-title" className="mt-3 max-w-lg text-3xl font-black leading-[1.02] tracking-[-0.055em] text-slate-950 sm:text-4xl">Não foi possível abrir esta tela.</h1>
               <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">Os seus registros permanecem protegidos. Atualize o sistema para tentar novamente; se a falha continuar, informe o horário para que a equipe possa localizar o ocorrido.</p>
               {import.meta.env.DEV && this.state.error && (
@@ -73,7 +73,7 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
             </div>
           </div>
 
-          <footer className="mt-10 border-t border-slate-100 pt-4 text-[11px] leading-5 text-slate-400">RENEA ERP · A recuperação não altera lançamentos, cadastros ou históricos.</footer>
+          <footer className="mt-10 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400">RENEA ERP · A recuperação não altera lançamentos, cadastros ou históricos.</footer>
         </section>
       </main>
     );

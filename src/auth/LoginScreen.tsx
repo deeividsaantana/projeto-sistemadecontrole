@@ -159,7 +159,7 @@ export function LoginScreen({
               Frota, equipes, combustível e produção reunidos em um ambiente operacional seguro.
             </p>
           </div>
-          <p className="text-[11px] font-semibold text-slate-500">Ambiente corporativo · acesso monitorado</p>
+          <p className="text-xs font-semibold text-slate-500">Ambiente corporativo · acesso monitorado</p>
         </section>
 
         <section
@@ -266,7 +266,7 @@ export function LoginScreen({
 
           <div
             ref={footerRef}
-            className="mt-7 pt-5 border-t border-slate-200 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5"
+            className="mt-7 pt-5 border-t border-slate-200 text-center text-xs text-slate-500 flex items-center justify-center gap-1.5"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
             Acesso restrito a contas autorizadas

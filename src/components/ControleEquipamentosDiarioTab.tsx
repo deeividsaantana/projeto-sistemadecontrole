@@ -591,7 +591,7 @@ export default function ControleEquipamentosDiarioTab({
     ['registry', 'Motoristas', 'Motoristas', Database, 0],
   ];
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
-  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400';
+  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400';
   const aviso = message && (
     <p role={messageTone === 'error' ? 'alert' : 'status'} data-testid="frota-aviso" className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 ring-inset ${messageTone === 'success' ? 'bg-emerald-50 text-emerald-900 ring-emerald-200' : messageTone === 'error' ? 'bg-rose-50 text-rose-800 ring-rose-200' : 'bg-[#f7f8f6] text-slate-700 ring-slate-200'}`}>
       {messageTone === 'success' ? <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" /> : messageTone === 'error' ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <RefreshCw className="size-4 shrink-0" aria-hidden="true" />}
@@ -620,12 +620,12 @@ export default function ControleEquipamentosDiarioTab({
                     onClick={() => setActiveView(id)}
                     data-testid={`frota-aba-${id}`}
                     aria-label={pendentes ? `${label}, ${pendentes} a confirmar` : label}
-                    className={`relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl px-0.5 text-[10.5px] font-bold tracking-tight transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] lg:min-h-11 lg:flex-row lg:gap-2 lg:px-3 lg:text-sm lg:tracking-normal ${activeView === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
+                    className={`relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl px-0.5 text-xs font-bold tracking-tight transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] lg:min-h-11 lg:flex-row lg:gap-2 lg:px-3 lg:text-sm lg:tracking-normal ${activeView === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
                   >
                     <Icon className="size-5 lg:hidden xl:block xl:size-4" aria-hidden="true"/>
                     <span className="max-w-full truncate xl:hidden">{curto}</span>
                     <span className="hidden xl:inline">{label}</span>
-                    {pendentes > 0 && <span className="absolute right-1 top-1 min-w-5 rounded-full bg-[#c2410c] px-1 text-center text-[10px] font-bold leading-5 tabular-nums text-white lg:static lg:text-[11px]">{pendentes}</span>}
+                    {pendentes > 0 && <span className="absolute right-1 top-1 min-w-5 rounded-full bg-[#c2410c] px-1 text-center text-xs font-bold leading-5 tabular-nums text-white lg:static lg:text-xs">{pendentes}</span>}
                   </button>
                 ))}
               </nav>
@@ -762,7 +762,7 @@ export default function ControleEquipamentosDiarioTab({
       )}
       {activeView === 'registry' && <section data-fleet-view className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
         <article data-fleet-lift className={`${CARTAO} p-4`}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
           <CountUp value={equipamentos.length} className="mt-1 block text-3xl font-bold tabular-nums text-slate-950" />
           <p className="mt-1 text-sm text-slate-500">Equipamentos que podem ser escolhidos no lançamento.</p>
           <div className="mt-4 flex flex-wrap gap-1.5">{equipmentTypes.slice(0, 8).map(type => <span key={type} className="rounded-full bg-[#f7f8f6] px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">{type}</span>)}</div>

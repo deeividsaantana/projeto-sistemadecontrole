@@ -1545,19 +1545,19 @@ export default function LancamentosTab({
           {/* Cards de resumo respeitando os filtros aplicados */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
             <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total de Litros</p>
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Total de Litros</p>
               <p className="text-lg font-black text-emerald-700 font-mono mt-1">{resumoAbastecimentos.totalLitros.toLocaleString('pt-BR')} L</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Registros</p>
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Registros</p>
               <p className="text-lg font-black text-slate-800 font-mono mt-1"><CountUp value={resumoAbastecimentos.totalRegistros} /></p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Média por Abastecimento</p>
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Média por Abastecimento</p>
               <p className="text-lg font-black text-slate-800 font-mono mt-1">{resumoAbastecimentos.mediaLitros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Frotas Distintas</p>
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Frotas Distintas</p>
               <p className="text-lg font-black text-slate-800 font-mono mt-1"><CountUp value={resumoAbastecimentos.frotasUnicas} /></p>
             </div>
           </div>
@@ -1615,11 +1615,11 @@ export default function LancamentosTab({
                 {/* Derived / Readonly Fields row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4.5 rounded-xl border border-slate-200/60">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">Descrição Automática da Frota</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-mono">Descrição Automática da Frota</span>
                     <span className="text-xs font-bold text-slate-700 block">{derivedEquipmentDesc || 'Aguardando seleção de frota...'}</span>
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">Empresa Proprietária Automática</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-mono">Empresa Proprietária Automática</span>
                     <span className="text-xs font-bold text-slate-700 block">{derivedCompany || 'Aguardando seleção de frota...'}</span>
                   </div>
                 </div>
@@ -1641,7 +1641,7 @@ export default function LancamentosTab({
                       setBombaInicial(inicial);
                       setBombaFinal(inicial + Number(quantidadeLitros));
                     }} placeholder="Leitura real da bomba" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                    <span className="text-[9px] text-slate-500 font-mono block">{previousPumpForForm ? `Último registro deste comboio: ${previousPumpForForm.data.split('-').reverse().join('/')} ${previousPumpForForm.hora} • ${previousPumpForForm.bombaFinal.toLocaleString('pt-BR')} L` : 'Nenhuma leitura anterior encontrada para este comboio e horário.'}</span>
+                    <span className="text-xs text-slate-500 font-mono block">{previousPumpForForm ? `Último registro deste comboio: ${previousPumpForForm.data.split('-').reverse().join('/')} ${previousPumpForForm.hora} • ${previousPumpForForm.bombaFinal.toLocaleString('pt-BR')} L` : 'Nenhuma leitura anterior encontrada para este comboio e horário.'}</span>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade de Litros *</label>
@@ -1654,14 +1654,14 @@ export default function LancamentosTab({
 
                   {/* Bomba final agora é editável: digitar aqui recalcula os litros automaticamente */}
                   <div className="space-y-1 bg-white px-3.5 py-1.5 border border-emerald-700/40 rounded-xl">
-                    <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block font-mono">Bomba Final (Litros)</label>
+                    <label className="text-xs font-bold text-emerald-500 uppercase tracking-wider block font-mono">Bomba Final (Litros)</label>
                     <input type="number" value={bombaFinal} onChange={e => {
                       const final = Number(e.target.value);
                       pumpValuesManuallyEditedRef.current = true;
                       setBombaFinal(final);
                       setQuantidadeLitros(Math.max(0, final - Number(bombaInicial)));
                     }} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-mono focus:outline-none focus:border-emerald-500" />
-                    <span className="text-[9px] text-slate-500 font-mono block">Vira a Bomba Inicial do próximo abastecimento deste comboio</span>
+                    <span className="text-xs text-slate-500 font-mono block">Vira a Bomba Inicial do próximo abastecimento deste comboio</span>
                   </div>
 
                   <div className="space-y-1">
@@ -1734,11 +1734,11 @@ export default function LancamentosTab({
                 {/* Derived Equipment / Company Info Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4.5 rounded-xl border border-slate-200/60">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">Descrição Automática</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-mono">Descrição Automática</span>
                     <span className="text-xs font-bold text-slate-700 block">{derivedEquipmentDesc || 'Aguardando seleção de frota...'}</span>
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">Empresa Proprietária</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-mono">Empresa Proprietária</span>
                     <span className="text-xs font-bold text-slate-700 block">{derivedCompany || 'Aguardando seleção de frota...'}</span>
                   </div>
                 </div>
@@ -1799,7 +1799,7 @@ export default function LancamentosTab({
               >
                 Cancelar
               </button>
-              <span className="ml-auto text-[10px] font-semibold text-slate-500">
+              <span className="ml-auto text-xs font-semibold text-slate-500">
                 Ctrl+Enter salva · Esc cancela
               </span>
             </div>
@@ -1821,7 +1821,7 @@ export default function LancamentosTab({
             <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold bg-white font-mono">
+                <tr className="border-b border-slate-200 text-slate-400 uppercase text-xs font-bold bg-white font-mono">
                   <th className="py-3.5 px-5">Sel.</th>
                   <th className="py-3.5 px-5">Data / Hora</th>
                   <th className="py-3.5 px-5">Frota</th>
@@ -1874,7 +1874,7 @@ export default function LancamentosTab({
                         <td className="py-4 px-5"><input type="checkbox" checked={selectedAbastecimentoIds.includes(ab.id)} onChange={event => setSelectedAbastecimentoIds(current => event.target.checked ? [...current, ab.id] : current.filter(id => id !== ab.id))} /></td>
                         <td className="py-4 px-5">
                           <span className="font-bold text-slate-700 block">{ab.data.split('-').reverse().join('/')}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">{ab.hora}</span>
+                          <span className="text-xs text-slate-500 font-mono">{ab.hora}</span>
                         </td>
                         <td className="py-4 px-5">
                           <div className="flex items-center gap-1.5">
@@ -1901,7 +1901,7 @@ export default function LancamentosTab({
                           {combVeic ? combVeic.nome : 'Posto Fixo'}
                         </td>
                         <td className="py-4 px-5">
-                          <span className={`inline-block px-2 py-1 rounded-lg border text-[10px] font-bold ${statusStyles[status] || statusStyles['OK']}`}>
+                          <span className={`inline-block px-2 py-1 rounded-lg border text-xs font-bold ${statusStyles[status] || statusStyles['OK']}`}>
                             {status}
                           </span>
                         </td>
@@ -1926,7 +1926,7 @@ export default function LancamentosTab({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold bg-slate-50 font-mono">
+                <tr className="border-b border-slate-200 text-slate-500 uppercase text-xs font-bold bg-slate-50 font-mono">
                   <th className="py-3.5 px-5">Data / Hora</th>
                   <th className="py-3.5 px-5">Frota</th>
                   <th className="py-3.5 px-5">Produto Lubrificante</th>
@@ -1951,7 +1951,7 @@ export default function LancamentosTab({
                       <tr key={lub.id} data-launch-row className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-5">
                           <span className="font-bold text-slate-700 block">{lub.data.split('-').reverse().join('/')}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">{lub.hora}</span>
+                          <span className="text-xs text-slate-500 font-mono">{lub.hora}</span>
                         </td>
                         <td className="py-4 px-5">
                           <div className="flex items-center gap-1.5">

@@ -87,7 +87,7 @@ export default function GraficoSaldoMaterial({ materialId, unidade, hoje, movime
           </div>
           <div className="grid gap-1 pt-1 sm:gap-1.5" style={{ gridTemplateColumns: `repeat(${SEMANAS}, minmax(0, 1fr))` }} aria-hidden="true">
             {pontos.map((item, indice) => (
-              <span key={item.inicio} className={`text-center text-[10px] tabular-nums text-slate-500 ${indice % 2 ? 'max-sm:invisible' : ''}`}>{item.rotulo}</span>
+              <span key={item.inicio} className={`text-center text-xs tabular-nums text-slate-500 ${indice % 2 ? 'max-sm:invisible' : ''}`}>{item.rotulo}</span>
             ))}
           </div>
           <p className="mt-2 min-h-9 rounded-xl bg-slate-50 px-3 py-1.5 text-sm text-slate-700" aria-live="polite">

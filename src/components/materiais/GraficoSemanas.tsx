@@ -120,7 +120,7 @@ export default function GraficoSemanas({ hoje, materiais, movimentos }: Props) {
           </div>
           <div className="ml-8 grid gap-1 pt-1 sm:gap-2" style={{ gridTemplateColumns: `repeat(${SEMANAS}, minmax(0, 1fr))` }} aria-hidden="true">
             {pontos.map((item, indice) => (
-              <span key={item.inicio} className={`text-center text-[11px] tabular-nums text-slate-500 ${indice % 2 ? 'max-sm:invisible' : ''}`}>{item.rotulo}</span>
+              <span key={item.inicio} className={`text-center text-xs tabular-nums text-slate-500 ${indice % 2 ? 'max-sm:invisible' : ''}`}>{item.rotulo}</span>
             ))}
           </div>
           <p className="mt-2 min-h-10 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700" aria-live="polite">

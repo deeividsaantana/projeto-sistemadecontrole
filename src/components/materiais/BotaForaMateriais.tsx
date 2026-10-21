@@ -193,7 +193,7 @@ export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaL
           </div>
           <div className="ml-8 grid gap-1 pt-1 sm:gap-2" style={{ gridTemplateColumns: `repeat(${geral.porMes.length}, minmax(0, 1fr))` }} aria-hidden="true">
             {geral.porMes.map(ponto => (
-              <span key={ponto.mes} className="text-center text-[11px] leading-tight tabular-nums text-slate-500">
+              <span key={ponto.mes} className="text-center text-xs leading-tight tabular-nums text-slate-500">
                 <span className="block">{nomeDoMes(ponto.mes).slice(0, 3)}</span>
                 <span className="block">{ponto.mes.slice(2, 4)}</span>
               </span>

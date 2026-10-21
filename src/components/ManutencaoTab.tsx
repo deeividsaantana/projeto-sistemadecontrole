@@ -351,7 +351,7 @@ export default function ManutencaoTab({
           >
             <History className="h-4 w-4" /> Histórico
             {historico.length > 0 && (
-              <span className="rounded-full bg-slate-100 px-1.5 text-[11px] font-black text-slate-600">
+              <span className="rounded-full bg-slate-100 px-1.5 text-xs font-black text-slate-600">
                 {historico.length}
               </span>
             )}
@@ -389,7 +389,7 @@ export default function ManutencaoTab({
             <div className="flex items-start gap-3">
               <item.icon className="mt-0.5 size-5 shrink-0 text-slate-400" strokeWidth={1.5} aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
                 <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
               </div>
             </div>
@@ -503,22 +503,22 @@ export default function ManutencaoTab({
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <strong className="block truncate font-mono text-sm font-black text-slate-900">{item.prefixo}</strong>
-                          <span className="block truncate text-[11px] font-bold uppercase tracking-wide text-slate-400">{item.equipamentoNome}</span>
+                          <span className="block truncate text-xs font-bold uppercase tracking-wide text-slate-400">{item.equipamentoNome}</span>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${statusTone(item.status)}`}>{item.status}</span>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
                       </div>
                     </div>
                   </header>
                   <p className="mt-3 line-clamp-2 min-h-9 text-xs font-semibold leading-4 text-slate-700" title={item.motivo}>{item.motivo}</p>
-                  <dl className="mt-3 grid grid-cols-2 gap-x-3 border-y border-slate-100 py-2.5 text-[11px]">
+                  <dl className="mt-3 grid grid-cols-2 gap-x-3 border-y border-slate-100 py-2.5 text-xs">
                     <div><dt className="text-slate-400">Desde</dt><dd className="mt-0.5 font-bold text-slate-700">{formatarData(item.desde)}</dd></div>
                     <div className="text-right"><dt className="text-slate-400">Tempo parado</dt><dd className="mt-0.5 font-mono font-black tabular-nums text-rose-700">{formatarHoras(item.horasParadas)}</dd></div>
                   </dl>
                   <footer className="mt-3 flex items-center justify-between gap-2">
-                    <span className="font-mono text-[11px] font-bold text-slate-400">{item.numero}</span>
+                    <span className="font-mono text-xs font-bold text-slate-400">{item.numero}</span>
                     <span className="flex gap-1.5">
-                      {podeEditar && proximo && ordem && <button type="button" onClick={() => avancar(ordem)} className="min-h-8 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-[11px] font-bold text-emerald-800 transition hover:border-emerald-500">{proximo}</button>}
-                      {podeEditar && ordem && <button type="button" aria-label={`Editar ${item.numero}`} onClick={() => abrirEdicao(ordem)} className="min-h-8 rounded-md border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Editar</button>}
+                      {podeEditar && proximo && ordem && <button type="button" onClick={() => avancar(ordem)} className="min-h-8 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-xs font-bold text-emerald-800 transition hover:border-emerald-500">{proximo}</button>}
+                      {podeEditar && ordem && <button type="button" aria-label={`Editar ${item.numero}`} onClick={() => abrirEdicao(ordem)} className="min-h-8 rounded-md border border-slate-200 px-2.5 text-xs font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Editar</button>}
                     </span>
                   </footer>
                 </article>
@@ -547,7 +547,7 @@ export default function ManutencaoTab({
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.max(3, (item.horas / maior) * 100)}%` }} />
                   </div>
-                  <span className="mt-1 block text-[11px] text-slate-400">{item.ocorrencias} ordem(ns)</span>
+                  <span className="mt-1 block text-xs text-slate-400">{item.ocorrencias} ordem(ns)</span>
                 </li>
               );
             })}
@@ -590,7 +590,7 @@ export default function ManutencaoTab({
                         </span>
                         <span className="min-w-0">
                           <strong className="block truncate text-sm text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
-                          <small className="block text-[11px] uppercase tracking-wide text-slate-400">{equipmentLabel}</small>
+                          <small className="block text-xs uppercase tracking-wide text-slate-400">{equipmentLabel}</small>
                         </span>
                       </span>
                     </td>
@@ -599,12 +599,12 @@ export default function ManutencaoTab({
                       <Badge tone={prioridadeTone(ordem.prioridade)} className="mt-1">{ordem.prioridade}</Badge>
                     </td>
                     <td className="p-3">
-                      <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
+                      <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
                     </td>
                     <td className="whitespace-nowrap p-3 text-slate-600">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</td>
                     <td className="whitespace-nowrap p-3 text-right font-mono text-slate-700">
                       {horas === undefined ? '—' : `${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}
-                      {!isOrdemEncerrada(ordem.status) && horas !== undefined && <span className="ml-1 text-[11px] text-slate-400">em curso</span>}
+                      {!isOrdemEncerrada(ordem.status) && horas !== undefined && <span className="ml-1 text-xs text-slate-400">em curso</span>}
                     </td>
                     <td className="p-3">
                       <div className="flex justify-end gap-1.5 whitespace-nowrap">
@@ -612,7 +612,7 @@ export default function ManutencaoTab({
                           <button
                             type="button"
                             onClick={() => avancar(ordem)}
-                            className="min-h-9 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-[11px] font-bold text-emerald-800 transition-colors hover:border-emerald-500"
+                            className="min-h-9 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-xs font-bold text-emerald-800 transition-colors hover:border-emerald-500"
                           >
                             {proximo}
                           </button>
@@ -621,7 +621,7 @@ export default function ManutencaoTab({
                           <button
                             type="button"
                             onClick={() => abrirEdicao(ordem)}
-                            className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
+                            className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
                           >
                             Editar
                           </button>
@@ -630,7 +630,7 @@ export default function ManutencaoTab({
                           <button
                             type="button"
                             onClick={() => setExclusao(ordem)}
-                            className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-rose-600 transition-colors hover:border-rose-400"
+                            className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-xs font-bold text-rose-600 transition-colors hover:border-rose-400"
                           >
                             Excluir
                           </button>
@@ -652,14 +652,14 @@ export default function ManutencaoTab({
           <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
             <div>
               <h2 className="text-sm font-black text-slate-900">Histórico de manutenção</h2>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 Aberturas, edições e liberações — inclusive as OS abertas pelo Controle de Frotas.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setHistoricoAberto(false)}
-              className="text-[11px] font-bold text-slate-500 hover:text-emerald-700"
+              className="text-xs font-bold text-slate-500 hover:text-emerald-700"
             >
               Fechar
             </button>
@@ -680,7 +680,7 @@ export default function ManutencaoTab({
                   </Badge>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-slate-700">{item.descricao}</p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
+                    <p className="mt-0.5 text-xs text-slate-400">
                       {item.timestamp} · {item.usuario} · {item.tela}
                     </p>
                   </div>
@@ -690,7 +690,7 @@ export default function ManutencaoTab({
           )}
 
           {historico.length > 200 && (
-            <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
+            <p className="border-t border-slate-100 px-4 py-2 text-xs text-slate-400">
               Mostrando os 200 movimentos mais recentes de {historico.length}.
             </p>
           )}
@@ -707,8 +707,8 @@ export default function ManutencaoTab({
         initialFocusRef={equipamentoFieldRef}
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-[11px] text-slate-400">Esc</span></button>
-            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar ordem <span className="ml-1 text-[11px] text-emerald-100">Ctrl + Enter</span></button>
+            <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-xs text-slate-400">Esc</span></button>
+            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar ordem <span className="ml-1 text-xs text-emerald-100">Ctrl + Enter</span></button>
           </div>
         )}
       >

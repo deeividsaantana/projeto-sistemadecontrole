@@ -24,7 +24,7 @@ export function ErrorState({
     <div className={cn('flex flex-col items-center justify-center text-center', compact ? 'py-6' : 'py-10', className)}>
       <OctagonAlert className="mb-2 h-7 w-7 text-rose-500" aria-hidden="true" />
       <p className="text-xs font-bold text-slate-700">{title}</p>
-      {description && <p className="mt-1 max-w-72 text-[11px] leading-relaxed text-slate-500">{description}</p>}
+      {description && <p className="mt-1 max-w-72 text-xs leading-relaxed text-slate-500">{description}</p>}
       {onRetry && (
         <button
           type="button"

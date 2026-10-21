@@ -158,7 +158,7 @@ export function DesktopTopBar({
               <X className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} />
             </button>
           )
-          : <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200/50 bg-white/40 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">⌘K</kbd>}
+          : <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200/50 bg-white/40 px-1.5 py-0.5 text-xs font-bold text-slate-400">⌘K</kbd>}
       </label>
 
       <div

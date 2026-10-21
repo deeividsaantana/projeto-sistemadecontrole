@@ -23,10 +23,10 @@ export function SaaSShell({ scope, activeModule, children }: SaaSShellProps) {
         <div className="flex items-center justify-between px-5 py-5 lg:block">
           <div className="flex items-center gap-3">
             <span className="grid size-9 place-items-center bg-emerald-700 text-white"><ShieldCheck size={18} /></span>
-            <span><strong className="block text-sm font-black tracking-tight">RENEA</strong><small className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">SaaS operacional</small></span>
+            <span><strong className="block text-sm font-black tracking-tight">RENEA</strong><small className="text-xs font-bold uppercase tracking-[.14em] text-slate-400">SaaS operacional</small></span>
           </div>
           <div className="mt-6 hidden border-t border-slate-100 pt-4 lg:block">
-            <p className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Escopo ativo</p>
+            <p className="text-xs font-bold uppercase tracking-[.14em] text-slate-400">Escopo ativo</p>
             <p className="mt-1 truncate text-xs font-bold text-slate-800">{scope.organizationId}</p>
             <p className="truncate text-xs text-slate-500">Obra {scope.projectId}</p>
           </div>

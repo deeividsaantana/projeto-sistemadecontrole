@@ -42,7 +42,7 @@ export default function FleetKpiStrip({ metrics, status, onPick }: Props) {
         const conteudo = (
           <>
             <span className="flex items-start justify-between gap-2">
-              <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-[0.04em] text-slate-500 [hyphens:none]">{item.titulo}</span>
+              <span className="min-w-0 text-xs font-bold uppercase leading-tight tracking-[0.04em] text-slate-500 [hyphens:none]">{item.titulo}</span>
               <span className={`grid size-7 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
             </span>
             {item.texto !== undefined

@@ -170,7 +170,7 @@ export default function DiarioObraTab({
           { label: 'Horas apontadas', valor: `${resumo.horasApontadas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` },
         ].map(item => (
           <div key={item.label} data-linha-lista className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-[11px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
         ))}
@@ -218,7 +218,7 @@ export default function DiarioObraTab({
                 placeholder="0"
                 className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
               />
-              <span className="mt-1 block text-[11px] font-medium text-slate-400">Alimenta o mapa de chuvas do mês.</span>
+              <span className="mt-1 block text-xs font-medium text-slate-400">Alimenta o mapa de chuvas do mês.</span>
             </label>
             <label className="text-xs font-bold text-slate-600">
               Fotos do dia
@@ -230,7 +230,7 @@ export default function DiarioObraTab({
               >
                 <Camera className="h-4 w-4" /> {(valor.fotos?.length || 0)} foto(s)
               </button>
-              {erro && <span className="mt-1 block text-[11px] font-bold text-rose-700">{erro}</span>}
+              {erro && <span className="mt-1 block text-xs font-bold text-rose-700">{erro}</span>}
             </label>
             <label className="text-xs font-bold text-slate-600 sm:col-span-2">
               Visitas
@@ -306,14 +306,14 @@ export default function DiarioObraTab({
                   >
                     <span className="min-w-0">
                       <strong className="block text-slate-800">{formatarData(item.data)}</strong>
-                      <span className="block truncate text-[11px] text-slate-400">
+                      <span className="block truncate text-xs text-slate-400">
                         {obras.find(obra => obra.id === item.obraId)?.nome || 'Obra geral'}
                         {item.visitas ? ` · visitas: ${item.visitas}` : ''}
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <CloudRain className="h-3.5 w-3.5 text-slate-400" />
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(item.climaManha)}`}>{item.climaManha}</span>
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(item.climaManha)}`}>{item.climaManha}</span>
                     </span>
                   </button>
                 </li>

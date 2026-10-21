@@ -176,7 +176,7 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
                   className={`w-full max-w-8 rounded-t-md ${dia.data === hoje ? 'bg-[#f26a2e]' : 'bg-[#176b4d]'} ${dia.cravadas ? '' : 'opacity-15'}`}
                   style={{ height: `${Math.max(4, (dia.cravadas / maiorDia) * 100)}%` }}
                 />
-                <span className="text-[11px] tabular-nums text-slate-500">{dia.data.slice(8, 10)}</span>
+                <span className="text-xs tabular-nums text-slate-500">{dia.data.slice(8, 10)}</span>
                 <span className="sr-only">{formatarData(dia.data)}: {dia.cravadas} estaca(s)</span>
               </li>
             ))}

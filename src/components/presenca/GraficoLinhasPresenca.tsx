@@ -196,7 +196,7 @@ export default function GraficoLinhasPresenca({ pontos }: Props) {
             {pontos.map((item, indice) => comRotulo.has(indice) && (
               <span
                 key={item.iso}
-                className={`absolute whitespace-nowrap text-[11px] tabular-nums text-slate-500 ${indice === 0 ? '' : indice === pontos.length - 1 ? '-translate-x-full' : '-translate-x-1/2'}`}
+                className={`absolute whitespace-nowrap text-xs tabular-nums text-slate-500 ${indice === 0 ? '' : indice === pontos.length - 1 ? '-translate-x-full' : '-translate-x-1/2'}`}
                 style={{ left: `${(xDe(indice) / LARGURA) * 100}%` }}
               >
                 {item.rotulo}

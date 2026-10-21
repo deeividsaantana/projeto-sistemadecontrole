@@ -136,7 +136,7 @@ export default function AdministracaoTab({
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><Link2 className="h-5 w-5" /></span>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-emerald-800">Presença em campo</p>
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Presença em campo</p>
               <h2 id="presence-public-link-title" className="text-base font-black text-slate-900">Link oficial de registro</h2>
             </div>
           </div>
@@ -167,7 +167,7 @@ export default function AdministracaoTab({
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
               {divergencias.length} coleção(ões) mal registrada(s) — dado gravado aqui pode não chegar à nuvem
             </p>
-            <ul className="mt-1 space-y-0.5 text-[11px] text-rose-800">
+            <ul className="mt-1 space-y-0.5 text-xs text-rose-800">
               {divergencias.map(item => (
                 <li key={`${item.colecao}-${item.problema}`}>{item.colecao}: {item.problema}</li>
               ))}
@@ -184,7 +184,7 @@ export default function AdministracaoTab({
           { label: 'Coleções vazias', valor: String(resumo.vazias) },
         ].map(item => (
           <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[11px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
         ))}
@@ -197,7 +197,7 @@ export default function AdministracaoTab({
           { label: 'Última sincronização', valor: ultimaSincronizacao || 'Ainda não sincronizou nesta sessão' },
         ].map(item => (
           <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1 block truncate text-sm font-bold text-slate-800">{item.valor}</strong>
           </div>
         ))}
@@ -217,7 +217,7 @@ export default function AdministracaoTab({
             {volumes.map(item => (
               <tr key={item.chave} className="transition-colors hover:bg-slate-50">
                 <td className="p-3 font-bold text-slate-800">{item.colecao}</td>
-                <td className="p-3 font-mono text-[11px] text-slate-500">{item.chave}</td>
+                <td className="p-3 font-mono text-xs text-slate-500">{item.chave}</td>
                 <td className="p-3 font-mono text-slate-700">{item.registros.toLocaleString('pt-BR')}</td>
                 <td className="p-3 font-mono text-slate-700">{formatarBytes(item.bytes)}</td>
               </tr>
@@ -239,7 +239,7 @@ export default function AdministracaoTab({
       </section>
 
       {totalUsuarios !== undefined && (
-        <p className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
+        <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">
           <Database className="h-3.5 w-3.5" /> {totalUsuarios} usuário(s) cadastrado(s) no acesso corporativo.
         </p>
       )}

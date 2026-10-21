@@ -44,7 +44,7 @@ export function IconButton({
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
       {typeof badge === 'number' && badge > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[8px] font-extrabold leading-none text-white shadow-sm">
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-xs font-extrabold leading-none text-white shadow-sm">
           {badge}
         </span>
       )}

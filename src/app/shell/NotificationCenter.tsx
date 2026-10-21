@@ -55,9 +55,9 @@ export function NotificationCenter({
             <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">Alertas do sistema</span>
+                <span className="text-xs font-black uppercase tracking-wider text-slate-700">Alertas do sistema</span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] font-bold">
+              <div className="flex items-center gap-2 text-xs font-bold">
                 {unreadCount > 0 && (
                   <Button
                     onClick={onMarkAllAsRead}
@@ -96,8 +96,8 @@ export function NotificationCenter({
                     >
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-rose-600" />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[9px] font-black uppercase tracking-wider text-rose-700">{alerta.titulo}</span>
-                        <span className="block truncate text-[10px] text-rose-900">{alerta.mensagem}</span>
+                        <span className="block text-xs font-black uppercase tracking-wider text-rose-700">{alerta.titulo}</span>
+                        <span className="block truncate text-xs text-rose-900">{alerta.mensagem}</span>
                       </span>
                       <ChevronRight className="h-3.5 w-3.5 shrink-0 text-rose-400" />
                     </button>
@@ -127,13 +127,13 @@ export function NotificationCenter({
                       <div className="flex items-start gap-1.5 justify-between">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${getNotificationDotClass(notification.type)}`} />
-                          <span className="truncate text-[9px] font-black uppercase tracking-wider text-slate-700">{notification.title}</span>
+                          <span className="truncate text-xs font-black uppercase tracking-wider text-slate-700">{notification.title}</span>
                         </div>
-                        <span className="text-[9px] text-slate-500 font-mono shrink-0">{notification.timestamp}</span>
+                        <span className="text-xs text-slate-500 font-mono shrink-0">{notification.timestamp}</span>
                       </div>
-                      <p className="text-[10px] leading-normal text-slate-600">{notification.message}</p>
+                      <p className="text-xs leading-normal text-slate-600">{notification.message}</p>
                       <div className="flex items-center justify-end pt-1">
-                        {!notification.read && <span className="text-[8px] text-emerald-700 font-bold font-mono">NOVO</span>}
+                        {!notification.read && <span className="text-xs text-emerald-700 font-bold font-mono">NOVO</span>}
                       </div>
                     </button>
                   );

@@ -383,13 +383,13 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
           const conteudo = (
             <>
               <span className="flex items-start justify-between gap-1.5">
-                <span className="min-w-0 text-[11px] font-bold text-slate-500 sm:text-[10px] sm:uppercase sm:tracking-[0.06em] sm:[overflow-wrap:anywhere]">{item.titulo}</span>
+                <span className="min-w-0 text-xs font-bold text-slate-500 sm:text-xs sm:uppercase sm:tracking-[0.06em] sm:[overflow-wrap:anywhere]">{item.titulo}</span>
                 <span className={`grid size-6 shrink-0 place-items-center rounded-full max-sm:hidden ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
               </span>
               {item.texto !== undefined
                 ? <span className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900">{item.texto}</span>
                 : <CountUp value={item.valor} suffix={item.sufixo} className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900" />}
-              <span className="block truncate text-[11px] text-slate-500">{item.detalhe}</span>
+              <span className="block truncate text-xs text-slate-500">{item.detalhe}</span>
             </>
           );
           const classe = `${CARTAO} flex min-h-[4.5rem] flex-col p-2 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;

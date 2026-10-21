@@ -38,7 +38,7 @@ export function NavigationMenu({
       <div className="space-y-6">
         {groups.map(group => (
           <section key={group.label} aria-label={group.label}>
-            <p className="px-3 mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{group.label}</p>
+            <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{group.label}</p>
             <div className="space-y-1.5">
               {group.items.map(item => {
                 const Icon = item.icon;
