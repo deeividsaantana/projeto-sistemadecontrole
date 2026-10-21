@@ -17,10 +17,9 @@ import {
   EmptyState,
   Modal,
   PageHeader,
-  TableBody,
-  TableHead,
-  TableShell,
+  TabelaPadrao,
   isoDay,
+  type ColunaTabela,
 } from '../shared/ui';
 import { FrentesDoDia } from './planejamento/FrentesDoDia';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from './cadastros/estilos';
@@ -46,6 +45,8 @@ const somarDias = (base: string, dias: number) => {
   data.setDate(data.getDate() + dias);
   return isoDay(data);
 };
+
+type LinhaPrevisto = ReturnType<typeof aderenciaDosPlanos>[number];
 
 const tomDaSituacao = (situacao: SituacaoPlano) => {
   if (situacao === 'Concluído') return 'success' as const;
@@ -169,6 +170,40 @@ export default function PlanejamentoTab({
     setAberto(false);
   };
 
+  const colunasPrevisto: ColunaTabela<LinhaPrevisto>[] = [
+    { chave: 'servico', titulo: 'Serviço', larguraMinima: 200, valorOrdenacao: item => item.plano.servicoDescricao, render: item => <strong className="text-slate-900">{item.plano.servicoDescricao}</strong>, dica: item => item.plano.servicoDescricao },
+    {
+      chave: 'periodo',
+      titulo: 'Período',
+      valorOrdenacao: item => item.plano.dataInicio,
+      render: item => <span className="whitespace-nowrap tabular-nums">{formatarData(item.plano.dataInicio)} → {formatarData(item.plano.dataFim)}</span>,
+    },
+    {
+      chave: 'frente',
+      titulo: 'Frente / Equipe',
+      larguraMinima: 160,
+      valorOrdenacao: item => [item.plano.frente, item.plano.equipeNome].filter(Boolean).join(' · '),
+      render: item => [item.plano.frente, item.plano.equipeNome].filter(Boolean).join(' · ') || '—',
+    },
+    { chave: 'previsto', titulo: 'Previsto', alinhamento: 'direita', valorOrdenacao: item => item.planejado, render: item => <span className="whitespace-nowrap">{numero(item.planejado)} {item.plano.unidade}</span> },
+    { chave: 'executado', titulo: 'Executado', alinhamento: 'direita', valorOrdenacao: item => item.realizado, render: item => <strong className="text-slate-900">{numero(item.realizado)}</strong> },
+    {
+      chave: 'avanco',
+      titulo: 'Avanço',
+      alinhamento: 'direita',
+      valorOrdenacao: item => item.aderencia,
+      render: item => (
+        <span className="flex min-w-28 items-center justify-end gap-2">
+          <span className="h-1.5 flex-1 rounded-full bg-slate-100" aria-hidden="true">
+            <span className={`block h-1.5 rounded-full ${item.atrasado ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, item.aderencia)}%` }} />
+          </span>
+          <span className="font-bold text-slate-700">{item.aderencia}%</span>
+        </span>
+      ),
+    },
+    { chave: 'situacao', titulo: 'Situação', valorOrdenacao: item => item.plano.situacao, render: item => <Badge tone={tomDaSituacao(item.plano.situacao)}>{item.plano.situacao}</Badge> },
+  ];
+
   return (
     <div ref={escopo} id="planejamento-tab" className="erp-module space-y-4">
       <div data-previsto-reveal>
@@ -246,53 +281,19 @@ export default function PlanejamentoTab({
           </label>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          {filtradas.length === 0 ? (
-            <EmptyState icon={CalendarRange} title="Nenhum previsto no período" description="Use Novo previsto ou Definir previsto no cartão da frente." />
-          ) : (
-            <TableShell minWidth={1040}>
-              <TableHead>
-                <tr>
-                  <th className="p-3">Período</th>
-                  <th className="p-3">Serviço</th>
-                  <th className="p-3">Frente / Equipe</th>
-                  <th className="p-3">Previsto</th>
-                  <th className="p-3">Executado</th>
-                  <th className="p-3">Avanço</th>
-                  <th className="p-3">Situação</th>
-                  {podeEditar && <th className="p-3 text-right">Ações</th>}
-                </tr>
-              </TableHead>
-              <TableBody>
-                {filtradas.map(item => (
-                  <tr key={item.plano.id} className={`transition-colors hover:bg-slate-50 ${item.atrasado ? 'bg-amber-50/50' : ''}`}>
-                    <td className="p-3 text-slate-600">{formatarData(item.plano.dataInicio)} → {formatarData(item.plano.dataFim)}</td>
-                    <td className="p-3 font-bold text-slate-800">{item.plano.servicoDescricao}</td>
-                    <td className="p-3 text-slate-600">{[item.plano.frente, item.plano.equipeNome].filter(Boolean).join(' · ') || '—'}</td>
-                    <td className="p-3 font-mono text-slate-600">{numero(item.planejado)} {item.plano.unidade}</td>
-                    <td className="p-3 font-mono font-bold text-slate-900">{numero(item.realizado)}</td>
-                    <td className="p-3">
-                      <div className="flex min-w-28 items-center gap-2">
-                        <div className="h-1.5 flex-1 rounded-full bg-slate-100">
-                          <div className={`h-1.5 rounded-full ${item.atrasado ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, item.aderencia)}%` }} />
-                        </div>
-                        <span className="font-mono text-[11px] font-bold text-slate-700">{item.aderencia}%</span>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <Badge tone={tomDaSituacao(item.plano.situacao)}>{item.plano.situacao}</Badge>
-                    </td>
-                    {podeEditar && (
-                      <td className="p-3 text-right">
-                        <button type="button" onClick={() => abrir(item.plano)} className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Editar</button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </TableBody>
-            </TableShell>
-          )}
-        </div>
+        <TabelaPadrao
+          titulo="Previsto e executado de cada serviço"
+          linhas={filtradas}
+          colunas={colunasPrevisto}
+          idDaLinha={item => item.plano.id}
+          nomeDoItem={{ um: 'previsto', varios: 'previstos' }}
+          classeLinha={item => (item.atrasado ? 'bg-amber-50/60' : undefined)}
+          onAbrirLinha={podeEditar ? item => abrir(item.plano) : undefined}
+          acoes={podeEditar ? item => (
+            <button type="button" onClick={() => abrir(item.plano)} aria-label={`Editar previsto de ${item.plano.servicoDescricao}`} className="min-h-11 rounded-lg border border-slate-200 bg-white px-2.5 text-[13px] font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-800 md:min-h-8">Editar</button>
+          ) : undefined}
+          vazio={<EmptyState icon={CalendarRange} title="Nenhum previsto no período" description="Use Novo previsto ou Definir previsto no cartão da frente." />}
+        />
       </section>
 
       <Modal

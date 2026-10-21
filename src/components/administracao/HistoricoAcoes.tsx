@@ -18,20 +18,16 @@ import {
 import {
   Badge,
   EmptyState,
-  Pagination,
   PeriodFilter,
-  TableBody,
-  TableHead,
-  TableShell,
+  TabelaPadrao,
   buildPeriod,
+  type ColunaTabela,
   type PeriodValue,
 } from '../../shared/ui';
 
 interface HistoricoAcoesProps {
   logs: HistoryLog[];
 }
-
-const POR_PAGINA = 25;
 
 const formatarMomento = (timestamp: string) => {
   const data = timestamp?.slice(0, 10);
@@ -46,13 +42,21 @@ const tomDaAcao = (acao: HistoryLog['acao']) => {
   return 'info' as const;
 };
 
+const COLUNAS_HISTORICO: ColunaTabela<HistoryLog>[] = [
+  { chave: 'quando', titulo: 'Quando', valorOrdenacao: log => log.timestamp, render: log => <span className="whitespace-nowrap tabular-nums">{formatarMomento(log.timestamp)}</span> },
+  { chave: 'usuario', titulo: 'Usuário', valorOrdenacao: log => log.usuario, render: log => <strong className="text-slate-900">{log.usuario}</strong>, dica: log => log.usuario },
+  { chave: 'acao', titulo: 'Ação', valorOrdenacao: log => log.acao, render: log => <Badge tone={tomDaAcao(log.acao)}>{log.acao}</Badge> },
+  { chave: 'tela', titulo: 'Tela', valorOrdenacao: log => log.tela, render: log => log.tela },
+  { chave: 'descricao', titulo: 'Descrição', larguraMinima: 280, valorOrdenacao: log => log.descricao, render: log => log.descricao, dica: log => log.descricao },
+  { chave: 'sensivel', titulo: 'Sensível', valorOrdenacao: log => (ehSensivel(log) ? 1 : 0), render: log => (ehSensivel(log) ? 'Sim' : '—') },
+];
+
 export default function HistoricoAcoes({ logs }: HistoricoAcoesProps) {
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [usuario, setUsuario] = useState('');
   const [tela, setTela] = useState('');
   const [busca, setBusca] = useState('');
   const [somenteSensiveis, setSomenteSensiveis] = useState(false);
-  const [pagina, setPagina] = useState(1);
 
   const filtrados = useMemo(() => filtrarLogs(logs, {
     inicio: period.from,
@@ -66,8 +70,6 @@ export default function HistoricoAcoes({ logs }: HistoricoAcoesProps) {
   const resumo = resumoAuditoria(filtrados);
   const porUsuario = useMemo(() => contarPor(filtrados, item => item.usuario).slice(0, 6), [filtrados]);
   const porTela = useMemo(() => contarPor(filtrados, item => item.tela).slice(0, 6), [filtrados]);
-  const paginaAtual = Math.min(pagina, Math.max(1, Math.ceil(filtrados.length / POR_PAGINA)));
-  const visiveis = filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA);
 
   return (
     <div id="administracao-historico" className="space-y-4">
@@ -113,14 +115,14 @@ export default function HistoricoAcoes({ logs }: HistoricoAcoesProps) {
       <div data-admin-reveal className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs font-bold text-slate-600">
           Usuário
-          <select value={usuario} onChange={event => { setUsuario(event.target.value); setPagina(1); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
+          <select value={usuario} onChange={event => { setUsuario(event.target.value); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
             <option value="">Todos</option>
             {usuariosDosLogs(logs).map(item => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label className="text-xs font-bold text-slate-600">
           Tela
-          <select value={tela} onChange={event => { setTela(event.target.value); setPagina(1); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
+          <select value={tela} onChange={event => { setTela(event.target.value); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
             <option value="">Todas</option>
             {telasDosLogs(logs).map(item => <option key={item} value={item}>{item}</option>)}
           </select>
@@ -129,59 +131,30 @@ export default function HistoricoAcoes({ logs }: HistoricoAcoesProps) {
           Buscar
           <input
             value={busca}
-            onChange={event => { setBusca(event.target.value); setPagina(1); }}
+            onChange={event => { setBusca(event.target.value); }}
             placeholder="Ação, tela, usuário ou descrição"
             className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500"
           />
         </label>
         <label className="flex items-end gap-2 text-xs font-bold text-slate-600">
           <span className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3">
-            <input type="checkbox" checked={somenteSensiveis} onChange={event => { setSomenteSensiveis(event.target.checked); setPagina(1); }} />
+            <input type="checkbox" checked={somenteSensiveis} onChange={event => { setSomenteSensiveis(event.target.checked); }} />
             Só ações sensíveis
           </span>
         </label>
       </div>
 
-      <div data-admin-reveal className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        {visiveis.length === 0 ? (
-          <EmptyState icon={ShieldCheck} title="Nenhuma ação no período" description="Ajuste o período ou os filtros." />
-        ) : (
-          <TableShell minWidth={900}>
-            <TableHead>
-              <tr>
-                <th className="p-3">Quando</th>
-                <th className="p-3">Usuário</th>
-                <th className="p-3">Ação</th>
-                <th className="p-3">Tela</th>
-                <th className="p-3">Descrição</th>
-                <th className="p-3">Sensível</th>
-              </tr>
-            </TableHead>
-            <TableBody>
-              {visiveis.map(log => (
-                <tr key={log.id} className={`transition-colors hover:bg-slate-50 ${ehSensivel(log) ? 'bg-amber-50/40' : ''}`}>
-                  <td className="p-3 font-mono text-slate-600">{formatarMomento(log.timestamp)}</td>
-                  <td className="p-3 font-bold text-slate-800">{log.usuario}</td>
-                  <td className="p-3"><Badge tone={tomDaAcao(log.acao)}>{log.acao}</Badge></td>
-                  <td className="p-3 text-slate-600">{log.tela}</td>
-                  <td className="max-w-96 truncate p-3 text-slate-600" title={log.descricao}>{log.descricao}</td>
-                  <td className="p-3 text-slate-600">{ehSensivel(log) ? 'Sim' : '—'}</td>
-                </tr>
-              ))}
-            </TableBody>
-          </TableShell>
-        )}
+      <div data-admin-reveal>
+        <TabelaPadrao
+          titulo="Histórico de ações"
+          linhas={filtrados}
+          colunas={COLUNAS_HISTORICO}
+          idDaLinha={log => log.id}
+          nomeDoItem={{ um: 'ação', varios: 'ações' }}
+          classeLinha={log => (ehSensivel(log) ? 'bg-amber-50/50' : undefined)}
+          vazio={<EmptyState icon={ShieldCheck} title="Nenhuma ação no período" description="Ajuste o período ou os filtros." />}
+        />
       </div>
-
-      {filtrados.length > POR_PAGINA && (
-        <div>
-          <Pagination
-            page={paginaAtual}
-            totalPages={Math.ceil(filtrados.length / POR_PAGINA)}
-            onChange={setPagina}
-          />
-        </div>
-      )}
     </div>
   );
 }

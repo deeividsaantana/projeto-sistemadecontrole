@@ -25,9 +25,10 @@ import {
   formatarBytes,
   resumoArmazenamento,
   volumePorColecao,
+  type VolumeColecao,
 } from '../utils/diagnostico';
 import { APP_VERSION_LABEL } from '../app/version';
-import { PageHeader, TableBody, TableHead, TableShell } from '../shared/ui';
+import { PageHeader, TabelaPadrao, type ColunaTabela } from '../shared/ui';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import type { GrupoEquipe, HistoryLog } from '../types';
 
@@ -47,6 +48,13 @@ interface AdministracaoTabProps {
   onSaveGrupoEquipe?: (grupo: GrupoEquipe, isNew: boolean) => void;
   logs?: HistoryLog[];
 }
+
+const COLUNAS_VOLUME: ColunaTabela<VolumeColecao>[] = [
+  { chave: 'colecao', titulo: 'Coleção', larguraMinima: 180, valorOrdenacao: item => item.colecao, render: item => <strong className="text-slate-900">{item.colecao}</strong>, dica: item => item.colecao },
+  { chave: 'chave', titulo: 'Chave', valorOrdenacao: item => item.chave, render: item => <span className="font-mono text-xs text-slate-600">{item.chave}</span>, dica: item => item.chave, noCartao: false },
+  { chave: 'registros', titulo: 'Registros', alinhamento: 'direita', valorOrdenacao: item => item.registros, render: item => item.registros.toLocaleString('pt-BR') },
+  { chave: 'tamanho', titulo: 'Tamanho', alinhamento: 'direita', valorOrdenacao: item => item.bytes, render: item => formatarBytes(item.bytes) },
+];
 
 export default function AdministracaoTab({
   ultimaSincronizacao,
@@ -203,27 +211,15 @@ export default function AdministracaoTab({
         ))}
       </section>
 
-      <div data-admin-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <TableShell minWidth={620}>
-          <TableHead>
-            <tr>
-              <th className="p-3">Coleção</th>
-              <th className="p-3">Chave</th>
-              <th className="p-3">Registros</th>
-              <th className="p-3">Tamanho</th>
-            </tr>
-          </TableHead>
-          <TableBody>
-            {volumes.map(item => (
-              <tr key={item.chave} className="transition-colors hover:bg-slate-50">
-                <td className="p-3 font-bold text-slate-800">{item.colecao}</td>
-                <td className="p-3 font-mono text-[11px] text-slate-500">{item.chave}</td>
-                <td className="p-3 font-mono text-slate-700">{item.registros.toLocaleString('pt-BR')}</td>
-                <td className="p-3 font-mono text-slate-700">{formatarBytes(item.bytes)}</td>
-              </tr>
-            ))}
-          </TableBody>
-        </TableShell>
+      <div data-admin-reveal className="mt-4">
+        <TabelaPadrao
+          titulo="Dados guardados neste aparelho, por coleção"
+          linhas={volumes}
+          colunas={COLUNAS_VOLUME}
+          idDaLinha={item => item.chave}
+          nomeDoItem={{ um: 'coleção', varios: 'coleções' }}
+          vazio="Nenhum dado guardado neste aparelho."
+        />
       </div>
 
       <section data-admin-reveal className="mt-6">
