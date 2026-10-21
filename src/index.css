@@ -434,6 +434,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   /* O respiro de 2 rem embaixo das telas que rolam a página sobraria aqui e
      faria a página rolar à toa. */
   #main-tab-viewport > :not(.erp-dashboard):has(.renea-tela-cheia) { padding-bottom: 0; }
+  /* Subtela que é uma tela inteira (TelaCheia dentro da área de dados de
+     outra): ocupa só essa área, e a área de dados dela é que rola. */
+  .renea-tela-cheia.renea-tela-cheia--embutida { height: auto; min-height: 0; flex: 1 1 0%; }
 }
 #main-tab-viewport.renea-viewport--solta > :has(.renea-tela-cheia) { padding: 0; }
 .renea-viewport--solta .renea-tela-cheia {
@@ -781,7 +784,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
-.renea-page-header h1 {
+.renea-page-header__copy > :is(h1, h2) {
   color: #0d1a15;
   font-size: clamp(1.2rem, 1.05rem + .5vw, 1.6rem);
   font-weight: 750;
@@ -973,7 +976,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   letter-spacing: .08em;
 }
 
-.renea-page-header h1 {
+.renea-page-header__copy > :is(h1, h2) {
   font-size: clamp(1.45rem, 1.2rem + .5vw, 1.85rem);
   font-weight: 760;
 }
@@ -2180,7 +2183,7 @@ body,
   font-size: .75rem;
   letter-spacing: .1em;
 }
-.renea-page-header h1 {
+.renea-page-header__copy > :is(h1, h2) {
   font-size: clamp(1.2rem, 1.05rem + .35vw, 1.45rem);
   font-weight: 750;
   line-height: 1.2;

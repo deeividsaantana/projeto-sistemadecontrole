@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type Ref } from 'react';
+import { createContext, useContext, useEffect, useRef, type ReactNode, type Ref } from 'react';
 import { cn } from './styles';
 
 /**
@@ -23,7 +23,17 @@ import { cn } from './styles';
  * Aba "longa" (painel de cartões, formulário): passe `longa` e a área de
  * conteúdo rola por dentro com o respiro entre os blocos, entra no Tab do
  * teclado e ganha nome para o leitor de tela.
+ *
+ * Subtela que é uma tela inteira (Viagens da jazida dentro de Materiais): a
+ * TelaCheia de dentro percebe que está na área de dados de outra, ocupa só
+ * essa área em vez de pedir a altura da janela, e o PageHeader dela vira h2
+ * (um h1 só por página).
  */
+const DentroDaTelaCheia = createContext(false);
+
+/** true quando o componente está na área de dados de uma TelaCheia. */
+export const useDentroDaTelaCheia = () => useContext(DentroDaTelaCheia);
+
 interface TelaCheiaProps {
   /** id da aba (termina em "-tab", como as outras telas). */
   id: string;
@@ -57,6 +67,7 @@ export function TelaCheia({
   idAbaAtiva, idDados, className, classeDados, testId, ref,
 }: TelaCheiaProps) {
   const dadosRef = useRef<HTMLDivElement>(null);
+  const embutida = useDentroDaTelaCheia();
 
   useEffect(() => {
     if (chaveRolagem === undefined) return;
@@ -65,7 +76,7 @@ export function TelaCheia({
 
   return (
     <section ref={ref} id={id} aria-label={rotulo} data-testid={testId} data-tela-cheia=""
-      className={cn('renea-tela-cheia flex w-full min-w-0 max-w-none flex-col gap-2 lg:gap-3', className)}>
+      className={cn('renea-tela-cheia flex w-full min-w-0 max-w-none flex-col gap-2 lg:gap-3', embutida && 'renea-tela-cheia--embutida', className)}>
       {cabecalho && <div className="renea-tela-cheia__topo shrink-0">{cabecalho}</div>}
       {faixa && <div className="renea-tela-cheia__faixa shrink-0">{faixa}</div>}
       <div
@@ -77,7 +88,7 @@ export function TelaCheia({
         tabIndex={longa ? 0 : undefined}
         className={cn('renea-tela-cheia__dados flex min-h-0 min-w-0 flex-1 flex-col', longa && 'renea-tela-cheia__dados--longa gap-4', classeDados)}
       >
-        {children}
+        <DentroDaTelaCheia.Provider value>{children}</DentroDaTelaCheia.Provider>
       </div>
       {rodape && <div className="renea-tela-cheia__rodape shrink-0">{rodape}</div>}
     </section>
