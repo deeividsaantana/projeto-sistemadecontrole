@@ -32,7 +32,7 @@ function Bloco({ titulo, Icone, numeros, alerta, aba, rotuloAba, onIrPara, child
     <section data-meu-dia-reveal className={`${CARTAO} flex flex-col overflow-hidden`} aria-label={titulo}>
       <header className="flex items-center gap-3 border-b border-slate-100 bg-[#f7f8f6] px-4 py-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-[#176b4d] ring-1 ring-inset ring-slate-200"><Icone className="size-5" aria-hidden="true" /></span>
-        <h3 className="text-base font-bold text-slate-900">{titulo}</h3>
+        <h2 className="text-base font-bold text-slate-900">{titulo}</h2>
       </header>
       <dl className="grid grid-cols-3 gap-2 px-4 pt-3">
         {numeros.map(item => (
