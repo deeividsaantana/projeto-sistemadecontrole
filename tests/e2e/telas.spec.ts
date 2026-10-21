@@ -78,14 +78,16 @@ test('cadastros cabe em notebook sem zoom e mostra a lista logo de cara', async 
   const topo = await primeira.evaluate(linha => linha.getBoundingClientRect().top);
   expect(topo, 'a primeira linha aparece sem rolar').toBeLessThan(400);
 
-  await page.mouse.move(700, 500);
-  await page.mouse.wheel(0, 900);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+  // A TabelaPadrao rola por dentro: a lista desce, busca e cabeçalho ficam na tela.
+  const area = page.locator('#database-lists-viewport [role="region"]');
+  await area.hover();
+  for (let vez = 0; vez < 4; vez += 1) await page.mouse.wheel(0, 600);
+  await expect.poll(() => area.evaluate(elemento => elemento.scrollTop)).toBeGreaterThan(200);
   const busca = await page.getByRole('searchbox', { name: 'Buscar cadastros' }).boundingBox();
-  expect(busca?.y ?? -1, 'a busca fica presa no topo ao rolar a lista').toBeGreaterThanOrEqual(0);
-  const cabecalho = await page.locator('#database-lists-viewport thead').boundingBox();
-  expect(cabecalho?.y ?? -1, 'o cabeçalho da tabela para logo abaixo dos filtros').toBeGreaterThan(0);
-  expect(cabecalho?.y ?? 999).toBeLessThan(200);
+  expect(busca?.y ?? -1, 'a busca fica na tela ao rolar a lista').toBeGreaterThanOrEqual(0);
+  const cabecalho = await page.locator('#database-lists-viewport thead th').last().boundingBox();
+  expect(cabecalho?.y ?? -1, 'o cabeçalho da tabela fica abaixo dos filtros').toBeGreaterThan((busca?.y ?? 0) + (busca?.height ?? 0));
+  expect((cabecalho?.y ?? 999) + (cabecalho?.height ?? 0), 'o cabeçalho continua dentro da tela').toBeLessThan(700);
 });
 
 test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({ page }) => {
@@ -189,7 +191,7 @@ test('manutenção apresenta central operacional e fluxo das OS', async ({ page 
   await expect(page.getByRole('heading', { name: 'Manutenção', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Fila de oficina', level: 2 })).toBeVisible();
   await expect(page.getByText('OS em curso, ordenadas pelo tempo parado do equipamento')).toBeVisible();
-  await expect(page.locator('text=Ordem(ns) de Serviço')).toBeVisible();
+  await expect(page.getByText(/\d+ ordens? de serviço/)).toBeVisible();
 });
 
 test('manutenção identifica a categoria do equipamento', async ({ page }) => {

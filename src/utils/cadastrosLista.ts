@@ -60,7 +60,7 @@ export interface ColunaCadastro {
   codigo?: boolean;
   /** Coluna principal: ganha mais largura que as outras. */
   larga?: boolean;
-  /** Some em tela estreita (notebook), para as outras não cortarem. */
+  /** Fica fora do cartão do celular, para o cartão não crescer demais. */
   secundaria?: boolean;
 }
 

@@ -208,24 +208,19 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   }, { scope: escopo });
 
   const avisoRef = useRef<HTMLDivElement>(null);
-  // No computador, busca, filtros e barra de marcados ficam presos no topo e só
-  // a lista rola. A altura deles vira variável para o cabeçalho da tabela
-  // parar logo abaixo.
+  // No computador, busca e filtros ficam presos no topo; a altura deles vira
+  // variável para a barra de marcados parar logo abaixo. A tabela rola por
+  // dentro, com o próprio cabeçalho preso (TabelaPadrao).
   const topoFixoRef = useRef<HTMLDivElement>(null);
-  const barraSelecaoRef = useRef<HTMLDivElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const lista = listaRef.current;
-    if (!lista || typeof ResizeObserver === 'undefined') return;
-    const medir = () => {
-      const filtros = topoFixoRef.current?.offsetHeight ?? 0;
-      const barra = barraSelecaoRef.current?.offsetHeight ?? 0;
-      lista.style.setProperty('--cad-filtros', `${filtros}px`);
-      lista.style.setProperty('--cad-topo-lista', `${filtros + barra}px`);
-    };
+    const topo = topoFixoRef.current;
+    if (!lista || !topo || typeof ResizeObserver === 'undefined') return;
+    const medir = () => lista.style.setProperty('--cad-filtros', `${topo.offsetHeight}px`);
     medir();
     const observador = new ResizeObserver(medir);
-    [topoFixoRef.current, barraSelecaoRef.current].forEach(alvo => { if (alvo) observador.observe(alvo); });
+    observador.observe(topo);
     return () => observador.disconnect();
   });
   useEffect(() => {
@@ -715,9 +710,9 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                 </div>
               )}
 
-              <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`} className="space-y-3">
+              <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`} className="space-y-3 lg:[--tabela-altura-max:calc(100dvh-var(--cad-filtros,0px)-8rem)]">
                 {podeExcluir && marcados.size > 0 && (
-                  <div role="region" aria-label="Cadastros marcados" ref={barraSelecaoRef} data-testid="cadastro-barra-selecao" className="sticky top-2 z-10 lg:top-[var(--cad-filtros,0px)] flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 shadow-sm sm:pl-4">
+                  <div role="region" aria-label="Cadastros marcados" data-testid="cadastro-barra-selecao" className="sticky top-2 z-10 lg:top-[var(--cad-filtros,0px)] flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 shadow-sm sm:pl-4">
                     <p className="basis-full px-2 pt-1 text-sm font-bold text-emerald-900 sm:mr-auto sm:basis-auto sm:p-0" aria-live="polite">
                       {marcados.size.toLocaleString('pt-BR')} {marcados.size === 1 ? 'marcado' : 'marcados'}
                     </p>
@@ -736,6 +731,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                   </div>
                 )}
                 <CadastroLista
+                  titulo={categoriaAtual.label}
                   linhas={linhasFiltradas}
                   colunas={COLUNAS[categoria]}
                   mostrarSituacao={comSituacao}
