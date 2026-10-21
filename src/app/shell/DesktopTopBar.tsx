@@ -7,7 +7,7 @@ import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
 import type { Alerta } from '../../utils/alertas';
 import type { NavigationGroupView } from './NavigationMenu';
-import { NAVIGATION_GROUPS } from '../navigation/navigation';
+import { SIDEBAR_NAVIGATION_GROUPS } from '../navigation/navigation';
 import { Breadcrumb } from '../../shared/ui';
 import { OBRA } from '../../config/obra';
 
@@ -68,10 +68,11 @@ export function DesktopTopBar({
 
   const visibleItems = useMemo(() => groups.flatMap(group => group.items), [groups]);
 
-  // A trilha vem do mapa completo de navegação, e não dos grupos já filtrados
-  // pela busca, para o usuário não perder a referência enquanto pesquisa.
+  // A trilha vem do mapa completo do menu, e não dos grupos já filtrados pela
+  // busca, para o usuário não perder a referência enquanto pesquisa. Usa os
+  // mesmos nomes do menu lateral ("Frota", não "Equipamentos").
   const breadcrumbItems = useMemo(() => {
-    for (const group of NAVIGATION_GROUPS) {
+    for (const group of SIDEBAR_NAVIGATION_GROUPS) {
       const item = group.items.find(entry => entry.id === activeTab);
       if (item) return [{ label: group.label }, { label: item.label }];
     }
@@ -127,7 +128,6 @@ export function DesktopTopBar({
     <header
       ref={headerRef}
       className="erp-topbar hidden lg:flex"
-      style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}
       aria-label="Barra de contexto do sistema"
     >
       {/* A trilha é o único jeito de saber "onde estou" nesse cabeçalho — não
@@ -144,7 +144,7 @@ export function DesktopTopBar({
           onChange={event => onMenuSearchChange(event.target.value)}
           onKeyDown={abrirPrimeiroResultado}
           placeholder="Buscar no sistema..."
-          className="h-10 w-full rounded-full border border-slate-200/50 bg-white/60 pl-10 pr-16 text-xs text-slate-700 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/15"
+          className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-10 pr-14 text-[13px] text-slate-700 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/15"
         />
         {menuSearch
           ? (
@@ -176,10 +176,10 @@ export function DesktopTopBar({
         <div
           className="erp-topbar__status"
           data-offline={!isCloudConnected || undefined}
-          title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
+          title={`${isCloudConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}. ${lastCloudSync ? `Última sincronização: ${lastCloudSync}` : 'Ainda sem sincronização nesta sessão'}`}
         >
-          <span />
-          {isCloudConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}
+          <span aria-hidden="true" />
+          <em className="erp-topbar__status-texto not-italic">{isCloudConnected ? 'Sincronizado' : 'Sem conexão com a nuvem'}</em>
         </div>
         {typeof pendingCount === 'number' && pendingCount > 0 && (
           <div
@@ -211,7 +211,7 @@ export function DesktopTopBar({
           alertas={alertas}
           onAlertaClick={onNavigate}
         />
-        <div className="erp-topbar__user">
+        <div className="erp-topbar__user" title={userName}>
           <span className="erp-topbar__avatar">{userInitials}</span>
           <span>
             <strong>{userName}</strong>

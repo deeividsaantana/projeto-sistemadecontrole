@@ -32,6 +32,7 @@ import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { PRIMARY_MODULE_IDS, ROLE_ACCESS, SIDEBAR_NAVIGATION_GROUPS, destinoDaAba } from '../src/app/navigation/navigation';
 import { PesquisaGlobal } from '../src/app/shell/PesquisaGlobal';
 import * as fx from './fixtures';
+import { RouteMotion } from '../src/shared/ui/RouteMotion';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -769,6 +770,14 @@ const screens: Record<string, React.ReactNode> = {
 };
 
 const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
+// Com ?shell=1 a tela abre dentro do menu lateral e da barra do topo, com as
+// mesmas medidas do App.tsx, para conferir a página inteira em cada largura.
+const comShell = new URLSearchParams(location.search).get('shell') === '1';
+const ABA_DO_PREVIEW: Record<string, string> = {
+  painel: 'dashboard', combustivel: 'lancamentos', 'combustivel-operador': 'lancamentos', 'combustivel-consumo': 'lancamentos',
+  frotas: 'controle-equipamentos', 'presenca-admin': 'presenca', 'colaboradores-lote': 'colaboradores', 'materiais-utilizacao': 'materiais',
+};
+const abaAtiva = ABA_DO_PREVIEW[key] || key;
 const previewQueryClient = new QueryClient();
 
 // Os links públicos rodam fora do ERP (PublicLinksApp), sem o
@@ -778,7 +787,35 @@ const isPublicScreen = key === 'material-link' || key === 'pesquisa';
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
-    {isPublicScreen ? (screens[key] ?? null) : <div
+    {isPublicScreen ? (screens[key] ?? null) : comShell ? (
+      <div className="erp-shell">
+        <DesktopSidebar activeTab={abaAtiva} groups={previewGroups} onNavigate={noop} />
+        <main className="erp-workspace" id="main-workspace">
+          <DesktopTopBar
+            activeTab={abaAtiva}
+            groups={previewGroups}
+            menuSearch=""
+            currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
+            isNotificationOpen={false}
+            notifications={previewNotifications}
+            unreadCount={1}
+            isCloudConnected
+            lastCloudSync="04/09/2026 21:40"
+            onMenuSearchChange={noop}
+            onNavigate={noop}
+            onToggleNotifications={noop}
+            onCloseNotifications={noop}
+            onMarkAllNotificationsAsRead={noop}
+            onClearNotifications={noop}
+            onMarkNotificationAsRead={noop}
+            onLogout={noop}
+          />
+          <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
+            <RouteMotion>{screens[key] ?? <p>Tela desconhecida: {key}</p>}</RouteMotion>
+          </div>
+        </main>
+      </div>
+    ) : <div
       id="main-tab-viewport"
       /* Mesmas medidas do App.tsx: o painel roda sem recuo (dashboard-viewport)
          e as demais telas dentro do padding responsivo. Com um `padding: 28`

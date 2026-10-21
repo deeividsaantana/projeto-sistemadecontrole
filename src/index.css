@@ -266,76 +266,107 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   position: sticky;
   top: 0;
   z-index: 30;
-  width: 11.5rem;
-  min-width: 11.5rem;
+  width: 14rem;
+  min-width: 14rem;
   height: 100dvh;
   flex-direction: column;
-  border-right: 1px solid #0a4235;
-  background: #042f25;
+  border-right: 1px solid #23614e;
+  background: #0b4938;
   color: #e0f0e8;
+  /* A navegação fica estática: animação contínua não ajuda a operação e
+     desperdiça GPU em uma área sempre visível. */
+  animation: none;
 }
+/* Linhas de 32 px: os 14 módulos e os 7 grupos cabem inteiros num notebook
+   de 768 px de altura, sem rolar o menu. O piso de 40 px dos botões no
+   desktop (mais abaixo) vale para a área de trabalho, não para o menu. */
+.erp-sidebar [data-sidebar-item] { min-height: 2rem; }
+.erp-sidebar [data-sidebar-grupo] { min-height: 1.5rem; }
 .erp-workspace { display: flex; min-width: 0; min-height: 100dvh; flex: 1; flex-direction: column; background: #fff; }
-.erp-topbar { display: flex; min-height: 4.6rem; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 0 1.9rem; border-bottom: 1px solid #dde4ef; background: #fff; }
-.erp-topbar__breadcrumb { display: flex; min-width: 0; align-items: center; gap: .7rem; color: #61718a; font-size: .78rem; }
-.erp-topbar__breadcrumb strong { overflow: hidden; color: #10213c; font-weight: 760; text-overflow: ellipsis; white-space: nowrap; }
-.erp-topbar__chevron { color: #a3aea7; }
-.erp-topbar__actions { display: flex; align-items: center; gap: .9rem; }
-.erp-topbar__searchbox { min-width: 10rem; flex: 1 1 20rem; }
-.erp-topbar__status { display: flex; align-items: center; gap: .4rem; color: #496178; font-size: .7rem; font-weight: 650; }
 
-.erp-topbar__status span { width: .42rem; height: .42rem; border-radius: 50%; background: #0a9867; }
-.erp-topbar__pending { display: flex; align-items: center; gap: .45rem; padding: .28rem .42rem .28rem .6rem; border: 1px solid #f3c96b; border-radius: 999px; background: #fffbeb; color: #92400e; font-size: .65rem; font-weight: 700; white-space: nowrap; }
-.erp-topbar__pending button { border: 0; border-radius: 999px; background: #f59e0b; color: #fff; font: inherit; font-weight: 750; padding: .22rem .48rem; cursor: pointer; }
-.erp-topbar__pending button:hover:not(:disabled) { background: #d97706; }
-.erp-topbar__pending button:disabled { cursor: wait; opacity: .65; }
-.erp-topbar__date { display: grid; gap: .13rem; padding: 0 .9rem; border-left: 1px solid #e0e5df; color: #708098; font-size: .6rem; text-align: right; }
-.erp-topbar__date strong { color: #243955; font-size: .72rem; font-weight: 720; }
-.erp-topbar__user { display: flex; align-items: center; gap: .5rem; padding-left: .8rem; border-left: 1px solid #e0e5df; }
-.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid #bfd1f6; border-radius: 50%; background: #eaf1ff; color: #245cc4; font-size: .62rem; font-weight: 800; }
-.erp-topbar__user > span:last-child { display: grid; min-width: 0; gap: .1rem; }
-.erp-topbar__user strong { max-width: 10rem; overflow: hidden; color: #243955; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
-.erp-topbar__user small { max-width: 10rem; overflow: hidden; color: #8190a5; font-size: .6rem; text-overflow: ellipsis; white-space: nowrap; }
-.erp-topbar__command { min-height: 2.3rem; padding: 0 .95rem; border: 1px solid #bdd0f7; border-radius: .42rem; background: #f4f8ff; color: #285fcb; font: inherit; font-size: .7rem; font-weight: 720; cursor: pointer; }
-.erp-topbar__command:hover { border-color: #4d88ff; background: #eaf1ff; }
+/* Barra do topo: uma faixa de 52 px, branca, alinhada com o cabeçalho do
+   menu lateral. Fica acima do conteúdo (z 80) e abaixo das telas cheias
+   (z 90, ver Combustível). Some abaixo de 1024 px, onde o cabeçalho do
+   celular assume. */
+.erp-topbar {
+  position: relative;
+  z-index: 80;
+  display: flex;
+  height: 3.25rem;
+  min-height: 3.25rem;
+  align-items: center;
+  gap: 1rem;
+  padding-inline: 1.25rem;
+  overflow: visible;
+  border-bottom: 1px solid #dce4df;
+  background: #fff;
+  color: #10211c;
+}
+.erp-topbar nav[aria-label="Trilha de navegação"] { flex: 0 1 auto; max-width: 16rem; font-size: .8125rem; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #63736c; }
+#app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #10211c; }
+.erp-topbar__searchbox { min-width: 10rem; flex: 1 1 18rem; max-width: 24rem; }
+.erp-topbar__searchbox input { height: 2.25rem; min-height: 2.25rem; }
 .erp-topbar__project {
   display: flex;
-  width: auto;
-  max-width: 22rem;
-  flex: 1 1 15rem;
-  min-height: 2.8rem;
+  min-width: 0;
+  max-width: 20rem;
+  flex: 0 1 auto;
   align-items: center;
-  gap: .7rem;
-  padding: .45rem .75rem;
-  border: 1px solid #d7e2dc;
-  border-radius: .45rem;
-  background: #fafcfb;
-  color: #173c2e;
-  text-align: left;
+  gap: .5rem;
+  padding: .25rem .6rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #10211c;
 }
-.erp-topbar__project:hover { border-color: #99bbaa; background: #f5faf7; }
-.erp-topbar__project > svg:first-child { width: 1rem; height: 1rem; flex: 0 0 auto; color: #087553; }
-.erp-topbar__project > span { display: grid; min-width: 0; flex: 1; gap: .08rem; }
-.erp-topbar__project small { color: #718078; font-size: .56rem; font-weight: 650; }
-.erp-topbar__project strong { overflow: hidden; color: #173c2e; font-size: .68rem; font-weight: 720; text-overflow: ellipsis; white-space: nowrap; }
-#main-tab-viewport { max-width: none; }
+.erp-topbar__project:hover { border-color: #dce4df; background: #f7faf8; }
+.erp-topbar__project > svg:first-child { width: 1rem; height: 1rem; flex: 0 0 auto; color: #087653; }
+.erp-topbar__project > span { display: grid; min-width: 0; gap: 0; line-height: 1.2; }
+.erp-topbar__project small { color: #728078; font-size: .6875rem; font-weight: 600; }
+.erp-topbar__project strong { overflow: hidden; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topbar__actions { display: flex; flex: 0 0 auto; align-items: center; gap: .5rem; margin-left: auto; }
+.erp-topbar__status {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .25rem .6rem;
+  border: 1px solid #cfe6db;
+  border-radius: 999px;
+  background: #f1f9f5;
+  color: #0b5c43;
+  font-size: .75rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.erp-topbar__status span { width: .45rem; height: .45rem; border-radius: 50%; background: #0a9867; }
+.erp-topbar__status[data-offline] { border-color: #f3d3a8; background: #fff8ee; color: #9a3412; }
+.erp-topbar__status[data-offline] span { background: #d97706; }
+.erp-topbar__pending { display: flex; align-items: center; gap: .45rem; padding: .25rem .4rem .25rem .6rem; border: 1px solid #f3c96b; border-radius: 999px; background: #fffbeb; color: #92400e; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.erp-topbar__pending button { min-height: 0; border: 0; border-radius: 999px; background: #f59e0b; color: #fff; font: inherit; font-weight: 750; padding: .2rem .5rem; cursor: pointer; }
+.erp-topbar__pending button:hover:not(:disabled) { background: #d97706; }
+.erp-topbar__pending button:disabled { cursor: wait; opacity: .65; }
+.erp-topbar__user { display: flex; min-width: 0; align-items: center; gap: .5rem; padding-left: .75rem; border-left: 1px solid #dce4df; }
+.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid #b8d9c8; border-radius: 8px; background: #eff8f2; color: #087345; font-size: .6875rem; font-weight: 800; }
+.erp-topbar__user > span:last-child { display: grid; min-width: 0; gap: 0; line-height: 1.25; }
+.erp-topbar__user strong { max-width: 11rem; overflow: hidden; color: #10211c; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topbar__user small { color: #60716a; font-size: .6875rem; }
+.erp-topbar button { min-height: 2.25rem; }
 
-@media (max-width: 1180px) {
-  .erp-sidebar { width: 11.5rem; min-width: 11.5rem; }
-  .erp-topbar { padding-inline: 1.1rem; }
-  .erp-topbar__command { display: none; }
-  .erp-topbar__status { display: none; }
-  .erp-topbar__project { max-width: 18rem; }
-}
-@media (max-width: 1320px) {
-  .erp-topbar { gap: .75rem; padding-inline: 1rem; }
-  .erp-topbar__actions { gap: .45rem; }
+/* Notebook de 1366 px: o nome do usuário cede lugar à obra (fica no title
+   do avatar). Abaixo de 1280 px o status vira só o ponto (o texto continua no
+   title e para leitor de tela) e a trilha sai, porque o título da tela e o
+   item aceso no menu já dizem onde a pessoa está. */
+@media (max-width: 1439px) {
   .erp-topbar__user > span:last-child { display: none; }
-  .erp-topbar__user { padding-left: .45rem; }
-  .erp-topbar__searchbox { max-width: 15rem; }
+  .erp-topbar__user { padding-left: .5rem; }
 }
-@media (max-width: 1100px) {
-  .erp-topbar__searchbox { display: none; }
-  .erp-topbar__project { max-width: none; }
+@media (max-width: 1279px) {
+  .erp-topbar { gap: .75rem; padding-inline: 1rem; }
+  .erp-topbar__status { padding: .55rem; }
+  .erp-topbar__status-texto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .erp-topbar nav[aria-label="Trilha de navegação"] { display: none; }
+  .erp-topbar__project small { display: none; }
+  .erp-topbar__project { max-width: 16rem; }
 }
 @media (max-width: 1023px) {
   .erp-shell { min-height: auto; }
@@ -352,19 +383,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-shell #main-tab-viewport > div > :is(main, section, div)[id$="-tab"] {
   background-color: #fff !important;
 }
-.erp-sidebar {
-  width: 11.5rem;
-  min-width: 11.5rem;
-  background: #0b4434;
-  border-right: 1px solid #123f31;
-  /* A navegação fica estática: animação contínua não ajuda a operação e
-     desperdiça GPU em uma área sempre visível. */
-  animation: none;
-}
 .erp-workspace { background: #fff; }
-.erp-topbar { min-height: 5rem; padding-inline: 2rem; border-bottom-color: #e2e8e4; background: #fff; }
-.erp-topbar__command { border-color: #b7d8ca; border-radius: .75rem; background: #eff9f3; color: #0c6b4e; transition: transform .45s cubic-bezier(.32,.72,0,1), background-color .45s cubic-bezier(.32,.72,0,1); }
-.erp-topbar__command:hover { transform: translateY(-1px); border-color: #6ab393; background: #e3f5ea; }
 #main-tab-viewport { background: #fff; }
 
 /* RENEA operational workspace: shared light surface language used by the rebuilt
@@ -386,23 +405,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-dashboard table tbody tr:hover { background: #f8fbf9; }
 .erp-shortcuts { box-shadow: none; }
 
-.erp-topbar {
-  min-height: 4.55rem;
-  border-bottom-color: #dce5df;
-  background: #fff;
-  position: relative;
-  z-index: 80;
-  overflow: visible;
-}
-.erp-topbar__breadcrumb { color: #65766d; font-size: .8rem; }
-.erp-topbar__breadcrumb strong { color: #183428; }
-.erp-topbar__status { color: #486458; }
-.erp-topbar__status[data-offline] { color: #9a3412; }
-.erp-topbar__status[data-offline] span { background: #d97706; }
-.erp-topbar__date { border-left-color: #dce5df; color: #728178; }
-.erp-topbar__date strong, .erp-topbar__user strong { color: #1c382a; }
-.erp-topbar__user { border-left-color: #dce5df; }
-.erp-topbar__avatar { border-color: #b8d9c8; background: #eff8f2; color: #087345; }
 
 
 /* Single white workspace: legacy utility colors stay neutral outside the sidebar. */
@@ -448,38 +450,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-workspace,
 #main-tab-viewport { background: var(--renea-v3-paper); }
 
-/* Context bar: one compact dark strip, matching the approved dashboard. */
-.erp-topbar {
-  min-height: 3.75rem;
-  padding-inline: 1.7rem;
-  border-bottom-color: #1d473d;
-  background: #0a241d;
-  color: #f4faf6;
-}
-.erp-topbar__breadcrumb,
-.erp-topbar__breadcrumb strong,
-.erp-topbar__status,
-.erp-topbar__date,
-.erp-topbar__date strong,
-.erp-topbar__user strong { color: #f2f8f4; }
-.erp-topbar__chevron,
-.erp-topbar__user small { color: #adc3b9; }
-.erp-topbar__date,
-.erp-topbar__user { border-left-color: #315048; }
-.erp-topbar__avatar { border-color: #d7e2dd; background: #edf2ef; color: #17372e; }
-.erp-topbar__project {
-  min-height: 2.65rem;
-  border-color: transparent;
-  border-radius: 2px;
-  background: transparent;
-  color: #fff;
-}
-.erp-topbar__project:hover { border-color: #45665c; background: #12372d; }
-.erp-topbar__project small { color: #9eb7ac; }
-.erp-topbar__project strong { color: #fff; font-size: .72rem; }
-.erp-topbar__project > svg:first-child { color: #4bd19f; }
-.erp-topbar__command { border-color: #42655a; border-radius: 2px; background: #13372e; color: #e9f5ef; }
-.erp-topbar__command:hover { transform: none; border-color: #6d9487; background: #19483b; }
 
 /* Shared surfaces used by every current and future tab. Sem "both": o
    fill-mode preso trava a barra "position: fixed" de qualquer aba (fica
@@ -622,8 +592,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   to { transform: none; }
 }
 
-#app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #d6e5dd; }
-#app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #fff; }
 
 @media (max-width: 1180px) {
   .dashboard-hero__content { width: min(72%, 54rem); }
@@ -674,13 +642,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-tab-viewport,
 #main-tab-viewport > :not(.erp-dashboard) { background: #fff; }
 
-.erp-topbar {
-  border-bottom: 1px solid #dce4df;
-  background: rgb(255 255 255 / .96);
-  color: #10211c;
-  box-shadow: 0 1px 0 rgb(10 47 37 / .04);
-}
-
 .renea-filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -701,25 +662,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   align-items: center;
   gap: var(--renea-space-2);
 }
-.erp-topbar__breadcrumb,
-.erp-topbar__breadcrumb strong,
-.erp-topbar__status,
-.erp-topbar__date,
-.erp-topbar__date strong,
-.erp-topbar__user strong { color: #10211c; }
-.erp-topbar__chevron,
-.erp-topbar__user small { color: #60716a; }
-.erp-topbar__date,
-.erp-topbar__user { border-left-color: #dce4df; }
-.erp-topbar__project { color: #10211c; }
-.erp-topbar__project:hover { border-color: #c8d4ce; background: #f7faf8; }
-.erp-topbar__project small { color: #728078; }
-.erp-topbar__project strong { color: #10211c; }
-.erp-topbar__project > svg:first-child { color: #008b62; }
-.erp-topbar__command { border-color: #d4ddd8; background: #fff; color: #18362d; }
-.erp-topbar__command:hover { border-color: #87aa9d; background: #f6faf8; }
-#app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #63736c; }
-#app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #10211c; }
 
 /* Cabeçalho de módulo: faixa densa, sem foto e sem capa editorial. */
 #main-tab-viewport :has(> .renea-page-header) {
@@ -861,9 +803,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-tab-viewport a:active { transform: translateY(1px) scale(.99); }
 #main-tab-viewport :is(button, a, input, select, textarea):focus-visible { outline: 3px solid rgb(0 139 98 / .22); outline-offset: 2px; }
 
-@media (max-width: 767px) {
-  .erp-topbar { background: #fff; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .renea-page-header { animation: none; }
@@ -1472,9 +1411,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #modo-campo-tab .field-action svg { transition: transform .35s cubic-bezier(.2,.8,.2,1); }
 #modo-campo-tab .field-action:hover svg { transform: translateY(-2px) scale(1.06); }
 
-@media (min-width: 1024px) {
-  .erp-sidebar { width: 14rem; min-width: 14rem; background: #0b4938; border-right-color: #23614e; animation: none; }
-}
 
 @media (max-width: 767px) {
   .fuel-workspace-nav { top: 0; }
@@ -2172,3 +2108,83 @@ body,
     padding: 1rem;
   }
 }
+
+/* ==========================================================================
+   ERP corporativo — camada final de densidade (20/10/2026)
+   Vale para todas as abas: cabeçalho de módulo mais baixo, campos e botões
+   de 40 px no computador (44 px no toque continua, ver regras do celular),
+   tabelas compactas com números alinhados e área útil que acompanha o
+   monitor grande. Fica por último para vencer as camadas antigas.
+   ========================================================================== */
+#main-tab-viewport > .renea-route-motion > :not(.erp-dashboard),
+#main-tab-viewport > :not(.erp-dashboard) {
+  width: min(100%, 120rem);
+}
+
+.renea-page-header { gap: .5rem 1rem; }
+.renea-page-header__eyebrow {
+  margin-bottom: .1rem;
+  font-size: .6875rem;
+  letter-spacing: .1em;
+}
+.renea-page-header h1 {
+  font-size: clamp(1.2rem, 1.05rem + .35vw, 1.45rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -.01em;
+}
+.renea-page-header__copy > p {
+  margin-top: .15rem;
+  font-size: .8125rem;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+@media (min-width: 1024px) {
+  #main-tab-viewport :is(input, select):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    min-height: 2.5rem;
+  }
+  #main-tab-viewport .renea-page-actions button,
+  #main-tab-viewport .renea-filter-bar button,
+  #main-tab-viewport .renea-button {
+    min-height: 2.5rem;
+  }
+}
+
+/* Tabelas: cabeçalho fixo dentro da própria rolagem, linhas de ~34 px,
+   números em largura fixa para datas, prefixos, litros e valores ficarem
+   em coluna. A rolagem lateral fica dentro da tabela, nunca na página. */
+.renea-table-shell {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+.renea-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+.renea-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--erp-line);
+  background: #f3f6f4;
+  color: #4f5f58;
+  font-size: .6875rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.renea-table td {
+  padding: .45rem .75rem;
+  border-bottom: 1px solid #edf1ee;
+  color: #26352f;
+  font-size: .8125rem;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+.renea-table tbody tr:last-child td { border-bottom: 0; }
+.renea-table thead th button { min-height: 1.75rem; }

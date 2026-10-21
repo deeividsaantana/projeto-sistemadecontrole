@@ -123,9 +123,10 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
               {!collapsed && (
                 <button
                   type="button"
+                  data-sidebar-grupo
                   onClick={() => toggleGroup(group.label)}
                   aria-expanded={open}
-                  className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#89b7a4] transition-colors duration-200 hover:text-white ${FOCO_CLARO}`}
+                  className={`flex w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#89b7a4] transition-colors duration-200 hover:text-white ${FOCO_CLARO}`}
                 >
                   <ChevronDown
                     className={`h-3 w-3 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${open ? '' : '-rotate-90'}`}
@@ -136,7 +137,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
                 </button>
               )}
               {open && (
-                <div className="space-y-0.5 pb-1">
+                <div className="space-y-px pb-1">
                   {group.items.map(item => {
                     const Icon = item.icon;
                     const active = activeTab === item.id;
@@ -148,7 +149,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
                         onClick={() => onNavigate(item.id)}
                         aria-current={active ? 'page' : undefined}
                         title={item.label}
-                        className={`group relative flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[12.5px] transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${FOCO_CLARO} ${
+                        className={`group relative flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[12.5px] transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${FOCO_CLARO} ${
                           active
                             ? 'bg-white/[0.08] font-semibold text-white'
                             : 'text-[#bcded0] hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white'
