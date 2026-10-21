@@ -1,7 +1,8 @@
 // Trava de peso do build (CONTRIBUTING.md, seção 4). Roda no fim do
 // `npm run verify`, depois do `vite build`, e reprova quando:
 // - o carregamento inicial (JS de index.html) passa do limite;
-// - uma biblioteca pesada (Excel, PDF, canvas, Storage, cargas de planilha)
+// - uma biblioteca pesada (Excel, PDF, canvas, Storage, cargas de planilha,
+//   ícones das telas ou dos links públicos)
 //   entra no carregamento inicial em vez de carregar só quando a tela pede;
 // - o pedaço de uma aba passa do limite;
 // - o pedaço do App (estado e casca, baixado logo depois do login) passa do limite.
@@ -13,11 +14,12 @@ import path from 'node:path';
 const KB = 1024;
 const LIMITE_INICIAL = 600 * KB;
 const LIMITE_POR_ABA = 300 * KB;
-// App com 317 kB em 2026-10-21, depois de tirar dele o que só a Frota usa.
-// O limite deixa ~20 kB de folga; o caminho para baixar é dividir o estado
-// do App (plano no relatório da auditoria de front, A14), não subir o número.
+// App com 309 kB em 2026-10-21, depois de tirar dele o que só a Frota usa e os
+// ícones das telas (vendor-icones). Folga de ~30 kB para as mudanças de tela já
+// em andamento; o caminho para baixar é dividir o estado do App (plano no
+// relatório da auditoria de front, A14), não subir o número.
 const LIMITE_APP = 340 * KB;
-const PESADAS_FORA_DO_INICIO = /vendor-(excel|pdf|canvas)|seed-/;
+const PESADAS_FORA_DO_INICIO = /vendor-(excel|pdf|canvas)|vendor-icones-(?!base-)|seed-/;
 
 const dist = path.resolve('dist');
 const assets = path.join(dist, 'assets');
