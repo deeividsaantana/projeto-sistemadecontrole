@@ -37,15 +37,6 @@ export default defineConfig(() => {
                 return 'vendor-react';
               }
             }
-            if (id.includes('/src/utils/importedAugust2026Seed') || id.includes('\\src\\utils\\importedAugust2026Seed')) {
-              return 'seed-august-2026';
-            }
-            if (id.includes('/src/utils/importedSpreadsheetSeed') || id.includes('\\src\\utils\\importedSpreadsheetSeed')) {
-              return 'seed-spreadsheet';
-            }
-            if (id.includes('/src/utils/initialMateriaisData') || id.includes('\\src\\utils\\initialMateriaisData')) {
-              return 'seed-materiais';
-            }
           },
         },
       },

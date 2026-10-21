@@ -77,7 +77,6 @@ import {
   INITIAL_PRESENCAS_LINK,
   INITIAL_HISTORICO_PRESENCAS,
   INITIAL_TICKETS_JAZIDA,
-  hydrateInitialOperationalSeedData,
 } from './utils/initialData';
 import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
@@ -296,34 +295,6 @@ const numberFromImport = (value: string) => {
   const cleaned = String(value || '').replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const mergeSeedRecords = <T,>(current: T[], seed: T[], getKey: (item: T) => string) => {
-  const keys = new Set(current.map(item => getKey(item)).filter(Boolean));
-  const next = [...current];
-  seed.forEach(item => {
-    const key = getKey(item);
-    if (!key || keys.has(key)) return;
-    keys.add(key);
-    next.push(item);
-  });
-  return next;
-};
-
-const mergeSeedRecordsPreferSeed = <T,>(current: T[], seed: T[], getKey: (item: T) => string) => {
-  const seedByKey = new Map(seed.map(item => [getKey(item), item]));
-  const next = current.map(item => {
-    const seedItem = seedByKey.get(getKey(item));
-    if (seedItem && getKey(item).startsWith('CA')) {
-      return item;
-    }
-    return seedItem ?? item;
-  });
-  const currentKeys = new Set(current.map(getKey));
-  seed.forEach(item => {
-    if (!currentKeys.has(getKey(item))) next.push(item);
-  });
-  return next;
 };
 
 const mergeTicketCollections = (current: TicketJazida[], incoming: TicketJazida[]) => {
@@ -692,25 +663,13 @@ export default function App() {
 
   // Hydrate states from localstorage on mount
   useEffect(() => {
-    let cancelled = false;
-    const hydrateLocalData = async () => {
+    const hydrateLocalData = () => {
       if (externalTicketLink || externalPresenceToken) return;
 
       const isDataLoadedV2 = readStoredFlag(localStorage, STORAGE_KEYS.dataLoadedV2);
-      // A base de exemplo (seed) só é usada na primeira carga do aparelho e na
-      // migração pontual da planilha operacional (shouldMigrateSpreadsheetSeed,
-      // mais abaixo). Com as duas já feitas, baixar e processar esses módulos
-      // (~1,6 MB) a cada abertura do app não tinha efeito nenhum — só custava tempo.
-      const needsSeedData = !isDataLoadedV2
-        || !readStoredFlag(localStorage, STORAGE_KEYS.planilhasOperacionaisV2);
-      if (needsSeedData) {
-        try {
-          await hydrateInitialOperationalSeedData();
-          if (cancelled) return;
-        } catch (error) {
-          console.error('Falha ao carregar a base historica inicial:', error);
-        }
-      }
+      // Navegador sem dados não recebe mais base de exemplo (empresas, comboios,
+      // viagens da jazida e estacas de agosto): começa vazio, fica marcado como
+      // aguardando o primeiro download e só envia depois de baixar a nuvem.
 
     if (!isDataLoadedV2) {
       const initialStorageEntries = [
@@ -746,7 +705,6 @@ export default function App() {
         // aqui é só a semente do sistema. Nada sobe até a nuvem ser baixada.
         { key: AGUARDANDO_PRIMEIRO_DOWNLOAD, value: 'true' },
         { key: 'renea_colaboradores_planilha_v1', value: 'true' },
-        { key: 'renea_planilhas_operacionais_v2', value: 'true' },
       ]);
 
       setEmpresas(INITIAL_EMPRESAS);
@@ -800,7 +758,6 @@ export default function App() {
       const savedHistory = localStorage.getItem('renea_history_logs');
       const savedNotifications = localStorage.getItem('renea_notifications');
       const shouldMigratePresencePeople = !readStoredFlag(localStorage, STORAGE_KEYS.colaboradoresPlanilhaV1);
-      const shouldMigrateSpreadsheetSeed = !readStoredFlag(localStorage, STORAGE_KEYS.planilhasOperacionaisV2);
       const parsedEquipamentos = parseStoredJson(savedEquipamentos, 'renea_equipamentos', INITIAL_EQUIPAMENTOS);
       const parsedEmpresas = parseStoredJson(savedEmpresas, 'renea_empresas', INITIAL_EMPRESAS);
       const parsedComboios = parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS);
@@ -828,40 +785,19 @@ export default function App() {
         parsedGruposEquipe,
         readStoredFlag(localStorage, STORAGE_KEYS.linksPublicosEstaveisV1),
       );
-      const loadedEquipamentos = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecordsPreferSeed(parsedEquipamentos, INITIAL_EQUIPAMENTOS, item => item.prefixo.trim().toLowerCase())
-        : parsedEquipamentos;
-      const loadedEmpresas = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedEmpresas, INITIAL_EMPRESAS, item => item.id)
-        : parsedEmpresas;
-      const loadedComboios = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedComboios, INITIAL_COMBOIOS, item => item.placa.trim().toLowerCase())
-        : parsedComboios;
-      const loadedAbastecimentos = resetLocalFuel ? [] : shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedAbastecimentos, INITIAL_ABASTECIMENTOS, item => `${item.data}|${item.equipamentoId}|${item.hora}|${item.quantidadeLitros}|${item.bombaInicial}`)
-        : parsedAbastecimentos;
-      const loadedTicketsJazida = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedTicketsJazida, INITIAL_TICKETS_JAZIDA, item => `${item.tipoTicket || 'Liberação'}|${item.data}|${item.ticketNumero}|${item.prefixo}`)
-        : parsedTicketsJazida;
-      const loadedControleEstacas = shouldMigrateSpreadsheetSeed
-        ? {
-            lotes: mergeSeedRecords(parsedControleEstacas.lotes, INITIAL_CONTROLE_ESTACAS.lotes, item => item.id),
-            cravacoes: mergeSeedRecords(parsedControleEstacas.cravacoes, INITIAL_CONTROLE_ESTACAS.cravacoes, item => item.id),
-          }
-        : parsedControleEstacas;
-      setEmpresas(loadedEmpresas);
+      setEmpresas(parsedEmpresas);
       setObras(parseStoredJson(savedObras, 'renea_obras', INITIAL_OBRAS));
-      setEquipamentos(loadedEquipamentos);
+      setEquipamentos(parsedEquipamentos);
       setFuncionarios(shouldMigratePresencePeople ? INITIAL_FUNCIONARIOS : parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS));
       setMotoristasOperacionais(parseStoredJson(savedMotoristasOperacionais, STORAGE_KEYS.motoristasOperacionais, [...OPERATIONAL_DRIVERS]));
-      setComboios(loadedComboios);
+      setComboios(parsedComboios);
       setCanteiros(parseStoredJson(savedCanteiros, 'renea_canteiros', INITIAL_CANTEIROS));
       setCombustiveis(parseStoredJson(savedCombustiveis, 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL));
       setLubrificantes(parseStoredJson(savedLubrificantes, 'renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO));
       setEtapas(parseStoredJson(savedEtapas, 'renea_etapas', INITIAL_ETAPAS_SERVICO));
-      setAbastecimentos(loadedAbastecimentos);
+      setAbastecimentos(resetLocalFuel ? [] : parsedAbastecimentos);
       setLubrificacoes(parseStoredJson(savedLubrificacoes, 'renea_lubrificacoes', INITIAL_LUBRIFICACOES));
-      setTicketsJazida(loadedTicketsJazida);
+      setTicketsJazida(parsedTicketsJazida);
       setListasPresenca(parsedListasPresenca);
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
       setChecklists(parseStoredJson(localStorage.getItem(STORAGE_KEYS.checklists), STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]));
@@ -894,7 +830,7 @@ export default function App() {
       setPresencasLink(parseStoredJson(savedPresencasLink, 'renea_presencas_link', INITIAL_PRESENCAS_LINK));
       setHistoricoPresencas(parseStoredJson(savedHistoricoPresencas, 'renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS));
       setControleEquipamentosDiario(parseStoredJson(savedControleEquipamentosDiario, 'renea_controle_equipamentos_diario', INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO));
-      setControleEstacas(loadedControleEstacas);
+      setControleEstacas(parsedControleEstacas);
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
@@ -972,15 +908,6 @@ export default function App() {
           { key: LOCAL_FUEL_RESET_STORAGE_KEY, value: LOCAL_FUEL_RESET_VERSION },
         ]);
       }
-      if (shouldMigrateSpreadsheetSeed) {
-        writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(loadedEmpresas));
-        writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(loadedEquipamentos));
-        writeStorageValue(localStorage, 'renea_comboios', JSON.stringify(loadedComboios));
-        writeStorageValue(localStorage, 'renea_abastecimentos', JSON.stringify(loadedAbastecimentos));
-        writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(loadedTicketsJazida));
-        writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(loadedControleEstacas));
-        writeStorageValue(localStorage, 'renea_planilhas_operacionais_v2', 'true');
-      }
       // Compatibilidade com aparelhos que já tinham uma versão sincronizada
       // antes desta correção. A fotografia é feita ainda durante a hidratação,
       // antes que o usuário possa excluir qualquer registro nesta sessão.
@@ -991,8 +918,7 @@ export default function App() {
       }
     }
     };
-    void hydrateLocalData();
-    return () => { cancelled = true; };
+    hydrateLocalData();
   }, []);
 
   useEffect(() => auth.onAuthStateChanged(async user => {

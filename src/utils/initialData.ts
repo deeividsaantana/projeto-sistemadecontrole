@@ -23,75 +23,12 @@ import {
   TicketJazida
 } from '../types';
 import { generateSecurePublicToken } from './publicLinkSecurity';
-import { setInitialControleEstacas } from './initialEstacasData';
 import type { Canteiro, FrenteServico } from '../types';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS } from './frenteServico';
 
-const mergeByKey = <T,>(base: T[], imported: T[], getKey: (item: T) => string) => {
-  const keys = new Set(base.map(item => getKey(item)).filter(Boolean));
-  const merged = [...base];
-  imported.forEach(item => {
-    const key = getKey(item);
-    if (!key || keys.has(key)) return;
-    keys.add(key);
-    merged.push(item);
-  });
-  return merged;
-};
-
-let operationalSeedHydrated = false;
-
-export const hydrateInitialOperationalSeedData = async (): Promise<void> => {
-  if (operationalSeedHydrated) return;
-  const [spreadsheetSeed, augustSeed] = await Promise.all([
-    import('./importedSpreadsheetSeed'),
-    import('./importedAugust2026Seed'),
-  ]);
-
-  INITIAL_EMPRESAS = mergeByKey(BASE_INITIAL_EMPRESAS, augustSeed.IMPORTED_AUG2026_EMPRESAS, item => item.id);
-  // Equipamentos iniciam vazios: a frota entra só pela importação da
-  // planilha. As listas de exemplo continuam nos arquivos históricos,
-  // mas não são injetadas na operação local.
-  INITIAL_EQUIPAMENTOS = [];
-  INITIAL_COMBOIOS = mergeByKey(BASE_INITIAL_COMBOIOS, augustSeed.IMPORTED_AUG2026_COMBOIOS, item => item.placa.trim().toLowerCase());
-  // Combustível inicia vazio neste checkout. A base importada continua
-  // disponível no arquivo histórico, mas não é injetada na operação local.
-  INITIAL_ABASTECIMENTOS = [];
-  INITIAL_TICKETS_JAZIDA = mergeByKey(
-    spreadsheetSeed.IMPORTED_SEED_TICKETS_JAZIDA,
-    augustSeed.IMPORTED_AUG2026_TICKETS_JAZIDA,
-    item => item.id
-  );
-  setInitialControleEstacas({
-    lotes: augustSeed.IMPORTED_AUG2026_CONTROLE_ESTACAS.lotes,
-    cravacoes: augustSeed.IMPORTED_AUG2026_CONTROLE_ESTACAS.cravacoes,
-  });
-  operationalSeedHydrated = true;
-};
-
-const BASE_INITIAL_EMPRESAS: Empresa[] = [
-  { id: 'emp-1', nome: 'RENEA INFRAESTRUTURA S.A.', cnpj: '12.345.678/0001-90', telefone: '(11) 3214-9900', responsavel: 'Eng. Ricardo Renea' },
-  { id: 'emp-2', nome: 'CONSTRUTORA SUL-AMERICANA S/A', cnpj: '98.765.432/0001-10', telefone: '(21) 2500-1122', responsavel: 'Dr. Roberto Souza' },
-  { id: 'emp-3', nome: 'GT Transportes', cnpj: '45.888.222/0001-30', telefone: '(19) 3876-5432', responsavel: 'Sandro Santos' },
-  { id: 'emp-4', nome: 'Sondasolo', cnpj: '33.444.555/0001-22', telefone: '(11) 4004-1234', responsavel: 'Lucas Sonda' },
-  { id: 'emp-5', nome: 'Escala Rental', cnpj: '22.111.000/0001-44', telefone: '(11) 3322-1100', responsavel: 'Fabio Escala' },
-  { id: 'emp-6', nome: 'Gerasuper', cnpj: '55.666.777/0001-88', telefone: '(11) 5544-3322', responsavel: 'Carlos Gera' },
-  { id: 'emp-7', nome: 'Vallocar', cnpj: '77.888.999/0001-11', telefone: '(11) 9988-7766', responsavel: 'Andre Vallo' },
-  { id: 'emp-8', nome: 'JC Rental', cnpj: '11.222.333/0001-55', telefone: '(11) 7766-5544', responsavel: 'Julio Cesar' },
-  { id: 'emp-9', nome: 'Tecnogeo', cnpj: '88.999.000/0001-33', telefone: '(11) 8877-6655', responsavel: 'Roberto Geo' },
-  { id: 'emp-10', nome: 'Locado', cnpj: '44.555.666/0001-77', telefone: '(11) 2233-4455', responsavel: 'Mário Loca' },
-  { id: 'emp-11', nome: 'Tecnogeo/Roda Muk', cnpj: '66.777.888/0001-99', telefone: '(11) 6655-4433', responsavel: 'Renato Muk' },
-  { id: 'emp-12', nome: 'Locaguinchos', cnpj: '99.000.111/0001-22', telefone: '(11) 1122-3344', responsavel: 'Geraldo Guincho' },
-  { id: 'emp-13', nome: 'Megapeso Transportes', cnpj: '12.233.344/0001-55', telefone: '(11) 2233-4455', responsavel: 'Marcos Peso' },
-  { id: 'emp-14', nome: 'Camacon', cnpj: '34.455.566/0001-77', telefone: '(11) 4455-6677', responsavel: 'Eduardo Cama' },
-  { id: 'emp-15', nome: 'MGM Rental', cnpj: '56.677.788/0001-99', telefone: '(11) 8899-0011', responsavel: 'Marcelo MGM' },
-  { id: 'emp-16', nome: 'Zetaloc.com.br', cnpj: '78.899.900/0001-11', telefone: '(11) 1122-3344', responsavel: 'Zeca Loc' },
-  { id: 'emp-17', nome: 'Lagon', cnpj: '90.011.122/0001-33', telefone: '(11) 3344-5566', responsavel: 'Leonardo Lagon' },
-  { id: 'emp-18', nome: 'Formeq Rental', cnpj: '12.345.678/0002-12', telefone: '(11) 5566-7788', responsavel: 'Felipe Formeq' },
-  { id: 'emp-19', nome: 'Sollo', cnpj: '34.567.890/0002-34', telefone: '(11) 7788-9900', responsavel: 'Silvio Sollo' }
-];
-
-export let INITIAL_EMPRESAS: Empresa[] = BASE_INITIAL_EMPRESAS;
+// Empresas, comboios, combustível, viagens da jazida e estacas começam vazios:
+// navegador novo espera a nuvem em vez de gravar uma base de exemplo.
+export const INITIAL_EMPRESAS: Empresa[] = [];
 
 export const INITIAL_OBRAS: ObraLocal[] = [
   { id: 'obr-1', nome: 'Mão de Obra Geral - RENEA', endereco: 'Frente de Trabalho Renea', responsavel: 'Eng. Ricardo Renea', status: 'Ativa' },
@@ -100,7 +37,7 @@ export const INITIAL_OBRAS: ObraLocal[] = [
   { id: 'obr-4', nome: 'Pavimentação Parque Industrial', endereco: 'Joinville - SC', responsavel: 'Mestre Carlos Abreu', status: 'Planejada' }
 ];
 
-export let INITIAL_EQUIPAMENTOS: Equipamento[] = [];
+export const INITIAL_EQUIPAMENTOS: Equipamento[] = [];
 
 export const INITIAL_FUNCIONARIOS: Funcionario[] = [
   // 258 colaboradores
@@ -390,13 +327,7 @@ export const INITIAL_FUNCIONARIOS: Funcionario[] = [
   { id: "fun-103259", matricula: "103259", nome: "FRANCIMAR SOUSA PONTES", cargo: "AUXILIAR GERAL", telefone: '', empresaId: 'emp-1', ativo: false, liderMatricula: "190044", liderNome: "PAULO CESAR HONORATO DA SILVA VIEIRA", area: "SESMT", responsavelArea: "PAULO CESAR HONORATO DA SILVA VIEIRA" },
 ];
 
-const BASE_INITIAL_COMBOIOS: Comboio[] = [
-  { id: 'com-1', nome: 'Comboio TQC022', placa: 'BRA-2200', capacidadeLitros: 10000, responsavel: 'Espedito Bento da Silva' },
-  { id: 'com-2', nome: 'Comboio 01 - Renea', placa: 'BRA-9A12', capacidadeLitros: 4000, responsavel: 'José da Silva' },
-  { id: 'com-3', nome: 'Comboio 02 - Renea', placa: 'REO-4B90', capacidadeLitros: 6000, responsavel: 'Marcos de Souza' }
-];
-
-export let INITIAL_COMBOIOS: Comboio[] = BASE_INITIAL_COMBOIOS;
+export const INITIAL_COMBOIOS: Comboio[] = [];
 
 export const INITIAL_TIPOS_COMBUSTIVEL: TipoCombustivel[] = [
   { id: 'tc-1', nome: 'Óleo Diesel S 10 Comum' },
@@ -423,85 +354,9 @@ export const INITIAL_ETAPAS_SERVICO: EtapaServico[] = [
   { id: 'et-5', nome: 'Sinalização e Obras de Arte Correntes' }
 ];
 
-export const LEGACY_INITIAL_ABASTECIMENTOS: Abastecimento[] = [
-  { id: 'ab-1', data: '2026-06-21', hora: '07:00', equipamentoId: 'eq-cb765', horimetroInicial: 705, kmInicial: 174980, bombaInicial: 87331, quantidadeLitros: 200, bombaFinal: 87531, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-2', data: '2026-06-21', hora: '07:20', equipamentoId: 'eq-cb754', horimetroInicial: 14811, kmInicial: 737545, bombaInicial: 87531, quantidadeLitros: 98, bombaFinal: 87629, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-3', data: '2026-06-21', hora: '07:30', equipamentoId: 'eq-cb789', horimetroInicial: 12824, kmInicial: 165714, bombaInicial: 87629, quantidadeLitros: 70, bombaFinal: 87699, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-4', data: '2026-06-21', hora: '07:40', equipamentoId: 'eq-cb775', horimetroInicial: 12443, kmInicial: 180568, bombaInicial: 87699, quantidadeLitros: 170, bombaFinal: 87869, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-5', data: '2026-06-21', hora: '07:50', equipamentoId: 'eq-cb786', horimetroInicial: 13559, kmInicial: 195678, bombaInicial: 87869, quantidadeLitros: 43, bombaFinal: 87912, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-6', data: '2026-06-21', hora: '08:00', equipamentoId: 'eq-cb755', horimetroInicial: 10296, kmInicial: 160626, bombaInicial: 87912, quantidadeLitros: 70, bombaFinal: 87982, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-7', data: '2026-06-21', hora: '08:20', equipamentoId: 'eq-cb770', horimetroInicial: 1431, kmInicial: 22033, bombaInicial: 87982, quantidadeLitros: 40, bombaFinal: 88022, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-8', data: '2026-06-21', hora: '08:30', equipamentoId: 'eq-cb730', horimetroInicial: 915, kmInicial: 224841, bombaInicial: 88022, quantidadeLitros: 75, bombaFinal: 88097, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-9', data: '2026-06-21', hora: '08:40', equipamentoId: 'eq-cb804', horimetroInicial: 913, kmInicial: 133860, bombaInicial: 88097, quantidadeLitros: 123, bombaFinal: 88220, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-10', data: '2026-06-21', hora: '08:50', equipamentoId: 'eq-cb776', horimetroInicial: 4844, kmInicial: 265192, bombaInicial: 88220, quantidadeLitros: 50, bombaFinal: 88270, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-11', data: '2026-06-21', hora: '09:00', equipamentoId: 'eq-cb794', horimetroInicial: 1806, kmInicial: 223359, bombaInicial: 88270, quantidadeLitros: 93, bombaFinal: 88363, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-12', data: '2026-06-21', hora: '09:20', equipamentoId: 'eq-cb767', horimetroInicial: 10047, kmInicial: 183636, bombaInicial: 88363, quantidadeLitros: 75, bombaFinal: 88438, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-13', data: '2026-06-21', hora: '09:40', equipamentoId: 'eq-cb735', horimetroInicial: 1613, kmInicial: 201470, bombaInicial: 88438, quantidadeLitros: 82, bombaFinal: 88520, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-14', data: '2026-06-21', hora: '10:00', equipamentoId: 'eq-cb790', horimetroInicial: 11672, kmInicial: 226948, bombaInicial: 88520, quantidadeLitros: 39, bombaFinal: 88559, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-15', data: '2026-06-22', hora: '06:00', equipamentoId: 'eq-cb748', horimetroInicial: 9650, kmInicial: 130905, bombaInicial: 88559, quantidadeLitros: 81, bombaFinal: 88640, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-16', data: '2026-06-22', hora: '06:10', equipamentoId: 'eq-lo145', horimetroInicial: 1073, kmInicial: 27284, bombaInicial: 88640, quantidadeLitros: 92, bombaFinal: 88732, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-17', data: '2026-06-22', hora: '06:20', equipamentoId: 'eq-ec079', horimetroInicial: 1957, kmInicial: 0, bombaInicial: 88732, quantidadeLitros: 84, bombaFinal: 88816, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-18', data: '2026-06-22', hora: '06:25', equipamentoId: 'eq-lo279', horimetroInicial: 1789, kmInicial: 0, bombaInicial: 88816, quantidadeLitros: 18, bombaFinal: 88834, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-19', data: '2026-06-22', hora: '06:30', equipamentoId: 'eq-ec063', horimetroInicial: 10873, kmInicial: 0, bombaInicial: 88834, quantidadeLitros: 89, bombaFinal: 88923, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-20', data: '2026-06-22', hora: '06:35', equipamentoId: 'eq-te007', horimetroInicial: 1853, kmInicial: 0, bombaInicial: 88923, quantidadeLitros: 90, bombaFinal: 89013, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-21', data: '2026-06-22', hora: '06:40', equipamentoId: 'eq-te038', horimetroInicial: 9302, kmInicial: 0, bombaInicial: 89013, quantidadeLitros: 93, bombaFinal: 89106, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-22', data: '2026-06-22', hora: '06:45', equipamentoId: 'eq-lo318', horimetroInicial: 1004, kmInicial: 0, bombaInicial: 89106, quantidadeLitros: 113, bombaFinal: 89219, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-23', data: '2026-06-22', hora: '06:50', equipamentoId: 'eq-ec012', horimetroInicial: 10971, kmInicial: 0, bombaInicial: 89219, quantidadeLitros: 123, bombaFinal: 89342, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-24', data: '2026-06-22', hora: '06:55', equipamentoId: 'eq-te030', horimetroInicial: 428, kmInicial: 0, bombaInicial: 89342, quantidadeLitros: 106, bombaFinal: 89448, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-25', data: '2026-06-22', hora: '07:05', equipamentoId: 'eq-lo237', horimetroInicial: 13026, kmInicial: 0, bombaInicial: 89448, quantidadeLitros: 72, bombaFinal: 89520, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-26', data: '2026-06-22', hora: '07:15', equipamentoId: 'eq-lo231', horimetroInicial: 719, kmInicial: 0, bombaInicial: 89520, quantidadeLitros: 47, bombaFinal: 89567, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-27', data: '2026-06-22', hora: '07:20', equipamentoId: 'eq-lo248', horimetroInicial: 6385, kmInicial: 0, bombaInicial: 89567, quantidadeLitros: 100, bombaFinal: 89667, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-28', data: '2026-06-22', hora: '07:30', equipamentoId: 'eq-lo354', horimetroInicial: 11943, kmInicial: 0, bombaInicial: 89667, quantidadeLitros: 156, bombaFinal: 89823, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-29', data: '2026-06-22', hora: '07:50', equipamentoId: 'eq-lo355', horimetroInicial: 1292, kmInicial: 0, bombaInicial: 89823, quantidadeLitros: 226, bombaFinal: 90049, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-30', data: '2026-06-22', hora: '08:00', equipamentoId: 'eq-lo260', horimetroInicial: 10700, kmInicial: 0, bombaInicial: 90049, quantidadeLitros: 112, bombaFinal: 90161, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-31', data: '2026-06-22', hora: '08:10', equipamentoId: 'eq-lo250', horimetroInicial: 3011, kmInicial: 0, bombaInicial: 90161, quantidadeLitros: 41, bombaFinal: 90202, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-32', data: '2026-06-22', hora: '08:15', equipamentoId: 'eq-lo169', horimetroInicial: 2565, kmInicial: 0, bombaInicial: 90202, quantidadeLitros: 39, bombaFinal: 90241, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-33', data: '2026-06-22', hora: '08:40', equipamentoId: 'eq-gp008', horimetroInicial: 1697, kmInicial: 1571, bombaInicial: 90241, quantidadeLitros: 116, bombaFinal: 90357, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-34', data: '2026-06-22', hora: '09:30', equipamentoId: 'eq-lo360', horimetroInicial: 2244, kmInicial: 0, bombaInicial: 90357, quantidadeLitros: 16, bombaFinal: 90373, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-35', data: '2026-06-22', hora: '09:35', equipamentoId: 'eq-lo241', horimetroInicial: 25636, kmInicial: 0, bombaInicial: 90373, quantidadeLitros: 86, bombaFinal: 90459, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-36', data: '2026-06-22', hora: '09:45', equipamentoId: 'eq-lo264', horimetroInicial: 8334, kmInicial: 0, bombaInicial: 90459, quantidadeLitros: 51, bombaFinal: 90510, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-37', data: '2026-06-22', hora: '09:50', equipamentoId: 'eq-lo352', horimetroInicial: 889, kmInicial: 0, bombaInicial: 90510, quantidadeLitros: 43, bombaFinal: 90553, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-38', data: '2026-06-22', hora: '09:55', equipamentoId: 'eq-lo334', horimetroInicial: 210, kmInicial: 0, bombaInicial: 90553, quantidadeLitros: 18, bombaFinal: 90571, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-39', data: '2026-06-22', hora: '10:15', equipamentoId: 'eq-te037', horimetroInicial: 11005, kmInicial: 0, bombaInicial: 90571, quantidadeLitros: 143, bombaFinal: 90714, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-40', data: '2026-06-22', hora: '13:40', equipamentoId: 'eq-cb782', horimetroInicial: 8484, kmInicial: 0, bombaInicial: 90714, quantidadeLitros: 234, bombaFinal: 90948, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-41', data: '2026-06-22', hora: '14:00', equipamentoId: 'eq-lo321', horimetroInicial: 1046, kmInicial: 0, bombaInicial: 90948, quantidadeLitros: 31, bombaFinal: 90979, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-42', data: '2026-06-22', hora: '14:10', equipamentoId: 'eq-lo247', horimetroInicial: 2714, kmInicial: 0, bombaInicial: 90979, quantidadeLitros: 39, bombaFinal: 91018, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-43', data: '2026-06-22', hora: '14:15', equipamentoId: 'eq-lo162', horimetroInicial: 1114, kmInicial: 0, bombaInicial: 91018, quantidadeLitros: 31, bombaFinal: 91049, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-44', data: '2026-06-22', hora: '14:20', equipamentoId: 'eq-lo165', horimetroInicial: 849, kmInicial: 0, bombaInicial: 91049, quantidadeLitros: 73, bombaFinal: 91122, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-45', data: '2026-06-22', hora: '14:30', equipamentoId: 'eq-lo156', horimetroInicial: 1683, kmInicial: 0, bombaInicial: 91122, quantidadeLitros: 41, bombaFinal: 91163, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-46', data: '2026-06-22', hora: '14:35', equipamentoId: 'eq-lo155', horimetroInicial: 1841, kmInicial: 0, bombaInicial: 91163, quantidadeLitros: 38, bombaFinal: 91201, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-47', data: '2026-06-22', hora: '14:50', equipamentoId: 'eq-lo232', horimetroInicial: 2135, kmInicial: 0, bombaInicial: 91201, quantidadeLitros: 51, bombaFinal: 91252, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-48', data: '2026-06-23', hora: '06:05', equipamentoId: 'eq-ec010', horimetroInicial: 1902, kmInicial: 0, bombaInicial: 91252, quantidadeLitros: 279, bombaFinal: 91531, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-49', data: '2026-06-23', hora: '06:15', equipamentoId: 'eq-lo260', horimetroInicial: 0, kmInicial: 0, bombaInicial: 91531, quantidadeLitros: 128, bombaFinal: 91659, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-50', data: '2026-06-23', hora: '06:25', equipamentoId: 'eq-lo278', horimetroInicial: 402, kmInicial: 0, bombaInicial: 91659, quantidadeLitros: 44, bombaFinal: 91703, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-51', data: '2026-06-23', hora: '06:35', equipamentoId: 'eq-ec079', horimetroInicial: 1962, kmInicial: 0, bombaInicial: 91703, quantidadeLitros: 75, bombaFinal: 91778, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-52', data: '2026-06-23', hora: '06:40', equipamentoId: 'eq-te030', horimetroInicial: 431, kmInicial: 0, bombaInicial: 91778, quantidadeLitros: 52, bombaFinal: 91830, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-53', data: '2026-06-23', hora: '07:00', equipamentoId: 'eq-lo337', horimetroInicial: 868, kmInicial: 0, bombaInicial: 91830, quantidadeLitros: 39, bombaFinal: 91869, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-54', data: '2026-06-23', hora: '07:10', equipamentoId: 'eq-lo325', horimetroInicial: 737, kmInicial: 0, bombaInicial: 91869, quantidadeLitros: 51, bombaFinal: 91920, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-55', data: '2026-06-23', hora: '07:20', equipamentoId: 'eq-lo357', horimetroInicial: 271, kmInicial: 0, bombaInicial: 91920, quantidadeLitros: 30, bombaFinal: 91950, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-56', data: '2026-06-23', hora: '07:25', equipamentoId: 'eq-lo355', horimetroInicial: 1315, kmInicial: 0, bombaInicial: 91950, quantidadeLitros: 120, bombaFinal: 92070, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-57', data: '2026-06-23', hora: '07:30', equipamentoId: 'eq-lo358', horimetroInicial: 2031, kmInicial: 0, bombaInicial: 92070, quantidadeLitros: 33, bombaFinal: 92103, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-58', data: '2026-06-23', hora: '07:40', equipamentoId: 'eq-ec077', horimetroInicial: 1423, kmInicial: 0, bombaInicial: 92103, quantidadeLitros: 205, bombaFinal: 92308, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-59', data: '2026-06-23', hora: '08:00', equipamentoId: 'eq-lo293', horimetroInicial: 7721, kmInicial: 3529, bombaInicial: 92308, quantidadeLitros: 144, bombaFinal: 92452, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-60', data: '2026-06-23', hora: '08:20', equipamentoId: 'eq-lo169', horimetroInicial: 2578, kmInicial: 0, bombaInicial: 92452, quantidadeLitros: 35, bombaFinal: 92487, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-61', data: '2026-06-23', hora: '09:00', equipamentoId: 'eq-lo326', horimetroInicial: 19390, kmInicial: 216725, bombaInicial: 92487, quantidadeLitros: 167, bombaFinal: 92654, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-62', data: '2026-06-23', hora: '11:45', equipamentoId: 'eq-lo241', horimetroInicial: 25644, kmInicial: 0, bombaInicial: 92654, quantidadeLitros: 127, bombaFinal: 92781, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-63', data: '2026-06-23', hora: '11:50', equipamentoId: 'eq-lo264', horimetroInicial: 8342, kmInicial: 0, bombaInicial: 92781, quantidadeLitros: 147, bombaFinal: 92928, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-64', data: '2026-06-23', hora: '11:55', equipamentoId: 'eq-lo352', horimetroInicial: 897, kmInicial: 0, bombaInicial: 92928, quantidadeLitros: 129, bombaFinal: 93057, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-65', data: '2026-06-23', hora: '12:05', equipamentoId: 'eq-ec081', horimetroInicial: 2301, kmInicial: 0, bombaInicial: 93057, quantidadeLitros: 159, bombaFinal: 93216, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-66', data: '2026-06-23', hora: '12:10', equipamentoId: 'eq-rt030', horimetroInicial: 2884, kmInicial: 0, bombaInicial: 93216, quantidadeLitros: 102, bombaFinal: 93318, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-67', data: '2026-06-23', hora: '12:25', equipamentoId: 'eq-lo338', horimetroInicial: 0, kmInicial: 0, bombaInicial: 93318, quantidadeLitros: 154, bombaFinal: 93472, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-68', data: '2026-06-23', hora: '12:30', equipamentoId: 'eq-lo256', horimetroInicial: 269, kmInicial: 0, bombaInicial: 93472, quantidadeLitros: 83, bombaFinal: 93555, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-69', data: '2026-06-23', hora: '12:35', equipamentoId: 'eq-rt018', horimetroInicial: 920, kmInicial: 0, bombaInicial: 93555, quantidadeLitros: 55, bombaFinal: 93610, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-70', data: '2026-06-23', hora: '12:40', equipamentoId: 'eq-lo244', horimetroInicial: 528, kmInicial: 0, bombaInicial: 93610, quantidadeLitros: 192, bombaFinal: 93802, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-71', data: '2026-06-23', hora: '12:45', equipamentoId: 'eq-lo258', horimetroInicial: 226, kmInicial: 0, bombaInicial: 93802, quantidadeLitros: 112, bombaFinal: 93914, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-72', data: '2026-06-23', hora: '12:50', equipamentoId: 'eq-lo334', horimetroInicial: 10882, kmInicial: 0, bombaInicial: 93914, quantidadeLitros: 28, bombaFinal: 93942, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-  { id: 'ab-73', data: '2026-06-23', hora: '12:55', equipamentoId: 'eq-ec063', horimetroInicial: 0, kmInicial: 0, bombaInicial: 93942, quantidadeLitros: 181, bombaFinal: 94123, tipoCombustivelId: 'tc-1', comboioId: 'com-1', responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
-];
+export const INITIAL_ABASTECIMENTOS: Abastecimento[] = [];
 
-export let INITIAL_ABASTECIMENTOS: Abastecimento[] = [];
-
-export let INITIAL_TICKETS_JAZIDA: TicketJazida[] = [];
+export const INITIAL_TICKETS_JAZIDA: TicketJazida[] = [];
 
 export const INITIAL_LUBRIFICACOES: Lubrificacao[] = [
   { id: 'lub-1', data: '2026-06-22', hora: '06:20', equipamentoId: 'eq-ec079', horimetro: 1954, produtoLubrificacaoId: 'pl-1', compartimento: 'Pinos e Articulações', quantidade: 1, responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },
