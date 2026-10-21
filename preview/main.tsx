@@ -825,7 +825,9 @@ const previewQueryClient = new QueryClient();
 // Os links públicos rodam fora do ERP (PublicLinksApp), sem o
 // #main-tab-viewport e os estilos de formulário dele. A pesquisa também fica
 // fora dele no App.
-const isPublicScreen = key === 'material-link' || key === 'pesquisa';
+// O link de presença também: no app ele tem a página só para ele, com uma
+// <main> só (auditoria de 21/10/2026, M2).
+const isPublicScreen = ['material-link', 'pesquisa', 'presenca', 'presenca-fluxo', 'presenca-enviada'].includes(key);
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
