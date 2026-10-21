@@ -1,7 +1,7 @@
 /**
  * Classes repetidas da aba Cadastros, no padrão do Painel de Controle:
- * verde RENEA na ação principal, foco laranja, cantos de 12 a 16 px e toque
- * de pelo menos 44 px.
+ * verde RENEA na ação principal, foco com borda verde-escura sólida, cantos
+ * de 12 a 16 px e toque de pelo menos 44 px.
  */
 export const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 
