@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  createNotification,
+  MAX_NOTIFICATION_MESSAGE,
   markAllNotificationsAsRead,
   markNotificationAsRead,
   prependNotifications,
@@ -44,4 +46,11 @@ test('marcacao de leitura preserva os demais registros', () => {
     markAllNotificationsAsRead(notifications).map(item => item.read),
     [true, true, true],
   );
+});
+
+test('mensagem gigante e cortada para nao inchar a nuvem', () => {
+  const gigante = { ...makeNotification('g'), message: 'x'.repeat(6_000_000) };
+  const next = prependNotifications([gigante], [createNotification('Falhou', 'y'.repeat(5000), 'error')]);
+  assert.ok(next.every(item => item.message.length <= MAX_NOTIFICATION_MESSAGE));
+  assert.equal(next[1].id, 'g');
 });

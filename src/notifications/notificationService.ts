@@ -8,6 +8,18 @@ export type NotificationType = AppNotification['type'];
 export type NotificationSource = AppNotification['source'];
 
 const MAX_NOTIFICATIONS = 50;
+// Um aviso de erro já levou 5,7 MB de texto para a nuvem e derrubou o banco.
+export const MAX_NOTIFICATION_MESSAGE = 400;
+
+const limitarMensagem = (message: string) => {
+  const texto = String(message ?? '');
+  return texto.length > MAX_NOTIFICATION_MESSAGE ? `${texto.slice(0, MAX_NOTIFICATION_MESSAGE - 1)}…` : texto;
+};
+
+const limitarAviso = (aviso: AppNotification): AppNotification => {
+  const message = limitarMensagem(aviso.message);
+  return message === aviso.message ? aviso : { ...aviso, message };
+};
 
 const createNotificationId = (prefix = 'notif') =>
   `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -23,7 +35,7 @@ export const createNotification = (
 ): AppNotification => ({
   id: createNotificationId(idPrefix),
   title,
-  message,
+  message: limitarMensagem(message),
   type,
   timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
   read: false,
@@ -33,7 +45,7 @@ export const createNotification = (
 export const prependNotifications = (
   current: AppNotification[],
   incoming: AppNotification[],
-): AppNotification[] => [...incoming, ...current].slice(0, MAX_NOTIFICATIONS);
+): AppNotification[] => [...incoming, ...current].slice(0, MAX_NOTIFICATIONS).map(limitarAviso);
 
 export const markAllNotificationsAsRead = (
   notifications: AppNotification[],
