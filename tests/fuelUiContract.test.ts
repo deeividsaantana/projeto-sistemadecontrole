@@ -24,6 +24,9 @@ test('relatório do diesel abre a lista filtrada a partir do dia, da máquina e 
   assert.match(relatorioSource, /onAbrirDia=\{dia => onAbrirLista\(\{ dataInicio: dia, dataFim: dia \}\)\}/);
   assert.match(relatorioSource, /onAbrirLista\(\{ \.\.\.doPeriodo, soRepetidos: true \}\)/);
   assert.match(relatorioSource, /<ConsumoPorMaquina/);
+  assert.match(relatorioSource, /data-testid="relatorio-empresa"/);
+  assert.match(relatorioSource, /montarFornecimento\(\{ registros: abastecimentos/);
+  assert.match(relatorioSource, /title: 'Total por equipamento'/);
   assert.match(relatorioSource, /reduzMovimento\(\)/);
   assert.match(source, /pedidoFiltro=\{pedidoFiltro\}/);
 });

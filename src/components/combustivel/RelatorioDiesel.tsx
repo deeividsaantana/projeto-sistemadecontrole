@@ -3,16 +3,18 @@
  * dia, quem mais abasteceu e o que precisa de conferência. Tudo é clicável:
  * o dia, a máquina, o comboio, a empresa e os alertas abrem a lista já
  * filtrada. O consumo em L/h e km/L fica na parte "Consumo por máquina".
+ * Escolhendo uma empresa, tudo passa a mostrar só as máquinas dela, e o PDF
+ * sai no modelo do e-mail de fornecimento para a empresa conferir.
  */
 import { useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CalendarDays, CopyX, Download, Fuel, Gauge, HelpCircle, Truck } from 'lucide-react';
-import type { Abastecimento, Comboio, Empresa, Equipamento } from '../../types';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Building2, CalendarDays, CopyX, Download, FileText, Fuel, Gauge, HelpCircle, Truck } from 'lucide-react';
+import type { Abastecimento, Comboio, Empresa, Equipamento, TipoCombustivel } from '../../types';
 import { abaDoDia, abasDoHistorico, intervaloDaAba } from '../../modules/frota/historicoCombustivel';
 import { getFuelCompetencePeriodLabel } from '../../modules/frota/fuelReport';
 import { nomeDoMes } from '../../modules/frota/planilhaDiesel';
-import { montarRelatorioDiesel, type LinhaRelatorio } from '../../modules/frota/relatorioDiesel';
+import { montarFornecimento, montarRelatorioDiesel, type LinhaRelatorio } from '../../modules/frota/relatorioDiesel';
 import { CountUp, isoDay } from '../../shared/ui';
 import { BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
 import ConsumoPorMaquina from './ConsumoPorMaquina';
@@ -25,6 +27,8 @@ interface Props {
   equipamentos: Equipamento[];
   empresas: Empresa[];
   comboios: Comboio[];
+  /** Dá o nome do combustível no título do PDF (ex.: Diesel S10). */
+  combustiveis?: TipoCombustivel[];
   parteInicial?: ParteRelatorio;
   /** Abre a lista de lançamentos com esse filtro. */
   onAbrirLista: (pedido: Omit<PedidoFiltro, 'chave'>) => void;
@@ -37,6 +41,9 @@ const TRINTA_DIAS = '30d';
 const VERDE = '#176b4d';
 
 const litrosTexto = (valor: number) => `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} L`;
+const litrosExatos = (valor: number) => `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L`;
+const numeroTexto = (valor?: number) => (valor === undefined ? '' : valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
+const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '');
 const dataCurta = (dia: string) => (dia ? new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR') : '');
 const diaSemana = (dia: string) => new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
 /** "2026-11" vira "Novembro". */
@@ -53,7 +60,7 @@ const tetoRedondo = (valor: number) => {
   return [1, 2, 2.5, 5, 10].map(passo => passo * base).find(teto => teto >= valor) ?? valor;
 };
 
-export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas, comboios, parteInicial = 'resumo', onAbrirLista, onErro, onAviso }: Props) {
+export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas, comboios, combustiveis = [], parteInicial = 'resumo', onAbrirLista, onErro, onAviso }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const hoje = isoDay(new Date());
   const [parte, setParte] = useState<ParteRelatorio>(parteInicial);
@@ -61,6 +68,19 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
   // Abre no mês do diesel; no começo do mês, ainda sem abastecimento, abre nos últimos 30 dias.
   const [periodo, setPeriodo] = useState(() => (abastecimentos.some(item => item.data && abaDoDia(item.data) === abaDoDia(hoje)) ? abaDoDia(hoje) : TRINTA_DIAS));
   const [exportando, setExportando] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+  /** Empresa escolhida; vazio = todas. */
+  const [empresaId, setEmpresaId] = useState('');
+  const empresaDe = useMemo(() => new Map(equipamentos.map(item => [item.id, item.empresaId])), [equipamentos]);
+  /** Só as empresas que têm máquina com abastecimento, em ordem de nome. */
+  const empresasComDiesel = useMemo(() => {
+    const ids = new Set(abastecimentos.map(item => empresaDe.get(item.equipamentoId)).filter(Boolean));
+    return empresas.filter(item => ids.has(item.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [abastecimentos, empresaDe, empresas]);
+  const registros = useMemo(
+    () => (empresaId ? abastecimentos.filter(item => empresaDe.get(item.equipamentoId) === empresaId) : abastecimentos),
+    [abastecimentos, empresaDe, empresaId],
+  );
 
   const intervalo = useMemo(() => {
     if (periodo === SETE_DIAS) return { dataInicio: voltarDias(hoje, 6), dataFim: hoje };
@@ -69,8 +89,8 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
   }, [hoje, periodo]);
 
   const relatorio = useMemo(() => montarRelatorioDiesel({
-    registros: abastecimentos, equipamentos, empresas, comboios, inicio: intervalo.dataInicio, fim: intervalo.dataFim, hoje,
-  }), [abastecimentos, comboios, empresas, equipamentos, hoje, intervalo]);
+    registros, equipamentos, empresas, comboios, inicio: intervalo.dataInicio, fim: intervalo.dataFim, hoje,
+  }), [registros, comboios, empresas, equipamentos, hoje, intervalo]);
 
   const rotuloPeriodo = periodo === SETE_DIAS ? 'Últimos 7 dias' : periodo === TRINTA_DIAS ? 'Últimos 30 dias' : nomeDoMes(periodo);
   const doPeriodo = { dataInicio: relatorio.inicio, dataFim: relatorio.fim };
@@ -79,7 +99,7 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
     if (reduzMovimento() || parte !== 'resumo') return;
     gsap.fromTo('[data-barra-dia]', { scaleY: 0 }, { scaleY: 1, duration: 0.5, stagger: 0.012, ease: 'power3.out', transformOrigin: 'bottom', clearProps: 'transform' });
     gsap.fromTo('[data-barra-ranking]', { scaleX: 0 }, { scaleX: 1, duration: 0.55, stagger: 0.03, ease: 'power3.out', transformOrigin: 'left', clearProps: 'transform' });
-  }, { scope: escopo, dependencies: [periodo, parte] });
+  }, { scope: escopo, dependencies: [periodo, parte, empresaId] });
 
   const exportar = async () => {
     setExportando(true);
@@ -90,6 +110,7 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
       const resumo = workbook.addWorksheet('Resumo');
       resumo.columns = [{ header: 'Item', key: 'item', width: 34 }, { header: 'Valor', key: 'valor', width: 22 }];
       [
+        ['Empresa', empresas.find(item => item.id === empresaId)?.nome || 'Todas as empresas'],
         ['Período', `${rotuloPeriodo} (${dataCurta(relatorio.inicio)} a ${dataCurta(relatorio.fim)})`],
         ['Litros', relatorio.litros], ['Lançamentos', relatorio.lancamentos], ['Máquinas', relatorio.maquinas],
         ['Média por dia (L)', Math.round(relatorio.mediaPorDia)],
@@ -117,6 +138,60 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
       onErro(falha instanceof Error ? `Falha ao exportar: ${falha.message}` : 'Falha ao exportar.');
     } finally {
       setExportando(false);
+    }
+  };
+
+  /** PDF no modelo do e-mail de fornecimento: resumo por data e total por equipamento. */
+  const gerarPdf = async () => {
+    setGerandoPdf(true);
+    try {
+      const fim = relatorio.fim > hoje ? hoje : relatorio.fim;
+      const f = montarFornecimento({ registros: abastecimentos, equipamentos, empresas, comboios, combustiveis, inicio: relatorio.inicio, fim, empresaId });
+      const periodoTexto = `${dataCurta(f.inicio)} a ${dataCurta(f.fim)}`;
+      const { generateUniversalPdfReport } = await import('../../utils/universalPdfReport');
+      await generateUniversalPdfReport({
+        title: `Fornecimento de ${f.combustivel}`,
+        subtitle: `${f.empresa} · ${rotuloPeriodo}`,
+        orientation: 'landscape',
+        period: periodoTexto,
+        filters: [`Empresa: ${f.empresa}`],
+        summary: [
+          { label: 'Total fornecido', value: litrosExatos(f.litros) },
+          { label: 'Lançamentos', value: f.lancamentos },
+          { label: 'Equipamentos', value: f.porEquipamento.length },
+          { label: 'Período', value: periodoTexto },
+        ],
+        columns: [
+          { header: 'Data', dataKey: 'data' }, { header: 'Hora', dataKey: 'hora' }, { header: 'Prefixo', dataKey: 'prefixo' },
+          { header: 'Descrição do equipamento', dataKey: 'descricao' }, { header: 'Comboio', dataKey: 'comboio' },
+          { header: 'Horímetro / KM', dataKey: 'leitura' }, { header: 'Bomba inicial', dataKey: 'bombaInicial' },
+          { header: 'Bomba final', dataKey: 'bombaFinal' }, { header: 'Diesel fornecido', dataKey: 'litros' },
+        ],
+        rows: f.linhas.map(linha => ({
+          ...linha,
+          data: dataCurta(linha.data),
+          leitura: linha.horimetro !== undefined ? `${numeroTexto(linha.horimetro)} h` : linha.km !== undefined ? `${numeroTexto(linha.km)} km` : '',
+          bombaInicial: numeroTexto(linha.bombaInicial),
+          bombaFinal: numeroTexto(linha.bombaFinal),
+          litros: litrosExatos(linha.litros),
+        })),
+        totalRow: { data: 'Total do período', litros: litrosExatos(f.litros) },
+        sections: [{
+          title: 'Total por equipamento',
+          columns: [
+            { header: 'Prefixo', dataKey: 'prefixo' }, { header: 'Equipamento', dataKey: 'descricao' },
+            { header: 'Abastecimentos', dataKey: 'abastecimentos' }, { header: 'Diesel fornecido', dataKey: 'litros' },
+          ],
+          rows: f.porEquipamento.map(item => ({ ...item, litros: litrosExatos(item.litros) })),
+          totalRow: { prefixo: 'Total', abastecimentos: f.lancamentos, litros: litrosExatos(f.litros) },
+        }],
+        fileName: `Fornecimento diesel - ${semAcento(f.empresa).replace(/[^\w .-]+/g, '')} - ${f.inicio} a ${f.fim}.pdf`,
+      });
+      onAviso(`PDF de ${f.empresa} gerado: ${f.lancamentos} lançamento(s), ${litrosExatos(f.litros)}.`);
+    } catch (falha) {
+      onErro(falha instanceof Error ? `Falha ao gerar o PDF: ${falha.message}` : 'Falha ao gerar o PDF.');
+    } finally {
+      setGerandoPdf(false);
     }
   };
 
@@ -149,9 +224,22 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
               </select>
             )}
           </div>
-          <button type="button" onClick={() => void exportar()} disabled={exportando || !relatorio.lancamentos} className={`${BOTAO_SECUNDARIO} ml-auto min-h-9 px-3`} data-testid="relatorio-excel">
-            <Download className="size-4" aria-hidden="true" />{exportando ? 'Gerando…' : 'Excel'}
-          </button>
+          <label className="flex min-w-0 items-center gap-1.5">
+            <Building2 className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
+            <span className="sr-only">Empresa</span>
+            <select value={empresaId} onChange={event => setEmpresaId(event.target.value)} className={`${CAMPO} !min-h-9 !w-auto max-w-[14rem] !py-0 !text-sm font-semibold ${empresaId ? '!border-[#176b4d] text-[#176b4d]' : ''}`} data-testid="relatorio-empresa">
+              <option value="">Todas as empresas</option>
+              {empresasComDiesel.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+            </select>
+          </label>
+          <span className="ml-auto flex gap-1.5">
+            <button type="button" onClick={() => void gerarPdf()} disabled={gerandoPdf || !relatorio.lancamentos} title="PDF no modelo do e-mail de fornecimento" className={`${BOTAO_SECUNDARIO} min-h-9 px-3`} data-testid="relatorio-pdf">
+              <FileText className="size-4" aria-hidden="true" />{gerandoPdf ? 'Gerando…' : 'PDF'}
+            </button>
+            <button type="button" onClick={() => void exportar()} disabled={exportando || !relatorio.lancamentos} className={`${BOTAO_SECUNDARIO} min-h-9 px-3`} data-testid="relatorio-excel">
+              <Download className="size-4" aria-hidden="true" />{exportando ? 'Gerando…' : 'Excel'}
+            </button>
+          </span>
         </>}
       </div>
 
@@ -162,6 +250,7 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
             <p className="flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-600">
               <CalendarDays className="size-4 text-[#176b4d]" aria-hidden="true" />
               {rotuloPeriodo}: {dataCurta(relatorio.inicio)} a {dataCurta(relatorio.fim)}
+              {empresaId && <span className="max-w-[12rem] truncate whitespace-nowrap rounded-full bg-[#e8f2ed] px-2 py-0.5 text-xs font-bold text-[#176b4d]" data-testid="relatorio-empresa-ativa">{empresas.find(item => item.id === empresaId)?.nome}</span>}
             </p>
 
             <section aria-label="Números do período" className="grid grid-cols-2 gap-2 lg:grid-cols-4" data-testid="relatorio-numeros">
@@ -195,7 +284,7 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
             <div className="grid min-w-0 gap-2 lg:grid-cols-3">
               <Ranking titulo="Máquinas que mais abasteceram" linhas={relatorio.porMaquina} total={relatorio.litros} testid="relatorio-maquinas" onAbrir={linha => onAbrirLista({ ...doPeriodo, ...linha.filtro })} />
               <Ranking titulo="Por comboio" linhas={relatorio.porComboio} total={relatorio.litros} testid="relatorio-comboios" onAbrir={linha => onAbrirLista({ ...doPeriodo, ...linha.filtro })} />
-              <Ranking titulo="Por empresa" linhas={relatorio.porEmpresa} total={relatorio.litros} testid="relatorio-empresas" onAbrir={linha => onAbrirLista({ ...doPeriodo, ...linha.filtro })} />
+              <Ranking titulo="Por empresa" linhas={relatorio.porEmpresa} total={relatorio.litros} testid="relatorio-empresas" dica={empresaId ? undefined : 'Mostrar o relatório só dessa empresa'} onAbrir={linha => (linha.filtro.empresaId && !empresaId ? setEmpresaId(linha.filtro.empresaId) : onAbrirLista({ ...doPeriodo, ...linha.filtro }))} />
             </div>
           </div>
         )}
@@ -305,7 +394,7 @@ function GraficoPorDia({ relatorio, hoje, onAbrirDia }: { relatorio: ReturnType<
 
 const LIMITE_RANKING = 8;
 
-function Ranking({ titulo, linhas, total, testid, onAbrir }: { titulo: string; linhas: LinhaRelatorio[]; total: number; testid: string; onAbrir: (linha: LinhaRelatorio) => void }) {
+function Ranking({ titulo, linhas, total, testid, dica, onAbrir }: { titulo: string; linhas: LinhaRelatorio[]; total: number; testid: string; dica?: string; onAbrir: (linha: LinhaRelatorio) => void }) {
   const [todas, setTodas] = useState(false);
   const visiveis = todas ? linhas : linhas.slice(0, LIMITE_RANKING);
   const maior = linhas[0]?.litros || 1;
@@ -316,7 +405,7 @@ function Ranking({ titulo, linhas, total, testid, onAbrir }: { titulo: string; l
       <ol className="space-y-0.5">
         {visiveis.map(linha => (
           <li key={linha.chave}>
-            <button type="button" onClick={() => onAbrir(linha)} title={`Abrir os ${linha.lancamentos} lançamento(s) na lista`}
+            <button type="button" onClick={() => onAbrir(linha)} title={dica || `Abrir os ${linha.lancamentos} lançamento(s) na lista`}
               className={`w-full rounded-lg px-1.5 py-1.5 text-left transition hover:bg-[#f7f8f6] ${FOCO}`} data-testid={`${testid}-linha`}>
               <span className="flex items-baseline gap-2 text-sm">
                 <strong className="min-w-0 truncate font-black text-slate-900">{linha.rotulo}</strong>
