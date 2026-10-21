@@ -91,7 +91,7 @@ export default function CadastroTipos({ value, contar, onSelect, mostrarLixeira 
     <div className="space-y-3">
       {CADASTRO_GRUPOS.map(grupo => (
         <section key={grupo.id} aria-labelledby={`cadastro-grupo-${grupo.id}-${grande ? 'm' : 'd'}`}>
-          <h2 id={`cadastro-grupo-${grupo.id}-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#718087]">{grupo.label}</h2>
+          <h2 id={`cadastro-grupo-${grupo.id}-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#5b6870]">{grupo.label}</h2>
           <ul className="space-y-0.5">{categoriasDoGrupo(grupo.id).map(categoria => item(categoria.id, grande))}</ul>
         </section>
       ))}

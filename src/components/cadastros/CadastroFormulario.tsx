@@ -52,7 +52,7 @@ export default function CadastroFormulario({ categoria, titulo, editandoId, valo
     const rotulo = (
       <label htmlFor={id} className={ROTULO}>
         {item.label}
-        {item.obrigatorio && <span className="ml-1 text-xs font-bold text-[#f26a2e]">obrigatório</span>}
+        {item.obrigatorio && <span className="ml-1 text-xs font-bold text-[#c2410c]">obrigatório</span>}
       </label>
     );
     const ajuda = invalido
@@ -67,7 +67,7 @@ export default function CadastroFormulario({ categoria, titulo, editandoId, valo
         <fieldset key={item.id} className="space-y-2 sm:col-span-2">
           <legend className={ROTULO}>
             {item.label}
-            {item.obrigatorio && <span className="ml-1 text-xs font-bold text-[#f26a2e]">obrigatório</span>}
+            {item.obrigatorio && <span className="ml-1 text-xs font-bold text-[#c2410c]">obrigatório</span>}
           </legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {CLASSES_DA_TELA.map(classe => {
@@ -177,7 +177,7 @@ export default function CadastroFormulario({ categoria, titulo, editandoId, valo
   return (
     <CadastroPainel
       titulo={titulo}
-      topo={<span className="text-xs font-bold uppercase tracking-wide text-[#718087]">{editandoId ? 'Editar cadastro' : 'Novo cadastro'}</span>}
+      topo={<span className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{editandoId ? 'Editar cadastro' : 'Novo cadastro'}</span>}
       onFechar={onFechar}
       testId="cadastro-formulario"
       rodape={(

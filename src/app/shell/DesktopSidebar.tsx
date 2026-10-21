@@ -195,7 +195,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
       </nav>
 
       <div
-        className={`flex items-center border-t border-white/[0.06] py-2 text-[10px] font-semibold text-[#6fa08c] ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
+        className={`flex items-center border-t border-white/[0.06] py-2 text-[10px] font-semibold text-[#8fbfa9] ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
         title={APP_VERSION_LABEL}
       >
         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#3ecb8f]" aria-hidden="true" />

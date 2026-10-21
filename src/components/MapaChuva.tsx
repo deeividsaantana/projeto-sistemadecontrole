@@ -23,11 +23,11 @@ interface MapaChuvaProps {
 
 /** Grandeza se lê do claro ao escuro, num tom só. Nunca arco-íris. */
 const CORES_FAIXA: Record<FaixaChuva, { fundo: string; texto: string; borda: string }> = {
-  'sem-diario': { fundo: '#f4f5f3', texto: '#9aa3a8', borda: '#e2e8e4' },
+  'sem-diario': { fundo: '#f4f5f3', texto: '#5b6870', borda: '#e2e8e4' },
   seco: { fundo: '#ffffff', texto: '#5b6b63', borda: '#e2e8e4' },
   fraca: { fundo: '#dbeafe', texto: '#1e3a5f', borda: '#bfdbfe' },
   moderada: { fundo: '#93c5fd', texto: '#10243d', borda: '#60a5fa' },
-  forte: { fundo: '#3b82f6', texto: '#ffffff', borda: '#2563eb' },
+  forte: { fundo: '#2563eb', texto: '#ffffff', borda: '#1d4ed8' },
   'muito-forte': { fundo: '#1d4ed8', texto: '#ffffff', borda: '#1e40af' },
 };
 
@@ -178,7 +178,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
                 className="mapa-chuva__dia flex min-h-14 flex-col items-center justify-center rounded-lg border p-1"
                 style={{ background: cor.fundo, color: cor.texto, borderColor: cor.borda }}
               >
-                <span className="text-[11px] font-bold leading-none opacity-80">{dia.dia}</span>
+                <span className="text-[11px] font-bold leading-none">{dia.dia}</span>
                 <strong className="mt-0.5 text-sm font-black leading-none tabular-nums">
                   {dia.milimetros === null ? '—' : dia.milimetros.toLocaleString('pt-BR')}
                 </strong>

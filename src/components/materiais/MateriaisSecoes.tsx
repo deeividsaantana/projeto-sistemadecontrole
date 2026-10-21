@@ -142,7 +142,7 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
     const abertos = avisos(id);
     if (abertos > 0) {
       return (
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${ativo ? 'bg-white text-[#f26a2e]' : 'bg-[#f26a2e] text-white'}`}>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${ativo ? 'bg-white text-[#c2410c]' : 'bg-[#c2410c] text-white'}`}>
           {abertos.toLocaleString('pt-BR')}
           <span className="sr-only"> aviso(s)</span>
         </span>
@@ -205,7 +205,7 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
 
   const grupoDeClasses = (grande: boolean) => (onClasse && classes.length > 0 && secoes.includes('utilizacao') ? (
     <section key="classes" aria-labelledby={`materiais-grupo-classes-${grande ? 'm' : 'd'}`}>
-      <h2 id={`materiais-grupo-classes-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#718087]">Por classe</h2>
+      <h2 id={`materiais-grupo-classes-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#5b6870]">Por classe</h2>
       <ul className="space-y-0.5">{classes.map(classe => itemDaClasse(classe, grande))}</ul>
     </section>
   ) : null);
@@ -217,7 +217,7 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
         if (!visiveis.length) return null;
         return [
           <section key={grupo.id} aria-labelledby={`materiais-grupo-${grupo.id}-${grande ? 'm' : 'd'}`}>
-            <h2 id={`materiais-grupo-${grupo.id}-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#718087]">{grupo.nome}</h2>
+            <h2 id={`materiais-grupo-${grupo.id}-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#5b6870]">{grupo.nome}</h2>
             <ul className="space-y-0.5">{visiveis.map(secao => item(secao, grande))}</ul>
           </section>,
           // Tubos, madeira e o resto logo depois de "Na obra": é lá que se vê o uso.

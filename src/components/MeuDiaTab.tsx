@@ -158,7 +158,7 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
       </div>
 
       <p data-meu-dia-reveal className="flex flex-wrap items-center gap-2 px-1 text-sm text-slate-600">
-        <CalendarDays className="size-4 text-[#718087]" aria-hidden="true" />
+        <CalendarDays className="size-4 text-[#5b6870]" aria-hidden="true" />
         <span className="font-bold capitalize text-slate-800">{diaDaSemana(dia)}, {formatarData(dia)}</span>
         {passado && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800 ring-1 ring-inset ring-amber-200">Dia que já passou</span>}
         <span>· {pessoa}</span>
@@ -166,9 +166,9 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Indicador titulo="Críticas em aberto" valor={porPrioridade.critico} detalhe="🔴 resolver agora" Icone={AlertOctagon} tom="bg-rose-50 text-rose-700" onClick={() => setParte('pendencias')} />
-        <Indicador titulo="Importantes em aberto" valor={porPrioridade.importante} detalhe={`🟠 hoje · ${abertas.length} no total`} Icone={Flag} tom="bg-orange-50 text-[#f26a2e]" onClick={() => setParte('pendencias')} />
+        <Indicador titulo="Importantes em aberto" valor={porPrioridade.importante} detalhe={`🟠 hoje · ${abertas.length} no total`} Icone={Flag} tom="bg-orange-50 text-[#c2410c]" onClick={() => setParte('pendencias')} />
         <Indicador titulo="Checklist feito" valor={conta.percentual} sufixo="%" detalhe={`${conta.feitos} de ${conta.total} itens`} Icone={ClipboardCheck} tom="bg-emerald-50 text-[#176b4d]" onClick={() => setParte('checklist')} />
-        <Indicador titulo={fechado ? 'Dia fechado' : 'Falta para fechar'} valor={fechado ? resolvidas : Math.max(itensDoFim - feitosDoFim, 0)} detalhe={fechado ? 'pendências resolvidas no dia' : 'itens do fim do dia'} Icone={fechado ? CheckCircle2 : Moon} tom={fechado ? 'bg-emerald-50 text-[#176b4d]' : 'bg-slate-100 text-[#718087]'} onClick={() => setParte('fechamento')} />
+        <Indicador titulo={fechado ? 'Dia fechado' : 'Falta para fechar'} valor={fechado ? resolvidas : Math.max(itensDoFim - feitosDoFim, 0)} detalhe={fechado ? 'pendências resolvidas no dia' : 'itens do fim do dia'} Icone={fechado ? CheckCircle2 : Moon} tom={fechado ? 'bg-emerald-50 text-[#176b4d]' : 'bg-slate-100 text-[#5b6870]'} onClick={() => setParte('fechamento')} />
       </div>
 
       {deOntem && deOntem.itens.length > 0 && (
@@ -177,7 +177,7 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
           <ol className="mt-2 grid gap-1.5 sm:grid-cols-3">
             {deOntem.itens.map((texto, posicao) => (
               <li key={`${posicao}-${texto}`} className="flex gap-2 rounded-xl bg-[#f7f8f6] px-3 py-2 text-sm text-slate-800">
-                <span className="font-bold text-[#f26a2e]">{posicao + 1}.</span>
+                <span className="font-bold text-[#c2410c]">{posicao + 1}.</span>
                 <span className="min-w-0 break-words">{texto}</span>
               </li>
             ))}
@@ -198,7 +198,7 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
               className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-bold transition-colors duration-200 sm:min-h-12 sm:flex-row sm:gap-2 ${FOCO} ${ativa ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:bg-[#f7f8f6] hover:text-[#176b4d]'}`}
             >
               <Icone className="size-5" aria-hidden="true" />
-              <span>{nome}{numero ? <span className="max-sm:hidden"> ({numero})</span> : null}{numero ? <span className={`ml-1 rounded-full px-1.5 text-xs sm:hidden ${ativa ? 'bg-white text-[#176b4d]' : 'bg-[#f26a2e] text-white'}`}>{numero}</span> : null}</span>
+              <span>{nome}{numero ? <span className="max-sm:hidden"> ({numero})</span> : null}{numero ? <span className={`ml-1 rounded-full px-1.5 text-xs sm:hidden ${ativa ? 'bg-white text-[#176b4d]' : 'bg-[#c2410c] text-white'}`}>{numero}</span> : null}</span>
             </button>
           );
         })}
@@ -236,7 +236,7 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
             <div className="min-w-0 space-y-4">
               <div data-meu-dia-reveal className={`${CARTAO} flex items-center gap-3 p-4 ${fechado ? 'border-emerald-200 bg-emerald-50/60' : ''}`}>
-                {fechado ? <CheckCircle2 className="size-7 shrink-0 text-[#176b4d]" aria-hidden="true" /> : <Moon className="size-7 shrink-0 text-[#718087]" aria-hidden="true" />}
+                {fechado ? <CheckCircle2 className="size-7 shrink-0 text-[#176b4d]" aria-hidden="true" /> : <Moon className="size-7 shrink-0 text-[#5b6870]" aria-hidden="true" />}
                 <div>
                   <p className="font-bold text-slate-900">{fechado ? 'Dia fechado' : itensDoFim ? `Faltam ${itensDoFim - feitosDoFim} de ${itensDoFim} itens para fechar o dia` : 'Seu checklist não tem bloco de fim do dia'}</p>
                   <p className="text-sm text-slate-600">{fechado ? `${resolvidas} pendências resolvidas e ${abertas.length} ficam para os próximos dias.` : 'Marque o que já sabe responder antes de ir embora.'}</p>
@@ -278,7 +278,7 @@ function AmanhaCampo({ posicao, valor, onGravar }: { posicao: number; valor: str
   useEffect(() => setTexto(valor), [valor]);
   return (
     <label className="flex items-center gap-2">
-      <span className="w-5 shrink-0 text-right font-bold text-[#f26a2e]">{posicao + 1}.</span>
+      <span className="w-5 shrink-0 text-right font-bold text-[#c2410c]">{posicao + 1}.</span>
       <span className="sr-only">Prioridade {posicao + 1} para amanhã</span>
       <input
         className={CAMPO}

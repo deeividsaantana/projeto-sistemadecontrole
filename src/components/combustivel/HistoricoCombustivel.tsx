@@ -449,7 +449,7 @@ export default function HistoricoCombustivel({
             ['Abastecimentos', filtrados.length.toLocaleString('pt-BR'), textoPeriodo, 'text-slate-950'],
             ['Litros', litrosTexto(totalLitros), filtrados.length ? `média ${litrosTexto(totalLitros / filtrados.length)}` : 'nenhum lançamento', 'text-[#176b4d]'],
             ['Máquinas', maquinas.toLocaleString('pt-BR'), 'abastecidas no período', 'text-slate-950'],
-            ['A conferir', conferir.toLocaleString('pt-BR'), conferir ? 'toque em Filtros para ver só eles' : 'tudo certo', conferir ? 'text-[#f26a2e]' : 'text-slate-950'],
+            ['A conferir', conferir.toLocaleString('pt-BR'), conferir ? 'toque em Filtros para ver só eles' : 'tudo certo', conferir ? 'text-[#c2410c]' : 'text-slate-950'],
           ].map(([rotulo, valor, ajuda, cor]) => (
             <div key={rotulo} className={`${CARTAO} px-3 py-2`}>
               <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{rotulo}</p>
@@ -572,7 +572,7 @@ export default function HistoricoCombustivel({
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2 lg:flex-nowrap lg:border-t-0 lg:py-1">
             <p className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-500 lg:text-sm">
               {filtrados.length ? `${paginaAtual * preferencias.tamanhoPagina + 1}–${Math.min((paginaAtual + 1) * preferencias.tamanhoPagina, filtrados.length)} de ${filtrados.length.toLocaleString('pt-BR')}` : '0 abastecimentos'}
-              <span className="hidden lg:inline"> · {maquinas.toLocaleString('pt-BR')} máquinas{conferir ? <> · <span className="font-bold text-[#f26a2e]">{conferir.toLocaleString('pt-BR')} a conferir</span></> : ''}{repetidosNoFiltro && !filtros.soRepetidos ? <> · <button type="button" onClick={() => mudarFiltro('soRepetidos', true)} className={`inline-flex items-center gap-1 rounded font-bold text-rose-700 hover:underline ${FOCO}`} data-testid="historico-ver-repetidos"><CopyX className="size-3.5" aria-hidden="true" />{repetidosNoFiltro.toLocaleString('pt-BR')} repetidos</button></> : ''} · Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span></span>
+              <span className="hidden lg:inline"> · {maquinas.toLocaleString('pt-BR')} máquinas{conferir ? <> · <span className="font-bold text-[#c2410c]">{conferir.toLocaleString('pt-BR')} a conferir</span></> : ''}{repetidosNoFiltro && !filtros.soRepetidos ? <> · <button type="button" onClick={() => mudarFiltro('soRepetidos', true)} className={`inline-flex items-center gap-1 rounded font-bold text-rose-700 hover:underline ${FOCO}`} data-testid="historico-ver-repetidos"><CopyX className="size-3.5" aria-hidden="true" />{repetidosNoFiltro.toLocaleString('pt-BR')} repetidos</button></> : ''} · Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span></span>
             </p>
             <div className="flex items-center gap-2">
               <label className="flex items-center gap-1 text-xs font-semibold text-slate-500">

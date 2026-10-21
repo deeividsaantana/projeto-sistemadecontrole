@@ -118,7 +118,7 @@ export default function ApontadoresMateriais({ hoje, movimentos, responsavel, po
         {indicadores.map(item => (
           <article key={item.rotulo} className={`${CARTAO} min-w-0 p-4`}>
             <p className="text-sm font-semibold text-slate-600">{item.rotulo}</p>
-            <CountUp value={item.valor} className={`mt-1 block text-3xl font-black tabular-nums ${item.alerta ? 'text-[#f26a2e]' : 'text-slate-950'}`} />
+            <CountUp value={item.valor} className={`mt-1 block text-3xl font-black tabular-nums ${item.alerta ? 'text-[#c2410c]' : 'text-slate-950'}`} />
             <span className="block truncate text-xs text-slate-500" title={item.detalhe}>{item.detalhe}</span>
           </article>
         ))}

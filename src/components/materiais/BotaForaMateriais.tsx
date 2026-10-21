@@ -232,7 +232,7 @@ export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaL
         {origensSemLocal.length > 0 && (
           <div className="flex flex-col gap-3 border-t border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center">
             <p className="flex min-w-0 flex-1 items-start gap-2 text-sm text-amber-900">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#f26a2e]" aria-hidden="true" />
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#c2410c]" aria-hidden="true" />
               {plural(origensSemLocal.length, 'origem ainda não tem', 'origens ainda não têm')} local no cadastro, por isso ficam sem código SGE. Ligue em Ramos e locais.
             </p>
             <button type="button" onClick={onIrParaLocais} className={`${BOTAO_SECUNDARIO} sm:shrink-0`}>

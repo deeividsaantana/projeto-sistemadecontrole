@@ -98,7 +98,7 @@ export default function ListaEstacas({ estacas, frentes, onCravar, onEditar, onI
           {/* Computador: tabela. */}
           <div className={`${CARTAO} max-md:hidden overflow-hidden`}>
             <table className="w-full text-left text-sm">
-              <thead className="bg-[#f7f8f6] text-xs font-bold uppercase tracking-wide text-[#718087]">
+              <thead className="bg-[#f7f8f6] text-xs font-bold uppercase tracking-wide text-[#5b6870]">
                 <tr>
                   <th className="w-10 px-3 py-3"><input type="checkbox" aria-label="Marcar todas" checked={todasMarcadas} onChange={event => setMarcadas(event.target.checked ? mostradas.map(item => item.id) : [])} className="size-4 accent-[#176b4d]" /></th>
                   <th className="px-3 py-3">Estaca</th>

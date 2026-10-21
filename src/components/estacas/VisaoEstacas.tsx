@@ -69,7 +69,7 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
   const cartoes = [
     { nome: 'Total a cravar', valor: total.previstas, ajuda: 'Estacas previstas em todas as frentes', Icone: Target, tom: 'text-slate-900' },
     { nome: 'Já cravadas', valor: total.cravadas, ajuda: `${numero(total.metrosCravados, 1)} m dentro da terra`, Icone: Hammer, tom: 'text-[#176b4d]' },
-    { nome: 'Faltam', valor: total.faltam, ajuda: total.metrosACravar ? `${numero(total.metrosACravar, 1)} m de estaca` : 'Estacas ainda a cravar', Icone: Ruler, tom: total.faltam ? 'text-[#f26a2e]' : 'text-[#176b4d]' },
+    { nome: 'Faltam', valor: total.faltam, ajuda: total.metrosACravar ? `${numero(total.metrosACravar, 1)} m de estaca` : 'Estacas ainda a cravar', Icone: Ruler, tom: total.faltam ? 'text-[#c2410c]' : 'text-[#176b4d]' },
   ];
 
   return (
@@ -85,7 +85,7 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
         </div>
         {cartoes.map(({ nome, valor, ajuda, Icone, tom }) => (
           <div key={nome} data-estacas-reveal className={`${CARTAO} estacas-vivo p-4 ${nome === 'Faltam' ? 'max-sm:col-span-2' : ''}`}>
-            <p className="flex items-center gap-2 text-sm font-semibold text-slate-600"><Icone className="size-4 text-[#718087]" aria-hidden="true" /> {nome}</p>
+            <p className="flex items-center gap-2 text-sm font-semibold text-slate-600"><Icone className="size-4 text-[#5b6870]" aria-hidden="true" /> {nome}</p>
             <p className={`mt-1 text-3xl font-black tabular-nums ${tom}`}><CountUp value={valor} /></p>
             <p className="text-xs text-slate-500">{ajuda}</p>
           </div>
@@ -96,7 +96,7 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
         <section data-estacas-reveal className={`${CARTAO} p-4 sm:p-5`} aria-labelledby="estacas-cortina-titulo">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#718087]">Cortina de estacas</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">Cortina de estacas</p>
               <h2 id="estacas-cortina-titulo" className="text-xl font-bold text-slate-900">{frente.frente}</h2>
               <p className="text-sm text-slate-600">
                 {frente.cravadas.toLocaleString('pt-BR')} de {frente.previstas.toLocaleString('pt-BR')} cravadas · faltam {frente.faltam.toLocaleString('pt-BR')} · {numero(frente.porcentagem, 1)}%

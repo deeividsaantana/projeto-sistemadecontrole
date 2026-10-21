@@ -20,7 +20,7 @@
 - [x] Usa PageHeader (eyebrow, title, description, actions)
 - [x] Usa PeriodFilter para filtros temporais (se aplicável)
 - [x] Usa DataTable para dados tabulares
-- [x] Cores seguem paleta RENEA (#176b4d, #f26a2e, #718087, etc.)
+- [x] Cores seguem paleta RENEA (#176b4d, #f26a2e, #718087, etc.); letra cinza é #5b6870 e letra laranja é #c2410c (4,5:1)
 - [x] Espaçamento segue Tailwind (gap-4, p-4, etc.)
 - [x] Bordas e sombras consistentes com outras abas
 - [x] Tipografia: títulos h1/h2, corpo 14px, labels 12px

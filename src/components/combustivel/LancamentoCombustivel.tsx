@@ -369,7 +369,7 @@ export default function LancamentoCombustivel({
                   placeholder="se tiver" className={`${CAMPO} font-mono placeholder:font-sans`} data-testid="combustivel-horimetro" />
               </Linha>
               <Linha rotulo="Litros" para="lanc-litros"
-                dica={gastoAlto && consumo ? <span className="text-[#f26a2e]">Dá {numeroTexto(consumoAgora ?? 0)} L/h; ela costuma gastar {textoConsumo(consumo.consumoHabitual, 'L/h')}.</span> : undefined}>
+                dica={gastoAlto && consumo ? <span className="text-[#c2410c]">Dá {numeroTexto(consumoAgora ?? 0)} L/h; ela costuma gastar {textoConsumo(consumo.consumoHabitual, 'L/h')}.</span> : undefined}>
                 <input id="lanc-litros" data-campo inputMode="decimal" value={form.litros} onChange={event => mudar('litros', event.target.value)} onKeyDown={aoTeclar} placeholder="0" className={`${CAMPO_GRANDE} text-[#176b4d]`} data-testid="combustivel-litros" />
               </Linha>
               <Linha rotulo="Hora" para="lanc-hora">

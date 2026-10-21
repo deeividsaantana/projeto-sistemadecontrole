@@ -63,7 +63,7 @@ export default function FleetFilterBar({
                 className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white shadow-[0_8px_18px_-10px_rgba(23,107,77,0.8)]' : 'bg-[#f7f8f6] text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
               >
                 {item.nome || 'Todos os canteiros'}
-                <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/20' : 'bg-white text-slate-500'}`}>{item.total}</span>
+                <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/10' : 'bg-white text-slate-500'}`}>{item.total}</span>
               </button>
             );
           })}

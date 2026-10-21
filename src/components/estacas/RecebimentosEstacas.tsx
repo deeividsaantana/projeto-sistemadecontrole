@@ -150,7 +150,7 @@ export default function RecebimentosEstacas({ hoje, controle, obras, responsavel
       ) : (
         <div ref={lista} data-estacas-reveal className={`${CARTAO} overflow-x-auto`}>
           <table className="w-full min-w-[46rem] text-left text-sm">
-            <thead className="bg-[#f7f8f6] text-xs font-bold uppercase tracking-wide text-[#718087]">
+            <thead className="bg-[#f7f8f6] text-xs font-bold uppercase tracking-wide text-[#5b6870]">
               <tr>
                 <th className="w-10 px-3 py-3"><span className="sr-only">Marcar</span></th>
                 <th className="px-3 py-3">Nota e dia</th>
@@ -198,7 +198,7 @@ export default function RecebimentosEstacas({ hoje, controle, obras, responsavel
                   <h3 className="font-bold text-slate-900">NF {nota.notaFiscal}</h3>
                   {nota.status === 'Conforme'
                     ? <CheckCircle2 className="size-5 text-[#176b4d]" aria-label="Conforme" />
-                    : <AlertTriangle className="size-5 text-[#f26a2e]" aria-label="Pendente" />}
+                    : <AlertTriangle className="size-5 text-[#c2410c]" aria-label="Pendente" />}
                 </div>
                 <dl className="mt-2 grid grid-cols-2 gap-1 text-sm text-slate-600">
                   <dt className="sr-only">Itens</dt><dd>{nota.itens} item(ns)</dd>

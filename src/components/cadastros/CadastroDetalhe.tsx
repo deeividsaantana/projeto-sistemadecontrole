@@ -119,7 +119,7 @@ export default function CadastroDetalhe({ categoria, linha, dados, usos, histori
         </dl>
 
         <section aria-labelledby="cadastro-usos-titulo" className="space-y-2">
-          <h3 id="cadastro-usos-titulo" className="text-xs font-bold uppercase tracking-wide text-[#718087]">Onde é usado</h3>
+          <h3 id="cadastro-usos-titulo" className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">Onde é usado</h3>
           {usado ? (
             <ul className="space-y-1.5">
               {usos.map(uso => (
@@ -135,7 +135,7 @@ export default function CadastroDetalhe({ categoria, linha, dados, usos, histori
         </section>
 
         <section aria-labelledby="cadastro-historico-titulo" className="space-y-2">
-          <h3 id="cadastro-historico-titulo" className="text-xs font-bold uppercase tracking-wide text-[#718087]">Últimas alterações</h3>
+          <h3 id="cadastro-historico-titulo" className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">Últimas alterações</h3>
           {historico.length > 0 ? (
             <ol className="space-y-2.5">
               {historico.map(log => (

@@ -35,7 +35,7 @@
 
 .dashboard-visual__kicker {
   margin-bottom: .3rem;
-  color: #52866e;
+  color: #4a6b5a;
   font-size: .66rem;
   font-weight: 800;
   letter-spacing: .11em;
@@ -73,7 +73,7 @@
 .dashboard-donut__segment:hover { stroke-width: 23; }
 .dashboard-donut__center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; pointer-events: none; }
 .dashboard-donut__center strong { color: #102c20; font-size: clamp(2rem, 3vw, 2.75rem); font-weight: 820; letter-spacing: -.065em; line-height: 1; }
-.dashboard-donut__center span { margin-top: .25rem; color: #63806e; font-size: .68rem; font-weight: 700; }
+.dashboard-donut__center span { margin-top: .25rem; color: #4a6b5a; font-size: .68rem; font-weight: 700; }
 .dashboard-donut-legend { display: grid; gap: .18rem; }
 .dashboard-donut-legend__item { display: grid; width: 100%; grid-template-columns: .55rem minmax(0, 1fr) auto; align-items: center; gap: .55rem; border-radius: .55rem; padding: .4rem .4rem; color: #3f5a4b; font-size: .8125rem; font-weight: 650; text-align: left; transition: background-color .25s ease, transform .25s ease; }
 .dashboard-donut-legend__item:hover { background: #edf6ef; transform: translateX(3px); }
@@ -88,11 +88,11 @@
 .dashboard-trend__plot { margin-top: .5rem; }
 .dashboard-trend__plot svg { display: block; width: 100%; height: clamp(8.5rem, 13vw, 11rem); overflow: visible; }
 .dashboard-trend__grid { stroke: #dce9df; stroke-dasharray: 4 6; stroke-width: 1; }
-.dashboard-trend__axis { fill: #8ba596; font-size: 11px; font-weight: 650; }
+.dashboard-trend__axis { fill: #4a6b5a; font-size: 11px; font-weight: 650; }
 .dashboard-trend__path { fill: none; stroke: #087b54; stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; filter: drop-shadow(0 5px 4px rgba(5, 107, 72, .15)); }
 .dashboard-trend__point { fill: #fff; stroke: #087b54; stroke-width: 4; cursor: pointer; transition: r .2s ease, fill .2s ease; }
 .dashboard-trend__point:hover, .dashboard-trend__point:focus { fill: #087b54; outline: none; }
-.dashboard-trend__dates { display: flex; justify-content: space-between; margin-left: 4%; color: #879d8d; font-size: .75rem; font-weight: 650; }
+.dashboard-trend__dates { display: flex; justify-content: space-between; margin-left: 4%; color: #4a6b5a; font-size: .75rem; font-weight: 650; }
 .dashboard-trend__action { display: inline-flex; align-items: center; gap: .35rem; margin-top: .6rem; color: #086846; font-size: .8125rem; font-weight: 800; transition: gap .25s ease; }
 .dashboard-trend__action:hover { gap: .6rem; }
 

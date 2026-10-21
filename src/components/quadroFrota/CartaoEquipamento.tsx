@@ -52,7 +52,7 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
             </>
           ) : (
             <>
-              <span className="grid size-4 shrink-0 place-items-center rounded-full border border-dashed border-[#f26a2e] text-[8px] font-bold text-[#f26a2e]" aria-hidden="true">?</span>
+              <span className="grid size-4 shrink-0 place-items-center rounded-full border border-dashed border-[#f26a2e] text-[8px] font-bold text-[#c2410c]" aria-hidden="true">?</span>
               <span className="truncate text-[10px] font-medium italic text-slate-400">sem operador</span>
             </>
           )}

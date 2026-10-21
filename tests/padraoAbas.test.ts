@@ -18,7 +18,9 @@ import { readdirSync, readFileSync } from 'node:fs';
  */
 type Regra = 'pageHeader' | 'gsap' | 'movimentoReduzido' | 'corForaDaPaleta';
 
-const PALETA = new Set(['#176b4d', '#f26a2e', '#718087', '#f7f8f6']);
+// #5b6870 e #c2410c são as cores de TEXTO (cinza e laranja com 4,5:1 no
+// branco); #718087 e #f26a2e ficam para fundo, borda e ícone decorativo.
+const PALETA = new Set(['#176b4d', '#f26a2e', '#718087', '#f7f8f6', '#5b6870', '#c2410c']);
 
 const PENDENCIAS: Record<string, readonly Regra[]> = {
   TicketsJazidaTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
@@ -83,4 +85,17 @@ test('toda tela *Tab.tsx é aberta por algum arquivo', () => {
     .filter(tela => tela !== 'Dashboard')
     .filter(tela => !new RegExp(`['/]${tela}['"]`).test(fontes));
   assert.deepEqual(orfas, [], 'tela que nenhum arquivo abre: remova ou ligue ao menu');
+});
+
+// Auditoria de front (21/10/2026, A6): #718087 dá 4,08:1 e #f26a2e 3,05:1 no
+// branco. Como letra valem #5b6870 e #c2410c; o selo com letra branca usa o
+// fundo #c2410c. As cores claras seguem livres para fundo, borda e ícone.
+const fontesDoApp = readdirSync(new URL('../src/', import.meta.url), { recursive: true, encoding: 'utf8' })
+  .filter(arquivo => /\.(tsx?|css)$/.test(arquivo))
+  .map(arquivo => ({ arquivo, fonte: readFileSync(new URL(`../src/${arquivo}`, import.meta.url), 'utf8') }));
+
+test('cinza #718087 e laranja #f26a2e não viram cor de letra', () => {
+  const letraClara = /text-\[#(718087|f26a2e)\]|(?:^|[;{\s])color:\s*#(718087|f26a2e)\b|bg-\[#f26a2e\][^'"`]*text-white/im;
+  const fora = fontesDoApp.filter(({ fonte }) => letraClara.test(fonte)).map(({ arquivo }) => arquivo);
+  assert.deepEqual(fora, [], 'use #5b6870 (cinza) ou #c2410c (laranja) como cor de letra');
 });

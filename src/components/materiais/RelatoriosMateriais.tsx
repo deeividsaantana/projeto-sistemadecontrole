@@ -212,7 +212,7 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
                 <CountUp value={item.valor} format={INDICADOR[item.chave].formatar} />
               </strong>
               <span className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                <Seta className={`size-3.5 shrink-0 ${item.variacao ? (item.variacao > 0 ? 'text-[#176b4d]' : 'text-[#f26a2e]') : ''}`} aria-hidden="true" />
+                <Seta className={`size-3.5 shrink-0 ${item.variacao ? (item.variacao > 0 ? 'text-[#176b4d]' : 'text-[#c2410c]') : ''}`} aria-hidden="true" />
                 {item.variacao === null ? 'nada no período anterior' : `${item.variacao > 0 ? '+' : ''}${item.variacao}% sobre o anterior`}
               </span>
             </article>

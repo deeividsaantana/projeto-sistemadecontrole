@@ -141,7 +141,7 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
         ) : (
           <div ref={lista} className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead className="bg-[#f7f8f6] text-xs font-bold uppercase tracking-wide text-[#718087]">
+              <thead className="bg-[#f7f8f6] text-xs font-bold uppercase tracking-wide text-[#5b6870]">
                 <tr>{tabela[0].map((titulo, indice) => <th key={String(titulo)} className={`px-3 py-3 ${indice > 0 && typeof tabela[1]?.[indice] === 'number' ? 'text-right' : ''}`}>{titulo}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

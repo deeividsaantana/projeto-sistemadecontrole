@@ -97,7 +97,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
     <div className="space-y-4">
       <div data-previsto-reveal className="grid grid-cols-3 gap-2 sm:gap-3">
         <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Trabalharam no dia</p><strong className="text-2xl font-black tabular-nums text-slate-900">{resumo.trabalharam}</strong></div>
-        <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Sem produção lançada</p><strong className={`text-2xl font-black tabular-nums ${resumo.semProducao ? 'text-[#f26a2e]' : 'text-slate-900'}`}>{resumo.semProducao}</strong></div>
+        <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Sem produção lançada</p><strong className={`text-2xl font-black tabular-nums ${resumo.semProducao ? 'text-[#c2410c]' : 'text-slate-900'}`}>{resumo.semProducao}</strong></div>
         <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Serviços sem previsto</p><strong className="text-2xl font-black tabular-nums text-slate-900">{resumo.semPrevisto}</strong></div>
       </div>
 
@@ -141,7 +141,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
       </div>
 
       <p data-previsto-reveal className="flex items-start gap-2 px-1 text-sm text-slate-500">
-        <TrendingUp className="mt-0.5 size-4 shrink-0 text-[#718087]" aria-hidden="true" />
+        <TrendingUp className="mt-0.5 size-4 shrink-0 text-[#5b6870]" aria-hidden="true" />
         Avanço = acumulado ÷ previsto × 100. Falta = previsto − acumulado. O acumulado conta a produção da frente desde o início do previsto.
       </p>
 

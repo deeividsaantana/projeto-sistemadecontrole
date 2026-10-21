@@ -625,7 +625,7 @@ export default function ControleEquipamentosDiarioTab({
                     <Icon className="size-5 lg:hidden xl:block xl:size-4" aria-hidden="true"/>
                     <span className="max-w-full truncate xl:hidden">{curto}</span>
                     <span className="hidden xl:inline">{label}</span>
-                    {pendentes > 0 && <span className="absolute right-1 top-1 min-w-5 rounded-full bg-[#f26a2e] px-1 text-center text-[10px] font-bold leading-5 tabular-nums text-white lg:static lg:text-[11px]">{pendentes}</span>}
+                    {pendentes > 0 && <span className="absolute right-1 top-1 min-w-5 rounded-full bg-[#c2410c] px-1 text-center text-[10px] font-bold leading-5 tabular-nums text-white lg:static lg:text-[11px]">{pendentes}</span>}
                   </button>
                 ))}
               </nav>
@@ -745,7 +745,7 @@ export default function ControleEquipamentosDiarioTab({
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[#176b4d] ring-1 ring-inset ring-emerald-200">{item.operating} operando</span>
                       {item.maintenance > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200">{item.maintenance} manutenção</span>}
                       {item.available > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-inset ring-amber-200">{item.available} à disposição</span>}
-                      {item.pending > 0 && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[#f26a2e] ring-1 ring-inset ring-orange-200">{item.pending} a confirmar</span>}
+                      {item.pending > 0 && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[#c2410c] ring-1 ring-inset ring-orange-200">{item.pending} a confirmar</span>}
                       {item.repeated.length > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200" title={`Lançados mais de uma vez: ${item.repeated.join(', ')}`}>{item.repeated.length} repetido(s): {item.repeated.slice(0, 3).join(', ')}{item.repeated.length > 3 ? '…' : ''}</span>}
                     </span>
                     <span className="sm:text-right">

@@ -161,7 +161,7 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
                         className={`group flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition duration-200 hover:bg-emerald-50/60 ${FOCO}`}
                         title="Tocar para corrigir"
                       >
-                        <span className={`grid size-8 shrink-0 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-110 motion-reduce:transition-none ${item.tipo === 'Entrada' ? 'bg-emerald-50 text-[#176b4d]' : item.tipo === 'Saída' ? 'bg-orange-50 text-[#f26a2e]' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`grid size-8 shrink-0 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-110 motion-reduce:transition-none ${item.tipo === 'Entrada' ? 'bg-emerald-50 text-[#176b4d]' : item.tipo === 'Saída' ? 'bg-orange-50 text-[#c2410c]' : 'bg-slate-100 text-slate-600'}`}>
                           <Icone className="size-4" aria-hidden="true" />
                         </span>
                         <span className="min-w-0 flex-1">

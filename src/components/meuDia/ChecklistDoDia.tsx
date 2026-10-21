@@ -50,7 +50,7 @@ function Marcar({ rotina, blocos, somente, onMudarRotina }: Pick<Props, 'rotina'
         <section key={momento.id} aria-labelledby={`momento-${momento.id}`} className="space-y-2">
           {!somente && (
             <div className="flex items-baseline gap-2 px-1">
-              <h3 id={`momento-${momento.id}`} className="text-sm font-bold uppercase tracking-wide text-[#718087]">{momento.nome}</h3>
+              <h3 id={`momento-${momento.id}`} className="text-sm font-bold uppercase tracking-wide text-[#5b6870]">{momento.nome}</h3>
               <span className="text-sm text-slate-500">{momento.ajuda}</span>
             </div>
           )}
@@ -144,7 +144,7 @@ function Montar({ blocos, proprio, onSalvar, onFechar }: { blocos: readonly Bloc
   return (
     <div className="space-y-4" data-testid="meu-dia-montar">
       <div data-meu-dia-reveal className={`${CARTAO} flex flex-wrap items-center gap-3 border-[#f26a2e]/40 bg-orange-50/40 p-4`}>
-        <Settings2 className="size-6 shrink-0 text-[#f26a2e]" aria-hidden="true" />
+        <Settings2 className="size-6 shrink-0 text-[#c2410c]" aria-hidden="true" />
         <p className="min-w-0 flex-1 basis-60 text-sm text-slate-700">
           Este checklist é só seu. Mude os nomes, acrescente, suba, desça ou apague o que quiser. {proprio ? 'Outras pessoas continuam com o delas.' : 'Hoje você usa o modelo padrão da obra.'}
         </p>

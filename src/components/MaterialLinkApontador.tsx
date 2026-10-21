@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
+import { reduzMovimento } from '../shared/motion/reduzMovimento';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -75,7 +76,6 @@ const dayLabel = (iso: string, today: string) => {
 };
 
 const number = (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-const reduzMovimento = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** O apontador conta peça quando o material tem comprimento; senão, na unidade do cadastro. */
 const countUnit = (item: PublicMaterialStock) => pieceLength(item) ? 'pç' : (item.unidade || '').toLowerCase().replace(/^mt$/, 'm');
@@ -185,7 +185,7 @@ function CameraNoApp({ onFoto, onFechar }: { onFoto: (arquivo: File) => void; on
         {!pronta && !erro && <p className="absolute inset-0 grid place-items-center text-base font-semibold text-white/80">Abrindo a câmera...</p>}
         {erro && (
           <div className="absolute inset-x-4 top-1/3 rounded-2xl bg-white p-4 text-center">
-            <AlertTriangle className="mx-auto size-8 text-[#f26a2e]" aria-hidden="true" />
+            <AlertTriangle className="mx-auto size-8 text-[#c2410c]" aria-hidden="true" />
             <p className="mt-2 text-base font-semibold text-slate-800">{erro}</p>
           </div>
         )}
@@ -540,7 +540,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
             </ul>
             {recibo.fotosFalharam && (
               <p className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-left text-sm font-semibold text-amber-900" role="status">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#f26a2e]" aria-hidden="true" /> O uso foi salvo, mas as fotos não chegaram. Avise o escritório.
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#c2410c]" aria-hidden="true" /> O uso foi salvo, mas as fotos não chegaram. Avise o escritório.
               </p>
             )}
             <div className="mt-5 grid gap-2">
@@ -671,7 +671,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
 
           {lancadosNoRamo.length > 0 && (
             <section className="mt-6" data-material-reveal aria-labelledby="material-link-hoje">
-              <h2 id="material-link-hoje" className="mb-2 text-sm font-bold uppercase tracking-wide text-[#718087]">Já lançado hoje neste ramo</h2>
+              <h2 id="material-link-hoje" className="mb-2 text-sm font-bold uppercase tracking-wide text-[#5b6870]">Já lançado hoje neste ramo</h2>
               <ul className={`${CARTAO} divide-y divide-slate-100`}>
                 {lancadosNoRamo.slice(0, 12).map(uso => {
                   const material = ramo.materiais.find(item => item.materialId === uso.materialId);
@@ -784,7 +784,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
 
         <section className={`${CARTAO} mt-3 p-4`} data-material-reveal aria-live="polite" aria-labelledby="material-link-gps">
           <div className="flex items-start gap-3">
-            <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${gps.estado === 'ativo' ? 'bg-emerald-50 text-[#176b4d]' : 'bg-amber-50 text-[#f26a2e]'}`}>
+            <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${gps.estado === 'ativo' ? 'bg-emerald-50 text-[#176b4d]' : 'bg-amber-50 text-[#c2410c]'}`}>
               <LocateFixed className={`size-5 ${gps.estado === 'buscando' ? 'animate-pulse' : ''}`} aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
