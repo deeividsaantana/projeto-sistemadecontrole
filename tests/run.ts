@@ -215,4 +215,6 @@ import './appHooksOrdem.test';
 import './primeiroDownload.test';
 import './tempoRealNuvem.test';
 import './vinculoPrefixo.test';
+import './repetidosDiesel.test';
+import './relatorioDiesel.test';
 import './edicoesLocais.test';

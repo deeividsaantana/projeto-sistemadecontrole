@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { gsap } from 'gsap';
-import { AlertTriangle, CheckCircle2, Clock, Info, RotateCcw, Search, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, CopyX, Info, Pencil, RotateCcw, Search, X } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../../types';
 import { isoDay } from '../../shared/ui';
 import { montarQuadro } from '../../modules/frota/quadroFrota';
@@ -19,6 +19,7 @@ import { buildMacroFuelingRecord, getDefaultDieselFuelId, parseFuelFormNumber, r
 import { normalizeQuickTime } from '../../utils/combustivelValidation';
 import { getFuelRecordCompetence } from '../../modules/frota/fuelReport';
 import { nomeDoMes } from '../../modules/frota/planilhaDiesel';
+import { conferirNoDia } from '../../modules/frota/repetidosDiesel';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
 
 interface Props {
@@ -38,6 +39,8 @@ interface Props {
   onSalvar: (item: Abastecimento, novo: boolean) => void;
   onFechar: () => void;
   onAviso: (texto: string) => void;
+  /** Abre para corrigir o lançamento que já existe (a trava de repetido oferece). */
+  onAbrirExistente?: (item: Abastecimento) => void;
 }
 
 interface Formulario {
@@ -88,7 +91,7 @@ function Linha({ rotulo, para, dica, children }: { rotulo: string; para?: string
 
 export default function LancamentoCombustivel({
   abastecimentos, equipamentos, empresas, comboios, combustiveis, registros = [], gruposEquipe = [], usuario,
-  emEdicao, prefixoInicial = '', comboioInicial, onSalvar, onFechar, onAviso,
+  emEdicao, prefixoInicial = '', comboioInicial, onSalvar, onFechar, onAviso, onAbrirExistente,
 }: Props) {
   const raiz = useRef<HTMLFormElement>(null);
   const prefixoRef = useRef<HTMLInputElement>(null);
@@ -125,6 +128,8 @@ export default function LancamentoCombustivel({
   const [destaque, setDestaque] = useState(0);
   const [lancadosAgora, setLancadosAgora] = useState<string[]>([]);
   const [status, setStatus] = useState(emEdicao ? 'Corrigindo um lançamento já salvo.' : 'Pronto para novo lançamento.');
+  /** Repetido que a pessoa confirmou ser outro abastecimento. */
+  const [repetidoAceito, setRepetidoAceito] = useState('');
 
   const equipamento = useMemo(() => {
     const texto = semAcento(form.prefixo.trim());
@@ -132,6 +137,13 @@ export default function LancamentoCombustivel({
   }, [equipamentos, form.prefixo]);
 
   const naoCadastrado = !equipamento && form.prefixo.trim().length > 0 && !listaAberta;
+  // Trava de repetido: mesma máquina, mesmo dia e mesmos litros já lançados.
+  const noDia = useMemo(() => conferirNoDia(abastecimentos, {
+    id: emEdicao?.id || '', data: form.data, equipamentoId: equipamento?.id || '', prefixoInformado: form.prefixo,
+    quantidadeLitros: parseFuelFormNumber(form.litros, 0),
+  }), [abastecimentos, emEdicao?.id, equipamento?.id, form.data, form.litros, form.prefixo]);
+  const repetido = form.prefixo.trim() && parseFuelFormNumber(form.litros, 0) > 0 ? noDia.repetido : undefined;
+  const travado = Boolean(repetido && repetido.id !== repetidoAceito);
   const cartoes = useMemo(() => montarQuadro({ dia: form.data, equipamentos: [...equipamentos], registros, gruposEquipe, abastecimentos: [...abastecimentos] }), [abastecimentos, equipamentos, form.data, gruposEquipe, registros]);
   const cartao = equipamento ? cartoes.find(item => item.equipamentoId === equipamento.id) : undefined;
   const contexto = cartao ? contextoDoAbastecimento({ dia: form.data, hora: form.hora, cartao, abastecimentos, ignorarId: emEdicao?.id }) : undefined;
@@ -236,6 +248,11 @@ export default function LancamentoCombustivel({
     if (!form.comboioId) { setErro('Escolha o comboio que abasteceu.'); document.getElementById('lanc-comboio')?.focus(); return; }
     if (!form.tipoCombustivelId) { setErro('Escolha o combustível.'); return; }
     if (bomba.bombaInicial <= 0) { setErro('Digite a leitura inicial da bomba deste comboio.'); document.getElementById('lanc-bomba')?.focus(); return; }
+    if (travado && repetido) {
+      setErro(`Já existe ${prefixo} em ${dataCurta(repetido.data)} com ${litrosTexto(litros)}. Confira antes de salvar.`);
+      document.getElementById('lanc-repetido')?.scrollIntoView({ block: 'nearest', behavior: reduzMovimento() ? 'auto' : 'smooth' });
+      return;
+    }
     const agora = new Date().toISOString();
     const registro = buildMacroFuelingRecord({
       id: emEdicao?.id || crypto.randomUUID(), equipment: equipamento, prefixo, records: [...outros], data: form.data, hora: form.hora,
@@ -260,6 +277,7 @@ export default function LancamentoCombustivel({
       bombaInicial: bomba.bombaFinal > 0 ? paraCampo(bomba.bombaFinal) : bombaInicialDoComboio(atual.comboioId, atual.data, agoraHora()), prefixo: '', hora: agoraHora(),
     }));
     setMexidos(new Set());
+    setRepetidoAceito('');
     window.setTimeout(() => {
       corpoRef.current?.scrollTo({ top: 0 });
       prefixoRef.current?.focus({ preventScroll: true });
@@ -388,6 +406,31 @@ export default function LancamentoCombustivel({
               </Linha>
             </div>
 
+            {repetido && (
+              <div id="lanc-repetido" role="alert" className={`rounded-xl px-3 py-3 ring-1 ring-inset ${travado ? 'bg-rose-50 ring-rose-200' : 'bg-amber-50 ring-amber-200'}`} data-testid="combustivel-repetido">
+                <p className={`flex items-start gap-2 text-sm font-bold ${travado ? 'text-rose-800' : 'text-amber-900'}`}>
+                  <CopyX className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    {travado ? 'Lançamento repetido. ' : 'Você confirmou que é outro abastecimento. '}
+                    {form.prefixo.trim().toUpperCase()} já tem {litrosTexto(Number(repetido.quantidadeLitros || 0))} em {dataCurta(repetido.data)}{repetido.hora ? ` às ${repetido.hora}` : ''}
+                    {comboios.find(item => item.id === repetido.comboioId) ? ` (${comboios.find(item => item.id === repetido.comboioId)?.nome})` : ''}.
+                    {travado ? ' Salvar de novo conta o diesel duas vezes.' : ''}
+                  </span>
+                </p>
+                {travado && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {onAbrirExistente && <button type="button" onClick={() => onAbrirExistente(repetido)} className={`${BOTAO_SECUNDARIO} min-h-10`} data-testid="combustivel-abrir-existente"><Pencil className="size-4" aria-hidden="true" />Abrir o que já existe</button>}
+                    <button type="button" onClick={() => { setRepetidoAceito(repetido.id); setErro(''); }} className={`${BOTAO_SECUNDARIO} min-h-10 text-rose-700`} data-testid="combustivel-outro-abastecimento">É outro abastecimento</button>
+                  </div>
+                )}
+              </div>
+            )}
+            {!repetido && noDia.doDia.length > 0 && (
+              <p className="flex items-start gap-2 rounded-xl bg-[#f7f8f6] px-3 py-2 text-sm font-semibold text-slate-700 ring-1 ring-inset ring-slate-200" data-testid="combustivel-ja-abasteceu">
+                <Info className="mt-0.5 size-4 shrink-0 text-slate-500" aria-hidden="true" />
+                <span>Já abasteceu em {dataCurta(form.data)}: {noDia.doDia.map(item => `${item.hora || 'sem hora'} · ${litrosTexto(Number(item.quantidadeLitros || 0))}`).join('; ')}.</span>
+              </p>
+            )}
             <p role="status" data-lanc-reveal className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold ${erro ? 'bg-rose-50 text-rose-700' : naoCadastrado || avisos.length ? 'bg-amber-50 text-amber-900' : equipamento ? 'bg-emerald-50 text-[#176b4d]' : 'bg-[#f7f8f6] text-slate-600'}`} data-testid="combustivel-status">
               {erro || naoCadastrado || avisos.length ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <Info className="size-4 shrink-0" aria-hidden="true" />}
               <span data-testid={erro ? 'combustivel-erro' : undefined}>{erro || (naoCadastrado ? 'Prefixo sem cadastro. Pode lançar assim; o abastecimento fica com o prefixo digitado.' : avisos[0]?.texto || (equipamento && status.startsWith('Pronto') ? 'Equipamento localizado.' : status))}</span>
@@ -406,7 +449,7 @@ export default function LancamentoCombustivel({
           <div className="ml-auto grid w-full grid-cols-[1fr_1fr_1.4fr] gap-2 sm:flex sm:w-auto">
             <button type="button" onClick={onFechar} className={`${BOTAO_SECUNDARIO} min-w-0 px-2 sm:px-4`}><X className="size-4" aria-hidden="true" />{emEdicao ? 'Cancelar' : 'Fechar'}</button>
             <button type="button" onClick={emEdicao ? () => setForm(formularioInicial()) : limpar} className={`${BOTAO_SECUNDARIO} min-w-0 px-2 sm:px-4`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
-            <button type="submit" className={`${BOTAO_PRIMARIO} min-w-0 px-2 sm:min-w-40 sm:px-6`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />{emEdicao ? 'Salvar correção' : 'Salvar'}</button>
+            <button type="submit" aria-disabled={travado} className={`${BOTAO_PRIMARIO} min-w-0 px-2 sm:min-w-40 sm:px-6 ${travado ? 'opacity-60' : ''}`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />{emEdicao ? 'Salvar correção' : 'Salvar'}</button>
           </div>
         </div>
       </footer>

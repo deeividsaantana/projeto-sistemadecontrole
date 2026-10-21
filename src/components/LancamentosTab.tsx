@@ -76,6 +76,8 @@ interface LancamentosTabProps {
   lubrificacoes: Lubrificacao[];
 
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
+  /** Gravar vários de uma vez (trocar data em lote). */
+  onSaveAbastecimentos?: (itens: Abastecimento[], descricao: string) => void;
   /** Sem os de excluir, a tela não mostra Excluir: só o administrador exclui lançamento (A7). */
   onDeleteAbastecimento?: (id: string) => void;
   /** Manda para a Lixeira e devolve as exclusões, para o Desfazer. */
@@ -90,7 +92,7 @@ interface LancamentosTabProps {
   gruposEquipe?: GrupoEquipe[];
   usuario?: string;
   onOpenControle?: () => void;
-  combustivelInicial?: 'novo' | 'historico';
+  combustivelInicial?: 'novo' | 'historico' | 'relatorios';
   combustivelListaSomente?: boolean;
   /** A aba Relatórios abre o Combustível já no consumo por máquina. */
   combustivelPorMaquina?: boolean;
@@ -108,6 +110,7 @@ export default function LancamentosTab({
   abastecimentos,
   lubrificacoes,
   onSaveAbastecimento,
+  onSaveAbastecimentos,
   onDeleteAbastecimento,
   onDeleteAbastecimentos,
   onRestaurarAbastecimentos,
@@ -1274,6 +1277,7 @@ export default function LancamentosTab({
           canteiros={canteiros}
           abastecimentos={abastecimentos}
           onSaveAbastecimento={onSaveAbastecimento}
+          onSaveAbastecimentos={onSaveAbastecimentos}
           onDeleteAbastecimento={onDeleteAbastecimento}
           onDeleteAbastecimentos={onDeleteAbastecimentos}
           onRestaurarAbastecimentos={onRestaurarAbastecimentos}

@@ -8,8 +8,8 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import {
-  ArrowDown, ArrowUp, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Columns3, Copy, Download, FileSpreadsheet, FileText,
-  Filter, History, Layers, Pencil, Search, Square, Trash2, X,
+  ArrowDown, ArrowUp, CalendarDays, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Columns3, Copy, CopyX, Download, FileSpreadsheet, FileText,
+  Filter, History, Layers, ListChecks, Pencil, Search, Square, Trash2, X,
 } from 'lucide-react';
 import type { Abastecimento, Comboio, Empresa, Equipamento, TipoCombustivel } from '../../types';
 import {
@@ -19,8 +19,22 @@ import {
 } from '../../modules/frota/historicoCombustivel';
 import { getFuelCompetencePeriodLabel } from '../../modules/frota/fuelReport';
 import { nomeDoMes, tituloDaAba } from '../../modules/frota/planilhaDiesel';
+import { idsRepetidos } from '../../modules/frota/repetidosDiesel';
 import { isoDay } from '../../shared/ui';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
+
+/** Pedido de filtro vindo de fora (o relatório abre a lista já filtrada). */
+export interface PedidoFiltro {
+  chave: number;
+  dataInicio?: string;
+  dataFim?: string;
+  equipamentoId?: string;
+  comboioId?: string;
+  empresaId?: string;
+  texto?: string;
+  soRepetidos?: boolean;
+  soConferir?: boolean;
+}
 
 export interface FiltrosExportacao {
   itens: Abastecimento[];
@@ -46,6 +60,9 @@ interface Props {
   onRepetir: (item: Abastecimento) => void;
   /** Sem ele, quem não pode excluir não vê o botão. */
   onExcluir?: (itens: Abastecimento[]) => void;
+  /** Trocar a data dos marcados; sem ele, o botão não aparece. */
+  onTrocarData?: (itens: Abastecimento[]) => void;
+  pedidoFiltro?: PedidoFiltro;
 }
 
 interface Filtros {
@@ -59,6 +76,7 @@ interface Filtros {
   empresaId: string;
   combustivelId: string;
   soConferir: boolean;
+  soRepetidos: boolean;
 }
 
 interface Preferencias {
@@ -112,7 +130,7 @@ const precisaConferir = (item: Abastecimento) => item.revisaoStatus === 'Pendent
 
 export default function HistoricoCombustivel({
   abastecimentos, equipamentos, empresas, comboios, combustiveis, buscaRef, exportando, isParsingSpreadsheet, compacto = false,
-  onImportar, onExportarExcel, onExportarPdf, onEditar, onRepetir, onExcluir,
+  onImportar, onExportarExcel, onExportarPdf, onEditar, onRepetir, onExcluir, onTrocarData, pedidoFiltro,
 }: Props) {
   // A lista aberta sozinha (link ?lista=1) mostra no mínimo 100 por página.
   const [preferencias, setPreferencias] = useState<Preferencias>(() => {
@@ -122,7 +140,7 @@ export default function HistoricoCombustivel({
   // Como a planilha: abre na aba do mês atual.
   const [filtros, setFiltros] = useState<Filtros>(() => {
     const aba = abaDoDia(isoDay(new Date()));
-    return { texto: '', aba, ...intervaloDaAba(aba), comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '', soConferir: false };
+    return { texto: '', aba, ...intervaloDaAba(aba), comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '', soConferir: false, soRepetidos: false };
   });
   const [ordem, setOrdem] = useState<OrdemHistorico>(ORDEM_PADRAO);
   // Infinity = última página: a lista abre no fim, onde estão os lançamentos mais novos.
@@ -153,6 +171,7 @@ export default function HistoricoCombustivel({
   const empresaPorId = useMemo(() => new Map(empresas.map(item => [item.id, item.nome])), [empresas]);
   const comboioPorId = useMemo(() => new Map(comboios.map(item => [item.id, item.nome])), [comboios]);
   const nomeCombustivel = useMemo(() => new Map(combustiveis.map(item => [item.id, item.nome])), [combustiveis]);
+  const repetidos = useMemo(() => idsRepetidos(abastecimentos), [abastecimentos]);
   const nomes = useMemo<NomesHistorico>(() => ({
     prefixo: item => porId.get(item.equipamentoId)?.prefixo || item.prefixoInformado?.trim() || '',
     empresa: item => empresaPorId.get(porId.get(item.equipamentoId)?.empresaId || '') || '',
@@ -170,6 +189,7 @@ export default function HistoricoCombustivel({
       if (filtros.empresaId && maquina?.empresaId !== filtros.empresaId) return false;
       if (filtros.combustivelId && item.tipoCombustivelId !== filtros.combustivelId) return false;
       if (filtros.soConferir && !precisaConferir(item)) return false;
+      if (filtros.soRepetidos && !repetidos.has(item.id)) return false;
       if (!termo) return true;
       return semAcento([
         item.data, dataCurta(item.data), item.hora, nomes.prefixo(item), maquina?.nome, nomes.empresa(item), nomes.comboio(item),
@@ -177,11 +197,12 @@ export default function HistoricoCombustivel({
       ].filter(Boolean).join(' ')).includes(termo);
     });
     return ordenarHistorico(lista, ordem, nomes);
-  }, [abastecimentos, filtros, nomeCombustivel, nomes, ordem, porId]);
+  }, [abastecimentos, filtros, nomeCombustivel, nomes, ordem, porId, repetidos]);
 
   const totalLitros = filtrados.reduce((soma, item) => soma + Number(item.quantidadeLitros || 0), 0);
   const maquinas = new Set(filtrados.map(item => item.equipamentoId || item.prefixoInformado).filter(Boolean)).size;
   const conferir = filtrados.filter(precisaConferir).length;
+  const repetidosNoFiltro = filtrados.filter(item => repetidos.has(item.id)).length;
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / preferencias.tamanhoPagina));
   const paginaAtual = Math.min(pagina, totalPaginas - 1);
   const daPagina = filtrados.slice(paginaAtual * preferencias.tamanhoPagina, (paginaAtual + 1) * preferencias.tamanhoPagina);
@@ -200,6 +221,7 @@ export default function HistoricoCombustivel({
     filtros.empresaId ? `Empresa: ${empresaPorId.get(filtros.empresaId) || ''}` : '',
     filtros.combustivelId ? `Combustível: ${nomeCombustivel.get(filtros.combustivelId) || ''}` : '',
     filtros.soConferir ? 'Só os que precisam conferir' : '',
+    filtros.soRepetidos ? 'Só os repetidos' : '',
     filtros.texto.trim() ? `Busca: ${filtros.texto.trim()}` : '',
   ].filter(Boolean);
   const textoPeriodo = filtros.dataInicio || filtros.dataFim
@@ -210,7 +232,7 @@ export default function HistoricoCombustivel({
   // Na ordem da planilha (do primeiro para o último) a lista começa no fim; nas outras, no começo.
   const naOrdemDaPlanilha = ordem.coluna === 'data' && ordem.direcao === 'asc';
   const irParaInicio = () => setPagina(naOrdemDaPlanilha ? Number.POSITIVE_INFINITY : 0);
-  const filtrosExtras = [filtros.comboioId, filtros.equipamentoId, filtros.empresaId, filtros.combustivelId, filtros.soConferir].filter(Boolean).length;
+  const filtrosExtras = [filtros.comboioId, filtros.equipamentoId, filtros.empresaId, filtros.combustivelId, filtros.soConferir, filtros.soRepetidos].filter(Boolean).length;
 
   const mudarFiltro = <K extends keyof Filtros>(campo: K, valor: Filtros[K]) => {
     setFiltros(atual => {
@@ -227,9 +249,29 @@ export default function HistoricoCombustivel({
   };
 
   const limparFiltros = () => {
-    setFiltros(atual => ({ ...atual, texto: '', comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '', soConferir: false }));
+    setFiltros(atual => ({ ...atual, texto: '', comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '', soConferir: false, soRepetidos: false }));
     irParaInicio();
   };
+
+  // O relatório pede a lista já filtrada (um dia, uma máquina, um comboio...).
+  useEffect(() => {
+    if (!pedidoFiltro?.chave) return;
+    const { chave: _chave, ...pedido } = pedidoFiltro;
+    const temDatas = Boolean(pedido.dataInicio || pedido.dataFim);
+    setFiltros(atual => ({
+      ...atual, texto: '', comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '', soConferir: false, soRepetidos: false,
+      ...pedido,
+      // Período que é um mês do diesel abre na aba dele; o resto vira datas soltas.
+      aba: !temDatas ? atual.aba
+        : pedido.dataInicio && JSON.stringify(intervaloDaAba(abaDoDia(pedido.dataInicio))) === JSON.stringify({ dataInicio: pedido.dataInicio, dataFim: pedido.dataFim }) ? abaDoDia(pedido.dataInicio)
+          : 'personalizado',
+    }));
+    setFiltrosAbertos(Boolean(pedido.equipamentoId || pedido.comboioId || pedido.empresaId || pedido.soRepetidos || pedido.soConferir));
+    setSelecionados(new Set());
+    setPagina(Number.POSITIVE_INFINITY);
+    // Só quando chega um pedido novo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoFiltro?.chave]);
 
   // Abrir uma aba ou voltar à ordem da planilha leva ao último lançamento, como a planilha salva.
   useEffect(() => {
@@ -314,6 +356,7 @@ export default function HistoricoCombustivel({
         <span key={coluna} className="flex min-w-0 items-center gap-1">
           <span className="font-mono text-[13px] font-black text-slate-950">{nomes.prefixo(item) || '—'}</span>
           {precisaConferir(item) && <span className="size-2 shrink-0 rounded-full bg-[#f26a2e]" title="Precisa conferir" aria-label="Precisa conferir" />}
+          {repetidos.has(item.id) && <span className="shrink-0 rounded bg-rose-100 px-1 text-[10px] font-black uppercase text-rose-700" title="Mesma máquina, mesmo dia e mesmos litros de outro lançamento">2x</span>}
         </span>
       );
       case 'descricao': return <span key={coluna} className={`truncate text-[13px] ${maquina?.nome ? 'text-slate-700' : 'font-bold text-rose-600'}`} title={maquina?.nome}>{maquina?.nome || 'NÃO CADASTRADO'}</span>;
@@ -393,6 +436,9 @@ export default function HistoricoCombustivel({
               <label className="flex min-h-11 cursor-pointer items-center gap-2 self-end rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
                 <input type="checkbox" checked={filtros.soConferir} onChange={event => mudarFiltro('soConferir', event.target.checked)} className="size-4 accent-[#176b4d]" />Só os que precisam conferir
               </label>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 self-end rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
+                <input type="checkbox" checked={filtros.soRepetidos} onChange={event => mudarFiltro('soRepetidos', event.target.checked)} className="size-4 accent-[#176b4d]" data-testid="historico-so-repetidos" />Só os repetidos
+              </label>
               <button type="button" onClick={limparFiltros} disabled={filtrosExtras === 0 && !filtros.texto} className={`${BOTAO_SECUNDARIO} self-end`}>Limpar filtros</button>
             </div>
           )}
@@ -417,8 +463,14 @@ export default function HistoricoCombustivel({
           <div role="region" aria-label="Selecionados" className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-[#176b4d] px-3 py-2 text-sm font-semibold text-white" data-testid="historico-selecao">
             <CheckSquare className="size-4" aria-hidden="true" />
             <span>{selecionadosLista.length} selecionado(s) · {litrosTexto(selecionadosLista.reduce((soma, item) => soma + Number(item.quantidadeLitros || 0), 0))}</span>
-            <span className="ml-auto flex gap-2">
+            {selecionadosLista.length < filtrados.length && (
+              <button type="button" onClick={() => setSelecionados(new Set(filtrados.map(item => item.id)))} className={`inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-white/90 underline-offset-2 hover:underline ${FOCO}`} data-testid="historico-marcar-todos">
+                <ListChecks className="size-4" aria-hidden="true" />Marcar os {filtrados.length.toLocaleString('pt-BR')} do resultado
+              </button>
+            )}
+            <span className="ml-auto flex flex-wrap gap-2">
               <button type="button" onClick={() => setSelecionados(new Set())} className={`inline-flex min-h-9 items-center gap-1 rounded-lg px-3 text-white/90 hover:bg-white/10 ${FOCO}`}><X className="size-4" aria-hidden="true" />Desmarcar</button>
+              {onTrocarData && <button type="button" onClick={() => onTrocarData(selecionadosLista)} className={`inline-flex min-h-9 items-center gap-1 rounded-lg bg-white px-3 font-bold text-[#176b4d] hover:bg-emerald-50 ${FOCO}`} data-testid="historico-trocar-data"><CalendarDays className="size-4" aria-hidden="true" />Trocar data</button>}
               {onExcluir && <button type="button" onClick={() => onExcluir(selecionadosLista)} className={`inline-flex min-h-9 items-center gap-1 rounded-lg bg-white px-3 font-bold text-rose-700 hover:bg-rose-50 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" />Excluir</button>}
             </span>
           </div>
@@ -490,6 +542,7 @@ export default function HistoricoCombustivel({
                                 {item.horimetroInicial > 0 && <span>{numeroTexto(item.horimetroInicial)} h</span>}
                                 {item.kmInicial > 0 && <span>{numeroTexto(item.kmInicial)} km</span>}
                                 {precisaConferir(item) && <span className="text-amber-700">Conferir</span>}
+                                {repetidos.has(item.id) && <span className="text-rose-700">Repetido</span>}
                               </p>
                             </div>
                           </div>
@@ -519,7 +572,7 @@ export default function HistoricoCombustivel({
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2 lg:flex-nowrap lg:border-t-0 lg:py-1">
             <p className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-500 lg:text-sm">
               {filtrados.length ? `${paginaAtual * preferencias.tamanhoPagina + 1}–${Math.min((paginaAtual + 1) * preferencias.tamanhoPagina, filtrados.length)} de ${filtrados.length.toLocaleString('pt-BR')}` : '0 abastecimentos'}
-              <span className="hidden lg:inline"> · {maquinas.toLocaleString('pt-BR')} máquinas{conferir ? <> · <span className="font-bold text-[#f26a2e]">{conferir.toLocaleString('pt-BR')} a conferir</span></> : ''} · Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span></span>
+              <span className="hidden lg:inline"> · {maquinas.toLocaleString('pt-BR')} máquinas{conferir ? <> · <span className="font-bold text-[#f26a2e]">{conferir.toLocaleString('pt-BR')} a conferir</span></> : ''}{repetidosNoFiltro && !filtros.soRepetidos ? <> · <button type="button" onClick={() => mudarFiltro('soRepetidos', true)} className={`inline-flex items-center gap-1 rounded font-bold text-rose-700 hover:underline ${FOCO}`} data-testid="historico-ver-repetidos"><CopyX className="size-3.5" aria-hidden="true" />{repetidosNoFiltro.toLocaleString('pt-BR')} repetidos</button></> : ''} · Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span></span>
             </p>
             <div className="flex items-center gap-2">
               <label className="flex items-center gap-1 text-xs font-semibold text-slate-500">
@@ -570,6 +623,11 @@ export default function HistoricoCombustivel({
                 <div key={rotulo} className="min-w-0"><dt className="text-xs font-bold text-slate-500">{rotulo}</dt><dd className="truncate font-semibold text-slate-900" title={valor}>{valor}</dd></div>
               ))}
             </dl>
+            {repetidos.has(aberto.id) && (
+              <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="historico-ficha-repetido">
+                Tem outro lançamento desta máquina no mesmo dia com os mesmos litros. Se for o mesmo abastecimento, exclua um dos dois.
+              </p>
+            )}
             {aberto.observacao && <p className="mt-3 rounded-xl bg-[#f7f8f6] px-3 py-2 text-sm text-slate-700"><span className="font-bold">Observação: </span>{aberto.observacao}</p>}
             {aberto.origem && aberto.origem !== 'Manual' && <p className="mt-3 text-xs text-slate-500">Veio de {aberto.origem.toLowerCase()}{aberto.integracaoAba ? `, aba ${aberto.integracaoAba}` : ''}{aberto.integracaoLinha ? `, linha ${aberto.integracaoLinha}` : ''}.</p>}
           </div>

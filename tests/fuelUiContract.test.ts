@@ -8,12 +8,34 @@ const source = readFileSync(sourcePath, 'utf8');
 const appSource = readFileSync(join(process.cwd(), 'src', 'App.tsx'), 'utf8');
 const historicoSource = readFileSync(join(process.cwd(), 'src', 'components', 'combustivel', 'HistoricoCombustivel.tsx'), 'utf8');
 
-test('combustivel has only two screens: lançar and lançamentos', () => {
-  assert.match(source, /type View = 'novo' \| 'historico';/);
-  assert.match(source, /\['novo', 'Lançar', Plus\], \['historico', 'Lançamentos', History\]/);
+test('combustivel has three screens: lançar, lançamentos e relatórios', () => {
+  assert.match(source, /type View = 'novo' \| 'historico' \| 'relatorios';/);
+  assert.match(source, /\['novo', 'Lançar', Plus\], \['historico', 'Lançamentos', History\], \['relatorios', 'Relatórios', BarChart3\]/);
   assert.match(source, /data-testid="combustivel-numeros"/);
-  assert.doesNotMatch(source, /createPortal|combustivel-relatorio|combustivel-dashboard|abaJanela|abaDashboard/);
+  assert.match(source, /<RelatorioDiesel/);
+  assert.doesNotMatch(source, /createPortal|combustivel-dashboard|abaJanela|abaDashboard|combustivel-por-maquina/);
   assert.doesNotMatch(source, /combustivel-planilha|TabelaPlanilhaCombustivel/);
+});
+
+const relatorioSource = readFileSync(join(process.cwd(), 'src', 'components', 'combustivel', 'RelatorioDiesel.tsx'), 'utf8');
+const lancamentoSource = readFileSync(join(process.cwd(), 'src', 'components', 'combustivel', 'LancamentoCombustivel.tsx'), 'utf8');
+
+test('relatório do diesel abre a lista filtrada a partir do dia, da máquina e dos alertas', () => {
+  assert.match(relatorioSource, /onAbrirDia=\{dia => onAbrirLista\(\{ dataInicio: dia, dataFim: dia \}\)\}/);
+  assert.match(relatorioSource, /onAbrirLista\(\{ \.\.\.doPeriodo, soRepetidos: true \}\)/);
+  assert.match(relatorioSource, /<ConsumoPorMaquina/);
+  assert.match(relatorioSource, /reduzMovimento\(\)/);
+  assert.match(source, /pedidoFiltro=\{pedidoFiltro\}/);
+});
+
+test('lançamento repetido no dia trava e trocar data em lote grava numa vez só com desfazer', () => {
+  assert.match(lancamentoSource, /conferirNoDia\(/);
+  assert.match(lancamentoSource, /data-testid="combustivel-repetido"/);
+  assert.match(historicoSource, /data-testid="historico-trocar-data"/);
+  assert.match(source, /onSaveAbastecimentos\(trocarData\(mudar, novaData/);
+  assert.match(source, /desfazerTrocaDeData/);
+  assert.match(appSource, /const handleSaveAbastecimentos = \(itens: Abastecimento\[\], descricao: string\)/);
+  assert.match(appSource, /onSaveAbastecimentos=\{handleSaveAbastecimentos\}/);
 });
 
 test('combustivel history and report avoid forced desktop-only wide tables', () => {
