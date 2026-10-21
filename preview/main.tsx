@@ -427,7 +427,8 @@ function MeuDiaPreview() {
 }
 
 // Mais de cinco equipes, para o preview mostrar o "Mostrar mais equipes" do painel.
-const equipesPainel = [fx.grupo, ...fx.equipesPresenca,
+// fx.grupo já está em equipesPresenca (g-1); repetir dava chave React duplicada.
+const equipesPainel = [...fx.equipesPresenca,
   ...['Terraplenagem Norte', 'Drenagem', 'Pavimentação', 'Topografia', 'Obras de arte'].map((nome, i) => ({
     ...fx.grupo, id: `painel-extra-${i}`, nome: `Equipe ${nome}`, frenteServico: `Ramo ${(i + 3) * 100}`, token: `painel-extra-${i}`,
   }))];
