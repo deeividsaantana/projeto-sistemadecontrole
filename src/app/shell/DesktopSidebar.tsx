@@ -16,9 +16,9 @@ interface DesktopSidebarProps {
 const COLLAPSE_KEY = 'renea_sidebar_recolhido';
 const CLOSED_GROUPS_KEY = 'renea_sidebar_grupos_fechados';
 const ICON_STROKE = 1.75;
-// Mesmo anel de foco laranja do Painel (FOCO em estilos.ts), com offset escuro
-// porque o menu é a única superfície escura do sistema.
-const FOCO_CLARO = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b4938]';
+// Mesma borda de foco sólida do resto do sistema (FOCO em estilos.ts), mas
+// branca, porque o menu é a única superfície escura.
+const FOCO_CLARO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 
 const readCollapsed = () => {
   try {

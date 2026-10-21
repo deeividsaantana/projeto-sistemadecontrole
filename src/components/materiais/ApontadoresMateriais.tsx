@@ -247,7 +247,7 @@ export default function ApontadoresMateriais({ hoje, movimentos, responsavel, po
                       href={`https://www.google.com/maps?q=${envio.local.lat},${envio.local.lng}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex min-h-11 items-center gap-2 border-t border-slate-100 px-4 py-2 text-sm font-semibold text-[#176b4d] hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
+                      className="flex min-h-11 items-center gap-2 border-t border-slate-100 px-4 py-2 text-sm font-semibold text-[#176b4d] hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)"
                     >
                       <MapPin className="size-4 shrink-0" aria-hidden="true" />
                       Ver no mapa onde foi apontado

@@ -44,7 +44,7 @@ const MAX_FOTOS = 3;
 const NAME_KEY = 'renea_material_apontador_nome';
 const PENDING_KEY = 'renea_material_envio_pendente';
 
-const FOCO = 'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f26a2e]/60';
+const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 const CARTAO = 'rounded-2xl border border-slate-200 bg-white';
 const BOTAO_PRIMARIO = `inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#176b4d] px-5 text-base font-bold text-white transition active:scale-[0.98] disabled:bg-slate-200 disabled:text-slate-500 ${FOCO}`;
 const BOTAO_SECUNDARIO = `inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 text-base font-bold text-slate-800 transition active:scale-[0.98] ${FOCO}`;
@@ -498,7 +498,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           </Titulo>
           <form className={`${CARTAO} grid gap-3 p-4`} data-material-reveal onSubmit={event => { event.preventDefault(); salvarNome(); }}>
             <label htmlFor="material-link-nome" className="text-sm font-bold text-slate-700">Seu nome</label>
-            <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-4 focus-within:ring-[#f26a2e]/40">
+            <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)">
               <UserRound className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
               <input
                 id="material-link-nome"
@@ -564,7 +564,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
             <button type="button" className={`rounded font-bold text-[#176b4d] underline underline-offset-4 ${FOCO}`} onClick={() => { setNomeRascunho(nome); setTrocandoNome(true); }}>Trocar nome</button>
           </Titulo>
           {(view?.ramos.length || 0) > 5 && (
-            <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-4 focus-within:ring-[#f26a2e]/40" data-material-reveal>
+            <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)" data-material-reveal>
               <Search className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
               <span className="sr-only">Buscar ramo ou material</span>
               <input inputMode="search" enterKeyHint="search" autoComplete="off" value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar ramo ou material" className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 focus-visible:outline-none" />
@@ -611,7 +611,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           <Passos atual={2} />
           <Titulo eyebrow={ramo.nome} titulo="O que foi usado?">Toque no material e diga quanto usou.</Titulo>
           {ramo.materiais.length > 6 && (
-            <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-4 focus-within:ring-[#f26a2e]/40" data-material-reveal>
+            <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)" data-material-reveal>
               <Search className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
               <span className="sr-only">Buscar material</span>
               <input inputMode="search" autoComplete="off" value={buscaMaterial} onChange={event => setBuscaMaterial(event.target.value)} placeholder="Buscar material" className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 focus-visible:outline-none" />
@@ -643,7 +643,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
                       <p className="mb-2 text-sm font-bold text-slate-700">Quanto usou?</p>
                       <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] items-center gap-2">
                         <button type="button" onClick={() => ajustar(item, -1)} disabled={marcado <= 0} aria-label={`Diminuir ${item.descricao}`} className={`grid h-14 place-items-center rounded-2xl border border-slate-300 bg-white text-slate-700 disabled:opacity-40 ${FOCO}`}><Minus className="size-6" aria-hidden="true" /></button>
-                        <label className="flex h-14 items-baseline justify-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-3 focus-within:border-[#176b4d] focus-within:ring-4 focus-within:ring-[#f26a2e]/40">
+                        <label className="flex h-14 items-baseline justify-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-3 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)">
                           <span className="sr-only">Quantidade usada de {item.descricao} em {unidade}</span>
                           <input
                             inputMode="decimal"
@@ -766,7 +766,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
                 <Camera className="size-6 text-[#176b4d]" aria-hidden="true" />
                 <span>Câmera aqui</span>
               </button>
-              <label className={`${BOTAO_SECUNDARIO} cursor-pointer flex-col gap-1 py-3 focus-within:ring-4 focus-within:ring-[#f26a2e]/60`}>
+              <label className={`${BOTAO_SECUNDARIO} cursor-pointer flex-col gap-1 py-3 focus-within:ring-2 focus-within:ring-(--renea-focus)`}>
                 {preparandoFoto ? <RefreshCw className="size-6 animate-spin text-[#176b4d]" aria-hidden="true" /> : <Images className="size-6 text-[#176b4d]" aria-hidden="true" />}
                 <span>{preparandoFoto ? 'Preparando' : 'Da galeria'}</span>
                 <input

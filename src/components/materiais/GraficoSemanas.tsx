@@ -106,7 +106,7 @@ export default function GraficoSemanas({ hoje, materiais, movimentos }: Props) {
                 onFocus={() => setDestaque(indice)}
                 onBlur={() => setDestaque(null)}
                 onClick={() => setDestaque(atual => (atual === indice ? null : indice))}
-                className={`flex h-full min-w-0 cursor-default items-end justify-center gap-0.5 rounded-t-lg outline-none transition-colors ${destaque === indice ? 'bg-slate-100' : ''} focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60`}
+                className={`flex h-full min-w-0 cursor-default items-end justify-center gap-0.5 rounded-t-lg outline-none transition-colors ${destaque === indice ? 'bg-slate-100' : ''} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)`}
               >
                 {SERIES.map(serie => (
                   <span

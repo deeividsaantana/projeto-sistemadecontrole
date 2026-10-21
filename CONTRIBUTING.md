@@ -64,7 +64,7 @@ prints, tokens ou `.env`. O `.gitignore` já barra esses itens, e o teste
 ### Checklist de tela (obrigatório em toda aba nova ou alterada)
 
 - [ ] **Pergunta obrigatória:** uma pessoa cansada e sem facilidade com aplicativos consegue cadastrar, lançar e consultar nesta tela sem travar?
-- [ ] O visual bate com o Painel de Controle: `PageHeader` com a ação principal no topo, cartões `rounded-2xl border-slate-200`, paleta `#176b4d`, `#f26a2e` e `#718087`, e foco `ring-[#f26a2e]/60`.
+- [ ] O visual bate com o Painel de Controle: `PageHeader` com a ação principal no topo, cartões `rounded-2xl border-slate-200`, paleta `#176b4d`, `#f26a2e` e `#718087` (como cor de letra, `#5b6870` no lugar do cinza e `#c2410c` no lugar do laranja, que dão 4,5:1), e foco com borda sólida verde-escura de 2px afastada 2px (`--renea-focus`).
 - [ ] Entrada com GSAP pelos helpers comuns (`RouteMotion`, `useEntradaDeLista`), respeitando `prefers-reduced-motion`.
 - [ ] A tela não pesa: biblioteca grande só carrega quando a ação pede (`import()` sob demanda).
 - [ ] Funciona em 375 px, 768 px e 1440 px, sem rolagem horizontal, com botões de pelo menos 44 px.

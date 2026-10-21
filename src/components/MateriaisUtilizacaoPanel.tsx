@@ -30,7 +30,7 @@ interface Props {
   onUpdateMovimentos: (movimentos: MovimentoMaterial[], descricao: string, acao?: 'Editou' | 'Excluiu') => void;
 }
 
-const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60';
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 const number = (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const percentText = (value: number | null) => value === null ? 'Sem entrada' : `${value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 

@@ -36,7 +36,9 @@
   --renea-soft: #ffffff;
   --renea-green: #063c31;
   --renea-green-deep: #022b24;
-  --renea-focus: rgb(13 89 70 / 0.22);
+  /* Foco do teclado: borda sólida verde-escura de 2px, afastada 2px do
+     controle. Contraste de 8:1 no branco (auditoria de front, A7). */
+  --renea-focus: #0d5946;
   /* Cores de TEXTO acessíveis (≥4,5:1 no branco e nos fundos claros do app).
      #718087 e #f26a2e continuam para fundo, borda e ícone decorativo, mas
      como letra ficam abaixo de 4,5:1 (auditoria de front, A6). */
@@ -118,7 +120,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 :is(#app-root, [data-app-portal]) option, :is(#app-root, [data-app-portal]) select { background-color: #fff; color: #33413b; }
 #app-root :is(button, a, input, select, textarea) { transition-duration: 240ms; transition-timing-function: cubic-bezier(.32,.72,0,1); }
 #app-root :is(button, [role="button"]):not(:disabled):active { transform: scale(.985); }
-#app-root :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--renea-focus); outline-offset: 2px; }
+#app-root :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
+/* O menu lateral é a única superfície escura: lá o foco é branco. */
+#app-root .erp-sidebar :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline-color: #fff; }
 
 #app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
   border-color: #cfd4d0;
@@ -127,7 +131,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   box-shadow: none;
 }
 #app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):hover { border-color: #9fa9a3; }
-#app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus { border-color: var(--renea-green); box-shadow: 0 0 0 3px var(--renea-focus); }
+#app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus { border-color: var(--renea-green); }
 
 #app-root table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
 #app-root thead { background: #fafcfb; color: #3e4843; letter-spacing: .025em; }
@@ -806,7 +810,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-tab-viewport a { transition: color .2s ease, background-color .2s ease, border-color .2s ease, transform .2s cubic-bezier(.2,.8,.2,1); }
 #main-tab-viewport button:active,
 #main-tab-viewport a:active { transform: translateY(1px) scale(.99); }
-#main-tab-viewport :is(button, a, input, select, textarea):focus-visible { outline: 3px solid rgb(0 139 98 / .22); outline-offset: 2px; }
+#main-tab-viewport :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
 
 
 @media (prefers-reduced-motion: reduce) {

@@ -27,7 +27,7 @@
 
 ### ☑️ 3. Estilização Interativa & Padronizada
 - [x] Hover states em botões/cards (opacity 85%, bg-white/55)
-- [x] Focus states com ring-2 ring-[#f26a2e]/60
+- [x] Foco com borda sólida verde-escura de 2px e afastamento de 2px (`--renea-focus`, global no index.css)
 - [x] Transições suaves (transition, duration-200)
 - [x] Ativa estados visuais (is-active classes)
 - [x] Loading states (spinner ou skeleton)

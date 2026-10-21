@@ -424,7 +424,7 @@ export default function ColaboradoresTab({
               type="button"
               onClick={() => setLimite(atual => atual + LOTE)}
               data-testid="colaboradores-mostrar-mais"
-              className="mx-auto mt-4 flex min-h-11 items-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
+              className="mx-auto mt-4 flex min-h-11 items-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)"
             >
               Mostrar mais {Math.min(LOTE, lista.length - limite)}
             </button>

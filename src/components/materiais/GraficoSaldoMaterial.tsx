@@ -76,7 +76,7 @@ export default function GraficoSaldoMaterial({ materialId, unidade, hoje, movime
                 onFocus={() => setDestaque(indice)}
                 onBlur={() => setDestaque(null)}
                 onClick={() => setDestaque(atual => (atual === indice ? null : indice))}
-                className={`flex h-full min-w-0 cursor-default items-end justify-center rounded-t-lg outline-none transition-colors ${destaque === indice ? 'bg-slate-100' : ''} focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60`}
+                className={`flex h-full min-w-0 cursor-default items-end justify-center rounded-t-lg outline-none transition-colors ${destaque === indice ? 'bg-slate-100' : ''} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)`}
               >
                 <span
                   className={`w-2 rounded-t-[3px] sm:w-3 ${item.saldo < 0 ? 'bg-rose-500' : 'bg-[#176b4d]'}`}
