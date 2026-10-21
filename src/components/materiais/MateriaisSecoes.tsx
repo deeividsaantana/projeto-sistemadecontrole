@@ -173,7 +173,7 @@ export default function MateriaisSecoes({ value, secoes, contar, avisos = () => 
               <span className="min-w-0 break-words">{nome}</span>
               {marcador(id, ativo)}
             </span>
-            <span id={`materiais-ajuda-${id}-${grande ? 'm' : 'd'}`} aria-hidden="true" className={`block text-xs font-normal leading-snug ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{ajuda}</span>
+            <span id={`materiais-ajuda-${id}-${grande ? 'm' : 'd'}`} aria-hidden="true" className={`${grande ? 'block' : 'hidden xl:block'} text-xs font-normal leading-snug ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{ajuda}</span>
           </span>
         </button>
       </li>

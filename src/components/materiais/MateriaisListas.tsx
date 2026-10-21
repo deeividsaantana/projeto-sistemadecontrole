@@ -120,12 +120,12 @@ export function ListaMovimentos({ movimentos, chave, selecao, onAbrir }: Movimen
                 >
                   {selecao && (
                     <td className="p-0" onClick={event => event.stopPropagation()}>
-                      <label className="flex h-11 cursor-pointer items-center justify-center">{caixa(item)}</label>
+                      <label className="flex h-11 cursor-pointer items-center justify-center lg:h-9">{caixa(item)}</label>
                     </td>
                   )}
                   <td className="p-3 text-slate-700">
-                    <span className="block tabular-nums">{formatarData(item.data)}</span>
-                    {item.responsavel && <span className="block text-xs text-slate-500">{item.responsavel}</span>}
+                    <span className="block whitespace-nowrap tabular-nums">{formatarData(item.data)}</span>
+                    {item.responsavel && <span className="block max-w-[9rem] truncate text-xs text-slate-500" title={item.responsavel}>{item.responsavel}</span>}
                   </td>
                   <td className="p-3">{tipo(item)}</td>
                   <td className={`p-3 font-bold ${item.canceladoEm ? 'text-slate-400' : 'text-slate-800'}`}>

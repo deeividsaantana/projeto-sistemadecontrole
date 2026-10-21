@@ -36,22 +36,22 @@ const indicadores = (metrics: FleetMetrics): Indicador[] => [
 /** Resumo do dia no mesmo cartão do Quadro da Frota; tocar filtra a lista. */
 export default function FleetKpiStrip({ metrics, status, onPick }: Props) {
   return (
-    <section aria-label="Indicadores da frota" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-7">
+    <section aria-label="Indicadores da frota" className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
       {indicadores(metrics).map(item => {
         const ativo = item.status !== undefined && item.status !== 'Todos' && item.status === status;
         const conteudo = (
           <>
             <span className="flex items-start justify-between gap-2">
-              <span className="min-w-0 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 [overflow-wrap:anywhere] sm:tracking-[0.12em]">{item.titulo}</span>
-              <span className={`grid size-8 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-4" aria-hidden="true" /></span>
+              <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-[0.04em] text-slate-500 [hyphens:none]">{item.titulo}</span>
+              <span className={`grid size-7 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
             </span>
             {item.texto !== undefined
-              ? <span className="mt-1 block text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl">{item.texto}</span>
-              : <CountUp value={item.valor} suffix={item.sufixo} className="mt-1 block text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl" />}
-            <span className="block text-xs text-slate-500">{item.detalhe}</span>
+              ? <span className="mt-1 block text-2xl font-bold leading-none tabular-nums text-slate-900">{item.texto}</span>
+              : <CountUp value={item.valor} suffix={item.sufixo} className="mt-1 block text-2xl font-bold leading-none tabular-nums text-slate-900" />}
+            <span className="mt-1 block truncate text-xs text-slate-500" title={item.detalhe}>{item.detalhe}</span>
           </>
         );
-        const classe = `${CARTAO} flex min-h-24 flex-col p-3 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] sm:min-h-28 sm:p-3.5 ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
+        const classe = `${CARTAO} flex min-w-0 flex-col gap-1 p-3 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
         return item.status !== undefined ? (
           <button
             key={item.id}

@@ -111,7 +111,7 @@ export default function FleetDataTable({
       type="button"
       onClick={() => toggleSort(key)}
       aria-label={`Ordenar por ${label}`}
-      className={`inline-flex min-h-8 items-center gap-1 rounded-lg font-bold uppercase tracking-[0.1em] transition hover:text-[#176b4d] ${FOCO}`}
+      className={`inline-flex min-h-8 items-center gap-1 rounded-lg font-bold uppercase tracking-[0.04em] transition hover:text-[#176b4d] ${FOCO}`}
     >
       {label}
       {sortKey === key ? <ChevronDown className={`size-3.5 transition ${sortDirection === 'asc' ? 'rotate-180' : ''}`} aria-hidden="true" /> : <ChevronsUpDown className="size-3.5 opacity-40" aria-hidden="true" />}
@@ -122,7 +122,7 @@ export default function FleetDataTable({
       {row.approvalStatus === 'APROVADO' ? 'Aprovado' : row.approvalStatus === 'REJEITADO' ? 'Rejeitado' : 'Pendente'}
     </span>
   );
-  const ICONE = `grid size-10 place-items-center rounded-xl border transition duration-200 active:scale-[0.96] ${FOCO}`;
+  const ICONE = `grid size-10 lg:size-8 place-items-center rounded-xl border transition duration-200 active:scale-[0.96] ${FOCO}`;
   return (
     <section className={`${CARTAO} overflow-hidden`} aria-label="Lançamentos do dia" data-fleet-enter>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
@@ -174,14 +174,14 @@ export default function FleetDataTable({
         <table className="w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-12" />
-            <col className="w-[15%]" />
-            <col className="w-[19%]" />
-            <col className="w-[14%]" />
-            <col className="w-[9%]" />
-            <col className="w-[12%]" />
+            <col className="w-[13%]" />
+            <col className="w-[17%]" />
+            <col className="w-[13%]" />
+            <col className="w-[7%]" />
+            <col className="w-[11%]" />
             <col />
-            <col className="w-[8%]" />
-            <col className="w-[9.5rem]" />
+            <col className="w-[7.5rem]" />
+            <col className="w-[9.75rem]" />
           </colgroup>
           <thead className="bg-[#f7f8f6] text-[11px] text-slate-500">
             <tr>
@@ -199,9 +199,9 @@ export default function FleetDataTable({
               <th className="px-2 py-2">{header('Situação', 'status')}</th>
               <th className="px-2 py-2">{header('Saída', 'departure')}</th>
               <th className="px-2 py-2">{header('Local', 'location')}</th>
-              <th className="px-2 py-2 font-bold uppercase tracking-[0.1em]">Observação</th>
-              <th className="px-2 py-2 font-bold uppercase tracking-[0.1em]">Aprovação</th>
-              <th className="px-3 py-2 text-right font-bold uppercase tracking-[0.1em]">Ações</th>
+              <th className="px-2 py-2 font-bold uppercase tracking-[0.04em]">Observação</th>
+              <th className="px-2 py-2 font-bold uppercase tracking-[0.04em]">Aprovação</th>
+              <th className="px-3 py-2 text-right font-bold uppercase tracking-[0.04em]">Ações</th>
             </tr>
           </thead>
           <tbody ref={bodyRef} className="divide-y divide-slate-100">

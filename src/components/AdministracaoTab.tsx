@@ -104,7 +104,7 @@ export default function AdministracaoTab({
   }, { scope: escopo, dependencies: [secao] });
 
   return (
-    <div id="administracao-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div id="administracao-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] pb-12">
       <div data-admin-reveal>
         <PageHeader
           eyebrow="Só administrador"

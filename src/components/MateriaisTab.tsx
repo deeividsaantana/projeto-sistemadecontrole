@@ -475,7 +475,7 @@ export default function MateriaisTab({
       )}
 
       {/* Lançar usa a tela toda: o menu vira o seletor de cima, como no celular. */}
-      <div className={`grid gap-4 lg:items-start ${aba === 'lancar' ? '' : 'lg:grid-cols-[14rem_minmax(0,1fr)]'}`}>
+      <div className={`grid gap-4 lg:items-start ${aba === 'lancar' ? '' : 'lg:grid-cols-[12.5rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)]'}`}>
         <MateriaisSecoes value={aba} compacto={aba === 'lancar'} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : secao === 'previsto' ? previstosEmAtencao : 0)} onSelect={escolherSecao} classes={classesDoMenu} classeAtiva={classe} onClasse={escolherClasse} />
 
         <div id="materiais-conteudo" className="min-w-0 space-y-3">
