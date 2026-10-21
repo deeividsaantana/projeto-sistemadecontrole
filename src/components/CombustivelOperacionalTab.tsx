@@ -1,24 +1,29 @@
 /**
- * Combustível: lançar o abastecimento com o fluxo da planilha macro.
- * A máquina ainda consulta as últimas leituras do controle, mas o cadastro
- * rápido fica focado em prefixo, litros, comboio, combustível e bomba.
+ * Combustível: lançar o abastecimento com o fluxo da planilha macro, ver a
+ * lista no modelo da planilha e os relatórios. A máquina ainda consulta as
+ * últimas leituras do controle, mas o cadastro rápido fica focado em prefixo,
+ * litros, comboio, combustível e bomba. Lançamento repetido no dia trava, e
+ * vários marcados na lista mudam de data de uma vez, com Desfazer.
  *
- * Teclas, fora de campo de texto: N novo abastecimento, / busca no histórico.
+ * Teclas, fora de campo de texto: N novo abastecimento, / busca no histórico,
+ * R relatórios.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { CheckCircle2, Droplets, Gauge, History, Maximize2, Minimize2, Plus, Undo2 } from 'lucide-react';
+import { BarChart3, CheckCircle2, Droplets, History, Maximize2, Minimize2, Plus, Undo2 } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../types';
 import type { FuelImportedMasterData } from '../utils/fuelMasterDataImport';
 import { ConfirmDialog, isoDay } from '../shared/ui';
 import { PageHeader } from '../shared/ui/PageHeader';
 import { BOTAO_SECUNDARIO, FOCO } from './cadastros/estilos';
-import ConsumoPorMaquina from './combustivel/ConsumoPorMaquina';
-import HistoricoCombustivel, { type FiltrosExportacao } from './combustivel/HistoricoCombustivel';
+import HistoricoCombustivel, { type FiltrosExportacao, type PedidoFiltro } from './combustivel/HistoricoCombustivel';
 import LancamentoCombustivel from './combustivel/LancamentoCombustivel';
+import RelatorioDiesel from './combustivel/RelatorioDiesel';
+import TrocarDataLote from './combustivel/TrocarDataLote';
 import { buildFuelReport, type FuelReportExcelRow } from '../modules/frota/fuelReport';
 import { ligarPeloPrefixo } from '../modules/frota/vinculoPrefixo';
+import { trocarData } from '../modules/frota/repetidosDiesel';
 
 interface Props {
   empresas: Empresa[];
@@ -34,6 +39,8 @@ interface Props {
   /** Quem está usando o sistema; entra como responsável do lançamento. */
   usuario?: string;
   onSaveAbastecimento: (item: Abastecimento, isNew: boolean) => void;
+  /** Grava vários de uma vez (trocar data em lote); sem ele, a lista não mostra Trocar data. */
+  onSaveAbastecimentos?: (itens: Abastecimento[], descricao: string) => void;
   /** Sem os de excluir, a tela não mostra Excluir: só o administrador exclui (A7). */
   onDeleteAbastecimento?: (id: string) => void;
   /** Manda para a Lixeira e devolve as exclusões; sem ele, o histórico só exclui um por vez. */
@@ -53,8 +60,8 @@ interface Props {
   porMaquinaInicial?: boolean;
 }
 
-/** Duas telas só: lançar e ver os lançamentos (com o consumo no topo). */
-type View = 'novo' | 'historico';
+/** Três telas: lançar, ver os lançamentos e os relatórios (com o consumo por máquina dentro). */
+type View = 'novo' | 'historico' | 'relatorios';
 
 const CHAVE_TELA_CHEIA = 'renea_combustivel_tela_cheia_v1';
 
@@ -65,19 +72,23 @@ const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFr
 
 export default function CombustivelOperacionalTab({
   empresas, equipamentos, comboios, combustiveis, abastecimentos, registros = [], gruposEquipe = [], usuario = '',
-  onSaveAbastecimento, onDeleteAbastecimento, onDeleteAbastecimentos, onRestaurarAbastecimentos, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
+  onSaveAbastecimento, onSaveAbastecimentos, onDeleteAbastecimento, onDeleteAbastecimentos, onRestaurarAbastecimentos, onOpenLubrificacao, onOpenSpreadsheetImport, isParsingSpreadsheet,
   openHistorySignal = 0, initialView = 'historico', listaSomente = false, porMaquinaInicial = false,
 }: Props) {
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
-  const [view, setView] = useState<View>(listaSomente || porMaquinaInicial ? 'historico' : initialView);
-  const [porMaquina, setPorMaquina] = useState(porMaquinaInicial && !listaSomente);
+  const [view, setView] = useState<View>(listaSomente ? 'historico' : porMaquinaInicial ? 'relatorios' : initialView);
+  /** Filtro pedido pelo relatório; a lista aplica quando a chave muda. */
+  const [pedidoFiltro, setPedidoFiltro] = useState<PedidoFiltro | undefined>();
+  const [trocandoData, setTrocandoData] = useState<Abastecimento[]>([]);
   const [exportandoHistorico, setExportandoHistorico] = useState<'' | 'excel' | 'pdf'>('');
   const [excluindo, setExcluindo] = useState<Abastecimento[]>([]);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
   /** Exclusões que o Desfazer do aviso ainda devolve. */
   const [desfazer, setDesfazer] = useState<string[]>([]);
+  /** Como estavam antes da troca de data, para o Desfazer devolver. */
+  const [datasAntigas, setDatasAntigas] = useState<Abastecimento[]>([]);
   const avisoRef = useRef<HTMLParagraphElement>(null);
   /** Lançamento aberto: a chave remonta o formulário a cada novo pedido. */
   const [lancamento, setLancamento] = useState<{ chave: number; emEdicao?: Abastecimento; prefixo?: string; comboioId?: string }>({ chave: 0 });
@@ -205,7 +216,30 @@ export default function CombustivelOperacionalTab({
     else if (excluindo.length > 1) setErro('Excluir vários de uma vez não está disponível nesta tela.');
     if (excluindo.length) setAviso(excluindo.length === 1 ? 'Abastecimento excluído.' : `${excluindo.length} abastecimentos excluídos.`);
     setDesfazer(onRestaurarAbastecimentos ? exclusoes : []);
+    setDatasAntigas([]);
     setExcluindo([]);
+  };
+  const trocarDataConfirmada = (novaData: string) => {
+    if (!onSaveAbastecimentos) return;
+    const mudar = trocandoData.filter(item => item.data !== novaData);
+    if (mudar.length) {
+      const dia = new Date(`${novaData}T12:00:00`).toLocaleDateString('pt-BR');
+      onSaveAbastecimentos(trocarData(mudar, novaData, new Date().toISOString()), `Trocou a data de ${mudar.length} abastecimento(s) para ${dia}.`);
+      setAviso(mudar.length === 1 ? `Abastecimento levado para ${dia}.` : `${mudar.length} abastecimentos levados para ${dia}.`);
+      setDatasAntigas(mudar);
+      setDesfazer([]);
+    }
+    setTrocandoData([]);
+  };
+  const desfazerTrocaDeData = () => {
+    if (!onSaveAbastecimentos || !datasAntigas.length) return;
+    onSaveAbastecimentos(datasAntigas.map(item => ({ ...item, atualizadoEm: new Date().toISOString() })), `Desfez a troca de data de ${datasAntigas.length} abastecimento(s).`);
+    setAviso(datasAntigas.length === 1 ? 'Data devolvida.' : `Datas de ${datasAntigas.length} abastecimentos devolvidas.`);
+    setDatasAntigas([]);
+  };
+  const abrirLista = (pedido: Omit<PedidoFiltro, 'chave'>) => {
+    setPedidoFiltro({ chave: Date.now(), ...pedido });
+    setView('historico');
   };
   const desfazerExclusao = () => {
     if (!onRestaurarAbastecimentos || !desfazer.length) return;
@@ -215,24 +249,25 @@ export default function CombustivelOperacionalTab({
     else setErro(resultado.mensagem);
   };
   // No celular a ficha fica lá embaixo: o aviso com Desfazer vem até a vista.
+  const temDesfazer = desfazer.length > 0 || datasAntigas.length > 0;
   useEffect(() => {
-    if (desfazer.length) avisoRef.current?.scrollIntoView({ block: 'nearest' });
-  }, [desfazer]);
+    if (temDesfazer) avisoRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [temDesfazer]);
   useEffect(() => {
     if (!aviso) return undefined;
     // Com Desfazer na tela, o aviso fica mais tempo para dar tempo de tocar.
-    const tempo = window.setTimeout(() => { setAviso(''); setDesfazer([]); }, desfazer.length ? 10000 : 4000);
+    const tempo = window.setTimeout(() => { setAviso(''); setDesfazer([]); setDatasAntigas([]); }, temDesfazer ? 10000 : 4000);
     return () => window.clearTimeout(tempo);
-  }, [aviso, desfazer.length]);
+  }, [aviso, temDesfazer]);
 
   useEffect(() => {
     const teclar = (event: KeyboardEvent) => {
       const alvo = event.target as HTMLElement | null;
-      if (event.key === 'Escape' && telaCheia && !excluindo.length && !alvo?.matches('input, textarea, select')) {
+      if (event.key === 'Escape' && telaCheia && !excluindo.length && !trocandoData.length && !alvo?.matches('input, textarea, select')) {
         setTelaCheia(false);
         return;
       }
-      if (view === 'novo' || alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey || excluindo.length) return;
+      if (view === 'novo' || alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey || excluindo.length || trocandoData.length) return;
       if (event.key.toLowerCase() === 'n') {
         event.preventDefault();
         abrirNovo();
@@ -240,6 +275,9 @@ export default function CombustivelOperacionalTab({
         event.preventDefault();
         setView('historico');
         window.setTimeout(() => buscaRef.current?.focus(), 60);
+      } else if (event.key.toLowerCase() === 'r' && !listaSomente) {
+        event.preventDefault();
+        setView('relatorios');
       }
     };
     document.addEventListener('keydown', teclar);
@@ -249,7 +287,7 @@ export default function CombustivelOperacionalTab({
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(raiz.querySelectorAll('[data-comb-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' });
-  }, { scope: escopo, dependencies: [view, porMaquina] });
+  }, { scope: escopo, dependencies: [view] });
 
   /** Números do topo da lista: o que a pessoa quer saber de relance. */
   const numeros = useMemo(() => {
@@ -267,7 +305,7 @@ export default function CombustivelOperacionalTab({
     };
   }, [ativos]);
 
-  const vistas = [['novo', 'Lançar', Plus], ['historico', 'Lançamentos', History]] as const;
+  const vistas = [['novo', 'Lançar', Plus], ['historico', 'Lançamentos', History], ['relatorios', 'Relatórios', BarChart3]] as const;
   const cartoes = [
     { titulo: 'Hoje', valor: litrosTexto(numeros.litrosHoje), detalhe: `${numeros.lancamentosHoje} lançamento(s)` },
     { titulo: 'Mês', valor: litrosTexto(numeros.litrosMes), detalhe: `${numeros.maquinasMes} máquina(s)` },
@@ -279,17 +317,14 @@ export default function CombustivelOperacionalTab({
       className={`w-full max-w-none flex-col ${telaCheia ? 'fixed inset-0 z-[90] block overflow-y-auto bg-[#f7f8f6] p-2 sm:p-3 xl:flex xl:overflow-hidden' : listaSomente ? 'flex h-[calc(100dvh-0.5rem)] overflow-hidden' : 'flex xl:h-[calc(100dvh-6.5rem)] xl:min-h-[34rem] xl:overflow-hidden'}`}>
       {!listaSomente && <div data-comb-reveal className="mb-1.5 shrink-0">
         <PageHeader eyebrow="Frota" title="Combustível" className="mb-0 !items-center !gap-2 !p-0 [&_h1]:!text-lg [&_.renea-page-actions]:!flex-wrap" actions={<>
-          <nav aria-label="Área de combustível" className="grid grid-cols-2 gap-1 rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200">
-            {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => (id === 'novo' ? (view === 'novo' ? undefined : abrirNovo()) : setView(id))} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-bold transition ${view === id ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:bg-[#f7f8f6] hover:text-slate-900'} ${FOCO}`}><Icone className="size-4 shrink-0" aria-hidden="true" />{id === 'novo' && lancamento.emEdicao && view === 'novo' ? 'Corrigindo' : rotulo}</button>)}
+          <nav aria-label="Área de combustível" className="grid w-full grid-cols-3 gap-1 sm:w-auto rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200">
+            {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => { if (id === 'novo') { if (view !== 'novo') abrirNovo(); return; } if (id === 'historico') setPedidoFiltro(undefined); setView(id); }} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-sm font-bold sm:px-3 transition ${view === id ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:bg-[#f7f8f6] hover:text-slate-900'} ${FOCO}`}><Icone className="hidden size-4 shrink-0 sm:block" aria-hidden="true" />{id === 'novo' && lancamento.emEdicao && view === 'novo' ? 'Corrigindo' : rotulo}</button>)}
           </nav>
           {view === 'historico' && <ul className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex" data-testid="combustivel-numeros">
             {cartoes.map(cartao => <li key={cartao.titulo} title={cartao.detalhe} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 ring-inset ${cartao.alerta ? 'bg-amber-50 text-amber-900 ring-amber-200' : 'bg-white text-slate-600 ring-slate-200'}`}>
               {cartao.titulo} <strong className="tabular-nums text-slate-950">{cartao.valor}</strong>
             </li>)}
           </ul>}
-          {view === 'historico' && <button type="button" aria-pressed={porMaquina} onClick={() => setPorMaquina(atual => !atual)} title={porMaquina ? 'Voltar para a lista' : 'Consumo por máquina'} className={`${BOTAO_SECUNDARIO} min-h-9 px-2.5`} data-testid="combustivel-por-maquina">
-            {porMaquina ? <History className="size-4" aria-hidden="true" /> : <Gauge className="size-4" aria-hidden="true" />}<span className="hidden xl:inline">{porMaquina ? 'Lista' : 'Por máquina'}</span>
-          </button>}
           <button type="button" onClick={() => setTelaCheia(atual => !atual)} aria-pressed={telaCheia} aria-label={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'} title={telaCheia ? 'Sair da tela cheia (Esc)' : 'Usar a tela toda'} className={`${BOTAO_SECUNDARIO} hidden size-9 shrink-0 justify-center !px-0 sm:inline-flex`} data-testid="combustivel-tela-cheia">
             {telaCheia ? <Minimize2 className="size-4 shrink-0" aria-hidden="true" /> : <Maximize2 className="size-4 shrink-0" aria-hidden="true" />}
           </button>
@@ -300,8 +335,8 @@ export default function CombustivelOperacionalTab({
       <p ref={avisoRef} role="status" aria-live="polite" className={`${aviso ? 'mb-2' : 'sr-only'} flex shrink-0 items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`} data-testid="combustivel-aviso">
         {aviso && <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />}
         <span className="min-w-0 flex-1">{aviso}</span>
-        {aviso && desfazer.length > 0 && (
-          <button type="button" onClick={desfazerExclusao} className={`${BOTAO_SECUNDARIO} min-h-9 shrink-0`} data-testid="combustivel-desfazer">
+        {aviso && temDesfazer && (
+          <button type="button" onClick={datasAntigas.length ? desfazerTrocaDeData : desfazerExclusao} className={`${BOTAO_SECUNDARIO} min-h-9 shrink-0`} data-testid="combustivel-desfazer">
             <Undo2 className="size-4" aria-hidden="true" />Desfazer
           </button>
         )}
@@ -322,35 +357,56 @@ export default function CombustivelOperacionalTab({
           prefixoInicial={lancamento.prefixo}
           comboioInicial={lancamento.comboioId}
           onSalvar={onSaveAbastecimento}
+          onAbrirExistente={item => abrirNovo({ emEdicao: item })}
           onFechar={fecharLancamento}
           onAviso={setAviso}
         />
       </div>}
 
-      {view === 'historico' && (
-        <>
-          {erro && <p role="alert" className="mb-2 shrink-0 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
-          {porMaquina && !listaSomente
-            ? <ConsumoPorMaquina abastecimentos={ativos} equipamentos={equipamentos} empresas={empresas} onErro={setErro} onAviso={setAviso} />
-            : <HistoricoCombustivel
-              abastecimentos={ativos}
-              equipamentos={equipamentos}
-              empresas={empresas}
-              comboios={comboios}
-              combustiveis={combustiveis}
-              buscaRef={buscaRef}
-              exportando={exportandoHistorico}
-              isParsingSpreadsheet={isParsingSpreadsheet}
-              compacto={listaSomente}
-              onImportar={onOpenSpreadsheetImport}
-              onExportarExcel={dados => void exportarHistoricoExcel(dados)}
-              onExportarPdf={dados => void exportarHistoricoPdf(dados)}
-              onEditar={item => abrirNovo({ emEdicao: item })}
-              onRepetir={item => abrirNovo({ prefixo: porId.get(item.equipamentoId)?.prefixo || item.prefixoInformado || '', comboioId: item.comboioId })}
-              onExcluir={onDeleteAbastecimento || onDeleteAbastecimentos ? setExcluindo : undefined}
-            />}
-        </>
+      {view !== 'novo' && erro && <p role="alert" className="mb-2 shrink-0 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
+
+      {view === 'relatorios' && (
+        <RelatorioDiesel
+          abastecimentos={ativos}
+          equipamentos={equipamentos}
+          empresas={empresas}
+          comboios={comboios}
+          parteInicial={porMaquinaInicial ? 'consumo' : 'resumo'}
+          onAbrirLista={abrirLista}
+          onErro={setErro}
+          onAviso={setAviso}
+        />
       )}
+
+      {view === 'historico' && (
+        <HistoricoCombustivel
+          abastecimentos={ativos}
+          equipamentos={equipamentos}
+          empresas={empresas}
+          comboios={comboios}
+          combustiveis={combustiveis}
+          buscaRef={buscaRef}
+          exportando={exportandoHistorico}
+          isParsingSpreadsheet={isParsingSpreadsheet}
+          compacto={listaSomente}
+          onImportar={onOpenSpreadsheetImport}
+          onExportarExcel={dados => void exportarHistoricoExcel(dados)}
+          onExportarPdf={dados => void exportarHistoricoPdf(dados)}
+          onEditar={item => abrirNovo({ emEdicao: item })}
+          onRepetir={item => abrirNovo({ prefixo: porId.get(item.equipamentoId)?.prefixo || item.prefixoInformado || '', comboioId: item.comboioId })}
+          onExcluir={onDeleteAbastecimento || onDeleteAbastecimentos ? setExcluindo : undefined}
+          onTrocarData={onSaveAbastecimentos ? setTrocandoData : undefined}
+          pedidoFiltro={pedidoFiltro}
+        />
+      )}
+
+      <TrocarDataLote
+        aberto={trocandoData.length > 0}
+        itens={trocandoData}
+        todos={ativos}
+        onConfirmar={trocarDataConfirmada}
+        onFechar={() => setTrocandoData([])}
+      />
 
       <ConfirmDialog
         open={excluindo.length > 0}

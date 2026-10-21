@@ -461,11 +461,12 @@ const getInitialTabFromUrl = () => {
   return params.get('tab') || params.get('aba') || 'dashboard';
 };
 
-const getCombustivelViewFromUrl = (): 'novo' | 'historico' | undefined => {
+const getCombustivelViewFromUrl = (): 'novo' | 'historico' | 'relatorios' | undefined => {
   if (typeof window === 'undefined') return undefined;
   const view = new URLSearchParams(window.location.search).get('combustivel');
   if (view === 'novo') return 'novo';
-  // Endereços antigos (resumo, relatório, por máquina) caem na lista.
+  if (view === 'relatorios' || view === 'relatorio') return 'relatorios';
+  // Endereços antigos (resumo, por máquina) caem na lista.
   return view ? 'historico' : undefined;
 };
 
@@ -2824,6 +2825,17 @@ export default function App() {
     );
   };
 
+  /** Vários abastecimentos editados de uma vez (trocar a data em lote), numa gravação só. */
+  const handleSaveAbastecimentos = (itens: Abastecimento[], descricao: string) => {
+    if (!itens.length) return;
+    const porId = new Map(itens.map(item => [item.id, item]));
+    const updated = auditarBaseCombustivel(abastecimentos.map(item => porId.get(item.id) ?? item));
+    saveAndLog('Abastecimentos', 'Editou', descricao, historyLogs, () => {
+      setAbastecimentos(updated);
+      writeStorageValue(localStorage, 'renea_abastecimentos', JSON.stringify(updated));
+    });
+  };
+
   /**
    * Excluir lançamento é do administrador (A7). A tela já esconde o botão de
    * quem não pode; a recusa aqui vale para qualquer outro caminho até a ação.
@@ -4614,6 +4626,7 @@ export default function App() {
                 abastecimentos={abastecimentosAtivos}
                 lubrificacoes={lubrificacoes}
                 onSaveAbastecimento={handleSaveAbastecimento}
+                onSaveAbastecimentos={handleSaveAbastecimentos}
                 onDeleteAbastecimento={podeExcluirLancamento ? handleDeleteAbastecimento : undefined}
                 onDeleteAbastecimentos={podeExcluirLancamento ? handleDeleteAbastecimentos : undefined}
                 onRestaurarAbastecimentos={handleRestaurarCadastros}

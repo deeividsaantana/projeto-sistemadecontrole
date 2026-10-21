@@ -474,6 +474,7 @@ function CombustivelVivo() {
       usuario="Deivid"
       onOpenControle={noop}
       onSaveAbastecimento={(item, novo) => setLista(atual => (novo ? [...atual, item as never] : atual.map(x => ((x as Item).id === item.id ? item as never : x))))}
+      onSaveAbastecimentos={itens => setLista(atual => atual.map(x => (itens.find(item => item.id === (x as Item).id) as never) ?? x))}
       onDeleteAbastecimento={id => setLista(atual => atual.filter(x => (x as Item).id !== id))}
       onDeleteAbastecimentos={ids => {
         const chave = `exc-${Date.now()}`;
