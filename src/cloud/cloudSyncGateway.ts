@@ -39,3 +39,24 @@ export const readKnownCloudSignatures = async (knownCloudVersion: string) => {
   assertSupabase();
   return (await loadSupabaseSync()).lerAssinaturasDaVersao(knownCloudVersion);
 };
+
+const loadAvisoNuvem = () => import('../supabase/avisoNuvem');
+
+/** Chama onVersao quando outro aparelho publica; devolve a função que para de ouvir. */
+export const listenCloudVersions = (onVersao: (versao: string) => void, onReconectar: () => void): (() => void) => {
+  assertSupabase();
+  let parar: (() => void) | undefined;
+  let ativo = true;
+  void loadAvisoNuvem().then(modulo => {
+    if (ativo) parar = modulo.ouvirNovasVersoes(onVersao, onReconectar);
+  });
+  return () => {
+    ativo = false;
+    parar?.();
+  };
+};
+
+export const announceCloudVersion = (versao: string) => {
+  assertSupabase();
+  void loadAvisoNuvem().then(modulo => modulo.avisarNovaVersao(versao));
+};
