@@ -22,11 +22,15 @@ const FOCO_CLARO = 'focus-visible:outline-none focus-visible:ring-2 focus-visibl
 
 const readCollapsed = () => {
   try {
-    return localStorage.getItem(COLLAPSE_KEY) === 'true';
+    const guardado = localStorage.getItem(COLLAPSE_KEY);
+    if (guardado !== null) return guardado === 'true';
   } catch {
-    // Navegador com armazenamento bloqueado abre no estado normal, sem quebrar.
-    return false;
+    // Navegador com armazenamento bloqueado segue a largura da tela, sem quebrar.
   }
+  // Sem escolha guardada, notebook pequeno e tablet deitado (abaixo de 1280 px)
+  // abrem com o menu só de ícones, para a tabela ganhar ~165 px. Quem expandir
+  // uma vez fica com o menu aberto, porque a escolha passa a ser guardada.
+  return typeof window !== 'undefined' && window.innerWidth < 1280;
 };
 
 const readClosedGroups = (): string[] => {
@@ -43,13 +47,17 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
   const [closedGroups, setClosedGroups] = useState<string[]>(readClosedGroups);
   const navRef = useRef<HTMLElement>(null);
 
-  useEffect(() => {
+  // Só grava quando a pessoa aperta o botão: o padrão pela largura da tela
+  // não vira escolha guardada (senão o notebook pequeno prenderia o menu
+  // recolhido também no monitor grande).
+  const mudarRecolhido = (valor: boolean) => {
+    setCollapsed(valor);
     try {
-      localStorage.setItem(COLLAPSE_KEY, String(collapsed));
+      localStorage.setItem(COLLAPSE_KEY, String(valor));
     } catch {
       // Preferência de layout não vale interromper a navegação.
     }
-  }, [collapsed]);
+  };
 
   useEffect(() => {
     try {
@@ -88,7 +96,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
         {!collapsed && (
           <button
             type="button"
-            onClick={() => setCollapsed(true)}
+            onClick={() => mudarRecolhido(true)}
             title="Recolher menu"
             aria-label="Recolher menu"
             className={`rounded-lg p-1.5 text-[#8dc4ad] transition-colors duration-200 hover:bg-white/10 hover:text-white ${FOCO_CLARO}`}
@@ -101,7 +109,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
       {collapsed && (
         <button
           type="button"
-          onClick={() => setCollapsed(false)}
+          onClick={() => mudarRecolhido(false)}
           title="Expandir menu"
           aria-label="Expandir menu"
           className={`mx-auto mt-1.5 rounded-lg p-1.5 text-[#8dc4ad] transition-colors duration-200 hover:bg-white/10 hover:text-white ${FOCO_CLARO}`}

@@ -390,7 +390,7 @@ export default function HistoricoCombustivel({
               </button>
               <div className="relative">
                 <button type="button" aria-expanded={menu === 'colunas'} onClick={() => setMenu(atual => (atual === 'colunas' ? '' : 'colunas'))} className={`${BOTAO_SECUNDARIO} min-h-10 px-3`} data-testid="historico-colunas">
-                  <Columns3 className="size-4" aria-hidden="true" />Colunas
+                  <Columns3 className="size-4" aria-hidden="true" /><span className="max-sm:sr-only">Colunas</span>
                 </button>
                 {menu === 'colunas' && (
                   <div role="group" aria-label="Colunas que aparecem" className="absolute left-0 z-30 mt-1 max-h-[60vh] w-56 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
@@ -406,7 +406,7 @@ export default function HistoricoCombustivel({
               </div>
               <div className="relative">
                 <button type="button" aria-expanded={menu === 'grupo'} onClick={() => setMenu(atual => (atual === 'grupo' ? '' : 'grupo'))} className={`${BOTAO_SECUNDARIO} min-h-10 px-3`} data-testid="historico-agrupar">
-                  <Layers className="size-4" aria-hidden="true" /><span>{AGRUPAMENTOS_HISTORICO.find(item => item.id === preferencias.agrupamento)?.rotulo}</span>
+                  <Layers className="size-4" aria-hidden="true" /><span className="max-sm:sr-only">{AGRUPAMENTOS_HISTORICO.find(item => item.id === preferencias.agrupamento)?.rotulo}</span>
                 </button>
                 {menu === 'grupo' && (
                   <div role="group" aria-label="Agrupar" className="absolute left-0 z-30 mt-1 w-48 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
