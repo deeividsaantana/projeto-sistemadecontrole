@@ -38,6 +38,8 @@ import {
 } from '../utils/teamSpreadsheetSync';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
+import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { readableTeamText, recoverTeamGroups, teamRecordMatches } from '../utils/teamIdentity';
 import type { SituacaoLancada } from '../utils/presencaManual';
@@ -973,99 +975,83 @@ export default function ControlePresencaTab({
     setSelectedRecordIds([]);
   };
 
-  const navItems: Array<{ id: View; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'ao-vivo', label: 'Ao vivo', icon: Radio },
-    { id: 'relatorios', label: 'Relatórios', icon: PieChart },
-    { id: 'equipes', label: 'Equipes', icon: Users },
-    { id: 'registros', label: 'Registros', icon: FileSpreadsheet },
-    { id: 'historico', label: 'Histórico', icon: History },
+  const navItems: Array<{ id: View; rotulo: string; icone: React.ComponentType<{ className?: string }> }> = [
+    { id: 'ao-vivo', rotulo: 'Ao vivo', icone: Radio },
+    { id: 'relatorios', rotulo: 'Relatórios', icone: PieChart },
+    { id: 'equipes', rotulo: 'Equipes', icone: Users },
+    { id: 'registros', rotulo: 'Registros', icone: FileSpreadsheet },
+    { id: 'historico', rotulo: 'Histórico', icone: History },
   ];
 
   return (
-    <section ref={tabRef} id="presenca-tab" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-slate-900 lg:pb-8">
-      {/* O cabeçalho antigo era um hero: logo repetido, foto de fundo e os sete
-          filtros sempre abertos. Media 307px no desktop e 788px no celular —
-          mais alto que a própria tela de 727px, ou seja, uma tela inteira de
-          rolagem antes da primeira pessoa aparecer. Agora usa o mesmo cabeçalho
-          compacto das outras telas, e os filtros viram uma gaveta que só abre
-          quando alguém quer filtrar. */}
-      <PageHeader
-        eyebrow="Controle em tempo real"
-        title="Presença ao vivo"
-        description="Acompanhe as equipes, compartilhe o link oficial e receba cada envio assim que ele chegar."
-      />
-
-      <nav aria-label="Seções do controle de presença" className={`${PANEL} grid grid-cols-3 gap-1 p-1.5 sm:flex sm:gap-1.5`}>
-        {navItems.map(item => {
-          const Icon = item.icon;
-          const active = view === item.id;
-          return (
-            <button key={item.id} type="button" onClick={() => setView(item.id)} aria-current={active ? 'page' : undefined} className={`flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-1 text-xs font-bold transition sm:min-w-32 sm:gap-2 sm:px-3 sm:text-sm ${active ? 'bg-emerald-700 text-white' : 'text-slate-500 hover:bg-emerald-50 hover:text-slate-900'}`}>
-              <Icon className="h-4 w-4" /> <span className="max-w-full truncate">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
-      <section className={PANEL} aria-label="Recorte do painel">
-        <div className="flex flex-wrap items-center gap-2 p-3">
-          <button
-            type="button"
-            onClick={() => setFiltrosAbertos(atual => !atual)}
-            aria-expanded={filtrosAbertos}
-            aria-controls="presenca-filtros"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 transition hover:border-emerald-700"
-          >
-            <Filter className="h-4 w-4 text-emerald-800" />
-            Filtros
-            {filtrosAtivos > 0 && (
-              <span className="rounded-full bg-emerald-700 px-1.5 text-[11px] font-black text-white">{filtrosAtivos}</span>
-            )}
-            <ChevronDown className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
-          </button>
-
-          {view === 'relatorios' ? (
-            <span className="inline-flex min-h-11 items-center rounded-lg px-1 text-xs font-semibold text-slate-500">
-              Os filtros valem para o relatório inteiro
-            </span>
-          ) : (
-            <>
-              <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Exibindo</span>
-                <strong className="text-sm font-black text-emerald-800">{dashboardRecords.length} pessoas</strong>
-              </span>
-
-              <span className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-900">
-                {referenceDate.split('-').reverse().join('/')}
-              </span>
-            </>
-          )}
-
-          {filtrosAtivos > 0 && (
+    <TelaCheia ref={tabRef} id="presenca-tab" rotulo="Presença" className="text-slate-900"
+      longa idAbaAtiva={idDaAba('presenca', view)} idDados="presenca-dados" chaveRolagem={view}
+      cabecalho={<PageHeader
+        eyebrow="Pessoas"
+        title="Presença"
+        abas={<AbasDaTela<View> id="presenca" rotulo="Seções do controle de presença" abas={navItems} ativa={view} onTrocar={setView} idPainel="presenca-dados" testId="presenca-aba" />}
+      />}
+      faixa={
+        <section className={PANEL} aria-label="Recorte do painel">
+          <div className="flex flex-wrap items-center gap-2 p-3">
             <button
               type="button"
-              onClick={limparFiltrosPainel}
-              className="ml-auto inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-emerald-800"
+              onClick={() => setFiltrosAbertos(atual => !atual)}
+              aria-expanded={filtrosAbertos}
+              aria-controls="presenca-filtros"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 transition hover:border-emerald-700"
             >
-              Limpar
+              <Filter className="h-4 w-4 text-emerald-800" />
+              Filtros
+              {filtrosAtivos > 0 && (
+                <span className="rounded-full bg-emerald-700 px-1.5 text-[11px] font-black text-white">{filtrosAtivos}</span>
+              )}
+              <ChevronDown className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
             </button>
-          )}
-        </div>
 
-        {filtrosAbertos && (
-          <div id="presenca-filtros" className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-2 xl:grid-cols-4">
-            {view !== 'relatorios' && <label><span className="sr-only">Data de referência</span><input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={FIELD} /></label>}
-            <label><span className="sr-only">Empresa</span><select value={dashboardCompany} onChange={event => setDashboardCompany(event.target.value)} className={FIELD}><option value="todas">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></label>
-            <label><span className="sr-only">Equipe</span><select value={dashboardGroup} onChange={event => setDashboardGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{activeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select></label>
-            <label><span className="sr-only">Função</span><select value={dashboardRole} onChange={event => setDashboardRole(event.target.value)} className={FIELD}><option value="todas">Todas as funções</option>{roleOptions.map(role => <option key={role}>{role}</option>)}</select></label>
-            <label><span className="sr-only">Situação</span><select value={dashboardStatus} onChange={event => setDashboardStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label>
-            <label><span className="sr-only">Ramo</span><select value={dashboardBranch} onChange={event => setDashboardBranch(event.target.value)} className={FIELD}><option value="todos">Todos os ramos</option>{ACTIVE_BRANCHES.map(branch => <option key={branch}>{branch}</option>)}</select></label>
-            <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{canteiros.map(site => <option key={site}>{site}</option>)}</select></label>
-            <label><span className="sr-only">Buscar pessoa</span><input type="search" value={dashboardSearch} onChange={event => setDashboardSearch(event.target.value)} placeholder="Nome ou matrícula" className={FIELD} /></label>
+            {view === 'relatorios' ? (
+              <span className="inline-flex min-h-11 items-center rounded-lg px-1 text-xs font-semibold text-slate-500">
+                Os filtros valem para o relatório inteiro
+              </span>
+            ) : (
+              <>
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Exibindo</span>
+                  <strong className="text-sm font-black text-emerald-800">{dashboardRecords.length} pessoas</strong>
+                </span>
+
+                <span className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-900">
+                  {referenceDate.split('-').reverse().join('/')}
+                </span>
+              </>
+            )}
+
+            {filtrosAtivos > 0 && (
+              <button
+                type="button"
+                onClick={limparFiltrosPainel}
+                className="ml-auto inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-emerald-800"
+              >
+                Limpar
+              </button>
+            )}
           </div>
-        )}
-      </section>
 
+          {filtrosAbertos && (
+            <div id="presenca-filtros" className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-2 xl:grid-cols-4">
+              {view !== 'relatorios' && <label><span className="sr-only">Data de referência</span><input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={FIELD} /></label>}
+              <label><span className="sr-only">Empresa</span><select value={dashboardCompany} onChange={event => setDashboardCompany(event.target.value)} className={FIELD}><option value="todas">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></label>
+              <label><span className="sr-only">Equipe</span><select value={dashboardGroup} onChange={event => setDashboardGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{activeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select></label>
+              <label><span className="sr-only">Função</span><select value={dashboardRole} onChange={event => setDashboardRole(event.target.value)} className={FIELD}><option value="todas">Todas as funções</option>{roleOptions.map(role => <option key={role}>{role}</option>)}</select></label>
+              <label><span className="sr-only">Situação</span><select value={dashboardStatus} onChange={event => setDashboardStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label>
+              <label><span className="sr-only">Ramo</span><select value={dashboardBranch} onChange={event => setDashboardBranch(event.target.value)} className={FIELD}><option value="todos">Todos os ramos</option>{ACTIVE_BRANCHES.map(branch => <option key={branch}>{branch}</option>)}</select></label>
+              <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{canteiros.map(site => <option key={site}>{site}</option>)}</select></label>
+              <label><span className="sr-only">Buscar pessoa</span><input type="search" value={dashboardSearch} onChange={event => setDashboardSearch(event.target.value)} placeholder="Nome ou matrícula" className={FIELD} /></label>
+            </div>
+          )}
+        </section>
+      }
+    >
       {feedback && (
         <div role="status" className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
           <span className="min-w-0 flex-1">{feedback}</span>
@@ -1662,10 +1648,6 @@ export default function ControlePresencaTab({
         document.body,
       )}
 
-      <div className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-30 grid grid-cols-5 gap-1 rounded-lg border border-slate-300 bg-white/95 p-1.5 lg:hidden">
-        {navItems.map(item => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} type="button" onClick={() => setView(item.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold ${active ? 'bg-slate-900 text-white' : 'text-slate-500'}`}><Icon className="h-4 w-4" />{item.label}</button>; })}
-      </div>
-
       <ConfirmDialog
         open={Boolean(equipeExcluindo)}
         tone="danger"
@@ -1808,6 +1790,6 @@ export default function ControlePresencaTab({
           </Modal>
         );
       })()}
-    </section>
+    </TelaCheia>
   );
 }

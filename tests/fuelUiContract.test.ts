@@ -10,7 +10,8 @@ const historicoSource = readFileSync(join(process.cwd(), 'src', 'components', 'c
 
 test('combustivel has three screens: lançar, lançamentos e relatórios', () => {
   assert.match(source, /type View = 'novo' \| 'historico' \| 'relatorios';/);
-  assert.match(source, /\['novo', 'Lançar', Plus\], \['historico', 'Lançamentos', History\], \['relatorios', 'Relatórios', BarChart3\]/);
+  assert.match(source, /id: 'novo' as const, rotulo: [^\n]*'Lançar', icone: Plus[\s\S]*id: 'historico' as const, rotulo: 'Lançamentos', icone: History[\s\S]*id: 'relatorios' as const, rotulo: 'Relatórios', icone: BarChart3/);
+  assert.match(source, /<AbasDaTela id="combustivel"[^>]*abas=\{vistas\}/);
   assert.match(source, /data-testid="combustivel-numeros"/);
   assert.match(source, /<RelatorioDiesel/);
   assert.doesNotMatch(source, /createPortal|combustivel-dashboard|abaJanela|abaDashboard|combustivel-por-maquina/);
@@ -45,7 +46,9 @@ test('combustivel history and report avoid forced desktop-only wide tables', () 
   assert.doesNotMatch(source, /min-w-\[1180px\]/);
   assert.doesNotMatch(source, /min-w-\[1320px\]/);
   assert.match(source, /listaSomente/);
-  assert.match(source, /h-\[calc\(100dvh-0\.5rem\)\]/);
+  // A lista aberta sozinha ocupa a janela inteira em qualquer largura.
+  assert.match(appSource, /renea-viewport--solta/);
+  assert.match(readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8'), /\.renea-viewport--solta \.renea-tela-cheia \{\s*height: calc\(100dvh - 2 \* var\(--renea-respiro\)\)/);
 });
 
 test('combustivel excel export follows the FORNECIMENTO DIESEL spreadsheet model', () => {

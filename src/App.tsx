@@ -4463,8 +4463,9 @@ export default function App() {
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
           onLogout={() => void handleLogout()}
         />}
-        {/* Dynamic Inner Tab Viewport */}
-        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : combustivelListaSomente ? 'p-1 sm:p-2' : 'p-3 sm:p-4 lg:p-5'}`}>
+        {/* Área das abas: o recuo vem de --renea-respiro (index.css), a mesma
+            medida que a TelaCheia desconta para caber na altura da tela. */}
+        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : `p-[var(--renea-respiro)]${combustivelListaSomente ? ' renea-viewport--solta' : ''}`}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (

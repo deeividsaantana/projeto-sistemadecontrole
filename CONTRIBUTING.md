@@ -45,7 +45,7 @@ prints, tokens ou `.env`. O `.gitignore` já barra esses itens, e o teste
 3. **Branch**: sempre a partir da `main` atualizada. Nunca commitar direto na `main`.
 4. **Implementar**: um assunto por PR. Nada de misturar redesenho, correção e limpeza.
 5. **Testar**: teste para toda regra nova em `src/utils/` e `npm run verify` passando. O hook de pre-push roda o verify sozinho.
-6. **Prints**: tela nova ou alterada mostra print no celular (390 px) e no computador. Preview sem login: `npx vite --config preview/vite.config.ts --port 4300` e abrir `/?screen=<aba>`.
+6. **Prints**: tela nova ou alterada mostra print no celular (390 px) e no computador. Preview sem login: `npx vite --config preview/vite.config.ts --port 4300` e abrir `/?screen=<aba>&shell=1` (com menu lateral e barra do topo, nas medidas do app).
 7. **Abrir o PR**: preencher o modelo, com o checklist inteiro respondido.
 8. **Revisar**: seguir a seção 5.
 9. **Publicar**: o merge na `main` publica na Render (`render.yaml`). Conferir o app no ar depois do deploy.
@@ -64,10 +64,12 @@ prints, tokens ou `.env`. O `.gitignore` já barra esses itens, e o teste
 ### Checklist de tela (obrigatório em toda aba nova ou alterada)
 
 - [ ] **Pergunta obrigatória:** uma pessoa cansada e sem facilidade com aplicativos consegue cadastrar, lançar e consultar nesta tela sem travar?
-- [ ] O visual bate com o Painel de Controle: `PageHeader` com a ação principal no topo, cartões `rounded-2xl border-slate-200`, paleta `#176b4d`, `#f26a2e` e `#718087`, e foco `ring-[#f26a2e]/60`.
+- [ ] A aba usa o molde `TelaCheia` (`src/shared/ui/TelaCheia.tsx`): 100% da largura, toda a altura abaixo da barra do topo, cabeçalho e filtros fixos, área de dados que rola por dentro e rodapé fixo com total e paginação. Sem botão de "tela cheia" e sem `max-w-[...]` no contêiner da aba. No celular a página rola normalmente, na mesma ordem.
+- [ ] Subtelas só com `AbasDaTela` (`src/shared/ui/AbasDaTela.tsx`) no `abas` do `PageHeader`; com muitas subtelas, abas agrupadas. Nada de menu lateral interno ou chips no lugar de abas.
+- [ ] O visual bate com o Painel de Controle: `PageHeader` com título curto e a ação principal à direita, cartões `rounded-2xl border-slate-200`, paleta `#176b4d`, `#f26a2e` e `#718087`, e foco `ring-[#f26a2e]/60`. Detalhes em `docs/superpowers/CHECKLIST_REDESIGN_ABAS.md`.
 - [ ] Entrada com GSAP pelos helpers comuns (`RouteMotion`, `useEntradaDeLista`), respeitando `prefers-reduced-motion`.
 - [ ] A tela não pesa: biblioteca grande só carrega quando a ação pede (`import()` sob demanda).
-- [ ] Funciona em 375 px, 768 px e 1440 px, sem rolagem horizontal, com botões de pelo menos 44 px.
+- [ ] Funciona em 375 px, 768 px, 1366 x 768 e 1920 x 1080, sem rolagem horizontal, com botões de pelo menos 44 px no toque. A 1366 x 768 o primeiro dado aparece sem rolar.
 - [ ] Estados de carregando, vazio e erro com mensagem clara, sem jargão técnico.
 - [ ] As abas ocultas (fora do menu, em `AUXILIARY_MODULE_DESTINATIONS`) que usam a mesma tela ou componente também foram conferidas.
 - [ ] Se o visual não bate com as outras abas, a tela não entra.

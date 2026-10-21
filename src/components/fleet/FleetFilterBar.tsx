@@ -48,7 +48,7 @@ export default function FleetFilterBar({
   ].filter((item): item is { chave: keyof FleetReportFilters; texto: string; vazio: string } => item !== null);
 
   return (
-    <section aria-label="Filtros da frota" data-fleet-enter className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
+    <section aria-label="Filtros da frota" data-fleet-enter className={`${CARTAO} shrink-0 space-y-3 p-3`}>
       {locations.length > 1 && (
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5" data-testid="frota-canteiros" aria-label="Filtrar por canteiro">
           {[{ nome: '', total: locations.reduce((sum, item) => sum + item.total, 0) }, ...locations].map(item => {

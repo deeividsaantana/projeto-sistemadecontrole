@@ -376,6 +376,68 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   #mobile-header { position: sticky; top: 0; z-index: 40; }
 }
 
+/* Molde de página (src/shared/ui/TelaCheia.tsx). A área de trabalho é a
+   tela inteira abaixo da barra do topo: --renea-topo é a altura da barra e
+   --renea-respiro o recuo do #main-tab-viewport (o App usa a mesma variável
+   no padding). No computador a aba tem altura fixa, cabeçalho e filtros
+   ficam parados e só a área de dados rola. Até 1023 px a página rola
+   normalmente, na mesma ordem. Na lista do Combustível aberta sozinha
+   (sem barra do topo, renea-viewport--solta) a aba é cheia em qualquer
+   largura, porque a janela é a própria lista. */
+#main-tab-viewport { --renea-topo: 3.25rem; --renea-respiro: .75rem; }
+#main-tab-viewport.renea-viewport--solta { --renea-topo: 0px; --renea-respiro: .25rem; }
+@media (min-width: 640px) {
+  #main-tab-viewport { --renea-respiro: 1rem; }
+  #main-tab-viewport.renea-viewport--solta { --renea-respiro: .5rem; }
+}
+@media (min-width: 1024px) {
+  .renea-tela-cheia {
+    height: calc(100dvh - var(--renea-topo) - 2 * var(--renea-respiro));
+    min-height: 28rem;
+  }
+  .renea-tela-cheia__dados {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* O respiro de 2 rem embaixo das telas que rolam a página sobraria aqui e
+     faria a página rolar à toa. */
+  #main-tab-viewport > :not(.erp-dashboard):has(.renea-tela-cheia) { padding-bottom: 0; }
+}
+#main-tab-viewport.renea-viewport--solta > :has(.renea-tela-cheia) { padding: 0; }
+.renea-viewport--solta .renea-tela-cheia {
+  height: calc(100dvh - 2 * var(--renea-respiro));
+  min-height: 0;
+}
+.renea-viewport--solta .renea-tela-cheia__dados { overflow-y: auto; }
+/* Aba longa: os blocos não encolhem, a área rola. O recuo de 2 px deixa o
+   anel de foco dos cartões das bordas inteiro, sem ser cortado pela rolagem. */
+/* Faixa só com o aviso vazio (sr-only, que segue anunciando) não abre
+   espaço entre o cabeçalho e os dados. */
+.renea-tela-cheia__faixa:not(:has(> :not(.sr-only))) { display: contents; }
+.renea-tela-cheia__dados--longa > * { flex-shrink: 0; }
+@media (min-width: 1024px) {
+  .renea-tela-cheia__dados--longa { margin: -2px; padding: 2px 2px 1rem; }
+}
+
+/* Cabeçalho com subtelas: título curto, abas logo ao lado e a ação
+   principal encostada à direita, numa linha só quando couber. Quando não
+   cabe, as ações descem para a linha de baixo, ainda à direita. No celular
+   cada parte ganha a própria linha, e as ações quebram linha em vez de
+   rolar para o lado (o botão principal nunca fica escondido). */
+#main-tab-viewport .renea-page-header.renea-page-header--com-abas { align-items: center; justify-content: flex-start; }
+#main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-header__copy { flex: 0 1 auto; margin-right: 0; }
+.renea-page-header__abas { display: flex; min-width: 0; max-width: 100%; flex: 0 1 auto; }
+@media (max-width: 767px) {
+  #main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-header__copy,
+  .renea-page-header__abas { flex-basis: 100%; }
+  #main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-left: 0;
+    overflow: visible;
+  }
+}
+
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
 .erp-shell { background: #fff; }
 .erp-shell #main-tab-viewport,
@@ -927,8 +989,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  max-width: 1600px;
-  margin-inline: auto;
   padding: 1.5rem clamp(1rem, 2vw, 2rem) 1.35rem;
   border-bottom: 1px solid var(--erp-line);
   background: var(--erp-surface);
@@ -1967,10 +2027,11 @@ body,
   min-height: 100%;
 }
 
+/* Largura: toda aba usa 100% da área de trabalho (A1, auditoria de
+   21/10/2026). Nada de teto de largura por tela. */
 #main-tab-viewport > .renea-route-motion > :not(.erp-dashboard),
 #main-tab-viewport > :not(.erp-dashboard) {
-  width: min(100%, 96rem);
-  margin-inline: auto;
+  width: 100%;
 }
 
 #main-tab-viewport > .renea-route-motion > [id$="-tab"] {
@@ -2006,11 +2067,6 @@ body,
 }
 
 /* Master data is used repeatedly; keep selection, search and editing calm. */
-.erp-module--cadastros {
-  max-width: 1580px;
-  margin: 0 auto;
-}
-
 .erp-module--cadastros #subtab-selector {
   gap: .6rem;
   padding: .65rem;
@@ -2095,11 +2151,6 @@ body,
    tabelas compactas com números alinhados e área útil que acompanha o
    monitor grande. Fica por último para vencer as camadas antigas.
    ========================================================================== */
-#main-tab-viewport > .renea-route-motion > :not(.erp-dashboard),
-#main-tab-viewport > :not(.erp-dashboard) {
-  width: min(100%, 120rem);
-}
-
 .renea-page-header { gap: .5rem 1rem; }
 .renea-page-header__eyebrow {
   margin-bottom: .1rem;

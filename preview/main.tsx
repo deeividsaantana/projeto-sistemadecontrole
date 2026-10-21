@@ -33,6 +33,9 @@ import { PRIMARY_MODULE_IDS, ROLE_ACCESS, SIDEBAR_NAVIGATION_GROUPS, destinoDaAb
 import { PesquisaGlobal } from '../src/app/shell/PesquisaGlobal';
 import * as fx from './fixtures';
 import { RouteMotion } from '../src/shared/ui/RouteMotion';
+import { TelaCheia } from '../src/shared/ui/TelaCheia';
+import { AbasDaTela, idDaAba, type ItemDasAbas } from '../src/shared/ui/AbasDaTela';
+import { PageHeader } from '../src/shared/ui/PageHeader';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -386,6 +389,38 @@ function PlanejamentoPreview() {
   );
 }
 
+// Molde da TelaCheia com 18 subtelas agrupadas (Materiais, Estacas e
+// Cadastros na fase 2): prova que as abas cabem a 1366 px sem rolagem lateral
+// e que a área de dados ocupa o resto da tela e rola por dentro.
+const SUBTELAS_MOLDE: ReadonlyArray<ItemDasAbas> = [
+  { id: 'lancar', rotulo: 'Lançar' },
+  { grupo: 'painel', rotulo: 'Painel', abas: [{ id: 'resumo', rotulo: 'Visão geral' }, { id: 'graficos', rotulo: 'Gráficos' }, { id: 'relatorios', rotulo: 'Relatórios' }] },
+  { grupo: 'obra', rotulo: 'Na obra', abas: [{ id: 'previsto', rotulo: 'Previsto do mês' }, { id: 'utilizacao', rotulo: 'Uso por ramo' }, { id: 'apontadores', rotulo: 'Apontadores', contador: 3, contadorRotulo: 'envios novos' }, { id: 'botafora', rotulo: 'Bota-fora' }, { id: 'viagens', rotulo: 'Viagens da jazida' }] },
+  { grupo: 'controle', rotulo: 'Controle', abas: [{ id: 'estoque', rotulo: 'Estoque' }, { id: 'movimentos', rotulo: 'Movimentos' }, { id: 'recebimentos', rotulo: 'Recebimentos' }, { id: 'transferencias', rotulo: 'Transferências' }] },
+  { grupo: 'cadastrar', rotulo: 'Cadastrar', abas: [{ id: 'cadastro', rotulo: 'Materiais' }, { id: 'locais', rotulo: 'Ramos e locais' }, { id: 'fornecedores', rotulo: 'Fornecedores' }, { id: 'importacoes', rotulo: 'Importar planilha' }, { id: 'lixeira', rotulo: 'Lixeira' }] },
+];
+
+function MoldePreview() {
+  const [aba, setAba] = React.useState(new URLSearchParams(location.search).get('aba') || 'apontadores');
+  const linhas = Array.from({ length: 60 }, (_, indice) => indice + 1);
+  return (
+    <TelaCheia id="molde-tab" rotulo="Molde" idAbaAtiva={idDaAba('molde', aba)} idDados="molde-dados" chaveRolagem={aba}
+      cabecalho={<PageHeader eyebrow="Suprimentos" title="Materiais"
+        abas={<AbasDaTela id="molde" rotulo="Subtelas de materiais" abas={SUBTELAS_MOLDE} ativa={aba} onTrocar={setAba} idPainel="molde-dados" testId="molde-aba" />}
+        actions={<button type="button" className="inline-flex min-h-10 items-center rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white">Novo lançamento</button>} />}
+      faixa={<div className="rounded-2xl border border-slate-200 bg-white p-2"><input type="search" aria-label="Buscar" placeholder="Buscar material, ramo ou nota" className="w-full rounded-xl border border-slate-200 px-3" /></div>}
+      rodape={<p className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600">60 linhas · Total 1.234 t</p>}>
+      <div className="h-full min-h-0 overflow-auto rounded-2xl border border-slate-200 bg-white">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">Linhas de exemplo</caption>
+          <thead className="sticky top-0 bg-white"><tr><th className="px-3 py-2">Linha</th><th className="px-3 py-2">Material</th><th className="px-3 py-2 text-right">Quantidade</th></tr></thead>
+          <tbody>{linhas.map(linha => <tr key={linha} className="border-t border-slate-100"><td className="px-3 py-2">{linha}</td><td className="px-3 py-2">Material de exemplo {linha}</td><td className="px-3 py-2 text-right tabular-nums">{(linha * 12.5).toLocaleString('pt-BR')} t</td></tr>)}</tbody>
+        </table>
+      </div>
+    </TelaCheia>
+  );
+}
+
 function MeuDiaPreview() {
   const hoje = new Date().toISOString().slice(0, 10);
   const ontem = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
@@ -503,6 +538,7 @@ const historicoPreview: HistoryLog[] = [
 ];
 
 const screens: Record<string, React.ReactNode> = {
+  molde: <MoldePreview />,
   'meu-dia': <MeuDiaPreview />,
   sidebar: (
     <div className="erp-shell" style={{ height: '100dvh' }}>
@@ -811,7 +847,7 @@ createRoot(document.getElementById('app-root')!).render(
             onMarkNotificationAsRead={noop}
             onLogout={noop}
           />
-          <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
+          <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-[var(--renea-respiro)]'}`}>
             <RouteMotion>{screens[key] ?? <p>Tela desconhecida: {key}</p>}</RouteMotion>
           </div>
         </main>
