@@ -34,6 +34,7 @@ import { PesquisaGlobal } from '../src/app/shell/PesquisaGlobal';
 import * as fx from './fixtures';
 import { RouteMotion } from '../src/shared/ui/RouteMotion';
 import { PularParaConteudo } from '../src/shared/ui/PularParaConteudo';
+import { instalarGuardaDeMovimento } from '../src/shared/motion/guardaDeMovimento';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -769,6 +770,9 @@ const screens: Record<string, React.ReactNode> = {
     />
   ),
 };
+
+// Mesma guarda global de movimento reduzido do app (src/main.tsx).
+instalarGuardaDeMovimento();
 
 const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
 // Com ?shell=1 a tela abre dentro do menu lateral e da barra do topo, com as
