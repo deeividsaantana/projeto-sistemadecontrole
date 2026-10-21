@@ -4665,7 +4665,6 @@ export default function App() {
                     onReserveTicketNumbers={handleReserveTicketNumbers}
                   />
                 )}
-                totalViagensJazida={ticketsJazida.length}
                 materiais={materiaisCadastro}
                 movimentos={materiaisMovimentos}
                 empresas={empresas}
