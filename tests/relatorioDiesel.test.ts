@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { montarRelatorioDiesel } from '../src/modules/frota/relatorioDiesel';
+import { montarFornecimento, montarRelatorioDiesel } from '../src/modules/frota/relatorioDiesel';
 import type { Abastecimento, Comboio, Empresa, Equipamento } from '../src/types';
 
 const ab = (id: string, data: string, equipamentoId: string, litros: number, comboioId = 'c1') => ({
@@ -45,4 +45,25 @@ test('relatório conta repetidos e sem cadastro', () => {
   const r = montarRelatorioDiesel({ registros, equipamentos, empresas, comboios, inicio: '2026-10-01', fim: '2026-10-01', hoje: '2026-10-21' });
   assert.equal(r.repetidos, 2);
   assert.equal(r.semCadastro, 1);
+});
+
+test('fornecimento por empresa lista só as máquinas dela, em ordem de data, com total por equipamento', () => {
+  const registros = [
+    { ...ab('b', '2026-10-05', 'eq-2', 64, 'c2'), hora: '09:00', horimetroInicial: 1200, bombaInicial: 100, bombaFinal: 164, tipoCombustivelId: 's10' },
+    { ...ab('a', '2026-10-05', 'eq-2', 154), hora: '07:00', tipoCombustivelId: 's10' },
+    ab('renea', '2026-10-05', 'eq-1', 500),
+    ab('fora', '2026-09-01', 'eq-2', 99),
+  ];
+  const f = montarFornecimento({ registros, equipamentos, empresas, comboios, combustiveis: [{ id: 's10', nome: 'Diesel S10' }], inicio: '2026-09-21', fim: '2026-10-20', empresaId: 'emp-2' });
+  assert.equal(f.empresa, 'Escala');
+  assert.equal(f.combustivel, 'Diesel S10');
+  assert.equal(f.lancamentos, 2);
+  assert.equal(f.litros, 218);
+  assert.deepEqual(f.linhas.map(linha => [linha.hora, linha.comboio, linha.litros]), [['07:00', 'Comboio 01', 154], ['09:00', 'Comboio 02', 64]]);
+  assert.equal(f.linhas[1].horimetro, 1200);
+  assert.equal(f.linhas[0].horimetro, undefined);
+  assert.deepEqual(f.porEquipamento, [{ prefixo: 'LO146', descricao: 'Gerador', abastecimentos: 2, litros: 218 }]);
+  const todas = montarFornecimento({ registros, equipamentos, empresas, comboios, combustiveis: [], inicio: '2026-09-21', fim: '2026-10-20', empresaId: '' });
+  assert.equal(todas.empresa, 'Todas as empresas');
+  assert.equal(todas.lancamentos, 3);
 });

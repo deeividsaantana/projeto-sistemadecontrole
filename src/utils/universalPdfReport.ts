@@ -19,6 +19,10 @@ export type UniversalPdfReportOptions = {
   reportNumber?: string;
   filters?: string[];
   summary?: Array<{ label: string; value: string | number }>;
+  /** Linha de total no fim da tabela principal. */
+  totalRow?: object;
+  /** Tabelas a mais depois da principal, cada uma com título (ex.: total por equipamento). */
+  sections?: Array<{ title: string; columns: UniversalPdfColumn[]; rows: object[]; totalRow?: object }>;
 };
 
 const imageAsDataUrl = async (url: string) => {
@@ -36,6 +40,12 @@ const imageAsDataUrl = async (url: string) => {
 
 const safeFileName = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '_');
 const text = (value: unknown) => value === null || value === undefined || value === '' ? '—' : String(value);
+const linha = (columns: UniversalPdfColumn[], row: object, total = false) => {
+  const record = row as Record<string, unknown>;
+  // Na linha de total, a coluna sem valor fica em branco em vez de travessão.
+  return Object.fromEntries(columns.map(column => [column.dataKey, total && (record[column.dataKey] ?? '') === '' ? '' : text(record[column.dataKey])]));
+};
+const ESTILO_TOTAL = { fillColor: [236, 253, 245] as [number, number, number], textColor: [15, 23, 42] as [number, number, number], fontStyle: 'bold' as const };
 
 export async function generateUniversalPdfReport(options: UniversalPdfReportOptions) {
   const doc = new (await loadJsPdf())({ orientation: options.orientation || (options.columns.length > 7 ? 'landscape' : 'portrait'), unit: 'mm', format: 'a4' });
@@ -95,16 +105,36 @@ export async function generateUniversalPdfReport(options: UniversalPdfReportOpti
     startY,
     margin: { top: headerHeight + 3, right: margin, bottom: 14, left: margin },
     columns: options.columns,
-    body: options.rows.map(row => {
-      const record = row as Record<string, unknown>;
-      return Object.fromEntries(options.columns.map(column => [column.dataKey, text(record[column.dataKey])]));
-    }),
+    body: options.rows.map(row => linha(options.columns, row)),
+    foot: options.totalRow ? [linha(options.columns, options.totalRow, true)] : undefined,
+    showFoot: 'lastPage',
+    footStyles: ESTILO_TOTAL,
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 6.2, cellPadding: 2, textColor: [30, 41, 59], lineColor: [226, 232, 240], lineWidth: .15, overflow: 'linebreak' },
     headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     didDrawPage: data => { if (data.pageNumber > 1) drawHeader(data.pageNumber); },
   });
+
+  for (const secao of options.sections || []) {
+    const anterior = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? startY;
+    let y = anterior + 8;
+    if (y > pageHeight - 40) { doc.addPage(); y = headerHeight + 6; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(15, 23, 42); doc.text(secao.title, margin, y);
+    autoTable(doc, {
+      startY: y + 2,
+      margin: { top: headerHeight + 3, right: margin, bottom: 14, left: margin },
+      columns: secao.columns,
+      body: secao.rows.map(row => linha(secao.columns, row)),
+      foot: secao.totalRow ? [linha(secao.columns, secao.totalRow, true)] : undefined,
+      showFoot: 'lastPage',
+      footStyles: ESTILO_TOTAL,
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 6.8, cellPadding: 2, textColor: [30, 41, 59], lineColor: [226, 232, 240], lineWidth: .15, overflow: 'linebreak' },
+      headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+  }
 
   const pages = doc.getNumberOfPages();
   for (let page = 1; page <= pages; page += 1) {

@@ -371,6 +371,7 @@ export default function CombustivelOperacionalTab({
           equipamentos={equipamentos}
           empresas={empresas}
           comboios={comboios}
+          combustiveis={combustiveis}
           parteInicial={porMaquinaInicial ? 'consumo' : 'resumo'}
           onAbrirLista={abrirLista}
           onErro={setErro}

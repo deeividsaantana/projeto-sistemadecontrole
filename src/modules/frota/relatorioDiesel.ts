@@ -148,3 +148,101 @@ export const montarRelatorioDiesel = ({
     semCadastro: doPeriodo.filter(item => !porId.has(item.equipamentoId)).length,
   };
 };
+
+/** Linha do relatório de fornecimento: um abastecimento, como sai no e-mail para a empresa. */
+export interface LinhaFornecimento {
+  data: string;
+  hora: string;
+  prefixo: string;
+  descricao: string;
+  comboio: string;
+  horimetro?: number;
+  km?: number;
+  bombaInicial?: number;
+  bombaFinal?: number;
+  litros: number;
+}
+
+export interface FornecimentoEmpresa {
+  /** Nome da empresa, ou "Todas as empresas". */
+  empresa: string;
+  /** Combustível mais lançado no período (ex.: "Diesel S10"). */
+  combustivel: string;
+  inicio: string;
+  fim: string;
+  litros: number;
+  lancamentos: number;
+  linhas: LinhaFornecimento[];
+  porEquipamento: Array<{ prefixo: string; descricao: string; abastecimentos: number; litros: number }>;
+}
+
+const numeroOuNada = (valor: unknown) => {
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero > 0 ? numero : undefined;
+};
+
+/** As máquinas da empresa (vazio = todas) que abasteceram no período. */
+export const doPeriodoEEmpresa = (
+  registros: readonly Abastecimento[], equipamentos: readonly Equipamento[], inicio: string, fim: string, empresaId: string,
+) => {
+  const empresaDe = new Map(equipamentos.map(item => [item.id, item.empresaId]));
+  return registros.filter(item => item.data && item.data >= inicio && item.data <= fim
+    && (!empresaId || empresaDe.get(item.equipamentoId) === empresaId));
+};
+
+/**
+ * Relatório de fornecimento de diesel para mandar à empresa dona das
+ * máquinas: cada abastecimento por data e o total por equipamento.
+ */
+export const montarFornecimento = ({
+  registros, equipamentos, empresas, comboios, combustiveis, inicio, fim, empresaId,
+}: {
+  registros: readonly Abastecimento[];
+  equipamentos: readonly Equipamento[];
+  empresas: readonly Empresa[];
+  comboios: readonly Comboio[];
+  combustiveis: readonly { id: string; nome: string }[];
+  inicio: string;
+  fim: string;
+  empresaId: string;
+}): FornecimentoEmpresa => {
+  const porId = new Map(equipamentos.map(item => [item.id, item]));
+  const nomeComboio = new Map(comboios.map(item => [item.id, item.nome]));
+  const itens = doPeriodoEEmpresa(registros, equipamentos, inicio, fim, empresaId)
+    .sort((a, b) => `${a.data}${a.hora || ''}`.localeCompare(`${b.data}${b.hora || ''}`));
+  const linhas = itens.map(item => {
+    const maquina = porId.get(item.equipamentoId);
+    return {
+      data: item.data,
+      hora: item.hora || '',
+      prefixo: maquina?.prefixo || item.prefixoInformado?.trim().toUpperCase() || 'Sem prefixo',
+      descricao: maquina?.nome || 'Sem cadastro',
+      comboio: nomeComboio.get(item.comboioId) || '',
+      horimetro: numeroOuNada(item.horimetroInicial),
+      km: numeroOuNada(item.kmInicial),
+      bombaInicial: numeroOuNada(item.bombaInicial),
+      bombaFinal: numeroOuNada(item.bombaFinal),
+      litros: litrosDe(item),
+    };
+  });
+  const grupos = new Map<string, FornecimentoEmpresa['porEquipamento'][number]>();
+  linhas.forEach(linha => {
+    const atual = grupos.get(linha.prefixo) ?? { prefixo: linha.prefixo, descricao: linha.descricao, abastecimentos: 0, litros: 0 };
+    atual.abastecimentos += 1;
+    atual.litros += linha.litros;
+    grupos.set(linha.prefixo, atual);
+  });
+  const contagem = new Map<string, number>();
+  itens.forEach(item => contagem.set(item.tipoCombustivelId, (contagem.get(item.tipoCombustivelId) ?? 0) + 1));
+  const maisUsado = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  return {
+    empresa: empresaId ? empresas.find(item => item.id === empresaId)?.nome || 'Empresa sem nome' : 'Todas as empresas',
+    combustivel: combustiveis.find(item => item.id === maisUsado)?.nome || 'Óleo Diesel',
+    inicio,
+    fim,
+    litros: linhas.reduce((soma, linha) => soma + linha.litros, 0),
+    lancamentos: linhas.length,
+    linhas,
+    porEquipamento: [...grupos.values()].sort((a, b) => b.litros - a.litros || a.prefixo.localeCompare(b.prefixo, 'pt-BR', { numeric: true })),
+  };
+};
