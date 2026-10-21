@@ -461,10 +461,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .renea-card,
 .renea-stat { box-shadow: none !important; }
 .renea-card:hover { border-color: #aebbb4; }
-.renea-table-shell { scrollbar-color: #82958b #edf1ee; }
-.renea-table :is(th, td) { padding: .85rem 1rem; }
-.renea-table tbody tr { background: #fff; }
-.renea-table tbody tr:hover { background: #f0f4f1; }
 
 /* Normalize legacy screen containers without flattening dialogs and popovers. */
 #main-tab-viewport > :not(.erp-dashboard) {
@@ -573,8 +569,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-tab-viewport > :not(.erp-dashboard) > :is(section, article, .renea-card, [role="region"]):nth-of-type(-n+3) {
   animation: renea-v3-slide .3s cubic-bezier(.2,.8,.2,1) both;
 }
-#main-tab-viewport .renea-card :is(button, tr),
-#main-tab-viewport .renea-table tr { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
+#main-tab-viewport .renea-card :is(button, tr) { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
 #main-tab-viewport .renea-card button:hover { transform: translateX(2px); }
 
 /* Realce de ponteiro que antes vinha de gsap.quickTo com três listeners por
@@ -624,7 +619,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-integrated-metric { min-width: min(78vw, 18rem); min-height: 9.5rem; scroll-snap-align: start; border-top: 0 !important; border-left: 1px solid #dfe5e1 !important; }
   .dashboard-integrated-metric:first-child { border-left: 0 !important; }
   .dashboard-module-signal { grid-template-columns: minmax(6.5rem,.8fr) minmax(4.5rem,.45fr) minmax(7rem,1fr); gap: .65rem; }
-  .renea-table-shell { margin-inline: -1px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -904,20 +898,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .renea-card:hover {
   border-color: var(--erp-line-strong);
   box-shadow: 0 8px 24px -22px rgb(13 53 40 / .45) !important;
-}
-
-.renea-table th {
-  white-space: nowrap;
-  border-bottom: 1px solid var(--erp-line);
-}
-
-.renea-table td {
-  color: #34443d;
-  font-size: .8125rem;
-}
-
-.renea-table tbody tr:hover {
-  background: #f4f8f6;
 }
 
 #main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
@@ -1998,7 +1978,6 @@ body,
 }
 
 #main-tab-viewport .renea-filter-bar,
-#main-tab-viewport .renea-table,
 #main-tab-viewport .renea-card,
 #main-tab-viewport .renea-stat {
   border-radius: 8px;
@@ -2151,44 +2130,6 @@ body,
   }
 }
 
-/* Tabelas: cabeçalho fixo dentro da própria rolagem, linhas de ~34 px,
-   números em largura fixa para datas, prefixos, litros e valores ficarem
-   em coluna. A rolagem lateral fica dentro da tabela, nunca na página. */
-.renea-table-shell {
-  max-width: 100%;
-  overscroll-behavior-x: contain;
-}
-.renea-table {
-  border-collapse: separate;
-  border-spacing: 0;
-  font-variant-numeric: tabular-nums;
-}
-.renea-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: .55rem .75rem;
-  border-bottom: 1px solid var(--erp-line);
-  background: #f3f6f4;
-  color: #4f5f58;
-  font-size: .6875rem;
-  font-weight: 700;
-  letter-spacing: .04em;
-  line-height: 1.25;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.renea-table td {
-  padding: .45rem .75rem;
-  border-bottom: 1px solid #edf1ee;
-  color: #26352f;
-  font-size: .8125rem;
-  line-height: 1.35;
-  vertical-align: middle;
-}
-.renea-table tbody tr:last-child td { border-bottom: 0; }
-.renea-table thead th button { min-height: 1.75rem; }
-
 /* Cabeçalho sem descrição (só rótulo e título) não reserva 22rem para o
    texto: as ações sobem para a mesma linha do título em vez de abrir uma
    segunda faixa (Combustível perdia ~50 px de tabela em 1366 px). */
@@ -2202,8 +2143,8 @@ body,
   #main-tab-viewport :is(td, th) :is(button, [role="button"]) { min-height: 2rem; }
 }
 
-/* Tabelas montadas à mão nas abas (fora do TableShell): mesma densidade da
-   tabela padrão. Coluna de número (alinhada à direita) e cabeçalho não
+/* Tabelas montadas à mão nas abas que ainda não passaram para a TabelaPadrao
+   (src/shared/ui/TabelaPadrao.tsx): mesma densidade da tabela padrão. Coluna de número (alinhada à direita) e cabeçalho não
    quebram linha, para "2.000 PC" ou "1.169,4 h" não partirem no meio. */
 #main-tab-viewport table { font-variant-numeric: tabular-nums; }
 #main-tab-viewport table th { white-space: nowrap; }
