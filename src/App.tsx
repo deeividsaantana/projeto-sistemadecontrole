@@ -83,7 +83,7 @@ import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
 import { juntarComLancamentoDoDia } from './fleet/duplicidadeDiaria';
-import { aplicarCadastroSge, type PreviaCadastroSge } from './fleet/sgeApontamentos';
+import type { PreviaCadastroSge } from './fleet/sgeApontamentos';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
 import { useOfflineQueueCount } from './hooks/useOfflineQueue';
 import {
@@ -197,7 +197,6 @@ import { describeInvalidBackup, validateSystemBackup } from './utils/systemBacku
 import type { MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
-import { removerEquipamentosDoQuadro } from './modules/frota/quadroFrota';
 import { rotuloAbastecimento } from './modules/frota/lixeiraCombustivel';
 import { usosDoCadastro } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
@@ -2150,8 +2149,10 @@ export default function App() {
     );
   };
 
-  const handleAplicarCadastroSge = (previa: PreviaCadastroSge) => {
+  const handleAplicarCadastroSge = async (previa: PreviaCadastroSge) => {
     if (!previa.alteracoes.length) return;
+    // Só o Controle de Frotas usa: carrega com a tela, fora do pedaço do App.
+    const { aplicarCadastroSge } = await import('./fleet/sgeApontamentos');
     const now = new Date().toISOString();
     const nextEquipment = aplicarCadastroSge(equipamentos, previa, funcionarios);
     const trocas = previa.alteracoes.filter(item => item.motorista);
@@ -4147,7 +4148,9 @@ export default function App() {
    * hoje, se tiver: mesma ação de excluir em Cadastros > Equipamentos, só que
    * disparada direto do Quadro da Frota, pra sumir da tela na hora.
    */
-  const handleRemoverEquipamentosDoQuadro = (itens: Array<{ equipamentoId: string; registroId?: string }>) => {
+  const handleRemoverEquipamentosDoQuadro = async (itens: Array<{ equipamentoId: string; registroId?: string }>) => {
+    // Só o Quadro da Frota usa: o módulo já veio com a tela.
+    const { removerEquipamentosDoQuadro } = await import('./modules/frota/quadroFrota');
     const { alvos, equipamentosAtualizados: updatedEquipamentos, registrosAtualizados: updatedControle } = removerEquipamentosDoQuadro(equipamentos, controleEquipamentosDiario, itens);
     if (!alvos.length) return;
     const mudouControle = updatedControle.length !== controleEquipamentosDiario.length;
