@@ -493,10 +493,10 @@ export default function DailyRecordForm({
           </>
         )}
         footer={(
-          <div>
-            <button type="button" disabled={saving} onClick={() => formRef.current?.requestSubmit()} className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-sm font-black text-slate-950 transition hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"><Save size={17}/>{saving ? 'Salvando lançamento...' : record ? 'Salvar alterações' : 'Confirmar lançamento'}</button>
-            <button type="button" disabled={saving} onClick={pedirFechar} className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50">Cancelar</button>
-            <p className="mt-3 text-center font-mono text-[9px] text-slate-400">Ctrl + Enter salva · Esc fecha</p>
+          <div className="flex flex-col gap-2 sm:flex-row-reverse sm:items-center">
+            <button type="button" disabled={saving} onClick={() => formRef.current?.requestSubmit()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-6 text-sm font-bold text-white transition hover:bg-[#125a40] active:scale-[0.99] disabled:cursor-wait disabled:opacity-60 sm:min-h-11 sm:w-auto"><Save size={17}/>{saving ? 'Salvando lançamento...' : record ? 'Salvar alterações' : 'Confirmar lançamento'}</button>
+            <button type="button" disabled={saving} onClick={pedirFechar} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 sm:w-auto">Cancelar</button>
+            <p className="text-center font-mono text-[11px] text-slate-400 sm:mr-auto sm:text-left">Ctrl + Enter salva · Esc fecha</p>
           </div>
         )}
       >

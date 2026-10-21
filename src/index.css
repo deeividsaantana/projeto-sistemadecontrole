@@ -2209,3 +2209,14 @@ body,
 #main-tab-viewport table th { white-space: nowrap; }
 #main-tab-viewport table :is(th, td).p-3 { padding: .5rem .75rem; }
 #main-tab-viewport table :is(td, th).text-right { white-space: nowrap; }
+
+/* Janelas (Abrir OS, Novo lançamento, cadastros) com a mesma medida de campo
+   da área de trabalho no computador: 40 px e texto de 14 px. No toque a
+   janela continua com os 44 px e os 16 px que evitam o zoom do iPhone. */
+@media (min-width: 1024px) {
+  [role="dialog"] :is(input, select):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    min-height: 2.5rem;
+    font-size: .875rem;
+  }
+  [role="dialog"] textarea { font-size: .875rem; }
+}
