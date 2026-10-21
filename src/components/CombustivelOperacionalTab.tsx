@@ -18,6 +18,7 @@ import ConsumoPorMaquina from './combustivel/ConsumoPorMaquina';
 import HistoricoCombustivel, { type FiltrosExportacao } from './combustivel/HistoricoCombustivel';
 import LancamentoCombustivel from './combustivel/LancamentoCombustivel';
 import { buildFuelReport, type FuelReportExcelRow } from '../modules/frota/fuelReport';
+import { ligarPeloPrefixo } from '../modules/frota/vinculoPrefixo';
 
 interface Props {
   empresas: Empresa[];
@@ -96,9 +97,9 @@ export default function CombustivelOperacionalTab({
     try { window.localStorage.setItem(CHAVE_TELA_CHEIA, telaCheia ? '1' : '0'); } catch { /* aba anônima */ }
   }, [telaCheia]);
 
-  const ativos = useMemo(() => abastecimentos
-    .filter(item => !item.inativoEm && item.status !== 'Cancelado')
-    .sort((a, b) => `${b.data}${b.hora}`.localeCompare(`${a.data}${a.hora}`)), [abastecimentos]);
+  const ativos = useMemo(() => ligarPeloPrefixo(abastecimentos
+    .filter(item => !item.inativoEm && item.status !== 'Cancelado'), equipamentos)
+    .sort((a, b) => `${b.data}${b.hora}`.localeCompare(`${a.data}${a.hora}`)), [abastecimentos, equipamentos]);
   const porId = useMemo(() => new Map(equipamentos.map(item => [item.id, item])), [equipamentos]);
   const empresaPorId = useMemo(() => new Map<string, string>(empresas.map(item => [item.id, item.nome])), [empresas]);
   /**
