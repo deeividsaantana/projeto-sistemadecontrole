@@ -118,7 +118,7 @@ export default function FleetDataTable({
     </button>
   );
   const aprovacao = (row: FleetCurrentState) => (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${row.approvalStatus === 'APROVADO' ? TOM_SITUACAO.ok : row.approvalStatus === 'REJEITADO' ? 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200' : TOM_SITUACAO.alerta}`}>
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${row.approvalStatus === 'APROVADO' ? TOM_SITUACAO.ok : row.approvalStatus === 'REJEITADO' ? 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200' : TOM_SITUACAO.alerta}`}>
       {row.approvalStatus === 'APROVADO' ? 'Aprovado' : row.approvalStatus === 'REJEITADO' ? 'Rejeitado' : 'Pendente'}
     </span>
   );
@@ -185,7 +185,7 @@ export default function FleetDataTable({
             <col className="w-[7.5rem]" />
             <col className="w-[9.75rem]" />
           </colgroup>
-          <thead className="sticky top-0 z-[1] bg-[#f7f8f6] text-[11px] text-slate-500">
+          <thead className="sticky top-0 z-[1] bg-[#f7f8f6] text-xs text-slate-500">
             <tr>
               <th className="px-3 py-2 text-center">
                 <input

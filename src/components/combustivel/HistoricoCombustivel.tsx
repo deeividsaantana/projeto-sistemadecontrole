@@ -356,7 +356,7 @@ export default function HistoricoCombustivel({
         <span key={coluna} className="flex min-w-0 items-center gap-1">
           <span className="font-mono text-[13px] font-black text-slate-950">{nomes.prefixo(item) || '—'}</span>
           {precisaConferir(item) && <span className="size-2 shrink-0 rounded-full bg-[#f26a2e]" title="Precisa conferir" aria-label="Precisa conferir" />}
-          {repetidos.has(item.id) && <span className="shrink-0 rounded bg-rose-100 px-1 text-[10px] font-black uppercase text-rose-700" title="Mesma máquina, mesmo dia e mesmos litros de outro lançamento">2x</span>}
+          {repetidos.has(item.id) && <span className="shrink-0 rounded bg-rose-100 px-1 text-xs font-black uppercase text-rose-700" title="Mesma máquina, mesmo dia e mesmos litros de outro lançamento">2x</span>}
         </span>
       );
       case 'descricao': return <span key={coluna} className={`truncate text-[13px] ${maquina?.nome ? 'text-slate-700' : 'font-bold text-rose-600'}`} title={maquina?.nome}>{maquina?.nome || 'NÃO CADASTRADO'}</span>;
@@ -398,7 +398,7 @@ export default function HistoricoCombustivel({
                     {COLUNAS_HISTORICO.map(item => (
                       <label key={item.id} className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-semibold ${item.fixa ? 'text-slate-400' : 'text-slate-700 hover:bg-[#f7f8f6]'}`}>
                         <input type="checkbox" checked={preferencias.colunas.includes(item.id)} disabled={item.fixa} onChange={() => alternarColuna(item.id)} className="size-4 accent-[#176b4d]" />
-                        {item.rotulo}{item.fixa && <span className="ml-auto text-[11px] font-bold uppercase">sempre</span>}
+                        {item.rotulo}{item.fixa && <span className="ml-auto text-xs font-bold uppercase">sempre</span>}
                       </label>
                     ))}
                   </div>
@@ -449,10 +449,10 @@ export default function HistoricoCombustivel({
             ['Abastecimentos', filtrados.length.toLocaleString('pt-BR'), textoPeriodo, 'text-slate-950'],
             ['Litros', litrosTexto(totalLitros), filtrados.length ? `média ${litrosTexto(totalLitros / filtrados.length)}` : 'nenhum lançamento', 'text-[#176b4d]'],
             ['Máquinas', maquinas.toLocaleString('pt-BR'), 'abastecidas no período', 'text-slate-950'],
-            ['A conferir', conferir.toLocaleString('pt-BR'), conferir ? 'toque em Filtros para ver só eles' : 'tudo certo', conferir ? 'text-[#f26a2e]' : 'text-slate-950'],
+            ['A conferir', conferir.toLocaleString('pt-BR'), conferir ? 'toque em Filtros para ver só eles' : 'tudo certo', conferir ? 'text-[#c2410c]' : 'text-slate-950'],
           ].map(([rotulo, valor, ajuda, cor]) => (
             <div key={rotulo} className={`${CARTAO} px-3 py-2`}>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{rotulo}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{rotulo}</p>
               <p className={`text-xl font-black tabular-nums ${cor}`}>{valor}</p>
               <p className="truncate text-xs text-slate-500">{ajuda}</p>
             </div>
@@ -485,7 +485,7 @@ export default function HistoricoCombustivel({
             </p>
           </header>
           <div ref={listaRef} className="min-h-0 flex-1 overflow-auto" data-testid="combustivel-lista-historico">
-            <div className="sticky top-0 z-10 hidden items-center gap-2 border-b border-slate-300 bg-slate-100 px-3 py-0.5 text-[11px] font-black uppercase leading-tight tracking-wide text-slate-500 lg:grid" style={{ gridTemplateColumns: gradeColunas }}>
+            <div className="sticky top-0 z-10 hidden items-center gap-2 border-b border-slate-300 bg-slate-100 px-3 py-0.5 text-xs font-black uppercase leading-tight tracking-wide text-slate-500 lg:grid" style={{ gridTemplateColumns: gradeColunas }}>
               <button type="button" onClick={alternarPagina} aria-label={todosDaPaginaMarcados ? 'Desmarcar a página' : 'Marcar a página'} className={`grid size-8 place-items-center rounded-md text-slate-500 hover:text-[#176b4d] ${FOCO}`}>
                 {todosDaPaginaMarcados ? <CheckSquare className="size-4" aria-hidden="true" /> : <Square className="size-4" aria-hidden="true" />}
               </button>
@@ -572,7 +572,7 @@ export default function HistoricoCombustivel({
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2 lg:flex-nowrap lg:border-t-0 lg:py-1">
             <p className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-500 lg:text-sm">
               {filtrados.length ? `${paginaAtual * preferencias.tamanhoPagina + 1}–${Math.min((paginaAtual + 1) * preferencias.tamanhoPagina, filtrados.length)} de ${filtrados.length.toLocaleString('pt-BR')}` : '0 abastecimentos'}
-              <span className="hidden lg:inline"> · {maquinas.toLocaleString('pt-BR')} máquinas{conferir ? <> · <span className="font-bold text-[#f26a2e]">{conferir.toLocaleString('pt-BR')} a conferir</span></> : ''}{repetidosNoFiltro && !filtros.soRepetidos ? <> · <button type="button" onClick={() => mudarFiltro('soRepetidos', true)} className={`inline-flex items-center gap-1 rounded font-bold text-rose-700 hover:underline ${FOCO}`} data-testid="historico-ver-repetidos"><CopyX className="size-3.5" aria-hidden="true" />{repetidosNoFiltro.toLocaleString('pt-BR')} repetidos</button></> : ''} · Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span></span>
+              <span className="hidden lg:inline"> · {maquinas.toLocaleString('pt-BR')} máquinas{conferir ? <> · <span className="font-bold text-[#c2410c]">{conferir.toLocaleString('pt-BR')} a conferir</span></> : ''}{repetidosNoFiltro && !filtros.soRepetidos ? <> · <button type="button" onClick={() => mudarFiltro('soRepetidos', true)} className={`inline-flex items-center gap-1 rounded font-bold text-rose-700 hover:underline ${FOCO}`} data-testid="historico-ver-repetidos"><CopyX className="size-3.5" aria-hidden="true" />{repetidosNoFiltro.toLocaleString('pt-BR')} repetidos</button></> : ''} · Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span></span>
             </p>
             <div className="flex items-center gap-2">
               <label className="flex items-center gap-1 text-xs font-semibold text-slate-500">

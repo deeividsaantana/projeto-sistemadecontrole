@@ -56,7 +56,7 @@ test('seletor de tipos é acessível ao toque e ao teclado', () => {
   assert.match(tiposSource, /aria-current=\{ativo \? 'true' : undefined\}/);
   assert.match(tiposSource, /min-h-12/);
   assert.match(tiposSource, /\$\{FOCO\}/);
-  assert.match(estilosSource, /focus-visible:ring-\[#f26a2e\]\/60/);
+  assert.match(estilosSource, /focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-\(--renea-focus\)/);
   assert.match(tiposSource, /aria-label="Tipos de cadastro"/);
 });
 

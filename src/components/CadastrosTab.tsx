@@ -626,7 +626,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
                               className={`flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap border-r border-slate-200 px-3 transition-colors duration-150 last:border-0 ${FOCO} ${situacao === valor ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
                             >
                               {rotulo}
-                              <span className={`text-xs tabular-nums ${situacao === valor ? 'text-white/70' : 'text-slate-400'}`}>{total}</span>
+                              <span className={`text-xs tabular-nums ${situacao === valor ? 'text-white/90' : 'text-slate-500'}`}>{total}</span>
                             </button>
                           ))}
                         </div>

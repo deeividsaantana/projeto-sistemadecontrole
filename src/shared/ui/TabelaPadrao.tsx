@@ -177,7 +177,7 @@ const contagem = (total: number, nome?: { um: string; varios: string }) => (
 );
 
 const ALINHAMENTO = { esquerda: 'text-left', direita: 'text-right tabular-nums', centro: 'text-center' } as const;
-const FOCO = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176b4d]';
+const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 const CAIXA = 'size-6 cursor-pointer rounded border-slate-300 accent-[#176b4d] md:size-5';
 const BOTAO_PAGINA = `grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-200 bg-white px-2 text-[13px] font-bold text-slate-700 transition-colors hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 md:min-h-8 md:min-w-8 ${FOCO}`;
 
@@ -313,7 +313,7 @@ export function TabelaPadrao<T>({
                 aria-sort={coluna.valorOrdenacao ? (ativa ? (ordenacao!.direcao === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
                 style={coluna.larguraMinima ? { minWidth: coluna.larguraMinima } : undefined}
                 className={cn(
-                  'sticky top-0 z-[1] h-9 whitespace-nowrap border-b border-slate-200 bg-[#f3f6f4] px-3 text-[11px] font-bold uppercase tracking-wide text-[#53635c]',
+                  'sticky top-0 z-[1] h-9 whitespace-nowrap border-b border-slate-200 bg-[#f3f6f4] px-3 text-xs font-bold uppercase tracking-wide text-[#53635c]',
                   ALINHAMENTO[coluna.alinhamento ?? 'esquerda'],
                 )}
               >

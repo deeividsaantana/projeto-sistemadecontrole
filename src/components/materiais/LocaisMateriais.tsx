@@ -305,7 +305,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-baseline gap-x-2">
                             <strong className="text-base font-bold text-slate-900 sm:text-sm">{etapa.nome}</strong>
-                            <span className="text-xs font-semibold text-[#718087]">{etapa.tipoLocal || 'Sem tipo'}</span>
+                            <span className="text-xs font-semibold text-[#5b6870]">{etapa.tipoLocal || 'Sem tipo'}</span>
                           </span>
                           {(etapa.apelidos || []).length > 0 && (
                             <span className="mt-0.5 block text-xs leading-snug text-slate-500">Na planilha: {(etapa.apelidos || []).join(' · ')}</span>
@@ -348,7 +348,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
       <section data-locais-reveal className={`${CARTAO} overflow-hidden`} aria-labelledby="locais-sem-local">
         <header className="border-b border-amber-200 bg-amber-50 px-4 py-3">
           <h3 id="locais-sem-local" className="flex items-center gap-2 text-base font-bold text-amber-900">
-            <AlertTriangle className="size-5 shrink-0 text-[#f26a2e]" aria-hidden="true" />
+            <AlertTriangle className="size-5 shrink-0 text-[#c2410c]" aria-hidden="true" />
             {plural(faltando.length, 'nome da planilha ainda não conta em nenhum local', 'nomes da planilha ainda não contam em nenhum local')}
           </h3>
           <p className="mt-0.5 text-sm text-amber-900">Escolha o local de cada um e toque em Ligar, ou crie o nome como um local novo, mesmo sem código SGE. Vale para as viagens que já estão aqui e para as próximas importações.</p>
@@ -452,7 +452,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
               <Codigo codigo={rota.codigo} />
               <div className="min-w-0 flex-1 space-y-1 text-base text-slate-700">
                 {lado(rota.origem)}
-                <span className="block pl-5 text-xs font-semibold uppercase tracking-wide text-[#718087]">para</span>
+                <span className="block pl-5 text-xs font-semibold uppercase tracking-wide text-[#5b6870]">para</span>
                 {lado(rota.destino)}
               </div>
             </li>
@@ -470,7 +470,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
         {indicadores.map(item => (
           <article key={item.rotulo} data-locais-reveal className={`${CARTAO} p-3 sm:p-4`}>
             <p className="text-xs font-semibold leading-tight text-slate-600 sm:text-sm">{item.rotulo}</p>
-            <strong className={`mt-1 block text-2xl font-black tabular-nums sm:text-3xl ${item.alerta ? 'text-[#f26a2e]' : 'text-slate-950'}`}>{item.valor.toLocaleString('pt-BR')}</strong>
+            <strong className={`mt-1 block text-2xl font-black tabular-nums sm:text-3xl ${item.alerta ? 'text-[#c2410c]' : 'text-slate-950'}`}>{item.valor.toLocaleString('pt-BR')}</strong>
             <span className="hidden text-xs text-slate-500 sm:block">{item.detalhe}</span>
           </article>
         ))}
@@ -531,7 +531,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
               <span className="max-sm:hidden">{nome}</span>
               {contagem && alerta ? <span className="absolute right-2.5 top-2 size-2 rounded-full bg-[#f26a2e] sm:hidden" aria-hidden="true" /> : null}
               {contagem ? (
-                <span className={`rounded-full px-2 max-sm:sr-only py-0.5 text-xs font-bold tabular-nums ${vista === id ? 'bg-white text-[#f26a2e]' : alerta ? 'bg-[#f26a2e] text-white' : 'bg-slate-100 text-slate-600'}`}>{contagem.toLocaleString('pt-BR')}</span>
+                <span className={`rounded-full px-2 max-sm:sr-only py-0.5 text-xs font-bold tabular-nums ${vista === id ? 'bg-white text-[#c2410c]' : alerta ? 'bg-[#c2410c] text-white' : 'bg-slate-100 text-slate-600'}`}>{contagem.toLocaleString('pt-BR')}</span>
               ) : null}
             </button>
           ))}

@@ -109,7 +109,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const confirmacao = pendente ? textoDaMudanca(pendente) : null;
 
   const selectClass = 'h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100';
-  const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-500';
+  const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-500';
 
   const colunas: ColunaTabela<ManagedUser>[] = [
     {

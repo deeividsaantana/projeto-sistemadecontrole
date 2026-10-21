@@ -39,26 +39,26 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
       </span>
       <span className="flex flex-1 flex-col px-1 pb-0.5 pt-1.5">
         <strong className="font-mono text-[13px] font-bold leading-tight tracking-tight text-slate-900">{cartao.prefixo}</strong>
-        <span className="line-clamp-1 text-[9px] font-semibold uppercase tracking-wide text-slate-500">{cartao.modelo}</span>
-        <span className="mt-1 flex items-center gap-1 font-mono text-[9px] text-slate-500">
+        <span className="line-clamp-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{cartao.modelo}</span>
+        <span className="mt-1 flex items-center gap-1 font-mono text-xs text-slate-500">
           <Gauge className="size-2.5 text-slate-400" aria-hidden="true" />
           {cartao.horimetro ? `${numero(cartao.horimetro)} h` : 'sem horímetro'}
         </span>
         <span className="mt-1 flex min-w-0 items-center gap-1">
           {cartao.operador ? (
             <>
-              <span className="grid size-4 shrink-0 place-items-center rounded-full bg-[#176b4d] text-[8px] font-bold text-white" aria-hidden="true">{iniciais(cartao.operador)}</span>
-              <span className="truncate text-[10px] font-bold uppercase text-slate-700">{cartao.operador.split(' ')[0]}</span>
+              <span className="grid size-4 shrink-0 place-items-center rounded-full bg-[#176b4d] text-xs font-bold text-white" aria-hidden="true">{iniciais(cartao.operador)}</span>
+              <span className="truncate text-xs font-bold uppercase text-slate-700">{cartao.operador.split(' ')[0]}</span>
             </>
           ) : (
             <>
-              <span className="grid size-4 shrink-0 place-items-center rounded-full border border-dashed border-[#f26a2e] text-[8px] font-bold text-[#f26a2e]" aria-hidden="true">?</span>
-              <span className="truncate text-[10px] font-medium italic text-slate-400">sem operador</span>
+              <span className="grid size-4 shrink-0 place-items-center rounded-full border border-dashed border-[#f26a2e] text-xs font-bold text-[#c2410c]" aria-hidden="true">?</span>
+              <span className="truncate text-xs font-medium italic text-slate-400">sem operador</span>
             </>
           )}
         </span>
         <span className="mt-auto pt-1.5">
-          <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
+          <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
             <span className={`size-1.5 rounded-full ${tom.ponto} ${cartao.grupo === 'operando' ? 'animate-pulse motion-reduce:animate-none' : ''}`} aria-hidden="true" />
             {ROTULO_GRUPO[cartao.grupo]}
           </span>

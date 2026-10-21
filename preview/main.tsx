@@ -36,6 +36,8 @@ import { RouteMotion } from '../src/shared/ui/RouteMotion';
 import { TelaCheia } from '../src/shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../src/shared/ui/AbasDaTela';
 import { PageHeader } from '../src/shared/ui/PageHeader';
+import { PularParaConteudo } from '../src/shared/ui/PularParaConteudo';
+import { instalarGuardaDeMovimento } from '../src/shared/motion/guardaDeMovimento';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -806,6 +808,9 @@ const screens: Record<string, React.ReactNode> = {
   ),
 };
 
+// Mesma guarda global de movimento reduzido do app (src/main.tsx).
+instalarGuardaDeMovimento();
+
 const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
 // Com ?shell=1 a tela abre dentro do menu lateral e da barra do topo, com as
 // mesmas medidas do App.tsx, para conferir a página inteira em cada largura.
@@ -826,6 +831,7 @@ createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
     {isPublicScreen ? (screens[key] ?? null) : comShell ? (
       <div className="erp-shell">
+        <PularParaConteudo />
         <DesktopSidebar activeTab={abaAtiva} groups={previewGroups} onNavigate={noop} />
         <main className="erp-workspace" id="main-workspace">
           <DesktopTopBar
@@ -847,7 +853,7 @@ createRoot(document.getElementById('app-root')!).render(
             onMarkNotificationAsRead={noop}
             onLogout={noop}
           />
-          <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-[var(--renea-respiro)]'}`}>
+          <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-[var(--renea-respiro)]'}`}>
             <RouteMotion>{screens[key] ?? <p>Tela desconhecida: {key}</p>}</RouteMotion>
           </div>
         </main>

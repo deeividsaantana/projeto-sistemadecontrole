@@ -4,7 +4,7 @@
   --presence-line: #e2e8e4;
   --presence-surface: #ffffff;
   --presence-canvas: #ffffff;
-  --presence-green: #008c5a;
+  --presence-green: #00704a;
   --presence-green-strong: #063c31;
   min-height: 100svh;
   color: var(--presence-ink);
@@ -75,7 +75,7 @@
   align-items: center;
   gap: 7px;
   color: #fff;
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -122,7 +122,7 @@
 .presence-public__eyebrow {
   margin: 0 0 8px;
   color: var(--presence-green);
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 850;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -167,7 +167,7 @@
 .presence-public__search-meta {
   margin: 9px 2px 0;
   color: var(--presence-muted);
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 700;
 }
 
@@ -258,7 +258,7 @@
 .presence-public__group-count span {
   margin-top: 4px;
   color: var(--presence-muted);
-  font-size: 9px;
+  font-size: .75rem;
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -307,7 +307,7 @@
   gap: 7px;
   margin-top: 4px;
   color: var(--presence-muted);
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -357,12 +357,10 @@
 }
 
 .presence-public__employee-heading p {
-  overflow: hidden;
   margin-top: 4px;
   color: var(--presence-muted);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: .75rem;
+  overflow-wrap: anywhere;
 }
 
 .presence-public__avatar {
@@ -393,7 +391,7 @@
   border: 1px solid var(--presence-line);
   border-radius: 12px;
   color: #4f5a54;
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 750;
   background: #fff;
   transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, transform 150ms ease;
@@ -436,7 +434,7 @@
   border: 1px solid #e0d4cc;
   border-radius: 10px;
   color: #8c4639;
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 750;
   background: #fffaf7;
 }
@@ -450,7 +448,7 @@
 
 .presence-public__remove-confirm span {
   color: #70443b;
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 700;
 }
 
@@ -587,7 +585,7 @@
 
 .presence-public__pending-count span {
   color: var(--presence-muted);
-  font-size: 10px;
+  font-size: .75rem;
 }
 
 .presence-public__submit-actions > button,
@@ -717,7 +715,7 @@
   background: #fff8df;
   padding: 5px 10px;
   color: #8a5b05;
-  font-size: 10px;
+  font-size: .75rem;
   font-weight: 900;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -730,7 +728,7 @@
   gap: 7px;
   margin-top: 18px;
   color: #80570d !important;
-  font-size: 11px !important;
+  font-size: .75rem !important;
   font-weight: 800;
 }
 
@@ -787,7 +785,7 @@
 .presence-public__success-total span {
   align-self: start;
   color: var(--presence-muted);
-  font-size: 10px;
+  font-size: .75rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -831,7 +829,7 @@
 
 .presence-public__summary-grid span {
   color: var(--presence-muted);
-  font-size: 10px;
+  font-size: .75rem;
 }
 
 .presence-public__audit-id {
@@ -839,7 +837,7 @@
   overflow-wrap: anywhere;
   color: var(--presence-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 9px;
+  font-size: .75rem;
   animation: presence-success-rise 420ms 800ms ease-out both;
 }
 
@@ -914,7 +912,7 @@
   padding: 5px 10px;
   border-radius: 999px;
   color: var(--presence-green-strong);
-  font-size: 10px;
+  font-size: .75rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -931,7 +929,7 @@
   border: 0;
   border-radius: 10px;
   color: white;
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 800;
   background: var(--presence-green-strong);
 }
@@ -946,7 +944,7 @@
   margin-top: 10px;
   padding: 9px 11px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 650;
 }
 
@@ -1219,7 +1217,7 @@
   gap: 7px;
   margin: 0;
   color: var(--presence-muted);
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1243,7 +1241,7 @@
 
 .presence-public__daynote label {
   color: var(--presence-muted);
-  font-size: 11px;
+  font-size: .75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1317,18 +1315,6 @@
   .presence-public__daynote textarea {
     font-size: 16px;
   }
-
-  /* Piso de legibilidade: 9px e 10px são legíveis num monitor, não na tela do
-     encarregado ao sol. Cada rótulo aqui é conferência de gente presente. */
-  .presence-public__group-count span,
-  .presence-public__pending-count span,
-  .presence-public__draft-badge,
-  .presence-public__success-total span,
-  .presence-public__summary-grid span,
-  .presence-public__audit-id,
-  .presence-public__status-pill {
-    font-size: 11.5px;
-  }
 }
 
 /* Entrada leve dos cartões da lista/conferência: só opacidade e translateY,
@@ -1353,7 +1339,7 @@
   }
 
   .presence-public__header > button { width: 42px; height: 42px; }
-  .presence-public__header > span { font-size: 10px; }
+  .presence-public__header > span { font-size: .75rem; }
   .presence-public__content {
     padding: 14px 12px 150px;
   }
@@ -1398,7 +1384,7 @@
 
   .presence-public__submit-bar { gap: 9px; padding: 9px 12px max(9px, env(safe-area-inset-bottom)); }
   .presence-public__submit-actions { gap: 7px; }
-  .presence-public__submit-actions > button { min-height: 46px; padding-inline: 9px; font-size: 11px; }
+  .presence-public__submit-actions > button { min-height: 46px; padding-inline: 9px; font-size: .75rem; }
 
   .presence-public__progress-card {
     gap: 8px 12px;

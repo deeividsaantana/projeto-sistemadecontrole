@@ -16,9 +16,9 @@ interface DesktopSidebarProps {
 const COLLAPSE_KEY = 'renea_sidebar_recolhido';
 const CLOSED_GROUPS_KEY = 'renea_sidebar_grupos_fechados';
 const ICON_STROKE = 1.75;
-// Mesmo anel de foco laranja do Painel (FOCO em estilos.ts), com offset escuro
-// porque o menu é a única superfície escura do sistema.
-const FOCO_CLARO = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b4938]';
+// Mesma borda de foco sólida do resto do sistema (FOCO em estilos.ts), mas
+// branca, porque o menu é a única superfície escura.
+const FOCO_CLARO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 
 const readCollapsed = () => {
   try {
@@ -134,7 +134,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
                   data-sidebar-grupo
                   onClick={() => toggleGroup(group.label)}
                   aria-expanded={open}
-                  className={`flex w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#89b7a4] transition-colors duration-200 hover:text-white ${FOCO_CLARO}`}
+                  className={`flex w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-[0.1em] text-[#89b7a4] transition-colors duration-200 hover:text-white ${FOCO_CLARO}`}
                 >
                   <ChevronDown
                     className={`h-3 w-3 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${open ? '' : '-rotate-90'}`}
@@ -195,7 +195,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
       </nav>
 
       <div
-        className={`flex items-center border-t border-white/[0.06] py-2 text-[10px] font-semibold text-[#6fa08c] ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
+        className={`flex items-center border-t border-white/[0.06] py-2 text-xs font-semibold text-[#8fbfa9] ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
         title={APP_VERSION_LABEL}
       >
         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#3ecb8f]" aria-hidden="true" />

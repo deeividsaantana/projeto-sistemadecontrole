@@ -28,7 +28,7 @@ const indicadores = (metrics: FleetMetrics): Indicador[] => [
   { id: 'operando', titulo: 'Em operação', valor: metrics.operating, detalhe: 'trabalhando', Icone: PlayCircle, tom: 'bg-emerald-50 text-[#176b4d]', status: FLEET_OPERATIONAL_STATUS.operating },
   { id: 'manutencao', titulo: 'Manutenção', valor: metrics.maintenance + metrics.waitingMaintenance, detalhe: 'em reparo ou na fila', Icone: Wrench, tom: 'bg-rose-50 text-rose-700', status: FLEET_OPERATIONAL_STATUS.maintenance },
   { id: 'disposicao', titulo: 'À disposição', valor: metrics.available, detalhe: 'liberadas, sem serviço', Icone: PauseCircle, tom: 'bg-amber-50 text-amber-700', status: FLEET_OPERATIONAL_STATUS.available },
-  { id: 'confirmar', titulo: 'A confirmar', valor: metrics.pending, detalhe: 'falta informar', Icone: AlertTriangle, tom: 'bg-orange-50 text-[#f26a2e]', status: FLEET_OPERATIONAL_STATUS.pending },
+  { id: 'confirmar', titulo: 'A confirmar', valor: metrics.pending, detalhe: 'falta informar', Icone: AlertTriangle, tom: 'bg-orange-50 text-[#c2410c]', status: FLEET_OPERATIONAL_STATUS.pending },
   { id: 'disponibilidade', titulo: 'Disponível', valor: Math.round(metrics.availabilityRate ?? 0), sufixo: '%', texto: metrics.availabilityRate === null ? '—' : undefined, detalhe: metrics.availabilityRate === null ? 'nada lançado no dia' : 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
   { id: 'paradas', titulo: 'Horas paradas', valor: 0, texto: metrics.stoppedDurationLabel, detalhe: 'somadas no dia', Icone: Clock3, tom: 'bg-slate-100 text-slate-700' },
 ];
@@ -42,7 +42,7 @@ export default function FleetKpiStrip({ metrics, status, onPick }: Props) {
         const conteudo = (
           <>
             <span className="flex items-start justify-between gap-2">
-              <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-[0.04em] text-slate-500 [hyphens:none]">{item.titulo}</span>
+              <span className="min-w-0 text-xs font-bold uppercase leading-tight tracking-[0.04em] text-slate-500 [hyphens:none]">{item.titulo}</span>
               <span className={`grid size-7 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
             </span>
             {/* No computador o número e o detalhe dividem a linha: a faixa

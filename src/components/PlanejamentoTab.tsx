@@ -254,7 +254,7 @@ export default function PlanejamentoTab({
               <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
               {atrasados.length} previsto(s) com prazo vencido e meta não atingida
             </p>
-            <p className="mt-1 text-[11px] text-amber-800">
+            <p className="mt-1 text-xs text-amber-800">
               {atrasados.slice(0, 5).map(item => `${item.plano.servicoDescricao} (faltam ${numero(item.saldo)} ${item.plano.unidade})`).join(' · ')}
             </p>
           </div>
@@ -360,7 +360,7 @@ export default function PlanejamentoTab({
             Observação
             <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
           </label>
-          <p className="sm:col-span-2 text-[11px] text-slate-500">
+          <p className="sm:col-span-2 text-xs text-slate-500">
             O executado não é digitado: soma a produção lançada do mesmo serviço no período, filtrada por frente e equipe quando informadas.
           </p>
           {erro && <p className="sm:col-span-2 text-xs font-bold text-rose-700">{erro}</p>}

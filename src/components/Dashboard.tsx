@@ -35,9 +35,11 @@ interface DashboardProps {
 
 function ExecutiveCard({ label, value, detail, tone, icon: Icon, onClick }: { label: string; value: string | number; detail: string; tone: 'green' | 'blue' | 'orange' | 'slate'; icon: typeof Activity; onClick?: () => void }) {
   const colors = { green: 'border-emerald-200 bg-emerald-950 text-white', blue: 'border-blue-200 bg-blue-900 text-white', orange: 'border-orange-200 bg-orange-700 text-white', slate: 'border-slate-200 bg-white text-slate-950' };
+  // No laranja o texto esmaecido cai abaixo de 4,5:1; ali o rótulo fica branco cheio.
+  const suave = tone === 'orange' ? '' : 'opacity-80';
   return <button type="button" onClick={onClick} data-dashboard-reveal className={`dashboard-kpi group min-w-0 rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${colors[tone]}`}>
-    <div className="flex items-start justify-between gap-3"><span className="text-sm font-bold opacity-80">{label}</span><span className="rounded-lg bg-white/15 p-1.5"><Icon className="size-4" /></span></div>
-    <strong className={`mt-2 block font-black leading-tight tabular-nums ${typeof value === 'number' || /\d/.test(value) ? 'text-3xl' : 'text-xl'}`}>{value}</strong><span className="mt-1 block text-xs font-semibold opacity-75">{detail}</span>
+    <div className="flex items-start justify-between gap-3"><span className={`text-sm font-bold ${suave}`}>{label}</span><span className="rounded-lg bg-white/15 p-1.5"><Icon className="size-4" /></span></div>
+    <strong className={`mt-2 block font-black leading-tight tabular-nums ${typeof value === 'number' || /\d/.test(value) ? 'text-3xl' : 'text-xl'}`}>{value}</strong><span className={`mt-1 block text-xs font-semibold ${suave}`}>{detail}</span>
   </button>;
 }
 

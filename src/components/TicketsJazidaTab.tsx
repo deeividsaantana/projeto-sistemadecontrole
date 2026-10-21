@@ -113,7 +113,7 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
   const materials = ['Solo', 'Rachão', 'BGS', 'Brita', 'Areia', 'Outros'];
   const field = (label: string, value: React.ReactNode, className = '') => (
     <div className={`min-h-14 border-r border-b border-[#cfd7d1] p-2 ${className}`}>
-      <div className="text-[9px] font-bold uppercase text-[#53605a]">{label}</div>
+      <div className="text-xs font-bold uppercase text-[#53605a]">{label}</div>
       <div className="mt-2 text-sm font-semibold text-slate-950">{value || (blankPrint ? '' : '—')}</div>
     </div>
   );
@@ -125,10 +125,10 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
           <img src={reneaLogoFull} alt="RENEA" className="max-h-14 max-w-44 object-contain" />
         </div>
         <div className="h-24 border-r border-b border-[#cfd7d1] grid place-items-center text-center px-3">
-          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-[10px] text-[#53605a]">{OBRA.nome}</p></div>
+          <div><h2 className="text-base font-bold uppercase">Ticket de {isReceipt ? 'Recebimento - Obra' : 'Liberação - Jazida'}</h2><p className="mt-1 text-xs text-[#53605a]">{OBRA.nome}</p></div>
         </div>
         <div className="h-24 border-r border-b border-[#cfd7d1] p-2">
-          <div className="text-[9px] font-bold uppercase text-[#53605a]">Ticket Nº</div>
+          <div className="text-xs font-bold uppercase text-[#53605a]">Ticket Nº</div>
           <div className="mt-3 border-b border-[#cfd7d1] pb-1 text-center text-2xl font-bold">{ticket.ocultarNumeroImpressao ? '' : ticket.ticketNumero}</div>
         </div>
       </div>
@@ -141,7 +141,7 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
       </div>
 
       <div className="border-l border-r border-b border-[#cfd7d1] p-3 min-h-20">
-        <div className="text-[9px] font-bold uppercase text-[#53605a]">Tipo de material</div>
+        <div className="text-xs font-bold uppercase text-[#53605a]">Tipo de material</div>
         <div className="mt-4 grid grid-cols-6 gap-3">
           {materials.map(option => <div key={option} className="flex items-center gap-2 text-xs"><span className={`h-4 w-4 border border-[#d7ded9] grid place-items-center font-bold ${!blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')) ? 'bg-white text-[#14231e]' : ''}`}>{!blankPrint && (material === option || (option === 'Outros' && ticket.tipoMaterial === 'Outros')) ? 'X' : ''}</span>{option}</div>)}
         </div>
@@ -155,26 +155,26 @@ const TicketSingleDocument = ({ ticket }: { ticket: TicketJazida }) => {
       </div>
 
       <div className="border-l border-r border-b border-[#cfd7d1] p-3 min-h-16">
-        <div className="text-[9px] font-bold uppercase text-[#53605a]">Carga conforme?</div>
+        <div className="text-xs font-bold uppercase text-[#53605a]">Carga conforme?</div>
         <div className="mt-3 flex gap-12 text-xs"><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-[#d7ded9] grid place-items-center font-bold ${!blankPrint && ticket.cargaConforme === true ? 'bg-white text-[#14231e]' : ''}`}>{!blankPrint && ticket.cargaConforme === true ? 'X' : ''}</i>Sim</span><span className="flex items-center gap-2"><i className={`not-italic h-4 w-4 border border-[#d7ded9] grid place-items-center font-bold ${!blankPrint && ticket.cargaConforme === false ? 'bg-white text-[#14231e]' : ''}`}>{!blankPrint && ticket.cargaConforme === false ? 'X' : ''}</i>Não</span></div>
       </div>
 
       <div className="border-l border-r border-b border-[#cfd7d1] p-3 min-h-24">
-        <div className="text-[9px] font-bold uppercase text-[#53605a]">Divergências / observações</div>
+        <div className="text-xs font-bold uppercase text-[#53605a]">Divergências / observações</div>
         <p className="mt-3 text-xs leading-relaxed">{blankPrint ? '' : ticket.observacao || 'Sem observações.'}</p>
       </div>
 
       <div className="grid grid-cols-2 border-l border-[#cfd7d1]">
         <div className="min-h-28 border-r border-b border-[#cfd7d1] p-3">
-          <div className="text-[9px] font-bold uppercase text-[#53605a]">Assinatura - {isReceipt ? 'Recebedor' : 'Responsável pela liberação'}</div>
+          <div className="text-xs font-bold uppercase text-[#53605a]">Assinatura - {isReceipt ? 'Recebedor' : 'Responsável pela liberação'}</div>
           {!blankPrint && ticket.assinaturaDigital && <img src={ticket.assinaturaDigital} alt="Assinatura digital" className="mx-auto h-14 max-w-[80%] object-contain" />}
-          <div className="mt-1 border-t border-[#cfd7d1] pt-1 text-center text-[10px]">{blankPrint ? '' : ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível'}</div>
+          <div className="mt-1 border-t border-[#cfd7d1] pt-1 text-center text-xs">{blankPrint ? '' : ticket.nomeLegivel || ticket.responsavelLiberacao || 'Nome legível'}</div>
         </div>
         <div className="min-h-28 border-r border-b border-[#cfd7d1] p-3 flex flex-col justify-end">
-          <div className="border-t border-[#cfd7d1] pt-1 text-center text-[10px]">Assinatura - Conferente da obra / Nome legível</div>
+          <div className="border-t border-[#cfd7d1] pt-1 text-center text-xs">Assinatura - Conferente da obra / Nome legível</div>
         </div>
       </div>
-      <div className="border-x border-b border-[#cfd7d1] py-1 text-center text-[7px] uppercase text-[#65716b]">Via de {ticket.tipoTicket || 'Liberação'} | Documento digital RENEA</div>
+      <div className="border-x border-b border-[#cfd7d1] py-1 text-center text-xs uppercase text-[#65716b]">Via de {ticket.tipoTicket || 'Liberação'} | Documento digital RENEA</div>
     </div>
   );
 };
@@ -183,7 +183,7 @@ const TicketDocumentPreview = ({ releaseTicket, receiptTicket }: { releaseTicket
   <div className="aspect-[210/297] min-w-[760px] w-full overflow-hidden bg-white p-3 shadow-lg" id="ticket-print-preview">
     <div className="flex h-full flex-col justify-between">
       <TicketSingleDocument ticket={releaseTicket} />
-      <div className="relative border-t border-dashed border-[#cfd7d1]"><span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-[7px] uppercase text-[#65716b]">Linha de corte</span></div>
+      <div className="relative border-t border-dashed border-[#cfd7d1]"><span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs uppercase text-[#65716b]">Linha de corte</span></div>
       <TicketSingleDocument ticket={receiptTicket} />
     </div>
   </div>
@@ -1776,7 +1776,7 @@ export default function TicketsJazidaTab({
           </button>}
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-[#176b4d] hover:bg-[#176b4d]/90 active:bg-[#176b4d] text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             Novo ticket
@@ -1819,11 +1819,11 @@ export default function TicketsJazidaTab({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="flex items-center gap-2 font-sans text-base font-black text-slate-900"><Layers3 className="h-5 w-5 text-cyan-600" /> Conferência automática das viagens</h2>
-                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-700">ERP v2.5</span>
+                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-black uppercase tracking-wider text-cyan-700">ERP v2.5</span>
               </div>
-              <p className="mt-1 text-[11px] text-[#65716b]">Pareamento integral pelo Ticket Nº, sem limites fixos de linha. Prefixo, placa, material e quantidade seguem a mesma conferência da planilha.</p>
+              <p className="mt-1 text-xs text-[#65716b]">Pareamento integral pelo Ticket Nº, sem limites fixos de linha. Prefixo, placa, material e quantidade seguem a mesma conferência da planilha.</p>
             </div>
-            <div className="text-[10px] text-[#65716b]">
+            <div className="text-xs text-[#65716b]">
               IDs vinculados: <b className="text-[#3d4a44]">{travelControl.linkedEquipment}</b> equipamentos · <b className="text-[#3d4a44]">{travelControl.linkedMaterials}</b> materiais · <b className="text-[#3d4a44]">{travelControl.linkedDestinations}</b> locais · <b className="text-[#3d4a44]">{travelControl.linkedBranches}</b> ramos
             </div>
           </div>
@@ -1839,20 +1839,20 @@ export default function TicketsJazidaTab({
               { label: 'Duração média', value: formatTravelDuration(travelControl.averageDurationMinutes), detail: `${travelControl.duplicateTickets} ticket(s) duplicado(s)`, color: 'text-cyan-700' },
             ].map(card => (
               <div key={card.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-                <p className="text-[9px] font-black uppercase tracking-wider text-[#65716b]">{card.label}</p>
+                <p className="text-xs font-black uppercase tracking-wider text-[#65716b]">{card.label}</p>
                 <strong className={`mt-2 block text-xl font-black tabular-nums ${card.color}`}>{typeof card.value === 'number' ? <CountUp value={card.value} /> : card.value}</strong>
-                <span className="mt-1 block text-[9px] text-[#53605a]">{card.detail}</span>
+                <span className="mt-1 block text-xs text-[#53605a]">{card.detail}</span>
               </div>
             ))}
           </div>
 
           <div className="overflow-hidden rounded-xl border border-[#e2e8e4]">
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-              <div><h3 className="text-[11px] font-black uppercase tracking-wider text-[#26362f]">Fila de revisão</h3><p className="mt-1 text-[9px] text-[#65716b]">Linhas incompletas, divergentes ou duplicadas permanecem visíveis para correção.</p></div>
-              <span className="rounded-md bg-[#f7f9f8] px-2 py-1 text-[9px] font-black text-[#3d4a44]">{travelControl.totalTickets - travelControl.completeTrips} pendência(s)</span>
+              <div><h3 className="text-xs font-black uppercase tracking-wider text-[#26362f]">Fila de revisão</h3><p className="mt-1 text-xs text-[#65716b]">Linhas incompletas, divergentes ou duplicadas permanecem visíveis para correção.</p></div>
+              <span className="rounded-md bg-[#f7f9f8] px-2 py-1 text-xs font-black text-[#3d4a44]">{travelControl.totalTickets - travelControl.completeTrips} pendência(s)</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left text-[10px]">
+              <table className="w-full min-w-[820px] text-left text-xs">
                 <thead className="bg-[#f7f9f8] uppercase tracking-wider text-[#65716b]"><tr><th className="px-4 py-2.5">Ticket</th><th className="px-4 py-2.5">Situação</th><th className="px-4 py-2.5">Liberação</th><th className="px-4 py-2.5">Recebimento</th><th className="px-4 py-2.5">Duração</th><th className="px-4 py-2.5">Revisar</th></tr></thead>
                 <tbody className="divide-y divide-[#e2e8e4]">
                   {travelReviewRows.length === 0 ? <tr><td colSpan={6} className="px-4 py-6 text-center text-emerald-700">Todas as viagens estão pareadas e conferidas.</td></tr> : travelReviewRows.map(operation => {
@@ -1881,18 +1881,18 @@ export default function TicketsJazidaTab({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="flex items-center gap-2 font-sans text-base font-black text-slate-900"><ListChecks className="h-5 w-5 text-emerald-600" /> Conferência das duas vias</h2>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-700"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Tempo real</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-black uppercase tracking-wider text-emerald-700"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Tempo real</span>
               </div>
-              <p className="mt-1 text-[11px] text-[#65716b]">Cada número impresso gera uma pendência de Liberação e outra de Recebimento. Marque somente quando a via física voltar.</p>
+              <p className="mt-1 text-xs text-[#65716b]">Cada número impresso gera uma pendência de Liberação e outra de Recebimento. Marque somente quando a via física voltar.</p>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <label className="space-y-1">
-                <span className="block text-[9px] font-black uppercase tracking-wider text-[#65716b]">Dia da conferência</span>
+                <span className="block text-xs font-black uppercase tracking-wider text-[#65716b]">Dia da conferência</span>
                 <input type="date" value={controlDate} onChange={event => setControlDate(event.target.value)} className="h-10 rounded-lg border border-[#e2e8e4] bg-white px-3 text-xs font-bold text-[#14231e] outline-none focus:border-emerald-500" />
               </label>
-              <button type="button" onClick={exportTicketControlPdf} className="h-10 rounded-lg border border-[#e2e8e4] bg-white px-3 text-[10px] font-black text-[#26362f] hover:border-emerald-500">PDF</button>
-              <button type="button" onClick={exportTicketControlCsv} className="h-10 rounded-lg border border-[#e2e8e4] bg-white px-3 text-[10px] font-black text-[#26362f] hover:border-emerald-500">CSV</button>
-              <button type="button" onClick={exportTicketControlExcel} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-[10px] font-black text-[#14231e] hover:bg-emerald-500"><Download className="h-4 w-4" /> Excel detalhado</button>
+              <button type="button" onClick={exportTicketControlPdf} className="h-10 rounded-lg border border-[#e2e8e4] bg-white px-3 text-xs font-black text-[#26362f] hover:border-emerald-500">PDF</button>
+              <button type="button" onClick={exportTicketControlCsv} className="h-10 rounded-lg border border-[#e2e8e4] bg-white px-3 text-xs font-black text-[#26362f] hover:border-emerald-500">CSV</button>
+              <button type="button" onClick={exportTicketControlExcel} className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#176b4d] px-4 text-xs font-black text-white hover:bg-[#176b4d]/90"><Download className="h-4 w-4" /> Excel detalhado</button>
             </div>
           </div>
         </div>
@@ -1908,54 +1908,54 @@ export default function TicketsJazidaTab({
               { label: 'Com pendência', value: dailyControl.pendentesQualquerVia, detail: `${dailyControl.percentualConferencia}% conferido`, color: dailyControl.pendentesQualquerVia ? 'text-amber-700' : 'text-emerald-700' },
             ].map(card => (
               <div key={card.label} className="rounded-xl border border-[#e2e8e4] bg-[#f7f9f8] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-                <p className="text-[9px] font-black uppercase tracking-wider text-[#65716b]">{card.label}</p>
+                <p className="text-xs font-black uppercase tracking-wider text-[#65716b]">{card.label}</p>
                 <strong className={`mt-2 block text-2xl font-black tabular-nums ${card.color}`}><CountUp value={card.value} /></strong>
-                <span className="text-[9px] text-[#65716b]">{card.detail}</span>
+                <span className="text-xs text-[#65716b]">{card.detail}</span>
               </div>
             ))}
           </div>
 
           <div className="rounded-xl border border-[#e2e8e4] bg-[#f7f9f8] p-4">
-            <div className="mb-2 flex items-center justify-between text-[10px]"><span className="font-black uppercase tracking-wider text-[#65716b]">Fechamento do dia</span><b className="text-emerald-700">{dailyControl.percentualConferencia}%</b></div>
+            <div className="mb-2 flex items-center justify-between text-xs"><span className="font-black uppercase tracking-wider text-[#65716b]">Fechamento do dia</span><b className="text-emerald-700">{dailyControl.percentualConferencia}%</b></div>
             <div className="h-2 overflow-hidden rounded-full bg-[#f7f9f8]"><div className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-cyan-400 transition-all duration-500" style={{ width: `${dailyControl.percentualConferencia}%` }} /></div>
           </div>
 
-          {dailyDuplicateCount > 0 && <button type="button" onClick={() => { setOperationsOpen(true); setFStatus('Duplicado'); }} className="flex w-full items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left"><span><b className="block text-xs text-rose-700">{dailyDuplicateCount} via(s) com numeração duplicada neste dia</b><small className="text-[9px] text-rose-700/70">Os dados foram preservados. Abra a área administrativa para revisar sem perder registros.</small></span><CopyPlus className="h-4 w-4 shrink-0 text-rose-700" /></button>}
+          {dailyDuplicateCount > 0 && <button type="button" onClick={() => { setOperationsOpen(true); setFStatus('Duplicado'); }} className="flex w-full items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left"><span><b className="block text-xs text-rose-700">{dailyDuplicateCount} via(s) com numeração duplicada neste dia</b><small className="text-xs text-rose-700/70">Os dados foram preservados. Abra a área administrativa para revisar sem perder registros.</small></span><CopyPlus className="h-4 w-4 shrink-0 text-rose-700" /></button>}
 
           <div className="grid gap-3 lg:grid-cols-2">
             <div className={`rounded-xl border p-4 ${dailyControl.pendentesLiberacao.length ? 'border-amber-500/25 bg-amber-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
-              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Liberação</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-amber-700">{dailyControl.pendentesLiberacao.length}</span></div>
-              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesLiberacao.length ? dailyControl.pendentesLiberacao.map(numero => <span key={numero} className="rounded-md border border-amber-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-amber-700">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-700">Todas as liberações retornaram.</span>}</div>
+              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Liberação</h3><span className="rounded-full bg-white px-2 py-1 text-xs font-black text-amber-700">{dailyControl.pendentesLiberacao.length}</span></div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesLiberacao.length ? dailyControl.pendentesLiberacao.map(numero => <span key={numero} className="rounded-md border border-amber-500/25 bg-white px-2 py-1 font-mono text-xs font-bold text-amber-700">{numero}</span>) : <span className="text-xs font-bold text-emerald-700">Todas as liberações retornaram.</span>}</div>
             </div>
             <div className={`rounded-xl border p-4 ${dailyControl.pendentesRecebimento.length ? 'border-sky-500/25 bg-sky-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
-              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Recebimento</h3><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-sky-700">{dailyControl.pendentesRecebimento.length}</span></div>
-              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-white px-2 py-1 font-mono text-[10px] font-bold text-sky-700">{numero}</span>) : <span className="text-[10px] font-bold text-emerald-700">Todos os recebimentos retornaram.</span>}</div>
+              <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-black text-[#14231e]">Faltam vias de Recebimento</h3><span className="rounded-full bg-white px-2 py-1 text-xs font-black text-sky-700">{dailyControl.pendentesRecebimento.length}</span></div>
+              <div className="mt-3 flex min-h-8 flex-wrap gap-1.5">{dailyControl.pendentesRecebimento.length ? dailyControl.pendentesRecebimento.map(numero => <span key={numero} className="rounded-md border border-sky-500/25 bg-white px-2 py-1 font-mono text-xs font-bold text-sky-700">{numero}</span>) : <span className="text-xs font-bold text-emerald-700">Todos os recebimentos retornaram.</span>}</div>
             </div>
           </div>
 
           <div className="overflow-hidden rounded-xl border border-[#e2e8e4]">
             <div className="flex flex-col gap-3 border-b border-[#e2e8e4] bg-[#f7f9f8] p-4 lg:flex-row lg:items-center lg:justify-between">
-              <div><h3 className="text-xs font-black text-[#14231e]">Checklist do dia</h3><p className="mt-1 text-[9px] text-[#65716b]">O horário de devolução é registrado automaticamente ao marcar cada via.</p></div>
+              <div><h3 className="text-xs font-black text-[#14231e]">Checklist do dia</h3><p className="mt-1 text-xs text-[#65716b]">O horário de devolução é registrado automaticamente ao marcar cada via.</p></div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Liberação', true)} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[9px] font-black text-emerald-700 disabled:opacity-40">Marcar todas as liberações</button>
-                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Recebimento', true)} className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[9px] font-black text-sky-700 disabled:opacity-40">Marcar todos os recebimentos</button>
-                <button type="button" disabled={!dailyControl.rows.length} onClick={handleClearAllReturns} className="inline-flex items-center gap-1.5 rounded-md border border-[#e2e8e4] bg-white px-3 py-2 text-[9px] font-black text-[#65716b] disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" /> Limpar checklist</button>
+                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Liberação', true)} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-700 disabled:opacity-40">Marcar todas as liberações</button>
+                <button type="button" disabled={!dailyControl.rows.length} onClick={() => handleSetAllReturns('Recebimento', true)} className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-black text-sky-700 disabled:opacity-40">Marcar todos os recebimentos</button>
+                <button type="button" disabled={!dailyControl.rows.length} onClick={handleClearAllReturns} className="inline-flex items-center gap-1.5 rounded-md border border-[#e2e8e4] bg-white px-3 py-2 text-xs font-black text-[#65716b] disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" /> Limpar checklist</button>
               </div>
             </div>
             <div className="max-h-[520px] overflow-auto">
               <table className="w-full min-w-[920px] text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-white text-[9px] font-black uppercase tracking-wider text-[#65716b]"><tr><th className="px-4 py-3">Ticket</th><th className="px-4 py-3">Criado / impresso</th><th className="px-4 py-3">Via de liberação</th><th className="px-4 py-3">Via de recebimento</th><th className="px-4 py-3">Identificação</th><th className="px-4 py-3">Notas</th></tr></thead>
+                <thead className="sticky top-0 z-10 bg-white text-xs font-black uppercase tracking-wider text-[#65716b]"><tr><th className="px-4 py-3">Ticket</th><th className="px-4 py-3">Criado / impresso</th><th className="px-4 py-3">Via de liberação</th><th className="px-4 py-3">Via de recebimento</th><th className="px-4 py-3">Identificação</th><th className="px-4 py-3">Notas</th></tr></thead>
                 <tbody className="divide-y divide-[#e2e8e4]">
                   {!dailyControl.rows.length ? <tr><td colSpan={6} className="px-4 py-12 text-center text-[#65716b]"><Layers3 className="mx-auto mb-3 h-7 w-7 text-slate-700" />Nenhum ticket criado neste dia. Use “Imprimir sequência” para cadastrar a faixa.</td></tr> : dailyControl.rows.map(row => {
                     const ticket = row.liberacao || row.recebimento;
                     const note = row.recebimento?.notaFiscalNumero || row.liberacao?.notaFiscalNumero;
                     return <tr key={row.numero} data-linha-lista className="bg-[#f7f9f8] hover:bg-[#f2f5f3]">
                       <td className="px-4 py-3 font-mono text-sm font-black text-[#14231e]">{row.numero}</td>
-                      <td className="px-4 py-3"><b className="block text-[#26362f]">{formatEventDateTime(row.criadoEm)}</b><span className="text-[9px] text-[#53605a]">{row.loteId.startsWith('avulso-') ? 'Cadastro avulso' : 'Lote impresso'}</span></td>
-                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Liberação')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.liberacaoRecebida ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-amber-500/30 bg-amber-500/10 text-amber-700 hover:border-amber-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.liberacaoRecebida ? '✓' : ''}</span>{row.liberacaoRecebida ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.liberacaoRecebidaEm)}</small></button></td>
-                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Recebimento')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.recebimentoRecebido ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-sky-500/30 bg-sky-500/10 text-sky-700 hover:border-sky-400'}`}><b className="flex items-center gap-2 text-[10px]"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.recebimentoRecebido ? '✓' : ''}</span>{row.recebimentoRecebido ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-[8px] opacity-70">{formatEventDateTime(row.recebimentoRecebidoEm)}</small></button></td>
-                      <td className="px-4 py-3"><b className="block text-[#26362f]">{ticket?.prefixo || '—'}</b><span className="text-[9px] text-[#65716b]">{ticket?.placa || 'Sem placa'}</span></td>
-                      <td className="px-4 py-3">{operationsOpen ? <button type="button" onClick={() => handleOpenNoteModal(row.numero)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-700 hover:bg-cyan-500/20' : 'bg-[#f7f9f8] text-[#65716b] hover:text-[#14231e]'}`}><FileText className="h-3 w-3" />{note || 'Lançar nota'}</button> : <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold ${note ? 'bg-cyan-500/10 text-cyan-700' : 'bg-[#f7f9f8] text-[#65716b]'}`}><FileText className="h-3 w-3" />{note || 'Área oculta'}</span>}</td>
+                      <td className="px-4 py-3"><b className="block text-[#26362f]">{formatEventDateTime(row.criadoEm)}</b><span className="text-xs text-[#53605a]">{row.loteId.startsWith('avulso-') ? 'Cadastro avulso' : 'Lote impresso'}</span></td>
+                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Liberação')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.liberacaoRecebida ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-amber-500/30 bg-amber-500/10 text-amber-700 hover:border-amber-400'}`}><b className="flex items-center gap-2 text-xs"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.liberacaoRecebida ? '✓' : ''}</span>{row.liberacaoRecebida ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-xs opacity-70">{formatEventDateTime(row.liberacaoRecebidaEm)}</small></button></td>
+                      <td className="px-4 py-3"><button type="button" onClick={() => handleToggleTicketReturn(row.numero, 'Recebimento')} className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${row.recebimentoRecebido ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' : 'border-sky-500/30 bg-sky-500/10 text-sky-700 hover:border-sky-400'}`}><b className="flex items-center gap-2 text-xs"><span className="grid h-4 w-4 place-items-center rounded border border-current">{row.recebimentoRecebido ? '✓' : ''}</span>{row.recebimentoRecebido ? 'Devolvida' : 'Marcar devolução'}</b><small className="mt-1 block text-xs opacity-70">{formatEventDateTime(row.recebimentoRecebidoEm)}</small></button></td>
+                      <td className="px-4 py-3"><b className="block text-[#26362f]">{ticket?.prefixo || '—'}</b><span className="text-xs text-[#65716b]">{ticket?.placa || 'Sem placa'}</span></td>
+                      <td className="px-4 py-3">{operationsOpen ? <button type="button" onClick={() => handleOpenNoteModal(row.numero)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold ${note ? 'bg-cyan-500/10 text-cyan-700 hover:bg-cyan-500/20' : 'bg-[#f7f9f8] text-[#65716b] hover:text-[#14231e]'}`}><FileText className="h-3 w-3" />{note || 'Lançar nota'}</button> : <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold ${note ? 'bg-cyan-500/10 text-cyan-700' : 'bg-[#f7f9f8] text-[#65716b]'}`}><FileText className="h-3 w-3" />{note || 'Área oculta'}</span>}</td>
                     </tr>;
                   })}
                 </tbody>
@@ -1967,15 +1967,15 @@ export default function TicketsJazidaTab({
 
       {operationsOpen && <div className="space-y-5 rounded-lg border border-amber-500/20 bg-amber-500/[0.025] p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 className="text-sm font-black text-[#14231e]">Área de lançamentos, edição e notas</h2><p className="text-[10px] text-[#65716b]">Área avançada mantida oculta para deixar a conferência diária mais rápida.</p></div>
-        <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase text-amber-700">Modo administrativo</span>
+        <div><h2 className="text-sm font-black text-[#14231e]">Área de lançamentos, edição e notas</h2><p className="text-xs text-[#65716b]">Área avançada mantida oculta para deixar a conferência diária mais rápida.</p></div>
+        <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-xs font-black uppercase text-amber-700">Modo administrativo</span>
       </div>
       <div className="inline-flex bg-white p-1 rounded-xl border border-[#e2e8e4]">
         {(['Liberação', 'Recebimento'] as TipoTicketJazida[]).map(tipo => (
           <button
             key={tipo}
             onClick={() => { setTicketTab(tipo); setIsFormOpen(false); resetFormFields(); }}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${ticketTab === tipo ? 'bg-emerald-600 text-[#14231e]' : 'text-[#65716b] hover:text-[#14231e]'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${ticketTab === tipo ? 'bg-[#176b4d] text-white' : 'text-[#65716b] hover:text-[#14231e]'}`}
           >
             Tickets de {tipo}
           </button>
@@ -1997,29 +1997,29 @@ export default function TicketsJazidaTab({
             className="w-full h-10 bg-white border border-[#e2e8e4] rounded-md pl-10 pr-4 text-xs text-[#26362f] placeholder:text-[#53605a] focus:outline-none focus:border-emerald-500 transition-colors"
           />
           </div>
-          <button type="button" onClick={() => setFiltrosAbertos(v => !v)} aria-expanded={filtrosAbertos} className={`h-10 flex items-center justify-center gap-2 px-4 rounded-md text-xs font-bold border transition-colors ${filtrosAbertos ? 'bg-emerald-600 border-emerald-600 text-[#14231e]' : 'bg-white border-[#e2e8e4] text-[#3d4a44] hover:border-emerald-500'}`}>
+          <button type="button" onClick={() => setFiltrosAbertos(v => !v)} aria-expanded={filtrosAbertos} className={`h-10 flex items-center justify-center gap-2 px-4 rounded-md text-xs font-bold border transition-colors ${filtrosAbertos ? 'bg-[#176b4d] border-emerald-600 text-white' : 'bg-white border-[#e2e8e4] text-[#3d4a44] hover:border-emerald-500'}`}>
             <SlidersHorizontal className="w-4 h-4" />
             Mais filtros
-            {activeFilterCount > 0 && <span className="min-w-5 h-5 px-1 rounded bg-white/15 grid place-items-center text-[10px]">{activeFilterCount}</span>}
+            {activeFilterCount > 0 && <span className="min-w-5 h-5 px-1 rounded bg-white/15 grid place-items-center text-xs">{activeFilterCount}</span>}
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
           </button>
-          <button type="button" onClick={handleExportExcel} disabled={isExporting} className="h-10 flex items-center justify-center gap-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-[#14231e] font-bold text-xs rounded-md">
+          <button type="button" onClick={handleExportExcel} disabled={isExporting} className="h-10 flex items-center justify-center gap-2 px-4 bg-[#176b4d] hover:bg-[#176b4d]/90 disabled:opacity-60 text-white font-bold text-xs rounded-md">
             <FileSpreadsheet className="w-4 h-4" />
             {isExporting ? 'Exportando...' : hasFiltrosAtivos ? 'Exportar resultado' : 'Exportar Excel'}
           </button>
         </div>
 
         <div className="flex flex-col xl:flex-row xl:items-center gap-3 border-t border-[#e2e8e4] pt-3">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-[#65716b] uppercase shrink-0"><CalendarDays className="w-4 h-4" /> Período</div>
+          <div className="flex items-center gap-2 text-xs font-bold text-[#65716b] uppercase shrink-0"><CalendarDays className="w-4 h-4" /> Período</div>
           <div className="flex flex-wrap gap-1.5">
             {[{ label: 'Hoje', days: 1 }, { label: '7 dias', days: 7 }, { label: '30 dias', days: 30 }].map(period => (
-              <button key={period.days} type="button" onClick={() => applyPeriod(period.days)} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${isPeriodActive(period.days) ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>{period.label}</button>
+              <button key={period.days} type="button" onClick={() => applyPeriod(period.days)} className={`h-8 px-3 rounded-md border text-xs font-bold ${isPeriodActive(period.days) ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>{period.label}</button>
             ))}
-            <button type="button" onClick={() => applyPeriod()} className={`h-8 px-3 rounded-md border text-[11px] font-bold ${!fDataInicial && !fDataFinal ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>Todo período</button>
+            <button type="button" onClick={() => applyPeriod()} className={`h-8 px-3 rounded-md border text-xs font-bold ${!fDataInicial && !fDataFinal ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700' : 'bg-white border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]'}`}>Todo período</button>
           </div>
           <div className="xl:ml-auto flex items-center gap-2">
-            <label htmlFor="ticket-quick-status" className="text-[10px] font-bold text-[#65716b] uppercase">Situação</label>
-            <select id="ticket-quick-status" value={fStatus} onChange={e => setFStatus(e.target.value)} className="h-8 min-w-40 bg-white border border-[#e2e8e4] rounded-md px-3 text-[11px] text-[#26362f] focus:outline-none focus:border-emerald-500">
+            <label htmlFor="ticket-quick-status" className="text-xs font-bold text-[#65716b] uppercase">Situação</label>
+            <select id="ticket-quick-status" value={fStatus} onChange={e => setFStatus(e.target.value)} className="h-8 min-w-40 bg-white border border-[#e2e8e4] rounded-md px-3 text-xs text-[#26362f] focus:outline-none focus:border-emerald-500">
               <option value="">Todas</option><option value="Enviado">Enviados</option><option value="Rascunho">Rascunhos</option><option value="Pendente">Pendentes</option><option value="Duplicado">Duplicados</option><option value="OK">Conferidos</option>
             </select>
             {hasFiltrosAtivos && <button type="button" onClick={limparFiltros} title="Limpar todos os filtros" className="h-8 w-8 grid place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:border-rose-500 hover:text-rose-700"><FilterX className="w-4 h-4" /></button>}
@@ -2027,7 +2027,7 @@ export default function TicketsJazidaTab({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#65716b]">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#65716b]">
         <span>Exibindo <strong className="text-[#26362f]">{filteredTickets.length}</strong> de {tickets.filter(item => (item.tipoTicket || 'Liberação') === ticketTab).length} tickets de {ticketTab.toLowerCase()}.</span>
         {hasFiltrosAtivos && (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -2115,7 +2115,7 @@ export default function TicketsJazidaTab({
               <FilterX className="w-3.5 h-3.5" />
               Limpar filtros
             </button>
-            <button type="button" onClick={handleExportExcel} disabled={isExporting} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-[#14231e] font-bold text-xs rounded-lg transition-colors cursor-pointer">
+            <button type="button" onClick={handleExportExcel} disabled={isExporting} className="flex items-center gap-1.5 px-4 py-2 bg-[#176b4d] hover:bg-[#176b4d]/90 active:bg-[#176b4d] disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer">
               <FileSpreadsheet className="w-3.5 h-3.5" />
               {isExporting ? 'Exportando...' : hasFiltrosAtivos ? 'Exportar Excel filtrado' : 'Exportar Excel'}
             </button>
@@ -2123,27 +2123,27 @@ export default function TicketsJazidaTab({
 
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 pt-2">
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Total Tickets</p>
+              <p className="text-xs uppercase tracking-wider text-[#65716b] font-bold">Total Tickets</p>
               <p className="text-lg font-black text-[#14231e] font-mono mt-1">{resumo.totalTickets}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Total m³</p>
+              <p className="text-xs uppercase tracking-wider text-[#65716b] font-bold">Total m³</p>
               <p className="text-lg font-black text-emerald-700 font-mono mt-1">{resumo.totalM3.toLocaleString('pt-BR')}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Tickets OK</p>
+              <p className="text-xs uppercase tracking-wider text-[#65716b] font-bold">Tickets OK</p>
               <p className="text-lg font-black text-emerald-700 font-mono mt-1">{resumo.okCount}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Pendentes</p>
+              <p className="text-xs uppercase tracking-wider text-[#65716b] font-bold">Pendentes</p>
               <p className="text-lg font-black text-amber-700 font-mono mt-1">{resumo.pendCount}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Duplicados</p>
+              <p className="text-xs uppercase tracking-wider text-[#65716b] font-bold">Duplicados</p>
               <p className="text-lg font-black text-rose-700 font-mono mt-1">{resumo.dupCount}</p>
             </div>
             <div className="bg-white border border-[#e2e8e4] rounded-xl p-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-[#65716b] font-bold">Total Caçambas</p>
+              <p className="text-xs uppercase tracking-wider text-[#65716b] font-bold">Total Caçambas</p>
               <p className="text-lg font-black text-[#14231e] font-mono mt-1">{resumo.totalCacambas.toLocaleString('pt-BR')}</p>
             </div>
           </div>
@@ -2163,12 +2163,12 @@ export default function TicketsJazidaTab({
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
-                <b className="block text-[10px] font-black uppercase tracking-wider text-amber-700">Salvar rascunho</b>
-                <p className="mt-1 text-[9px] leading-relaxed text-[#65716b]">Exige apenas número e data. Mantém o ticket editável e não marca a via como devolvida.</p>
+                <b className="block text-xs font-black uppercase tracking-wider text-amber-700">Salvar rascunho</b>
+                <p className="mt-1 text-xs leading-relaxed text-[#65716b]">Exige apenas número e data. Mantém o ticket editável e não marca a via como devolvida.</p>
               </div>
               <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
-                <b className="block text-[10px] font-black uppercase tracking-wider text-emerald-700">Concluir ticket</b>
-                <p className="mt-1 text-[9px] leading-relaxed text-[#65716b]">Valida os campos essenciais e registra a devolução da via na conferência diária.</p>
+                <b className="block text-xs font-black uppercase tracking-wider text-emerald-700">Concluir ticket</b>
+                <p className="mt-1 text-xs leading-relaxed text-[#65716b]">Valida os campos essenciais e registra a devolução da via na conferência diária.</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2286,14 +2286,14 @@ export default function TicketsJazidaTab({
                 <label className="text-xxs font-bold uppercase tracking-wider text-[#65716b]">Motorista</label>
                 <input type="text" value={motoristaNome} onChange={e => setMotoristaNome(e.target.value)} placeholder={motoristaSugerido || 'Quem fez a viagem'} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
                 {motoristaSugerido && !motoristaNome && (
-                  <button type="button" onClick={() => setMotoristaNome(motoristaSugerido)} className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800">
+                  <button type="button" onClick={() => setMotoristaNome(motoristaSugerido)} className="text-xs font-bold text-emerald-700 hover:text-emerald-800">
                     Usar {motoristaSugerido} (controle do dia)
                   </button>
                 )}
               </div>
             </div>
             <button type="button" onClick={() => setAdvancedFormOpen(value => !value)} className="flex w-full items-center justify-between rounded-xl border border-[#e2e8e4] bg-white px-4 py-3 text-left">
-              <span><b className="block text-[10px] font-black uppercase tracking-wider text-[#3d4a44]">Observações e nota fiscal</b><small className="mt-1 block text-[9px] text-[#53605a]">Opcional. Abra somente quando precisar lançar detalhes administrativos.</small></span>
+              <span><b className="block text-xs font-black uppercase tracking-wider text-[#3d4a44]">Observações e nota fiscal</b><small className="mt-1 block text-xs text-[#53605a]">Opcional. Abra somente quando precisar lançar detalhes administrativos.</small></span>
               <ChevronDown className={`h-4 w-4 text-[#65716b] transition-transform ${advancedFormOpen ? 'rotate-180' : ''}`} />
             </button>
             {advancedFormOpen && <div className="space-y-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
@@ -2302,11 +2302,11 @@ export default function TicketsJazidaTab({
                 <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full bg-white border border-[#e2e8e4] rounded-xl px-4 py-2.5 text-xs text-[#14231e] focus:outline-none focus:border-emerald-500" />
               </div>
               <div>
-                <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan-700"><FileText className="h-4 w-4" /> Nota fiscal</div>
+                <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-cyan-700"><FileText className="h-4 w-4" /> Nota fiscal</div>
                 <div className="grid gap-3 md:grid-cols-[1fr_180px_2fr]">
-                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-[#65716b]">Número da nota</span><input type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" placeholder="Ex.: NF 15482" /></label>
-                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-[#65716b]">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
-                  <label className="space-y-1"><span className="block text-[9px] font-bold uppercase text-[#65716b]">Observações / referência</span><input type="text" value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" placeholder="Fornecedor, divergência ou referência da carga" /></label>
+                  <label className="space-y-1"><span className="block text-xs font-bold uppercase text-[#65716b]">Número da nota</span><input type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" placeholder="Ex.: NF 15482" /></label>
+                  <label className="space-y-1"><span className="block text-xs font-bold uppercase text-[#65716b]">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
+                  <label className="space-y-1"><span className="block text-xs font-bold uppercase text-[#65716b]">Observações / referência</span><input type="text" value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2 text-xs text-[#14231e] outline-none focus:border-cyan-500" placeholder="Fornecedor, divergência ou referência da carga" /></label>
                 </div>
               </div>
             </div>}
@@ -2321,7 +2321,7 @@ export default function TicketsJazidaTab({
               <button type="submit" name="saveMode" value="draft" className="px-5 py-2.5 border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15 text-amber-700 font-bold text-xs rounded-xl transition-all cursor-pointer">
                 Salvar rascunho
               </button>
-              <button type="submit" name="saveMode" value="complete" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-[#14231e] font-bold text-xs rounded-lg transition-colors cursor-pointer">
+              <button type="submit" name="saveMode" value="complete" className="px-5 py-2.5 bg-[#176b4d] hover:bg-[#176b4d]/90 active:bg-[#176b4d] text-white font-bold text-xs rounded-lg transition-colors cursor-pointer">
                 {editingId ? 'Concluir e salvar' : 'Concluir lançamento'}
               </button>
               <button type="button" onClick={() => { setIsFormOpen(false); resetFormFields(); }} className="px-5 py-2.5 bg-[#f7f9f8] hover:bg-[#f2f5f3] text-[#3d4a44] font-bold text-xs rounded-xl transition-all cursor-pointer">
@@ -2336,12 +2336,12 @@ export default function TicketsJazidaTab({
       <div className="bg-white border border-[#e2e8e4] rounded-lg overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] bg-white px-5 py-3 text-xs">
           <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredTickets.length > 0 && filteredTickets.every(item => selectedTicketIds.includes(item.id))} onChange={event => setSelectedTicketIds(event.target.checked ? filteredTickets.map(item => item.id) : [])} /> Selecionar visíveis ({selectedTicketIds.length})</label>
-          {onDeleteTickets && <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-[#14231e] disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>}
+          {onDeleteTickets && <button type="button" disabled={selectedTicketIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-700 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-[#e2e8e4] text-[#65716b] uppercase text-[10px] font-bold bg-[#f7f9f8] font-mono">
+              <tr className="border-b border-[#e2e8e4] text-[#65716b] uppercase text-xs font-bold bg-[#f7f9f8] font-mono">
                 <th className="py-3.5 px-5">Sel.</th>
                 <th className="py-3.5 px-5">Data / Hora</th>
                 <th className="py-3.5 px-5">Ticket Nº</th>
@@ -2374,26 +2374,26 @@ export default function TicketsJazidaTab({
                       <td className="py-4 px-5"><input type="checkbox" checked={selectedTicketIds.includes(t.id)} onChange={event => setSelectedTicketIds(current => event.target.checked ? [...current, t.id] : current.filter(id => id !== t.id))} /></td>
                       <td className="py-4 px-5">
                         <span className="font-bold text-[#26362f] block">{t.data.split('-').reverse().join('/')}</span>
-                        <span className="text-[10px] text-[#65716b] font-mono block">{t.tipoTicket || 'Liberação'}</span>
-                        <span className="text-[10px] text-[#65716b] font-mono">{(t.tipoTicket || 'Liberação') === 'Recebimento' ? (t.horaChegada || t.horaSaida) : t.horaSaida}</span>
+                        <span className="text-xs text-[#65716b] font-mono block">{t.tipoTicket || 'Liberação'}</span>
+                        <span className="text-xs text-[#65716b] font-mono">{(t.tipoTicket || 'Liberação') === 'Recebimento' ? (t.horaChegada || t.horaSaida) : t.horaSaida}</span>
                       </td>
                       <td className="py-4 px-5 font-mono text-emerald-700 font-bold">{t.ticketNumero}</td>
                       <td className="py-4 px-5">
                         <span className="font-mono text-[#26362f] font-bold bg-white border border-[#e2e8e4] px-2 py-0.5 rounded text-xxs">{t.prefixo}</span>
-                        <span className="block text-[10px] text-[#65716b] mt-0.5">{t.placa}</span>
+                        <span className="block text-xs text-[#65716b] mt-0.5">{t.placa}</span>
                         {(t.equipamentoNome || t.familiaEquipamento) && (
-                          <span className="block text-[10px] text-[#65716b] mt-0.5">{t.equipamentoNome || t.familiaEquipamento}</span>
+                          <span className="block text-xs text-[#65716b] mt-0.5">{t.equipamentoNome || t.familiaEquipamento}</span>
                         )}
                       </td>
                       <td className="py-4 px-5 text-[#3d4a44]">{t.tipoMaterial}</td>
-                      <td className="py-4 px-5 font-mono text-emerald-700 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')} <span className="text-[9px] text-[#65716b]">{t.unidadeQuantidade || 'm³'}</span></td>
+                      <td className="py-4 px-5 font-mono text-emerald-700 font-black text-sm">{t.quantidadeM3.toLocaleString('pt-BR')} <span className="text-xs text-[#65716b]">{t.unidadeQuantidade || 'm³'}</span></td>
                       <td className="py-4 px-5 text-[#65716b]">
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-[#53605a]" />{t.destinoObra === 'Outros' ? t.destinoOutro || 'Outros' : t.destinoObra}</span>
-                        {t.estaca && <span className="block text-[10px] text-[#65716b] mt-0.5">{t.estaca}</span>}
+                        {t.estaca && <span className="block text-xs text-[#65716b] mt-0.5">{t.estaca}</span>}
                       </td>
-                      <td className="py-4 px-5 text-[#65716b]"><span className="block">{t.empresa}</span>{t.notaFiscalNumero && <span className="mt-1 block text-[10px] font-bold text-cyan-700">NF {t.notaFiscalNumero}</span>}</td>
+                      <td className="py-4 px-5 text-[#65716b]"><span className="block">{t.empresa}</span>{t.notaFiscalNumero && <span className="mt-1 block text-xs font-bold text-cyan-700">NF {t.notaFiscalNumero}</span>}</td>
                       <td className="py-4 px-5">
-                        <span className={`inline-block px-2 py-1 rounded-lg border text-[10px] font-bold ${statusStyles[status] || statusStyles['OK']}`}>{statusLabel}</span>
+                        <span className={`inline-block px-2 py-1 rounded-lg border text-xs font-bold ${statusStyles[status] || statusStyles['OK']}`}>{statusLabel}</span>
                       </td>
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -2426,14 +2426,14 @@ export default function TicketsJazidaTab({
 
       <div className="bg-white border border-[#e2e8e4] rounded-xl p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h3 className="text-sm font-black text-[#14231e]">Histórico de lotes impressos</h3><p className="text-[10px] text-[#65716b]">Faixas registradas no controle, inclusive após restauração do backup em nuvem.</p></div>
-          <span className="rounded-md border border-[#e2e8e4] bg-white px-3 py-2 text-[9px] font-black uppercase text-[#65716b]">{ticketControlRows.length} lote(s)</span>
+          <div><h3 className="text-sm font-black text-[#14231e]">Histórico de lotes impressos</h3><p className="text-xs text-[#65716b]">Faixas registradas no controle, inclusive após restauração do backup em nuvem.</p></div>
+          <span className="rounded-md border border-[#e2e8e4] bg-white px-3 py-2 text-xs font-black uppercase text-[#65716b]">{ticketControlRows.length} lote(s)</span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-[9px] uppercase text-[#65716b]">Números impressos</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.total} /></p></div>
-          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-[9px] uppercase text-[#65716b]">Viagens completas</p><p className="text-xl font-black tabular-nums text-emerald-700"><CountUp value={ticketControlTotals.completas} /></p></div>
-          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-[9px] uppercase text-[#65716b]">Liberações preenchidas</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.liberacoes} /></p></div>
-          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-[9px] uppercase text-[#65716b]">Recebimentos preenchidos</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.recebimentos} /></p></div>
+          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-xs uppercase text-[#65716b]">Números impressos</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.total} /></p></div>
+          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-xs uppercase text-[#65716b]">Viagens completas</p><p className="text-xl font-black tabular-nums text-emerald-700"><CountUp value={ticketControlTotals.completas} /></p></div>
+          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-xs uppercase text-[#65716b]">Liberações preenchidas</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.liberacoes} /></p></div>
+          <div className="rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-md"><p className="text-xs uppercase text-[#65716b]">Recebimentos preenchidos</p><p className="text-xl font-black tabular-nums text-[#14231e]"><CountUp value={ticketControlTotals.recebimentos} /></p></div>
         </div>
         <div className="overflow-auto"><table className="w-full text-xs"><thead><tr className="text-left text-[#65716b]"><th className="p-2">Impressão</th><th>Faixa</th><th>Números</th><th>Lib. devolvidas</th><th>Rec. devolvidas</th><th>Completos</th><th>Pendentes</th></tr></thead><tbody>{ticketControlRows.map(r=><tr key={r.id} className="border-t border-[#e2e8e4] text-[#3d4a44]"><td className="p-2">{new Date(r.criadoEm).toLocaleString('pt-BR')}</td><td>{normalizeTicketNumber(r.displayStart)} a {normalizeTicketNumber(r.displayEnd)}</td><td>{r.total}</td><td>{r.liberacoes}</td><td>{r.recebimentos}</td><td className="text-emerald-700 font-bold">{r.completas}</td><td>{r.pendentes}</td></tr>)}</tbody></table></div>
       </div>
@@ -2442,14 +2442,14 @@ export default function TicketsJazidaTab({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setNoteModalNumber(null)}>
           <div className="max-h-[90dvh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-lg border border-cyan-500/30 bg-white p-5" onClick={event => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
-              <div><h3 className="flex items-center gap-2 text-sm font-black text-[#14231e]"><FileText className="h-4 w-4 text-cyan-700" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-[10px] text-[#65716b]">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
+              <div><h3 className="flex items-center gap-2 text-sm font-black text-[#14231e]"><FileText className="h-4 w-4 text-cyan-700" /> Nota fiscal do Ticket Nº {noteModalNumber}</h3><p className="mt-1 text-xs text-[#65716b]">O lançamento é replicado nas duas vias sem alterar a conferência de devolução.</p></div>
               <button type="button" onClick={() => setNoteModalNumber(null)} className="grid h-8 w-8 place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-[#65716b]">Número da nota</span><input autoFocus type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
-              <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-[#65716b]">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
+              <label className="space-y-1"><span className="block text-xs font-black uppercase text-[#65716b]">Número da nota</span><input autoFocus type="text" value={notaFiscalNumero} onChange={event => setNotaFiscalNumero(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
+              <label className="space-y-1"><span className="block text-xs font-black uppercase text-[#65716b]">Data da nota</span><input type="date" value={notaFiscalData} onChange={event => setNotaFiscalData(event.target.value)} className="w-full rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
             </div>
-            <label className="space-y-1"><span className="block text-[9px] font-black uppercase text-[#65716b]">Observações / referência</span><textarea rows={3} value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full resize-y rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
+            <label className="space-y-1"><span className="block text-xs font-black uppercase text-[#65716b]">Observações / referência</span><textarea rows={3} value={notaFiscalObservacao} onChange={event => setNotaFiscalObservacao(event.target.value)} className="w-full resize-y rounded-lg border border-[#e2e8e4] bg-white px-3 py-2.5 text-xs text-[#14231e] outline-none focus:border-cyan-500" /></label>
             <div className="flex justify-end gap-2"><button type="button" onClick={() => setNoteModalNumber(null)} className="rounded-lg bg-[#f7f9f8] px-4 py-2.5 text-xs font-bold text-[#3d4a44]">Cancelar</button><button type="button" onClick={handleSaveNoteModal} className="rounded-lg bg-cyan-600 px-4 py-2.5 text-xs font-black text-[#14231e] hover:bg-cyan-500">Salvar nas duas vias</button></div>
           </div>
         </div>
@@ -2458,15 +2458,15 @@ export default function TicketsJazidaTab({
       <section className="grid gap-3 rounded-lg border border-[#e2e8e4] bg-white p-4 md:grid-cols-3">
         <button type="button" onClick={handleOpenCreate} className="group flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-left transition hover:border-emerald-400">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-black text-[#14231e]">1</span>
-          <span><b className="block text-xs text-[#14231e]">Cadastrar ou continuar</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Informe somente o que já sabe. Salve como rascunho e edite depois.</small></span>
+          <span><b className="block text-xs text-[#14231e]">Cadastrar ou continuar</b><small className="mt-1 block text-xs leading-relaxed text-[#65716b]">Informe somente o que já sabe. Salve como rascunho e edite depois.</small></span>
         </button>
         <button type="button" onClick={() => importInputRef.current?.click()} className="group flex items-start gap-3 rounded-xl border border-sky-500/25 bg-sky-500/5 p-4 text-left transition hover:border-sky-400">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-500 text-xs font-black text-[#14231e]">2</span>
-          <span><b className="block text-xs text-[#14231e]">Importar sua planilha</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Veja uma prévia, confira erros e confirme. Linhas incompletas entram como rascunho.</small></span>
+          <span><b className="block text-xs text-[#14231e]">Importar sua planilha</b><small className="mt-1 block text-xs leading-relaxed text-[#65716b]">Veja uma prévia, confira erros e confirme. Linhas incompletas entram como rascunho.</small></span>
         </button>
         <button type="button" onClick={() => setOperationsOpen(true)} className="group flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-left transition hover:border-amber-400">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-500 text-xs font-black text-[#14231e]">3</span>
-          <span><b className="block text-xs text-[#14231e]">Revisar e concluir</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Rascunho não conta como devolvido. Concluído entra na conferência da via.</small></span>
+          <span><b className="block text-xs text-[#14231e]">Revisar e concluir</b><small className="mt-1 block text-xs leading-relaxed text-[#65716b]">Rascunho não conta como devolvido. Concluído entra na conferência da via.</small></span>
         </button>
       </section>
 
@@ -2479,7 +2479,7 @@ export default function TicketsJazidaTab({
                   <Printer className="w-4 h-4 text-emerald-700" />
                   Imprimir tickets em sequência
                 </h3>
-                <p className="text-[10px] text-[#65716b] mt-1">Configure a numeração, escolha o que já deve sair preenchido e salve as duas vias para editar depois.</p>
+                <p className="text-xs text-[#65716b] mt-1">Configure a numeração, escolha o que já deve sair preenchido e salve as duas vias para editar depois.</p>
               </div>
               <button type="button" disabled={isBatchPrinting} onClick={() => setIsBatchModalOpen(false)} className="h-8 w-8 grid place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:text-[#14231e] disabled:opacity-50">
                 <X className="w-4 h-4" />
@@ -2489,15 +2489,15 @@ export default function TicketsJazidaTab({
             <div className="grid gap-2 sm:grid-cols-3">
               <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchFillMode === 'em-branco' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-[#e2e8e4] bg-white'}`}>
                 <input type="radio" name="batch-fill-mode" checked={batchFillMode === 'em-branco'} onChange={() => setBatchFillMode('em-branco')} className="mt-0.5 accent-emerald-500" />
-                <span><strong className="block text-[11px] text-[#26362f]">Somente a numeração</strong><small className="block text-[9px] text-[#65716b]">Todos os demais campos ficam vazios para preencher à caneta.</small></span>
+                <span><strong className="block text-xs text-[#26362f]">Somente a numeração</strong><small className="block text-xs text-[#65716b]">Todos os demais campos ficam vazios para preencher à caneta.</small></span>
               </label>
               <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${batchFillMode === 'pre-preenchido' ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-[#e2e8e4] bg-white'}`}>
                 <input type="radio" name="batch-fill-mode" checked={batchFillMode === 'pre-preenchido'} onChange={() => setBatchFillMode('pre-preenchido')} className="mt-0.5 accent-cyan-500" />
-                <span><strong className="block text-[11px] text-[#26362f]">Pré-preencher o lote</strong><small className="block text-[9px] text-[#65716b]">Você escolhe abaixo quais dados comuns já saem no PDF.</small></span>
+                <span><strong className="block text-xs text-[#26362f]">Pré-preencher o lote</strong><small className="block text-xs text-[#65716b]">Você escolhe abaixo quais dados comuns já saem no PDF.</small></span>
               </label>
               <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
                 <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                <span><strong className="block text-[11px] text-[#26362f]">Controle automático obrigatório</strong><small className="block text-[9px] text-[#65716b]">As duas vias entram como pendentes no checklist e acompanham o backup em nuvem.</small></span>
+                <span><strong className="block text-xs text-[#26362f]">Controle automático obrigatório</strong><small className="block text-xs text-[#65716b]">As duas vias entram como pendentes no checklist e acompanham o backup em nuvem.</small></span>
               </div>
             </div>
 
@@ -2564,7 +2564,7 @@ export default function TicketsJazidaTab({
               </div>
             </div>
 
-            <div className="rounded-xl border border-[#e2e8e4] bg-white p-3 text-[10px] text-[#65716b]">
+            <div className="rounded-xl border border-[#e2e8e4] bg-white p-3 text-xs text-[#65716b]">
               <strong className="text-[#26362f]">Prévia:</strong>{' '}
               {Math.max(1, Math.min(200, Number(batchQuantity) || 1))} ticket(s) em duas vias,{' '}
               {batchFillMode === 'em-branco' ? 'apenas com a numeração' : 'com os campos escolhidos pré-preenchidos'}.
@@ -2581,7 +2581,7 @@ export default function TicketsJazidaTab({
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setIsBatchModalOpen(false)} disabled={isBatchPrinting} className="rounded-xl bg-[#f7f9f8] px-4 py-2.5 text-xs font-bold text-[#3d4a44] hover:bg-[#f2f5f3] disabled:opacity-50">Cancelar</button>
-              <button type="button" onClick={handleGenerateBatchTickets} disabled={isBatchPrinting} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-[#14231e] hover:bg-emerald-500 disabled:opacity-60">
+              <button type="button" onClick={handleGenerateBatchTickets} disabled={isBatchPrinting} className="rounded-xl bg-[#176b4d] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#176b4d]/90 disabled:opacity-60">
                 {isBatchPrinting ? 'Gerando PDF...' : 'Gerar PDF e iniciar checklist'}
               </button>
             </div>
@@ -2594,9 +2594,9 @@ export default function TicketsJazidaTab({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 md:p-6" onClick={() => setViewingTicket(null)}>
           <div className="bg-white border border-[#e2e8e4] rounded-lg p-4 max-w-6xl w-full max-h-[96vh] flex flex-col gap-3" onClick={e => e.stopPropagation()}>
             <div className="flex flex-wrap justify-between items-center gap-3">
-              <div><h3 className="text-sm font-black text-[#14231e]">Visualização para impressão</h3><p className="text-[10px] text-[#65716b]">Ticket {viewingTicket.ticketNumero} no padrão operacional RENEA</p></div>
+              <div><h3 className="text-sm font-black text-[#14231e]">Visualização para impressão</h3><p className="text-xs text-[#65716b]">Ticket {viewingTicket.ticketNumero} no padrão operacional RENEA</p></div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => handlePrintTicket(viewingTicket)} className="h-9 px-4 rounded-md bg-emerald-600 hover:bg-emerald-500 text-[#14231e] text-xs font-bold flex items-center gap-2"><Printer className="w-4 h-4" /> Imprimir / PDF</button>
+                <button type="button" onClick={() => handlePrintTicket(viewingTicket)} className="h-9 px-4 rounded-md bg-[#176b4d] hover:bg-[#176b4d]/90 text-white text-xs font-bold flex items-center gap-2"><Printer className="w-4 h-4" /> Imprimir / PDF</button>
                 <button type="button" onClick={() => setViewingTicket(null)} title="Fechar visualização" className="h-9 w-9 grid place-items-center rounded-md border border-[#e2e8e4] text-[#65716b] hover:text-[#14231e]"><X className="w-4 h-4" /></button>
               </div>
             </div>
@@ -2613,7 +2613,7 @@ export default function TicketsJazidaTab({
           <div className="bg-white border border-rose-500/30 rounded-lg p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
             <p className="text-xs text-[#3d4a44]">Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.</p>
             <div className="flex gap-2.5">
-              <button onClick={() => { onDeleteTicket?.(deleteConfirmId); setDeleteConfirmId(null); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-[#14231e] font-bold text-xs rounded-xl cursor-pointer">Excluir</button>
+              <button onClick={() => { onDeleteTicket?.(deleteConfirmId); setDeleteConfirmId(null); }} className="px-4 py-2 bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs rounded-xl cursor-pointer">Excluir</button>
               <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 bg-[#f7f9f8] hover:bg-[#f2f5f3] text-[#3d4a44] font-bold text-xs rounded-xl cursor-pointer">Cancelar</button>
             </div>
           </div>

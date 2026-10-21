@@ -106,10 +106,12 @@ botões soltos fazendo papel de aba.
 
 ## 4. Visual
 
-- Paleta RENEA (`#176b4d`, `#f26a2e`, `#718087`, `#f7f8f6`); a trava
-  `tests/padraoAbas.test.ts` reprova cor hex fora dela nas abas.
+- Paleta RENEA (`#176b4d`, `#f26a2e`, `#718087`, `#f7f8f6`); como cor de letra,
+  `#5b6870` no lugar do cinza e `#c2410c` no lugar do laranja (4,5:1). A trava
+  `tests/padraoAbas.test.ts` reprova cor hex fora dela e letra em `#718087` ou `#f26a2e`.
 - Cartões `rounded-2xl border-slate-200 bg-white`, sem sombra pesada.
-- Foco visível em todo controle (classe `FOCO` de `cadastros/estilos.ts`).
+- Foco visível em todo controle: borda sólida verde-escura de 2 px com afastamento
+  de 2 px (`--renea-focus`, global no index.css).
 - Texto: piso de 12 px; 11 px só no rótulo de cabeçalho em maiúsculas.
 - Toque: 44 px no celular; 40 px nos botões soltos do computador.
 - Entrada com GSAP pelos helpers comuns (`RouteMotion`, `useGSAP` com

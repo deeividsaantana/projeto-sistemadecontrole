@@ -58,7 +58,7 @@ export default function FleetImportPreviewModal({ open, title, description, stat
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {stats.map(stat => (
           <div key={stat.label} className={`rounded-xl p-3 ${stat.tone}`}>
-            <span className="text-[11px] font-bold uppercase">{stat.label}</span>
+            <span className="text-xs font-bold uppercase">{stat.label}</span>
             <strong className="block text-2xl font-bold tabular-nums">{stat.value}</strong>
           </div>
         ))}

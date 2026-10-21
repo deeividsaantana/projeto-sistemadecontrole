@@ -1004,7 +1004,7 @@ export default function ControlePresencaTab({
               <Filter className="h-4 w-4 text-emerald-800" />
               Filtros
               {filtrosAtivos > 0 && (
-                <span className="rounded-full bg-emerald-700 px-1.5 text-[11px] font-black text-white">{filtrosAtivos}</span>
+                <span className="rounded-full bg-emerald-700 px-1.5 text-xs font-black text-white">{filtrosAtivos}</span>
               )}
               <ChevronDown className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
             </button>
@@ -1016,7 +1016,7 @@ export default function ControlePresencaTab({
             ) : (
               <>
                 <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Exibindo</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Exibindo</span>
                   <strong className="text-sm font-black text-emerald-800">{dashboardRecords.length} pessoas</strong>
                 </span>
 
@@ -1087,7 +1087,7 @@ export default function ControlePresencaTab({
                 <div data-seta-efetivo className="absolute right-5 top-5 text-emerald-800/20"><ArrowRight className="h-12 w-12" strokeWidth={1} /></div>
                 <div className="relative">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Efetivo confirmado</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Efetivo confirmado</p>
                     <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
                   </div>
                   <div className="mt-4 flex items-end gap-3">
@@ -1115,7 +1115,7 @@ export default function ControlePresencaTab({
                 ].map(([label, value, tone]) => (
                   <article key={String(label)} className={`${PANEL} p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-16px_rgba(16,24,32,0.3)] sm:p-5`}>
                     <strong data-count={value} className={`block text-3xl font-black tabular-nums ${tone}`}>0</strong>
-                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-xs">{label}</span>
+                    <span className="mt-1 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-xs">{label}</span>
                   </article>
                 ))}
               </div>
@@ -1149,11 +1149,11 @@ export default function ControlePresencaTab({
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <article data-cartao-painel className={`renea-card ${PANEL} flex flex-col p-5 md:col-span-2`}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Confirmados nos últimos 7 dias</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Confirmados nos últimos 7 dias</p>
                 <div className="mt-5 flex min-h-28 flex-1 items-end gap-2">
                   {tendencia.map(item => (
                     <button type="button" key={item.iso} onClick={() => setReferenceDate(item.iso)} className="group flex h-full flex-1 flex-col items-center gap-1" title={`Ver ${item.presentes} presente(s) em ${item.rotulo}`}>
-                      <span className="text-[10px] font-bold tabular-nums text-slate-500">{item.presentes || ''}</span>
+                      <span className="text-xs font-bold tabular-nums text-slate-500">{item.presentes || ''}</span>
                       <div className="flex w-full flex-1 items-end">
                         <div
                           data-trend-bar
@@ -1161,14 +1161,14 @@ export default function ControlePresencaTab({
                           className={`w-full cursor-pointer rounded-t-md transition-colors duration-200 ${item.iso === referenceDate ? 'bg-[#176b4d]' : 'bg-emerald-200 group-hover:bg-emerald-300'}`}
                         />
                       </div>
-                      <span className="text-[9px] font-bold tabular-nums text-slate-500">{item.rotulo}</span>
+                      <span className="text-xs font-bold tabular-nums text-slate-500">{item.rotulo}</span>
                     </button>
                   ))}
                 </div>
               </article>
 
               <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
-                <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Efetivo por função</p><span className="text-[10px] font-black text-emerald-800">{referenceDate.split('-').reverse().join('/')}</span></div>
+                <div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Efetivo por função</p><span className="text-xs font-black text-emerald-800">{referenceDate.split('-').reverse().join('/')}</span></div>
                 {funcoesDoDia.length === 0 ? <p className="mt-6 text-sm text-slate-500">Nenhuma função registrada neste recorte.</p> : (
                   <div className="mt-4 space-y-3">
                     {funcoesDoDia.slice(0, 7).map(item => <button type="button" key={item.funcao} onClick={() => setDashboardRole(item.funcao)} className="group block w-full text-left" aria-label={`Filtrar ${item.funcao}: ${item.total}`}>
@@ -1180,7 +1180,7 @@ export default function ControlePresencaTab({
               </article>
 
               <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Situações registradas no dia</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Situações registradas no dia</p>
                 {distribuicao.length === 0 ? (
                   <p className="mt-6 text-sm text-slate-500">Nenhum envio recebido para {referenceDate.split('-').reverse().join('/')}.</p>
                 ) : (
@@ -1191,7 +1191,7 @@ export default function ControlePresencaTab({
                           <span className="flex items-center gap-1.5 text-slate-700 group-hover:text-emerald-800">
                             {item.status}
                             {AFASTAMENTOS_PREVISTOS.includes(item.status) && (
-                              <span className="rounded-full border border-stone-300 bg-stone-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-stone-600">
+                              <span className="rounded-full border border-stone-300 bg-stone-100 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider text-stone-600">
                                 Afastamento previsto
                               </span>
                             )}
@@ -1208,7 +1208,7 @@ export default function ControlePresencaTab({
               </article>
 
               <article data-cartao-painel className={`renea-card ${PANEL} p-5 md:col-span-2`}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Efetivo por equipe</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Efetivo por equipe</p>
                 {equipesDoDia.length === 0 ? <p className="mt-6 text-sm text-slate-500">Nenhuma equipe com envio neste recorte.</p> : (
                   <div className="mt-4 space-y-3">
                     {equipesDoDia.slice(0, 7).map(item => (
@@ -1228,7 +1228,7 @@ export default function ControlePresencaTab({
               <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
                 <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-700">Conferência</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-rose-700">Conferência</p>
                     <h2 className="mt-1 text-lg font-black tracking-tight text-slate-900">Quem não está em campo hoje</h2>
                   </div>
                   <span className="text-sm font-black tabular-nums text-rose-700">{ausentesDoDia.length}</span>
@@ -1236,7 +1236,7 @@ export default function ControlePresencaTab({
                 <ul className="divide-y divide-slate-200">
                   {ausentesDoDia.slice(0, 8).map(record => (
                     <li key={record.id} className="flex items-center gap-3 px-5 py-3">
-                      <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>
+                      <span className={`rounded-lg border px-2 py-1 text-xs font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-slate-900">{record.funcionarioNome}</p>
                         <p className="truncate text-xs text-slate-500">{record.grupoNome} · {record.observacao || 'Sem observação'}</p>
@@ -1255,7 +1255,7 @@ export default function ControlePresencaTab({
 
             <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-                <div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Equipes</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Situação do dia</h2></div>
+                <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Equipes</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Situação do dia</h2></div>
                 <div className="flex flex-wrap items-center gap-2">
                   <input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={`${FIELD} w-auto`} aria-label="Data do relatório diário" />
                   <button type="button" onClick={() => void exportDailyExcel()} className={PRIMARY_BUTTON} disabled={dayRecords.length === 0} title="Baixar situação do dia em Excel"><FileSpreadsheet className="h-4 w-4" /> Excel</button>
@@ -1272,7 +1272,7 @@ export default function ControlePresencaTab({
                       {row.sent ? <Check className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
                     </div>
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-900">{row.group.nome}</p><p className="mt-0.5 truncate text-xs text-slate-500">{row.group.responsavel} · {row.group.frenteServico}</p></div>
-                    <div className="text-right"><p className="text-lg font-black tabular-nums text-slate-900">{row.present}/{row.total}</p><p className={`text-[10px] font-bold uppercase tracking-[0.1em] ${row.sent ? 'text-emerald-800' : 'text-amber-800'}`}>{row.sent ? row.updatedAt || 'Recebido' : 'Pendente'}</p></div>
+                    <div className="text-right"><p className="text-lg font-black tabular-nums text-slate-900">{row.present}/{row.total}</p><p className={`text-xs font-bold uppercase tracking-[0.1em] ${row.sent ? 'text-emerald-800' : 'text-amber-800'}`}>{row.sent ? row.updatedAt || 'Recebido' : 'Pendente'}</p></div>
                   </div>
                 ))}
               </div>
@@ -1284,7 +1284,7 @@ export default function ControlePresencaTab({
             <div className="grid gap-5 xl:grid-cols-2">
               <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
                 <div className="border-b border-slate-200 px-5 py-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Frentes de serviço</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Frentes de serviço</p>
                   <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Onde falta gente</h2>
                   <p className="mt-1 text-xs text-slate-500">Da maior falta para a menor. Toque numa frente para recortar o painel por ela.</p>
                 </div>
@@ -1316,7 +1316,7 @@ export default function ControlePresencaTab({
                             <p className="text-base font-black tabular-nums text-slate-900">
                               {linha.confirmados}{linha.previstos > 0 ? <span className="text-xs font-bold text-slate-500">/{linha.previstos}</span> : null}
                             </p>
-                            <p className={`text-[11px] font-bold ${falta > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>
+                            <p className={`text-xs font-bold ${falta > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>
                               {falta > 0 ? `faltam ${falta}` : 'completa'}
                             </p>
                           </div>
@@ -1329,7 +1329,7 @@ export default function ControlePresencaTab({
 
               <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
                 <div className="border-b border-slate-200 px-5 py-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Empresas</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Empresas</p>
                   <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Quem entregou efetivo</h2>
                   <p className="mt-1 text-xs text-slate-500">Toque numa empresa para ver só o efetivo dela.</p>
                 </div>
@@ -1350,7 +1350,7 @@ export default function ControlePresencaTab({
                           <p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{linha.rotulo}</p>
                           <div className="shrink-0 text-right">
                             <p className="text-base font-black tabular-nums text-slate-900">{linha.confirmados}</p>
-                            {linha.ausentes > 0 && <p className="text-[11px] font-bold text-rose-700">{linha.ausentes} ausente(s)</p>}
+                            {linha.ausentes > 0 && <p className="text-xs font-bold text-rose-700">{linha.ausentes} ausente(s)</p>}
                           </div>
                         </button>
                       </li>
@@ -1363,11 +1363,11 @@ export default function ControlePresencaTab({
             <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Últimos 30 dias</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Últimos 30 dias</p>
                   <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Quem falta sempre</h2>
                   <p className="mt-1 text-xs text-slate-500">O painel mostra o dia; o problema aparece no mês. Toque no nome para ver os registros da pessoa.</p>
                 </div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   <span className="sr-only">Mínimo de faltas</span>
                   <select
                     value={minimoFaltas}
@@ -1396,14 +1396,14 @@ export default function ControlePresencaTab({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-slate-900">{pessoa.nome}</p>
                         <p className="mt-0.5 truncate text-xs text-slate-500">{pessoa.funcao} · {pessoa.equipe}</p>
-                        <p className="mt-1 truncate text-[11px] text-slate-500">
+                        <p className="mt-1 truncate text-xs text-slate-500">
                           {pessoa.datas.slice(0, 6).map(data => data.slice(8, 10) + '/' + data.slice(5, 7)).join(' · ')}
                           {pessoa.datas.length > 6 ? ` · +${pessoa.datas.length - 6}` : ''}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="text-lg font-black tabular-nums text-rose-700">{pessoa.faltas}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">faltas</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">faltas</p>
                       </div>
                     </button>
                   </li>
@@ -1455,7 +1455,7 @@ export default function ControlePresencaTab({
               const members = group.funcionarioIds.map(id => safeFuncionarios.find(employee => employee.id === id)).filter(Boolean) as Funcionario[];
               return (
                 <article key={group.id} className={`${PANEL} p-5`}>
-                  <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-slate-500">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:border-emerald-700 hover:text-emerald-800" aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" /></button></div>
+                  <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-xs font-bold uppercase tracking-[0.1em] ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-slate-500">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:border-emerald-700 hover:text-emerald-800" aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" /></button></div>
                   <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><strong className="text-2xl font-black text-slate-900">{members.length}</strong><span className="ml-2 text-xs text-slate-500">colaboradores</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="text-sm font-black text-slate-900">{group.linkAtivo ? 'Disponível' : 'Pausado'}</strong><span className="mt-1 block text-xs text-slate-500">link da equipe</span></div></div>
                   {group.token && <div className="mt-4 flex gap-2"><button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} flex-1`}><ClipboardCopy className="h-4 w-4" /> Copiar</button><button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} flex-1`}><MessageCircle className="h-4 w-4" /> Enviar</button></div>}
                   <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">{onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className="inline-flex min-h-9 items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900"><Trash2 className="h-3.5 w-3.5" /> Excluir</button>}<button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className="ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950"><RotateCcw className="h-3.5 w-3.5" /> Renovar token</button></div>
@@ -1496,7 +1496,7 @@ export default function ControlePresencaTab({
               const duplicated = duplicateKeys.has(duplicateKey(record));
               return (
                 <article key={record.id || `${duplicateKey(record)}-${record.horaEnvio}`} data-presence-row className={`${PANEL} grid gap-4 p-4 lg:grid-cols-[28px_150px_1.2fr_1.2fr_180px_auto] lg:items-center`}>
-                  <label className="flex items-start justify-center pt-1"><input type="checkbox" checked={selectedRecordIds.includes(record.id)} onChange={event => setSelectedRecordIds(current => event.target.checked ? [...new Set([...current, record.id])] : current.filter(id => id !== record.id))} aria-label={`Selecionar presença de ${record.funcionarioNome}`} className="h-4 w-4 accent-emerald-700" /></label><div><p className="text-xs font-bold text-slate-500">{record.data.split('-').reverse().join('/')}</p><p className="mt-1 text-lg font-black tabular-nums text-slate-900">{record.horaEnvio || '--:--'}</p>{duplicated && <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800"><AlertTriangle className="h-3 w-3" /> Duplicado</span>}</div>
+                  <label className="flex items-start justify-center pt-1"><input type="checkbox" checked={selectedRecordIds.includes(record.id)} onChange={event => setSelectedRecordIds(current => event.target.checked ? [...new Set([...current, record.id])] : current.filter(id => id !== record.id))} aria-label={`Selecionar presença de ${record.funcionarioNome}`} className="h-4 w-4 accent-emerald-700" /></label><div><p className="text-xs font-bold text-slate-500">{record.data.split('-').reverse().join('/')}</p><p className="mt-1 text-lg font-black tabular-nums text-slate-900">{record.horaEnvio || '--:--'}</p>{duplicated && <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-xs font-bold text-rose-800"><AlertTriangle className="h-3 w-3" /> Duplicado</span>}</div>
                   <div><p className="text-sm font-black text-slate-900">{record.funcionarioNome || 'Colaborador não informado'}</p><p className="mt-1 text-xs text-slate-500">{record.funcao || 'Função não informada'}</p></div>
                   <div><p className="text-sm font-bold text-slate-900">{record.grupoNome || 'Equipe não informada'}</p><p className="mt-1 text-xs text-slate-500">{record.responsavel} · {record.frenteServico}</p></div>
                   <span className={`w-fit rounded-lg border px-3 py-2 text-xs font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>
@@ -1558,7 +1558,7 @@ export default function ControlePresencaTab({
                 {syncPlan.entradas.filter(entry => entry.acao !== 'inalterada').map(entry => (
                   <li key={entry.grupo.id} className="rounded-xl border border-slate-200 p-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] ${
+                      <span className={`rounded-md px-2 py-1 text-xs font-bold uppercase tracking-[0.1em] ${
                         entry.acao === 'criar' ? 'bg-emerald-100 text-emerald-800'
                           : entry.acao === 'desativar' ? 'bg-rose-100 text-rose-800'
                             : 'bg-amber-100 text-amber-900'}`}
@@ -1618,7 +1618,7 @@ export default function ControlePresencaTab({
       {isGroupEditorOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label={editingGroupId ? 'Editar equipe' : 'Nova equipe'}>
           <div ref={groupEditorScrollRef} className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-[1.75rem] bg-white p-5  sm:rounded-[1.75rem] sm:p-7">
-            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Controle ao vivo</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900">{editingGroupId ? 'Editar equipe' : 'Nova equipe'}</h2></div><button type="button" onClick={() => setIsGroupEditorOpen(false)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:text-slate-900"><X className="h-5 w-5" /></button></div>
+            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">Controle ao vivo</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900">{editingGroupId ? 'Editar equipe' : 'Nova equipe'}</h2></div><button type="button" onClick={() => setIsGroupEditorOpen(false)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:text-slate-900"><X className="h-5 w-5" /></button></div>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Nome da equipe</span><input value={groupForm.nome} onChange={event => setGroupForm(current => ({ ...current, nome: event.target.value }))} className={FIELD} /></label>
               <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Responsável</span><input value={groupForm.responsavel} onChange={event => setGroupForm(current => ({ ...current, responsavel: event.target.value }))} className={FIELD} /></label>
@@ -1627,7 +1627,7 @@ export default function ControlePresencaTab({
               <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Situação</span><select value={groupForm.status} onChange={event => setGroupForm(current => ({ ...current, status: event.target.value as GrupoEquipe['status'] }))} className={FIELD}><option value="ativo">Ativa</option><option value="inativo">Inativa</option></select></label>
               <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={groupForm.linkAtivo} onChange={event => setGroupForm(current => ({ ...current, linkAtivo: event.target.checked }))} className="h-4 w-4 accent-emerald-700" /> Link de campo ativo</label>
             </div>
-            <div className="mt-6 border-t border-slate-200 pt-5">{editingGroupId && <div className="mb-3 inline-flex rounded-xl border border-slate-300 bg-white p-1" role="group" aria-label="Quais colaboradores mostrar"><button type="button" aria-pressed={Boolean(membrosAoAbrir)} onClick={() => setMembrosAoAbrir(safeIds(groupForm.funcionarioIds))} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:text-slate-900'}`}>Da equipe ({safeIds(groupForm.funcionarioIds).length})</button><button type="button" aria-pressed={!membrosAoAbrir} onClick={() => setMembrosAoAbrir(null)} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${!membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:text-slate-900'}`}>Todos ativos</button></div>}<div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{teamCompanies.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
+            <div className="mt-6 border-t border-slate-200 pt-5">{editingGroupId && <div className="mb-3 inline-flex rounded-xl border border-slate-300 bg-white p-1" role="group" aria-label="Quais colaboradores mostrar"><button type="button" aria-pressed={Boolean(membrosAoAbrir)} onClick={() => setMembrosAoAbrir(safeIds(groupForm.funcionarioIds))} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:text-slate-900'}`}>Da equipe ({safeIds(groupForm.funcionarioIds).length})</button><button type="button" aria-pressed={!membrosAoAbrir} onClick={() => setMembrosAoAbrir(null)} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${!membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:text-slate-900'}`}>Todos ativos</button></div>}<div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{teamCompanies.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
               <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">{membrosAoAbrir && visibleEmployees.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">Nenhum colaborador ativo nesta equipe. Toque em <strong>Todos ativos</strong> para incluir.</p>}{visibleEmployees.map(employee => { const checked = safeIds(groupForm.funcionarioIds).includes(employee.id); return <label key={employee.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white hover:border-emerald-300'}`}><input type="checkbox" checked={checked} onChange={event => setGroupForm(current => ({ ...current, funcionarioIds: event.target.checked ? [...safeIds(current.funcionarioIds), employee.id] : safeIds(current.funcionarioIds).filter(id => id !== employee.id) }))} className="h-4 w-4 accent-emerald-700" /><div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{employee.nome}</p><p className="truncate text-xs text-slate-500">{employee.cargo}{employee.matricula ? ` · ${employee.matricula}` : ''}</p></div></label>; })}</div>
             </div>
             {feedback && <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{feedback}</p>}
@@ -1640,7 +1640,7 @@ export default function ControlePresencaTab({
       {editingRecord && createPortal(
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label="Atualizar presença">
           <div className="w-full max-w-lg rounded-t-[1.75rem] bg-white p-5  sm:rounded-[1.75rem] sm:p-7">
-            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Registro auditável</p><h2 className="mt-1 text-2xl font-black text-slate-900">Atualizar presença</h2><p className="mt-1 text-sm text-slate-500">{editingRecord.funcionarioNome} · {editingRecord.grupoNome}</p></div><button type="button" onClick={() => setEditingRecord(null)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500"><X className="h-5 w-5" /></button></div>
+            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">Registro auditável</p><h2 className="mt-1 text-2xl font-black text-slate-900">Atualizar presença</h2><p className="mt-1 text-sm text-slate-500">{editingRecord.funcionarioNome} · {editingRecord.grupoNome}</p></div><button type="button" onClick={() => setEditingRecord(null)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500"><X className="h-5 w-5" /></button></div>
             <div className="mt-6 space-y-4"><label><span className="mb-1.5 block text-xs font-bold text-slate-600">Status</span><select value={editStatus} onChange={event => setEditStatus(event.target.value as PresencaStatus)} className={FIELD}>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label><label><span className="mb-1.5 block text-xs font-bold text-slate-600">Observação</span><textarea value={editObservation} onChange={event => setEditObservation(event.target.value)} rows={3} className={`${FIELD} py-3`} /></label><label><span className="mb-1.5 block text-xs font-bold text-slate-600">Motivo obrigatório</span><textarea value={editReason} onChange={event => setEditReason(event.target.value)} rows={3} className={`${FIELD} py-3`} /></label></div>
             <div className="mt-6 flex gap-3"><button type="button" onClick={() => setEditingRecord(null)} className={`${SECONDARY_BUTTON} flex-1`}>Cancelar</button><button type="button" onClick={saveRecordEdit} disabled={!editReason.trim()} className={`${PRIMARY_BUTTON} flex-1`}><CheckCircle2 className="h-4 w-4" /> Salvar</button></div>
           </div>
@@ -1728,7 +1728,7 @@ export default function ControlePresencaTab({
             <div className="space-y-3">
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Dia</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Dia</span>
                   <input
                     type="date"
                     max={today}
@@ -1738,7 +1738,7 @@ export default function ControlePresencaTab({
                   />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Observação do dia</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Observação do dia</span>
                   <input
                     value={lancamento.observacaoDia}
                     onChange={event => setLancamento(atual => atual && { ...atual, observacaoDia: event.target.value })}
@@ -1748,7 +1748,7 @@ export default function ControlePresencaTab({
                 </label>
               </div>
 
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-900">
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
                 O lançamento fica marcado como feito pelo painel, com o seu nome. Relançar o mesmo dia
                 corrige as situações escolhidas e não duplica ninguém.
               </p>
@@ -1760,7 +1760,7 @@ export default function ControlePresencaTab({
                     <li key={pessoa.id} className="rounded-lg border border-slate-200 p-3">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <strong className="text-sm font-bold text-slate-900">{pessoa.nome}</strong>
-                        <span className="text-[11px] text-slate-500">{pessoa.cargo}{pessoa.matricula ? ` · Mat. ${pessoa.matricula}` : ''}</span>
+                        <span className="text-xs text-slate-500">{pessoa.cargo}{pessoa.matricula ? ` · Mat. ${pessoa.matricula}` : ''}</span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {STATUS_OPTIONS.map(status => (

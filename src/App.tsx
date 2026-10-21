@@ -5,7 +5,7 @@
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
-import { RouteMotion, isoDay } from './shared/ui';
+import { PularParaConteudo, RouteMotion, isoDay } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -4330,7 +4330,8 @@ export default function App() {
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
-      
+      <PularParaConteudo />
+
       {/* Mobile navigation header */}
       <header className="lg:hidden flex items-center justify-between h-[4.25rem] bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
         <img
@@ -4341,7 +4342,7 @@ export default function App() {
         />
 
         <div
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
           title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
         >
           <span className={`w-2 h-2 rounded-full shrink-0 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
@@ -4349,7 +4350,7 @@ export default function App() {
         </div>
         {pendingCount > 0 && (
           <span
-            className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"
+            className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700"
             title={`${pendingCount} pendência(s) offline aguardando envio`}
             aria-live="polite"
           >
@@ -4425,7 +4426,7 @@ export default function App() {
                 <button type="button" onClick={() => { void handleLogout(); setIsMobileMenuOpen(false); }} className="w-full py-3 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold text-xs flex items-center justify-center gap-2">
                   <LogOut className="w-4 h-4" /> Sair da conta
                 </button>
-                <p className="mt-3 text-center text-[10px] text-slate-500">{APP_VERSION_LABEL}</p>
+                <p className="mt-3 text-center text-xs text-slate-500">{APP_VERSION_LABEL}</p>
               </div>
             </nav>
           </div>
@@ -4465,7 +4466,7 @@ export default function App() {
         />}
         {/* Área das abas: o recuo vem de --renea-respiro (index.css), a mesma
             medida que a TelaCheia desconta para caber na altura da tela. */}
-        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : `p-[var(--renea-respiro)]${combustivelListaSomente ? ' renea-viewport--solta' : ''}`}`}>
+        <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : `p-[var(--renea-respiro)]${combustivelListaSomente ? ' renea-viewport--solta' : ''}`}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (

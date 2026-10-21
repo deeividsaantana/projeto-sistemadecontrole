@@ -76,7 +76,7 @@ export default function GraficoSaldoMaterial({ materialId, unidade, hoje, movime
                 onFocus={() => setDestaque(indice)}
                 onBlur={() => setDestaque(null)}
                 onClick={() => setDestaque(atual => (atual === indice ? null : indice))}
-                className={`flex h-full min-w-0 cursor-default items-end justify-center rounded-t-lg outline-none transition-colors ${destaque === indice ? 'bg-slate-100' : ''} focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60`}
+                className={`flex h-full min-w-0 cursor-default items-end justify-center rounded-t-lg outline-none transition-colors ${destaque === indice ? 'bg-slate-100' : ''} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)`}
               >
                 <span
                   className={`w-2 rounded-t-[3px] sm:w-3 ${item.saldo < 0 ? 'bg-rose-500' : 'bg-[#176b4d]'}`}
@@ -87,7 +87,7 @@ export default function GraficoSaldoMaterial({ materialId, unidade, hoje, movime
           </div>
           <div className="grid gap-1 pt-1 sm:gap-1.5" style={{ gridTemplateColumns: `repeat(${SEMANAS}, minmax(0, 1fr))` }} aria-hidden="true">
             {pontos.map((item, indice) => (
-              <span key={item.inicio} className={`text-center text-[10px] tabular-nums text-slate-500 ${indice % 2 ? 'max-sm:invisible' : ''}`}>{item.rotulo}</span>
+              <span key={item.inicio} className={`text-center text-xs tabular-nums text-slate-500 ${indice % 2 ? 'max-sm:invisible' : ''}`}>{item.rotulo}</span>
             ))}
           </div>
           <p className="mt-2 min-h-9 rounded-xl bg-slate-50 px-3 py-1.5 text-sm text-slate-700" aria-live="polite">

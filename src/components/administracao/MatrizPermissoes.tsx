@@ -85,7 +85,7 @@ export default function MatrizPermissoes() {
           { label: 'Pode aprovar', valor: String(modulos.filter(item => pode(papel, item.id, 'aprovar')).length) },
         ].map(item => (
           <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
         ))}
@@ -103,7 +103,7 @@ export default function MatrizPermissoes() {
         />
       </div>
 
-      <p className="flex items-center gap-2 text-[11px] text-slate-500">
+      <p className="flex items-center gap-2 text-xs text-slate-500">
         <KeyRound className="h-3.5 w-3.5" />
         Medição e orçamento só são aprovados pelo administrador; a operação registra o que acontece em campo, mas não
         decide medição, orçamento, contrato ou tratativa de não conformidade.

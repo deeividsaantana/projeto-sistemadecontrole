@@ -30,7 +30,7 @@ interface Props {
   onUpdateMovimentos: (movimentos: MovimentoMaterial[], descricao: string, acao?: 'Editou' | 'Excluiu') => void;
 }
 
-const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60';
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 const number = (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const percentText = (value: number | null) => value === null ? 'Sem entrada' : `${value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 
@@ -299,7 +299,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
 
       {podeEditar && semRamo.length > 0 && (
         <article data-uso-reveal className="rounded-2xl border border-[#f26a2e]/40 bg-[#fff7f2] p-4">
-          <h2 className="flex items-center gap-2 text-sm font-black text-slate-950"><AlertTriangle className="h-4 w-4 text-[#f26a2e]" /> Entradas que ainda não contam</h2>
+          <h2 className="flex items-center gap-2 text-sm font-black text-slate-950"><AlertTriangle className="h-4 w-4 text-[#c2410c]" /> Entradas que ainda não contam</h2>
           <p className="mt-1 text-xs text-slate-600">Estas notas têm o local escrito à mão. Escolha o ramo cadastrado e toque em Vincular. Nada é apagado.</p>
           <ul className="mt-3 grid gap-2">
             {semRamo.slice(0, 8).map(grupo => {

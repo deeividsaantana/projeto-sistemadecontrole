@@ -593,7 +593,7 @@ export default function ControleEquipamentosDiarioTab({
     { id: 'registry', rotulo: 'Motoristas', icone: Database },
   ];
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
-  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400';
+  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400';
   const aviso = message && (
     <p role={messageTone === 'error' ? 'alert' : 'status'} data-testid="frota-aviso" className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 ring-inset ${messageTone === 'success' ? 'bg-emerald-50 text-emerald-900 ring-emerald-200' : messageTone === 'error' ? 'bg-rose-50 text-rose-800 ring-rose-200' : 'bg-[#f7f8f6] text-slate-700 ring-slate-200'}`}>
       {messageTone === 'success' ? <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" /> : messageTone === 'error' ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <RefreshCw className="size-4 shrink-0" aria-hidden="true" />}
@@ -722,7 +722,7 @@ export default function ControleEquipamentosDiarioTab({
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[#176b4d] ring-1 ring-inset ring-emerald-200">{item.operating} operando</span>
                       {item.maintenance > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200">{item.maintenance} manutenção</span>}
                       {item.available > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-inset ring-amber-200">{item.available} à disposição</span>}
-                      {item.pending > 0 && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[#f26a2e] ring-1 ring-inset ring-orange-200">{item.pending} a confirmar</span>}
+                      {item.pending > 0 && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[#c2410c] ring-1 ring-inset ring-orange-200">{item.pending} a confirmar</span>}
                       {item.repeated.length > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200" title={`Lançados mais de uma vez: ${item.repeated.join(', ')}`}>{item.repeated.length} repetido(s): {item.repeated.slice(0, 3).join(', ')}{item.repeated.length > 3 ? '…' : ''}</span>}
                     </span>
                     <span className="sm:text-right">
@@ -739,7 +739,7 @@ export default function ControleEquipamentosDiarioTab({
       )}
       {activeView === 'registry' && <section data-fleet-view className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
         <article data-fleet-lift className={`${CARTAO} p-4`}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
           <CountUp value={equipamentos.length} className="mt-1 block text-3xl font-bold tabular-nums text-slate-950" />
           <p className="mt-1 text-sm text-slate-500">Equipamentos que podem ser escolhidos no lançamento.</p>
           <div className="mt-4 flex flex-wrap gap-1.5">{equipmentTypes.slice(0, 8).map(type => <span key={type} className="rounded-full bg-[#f7f8f6] px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">{type}</span>)}</div>

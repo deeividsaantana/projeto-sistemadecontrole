@@ -76,7 +76,7 @@ export default function EstacasSecoes({ value, contar, alerta = () => 0, onSelec
   const marcador = (id: SecaoEstacas, ativo: boolean) => {
     const atencao = alerta(id);
     if (atencao > 0) {
-      return <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${ativo ? 'bg-white text-[#f26a2e]' : 'bg-[#f26a2e] text-white'}`}>{atencao.toLocaleString('pt-BR')}</span>;
+      return <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${ativo ? 'bg-white text-[#c2410c]' : 'bg-[#c2410c] text-white'}`}>{atencao.toLocaleString('pt-BR')}</span>;
     }
     const total = contar(id);
     return <span aria-hidden="true" className={`shrink-0 text-xs font-bold tabular-nums ${ativo ? 'text-white/80' : 'text-slate-400'}`}>{total == null ? '' : total.toLocaleString('pt-BR')}</span>;
@@ -86,7 +86,7 @@ export default function EstacasSecoes({ value, contar, alerta = () => 0, onSelec
     <div className="space-y-3">
       {GRUPOS.map(grupo => (
         <section key={grupo.id} aria-labelledby={`estacas-grupo-${grupo.id}-${grande ? 'm' : 'd'}`}>
-          <h2 id={`estacas-grupo-${grupo.id}-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#718087]">{grupo.nome}</h2>
+          <h2 id={`estacas-grupo-${grupo.id}-${grande ? 'm' : 'd'}`} className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-[#5b6870]">{grupo.nome}</h2>
           <ul className="space-y-0.5">
             {grupo.secoes.map(({ id, nome, ajuda, Icone }) => {
               const ativo = value === id;

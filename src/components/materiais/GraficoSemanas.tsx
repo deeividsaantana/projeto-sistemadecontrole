@@ -106,7 +106,7 @@ export default function GraficoSemanas({ hoje, materiais, movimentos }: Props) {
                 onFocus={() => setDestaque(indice)}
                 onBlur={() => setDestaque(null)}
                 onClick={() => setDestaque(atual => (atual === indice ? null : indice))}
-                className={`flex h-full min-w-0 cursor-default items-end justify-center gap-0.5 rounded-t-lg outline-none transition-colors ${destaque === indice ? 'bg-slate-100' : ''} focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60`}
+                className={`flex h-full min-w-0 cursor-default items-end justify-center gap-0.5 rounded-t-lg outline-none transition-colors ${destaque === indice ? 'bg-slate-100' : ''} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)`}
               >
                 {SERIES.map(serie => (
                   <span
@@ -120,7 +120,7 @@ export default function GraficoSemanas({ hoje, materiais, movimentos }: Props) {
           </div>
           <div className="ml-8 grid gap-1 pt-1 sm:gap-2" style={{ gridTemplateColumns: `repeat(${SEMANAS}, minmax(0, 1fr))` }} aria-hidden="true">
             {pontos.map((item, indice) => (
-              <span key={item.inicio} className={`text-center text-[11px] tabular-nums text-slate-500 ${indice % 2 ? 'max-sm:invisible' : ''}`}>{item.rotulo}</span>
+              <span key={item.inicio} className={`text-center text-xs tabular-nums text-slate-500 ${indice % 2 ? 'max-sm:invisible' : ''}`}>{item.rotulo}</span>
             ))}
           </div>
           <p className="mt-2 min-h-10 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700" aria-live="polite">

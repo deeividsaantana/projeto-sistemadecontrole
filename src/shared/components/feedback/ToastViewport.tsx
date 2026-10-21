@@ -32,13 +32,13 @@ export function ToastViewport({ toasts }: ToastViewportProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider block truncate text-slate-700">{toast.title}</span>
-                <span className="text-[9px] font-mono opacity-50 shrink-0 text-slate-400">{toast.timestamp}</span>
+                <span className="text-xs font-black uppercase tracking-wider block truncate text-slate-700">{toast.title}</span>
+                <span className="text-xs font-mono opacity-50 shrink-0 text-slate-400">{toast.timestamp}</span>
               </div>
-              <p className="text-[11px] text-slate-700 leading-relaxed mt-1">{toast.message}</p>
+              <p className="text-xs text-slate-700 leading-relaxed mt-1">{toast.message}</p>
               <div className="flex items-center gap-1.5 mt-2">
-                <span className="text-[8px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-700 rounded-md font-mono uppercase font-black">{toast.source}</span>
-                <span className="text-[9px] text-slate-500">Tempo Real</span>
+                <span className="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-700 rounded-md font-mono uppercase font-black">{toast.source}</span>
+                <span className="text-xs text-slate-500">Tempo Real</span>
               </div>
             </div>
           </div>

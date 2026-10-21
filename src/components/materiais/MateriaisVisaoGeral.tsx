@@ -117,11 +117,11 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
           >
             <span className="flex w-full items-start justify-between gap-2">
               <span className="text-sm font-semibold text-slate-600">{rotulo}</span>
-              <span className={`hidden size-9 shrink-0 place-items-center rounded-xl sm:grid ${alerta ? 'bg-orange-50 text-[#f26a2e]' : 'bg-emerald-50 text-[#176b4d]'}`}>
+              <span className={`hidden size-9 shrink-0 place-items-center rounded-xl sm:grid ${alerta ? 'bg-orange-50 text-[#c2410c]' : 'bg-emerald-50 text-[#176b4d]'}`}>
                 <Icone className="size-5" aria-hidden="true" />
               </span>
             </span>
-            <CountUp value={valor} className={`block text-3xl font-black tabular-nums ${alerta ? 'text-[#f26a2e]' : 'text-slate-950'}`} />
+            <CountUp value={valor} className={`block text-3xl font-black tabular-nums ${alerta ? 'text-[#c2410c]' : 'text-slate-950'}`} />
             <span className="mt-auto flex items-center gap-1 text-xs text-slate-500">
               {detalhe}
               <ChevronRight className="size-3.5 opacity-0 transition duration-200 group-hover:translate-x-0.5 group-hover:opacity-100 motion-reduce:transition-none" aria-hidden="true" />

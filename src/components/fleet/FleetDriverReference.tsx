@@ -62,15 +62,15 @@ const DriverChip = ({ item, onLancar }: { item: OperationalDriverReferenceStatus
     <Raiz {...(lancavel ? { type: 'button' as const, onClick: () => onLancar?.({ codigoFuncionario: item.matricula }), 'aria-label': `Lançar ${item.nome}` } : {})} className={`flex min-h-14 w-full min-w-0 flex-col items-start justify-between gap-1 rounded-xl border px-3 py-2 text-left sm:flex-row sm:items-center sm:gap-3 ${cartao} ${lancavel ? `transition duration-200 hover:border-[#176b4d] hover:shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] active:scale-[0.98] ${FOCO}` : ''}`}>
       <div className="w-full min-w-0 sm:w-auto">
         <strong className="block truncate text-sm font-bold text-slate-950">{nomeCurto(item.nome)}</strong>
-        <span className="block font-mono text-[11px] font-semibold text-slate-500">{item.matricula}</span>
+        <span className="block font-mono text-xs font-semibold text-slate-500">{item.matricula}</span>
       </div>
-      <span className={`inline-flex shrink-0 items-center gap-1 text-left text-[11px] font-bold uppercase sm:text-right ${texto}`}>
+      <span className={`inline-flex shrink-0 items-center gap-1 text-left text-xs font-bold uppercase sm:text-right ${texto}`}>
         {item.informed ? <CheckCircle2 size={15} aria-hidden="true"/> : <AlertTriangle size={15} aria-hidden="true"/>}
         <span>
           {item.informed ? <span className="font-mono">{item.prefixes.join(' + ')}</span> : 'A confirmar'}
           {item.informed && (item.prefixes.length > 1
-            ? <small className="block text-[11px] font-semibold">Em {item.prefixes.length} caminhões</small>
-            : item.departureTime ? <small className="block text-[11px] font-semibold">{item.departureTime}</small> : null)}
+            ? <small className="block text-xs font-semibold">Em {item.prefixes.length} caminhões</small>
+            : item.departureTime ? <small className="block text-xs font-semibold">{item.departureTime}</small> : null)}
         </span>
       </span>
     </Raiz>
@@ -143,23 +143,23 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d]"><Users className="size-5" aria-hidden="true"/></span>
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Conferência do dia · {formatDate(date)}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Conferência do dia · {formatDate(date)}</p>
             <h2 id="driver-reference-title" className="mt-0.5 text-lg font-bold text-slate-950">Operadores do dia</h2>
             <p className="mt-0.5 text-sm text-slate-500">{reference.length} operadores esperados{relacaoGuardada ? ', relação escolhida à mão' : ', lista de operadores de basculante de 16/10/2026'}.</p>
           </div>
         </div>
         <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-[#f7f8f6] text-center sm:grid-cols-4">
-          <div className="px-4 py-2"><span className="block text-[11px] font-bold uppercase text-slate-500">Esperados</span><strong className="text-xl font-bold tabular-nums text-slate-950">{reconciliation.total}</strong></div>
-          <div className="border-l border-slate-200 px-4 py-2"><span className="block text-[11px] font-bold uppercase text-emerald-700">Em operação</span><strong className="text-xl font-bold tabular-nums text-emerald-700">{reconciliation.operating}</strong></div>
-          <div className="border-l border-t border-slate-200 px-4 py-2 sm:border-t-0"><span className="block text-[11px] font-bold uppercase text-slate-500">Lançados</span><strong className="text-xl font-bold tabular-nums text-slate-950">{reconciliation.informed}</strong></div>
-          <div className="border-l border-t border-slate-200 px-4 py-2 sm:border-t-0"><span className="block text-[11px] font-bold uppercase text-amber-700">A confirmar</span><strong className="text-xl font-bold tabular-nums text-amber-700">{reconciliation.missing}</strong></div>
+          <div className="px-4 py-2"><span className="block text-xs font-bold uppercase text-slate-500">Esperados</span><strong className="text-xl font-bold tabular-nums text-slate-950">{reconciliation.total}</strong></div>
+          <div className="border-l border-slate-200 px-4 py-2"><span className="block text-xs font-bold uppercase text-emerald-700">Em operação</span><strong className="text-xl font-bold tabular-nums text-emerald-700">{reconciliation.operating}</strong></div>
+          <div className="border-l border-t border-slate-200 px-4 py-2 sm:border-t-0"><span className="block text-xs font-bold uppercase text-slate-500">Lançados</span><strong className="text-xl font-bold tabular-nums text-slate-950">{reconciliation.informed}</strong></div>
+          <div className="border-l border-t border-slate-200 px-4 py-2 sm:border-t-0"><span className="block text-xs font-bold uppercase text-amber-700">A confirmar</span><strong className="text-xl font-bold tabular-nums text-amber-700">{reconciliation.missing}</strong></div>
         </div>
       </header>
 
       <div className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-slate-500"><span>Operadores lançados</span><span>{progress}%</span></div>
+            <div className="mb-1 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-500"><span>Operadores lançados</span><span>{progress}%</span></div>
             <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#176b4d] transition-[width] duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]" style={{ width: `${progress}%` }}/></div>
           </div>
           <div className="grid grid-cols-3 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200" role="group" aria-label="Filtrar operadores">
@@ -188,7 +188,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
           <section className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3" aria-label="Editor da relação de operadores">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-[#176b4d]">Operadores esperados</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-[#176b4d]">Operadores esperados</p>
                 <p className="text-xs text-emerald-900">Tire quem saiu, inclua quem entrou ou cole a lista inteira do Excel.</p>
               </div>
               <div className="flex flex-wrap gap-2">

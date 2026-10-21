@@ -67,7 +67,7 @@ interface AbasDaTelaProps<T extends string> {
 export const idDaAba = (base: string, aba: string) => `${base}-aba-${aba}`;
 
 /** Mesmo foco das outras ações do sistema (cadastros/estilos.ts, FOCO). */
-const FOCO = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60';
+const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 
 interface BotaoDaLinha {
   chave: string;
@@ -153,7 +153,7 @@ function LinhaDeAbas({ botoes, rotulo, testId, secundaria = false }: { botoes: B
               <span className="hidden sm:inline">{botao.rotulo}</span>
             </> : <span>{botao.rotulo}</span>}
             {botao.contador > 0 && <>
-              <span aria-hidden="true" className={cn('min-w-5 rounded-full px-1.5 text-center text-xs font-bold leading-5 tabular-nums', botao.selecionada && !secundaria ? 'bg-white text-[#176b4d]' : 'bg-[#f26a2e] text-white')}>{botao.contador}</span>
+              <span aria-hidden="true" className={cn('min-w-5 rounded-full px-1.5 text-center text-xs font-bold leading-5 tabular-nums', botao.selecionada && !secundaria ? 'bg-white text-[#176b4d]' : 'bg-[#c2410c] text-white')}>{botao.contador}</span>
               <span className="sr-only">, {botao.contador} {botao.contadorRotulo ?? ''}</span>
             </>}
           </button>

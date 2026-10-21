@@ -116,12 +116,12 @@ export function PesquisaGlobal({ fontes, aberto, onAbertoChange: setAberto, pode
                     onClick={() => escolher(resultado.tab)}
                     className={`flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${posicao === indice ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}
                   >
-                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-slate-600">
                       {resultado.tipo}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold text-slate-800">{resultado.titulo}</span>
-                      {resultado.subtitulo && <span className="block truncate text-[11px] text-slate-500">{resultado.subtitulo}</span>}
+                      {resultado.subtitulo && <span className="block truncate text-xs text-slate-500">{resultado.subtitulo}</span>}
                     </span>
                     {posicao === indice && <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
                   </button>
