@@ -178,7 +178,7 @@ const contagem = (total: number, nome?: { um: string; varios: string }) => (
 
 const ALINHAMENTO = { esquerda: 'text-left', direita: 'text-right tabular-nums', centro: 'text-center' } as const;
 const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
-const CAIXA = 'size-6 cursor-pointer rounded border-slate-300 accent-[#176b4d] md:size-5';
+const CAIXA = 'size-6 cursor-pointer rounded border-slate-300 accent-[#176b4d]';
 const BOTAO_PAGINA = `grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-200 bg-white px-2 text-[13px] font-bold text-slate-700 transition-colors hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 md:min-h-8 md:min-w-8 ${FOCO}`;
 
 /** Clique que nasceu num botão, link ou campo dentro da linha não abre a linha. */
