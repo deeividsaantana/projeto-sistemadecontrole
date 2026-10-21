@@ -16,7 +16,7 @@ import { numero } from '../../utils/formato';
 import { Modal } from '../../shared/ui';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, FOCO } from '../cadastros/estilos';
 import CampoEscolha from './CampoEscolha';
-import { useTelaLarga } from './MateriaisListas';
+import { useTelaLarga } from '../../shared/hooks/useTelaLarga';
 
 const TIPOS: ReadonlyArray<{ id: TipoMovimentoMaterial; nome: string }> = [
   { id: 'Entrada', nome: 'Entrada' },

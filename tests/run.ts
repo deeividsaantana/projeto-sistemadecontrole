@@ -78,6 +78,7 @@ import './permissoes.test';
 import './diagnostico.test';
 import './notificacoes.test';
 import './paginacao.test';
+import './tabelaPadrao.test';
 import './imagem.test';
 import './notificationService.test';
 import './sharedUi.test';

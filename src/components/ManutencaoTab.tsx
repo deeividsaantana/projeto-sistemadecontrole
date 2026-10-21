@@ -33,12 +33,11 @@ import {
   Modal,
   PageHeader,
   PeriodFilter,
-  TableBody,
-  TableHead,
-  TableShell,
+  TabelaPadrao,
   buildPeriod,
   isoDay,
   statusTone,
+  type ColunaTabela,
   type PeriodValue,
 } from '../shared/ui';
 
@@ -326,6 +325,89 @@ export default function ManutencaoTab({
     onSave({ ...atualizada, horasParadas: atualizada.dataConclusao ? calcularHorasParadas(atualizada) : undefined }, false);
   };
 
+  const colunasOrdens: ColunaTabela<OrdemServico>[] = [
+    {
+      chave: 'numero',
+      titulo: 'OS',
+      valorOrdenacao: ordem => ordem.numero,
+      render: ordem => (
+        <span className="flex flex-col items-start gap-0.5">
+          <strong className="whitespace-nowrap tabular-nums text-slate-900">{ordem.numero}</strong>
+          <Badge tone={prioridadeTone(ordem.prioridade)}>{ordem.prioridade}</Badge>
+        </span>
+      ),
+    },
+    {
+      chave: 'equipamento',
+      titulo: 'Equipamento',
+      larguraMinima: 150,
+      valorOrdenacao: ordem => prefixoDe(ordem.equipamentoId),
+      render: ordem => {
+        const { Icon: EquipmentIcon, label: equipmentLabel } = presentEquipment(equipamentoPorId.get(ordem.equipamentoId));
+        return (
+          <span className="flex items-center gap-2">
+            <span className="grid size-7 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-800" aria-hidden="true">
+              <EquipmentIcon className="size-4" strokeWidth={1.7} />
+            </span>
+            <span className="min-w-0">
+              <strong className="block text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
+              <small className="block text-xs text-slate-500">{equipmentLabel}</small>
+            </span>
+          </span>
+        );
+      },
+    },
+    {
+      chave: 'problema',
+      titulo: 'Problema',
+      larguraMinima: 160,
+      valorOrdenacao: ordem => ordem.descricao || ordem.motivo,
+      dica: ordem => ordem.descricao || ordem.motivo,
+      render: ordem => ordem.descricao || ordem.motivo || '—',
+    },
+    {
+      chave: 'situacao',
+      titulo: 'Situação',
+      valorOrdenacao: ordem => ordem.status,
+      render: ordem => <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>,
+    },
+    {
+      chave: 'abertura',
+      titulo: 'Abertura',
+      valorOrdenacao: ordem => `${ordem.dataAbertura} ${ordem.horaAbertura || ''}`,
+      render: ordem => <span className="whitespace-nowrap tabular-nums">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</span>,
+    },
+    {
+      chave: 'horas',
+      titulo: 'Horas paradas',
+      alinhamento: 'direita',
+      valorOrdenacao: ordem => calcularHorasParadas(ordem),
+      render: ordem => {
+        const horas = calcularHorasParadas(ordem);
+        if (horas === undefined) return '—';
+        return (
+          <>
+            <span className="whitespace-nowrap">{`${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}</span>
+            {!isOrdemEncerrada(ordem.status) && <span className="block text-xs text-slate-500">em curso</span>}
+          </>
+        );
+      },
+    },
+  ];
+  const BOTAO_LINHA = 'min-h-11 rounded-lg border bg-white px-2.5 text-[13px] font-bold transition-colors md:min-h-8';
+  const acoesDaOrdem = podeEditar
+    ? (ordem: OrdemServico) => {
+      const proximo = proximoStatusManutencao(ordem.status);
+      return (
+        <>
+          {proximo && <button type="button" onClick={() => avancar(ordem)} className={`${BOTAO_LINHA} border-emerald-300 text-emerald-800 hover:border-emerald-500`}>{proximo}</button>}
+          <button type="button" onClick={() => abrirEdicao(ordem)} aria-label={`Editar OS ${ordem.numero}`} className={`${BOTAO_LINHA} border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-800`}>Editar</button>
+          {onDelete && <button type="button" onClick={() => setExclusao(ordem)} aria-label={`Excluir OS ${ordem.numero}`} className={`${BOTAO_LINHA} border-slate-200 text-rose-700 hover:border-rose-400`}>Excluir</button>}
+        </>
+      );
+    }
+    : undefined;
+
   useGSAP(() => {
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -496,7 +578,7 @@ export default function ManutencaoTab({
               return (
                 <article key={item.ordemId} className="group rounded-xl border border-slate-200 bg-white p-3.5 transition duration-200 hover:border-emerald-300 hover:shadow-[0_10px_24px_rgba(6,60,49,0.08)]">
                   <header className="flex items-start gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800" aria-label={EQUIPMENT_FAMILY_LABELS[item.familia]}>
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800" role="img" aria-label={EQUIPMENT_FAMILY_LABELS[item.familia]}>
                       <Icon className="size-5" strokeWidth={1.7} aria-hidden="true" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -556,93 +638,17 @@ export default function ManutencaoTab({
       )}
 
       {/* Tabela de Ordens */}
-      <section data-manutencao-reveal className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-5">
-          <span className="text-xs font-bold text-slate-600">{lista.length} Ordem(ns) de Serviço</span>
-        </div>
-        {lista.length === 0 ? (
-          <EmptyState icon={Wrench} title="Nenhuma ordem de serviço" description="Abra uma OS quando um equipamento precisar de atendimento." />
-        ) : (
-          <TableShell minWidth={980}>
-            <TableHead>
-              <tr>
-                <th className="p-3">OS</th>
-                <th className="p-3">Equipamento</th>
-                <th className="p-3">Problema</th>
-                <th className="p-3">Situação</th>
-                <th className="p-3">Abertura</th>
-                <th className="p-3 text-right">Horas paradas</th>
-                <th className="p-3 text-right">Ações</th>
-              </tr>
-            </TableHead>
-            <TableBody>
-              {lista.map(ordem => {
-                const horas = calcularHorasParadas(ordem);
-                const proximo = proximoStatusManutencao(ordem.status);
-                const { Icon: EquipmentIcon, label: equipmentLabel } = presentEquipment(equipamentoPorId.get(ordem.equipamentoId));
-                return (
-                  <tr key={ordem.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
-                    <td className="whitespace-nowrap p-3 text-xs font-mono font-bold text-slate-900">{ordem.numero}</td>
-                    <td className="p-3">
-                      <span className="flex items-center gap-2.5">
-                        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-800" aria-hidden="true">
-                          <EquipmentIcon className="size-4" strokeWidth={1.7} />
-                        </span>
-                        <span className="min-w-0">
-                          <strong className="block truncate text-sm text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
-                          <small className="block text-[11px] uppercase tracking-wide text-slate-400">{equipmentLabel}</small>
-                        </span>
-                      </span>
-                    </td>
-                    <td className="max-w-[260px] p-3">
-                      <span className="block truncate text-slate-700" title={ordem.descricao}>{ordem.descricao || ordem.motivo || '—'}</span>
-                      <Badge tone={prioridadeTone(ordem.prioridade)} className="mt-1">{ordem.prioridade}</Badge>
-                    </td>
-                    <td className="p-3">
-                      <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
-                    </td>
-                    <td className="whitespace-nowrap p-3 text-slate-600">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</td>
-                    <td className="whitespace-nowrap p-3 text-right font-mono text-slate-700">
-                      {horas === undefined ? '—' : `${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}
-                      {!isOrdemEncerrada(ordem.status) && horas !== undefined && <span className="ml-1 text-[11px] text-slate-400">em curso</span>}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex justify-end gap-1.5 whitespace-nowrap">
-                        {podeEditar && proximo && (
-                          <button
-                            type="button"
-                            onClick={() => avancar(ordem)}
-                            className="min-h-9 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-[11px] font-bold text-emerald-800 transition-colors hover:border-emerald-500"
-                          >
-                            {proximo}
-                          </button>
-                        )}
-                        {podeEditar && (
-                          <button
-                            type="button"
-                            onClick={() => abrirEdicao(ordem)}
-                            className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {podeEditar && onDelete && (
-                          <button
-                            type="button"
-                            onClick={() => setExclusao(ordem)}
-                            className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-rose-600 transition-colors hover:border-rose-400"
-                          >
-                            Excluir
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </TableBody>
-          </TableShell>
-        )}
+      <section data-manutencao-reveal className="mt-4">
+        <TabelaPadrao
+          titulo="Ordens de serviço"
+          linhas={lista}
+          colunas={colunasOrdens}
+          idDaLinha={ordem => ordem.id}
+          nomeDoItem={{ um: 'ordem de serviço', varios: 'ordens de serviço' }}
+          acoes={acoesDaOrdem}
+          onAbrirLinha={podeEditar ? abrirEdicao : undefined}
+          vazio={<EmptyState icon={Wrench} title="Nenhuma ordem de serviço" description="Abra uma OS quando um equipamento precisar de atendimento." />}
+        />
       </section>
 
       {/* Histórico: o que já aconteceu com as ordens, incluindo as abertas

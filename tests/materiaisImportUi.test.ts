@@ -26,5 +26,6 @@ assert.match(tabSource, /MateriaisImportacoesPanel/);
 
 // Com 11 mil movimentos, desenhar a lista inteira parava a tela: ela mostra um pedaço por vez.
 const listasSource = ler('../src/components/materiais/MateriaisListas.tsx');
-assert.match(listasSource, /movimentos\.slice\(0, limite\)/);
-assert.match(listasSource, /Mostrar mais/);
+// A TabelaPadrao pagina (50 por página por padrão; contrato em tabelaPadrao.test.tsx).
+assert.match(listasSource, /<TabelaPadrao/);
+assert.doesNotMatch(listasSource, /semPaginacao/);

@@ -18,7 +18,7 @@ import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
 import MateriaisUtilizacaoPanel from './MateriaisUtilizacaoPanel';
 import MateriaisSecoes, { nomeDaSecao, type SecaoMateriais } from './materiais/MateriaisSecoes';
 import MateriaisVisaoGeral from './materiais/MateriaisVisaoGeral';
-import { CartoesMateriais, ListaMovimentos } from './materiais/MateriaisListas';
+import { ListaMovimentos } from './materiais/MateriaisListas';
 import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
 import LancarMateriais from './materiais/LancarMateriais';
@@ -35,13 +35,13 @@ import './materiais/Materiais.css';
 import { CLASSES_MATERIAL, classeDoMaterial, type ClasseMaterial } from '../modules/materials/classesMateriais';
 import {
   ConfirmDialog,
-  DataTable,
   FilterBar,
   LoadingState,
   Modal,
   PageHeader,
+  TabelaPadrao,
   isoDay,
-  type DataTableColumn,
+  type ColunaTabela,
 } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 
@@ -373,42 +373,40 @@ export default function MateriaisTab({
     : [];
 
   const empresasPorId = new Map(empresas.map(empresa => [empresa.id, empresa.nome]));
-  const posicaoColumns: DataTableColumn<PosicaoEstoque>[] = [
-    { id: 'codigo', label: 'Código', sortValue: item => item.material.codigo, cell: item => <span className="font-mono text-slate-600">{item.material.codigo || '—'}</span> },
+  const posicaoColumns: ColunaTabela<PosicaoEstoque>[] = [
     {
-      id: 'material',
-      label: 'Material',
-      sortValue: item => item.material.descricao,
-      cell: item => (
-        <button type="button" onClick={() => setFichaMaterialId(item.material.id)} className={`rounded-lg text-left font-bold text-slate-800 underline decoration-slate-300 decoration-dashed underline-offset-4 hover:text-[#176b4d] ${FOCO}`}>
-          {item.material.descricao}
-        </button>
-      ),
+      chave: 'material',
+      titulo: 'Material',
+      larguraMinima: 220,
+      valorOrdenacao: item => item.material.descricao,
+      render: item => <span className="font-semibold text-slate-900 underline decoration-slate-300 decoration-dashed underline-offset-4">{item.material.descricao}</span>,
+      dica: item => item.material.descricao,
     },
-    { id: 'categoria', label: 'Categoria', sortValue: item => item.material.categoria, cell: item => <span className="text-slate-600">{item.material.categoria || '—'}</span> },
+    { chave: 'codigo', titulo: 'Código', valorOrdenacao: item => item.material.codigo, render: item => <span className="tabular-nums text-slate-600">{item.material.codigo || '—'}</span> },
+    { chave: 'categoria', titulo: 'Categoria', valorOrdenacao: item => item.material.categoria, render: item => item.material.categoria || '—' },
   ];
   if (aba === 'estoque') {
     posicaoColumns.push(
-      { id: 'entradas', label: 'Entradas', sortValue: item => item.entradas, cell: item => <span className="font-mono text-slate-600">{numero(item.entradas)}</span> },
-      { id: 'saidas', label: 'Saídas', sortValue: item => item.saidas, cell: item => <span className="font-mono text-slate-600">{numero(item.saidas)}</span> },
-      { id: 'saldo', label: 'Saldo', sortValue: item => item.saldo, cell: item => <strong className={`font-mono ${item.abaixoDoMinimo ? 'text-amber-700' : 'text-slate-900'}`}>{numero(item.saldo)} {item.material.unidade}</strong> },
-      { id: 'minimo', label: 'Mínimo', sortValue: item => item.material.estoqueMinimo, cell: item => <span className="text-slate-600">{item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—'}</span> },
+      { chave: 'entradas', titulo: 'Entradas', alinhamento: 'direita', valorOrdenacao: item => item.entradas, render: item => numero(item.entradas) },
+      { chave: 'saidas', titulo: 'Saídas', alinhamento: 'direita', valorOrdenacao: item => item.saidas, render: item => numero(item.saidas) },
+      { chave: 'saldo', titulo: 'Saldo', alinhamento: 'direita', valorOrdenacao: item => item.saldo, render: item => <strong className={`whitespace-nowrap ${item.abaixoDoMinimo ? 'text-amber-700' : 'text-slate-900'}`}>{numero(item.saldo)} {item.material.unidade}</strong> },
+      { chave: 'minimo', titulo: 'Mínimo', alinhamento: 'direita', valorOrdenacao: item => item.material.estoqueMinimo, render: item => (item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—') },
     );
   } else {
     posicaoColumns.push(
-      { id: 'unidade', label: 'Unidade', sortValue: item => item.material.unidade, cell: item => <span className="text-slate-600">{item.material.unidade}</span> },
-      { id: 'minimo', label: 'Mínimo', sortValue: item => item.material.estoqueMinimo, cell: item => <span className="text-slate-600">{item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—'}</span> },
-      { id: 'fornecedor', label: 'Fornecedor padrão', sortValue: item => empresasPorId.get(item.material.fornecedorPadraoId || '') || null, cell: item => <span className="text-slate-600">{empresasPorId.get(item.material.fornecedorPadraoId || '') || '—'}</span> },
+      { chave: 'unidade', titulo: 'Unidade', valorOrdenacao: item => item.material.unidade, render: item => item.material.unidade },
+      { chave: 'minimo', titulo: 'Mínimo', alinhamento: 'direita', valorOrdenacao: item => item.material.estoqueMinimo, render: item => (item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—') },
+      { chave: 'fornecedor', titulo: 'Fornecedor padrão', valorOrdenacao: item => empresasPorId.get(item.material.fornecedorPadraoId || '') || null, render: item => empresasPorId.get(item.material.fornecedorPadraoId || '') || '—' },
     );
-    if (podeEditar) posicaoColumns.push({
-      id: 'acoes', label: 'Ações', align: 'right', cell: item => (
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => abrirCadastro(item.material)} className={`min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition duration-200 hover:border-emerald-500 hover:text-[#176b4d] ${FOCO}`}>Editar</button>
-          <button type="button" onClick={() => excluirMaterial(item.material)} className={`min-h-10 rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 transition duration-200 hover:bg-rose-50 ${FOCO}`}>Excluir</button>
-        </div>
-      ),
-    });
   }
+  const acoesDoMaterial = aba === 'cadastro' && podeEditar
+    ? (item: PosicaoEstoque) => (
+      <>
+        <button type="button" onClick={() => abrirCadastro(item.material)} className={`min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition duration-200 hover:border-emerald-500 hover:text-[#176b4d] md:min-h-8 ${FOCO}`}>Editar</button>
+        <button type="button" onClick={() => excluirMaterial(item.material)} className={`min-h-11 rounded-lg border border-rose-200 bg-white px-3 text-[13px] font-semibold text-rose-700 transition duration-200 hover:bg-rose-50 md:min-h-8 ${FOCO}`}>Excluir</button>
+      </>
+    )
+    : undefined;
 
   const enviosDoLink = useMemo(() => enviosDoCampo(movimentos).length, [movimentos]);
   const contar = (secao: SecaoMateriais) => {
@@ -651,27 +649,17 @@ export default function MateriaisTab({
 
           {(aba === 'estoque' || aba === 'cadastro') && (
             <div data-materiais-reveal>
-              <div className="hidden md:block">
-                <DataTable
-                  caption={aba === 'estoque' ? 'Posição de estoque por material' : 'Cadastro de materiais'}
-                  rows={posicoesFiltradas}
-                  columns={posicaoColumns}
-                  getRowId={item => item.material.id}
-                  minWidth={aba === 'cadastro' ? 820 : 720}
-                  emptyMessage={termo ? 'Nenhum material com essa busca.' : 'Nenhum material cadastrado. Use Novo material.'}
-                />
-              </div>
-              <div className="md:hidden">
-                <CartoesMateriais
-                  posicoes={posicoesFiltradas}
-                  modo={aba}
-                  fornecedorDe={item => empresasPorId.get(item.material.fornecedorPadraoId || '') || ''}
-                  podeEditar={podeEditar}
-                  onEditar={item => abrirCadastro(item.material)}
-                  onExcluir={item => excluirMaterial(item.material)}
-                  onAbrirFicha={item => setFichaMaterialId(item.material.id)}
-                />
-              </div>
+              <TabelaPadrao
+                key={aba}
+                titulo={aba === 'estoque' ? 'Posição de estoque por material' : 'Cadastro de materiais'}
+                linhas={posicoesFiltradas}
+                colunas={posicaoColumns}
+                idDaLinha={item => item.material.id}
+                nomeDoItem={{ um: 'material', varios: 'materiais' }}
+                onAbrirLinha={item => setFichaMaterialId(item.material.id)}
+                acoes={acoesDoMaterial}
+                vazio={termo ? 'Nenhum material com essa busca.' : 'Nenhum material cadastrado. Use Novo material.'}
+              />
             </div>
           )}
 
