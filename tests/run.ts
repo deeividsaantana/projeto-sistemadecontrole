@@ -218,3 +218,4 @@ import './vinculoPrefixo.test';
 import './repetidosDiesel.test';
 import './relatorioDiesel.test';
 import './edicoesLocais.test';
+import './guardaDeMovimento.test';

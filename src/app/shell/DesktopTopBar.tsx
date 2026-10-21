@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
+import { reduzMovimento } from '../../shared/motion/reduzMovimento';
 import { Building2, LogOut, Search, X } from 'lucide-react';
 import type { SupabaseAuthUser as User } from '../../auth/supabaseAuth';
 import type { AppNotification } from '../../types';
@@ -80,7 +81,7 @@ export function DesktopTopBar({
   }, [activeTab]);
 
   useGSAP(() => {
-    if (!logoutBtnRef.current) return;
+    if (!logoutBtnRef.current || reduzMovimento()) return;
     const btn = logoutBtnRef.current;
 
     const onEnter = () => {

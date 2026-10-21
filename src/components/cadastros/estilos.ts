@@ -24,5 +24,4 @@ export const TOM_SITUACAO = {
   inativo: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200',
 } as const;
 
-export const reduzMovimento = () => typeof window !== 'undefined'
-  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+export { reduzMovimento } from '../../shared/motion/reduzMovimento';
