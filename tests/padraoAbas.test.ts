@@ -118,3 +118,13 @@ test('nenhum texto abaixo de 12px', () => {
       .map(tamanho => `${arquivo} (${tamanho}px): ${trecho.trim().slice(0, 60)}`)));
   assert.deepEqual(fora, [], 'use text-xs (12px) ou maior');
 });
+
+// Auditoria de front (21/10/2026, B1): o primeiro Tab da casca leva à aba.
+test('a casca começa pelo link de pular para o conteúdo', () => {
+  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  const raiz = app.indexOf('id="app-root"');
+  assert.ok(raiz > 0, 'App.tsx sem #app-root');
+  const link = app.indexOf('<PularParaConteudo />', raiz);
+  assert.ok(link > raiz && link - raiz < 200, 'o link deve ser o primeiro item dentro de #app-root');
+  assert.match(app, /id="main-tab-viewport" tabIndex=\{-1\}/);
+});

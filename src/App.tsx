@@ -5,7 +5,7 @@
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
-import { RouteMotion, isoDay } from './shared/ui';
+import { PularParaConteudo, RouteMotion, isoDay } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -4401,7 +4401,8 @@ export default function App() {
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
-      
+      <PularParaConteudo />
+
       {/* Mobile navigation header */}
       <header className="lg:hidden flex items-center justify-between h-[4.25rem] bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
         <img
@@ -4535,7 +4536,7 @@ export default function App() {
           onLogout={() => void handleLogout()}
         />}
         {/* Dynamic Inner Tab Viewport */}
-        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : combustivelListaSomente ? 'p-1 sm:p-2' : 'p-3 sm:p-4 lg:p-5'}`}>
+        <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : combustivelListaSomente ? 'p-1 sm:p-2' : 'p-3 sm:p-4 lg:p-5'}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (

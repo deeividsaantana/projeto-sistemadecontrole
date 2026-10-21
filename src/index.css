@@ -123,6 +123,29 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #app-root :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
 /* O menu lateral é a única superfície escura: lá o foco é branco. */
 #app-root .erp-sidebar :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline-color: #fff; }
+/* "Pular para o conteúdo": primeiro item do Tab, fora da tela até receber o
+   foco. A área da aba recebe o foco sem contorno, que seria a tela toda. */
+.pular-para-conteudo {
+  position: fixed;
+  top: .75rem;
+  left: .75rem;
+  z-index: 100;
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0 1rem;
+  border: 2px solid #176b4d;
+  border-radius: .75rem;
+  background: #fff;
+  color: #176b4d;
+  font-size: .875rem;
+  font-weight: 700;
+  box-shadow: 0 10px 24px -12px rgb(11 56 42 / .6);
+  transform: translateY(-200%);
+}
+.pular-para-conteudo:focus { transform: none; }
+.pular-para-conteudo:focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
+#app-root #main-tab-viewport:focus-visible, #app-root #main-tab-viewport:focus { outline: none; }
 
 #app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
   border-color: #cfd4d0;

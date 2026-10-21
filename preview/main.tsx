@@ -33,6 +33,7 @@ import { PRIMARY_MODULE_IDS, ROLE_ACCESS, SIDEBAR_NAVIGATION_GROUPS, destinoDaAb
 import { PesquisaGlobal } from '../src/app/shell/PesquisaGlobal';
 import * as fx from './fixtures';
 import { RouteMotion } from '../src/shared/ui/RouteMotion';
+import { PularParaConteudo } from '../src/shared/ui/PularParaConteudo';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -789,6 +790,7 @@ createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
     {isPublicScreen ? (screens[key] ?? null) : comShell ? (
       <div className="erp-shell">
+        <PularParaConteudo />
         <DesktopSidebar activeTab={abaAtiva} groups={previewGroups} onNavigate={noop} />
         <main className="erp-workspace" id="main-workspace">
           <DesktopTopBar
@@ -810,7 +812,7 @@ createRoot(document.getElementById('app-root')!).render(
             onMarkNotificationAsRead={noop}
             onLogout={noop}
           />
-          <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
+          <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
             <RouteMotion>{screens[key] ?? <p>Tela desconhecida: {key}</p>}</RouteMotion>
           </div>
         </main>
