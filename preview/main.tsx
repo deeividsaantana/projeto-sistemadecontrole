@@ -853,20 +853,17 @@ createRoot(document.getElementById('app-root')!).render(
             onMarkNotificationAsRead={noop}
             onLogout={noop}
           />
-          <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-[var(--renea-respiro)]'}`}>
+          <div id="main-tab-viewport" tabIndex={-1} className="flex-1 overflow-x-clip w-full max-w-none p-[var(--renea-respiro)]">
             <RouteMotion>{screens[key] ?? <p>Tela desconhecida: {key}</p>}</RouteMotion>
           </div>
         </main>
       </div>
     ) : <div
       id="main-tab-viewport"
-      /* Mesmas medidas do App.tsx: o painel roda sem recuo (dashboard-viewport)
-         e as demais telas dentro do padding responsivo. Com um `padding: 28`
-         fixo o preview inventava 5 px de estouro no painel e escondia o recuo
-         real das outras telas — a verificação de largura não valia nada. */
-      className={key === 'painel'
-        ? 'dashboard-viewport mx-auto w-full'
-        : 'mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10'}
+      /* Sem a casca, a tela roda dentro do padding responsivo. Com um
+         `padding: 28` fixo o preview inventava estouro e escondia o recuo
+         real das telas — a verificação de largura não valia nada. */
+      className="mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10"
       style={{ background: '#fff', minHeight: '100vh' }}
     >
       {screens[key] ?? <p>Tela desconhecida: {key}</p>}
