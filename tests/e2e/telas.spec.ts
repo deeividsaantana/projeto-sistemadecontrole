@@ -213,9 +213,58 @@ test('controle de frotas remove o lançamento rápido e leva as visões ao topo'
   await page.goto('/?screen=frotas');
 
   await expect(page.getByText('Lançamento rápido')).toHaveCount(0);
-  const topViews = page.locator('.renea-page-header').getByRole('navigation', { name: 'Visões do controle de frotas' });
+  const topViews = page.locator('.renea-page-header').getByRole('tablist', { name: 'Subtelas do controle de frotas' });
   await expect(topViews).toBeVisible();
-  await expect(topViews.getByRole('button', { name: 'Situação do dia' })).toBeVisible();
+  // No celular a aba mostra o nome curto ("Dia").
+  await expect(topViews.getByRole('tab', { name: /^(Situação do dia|Dia)$/ })).toHaveAttribute('aria-selected', 'true');
+});
+
+// Molde de página (auditoria de 21/10/2026): a aba ocupa a tela abaixo da
+// barra do topo, a página não rola e a tabela aparece logo no primeiro olhar.
+test('molde: a aba nasce em tela cheia dentro da casca, sem botão e sem rolar a página', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a página rola normalmente');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  for (const [screen, id] of [['combustivel', 'combustivel-tab'], ['frotas', 'controle-equipamentos-tab'], ['presenca-admin', 'presenca-tab']]) {
+    await page.goto(`/?screen=${screen}&shell=1`);
+    const aba = page.locator(`#${id}`);
+    await expect(aba).toBeVisible();
+    // A entrada desliza alguns pixels: mede depois que ela assenta.
+    await expect.poll(async () => {
+      const caixa = await aba.boundingBox();
+      return caixa!.y + caixa!.height;
+    }, { message: `${screen} cabe na altura da tela` }).toBeLessThanOrEqual(768);
+    const rolagem = await page.evaluate(() => {
+      window.scrollTo(1e6, 1e6);
+      return [window.scrollX, window.scrollY, document.documentElement.scrollWidth - document.documentElement.clientWidth];
+    });
+    expect(rolagem, `${screen} não rola a página`).toEqual([0, 0, 0]);
+  }
+  await expect(page.getByTestId('combustivel-tela-cheia')).toHaveCount(0);
+  await page.goto('/?screen=frotas&shell=1');
+  const primeiraLinha = page.locator('#controle-equipamentos-tab table tbody tr').first();
+  const topo = await primeiraLinha.evaluate(linha => linha.getBoundingClientRect().bottom);
+  expect(topo, 'a primeira linha da frota aparece sem rolar').toBeLessThan(768);
+});
+
+test('abas agrupadas: 18 subtelas cabem a 1366 px e andam pelas setas', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a faixa rola por dentro');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/?screen=molde&shell=1');
+  const grupos = page.getByRole('tablist', { name: 'Subtelas de materiais', exact: true });
+  const doGrupo = page.getByRole('tablist', { name: 'Subtelas de materiais: Na obra' });
+  for (const lista of [grupos, doGrupo]) {
+    const sobra = await lista.evaluate(no => no.scrollWidth - no.clientWidth);
+    expect(sobra, 'a linha de abas não rola para o lado').toBeLessThanOrEqual(0);
+  }
+  await expect(page.locator('#molde-dados')).toHaveAttribute('role', 'tabpanel');
+  await doGrupo.getByRole('tab', { name: /Apontadores/ }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' })).toHaveAttribute('aria-selected', 'true');
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' })).toBeFocused();
+  await grupos.getByRole('tab', { name: 'Controle' }).click();
+  await expect(page.getByRole('tablist', { name: 'Subtelas de materiais: Controle' }).getByRole('tab', { name: 'Estoque' })).toHaveAttribute('aria-selected', 'true');
+  await grupos.getByRole('tab', { name: /Na obra/ }).click();
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' }), 'voltar ao grupo abre a última subtela usada nele').toHaveAttribute('aria-selected', 'true');
 });
 
 test('manutenção abre o formulário e fecha com ESC', async ({ page }) => {
