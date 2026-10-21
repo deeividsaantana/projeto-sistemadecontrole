@@ -35,9 +35,9 @@ interface DashboardProps {
 
 function ExecutiveCard({ label, value, detail, tone, icon: Icon, onClick }: { label: string; value: string | number; detail: string; tone: 'green' | 'blue' | 'orange' | 'slate'; icon: typeof Activity; onClick?: () => void }) {
   const colors = { green: 'border-emerald-200 bg-emerald-950 text-white', blue: 'border-blue-200 bg-blue-900 text-white', orange: 'border-orange-200 bg-orange-700 text-white', slate: 'border-slate-200 bg-white text-slate-950' };
-  return <button type="button" onClick={onClick} data-dashboard-reveal className={`dashboard-kpi group min-h-32 min-w-0 rounded-2xl border p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${colors[tone]}`}>
-    <div className="flex items-start justify-between gap-3"><span className="text-sm font-bold opacity-80">{label}</span><span className="rounded-xl bg-white/15 p-2"><Icon className="size-5" /></span></div>
-    <strong className="mt-3 block break-words text-3xl font-black tabular-nums sm:text-4xl">{value}</strong><span className="mt-1 block text-xs font-semibold opacity-75">{detail}</span>
+  return <button type="button" onClick={onClick} data-dashboard-reveal className={`dashboard-kpi group min-w-0 rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${colors[tone]}`}>
+    <div className="flex items-start justify-between gap-3"><span className="text-sm font-bold opacity-80">{label}</span><span className="rounded-lg bg-white/15 p-1.5"><Icon className="size-4" /></span></div>
+    <strong className={`mt-2 block font-black leading-tight tabular-nums ${typeof value === 'number' || /\d/.test(value) ? 'text-3xl' : 'text-xl'}`}>{value}</strong><span className="mt-1 block text-xs font-semibold opacity-75">{detail}</span>
   </button>;
 }
 
@@ -61,7 +61,7 @@ export default function Dashboard(props: DashboardProps) {
   }, { scope: dashboardRef, dependencies: [obraId, periodo.from, periodo.to] });
 
   return (
-    <div ref={dashboardRef} id="dashboard-tab" className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">
+    <div ref={dashboardRef} id="dashboard-tab" className="flex min-w-0 flex-col gap-4 p-4 sm:p-5">
       <h1 className="sr-only">Painel Geral da operação</h1>
       <div data-testid="period-filter" className="flex flex-wrap items-center gap-3">
         <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">Obra
@@ -78,7 +78,7 @@ export default function Dashboard(props: DashboardProps) {
         <AvailabilityTrend measure={view.availability} onNavigate={() => props.onNavigate('controle-equipamentos')} />
       </div>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Indicadores principais">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5" aria-label="Indicadores principais">
         <ExecutiveCard label="Frota em operação" value={view.fleet.confirmed ? view.fleet.operating : 'Sem posição'} detail={`${view.fleet.confirmed} posições confirmadas`} tone={getTone(view.fleet.confirmed ? view.fleet.operating : 'Sem posição', 'green')} icon={Truck} onClick={() => props.onNavigate('controle-equipamentos')} />
         <ExecutiveCard label="Disponibilidade" value={view.fleet.availability === null ? 'Sem posição' : `${display(view.fleet.availability)}%`} detail="sobre posições confirmadas" tone={getTone(view.fleet.availability === null ? 'Sem posição' : `${display(view.fleet.availability)}%`, 'blue')} icon={Activity} onClick={() => props.onNavigate('controle-equipamentos')} />
         <ExecutiveCard label="Produção" value={display(view.production.value, view.production.unit)} detail="lançamentos em m³" tone={getTone(display(view.production.value, view.production.unit), 'slate')} icon={Activity} onClick={() => props.onNavigate('producao')} />
