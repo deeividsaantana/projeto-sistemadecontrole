@@ -124,8 +124,10 @@ export default function FleetDataTable({
   );
   const ICONE = `grid size-10 lg:size-8 place-items-center rounded-xl border transition duration-200 active:scale-[0.96] ${FOCO}`;
   return (
-    <section className={`${CARTAO} overflow-hidden`} aria-label="Lançamentos do dia" data-fleet-enter>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+    // No computador ocupa o resto da TelaCheia: a barra de cima fica parada e
+    // só as linhas rolam, com o cabeçalho da tabela preso no topo.
+    <section className={`${CARTAO} overflow-hidden lg:flex lg:min-h-[14rem] lg:flex-1 lg:flex-col`} aria-label="Lançamentos do dia" data-fleet-enter>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-2">
         <p className="text-sm text-slate-600">
           <strong className="font-bold text-slate-900">{rows.length}</strong> lançamento(s)
           {selectedIds.length > 0 && <span className="ml-2 font-bold text-[#176b4d]">{selectedIds.length} marcado(s)</span>}
@@ -170,7 +172,7 @@ export default function FleetDataTable({
         ))}
         {!pageRows.length && <Vazio />}
       </div>
-      <div className="hidden lg:block">
+      <div className="hidden lg:block lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         <table className="w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-12" />
@@ -183,7 +185,7 @@ export default function FleetDataTable({
             <col className="w-[7.5rem]" />
             <col className="w-[9.75rem]" />
           </colgroup>
-          <thead className="bg-[#f7f8f6] text-[11px] text-slate-500">
+          <thead className="sticky top-0 z-[1] bg-[#f7f8f6] text-[11px] text-slate-500">
             <tr>
               <th className="px-3 py-2 text-center">
                 <input

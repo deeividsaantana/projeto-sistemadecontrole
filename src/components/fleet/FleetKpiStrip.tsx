@@ -36,7 +36,7 @@ const indicadores = (metrics: FleetMetrics): Indicador[] => [
 /** Resumo do dia no mesmo cartão do Quadro da Frota; tocar filtra a lista. */
 export default function FleetKpiStrip({ metrics, status, onPick }: Props) {
   return (
-    <section aria-label="Indicadores da frota" className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+    <section aria-label="Indicadores da frota" className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
       {indicadores(metrics).map(item => {
         const ativo = item.status !== undefined && item.status !== 'Todos' && item.status === status;
         const conteudo = (
@@ -45,10 +45,14 @@ export default function FleetKpiStrip({ metrics, status, onPick }: Props) {
               <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-[0.04em] text-slate-500 [hyphens:none]">{item.titulo}</span>
               <span className={`grid size-7 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
             </span>
-            {item.texto !== undefined
-              ? <span className="mt-1 block text-2xl font-bold leading-none tabular-nums text-slate-900">{item.texto}</span>
-              : <CountUp value={item.valor} suffix={item.sufixo} className="mt-1 block text-2xl font-bold leading-none tabular-nums text-slate-900" />}
-            <span className="mt-1 block truncate text-xs text-slate-500" title={item.detalhe}>{item.detalhe}</span>
+            {/* No computador o número e o detalhe dividem a linha: a faixa
+                fica baixa e sobra altura para a tabela na TelaCheia. */}
+            <span className="flex min-w-0 flex-col lg:flex-row lg:items-baseline lg:gap-2">
+              {item.texto !== undefined
+                ? <span className="mt-1 block shrink-0 text-2xl font-bold leading-none tabular-nums text-slate-900">{item.texto}</span>
+                : <CountUp value={item.valor} suffix={item.sufixo} className="mt-1 block shrink-0 text-2xl font-bold leading-none tabular-nums text-slate-900" />}
+              <span className="mt-1 block min-w-0 truncate text-xs text-slate-500" title={item.detalhe}>{item.detalhe}</span>
+            </span>
           </>
         );
         const classe = `${CARTAO} flex min-w-0 flex-col gap-1 p-3 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;

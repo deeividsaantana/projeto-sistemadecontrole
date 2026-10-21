@@ -62,6 +62,8 @@ import FleetReportLayout from './fleet/FleetReportLayout';
 import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/FleetImportPreviewModal';
 import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
+import { AbasDaTela, idDaAba, type AbaDaTela } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import FleetDriverReference from './fleet/FleetDriverReference';
 import { repetidosPorDia } from '../fleet/duplicidadeDiaria';
@@ -582,13 +584,13 @@ export default function ControleEquipamentosDiarioTab({
     // versaoRelacao: a relação vem do aparelho e muda sem passar pelos registros.
     [registros, filters.date, versaoRelacao],
   );
-  const vistas: ReadonlyArray<readonly [FleetView, string, string, typeof CalendarDays, number]> = [
-    ['today', 'Situação do dia', 'Dia', CalendarDays, 0],
-    ...(quadro ? [['quadro', 'Quadro', 'Quadro', LayoutGrid, 0] as const] : []),
-    ['equipamentos', 'Equipamentos', 'Equip.', ClipboardCheck, conferenciaDoDia.equipamentos.missing],
-    ['operadores', 'Operadores', 'Operad.', Users, conferenciaDoDia.operadores.missing],
-    ['history', 'Histórico', 'Histórico', History, 0],
-    ['registry', 'Motoristas', 'Motoristas', Database, 0],
+  const vistas: ReadonlyArray<AbaDaTela<FleetView>> = [
+    { id: 'today', rotulo: 'Situação do dia', curto: 'Dia', icone: CalendarDays },
+    ...(quadro ? [{ id: 'quadro' as const, rotulo: 'Quadro', icone: LayoutGrid }] : []),
+    { id: 'equipamentos', rotulo: 'Equipamentos', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
+    { id: 'operadores', rotulo: 'Operadores', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
+    { id: 'history', rotulo: 'Histórico', icone: History },
+    { id: 'registry', rotulo: 'Motoristas', icone: Database },
   ];
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
   const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400';
@@ -600,100 +602,75 @@ export default function ControleEquipamentosDiarioTab({
     </p>
   );
   return (
-    <main id="controle-equipamentos-tab" ref={pageRef} className="mx-auto max-w-[1760px] space-y-4 pb-24 text-slate-800">
-      <div data-fleet-enter>
+    <TelaCheia ref={pageRef} id="controle-equipamentos-tab" rotulo="Controle de Frotas" className="text-slate-800"
+      idAbaAtiva={idDaAba('frota', activeView)} idDados="frota-dados" chaveRolagem={activeView} longa={activeView !== 'today'}
+      cabecalho={<div data-fleet-enter>
         <PageHeader
           eyebrow="Frota"
           title="Controle de Frotas"
-          actions={<div className="flex w-full min-w-0 flex-col gap-2.5">
-            {/* Linha principal: escolher a vista e lançar. É o que se usa toda hora. */}
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-between">
-              {/* Cada aba ocupa a tela inteira. No celular as cinco cabem lado a
-                  lado com ícone em cima e nome curto embaixo; o número laranja
-                  é quem ainda falta lançar no dia. */}
-              <nav className={`grid w-full ${quadro ? 'grid-cols-6' : 'grid-cols-5'} gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 lg:flex lg:w-auto lg:min-w-0 lg:overflow-x-auto`} aria-label="Abas do controle de frotas" data-testid="frota-abas">
-                {vistas.map(([id, label, curto, Icon, pendentes]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={activeView === id}
-                    onClick={() => setActiveView(id)}
-                    data-testid={`frota-aba-${id}`}
-                    aria-label={pendentes ? `${label}, ${pendentes} a confirmar` : label}
-                    className={`relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl px-0.5 text-[10.5px] font-bold tracking-tight transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] lg:min-h-11 lg:flex-row lg:gap-2 lg:px-3 lg:text-sm lg:tracking-normal ${activeView === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
-                  >
-                    <Icon className="size-5 lg:hidden xl:block xl:size-4" aria-hidden="true"/>
-                    <span className="max-w-full truncate xl:hidden">{curto}</span>
-                    <span className="hidden xl:inline">{label}</span>
-                    {pendentes > 0 && <span className="absolute right-1 top-1 min-w-5 rounded-full bg-[#f26a2e] px-1 text-center text-[10px] font-bold leading-5 tabular-nums text-white lg:static lg:text-[11px]">{pendentes}</span>}
-                  </button>
-                ))}
-              </nav>
-              <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} w-full shrink-0 whitespace-nowrap px-5 sm:w-auto`} data-testid="frota-novo">
-                <Plus className="size-5" aria-hidden="true" />
-                Novo lançamento
-                <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
-              </button>
-            </div>
-            {/* Linha secundária: dia consultado e utilitários (relatório, importar, cadastro). */}
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:justify-end">
-              <label className="relative flex w-full min-w-0 items-center sm:inline-flex sm:w-auto">
-                <span className="sr-only">Dia dos lançamentos</span>
-                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
-                <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
-              </label>
-              <div className="grid grid-cols-2 gap-2 sm:contents">
-              <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-              {activeView !== 'quadro' && <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
-                <Keyboard className="size-4" aria-hidden="true" />
-                <kbd className="text-xs">?</kbd>
-              </button>}
-              <details className="erp-fleet-menu group relative w-full sm:w-auto" data-testid="frota-relatorios">
-                <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer px-3 list-none sm:w-auto [&::-webkit-details-marker]:hidden`}>
-                  <FileSpreadsheet className="size-4" aria-hidden="true" />
-                  Mais ações
-                  <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
-                </summary>
-                <div className="absolute right-0 z-30 mt-2 w-full min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)] sm:w-64">
-                  <p className={ROTULO_GRUPO_MENU}>Exportar</p>
-                  <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
-                  <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
-                  <hr className="my-1 border-slate-100" />
-                  <p className={ROTULO_GRUPO_MENU}>Importar</p>
-                  <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
-                  <ImportacaoSge
-                    equipamentos={equipamentos}
-                    registros={registros}
-                    motoristas={operationalDrivers}
-                    funcionarios={funcionarios}
-                    empresas={empresas}
-                    onImport={onImport}
-                    onApplyCadastroSge={onApplyCadastroSge}
-                    onMensagem={(tom, texto) => { setMessageTone(tom); setMessage(texto); }}
-                    gatilho={abrir => <button type="button" onClick={abrir} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>}
-                  />
-                  <hr className="my-1 border-slate-100" />
-                  <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
-                  <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
-                  {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
-                </div>
-              </details>
+          abas={<AbasDaTela id="frota" rotulo="Subtelas do controle de frotas" abas={vistas} ativa={activeView} onTrocar={setActiveView} idPainel="frota-dados" testId="frota-aba" />}
+          actions={<>
+            {/* Dia consultado: vale para Situação do dia, Quadro, Equipamentos e Operadores. */}
+            <label className="relative flex min-w-0 items-center">
+              <span className="sr-only">Dia dos lançamentos</span>
+              <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
+              <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
+            </label>
+            <p className="whitespace-nowrap text-sm font-semibold text-slate-600 first-letter:uppercase max-sm:hidden">{dataLonga(filters.date)}</p>
+            {activeView !== 'quadro' && <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
+              <Keyboard className="size-4" aria-hidden="true" />
+              <kbd className="text-xs">?</kbd>
+            </button>}
+            <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
+            <details className="erp-fleet-menu group relative" data-testid="frota-relatorios">
+              <summary className={`${BOTAO_SECUNDARIO} cursor-pointer px-3 list-none [&::-webkit-details-marker]:hidden`}>
+                <FileSpreadsheet className="size-4" aria-hidden="true" />
+                Mais ações
+                <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="absolute right-0 z-30 mt-2 w-64 min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)]">
+                <p className={ROTULO_GRUPO_MENU}>Exportar</p>
+                <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
+                <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
+                <hr className="my-1 border-slate-100" />
+                <p className={ROTULO_GRUPO_MENU}>Importar</p>
+                <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
+                <ImportacaoSge
+                  equipamentos={equipamentos}
+                  registros={registros}
+                  motoristas={operationalDrivers}
+                  funcionarios={funcionarios}
+                  empresas={empresas}
+                  onImport={onImport}
+                  onApplyCadastroSge={onApplyCadastroSge}
+                  onMensagem={(tom, texto) => { setMessageTone(tom); setMessage(texto); }}
+                  gatilho={abrir => <button type="button" onClick={abrir} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>}
+                />
+                <hr className="my-1 border-slate-100" />
+                <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
+                <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
+                {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
               </div>
-            </div>
-          </div>}
+            </details>
+            <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} shrink-0 whitespace-nowrap px-5`} data-testid="frota-novo">
+              <Plus className="size-5" aria-hidden="true" />
+              Novo lançamento
+              <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
+            </button>
+          </>}
         />
-        <p className="-mt-1 text-sm font-semibold text-slate-500 first-letter:uppercase">{dataLonga(filters.date)}</p>
-      </div>
-      {aviso}
-      {activeView === 'today' && <div data-fleet-view className="space-y-4">
+      </div>}
+      faixa={aviso || undefined}
+    >
+      {activeView === 'today' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3">
         <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
         {viewModel.integrityWarnings.length > 0 && (
-          <details open={viewModel.integrityWarnings.length <= 3} className={`group overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300"><AlertTriangle className="size-5" aria-hidden="true" /></span>
-              <span className="min-w-0">
-                <span className="block text-base font-bold text-amber-900">{viewModel.integrityWarnings.length} ponto(s) para conferir nos lançamentos</span>
-                <span className="block text-xs font-semibold text-amber-700">Toque para {viewModel.integrityWarnings.length <= 3 ? 'esconder' : 'ver'} a lista</span>
+          <details open={viewModel.integrityWarnings.length <= 3} className={`group shrink-0 overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-3 py-1.5 [&::-webkit-details-marker]:hidden">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300"><AlertTriangle className="size-4" aria-hidden="true" /></span>
+              <span className="flex min-w-0 flex-wrap items-baseline gap-x-3">
+                <span className="text-base font-bold text-amber-900">{viewModel.integrityWarnings.length} ponto(s) para conferir nos lançamentos</span>
+                <span className="text-sm font-semibold text-amber-800">Toque para {viewModel.integrityWarnings.length <= 3 ? 'esconder' : 'ver'} a lista</span>
               </span>
               <ChevronDown className="ml-auto size-5 shrink-0 text-amber-700 transition duration-300 group-open:rotate-180" aria-hidden="true" />
             </summary>
@@ -865,6 +842,6 @@ export default function ControleEquipamentosDiarioTab({
           ))}
         </dl>
       </Modal>
-    </main>
+    </TelaCheia>
   );
 }
