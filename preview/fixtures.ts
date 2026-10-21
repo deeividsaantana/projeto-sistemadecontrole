@@ -64,7 +64,9 @@ export const lubrificacoes: Lubrificacao[] = [
 const dia = (n: number) => `2026-09-${String(n).padStart(2, '0')}`;
 export const abastecimentos: Abastecimento[] = Array.from({ length: 14 }, (_, i) => ({
   id: `ab-${i}`, data: dia((i % 3) + 1), hora: '07:30',
-  equipamentoId: i % 2 ? 'eq-1' : 'eq-2', prefixoInformado: i % 2 ? 'CB770' : 'CB1005',
+  // ab-0 aponta para um cadastro que não existe mais e ab-2 não tem máquina:
+  // os dois têm que achar a CB1005 pelo prefixo, sem "NÃO CADASTRADO".
+  equipamentoId: i === 0 ? 'eq-fuel-cb1005' : i === 2 ? '' : i % 2 ? 'eq-1' : 'eq-2', prefixoInformado: i % 2 ? 'CB770' : 'CB1005',
   horimetroInicial: 1000 + i, kmInicial: 0, bombaInicial: 1000 * i,
   quantidadeLitros: 120 + i * 7, bombaFinal: 1000 * i + 120,
   tipoCombustivelId: 'tc-1', comboioId: 'cmb-1',
