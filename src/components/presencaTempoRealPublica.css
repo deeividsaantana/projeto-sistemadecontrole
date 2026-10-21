@@ -357,12 +357,10 @@
 }
 
 .presence-public__employee-heading p {
-  overflow: hidden;
   margin-top: 4px;
   color: var(--presence-muted);
   font-size: .75rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .presence-public__avatar {

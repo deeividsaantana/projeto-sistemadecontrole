@@ -503,7 +503,7 @@ export default function ManutencaoTab({
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <strong className="block truncate font-mono text-sm font-black text-slate-900">{item.prefixo}</strong>
-                          <span className="block truncate text-xs font-bold uppercase tracking-wide text-slate-400">{item.equipamentoNome}</span>
+                          <span className="block line-clamp-2 break-words text-xs font-bold uppercase tracking-wide text-slate-500">{item.equipamentoNome}</span>
                         </div>
                         <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
                       </div>

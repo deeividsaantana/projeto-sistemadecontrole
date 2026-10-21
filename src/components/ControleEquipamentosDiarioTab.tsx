@@ -609,9 +609,11 @@ export default function ControleEquipamentosDiarioTab({
             {/* Linha principal: escolher a vista e lançar. É o que se usa toda hora. */}
             <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-between">
               {/* Cada aba ocupa a tela inteira. No celular as cinco cabem lado a
-                  lado com ícone em cima e nome curto embaixo; o número laranja
-                  é quem ainda falta lançar no dia. */}
-              <nav className={`grid w-full ${quadro ? 'grid-cols-6' : 'grid-cols-5'} gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 lg:flex lg:w-auto lg:min-w-0 lg:overflow-x-auto`} aria-label="Abas do controle de frotas" data-testid="frota-abas">
+                  lado com ícone em cima e nome curto embaixo; com o Quadro são
+                  seis e, abaixo de 440 px, viram duas linhas de três para o
+                  nome caber em 12 px. O número laranja é quem ainda falta
+                  lançar no dia. */}
+              <nav className={`grid w-full ${quadro ? 'grid-cols-3 min-[440px]:grid-cols-6' : 'grid-cols-5'} gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 lg:flex lg:w-auto lg:min-w-0 lg:overflow-x-auto`} aria-label="Abas do controle de frotas" data-testid="frota-abas">
                 {vistas.map(([id, label, curto, Icon, pendentes]) => (
                   <button
                     key={id}
