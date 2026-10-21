@@ -443,7 +443,7 @@ const SYNC_CHECK_MIN_INTERVAL_MS = 15_000;
 const SYNC_FALLBACK_INTERVAL_MS = 30_000;
 
 /** Junta avisos seguidos de outros aparelhos num download só. */
-const AVISO_NUVEM_ESPERA_MS = 1_500;
+const AVISO_NUVEM_ESPERA_MS = 4_000;
 
 /** Marca o navegador que ainda não baixou a nuvem nenhuma vez. */
 const AGUARDANDO_PRIMEIRO_DOWNLOAD = 'renea_aguardando_primeiro_download';
@@ -898,7 +898,7 @@ export default function App() {
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
       setExclusoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.exclusoes), STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[]));
-      setNotifications(parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications()));
+      setNotifications(prependNotifications([], parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications())));
 
       // Efetivo do EFETIVO_OBRA_3 em quem já usa o sistema. A semente acima só
       // vale no primeiro acesso do navegador; sem esta passagem, quem já tinha
@@ -1472,7 +1472,7 @@ export default function App() {
           });
         }
         if (Object.hasOwn(data, 'notifications')) {
-          setNotifications(normalizeRuntimeCollection<AppNotification>(data.notifications));
+          setNotifications(prependNotifications([], normalizeRuntimeCollection<AppNotification>(data.notifications)));
         }
       if (Object.hasOwn(data, 'historyLogs')) {
         const restoredHistory = normalizeRuntimeCollection<HistoryLog>(data.historyLogs);
@@ -1663,9 +1663,11 @@ export default function App() {
     }, 3_000);
     // Outro aparelho avisa pelo canal em tempo real quando publica: baixa na
     // hora. Avisos em sequência viram um download só, da versão mais nova.
+    // Aba escondida não baixa: ao voltar para ela, onVisible confere a nuvem.
     let esperaAviso: number | undefined;
     const pararDeOuvir = listenCloudVersions(versao => {
       window.clearTimeout(esperaAviso);
+      if (document.visibilityState === 'hidden') return;
       esperaAviso = window.setTimeout(() => requestAutomaticRemoteSyncRef.current(versao), AVISO_NUVEM_ESPERA_MS);
     }, () => {
       lastSyncCheckAtRef.current = 0;

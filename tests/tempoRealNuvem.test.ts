@@ -28,3 +28,7 @@ test('o aviso leva só a versão, nunca os dados', () => {
   assert.match(aviso, /payload: \{ versao \}/);
   assert.match(aviso, /broadcast: \{ self: false \}/);
 });
+
+test('aba escondida não baixa a nuvem a cada aviso', () => {
+  assert.match(app, /if \(document\.visibilityState === 'hidden'\) return;/);
+});
