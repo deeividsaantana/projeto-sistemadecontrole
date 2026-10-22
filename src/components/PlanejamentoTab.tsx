@@ -7,7 +7,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, CalendarRange, ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
+import { AlertTriangle, CalendarRange, ChevronLeft, ChevronRight, HardHat, ListChecks, Plus, Search } from 'lucide-react';
 import type { FrenteServico, GrupoEquipe, ObraLocal, PlanejamentoItem, RegistroProducao, ServicoObra, SituacaoPlano } from '../types';
 import { aderenciaDosPlanos, planosNoPeriodo, validarPlano } from '../utils/planejamento';
 import { normalizeComparable } from '../utils/canonicalIdentity';
@@ -21,6 +21,8 @@ import {
   isoDay,
   type ColunaTabela,
 } from '../shared/ui';
+import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { FrentesDoDia } from './planejamento/FrentesDoDia';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from './cadastros/estilos';
 
@@ -47,6 +49,7 @@ const somarDias = (base: string, dias: number) => {
 };
 
 type LinhaPrevisto = ReturnType<typeof aderenciaDosPlanos>[number];
+type Subtela = 'frentes' | 'previstos';
 
 const tomDaSituacao = (situacao: SituacaoPlano) => {
   if (situacao === 'Concluído') return 'success' as const;
@@ -69,7 +72,8 @@ export default function PlanejamentoTab({
 }: PlanejamentoTabProps) {
   const hoje = isoDay(new Date());
   const [dia, setDia] = useState(hoje);
-  const escopo = useRef<HTMLDivElement>(null);
+  const escopo = useRef<HTMLElement>(null);
+  const [subtela, setSubtela] = useState<Subtela>('frentes');
   const [inicio, setInicio] = useState(somarDias(hoje, -7));
   const [fim, setFim] = useState(somarDias(hoje, 21));
   const [busca, setBusca] = useState('');
@@ -102,7 +106,7 @@ export default function PlanejamentoTab({
   useGSAP(() => {
     if (!escopo.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(escopo.current.querySelectorAll('[data-previsto-reveal]'), { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.035, ease: 'power3.out', clearProps: 'transform,opacity' });
-  }, { scope: escopo, dependencies: [dia] });
+  }, { scope: escopo, dependencies: [dia, subtela] });
 
   const abrir = (plano?: PlanejamentoItem) => {
     setEditado(plano || null);
@@ -197,33 +201,43 @@ export default function PlanejamentoTab({
           <span className="h-1.5 flex-1 rounded-full bg-slate-100" aria-hidden="true">
             <span className={`block h-1.5 rounded-full ${item.atrasado ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, item.aderencia)}%` }} />
           </span>
-          <span className="font-bold text-slate-700">{item.aderencia}%</span>
+          <span className="font-bold text-slate-700">{numero(item.aderencia, 1)}%</span>
         </span>
       ),
     },
-    { chave: 'situacao', titulo: 'Situação', valorOrdenacao: item => item.plano.situacao, render: item => <Badge tone={tomDaSituacao(item.plano.situacao)}>{item.plano.situacao}</Badge> },
+    { chave: 'situacao', titulo: 'Situação', valorOrdenacao: item => item.plano.situacao, render: item => <span className="whitespace-nowrap"><Badge tone={tomDaSituacao(item.plano.situacao)}>{item.plano.situacao}</Badge></span> },
+  ];
+
+  const subtelas = [
+    { id: 'frentes' as const, rotulo: 'Frentes do dia', curto: 'Frentes', icone: HardHat },
+    { id: 'previstos' as const, rotulo: 'Previstos do período', curto: 'Previstos', icone: ListChecks, contador: atrasados.length, contadorRotulo: 'com prazo vencido' },
   ];
 
   return (
-    <div ref={escopo} id="planejamento-tab" className="erp-module space-y-4">
-      <div data-previsto-reveal>
+    <TelaCheia ref={escopo} id="planejamento-tab" rotulo="Previsto x Executado" className="erp-module"
+      longa={subtela === 'frentes'} idAbaAtiva={idDaAba('planejamento', subtela)} idDados="planejamento-dados" chaveRolagem={subtela}
+      cabecalho={<div data-previsto-reveal>
         <PageHeader
           eyebrow="Obra"
           title="Previsto x Executado"
-          description="Avanço de cada frente: quanto foi feito, quanto estava previsto e quanto falta."
+          abas={<AbasDaTela<Subtela> id="planejamento" rotulo="Subtelas do previsto x executado" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="planejamento-dados" testId="planejamento-aba" />}
           actions={(
-            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Escolher o dia">
-              <button type="button" className={`${BOTAO_SECUNDARIO} px-3`} onClick={() => setDia(atual => somarDias(atual, -1))} aria-label="Dia anterior">
-                <ChevronLeft className="size-5" aria-hidden="true" />
-              </button>
-              <label>
-                <span className="sr-only">Dia</span>
-                <input type="date" className={`${CAMPO} w-40`} value={dia} max={hoje} onChange={event => { if (event.target.value) setDia(event.target.value > hoje ? hoje : event.target.value); }} />
-              </label>
-              <button type="button" className={`${BOTAO_SECUNDARIO} px-3`} onClick={() => setDia(atual => (atual < hoje ? somarDias(atual, 1) : atual))} disabled={!passado} aria-label="Próximo dia">
-                <ChevronRight className="size-5" aria-hidden="true" />
-              </button>
-              {passado && <button type="button" className={BOTAO_SECUNDARIO} onClick={() => setDia(hoje)}>Hoje</button>}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {subtela === 'frentes' && (
+                <div className="flex items-center gap-1.5" role="group" aria-label="Escolher o dia">
+                  <button type="button" className={`${BOTAO_SECUNDARIO} px-3`} onClick={() => setDia(atual => somarDias(atual, -1))} aria-label="Dia anterior">
+                    <ChevronLeft className="size-5" aria-hidden="true" />
+                  </button>
+                  <label>
+                    <span className="sr-only">Dia</span>
+                    <input type="date" className={`${CAMPO} w-40`} value={dia} max={hoje} onChange={event => { if (event.target.value) setDia(event.target.value > hoje ? hoje : event.target.value); }} />
+                  </label>
+                  <button type="button" className={`${BOTAO_SECUNDARIO} px-3`} onClick={() => setDia(atual => (atual < hoje ? somarDias(atual, 1) : atual))} disabled={!passado} aria-label="Próximo dia">
+                    <ChevronRight className="size-5" aria-hidden="true" />
+                  </button>
+                  {passado && <button type="button" className={BOTAO_SECUNDARIO} onClick={() => setDia(hoje)}>Hoje</button>}
+                </div>
+              )}
               {podeEditar && (
                 <button type="button" onClick={() => abrir()} className={BOTAO_PRIMARIO}>
                   <Plus className="size-4" aria-hidden="true" /> Novo previsto
@@ -232,55 +246,58 @@ export default function PlanejamentoTab({
             </div>
           )}
         />
-      </div>
-
-      <FrentesDoDia
-        dia={dia}
-        responsavel={responsavel.trim() || 'Sem nome'}
-        frentes={frentes}
-        servicos={servicos}
-        registros={producao}
-        planos={planos}
-        onSaveProducao={onSaveProducao}
-        onSavePlano={podeEditar ? onSave : undefined}
-      />
-
-      <section data-previsto-reveal aria-labelledby="previstos-titulo" className="space-y-3">
-        <h2 id="previstos-titulo" className="px-1 text-base font-bold text-slate-900">Previstos do período</h2>
-
-        {atrasados.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="flex items-center gap-2 text-xs font-bold text-amber-900">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-              {atrasados.length} previsto(s) com prazo vencido e meta não atingida
-            </p>
-            <p className="mt-1 text-xs text-amber-800">
-              {atrasados.slice(0, 5).map(item => `${item.plano.servicoDescricao} (faltam ${numero(item.saldo)} ${item.plano.unidade})`).join(' · ')}
-            </p>
+      </div>}
+      faixa={subtela === 'previstos' ? (
+        <div data-previsto-reveal className="space-y-2">
+          {atrasados.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
+              <p className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+                {atrasados.length} previsto(s) com prazo vencido e meta não atingida
+              </p>
+              <p className="mt-1 text-xs text-amber-800">
+                {atrasados.slice(0, 5).map(item => `${item.plano.servicoDescricao} (faltam ${numero(item.saldo)} ${item.plano.unidade})`).join(' · ')}
+              </p>
+            </div>
+          )}
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-xs font-bold text-slate-600">
+              De
+              <input type="date" value={inicio} onChange={event => setInicio(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500 lg:min-h-10" />
+            </label>
+            <label className="text-xs font-bold text-slate-600">
+              Até
+              <input type="date" value={fim} onChange={event => setFim(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500 lg:min-h-10" />
+            </label>
+            <label className="relative text-xs font-bold text-slate-600 sm:col-span-2">
+              Buscar
+              <Search className="pointer-events-none absolute bottom-3 left-3 h-4 w-4 text-[#5b6870]" aria-hidden="true" />
+              <input
+                type="search"
+                value={busca}
+                onChange={event => setBusca(event.target.value)}
+                placeholder="Serviço, frente, equipe ou situação"
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500 lg:min-h-10"
+              />
+            </label>
           </div>
-        )}
-
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-xs font-bold text-slate-600">
-            De
-            <input type="date" value={inicio} onChange={event => setInicio(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
-          </label>
-          <label className="text-xs font-bold text-slate-600">
-            Até
-            <input type="date" value={fim} onChange={event => setFim(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
-          </label>
-          <label className="relative text-xs font-bold text-slate-600 sm:col-span-2">
-            Buscar
-            <Search className="pointer-events-none absolute left-3 top-[2.1rem] h-4 w-4 text-slate-400" />
-            <input
-              value={busca}
-              onChange={event => setBusca(event.target.value)}
-              placeholder="Serviço, frente, equipe ou situação"
-              className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500"
-            />
-          </label>
         </div>
+      ) : undefined}
+    >
+      {subtela === 'frentes' && (
+        <FrentesDoDia
+          dia={dia}
+          responsavel={responsavel.trim() || 'Sem nome'}
+          frentes={frentes}
+          servicos={servicos}
+          registros={producao}
+          planos={planos}
+          onSaveProducao={onSaveProducao}
+          onSavePlano={podeEditar ? onSave : undefined}
+        />
+      )}
 
+      {subtela === 'previstos' && (
         <TabelaPadrao
           titulo="Previsto e executado de cada serviço"
           linhas={filtradas}
@@ -292,9 +309,9 @@ export default function PlanejamentoTab({
           acoes={podeEditar ? item => (
             <button type="button" onClick={() => abrir(item.plano)} aria-label={`Editar previsto de ${item.plano.servicoDescricao}`} className="min-h-11 rounded-lg border border-slate-200 bg-white px-2.5 text-[13px] font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-800 md:min-h-8">Editar</button>
           ) : undefined}
-          vazio={<EmptyState icon={CalendarRange} title="Nenhum previsto no período" description="Use Novo previsto ou Definir previsto no cartão da frente." />}
+          vazio={<EmptyState icon={CalendarRange} title="Nenhum previsto no período" description="Use Novo previsto ou Definir previsto na aba Frentes do dia." />}
         />
-      </section>
+      )}
 
       <Modal
         open={aberto}
@@ -366,6 +383,6 @@ export default function PlanejamentoTab({
           {erro && <p className="sm:col-span-2 text-xs font-bold text-rose-700">{erro}</p>}
         </div>
       </Modal>
-    </div>
+    </TelaCheia>
   );
 }
