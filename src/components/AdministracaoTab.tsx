@@ -15,7 +15,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, CheckCircle2, ClipboardCopy, Database, History, KeyRound, LayoutDashboard, Link2, MessageCircle, Plus, RotateCcw, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardCopy, Database, HardDrive, History, KeyRound, LayoutDashboard, Link2, MessageCircle, Plus, RotateCcw, ShieldCheck } from 'lucide-react';
 import UsuariosTab from './UsuariosTab';
 import HistoricoAcoes from './administracao/HistoricoAcoes';
 import MatrizPermissoes from './administracao/MatrizPermissoes';
@@ -29,15 +29,21 @@ import {
 } from '../utils/diagnostico';
 import { APP_VERSION_LABEL } from '../app/version';
 import { PageHeader, TabelaPadrao, type ColunaTabela } from '../shared/ui';
+import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import type { GrupoEquipe, HistoryLog } from '../types';
 
-type Secao = 'geral' | 'historico' | 'permissoes';
+type Secao = 'geral' | 'acessos' | 'dados' | 'historico' | 'permissoes';
 
-const SECOES: Array<{ id: Secao; label: string; icon: typeof History }> = [
-  { id: 'geral', label: 'Visão geral', icon: LayoutDashboard },
-  { id: 'historico', label: 'Histórico', icon: History },
-  { id: 'permissoes', label: 'Permissões', icon: KeyRound },
+// Cada assunto numa aba do topo: antes Acessos e a tabela de dados ficavam
+// empilhados na Visão geral, numa página de quase 3.000 px.
+const SECOES: Array<{ id: Secao; rotulo: string; curto?: string; icone: typeof History }> = [
+  { id: 'geral', rotulo: 'Visão geral', curto: 'Geral', icone: LayoutDashboard },
+  { id: 'acessos', rotulo: 'Acessos', icone: ShieldCheck },
+  { id: 'dados', rotulo: 'Dados do aparelho', curto: 'Dados', icone: HardDrive },
+  { id: 'historico', rotulo: 'Histórico', icone: History },
+  { id: 'permissoes', rotulo: 'Permissões', icone: KeyRound },
 ];
 
 interface AdministracaoTabProps {
@@ -64,7 +70,7 @@ export default function AdministracaoTab({
   onSaveGrupoEquipe,
   logs = [],
 }: AdministracaoTabProps) {
-  const escopo = useRef<HTMLDivElement>(null);
+  const escopo = useRef<HTMLElement>(null);
   const [secao, setSecao] = useState<Secao>('geral');
   const [linkFeedback, setLinkFeedback] = useState('');
   const volumes = useMemo(
@@ -112,34 +118,51 @@ export default function AdministracaoTab({
   }, { scope: escopo, dependencies: [secao] });
 
   return (
-    <div id="administracao-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] pb-12">
-      <div data-admin-reveal>
+    <TelaCheia ref={escopo} id="administracao-tab" rotulo="Administração"
+      longa={secao !== 'dados'} idAbaAtiva={idDaAba('administracao', secao)} idDados="administracao-dados" chaveRolagem={secao}
+      cabecalho={<div data-admin-reveal>
         <PageHeader
           eyebrow="Só administrador"
           title="Administração"
-          description="Acessos, link de presença, histórico de ações e saúde da sincronização."
+          abas={<AbasDaTela<Secao> id="administracao" rotulo="Seções da administração" abas={SECOES} ativa={secao} onTrocar={setSecao} idPainel="administracao-dados" testId="administracao-aba" />}
         />
-      </div>
+      </div>}
+    >
+      {secao === 'historico' && <HistoricoAcoes logs={logs} />}
 
-      <nav data-admin-reveal aria-label="Seções da administração" className="mt-4 grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-white p-1.5 sm:flex sm:gap-1.5">
-        {SECOES.map(item => {
-          const Icon = item.icon;
-          const ativa = secao === item.id;
-          return (
-            <button key={item.id} type="button" onClick={() => setSecao(item.id)} aria-current={ativa ? 'page' : undefined} className={`flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-1 text-xs font-bold transition sm:min-w-32 sm:gap-2 sm:px-3 sm:text-sm ${ativa ? 'bg-emerald-700 text-white' : 'text-slate-500 hover:bg-emerald-50 hover:text-slate-900'}`}>
-              <Icon className="h-4 w-4 shrink-0" /> <span className="max-w-full truncate">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {secao === 'permissoes' && <MatrizPermissoes />}
 
-      {secao === 'historico' && <div className="mt-4"><HistoricoAcoes logs={logs} /></div>}
+      {secao === 'dados' && (
+        <TabelaPadrao
+          titulo="Dados guardados neste aparelho, por coleção"
+          linhas={volumes}
+          colunas={COLUNAS_VOLUME}
+          idDaLinha={item => item.chave}
+          nomeDoItem={{ um: 'coleção', varios: 'coleções' }}
+          vazio="Nenhum dado guardado neste aparelho."
+        />
+      )}
 
-      {secao === 'permissoes' && <div className="mt-4"><MatrizPermissoes /></div>}
+      {secao === 'acessos' && (
+        <section data-admin-reveal aria-labelledby="administracao-acessos-titulo" className="space-y-3">
+          <div>
+            <h2 id="administracao-acessos-titulo" className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-700">
+              <ShieldCheck className="h-4 w-4 text-emerald-700" aria-hidden="true" /> Acessos ao sistema
+            </h2>
+            <p className="mt-1 text-xs text-slate-600">Criar um acesso, trocar o perfil de alguém ou inativar quem saiu da obra.</p>
+            {totalUsuarios !== undefined && (
+              <p className="mt-1 flex items-center gap-2 text-xs text-slate-600">
+                <Database className="h-3.5 w-3.5" aria-hidden="true" /> {totalUsuarios} usuário(s) cadastrado(s) no acesso corporativo.
+              </p>
+            )}
+          </div>
+          <UsuariosTab embutido />
+        </section>
+      )}
 
       {secao === 'geral' && (<>
 
-      <section data-admin-reveal className="mt-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="presence-public-link-title">
+      <section data-admin-reveal className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="presence-public-link-title">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><Link2 className="h-5 w-5" /></span>
@@ -150,7 +173,7 @@ export default function AdministracaoTab({
           </div>
           {generalToken && <button type="button" onClick={renewGeneralLink} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700"><RotateCcw className="h-3.5 w-3.5" />Renovar link</button>}
         </div>
-        <p className="mt-3 text-xs leading-5 text-slate-500">Endereço administrativo para compartilhar o lançamento de presença com os responsáveis de campo.</p>
+        <p className="mt-3 text-xs leading-5 text-slate-600">Endereço administrativo para compartilhar o lançamento de presença com os responsáveis de campo.</p>
         {generalLink ? (
           <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
             <input readOnly value={generalLink} className="min-h-11 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-xs text-slate-700" />
@@ -163,7 +186,7 @@ export default function AdministracaoTab({
         {linkFeedback && <p role="status" className="mt-2 text-xs font-semibold text-emerald-800">{linkFeedback}</p>}
       </section>
 
-      <div data-admin-reveal className={`mt-4 rounded-lg border px-4 py-3 ${divergencias.length === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
+      <div data-admin-reveal className={`rounded-lg border px-4 py-3 ${divergencias.length === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
         {divergencias.length === 0 ? (
           <p className="flex items-center gap-2 text-xs font-bold text-emerald-900">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
@@ -184,7 +207,7 @@ export default function AdministracaoTab({
         )}
       </div>
 
-      <section data-admin-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-admin-reveal aria-label="Armazenamento neste aparelho" className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Coleções', valor: String(resumo.colecoes) },
           { label: 'Registros', valor: resumo.registros.toLocaleString('pt-BR') },
@@ -198,7 +221,7 @@ export default function AdministracaoTab({
         ))}
       </section>
 
-      <section data-admin-reveal className="mt-4 grid gap-2.5 sm:grid-cols-3">
+      <section data-admin-reveal aria-label="Versão e sincronização" className="grid gap-2.5 sm:grid-cols-3">
         {[
           { label: 'Versão', valor: APP_VERSION_LABEL },
           { label: 'Nuvem', valor: nuvemConectada ? 'Conectada' : 'Sem conexão' },
@@ -211,35 +234,10 @@ export default function AdministracaoTab({
         ))}
       </section>
 
-      <div data-admin-reveal className="mt-4">
-        <TabelaPadrao
-          titulo="Dados guardados neste aparelho, por coleção"
-          linhas={volumes}
-          colunas={COLUNAS_VOLUME}
-          idDaLinha={item => item.chave}
-          nomeDoItem={{ um: 'coleção', varios: 'coleções' }}
-          vazio="Nenhum dado guardado neste aparelho."
-        />
-      </div>
-
-      <section data-admin-reveal className="mt-6">
-        <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-700">
-          <ShieldCheck className="h-4 w-4 text-emerald-700" /> Acessos ao sistema
-        </h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Criar um acesso, trocar o perfil de alguém ou inativar quem saiu da obra.
-        </p>
-        <div className="mt-3">
-          <UsuariosTab embutido />
-        </div>
-      </section>
-
-      {totalUsuarios !== undefined && (
-        <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-          <Database className="h-3.5 w-3.5" /> {totalUsuarios} usuário(s) cadastrado(s) no acesso corporativo.
-        </p>
-      )}
+      <button type="button" onClick={() => setSecao('dados')} className="inline-flex min-h-10 w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 hover:border-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
+        <HardDrive className="h-4 w-4" aria-hidden="true" /> Ver os dados por coleção
+      </button>
       </>)}
-    </div>
+    </TelaCheia>
   );
 }
