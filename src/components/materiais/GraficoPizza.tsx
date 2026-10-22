@@ -104,12 +104,12 @@ export default function GraficoPizza({ id, titulo, subtitulo, pizza, formatar, f
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{titulo}, todas as partes</caption>
             <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr><th className="p-2 pl-3">Nome</th><th className="p-2 text-right">%</th><th className="p-2 pr-3 text-right">Total</th></tr>
+              <tr><th scope="col" className="p-2 pl-3">Nome</th><th scope="col" className="p-2 text-right">%</th><th scope="col" className="p-2 pr-3 text-right">Total</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {pizza.todas.map(item => (
                 <tr key={item.chave}>
-                  <td className="p-2 pl-3 text-slate-800">{item.nome}</td>
+                  <th scope="row" className="p-2 pl-3 font-normal text-slate-800">{item.nome}</th>
                   <td className="p-2 text-right font-bold tabular-nums text-slate-900">{item.percentual < 1 && item.valor > 0 ? '<1' : item.percentual}%</td>
                   <td className="whitespace-nowrap p-2 pr-3 text-right tabular-nums text-slate-600">{formatar(item.valor)}</td>
                 </tr>
