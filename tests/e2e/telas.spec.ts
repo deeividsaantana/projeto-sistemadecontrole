@@ -189,13 +189,16 @@ test('manutenção apresenta central operacional e fluxo das OS', async ({ page 
   await page.goto('/?screen=manutencao');
 
   await expect(page.getByRole('heading', { name: 'Manutenção', level: 1 })).toBeVisible();
+  // As ordens abrem primeiro; a fila de oficina é a aba ao lado.
+  await expect(page.getByText(/\d+ ordens? de serviço/)).toBeVisible();
+  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
   await expect(page.getByRole('heading', { name: 'Fila de oficina', level: 2 })).toBeVisible();
   await expect(page.getByText('OS em curso, ordenadas pelo tempo parado do equipamento')).toBeVisible();
-  await expect(page.getByText(/\d+ ordens? de serviço/)).toBeVisible();
 });
 
 test('manutenção identifica a categoria do equipamento', async ({ page }) => {
   await page.goto('/?screen=manutencao');
+  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
 
   await expect(page.locator('[aria-label="Caminhão basculante"]').first()).toBeVisible();
 });
@@ -324,6 +327,7 @@ test('manutenção abre OS por N, foca equipamento e valida salvar por CTRL+ENTE
 
 test('manutenção apresenta uma fila operacional acionável sem cards duplicados', async ({ page }) => {
   await page.goto('/?screen=manutencao');
+  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
 
   const queue = page.getByRole('region', { name: 'Fila operacional de manutenção' });
   await expect(queue).toBeVisible();
