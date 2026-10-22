@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { CalendarDays, FileSpreadsheet, ListOrdered, MapPinned, Printer, type LucideIcon } from 'lucide-react';
 import type { CravacaoEstaca } from '../../types';
 import {
@@ -11,7 +12,7 @@ import {
   paraCsv,
 } from '../../modules/estacas/avancoEstacas';
 import { formatarData, numero } from '../../utils/formato';
-import { CountUp } from '../../shared/ui';
+import { CountUp, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
 import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '../cadastros/estilos';
 
@@ -72,6 +73,41 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
       ];
   const vazio = tabela.length <= 1;
 
+  type Linha = { id: string; celulas: (string | number)[] };
+  const linhas = useMemo<Linha[]>(() => tabela.slice(1).map((celulas, indice) => ({ id: `${relatorio}-${indice}`, celulas })), [tabela, relatorio]);
+  const colunas = useMemo<ColunaTabela<Linha>[]>(() => tabela[0].map((titulo, indice) => {
+    const numerica = indice > 0 && typeof tabela[1]?.[indice] === 'number';
+    return {
+      chave: `c${indice}`,
+      titulo: String(titulo),
+      alinhamento: numerica ? 'direita' as const : undefined,
+      larguraMinima: indice === 0 ? 110 : undefined,
+      render: (linha: Linha) => {
+        const celula = linha.celulas[indice];
+        const texto = typeof celula === 'number' ? numero(celula, 2) : celula;
+        return indice === 0 ? <span className="font-semibold text-slate-900">{texto}</span> : texto;
+      },
+      dica: (linha: Linha) => String(linha.celulas[indice] ?? ''),
+      valorOrdenacao: (linha: Linha) => linha.celulas[indice],
+    };
+  }), [tabela]);
+
+  // A tela mostra 50 linhas por página; no papel sai o relatório inteiro.
+  // A tabela de impressão só existe enquanto imprime (menos peso na tela).
+  const [imprimindo, setImprimindo] = useState(false);
+  useEffect(() => {
+    const antes = () => flushSync(() => setImprimindo(true));
+    const depois = () => setImprimindo(false);
+    window.addEventListener('beforeprint', antes);
+    window.addEventListener('afterprint', depois);
+    return () => { window.removeEventListener('beforeprint', antes); window.removeEventListener('afterprint', depois); };
+  }, []);
+  const imprimir = () => {
+    flushSync(() => setImprimindo(true));
+    window.print();
+    setImprimindo(false);
+  };
+
   const baixar = () => {
     const nome = RELATORIOS.find(item => item.id === relatorio)?.nome.toLocaleLowerCase('pt-BR').replace(/\s+/g, '-') ?? 'relatorio';
     const url = URL.createObjectURL(new Blob([paraCsv(tabela)], { type: 'text/csv;charset=utf-8' }));
@@ -118,15 +154,15 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
 
       <section data-estacas-reveal className={`${CARTAO} p-4`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div role="tablist" aria-label="Relatório" className="estacas-nao-imprime flex gap-2 overflow-x-auto pb-1">
+          <div role="group" aria-label="Tipo de relatório" className="estacas-nao-imprime flex gap-2 overflow-x-auto pb-1">
             {RELATORIOS.map(({ id, nome, Icone }) => (
-              <button key={id} type="button" role="tab" aria-selected={relatorio === id} onClick={() => setRelatorio(id)} className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition duration-200 ${FOCO} ${relatorio === id ? 'border-[#176b4d] bg-[#176b4d] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}>
+              <button key={id} type="button" aria-pressed={relatorio === id} onClick={() => setRelatorio(id)} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition duration-200 ${FOCO} ${relatorio === id ? 'border-[#176b4d] bg-[#176b4d] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}>
                 <Icone className="size-4" aria-hidden="true" /> {nome}
               </button>
             ))}
           </div>
           <div className="estacas-nao-imprime flex flex-wrap gap-2">
-            <button type="button" onClick={() => window.print()} disabled={vazio} className={BOTAO_SECUNDARIO}><Printer className="size-5" aria-hidden="true" /> Imprimir</button>
+            <button type="button" onClick={imprimir} disabled={vazio} className={BOTAO_SECUNDARIO}><Printer className="size-5" aria-hidden="true" /> Imprimir</button>
             <button type="button" onClick={baixar} disabled={vazio} className={BOTAO_PRIMARIO}><FileSpreadsheet className="size-5" aria-hidden="true" /> Baixar planilha</button>
           </div>
         </div>
@@ -139,23 +175,35 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
         {vazio ? (
           <p className="mt-4 rounded-xl bg-[#f7f8f6] p-6 text-center text-sm font-semibold text-slate-500">Nenhuma estaca cravada neste período.</p>
         ) : (
-          <div ref={lista} className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead className="bg-[#f7f8f6] text-xs font-bold uppercase tracking-wide text-[#5b6870]">
-                <tr>{tabela[0].map((titulo, indice) => <th key={String(titulo)} className={`px-3 py-3 ${indice > 0 && typeof tabela[1]?.[indice] === 'number' ? 'text-right' : ''}`}>{titulo}</th>)}</tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {tabela.slice(1).map((linha, indiceLinha) => (
-                  <tr key={indiceLinha} data-linha-lista>
-                    {linha.map((celula, indice) => (
-                      <td key={indice} className={`px-3 py-2 ${typeof celula === 'number' ? 'text-right tabular-nums' : ''} ${indice === 0 ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
-                        {typeof celula === 'number' ? numero(celula, 2) : celula}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div ref={lista} className="mt-3">
+            <div className="estacas-nao-imprime">
+              <TabelaPadrao
+                key={relatorio}
+                titulo={`Relatório ${RELATORIOS.find(item => item.id === relatorio)?.nome.toLocaleLowerCase('pt-BR')}`}
+                linhas={linhas}
+                colunas={colunas}
+                idDaLinha={linha => linha.id}
+                nomeDoItem={relatorio === 'frente' ? { um: 'frente', varios: 'frentes' } : relatorio === 'dia' ? { um: 'dia', varios: 'dias' } : { um: 'estaca', varios: 'estacas' }}
+                testId="estacas-relatorio"
+              />
+            </div>
+            {imprimindo && (
+              <table className="hidden w-full text-left text-sm print:table">
+                <caption className="mb-2 text-left font-bold">Estacas: {RELATORIOS.find(item => item.id === relatorio)?.nome}</caption>
+                <thead>
+                  <tr>{tabela[0].map((titulo, indice) => <th key={String(titulo)} scope="col" className={`border-b px-2 py-1 ${indice > 0 && typeof tabela[1]?.[indice] === 'number' ? 'text-right' : ''}`}>{titulo}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {tabela.slice(1).map((linha, indiceLinha) => (
+                    <tr key={indiceLinha}>
+                      {linha.map((celula, indice) => (
+                        <td key={indice} className={`border-b px-2 py-1 ${typeof celula === 'number' ? 'text-right tabular-nums' : ''}`}>{typeof celula === 'number' ? numero(celula, 2) : celula}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </section>
