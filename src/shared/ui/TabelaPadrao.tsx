@@ -40,12 +40,25 @@
  *     acoes={a => <button type="button" onClick={() => excluir(a)}>Excluir</button>}
  *   />
  *
- * Ordenação e página podem vir de fora (`ordenacao` + `onOrdenar`,
- * `pagina` + `onPagina`) quando a tela já guarda esse estado; aí a tabela
- * só desenha o que recebe, sem ordenar de novo.
+ * Ordenação, página e quantos por página podem vir de fora (`ordenacao` +
+ * `onOrdenar`, `pagina` + `onPagina`, `porPagina` + `onPorPagina`) quando a
+ * tela já guarda esse estado; aí a tabela só desenha o que recebe, sem
+ * ordenar de novo. Com ordenação e página controladas, quem controla decide
+ * para que página ir depois de ordenar.
+ *
+ * Para listas grandes no modelo de planilha (Combustível › Lançamentos):
+ * - `grupos`: faixas de grupo com subtotal que abrem e fecham (cada grupo é
+ *   um <tbody> com um <th scope="rowgroup">). As linhas de um grupo chegam
+ *   juntas, já na ordem que a tela quer;
+ * - `densa`: muitas colunas num notebook de 1366 px. O título do cabeçalho
+ *   quebra em até 2 linhas e a célula tem respiro menor;
+ * - `rodapeInicio` e `resumo`: o rodapé leva também os atalhos de período
+ *   (ex.: meses) e os totais da tela, numa barra só;
+ * - `refArea`: a área que rola, para a tela levar a lista ao fim;
+ * - escolher colunas é só passar menos colunas: a tela guarda a escolha.
  */
-import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown } from 'lucide-react';
+import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode, type Ref } from 'react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown } from 'lucide-react';
 import { useTelaLarga } from '../hooks/useTelaLarga';
 import { cn } from './styles';
 
@@ -80,6 +93,17 @@ export interface SelecaoTabela<T> {
   rotulo?: (linha: T) => string;
 }
 
+export interface GruposTabela<T> {
+  /** Grupo de cada linha. As linhas de um grupo chegam juntas na lista. */
+  chaveDe: (linha: T) => string;
+  /** Conteúdo da faixa do grupo (nome, quantos, subtotal). */
+  cabecalho: (chave: string, linhasNaPagina: readonly T[]) => ReactNode;
+  /** Grupos fechados: só a faixa aparece. */
+  fechados?: ReadonlySet<string>;
+  /** Com ele a faixa vira botão de abrir e fechar o grupo. */
+  onAlternar?: (chave: string) => void;
+}
+
 export interface TabelaPadraoProps<T> {
   /** Nome da tabela para leitor de tela (vira <caption>). Obrigatório. */
   titulo: string;
@@ -106,8 +130,23 @@ export interface TabelaPadraoProps<T> {
   porPaginaInicial?: PorPagina;
   pagina?: number;
   onPagina?: (pagina: number) => void;
+  /** Quantos por página vindo de fora (a tela guarda a escolha da pessoa). */
+  porPagina?: number;
+  onPorPagina?: (porPagina: number) => void;
   /** Sem rodapé de páginas: para listas curtas e fechadas (ex.: matriz de permissões). */
   semPaginacao?: boolean;
+  /** Faixas de grupo com subtotal (ver o comentário do topo). */
+  grupos?: GruposTabela<T>;
+  /** Muitas colunas: cabeçalho em até 2 linhas e respiro menor nas células. */
+  densa?: boolean;
+  /** Começo do rodapé (ex.: meses). Com ele o rodapé aparece mesmo sem linhas. */
+  rodapeInicio?: ReactNode;
+  /** Texto depois do total no rodapé (ex.: litros, máquinas, a conferir). */
+  resumo?: ReactNode;
+  /** A área que rola (tabela ou cartões). */
+  refArea?: Ref<HTMLDivElement>;
+  /** data-testid de cada linha (tr no computador, li no celular). */
+  testIdLinha?: string;
   className?: string;
   testId?: string;
 }
@@ -163,6 +202,18 @@ export const paginarLinhas = <T,>(linhas: readonly T[], pagina: number, porPagin
   return { visiveis: linhas.slice(inicio, inicio + tamanho), pagina: atual, totalPaginas, inicio, total: linhas.length };
 };
 
+/** Junta as linhas da página em grupos seguidos, na ordem em que chegam. */
+export const gruposDaPagina = <T,>(linhas: readonly T[], chaveDe: (linha: T) => string) => {
+  const grupos: Array<{ chave: string; linhas: T[]; inicio: number }> = [];
+  linhas.forEach((linha, indice) => {
+    const chave = chaveDe(linha);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.chave === chave) ultimo.linhas.push(linha);
+    else grupos.push({ chave, linhas: [linha], inicio: indice });
+  });
+  return grupos;
+};
+
 /** Campos do cartão do celular: os mesmos da tabela, na mesma ordem. */
 export const colunasDoCartao = <T,>(colunas: readonly ColunaTabela<T>[]) => colunas.filter(coluna => coluna.noCartao !== false);
 
@@ -210,14 +261,25 @@ export function TabelaPadrao<T>({
   porPaginaInicial = POR_PAGINA_PADRAO,
   pagina: paginaExterna,
   onPagina,
+  porPagina: porPaginaExterno,
+  onPorPagina,
   semPaginacao = false,
+  grupos,
+  densa = false,
+  rodapeInicio,
+  resumo,
+  refArea,
+  testIdLinha,
   className,
   testId,
 }: TabelaPadraoProps<T>) {
   const telaLarga = useTelaLarga();
   const [ordenacaoInterna, setOrdenacaoInterna] = useState<Ordenacao | null>(ordenacaoInicial ?? null);
   const [paginaInterna, setPaginaInterna] = useState(1);
-  const [porPagina, setPorPagina] = useState<number>(porPaginaInicial);
+  const [porPaginaInterno, setPorPaginaInterno] = useState<number>(porPaginaInicial);
+  const porPaginaControlado = porPaginaExterno !== undefined && Boolean(onPorPagina);
+  const porPagina = porPaginaControlado ? porPaginaExterno! : porPaginaInterno;
+  const mudarPorPagina = (valor: number) => (porPaginaControlado ? onPorPagina!(valor) : setPorPaginaInterno(valor));
 
   const ordenacaoControlada = ordenacaoExterna !== undefined && Boolean(onOrdenar);
   const ordenacao = ordenacaoControlada ? ordenacaoExterna : ordenacaoInterna;
@@ -240,7 +302,7 @@ export function TabelaPadrao<T>({
   const ordenar = (chave: string) => {
     if (ordenacaoControlada) onOrdenar!(chave);
     else setOrdenacaoInterna(atual => proximaOrdenacao(atual, chave));
-    irPara(1);
+    if (!(ordenacaoControlada && paginaControlada)) irPara(1);
   };
 
   const idsVisiveis = visiveis.map(idDaLinha);
@@ -259,6 +321,7 @@ export function TabelaPadrao<T>({
   };
   const propsDaLinha = (linha: T, indice: number) => ({
     ...(indice < LINHAS_ANIMADAS ? { 'data-linha-lista': true } : {}),
+    ...(testIdLinha ? { 'data-testid': testIdLinha } : {}),
     ...(onAbrirLinha ? { tabIndex: 0, onClick: abrirComClique(linha), onKeyDown: abrirComTeclado(linha) } : {}),
   });
   const destaque = (linha: T, id: string) => cn(
@@ -293,6 +356,22 @@ export function TabelaPadrao<T>({
     return <div className="line-clamp-2 break-words" title={dica || undefined}>{conteudo ?? '—'}</div>;
   };
 
+  const colunasNaTabela = colunas.length + (selecao ? 1 : 0) + (acoes ? 1 : 0);
+  // Sem grupos, um bloco só; com grupos, um bloco por grupo seguido na página.
+  const blocos: Array<{ chave?: string; linhas: T[]; inicio: number; aberto: boolean }> = grupos
+    ? gruposDaPagina(visiveis, grupos.chaveDe).map(grupo => ({ ...grupo, aberto: !grupos.fechados?.has(grupo.chave) }))
+    : [{ linhas: [...visiveis], inicio: 0, aberto: true }];
+  const faixaDoGrupo = (chave: string, linhasDoGrupo: readonly T[]) => {
+    const fechado = Boolean(grupos?.fechados?.has(chave));
+    const miolo = grupos?.cabecalho(chave, linhasDoGrupo);
+    return grupos?.onAlternar ? (
+      <button type="button" aria-expanded={!fechado} onClick={() => grupos.onAlternar?.(chave)} className={cn('flex min-h-10 w-full items-center gap-2 px-3 text-left', FOCO, 'focus-visible:-outline-offset-2')}>
+        <ChevronDown className={cn('size-4 shrink-0 text-[#176b4d] transition-transform', fechado && '-rotate-90')} aria-hidden="true" />
+        {miolo}
+      </button>
+    ) : <div className="flex min-h-10 items-center gap-2 px-3">{miolo}</div>;
+  };
+
   const tabela = (
     <table className="w-full border-separate border-spacing-0 text-left text-[13px] text-slate-800">
       <caption className="sr-only">{titulo}</caption>
@@ -311,9 +390,10 @@ export function TabelaPadrao<T>({
                 key={coluna.chave}
                 scope="col"
                 aria-sort={coluna.valorOrdenacao ? (ativa ? (ordenacao!.direcao === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
-                style={coluna.larguraMinima ? { minWidth: coluna.larguraMinima } : undefined}
+                style={{ ...(coluna.larguraMinima ? { minWidth: coluna.larguraMinima } : {}), ...(densa ? { whiteSpace: 'normal' as const } : {}) }}
                 className={cn(
-                  'sticky top-0 z-[1] h-9 whitespace-nowrap border-b border-slate-200 bg-[#f3f6f4] px-3 text-xs font-bold uppercase tracking-wide text-[#53635c]',
+                  'sticky top-0 z-[1] h-9 border-b border-slate-200 bg-[#f3f6f4] text-xs font-bold uppercase tracking-wide text-[#53635c]',
+                  densa ? 'px-2 leading-tight' : 'whitespace-nowrap px-3',
                   ALINHAMENTO[coluna.alinhamento ?? 'esquerda'],
                 )}
               >
@@ -321,7 +401,7 @@ export function TabelaPadrao<T>({
                   <button
                     type="button"
                     onClick={() => ordenar(coluna.chave)}
-                    className={cn('-mx-1 inline-flex min-h-8 items-center gap-1 rounded px-1 uppercase hover:text-slate-900', coluna.alinhamento === 'direita' && 'flex-row-reverse', FOCO)}
+                    className={cn('-mx-1 inline-flex min-h-8 items-center gap-1 rounded px-1 uppercase hover:text-slate-900', densa && 'text-left', coluna.alinhamento === 'direita' && 'flex-row-reverse text-right', FOCO)}
                   >
                     {coluna.titulo}
                     <Seta className={cn('size-3.5', ativa ? 'text-[#176b4d]' : 'text-slate-400')} aria-hidden="true" />
@@ -337,76 +417,89 @@ export function TabelaPadrao<T>({
           )}
         </tr>
       </thead>
-      <tbody>
-        {visiveis.map((linha, indice) => {
-          const id = idsVisiveis[indice];
-          return (
-            <tr
-              key={id}
-              {...propsDaLinha(linha, indice)}
-              className={cn(
-                'h-10 bg-white transition-colors hover:bg-[#f0f4f1]',
-                onAbrirLinha && `cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176b4d]`,
-                destaque(linha, id),
-              )}
-            >
-              {selecao && (
-                <td className="border-b border-slate-100 p-0">
-                  <label className="flex min-h-10 cursor-pointer items-center justify-center">{caixaDaLinha(linha, id)}</label>
-                </td>
-              )}
-              {colunas.map(coluna => (
-                <td key={coluna.chave} className={cn('border-b border-slate-100 px-3 py-1.5 align-middle leading-snug', ALINHAMENTO[coluna.alinhamento ?? 'esquerda'])}>
-                  {celula(coluna, linha)}
-                </td>
-              ))}
-              {acoes && (
-                <td className="border-b border-slate-100 px-3 py-1 text-right align-middle">
-                  <div className="flex justify-end gap-1.5 whitespace-nowrap">{acoes(linha)}</div>
-                </td>
-              )}
+      {blocos.map(bloco => (
+        <tbody key={bloco.chave ?? ''}>
+          {bloco.chave !== undefined && (
+            <tr>
+              <th scope="rowgroup" colSpan={colunasNaTabela} className="sticky top-9 z-[1] border-b border-slate-200 bg-emerald-50 p-0 text-left text-sm font-normal normal-case tracking-normal text-slate-800">
+                {faixaDoGrupo(bloco.chave, bloco.linhas)}
+              </th>
             </tr>
-          );
-        })}
-      </tbody>
+          )}
+          {bloco.aberto && bloco.linhas.map((linha, posicao) => {
+            const indice = bloco.inicio + posicao;
+            const id = idsVisiveis[indice];
+            return (
+              <tr
+                key={id}
+                {...propsDaLinha(linha, indice)}
+                className={cn(
+                  'h-10 bg-white transition-colors hover:bg-[#f0f4f1]',
+                  onAbrirLinha && `cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176b4d]`,
+                  destaque(linha, id),
+                )}
+              >
+                {selecao && (
+                  <td className="border-b border-slate-100 p-0">
+                    <label className="flex min-h-10 cursor-pointer items-center justify-center">{caixaDaLinha(linha, id)}</label>
+                  </td>
+                )}
+                {colunas.map(coluna => (
+                  <td key={coluna.chave} className={cn('border-b border-slate-100 py-1.5 align-middle leading-snug', densa ? 'px-2' : 'px-3', ALINHAMENTO[coluna.alinhamento ?? 'esquerda'])}>
+                    {celula(coluna, linha)}
+                  </td>
+                ))}
+                {acoes && (
+                  <td className="border-b border-slate-100 px-3 py-1 text-right align-middle">
+                    <div className="flex justify-end gap-1.5 whitespace-nowrap">{acoes(linha)}</div>
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      ))}
     </table>
   );
 
-  const camposCartao = colunasDoCartao(colunas);
+  const [principal, ...resto] = colunasDoCartao(colunas);
+  const cartao = (linha: T, indice: number) => {
+    const id = idsVisiveis[indice];
+    return (
+      <li
+        key={id}
+        {...propsDaLinha(linha, indice)}
+        className={cn('flex items-start gap-1 bg-white', onAbrirLinha && `cursor-pointer active:bg-emerald-50 ${FOCO} focus-visible:-outline-offset-2`, destaque(linha, id))}
+      >
+        {selecao && <label className="flex min-h-14 w-12 shrink-0 cursor-pointer items-center justify-center">{caixaDaLinha(linha, id)}</label>}
+        <div className={cn('min-w-0 flex-1 py-3 pr-4', !selecao && 'pl-4')}>
+          {principal && <div className="text-base font-semibold leading-snug text-slate-900 [overflow-wrap:anywhere]">{principal.render(linha) ?? '—'}</div>}
+          {resto.length > 0 && (
+            <dl className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1.5">
+              {resto.map(coluna => (
+                <div key={coluna.chave} className="min-w-0">
+                  <dt className="text-xs font-semibold text-slate-500">{coluna.titulo}</dt>
+                  <dd className={cn('text-sm text-slate-800 [overflow-wrap:anywhere]', coluna.alinhamento === 'direita' && 'tabular-nums')}>{coluna.render(linha) ?? '—'}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {acoes && <div className="mt-2.5 flex flex-wrap gap-2">{acoes(linha)}</div>}
+        </div>
+      </li>
+    );
+  };
   const cartoes = (
     <ul className="divide-y divide-slate-100" aria-label={titulo}>
-      {visiveis.map((linha, indice) => {
-        const id = idsVisiveis[indice];
-        const [principal, ...resto] = camposCartao;
-        return (
-          <li
-            key={id}
-            {...propsDaLinha(linha, indice)}
-            className={cn('flex items-start gap-1 bg-white', onAbrirLinha && `cursor-pointer active:bg-emerald-50 ${FOCO} focus-visible:-outline-offset-2`, destaque(linha, id))}
-          >
-            {selecao && <label className="flex min-h-14 w-12 shrink-0 cursor-pointer items-center justify-center">{caixaDaLinha(linha, id)}</label>}
-            <div className={cn('min-w-0 flex-1 py-3 pr-4', !selecao && 'pl-4')}>
-              {principal && <div className="text-base font-semibold leading-snug text-slate-900 [overflow-wrap:anywhere]">{principal.render(linha) ?? '—'}</div>}
-              {resto.length > 0 && (
-                <dl className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  {resto.map(coluna => (
-                    <div key={coluna.chave} className="min-w-0">
-                      <dt className="text-xs font-semibold text-slate-500">{coluna.titulo}</dt>
-                      <dd className={cn('text-sm text-slate-800 [overflow-wrap:anywhere]', coluna.alinhamento === 'direita' && 'tabular-nums')}>{coluna.render(linha) ?? '—'}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {acoes && <div className="mt-2.5 flex flex-wrap gap-2">{acoes(linha)}</div>}
-            </div>
-          </li>
-        );
-      })}
+      {blocos.flatMap(bloco => [
+        ...(bloco.chave !== undefined ? [<li key={`grupo-${bloco.chave}`} className="bg-emerald-50 text-sm text-slate-800">{faixaDoGrupo(bloco.chave, bloco.linhas)}</li>] : []),
+        ...(bloco.aberto ? bloco.linhas.map((linha, posicao) => cartao(linha, bloco.inicio + posicao)) : []),
+      ])}
     </ul>
   );
 
   const temLinhas = !carregando && linhas.length > 0;
-  const mostrarRodape = temLinhas && !semPaginacao;
+  const mostrarRodape = !semPaginacao && (temLinhas || Boolean(rodapeInicio));
 
   return (
     <div className={cn('flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white', className)} data-testid={testId}>
@@ -418,6 +511,7 @@ export function TabelaPadrao<T>({
           : vazio
       ) : telaLarga ? (
         <div
+          ref={refArea}
           role="region"
           aria-label={titulo}
           tabIndex={0}
@@ -426,7 +520,7 @@ export function TabelaPadrao<T>({
           {tabela}
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto">{cartoes}</div>
+        <div ref={refArea} className="min-h-0 flex-1 overflow-auto">{cartoes}</div>
       )}
 
       {temLinhas && semPaginacao && (
@@ -434,10 +528,14 @@ export function TabelaPadrao<T>({
       )}
       {mostrarRodape && (
         <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 bg-[#f3f6f4] px-3 py-2 text-[13px] text-slate-700">
-          <p className="font-semibold tabular-nums" aria-live="polite">
-            {fatia.totalPaginas === 1
-              ? contagem(fatia.total, nomeDoItem)
-              : `${(fatia.inicio + 1).toLocaleString('pt-BR')} a ${(fatia.inicio + visiveis.length).toLocaleString('pt-BR')} de ${contagem(fatia.total, nomeDoItem)}`}
+          {rodapeInicio && <div className="min-w-0 flex-1 basis-72">{rodapeInicio}</div>}
+          <p className="font-semibold tabular-nums">
+            <span aria-live="polite">
+              {fatia.totalPaginas === 1
+                ? contagem(fatia.total, nomeDoItem)
+                : `${(fatia.inicio + 1).toLocaleString('pt-BR')} a ${(fatia.inicio + visiveis.length).toLocaleString('pt-BR')} de ${contagem(fatia.total, nomeDoItem)}`}
+            </span>
+            {resumo}
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {fatia.total > OPCOES_POR_PAGINA[0] && (
@@ -445,7 +543,7 @@ export function TabelaPadrao<T>({
                 Mostrar
                 <select
                   value={porPagina}
-                  onChange={evento => { setPorPagina(Number(evento.target.value)); irPara(1); }}
+                  onChange={evento => { mudarPorPagina(Number(evento.target.value)); irPara(1); }}
                   className={`min-h-11 rounded-lg border border-slate-300 bg-white px-2 text-[13px] text-slate-800 md:min-h-8 ${FOCO}`}
                 >
                   {OPCOES_POR_PAGINA.map(opcao => <option key={opcao} value={opcao}>{opcao}</option>)}
