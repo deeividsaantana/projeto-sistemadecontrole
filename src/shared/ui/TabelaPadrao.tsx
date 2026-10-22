@@ -180,7 +180,11 @@ const ALINHAMENTO = { esquerda: 'text-left', direita: 'text-right tabular-nums',
 const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 /** 24 px também no computador: é o mínimo de alvo de toque e clique (M4). */
 const CAIXA = 'size-6 cursor-pointer rounded border-slate-300 accent-[#176b4d]';
-const BOTAO_PAGINA = `grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-200 bg-white px-2 text-[13px] font-bold text-slate-700 transition-colors hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 md:min-h-8 md:min-w-8 ${FOCO}`;
+// Cor e borda ficam fora da base: duas classes de fundo na mesma tag brigam e
+// a página atual saía branca sobre branco.
+const BOTAO_PAGINA_BASE = `grid min-h-11 min-w-11 place-items-center rounded-lg border px-2 text-[13px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 md:min-h-8 md:min-w-8 ${FOCO}`;
+const BOTAO_PAGINA = `${BOTAO_PAGINA_BASE} border-slate-200 bg-white text-slate-700 hover:border-emerald-500`;
+const BOTAO_PAGINA_ATUAL = `${BOTAO_PAGINA_BASE} border-[#176b4d] bg-[#176b4d] text-white`;
 
 /** Clique que nasceu num botão, link ou campo dentro da linha não abre a linha. */
 const veioDeControle = (evento: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
@@ -465,7 +469,7 @@ export function TabelaPadrao<T>({
                     onClick={() => irPara(numero)}
                     aria-current={numero === fatia.pagina ? 'page' : undefined}
                     aria-label={`Página ${numero}`}
-                    className={cn(BOTAO_PAGINA, 'tabular-nums', numero === fatia.pagina ? 'border-[#176b4d] bg-[#176b4d] text-white hover:border-[#176b4d]' : 'max-sm:hidden')}
+                    className={cn(numero === fatia.pagina ? BOTAO_PAGINA_ATUAL : cn(BOTAO_PAGINA, 'max-sm:hidden'), 'tabular-nums')}
                   >
                     {numero}
                   </button>
