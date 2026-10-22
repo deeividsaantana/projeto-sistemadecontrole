@@ -214,4 +214,5 @@ import './repetidosDiesel.test';
 import './relatorioDiesel.test';
 import './edicoesLocais.test';
 import './moldeTelaCheia.test';
+import './cadastrosEstacasMolde.test';
 import './guardaDeMovimento.test';
