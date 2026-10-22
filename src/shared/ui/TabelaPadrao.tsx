@@ -562,7 +562,7 @@ export function TabelaPadrao<T>({
                     onClick={() => irPara(numero)}
                     aria-current={numero === fatia.pagina ? 'page' : undefined}
                     aria-label={`Página ${numero}`}
-                    className={cn(BOTAO_PAGINA, 'tabular-nums', numero === fatia.pagina ? 'border-[#176b4d] bg-[#176b4d] text-white hover:border-[#176b4d]' : 'max-sm:hidden')}
+                    className={cn(BOTAO_PAGINA, 'tabular-nums', numero === fatia.pagina ? 'border-[#176b4d] bg-[#176b4d]! text-white! hover:border-[#176b4d]' : 'max-sm:hidden')}
                   >
                     {numero}
                   </button>
