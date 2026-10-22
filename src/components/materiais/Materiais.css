@@ -36,11 +36,3 @@
   .materiais-vivo,
   .materiais-vivo:hover { transform: none; transition: none; }
 }
-
-/* Menu do computador: fica parado ao rolar e rola sozinho se não couber. */
-.materiais-menu {
-  max-height: calc(100dvh - 2rem);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
