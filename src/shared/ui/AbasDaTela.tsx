@@ -161,7 +161,7 @@ function LinhaDeAbas({ botoes, rotulo, testId, secundaria = false }: { botoes: B
             </> : <span>{botao.rotulo}</span>}
             {botao.contador > 0 && <>
               <span aria-hidden="true" className={cn('min-w-5 rounded-full px-1.5 text-center text-xs font-bold leading-5 tabular-nums', botao.tom === 'neutro'
-                ? (botao.selecionada ? (secundaria ? 'bg-emerald-50 text-[#176b4d]' : 'bg-white/20 text-white') : 'bg-slate-100 text-slate-700')
+                ? (botao.selecionada ? (secundaria ? 'bg-emerald-50 text-[#176b4d]' : 'bg-white text-[#176b4d]') : 'bg-slate-100 text-slate-700')
                 : (botao.selecionada && !secundaria ? 'bg-white text-[#176b4d]' : 'bg-[#c2410c] text-white'))}>{botao.contador.toLocaleString('pt-BR')}</span>
               <span className="sr-only">, {botao.contador} {botao.contadorRotulo ?? ''}</span>
             </>}
