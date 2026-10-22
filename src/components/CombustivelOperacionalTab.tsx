@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { BarChart3, CheckCircle2, Droplets, History, Plus, Undo2 } from 'lucide-react';
+import { BarChart3, CheckCircle2, Droplets, Gauge, History, Plus, Undo2 } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../types';
 import type { FuelImportedMasterData } from '../utils/fuelMasterDataImport';
 import { ConfirmDialog, isoDay } from '../shared/ui';
@@ -21,7 +21,7 @@ import { TelaCheia } from '../shared/ui/TelaCheia';
 import { BOTAO_SECUNDARIO, FOCO } from './cadastros/estilos';
 import HistoricoCombustivel, { type FiltrosExportacao, type PedidoFiltro } from './combustivel/HistoricoCombustivel';
 import LancamentoCombustivel from './combustivel/LancamentoCombustivel';
-import RelatorioDiesel from './combustivel/RelatorioDiesel';
+import RelatorioDiesel, { type ParteRelatorio } from './combustivel/RelatorioDiesel';
 import TrocarDataLote from './combustivel/TrocarDataLote';
 import { buildFuelReport, type FuelReportExcelRow } from '../modules/frota/fuelReport';
 import { ligarPeloPrefixo } from '../modules/frota/vinculoPrefixo';
@@ -64,6 +64,8 @@ interface Props {
 
 /** Três telas: lançar, ver os lançamentos e os relatórios (com o consumo por máquina dentro). */
 type View = 'novo' | 'historico' | 'relatorios';
+/** As abas do topo: Relatórios se abre em Resumo e Consumo por máquina. */
+type AbaCombustivel = Exclude<View, 'relatorios'> | ParteRelatorio;
 
 const hoje = () => isoDay(new Date());
 const dataCurta = (dia: string) => dia ? new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR') : 'Sem data';
@@ -78,6 +80,8 @@ export default function CombustivelOperacionalTab({
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<View>(listaSomente ? 'historico' : porMaquinaInicial ? 'relatorios' : initialView);
+  /** Subtela de Relatórios: resumo ou consumo por máquina (segunda linha de abas). */
+  const [parteRelatorio, setParteRelatorio] = useState<ParteRelatorio>(porMaquinaInicial ? 'consumo' : 'resumo');
   /** Filtro pedido pelo relatório; a lista aplica quando a chave muda. */
   const [pedidoFiltro, setPedidoFiltro] = useState<PedidoFiltro | undefined>();
   const [trocandoData, setTrocandoData] = useState<Abastecimento[]>([]);
@@ -297,10 +301,18 @@ export default function CombustivelOperacionalTab({
   const vistas = [
     { id: 'novo' as const, rotulo: view === 'novo' && lancamento.emEdicao ? 'Corrigindo' : 'Lançar', icone: Plus, testId: 'combustivel-vista-novo' },
     { id: 'historico' as const, rotulo: 'Lançamentos', icone: History, testId: 'combustivel-vista-historico' },
-    { id: 'relatorios' as const, rotulo: 'Relatórios', icone: BarChart3, testId: 'combustivel-vista-relatorios' },
+    // Relatórios tem duas subtelas: o grupo abre a segunda linha de abas (AbasDaTela).
+    {
+      grupo: 'relatorios', rotulo: 'Relatórios', icone: BarChart3, abas: [
+        { id: 'resumo' as const, rotulo: 'Resumo', icone: BarChart3, testId: 'combustivel-vista-resumo' },
+        { id: 'consumo' as const, rotulo: 'Consumo por máquina', curto: 'Por máquina', icone: Gauge, testId: 'combustivel-vista-consumo' },
+      ],
+    },
   ];
-  const trocarVista = (id: View) => {
+  const abaAtiva: AbaCombustivel = view === 'relatorios' ? parteRelatorio : view;
+  const trocarVista = (id: AbaCombustivel) => {
     if (id === 'novo') { if (view !== 'novo') abrirNovo(); return; }
+    if (id === 'resumo' || id === 'consumo') { setParteRelatorio(id); setView('relatorios'); return; }
     if (id === 'historico') setPedidoFiltro(undefined);
     setView(id);
   };
@@ -312,10 +324,10 @@ export default function CombustivelOperacionalTab({
 
   return (
     <TelaCheia ref={escopo} id="combustivel-tab" testId="combustivel-tab" rotulo="Combustível"
-      idAbaAtiva={listaSomente ? undefined : idDaAba('combustivel', view)} idDados="combustivel-dados" chaveRolagem={view}
+      idAbaAtiva={listaSomente ? undefined : idDaAba('combustivel', abaAtiva)} idDados="combustivel-dados" chaveRolagem={abaAtiva}
       cabecalho={listaSomente ? undefined : <div data-comb-reveal>
         <PageHeader eyebrow="Frota" title="Combustível"
-          abas={<AbasDaTela id="combustivel" rotulo="Área de combustível" abas={vistas} ativa={view} onTrocar={trocarVista} idPainel="combustivel-dados" />}
+          abas={<AbasDaTela id="combustivel" rotulo="Área de combustível" abas={vistas} ativa={abaAtiva} onTrocar={trocarVista} idPainel="combustivel-dados" />}
           actions={<>
             {view === 'historico' && <ul className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex" data-testid="combustivel-numeros">
               {cartoes.map(cartao => <li key={cartao.titulo} title={cartao.detalhe} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 ring-inset ${cartao.alerta ? 'bg-amber-50 text-amber-900 ring-amber-200' : 'bg-white text-slate-600 ring-slate-200'}`}>
@@ -365,7 +377,7 @@ export default function CombustivelOperacionalTab({
           empresas={empresas}
           comboios={comboios}
           combustiveis={combustiveis}
-          parteInicial={porMaquinaInicial ? 'consumo' : 'resumo'}
+          parte={parteRelatorio}
           onAbrirLista={abrirLista}
           onErro={setErro}
           onAviso={setAviso}
