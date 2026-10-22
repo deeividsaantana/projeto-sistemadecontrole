@@ -50,3 +50,18 @@ test('o AbasDaTela é acessível e aguenta subtelas agrupadas', () => {
   assert.match(abas, /export interface GrupoDeAbas/);
   assert.match(abas, /lg:flex-wrap lg:overflow-visible/, 'no computador a linha quebra em vez de rolar para o lado');
 });
+
+// Materiais (fase 2): 14 subtelas em abas agrupadas, sem o menu lateral
+// interno. As janelas de lançamento seguem com o botão de tela cheia delas.
+test('Materiais nasce cheia, com abas agrupadas no topo e sem menu lateral interno', () => {
+  const fonte = ler('src/components/MateriaisTab.tsx');
+  assert.match(fonte, /<TelaCheia[\s\S]*?id="materiais-tab"/);
+  assert.match(fonte, /<AbasDaTela/);
+  assert.doesNotMatch(fonte, /<MateriaisSecoes\b|CHAVE_TELA_CHEIA|Maximize2|<main\b|max-w-\[1[0-9]{3}px\]/);
+  const secoes = ler('src/components/materiais/MateriaisSecoes.tsx');
+  assert.match(secoes, /grupo: grupo\.id/, 'subtelas em grupos');
+  assert.doesNotMatch(secoes, /<nav\b|createPortal/, 'o menu lateral interno não volta');
+  const uso = ler('src/components/MateriaisUtilizacaoPanel.tsx');
+  assert.match(uso, /<AbasDaTela/, 'classes de Uso por ramo em abas, não em chips');
+  assert.doesNotMatch(uso, /aria-pressed/);
+});
