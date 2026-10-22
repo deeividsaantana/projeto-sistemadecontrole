@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, CalendarDays, Factory, FileSpreadsheet, Layers, Minus, Package, Printer, Route, type LucideIcon } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarDays, Factory, FileSpreadsheet, Layers, Minus, Package, Printer, Route } from 'lucide-react';
 import type { EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import {
   SEM_FORNECEDOR,
@@ -22,19 +22,22 @@ import {
 } from '../../modules/materials/relatoriosMateriais';
 import { nomeDoMes, ramosDaObra } from '../../modules/materials/previstoMateriais';
 import { formatarData, moeda, numero } from '../../utils/formato';
-import { CountUp } from '../../shared/ui';
+import { CountUp, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
+import { AbasDaTela, type AbaDaTela } from '../../shared/ui/AbasDaTela';
 import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '../cadastros/estilos';
 
 type Relatorio = 'material' | 'fornecedor' | 'ramo' | 'mes' | 'dia';
 
-const RELATORIOS: ReadonlyArray<{ id: Relatorio; nome: string; Icone: LucideIcon }> = [
-  { id: 'material', nome: 'Por material', Icone: Package },
-  { id: 'fornecedor', nome: 'Por fornecedor', Icone: Factory },
-  { id: 'ramo', nome: 'Por ramo', Icone: Route },
-  { id: 'mes', nome: 'Mês a mês', Icone: Layers },
-  { id: 'dia', nome: 'Dia a dia', Icone: CalendarDays },
+const RELATORIOS: ReadonlyArray<AbaDaTela<Relatorio>> = [
+  { id: 'material', rotulo: 'Por material', curto: 'Material', icone: Package, testId: 'relatorio-material' },
+  { id: 'fornecedor', rotulo: 'Por fornecedor', curto: 'Fornecedor', icone: Factory, testId: 'relatorio-fornecedor' },
+  { id: 'ramo', rotulo: 'Por ramo', curto: 'Ramo', icone: Route, testId: 'relatorio-ramo' },
+  { id: 'mes', rotulo: 'Mês a mês', curto: 'Mês', icone: Layers, testId: 'relatorio-mes' },
+  { id: 'dia', rotulo: 'Dia a dia', curto: 'Dia', icone: CalendarDays, testId: 'relatorio-dia' },
 ];
+
+type LinhaMatriz = NonNullable<ReturnType<typeof mesAMes>>['linhas'][number];
 
 const TIPOS: ReadonlyArray<{ id: TipoMovimentoMaterial | ''; nome: string }> = [
   { id: 'Entrada', nome: 'Chegou' },
@@ -111,7 +114,7 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
   const matriz = useMemo(() => (relatorio === 'mes' ? mesAMes(doPeriodo) : null), [doPeriodo, relatorio]);
   const total = useMemo(() => doPeriodo.reduce(somar, somaVazia()), [doPeriodo]);
 
-  const nomeRelatorio = RELATORIOS.find(item => item.id === relatorio)?.nome ?? '';
+  const nomeRelatorio = RELATORIOS.find(item => item.id === relatorio)?.rotulo ?? '';
   const nomeTipo = TIPOS.find(item => item.id === filtro.tipo)?.nome ?? 'Tudo';
   const material = materiais.find(item => item.id === filtro.materialId);
   const filtrosAtivos = [material?.descricao, filtro.fornecedor, filtro.ramo].filter(Boolean) as string[];
@@ -142,6 +145,43 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
   };
 
   const vazio = doPeriodo.length === 0;
+  const tituloDaPrimeira = relatorio === 'dia' ? 'Dia' : relatorio === 'material' ? 'Material' : relatorio === 'fornecedor' ? 'Fornecedor' : 'Ramo';
+  const colunasLinhas: ColunaTabela<LinhaRelatorio>[] = [
+    {
+      chave: 'nome',
+      titulo: tituloDaPrimeira,
+      larguraMinima: 200,
+      valorOrdenacao: linha => linha.nome,
+      render: linha => <span className="font-semibold text-slate-800">{nomeDaLinha(linha)}{linha.detalhe && <span className="ml-1 text-xs font-normal text-slate-600">({linha.detalhe})</span>}</span>,
+      dica: linha => nomeDaLinha(linha),
+    },
+    { chave: 'lancamentos', titulo: 'Lançamentos', alinhamento: 'direita', valorOrdenacao: linha => linha.lancamentos, render: linha => linha.lancamentos.toLocaleString('pt-BR') },
+    { chave: 'toneladas', titulo: 'Toneladas', alinhamento: 'direita', valorOrdenacao: linha => linha.toneladas, render: linha => (linha.toneladas ? numero(linha.toneladas, 1) : '-') },
+    { chave: 'm3', titulo: 'm³', alinhamento: 'direita', valorOrdenacao: linha => linha.metrosCubicos, render: linha => (linha.metrosCubicos ? numero(linha.metrosCubicos, 1) : '-') },
+    { chave: 'outras', titulo: 'Outras', alinhamento: 'direita', render: linha => outrasEmTexto(linha.outras) || '-' },
+    { chave: 'valor', titulo: 'Valor', alinhamento: 'direita', valorOrdenacao: linha => linha.valor, render: linha => (linha.valor ? moeda(linha.valor) : '-') },
+    { chave: 'parte', titulo: '% do valor', alinhamento: 'direita', valorOrdenacao: linha => linha.valor, render: linha => (total.valor ? `${Math.round((linha.valor / total.valor) * 100)}%` : '-') },
+    ...(relatorio !== 'dia' ? [{ chave: 'ultima', titulo: 'Último', alinhamento: 'direita' as const, valorOrdenacao: (linha: LinhaRelatorio) => linha.ultima || null, render: (linha: LinhaRelatorio) => (linha.ultima ? formatarData(linha.ultima) : '-') }] : []),
+  ];
+  const colunasMatriz: ColunaTabela<LinhaMatriz>[] = matriz ? [
+    {
+      chave: 'nome',
+      titulo: 'Material',
+      larguraMinima: 180,
+      valorOrdenacao: linha => linha.nome,
+      render: linha => <><span className="block font-semibold text-slate-800">{linha.nome}</span><span className="text-xs text-slate-600">{linha.unidade}</span></>,
+      dica: linha => linha.nome,
+    },
+    ...matriz.meses.map((mes): ColunaTabela<LinhaMatriz> => ({ chave: mes, titulo: mesCurto(mes), alinhamento: 'direita', valorOrdenacao: linha => linha.porMes[mes] || 0, render: linha => (linha.porMes[mes] ? numero(linha.porMes[mes], 1) : '-') })),
+    { chave: 'total', titulo: 'Total', alinhamento: 'direita', valorOrdenacao: linha => linha.total, render: linha => <strong className="font-black text-slate-950">{numero(linha.total, 1)}</strong> },
+  ] : [];
+  const resumoDoTotal = [
+    `${total.lancamentos.toLocaleString('pt-BR')} lançamento(s)`,
+    total.toneladas ? `${numero(total.toneladas, 1)} t` : '',
+    total.metrosCubicos ? `${numero(total.metrosCubicos, 1)} m³` : '',
+    outrasEmTexto(total.outras),
+    total.valor ? moeda(total.valor) : '',
+  ].filter(Boolean).join(' · ');
 
   return (
     <div className="space-y-4">
@@ -222,16 +262,8 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
       <p className="-mt-2 px-1 text-xs text-slate-500 print:hidden">Período anterior comparado: {formatarData(anterior.de)} a {formatarData(anterior.ate)}.</p>
 
       <section ref={tabela} id="materiais-relatorio-impressao" data-materiais-reveal aria-labelledby="materiais-relatorio-titulo" className={`${CARTAO} overflow-hidden`}>
-        <div role="tablist" aria-label="Relatórios" className="flex flex-wrap gap-1 border-b border-slate-100 p-2 print:hidden">
-          {RELATORIOS.map(({ id, nome, Icone }) => {
-            const ativo = relatorio === id;
-            return (
-              <button key={id} type="button" role="tab" aria-selected={ativo} data-testid={`relatorio-${id}`} onClick={() => setRelatorio(id)} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-bold transition duration-200 ${FOCO} ${ativo ? 'bg-[#176b4d] text-white' : 'text-slate-700 hover:bg-emerald-50 hover:text-[#176b4d]'}`}>
-                <Icone className="size-4" aria-hidden="true" />
-                {nome}
-              </button>
-            );
-          })}
+        <div className="border-b border-slate-100 p-2 print:hidden">
+          <AbasDaTela<Relatorio> id="relatorios-materiais" rotulo="Relatórios" abas={RELATORIOS} ativa={relatorio} onTrocar={setRelatorio} idPainel="materiais-relatorio-impressao" />
         </div>
 
         <header className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
@@ -254,10 +286,40 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
         </header>
 
         {vazio ? (
-          <p className="px-4 pb-10 pt-6 text-center text-sm text-slate-500">Nada lançado com esse período e esses filtros. Tente "Tudo" ou limpe os filtros.</p>
-        ) : matriz ? (
+          <p className="px-4 pb-10 pt-6 text-center text-sm text-slate-600">Nada lançado com esse período e esses filtros. Tente "Tudo" ou limpe os filtros.</p>
+        ) : (
+          <>
+            {/* Na tela: a tabela padrão (ordena, pagina e vira cartões no celular). */}
+            <div className="border-t border-slate-100 print:hidden">
+              {matriz ? (
+                <TabelaPadrao
+                  key="mes"
+                  titulo={`${nomeRelatorio} · ${nomeTipo}`}
+                  linhas={matriz.linhas}
+                  colunas={colunasMatriz}
+                  idDaLinha={linha => linha.chave}
+                  nomeDoItem={{ um: 'material', varios: 'materiais' }}
+                  className="rounded-none border-0"
+                />
+              ) : (
+                <TabelaPadrao
+                  key={relatorio}
+                  titulo={`${nomeRelatorio} · ${nomeTipo}`}
+                  linhas={linhas}
+                  colunas={colunasLinhas}
+                  idDaLinha={linha => linha.chave}
+                  nomeDoItem={{ um: 'linha', varios: 'linhas' }}
+                  className="rounded-none border-0"
+                />
+              )}
+              <p className="border-t border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold tabular-nums text-slate-900"><span className="font-semibold text-slate-600">Total do período: </span>{resumoDoTotal}</p>
+            </div>
+            {/* Só no papel: a folha inteira, sem páginas, com a linha de total. */}
+            <div className="hidden print:block">
+              {matriz ? (
           <div className="overflow-x-auto border-t border-slate-100">
             <table className="w-full text-left text-sm">
+              <caption className="sr-only">{nomeRelatorio} · {nomeTipo}, {periodoEscrito}</caption>
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th scope="col" className="sticky left-0 z-10 bg-slate-50 p-3">Material</th>
@@ -279,10 +341,10 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
               </tbody>
             </table>
           </div>
-        ) : (
-          <>
-            <div className="hidden overflow-x-auto border-t border-slate-100 sm:block print:block">
+              ) : (
+            <div className="overflow-x-auto border-t border-slate-100">
               <table className="w-full text-left text-sm">
+                <caption className="sr-only">{nomeRelatorio} · {nomeTipo}, {periodoEscrito}</caption>
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th scope="col" className="p-3">{relatorio === 'dia' ? 'Dia' : relatorio === 'material' ? 'Material' : relatorio === 'fornecedor' ? 'Fornecedor' : 'Ramo'}</th>
@@ -335,33 +397,8 @@ export default function RelatoriosMateriais({ hoje, materiais, movimentos, etapa
                 </tfoot>
               </table>
             </div>
-
-            <ul className="divide-y divide-slate-100 border-t border-slate-100 sm:hidden print:hidden">
-              {linhas.map((linha, posicao) => (
-                <li key={linha.chave} data-linha-lista={posicao < 20 ? '' : undefined} className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <strong className="min-w-0 text-base text-slate-900">{nomeDaLinha(linha)}{linha.detalhe ? <span className="ml-1 text-sm font-normal text-slate-500">({linha.detalhe})</span> : null}</strong>
-                    <span className="shrink-0 text-base font-black tabular-nums text-slate-950">{linha.valor ? moeda(linha.valor) : `${linha.lancamentos.toLocaleString('pt-BR')} lanç.`}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {[
-                      `${linha.lancamentos.toLocaleString('pt-BR')} lançamento(s)`,
-                      linha.toneladas ? `${numero(linha.toneladas, 1)} t` : '',
-                      linha.metrosCubicos ? `${numero(linha.metrosCubicos, 1)} m³` : '',
-                      outrasEmTexto(linha.outras),
-                    ].filter(Boolean).join(' · ')}
-                  </p>
-                  {linha.ultima && relatorio !== 'dia' && <p className="text-xs text-slate-500">Último em {formatarData(linha.ultima)}</p>}
-                </li>
-              ))}
-              <li className="bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <strong className="text-base text-slate-950">Total</strong>
-                  <strong className="text-base tabular-nums text-slate-950">{total.valor ? moeda(total.valor) : `${total.lancamentos.toLocaleString('pt-BR')} lanç.`}</strong>
-                </div>
-                <p className="mt-1 text-sm text-slate-600">{[`${total.lancamentos.toLocaleString('pt-BR')} lançamento(s)`, total.toneladas ? `${numero(total.toneladas, 1)} t` : '', total.metrosCubicos ? `${numero(total.metrosCubicos, 1)} m³` : '', outrasEmTexto(total.outras)].filter(Boolean).join(' · ')}</p>
-              </li>
-            </ul>
+              )}
+            </div>
           </>
         )}
       </section>
