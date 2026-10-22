@@ -3,14 +3,18 @@
  * do mês atual (21 a 20), com as mesmas colunas na mesma ordem e do primeiro
  * lançamento para o último, já no fim da lista. Dá para trocar de mês nas
  * abas, ordenar por coluna, escolher colunas, agrupar com subtotal, marcar
- * vários e abrir a ficha ao lado para editar, repetir ou excluir.
+ * vários e abrir a ficha ao lado para editar, repetir ou excluir. A grade é
+ * a TabelaPadrao (cabeçalho com aria-sort, linha que abre com Enter, cartões
+ * no celular); as abas de mês vão no rodapé dela, junto com os totais.
  */
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import {
-  ArrowDown, ArrowUp, CalendarDays, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Columns3, Copy, CopyX, Download, FileSpreadsheet, FileText,
-  Filter, History, Layers, ListChecks, Pencil, Search, Square, Trash2, X,
+  CalendarDays, CheckSquare, Columns3, Copy, CopyX, Download, FileSpreadsheet, FileText,
+  Filter, History, Layers, ListChecks, Pencil, Search, Trash2, X,
 } from 'lucide-react';
+import { OPCOES_POR_PAGINA, TabelaPadrao, paginarLinhas, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
+import { useTelaLarga } from '../../shared/hooks/useTelaLarga';
 import type { Abastecimento, Comboio, Empresa, Equipamento, TipoCombustivel } from '../../types';
 import {
   ABA_TUDO, AGRUPAMENTOS_HISTORICO, COLUNAS_HISTORICO, ORDEM_PADRAO, abaDoDia, abasDoHistorico, agruparHistorico, colunasValidas,
@@ -87,7 +91,7 @@ interface Preferencias {
 
 // v2: as colunas passaram a ser as da planilha; a escolha antiga não vale mais.
 const CHAVE_PREFERENCIAS = 'renea_combustivel_historico_v2';
-const TAMANHOS_PAGINA = [50, 100, 200];
+const TAMANHOS_PAGINA: readonly number[] = OPCOES_POR_PAGINA;
 
 const lerPreferencias = (): Preferencias => {
   const padrao: Preferencias = { colunas: colunasValidas(undefined), agrupamento: 'nenhum', tamanhoPagina: 100 };
@@ -112,21 +116,18 @@ const guardarPreferencias = (preferencias: Preferencias) => {
   }
 };
 
-// Somadas com as colunas da planilha, as larguras mínimas cabem num notebook
-// de 1366 px com o menu aberto (cerca de 1.080 px de tabela) em zoom 100%.
-const LARGURA: Record<ColunaHistorico, string> = {
-  data: '5.4rem', prefixo: '4.2rem', descricao: 'minmax(7rem,1.6fr)', km: '4.4rem', horimetro: '4.4rem', litros: '3.6rem',
-  hora: '3rem', comboio: 'minmax(4rem,0.6fr)', combustivel: 'minmax(5rem,1fr)', empresa: 'minmax(4.5rem,0.8fr)',
-  bombaInicial: '4.6rem', bombaFinal: '4.6rem', responsavel: 'minmax(5rem,0.8fr)', observacao: 'minmax(6rem,1.2fr)',
-};
 const NUMERICAS: ReadonlySet<ColunaHistorico> = new Set(['km', 'horimetro', 'litros', 'bombaInicial', 'bombaFinal']);
+/** No cartão do celular ficam só os campos que a pessoa confere no campo. */
+const FORA_DO_CARTAO: ReadonlySet<ColunaHistorico> = new Set(['combustivel', 'bombaInicial', 'bombaFinal', 'responsavel', 'observacao']);
 
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 const litrosTexto = (valor: number) => `${numeroTexto(valor)} L`;
 const dataCurta = (dia: string) => (dia ? new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR') : 'Sem data');
 const dataLonga = (dia: string) => (dia ? new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }) : 'Sem data');
-const precisaConferir = (item: Abastecimento) => item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || Boolean(item.alertas?.some(alerta => alerta.severidade !== 'info'));
+/** "OUTUBRO 2026" vira "OUT 2026": cabem todos os meses no rodapé de um notebook. */
+const mesCurto = (aba: string) => nomeDoMes(aba).replace(/^(\S{3})\S*/, '$1');
+const precisaConferir =(item: Abastecimento) => item.revisaoStatus === 'Pendente' || item.status === 'Pendente' || Boolean(item.alertas?.some(alerta => alerta.severidade !== 'info'));
 
 export default function HistoricoCombustivel({
   abastecimentos, equipamentos, empresas, comboios, combustiveis, buscaRef, exportando, isParsingSpreadsheet, compacto = false,
@@ -143,8 +144,9 @@ export default function HistoricoCombustivel({
     return { texto: '', aba, ...intervaloDaAba(aba), comboioId: '', equipamentoId: '', empresaId: '', combustivelId: '', soConferir: false, soRepetidos: false };
   });
   const [ordem, setOrdem] = useState<OrdemHistorico>(ORDEM_PADRAO);
-  // Infinity = última página: a lista abre no fim, onde estão os lançamentos mais novos.
+  // Página contada de 1. Infinity = última: a lista abre no fim, onde estão os lançamentos mais novos.
   const [pagina, setPagina] = useState(Number.POSITIVE_INFINITY);
+  const telaLarga = useTelaLarga();
   const listaRef = useRef<HTMLDivElement>(null);
   const abasRef = useRef<HTMLElement>(null);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
@@ -203,16 +205,18 @@ export default function HistoricoCombustivel({
   const maquinas = new Set(filtrados.map(item => item.equipamentoId || item.prefixoInformado).filter(Boolean)).size;
   const conferir = filtrados.filter(precisaConferir).length;
   const repetidosNoFiltro = filtrados.filter(item => repetidos.has(item.id)).length;
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / preferencias.tamanhoPagina));
-  const paginaAtual = Math.min(pagina, totalPaginas - 1);
-  const daPagina = filtrados.slice(paginaAtual * preferencias.tamanhoPagina, (paginaAtual + 1) * preferencias.tamanhoPagina);
-  const grupos = agruparHistorico(daPagina, preferencias.agrupamento, nomes);
-  const totaisGrupo = useMemo(() => new Map(agruparHistorico(filtrados, preferencias.agrupamento, nomes).map(grupo => [grupo.chave, grupo])), [filtrados, nomes, preferencias.agrupamento]);
-  const colunas = COLUNAS_HISTORICO.filter(item => preferencias.colunas.includes(item.id));
-  const gradeColunas = `2rem ${colunas.map(item => LARGURA[item.id]).join(' ')} 1.5rem`;
+  // Agrupado, cada grupo vem inteiro e seguido (na ordem em que aparece primeiro), com o subtotal do resultado todo.
+  const gruposDoResultado = useMemo(
+    () => (preferencias.agrupamento === 'nenhum' ? [] : agruparHistorico(filtrados, preferencias.agrupamento, nomes)),
+    [filtrados, nomes, preferencias.agrupamento],
+  );
+  const linhasTabela = useMemo(() => (gruposDoResultado.length ? gruposDoResultado.flatMap(grupo => grupo.itens) : filtrados), [filtrados, gruposDoResultado]);
+  const grupoDe = useMemo(() => new Map(gruposDoResultado.flatMap(grupo => grupo.itens.map(item => [item.id, grupo.chave] as const))), [gruposDoResultado]);
+  const totaisGrupo = useMemo(() => new Map(gruposDoResultado.map(grupo => [grupo.chave, grupo])), [gruposDoResultado]);
+  const { pagina: paginaAtual, totalPaginas } = paginarLinhas(linhasTabela, pagina, preferencias.tamanhoPagina);
+  const colunasEscolhidas = COLUNAS_HISTORICO.filter(item => preferencias.colunas.includes(item.id));
   const aberto = abertoId ? abastecimentos.find(item => item.id === abertoId) : undefined;
   const selecionadosLista = filtrados.filter(item => selecionados.has(item.id));
-  const todosDaPaginaMarcados = daPagina.length > 0 && daPagina.every(item => selecionados.has(item.id));
 
   const textoFiltros = [
     filtros.dataInicio || filtros.dataFim ? `Período: ${filtros.dataInicio ? dataCurta(filtros.dataInicio) : 'início'} a ${filtros.dataFim ? dataCurta(filtros.dataFim) : 'hoje'}` : '',
@@ -231,7 +235,7 @@ export default function HistoricoCombustivel({
   const tituloLista = /^\d{4}-\d{2}$/.test(filtros.aba) ? tituloDaAba(filtros.aba) : filtros.aba === ABA_TUDO ? 'FORNECIMENTO DIESEL - TODOS OS MESES' : `FORNECIMENTO DIESEL - ${textoPeriodo.toUpperCase()}`;
   // Na ordem da planilha (do primeiro para o último) a lista começa no fim; nas outras, no começo.
   const naOrdemDaPlanilha = ordem.coluna === 'data' && ordem.direcao === 'asc';
-  const irParaInicio = () => setPagina(naOrdemDaPlanilha ? Number.POSITIVE_INFINITY : 0);
+  const irParaInicio = () => setPagina(naOrdemDaPlanilha ? Number.POSITIVE_INFINITY : 1);
   const filtrosExtras = [filtros.comboioId, filtros.equipamentoId, filtros.empresaId, filtros.combustivelId, filtros.soConferir, filtros.soRepetidos].filter(Boolean).length;
 
   const mudarFiltro = <K extends keyof Filtros>(campo: K, valor: Filtros[K]) => {
@@ -277,7 +281,7 @@ export default function HistoricoCombustivel({
   useEffect(() => {
     const lista = listaRef.current;
     if (!lista) return;
-    lista.scrollTop = naOrdemDaPlanilha && paginaAtual === totalPaginas - 1 ? lista.scrollHeight : 0;
+    lista.scrollTop = naOrdemDaPlanilha && paginaAtual === totalPaginas ? lista.scrollHeight : 0;
   }, [filtros.aba, naOrdemDaPlanilha, paginaAtual, totalPaginas]);
 
   // A aba do mês aberto fica à vista, mesmo no celular com muitos meses.
@@ -298,9 +302,21 @@ export default function HistoricoCombustivel({
     return proximo;
   });
 
-  const alternarPagina = () => setSelecionados(atual => {
+  const alternarVarios = (ids: string[], marcar: boolean) => setSelecionados(atual => {
     const proximo = new Set(atual);
-    daPagina.forEach(item => (todosDaPaginaMarcados ? proximo.delete(item.id) : proximo.add(item.id)));
+    ids.forEach(id => (marcar ? proximo.add(id) : proximo.delete(id)));
+    return proximo;
+  });
+
+  const ordenar = (chave: string) => {
+    const proxima = proximaOrdem(ordem, chave as ColunaOrdem);
+    setOrdem(proxima);
+    setPagina(proxima.coluna === 'data' && proxima.direcao === 'asc' ? Number.POSITIVE_INFINITY : 1);
+  };
+
+  const alternarGrupo = (chave: string) => setFechados(atual => {
+    const proximo = new Set(atual);
+    if (proximo.has(chave)) proximo.delete(chave); else proximo.add(chave);
     return proximo;
   });
 
@@ -333,47 +349,61 @@ export default function HistoricoCombustivel({
     if (tipo === 'excel') onExportarExcel(dados); else onExportarPdf(dados);
   };
 
-  const cabecalhoOrdenavel = (id: ColunaHistorico, rotulo: string, ordenavel?: boolean) => {
-    if (!ordenavel) return <span key={id} className={NUMERICAS.has(id) ? 'text-right' : ''}>{rotulo}</span>;
-    const ativo = ordem.coluna === id;
-    const Seta = ordem.direcao === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <button key={id} type="button" onClick={() => { const proxima = proximaOrdem(ordem, id as ColunaOrdem); setOrdem(proxima); setPagina(proxima.coluna === 'data' && proxima.direcao === 'asc' ? Number.POSITIVE_INFINITY : 0); }}
-        aria-label={`Ordenar por ${rotulo}`} aria-sort={ativo ? (ordem.direcao === 'asc' ? 'ascending' : 'descending') : undefined}
-        className={`inline-flex min-h-8 items-center gap-1 rounded-md text-left uppercase tracking-wide transition hover:text-[#176b4d] ${NUMERICAS.has(id) ? 'justify-end text-right' : ''} ${ativo ? 'text-[#176b4d]' : ''} ${FOCO}`}>
-        {rotulo}{ativo && <Seta className="size-3.5" aria-hidden="true" />}
-      </button>
-    );
-  };
-
   const numeroCelula = (valor: number) => (valor > 0 ? numeroTexto(valor) : '');
-  const celula = (coluna: ColunaHistorico, item: Abastecimento) => {
-    const maquina = porId.get(item.equipamentoId);
-    const numerica = 'text-right font-mono text-[13px] tabular-nums text-slate-700';
-    switch (coluna) {
-      case 'data': return <span key={coluna} className="font-mono text-[13px] font-bold tabular-nums text-slate-900">{dataCurta(item.data)}</span>;
-      case 'prefixo': return (
-        <span key={coluna} className="flex min-w-0 items-center gap-1">
-          <span className="font-mono text-[13px] font-black text-slate-950">{nomes.prefixo(item) || '—'}</span>
-          {precisaConferir(item) && <span className="size-2 shrink-0 rounded-full bg-[#f26a2e]" title="Precisa conferir" aria-label="Precisa conferir" />}
+  const naoCadastrado = <span className="font-bold text-rose-700">NÃO CADASTRADO</span>;
+  /** O que cada coluna da planilha mostra; a ordem e a escolha vêm de COLUNAS_HISTORICO. */
+  const CELULA: Record<ColunaHistorico, Pick<ColunaTabela<Abastecimento>, 'render' | 'valorOrdenacao' | 'dica' | 'larguraMinima'>> = {
+    data: { render: item => <span className="font-bold text-slate-900">{dataCurta(item.data)}</span>, valorOrdenacao: item => `${item.data}${item.hora || ''}` },
+    prefixo: {
+      render: item => (
+        <span className="inline-flex min-w-0 items-center gap-1">
+          <span className="font-mono font-black text-slate-950">{nomes.prefixo(item) || '—'}</span>
+          {precisaConferir(item) && <span role="img" className="size-2 shrink-0 rounded-full bg-[#f26a2e]" title="Precisa conferir" aria-label="Precisa conferir" />}
           {repetidos.has(item.id) && <span className="shrink-0 rounded bg-rose-100 px-1 text-xs font-black uppercase text-rose-700" title="Mesma máquina, mesmo dia e mesmos litros de outro lançamento">2x</span>}
         </span>
-      );
-      case 'descricao': return <span key={coluna} className={`truncate text-[13px] ${maquina?.nome ? 'text-slate-700' : 'font-bold text-rose-600'}`} title={maquina?.nome}>{maquina?.nome || 'NÃO CADASTRADO'}</span>;
-      case 'km': return <span key={coluna} className={numerica}>{numeroCelula(item.kmInicial)}</span>;
-      case 'horimetro': return <span key={coluna} className={numerica}>{numeroCelula(item.horimetroInicial)}</span>;
-      case 'litros': return <span key={coluna} className="text-right text-[13px] font-black tabular-nums text-[#176b4d]">{numeroTexto(Number(item.quantidadeLitros || 0))}</span>;
-      case 'hora': return <span key={coluna} className="font-mono text-[13px] tabular-nums text-slate-700">{item.hora || ''}</span>;
-      case 'comboio': return <span key={coluna} className="truncate text-[13px] text-slate-700" title={nomes.comboio(item) || undefined}>{nomes.comboio(item)}</span>;
-      case 'combustivel': return <span key={coluna} className="truncate text-[13px] text-slate-700" title={nomeCombustivel.get(item.tipoCombustivelId)}>{nomeCombustivel.get(item.tipoCombustivelId) || ''}</span>;
-      case 'empresa': return <span key={coluna} className={`truncate text-[13px] ${nomes.empresa(item) ? 'text-slate-700' : 'font-bold text-rose-600'}`} title={nomes.empresa(item) || undefined}>{nomes.empresa(item) || 'NÃO CADASTRADO'}</span>;
-      case 'bombaInicial': return <span key={coluna} className={numerica}>{numeroCelula(item.bombaInicial)}</span>;
-      case 'bombaFinal': return <span key={coluna} className={numerica}>{numeroCelula(item.bombaFinal)}</span>;
-      case 'responsavel': return <span key={coluna} className="truncate text-[13px] text-slate-600" title={item.responsavel || undefined}>{item.responsavel || ''}</span>;
-      case 'observacao': return <span key={coluna} className="truncate text-[13px] text-slate-600" title={item.observacao || undefined}>{item.observacao || ''}</span>;
-      default: return null;
-    }
+      ),
+      valorOrdenacao: item => nomes.prefixo(item),
+      dica: item => nomes.prefixo(item),
+    },
+    descricao: { render: item => porId.get(item.equipamentoId)?.nome || naoCadastrado, dica: item => porId.get(item.equipamentoId)?.nome, larguraMinima: 120 },
+    km: { render: item => numeroCelula(item.kmInicial), valorOrdenacao: item => Number(item.kmInicial || 0) },
+    horimetro: { render: item => numeroCelula(item.horimetroInicial), valorOrdenacao: item => Number(item.horimetroInicial || 0) },
+    litros: { render: item => <span className="font-black text-[#176b4d]">{numeroTexto(Number(item.quantidadeLitros || 0))}</span>, valorOrdenacao: item => Number(item.quantidadeLitros || 0) },
+    hora: { render: item => item.hora || '' },
+    comboio: { render: item => nomes.comboio(item), valorOrdenacao: item => nomes.comboio(item) },
+    combustivel: { render: item => nomeCombustivel.get(item.tipoCombustivelId) || '' },
+    empresa: { render: item => nomes.empresa(item) || naoCadastrado, valorOrdenacao: item => nomes.empresa(item), dica: item => nomes.empresa(item) },
+    bombaInicial: { render: item => numeroCelula(item.bombaInicial) },
+    bombaFinal: { render: item => numeroCelula(item.bombaFinal) },
+    responsavel: { render: item => item.responsavel || '' },
+    observacao: { render: item => item.observacao || '', larguraMinima: 140 },
   };
+  const colunasTabela: ColunaTabela<Abastecimento>[] = colunasEscolhidas.map(coluna => {
+    const { valorOrdenacao, ...resto } = CELULA[coluna.id];
+    return {
+      chave: coluna.id,
+      titulo: coluna.rotulo,
+      alinhamento: NUMERICAS.has(coluna.id) ? 'direita' : 'esquerda',
+      noCartao: !FORA_DO_CARTAO.has(coluna.id),
+      // A ordem é a da planilha (ordenarHistorico); a tabela só mostra a seta.
+      ...(coluna.ordenavel ? { valorOrdenacao } : {}),
+      ...resto,
+    };
+  });
+
+  const mesesNav = (
+    <nav ref={abasRef} aria-label="Meses" className="flex min-w-0 items-center gap-1 overflow-x-auto py-0.5" data-testid="historico-abas">
+      {[...abas, ABA_TUDO].map(aba => {
+        const ativa = filtros.aba === aba;
+        return (
+          <button key={aba} type="button" aria-pressed={ativa} onClick={() => escolherAba(aba)} data-testid={`historico-aba-${aba}`}
+            title={aba === ABA_TUDO ? 'Todos os meses' : `${nomeDoMes(aba)}: ${getFuelCompetencePeriodLabel(aba)}`}            className={`min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs font-black uppercase tracking-wide transition md:min-h-8 ${ativa ? 'bg-white text-[#176b4d] shadow-sm ring-1 ring-inset ring-[#176b4d]/50' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'} ${FOCO}`}>
+            {aba === ABA_TUDO ? 'Tudo' : mesCurto(aba)}
+          </button>
+        );
+      })}
+    </nav>
+  );
 
   return (
     <div className={`flex min-h-0 flex-1 flex-col gap-2 xl:flex-row ${compacto ? 'bg-slate-50' : ''}`} data-testid="combustivel-historico">
@@ -476,126 +506,81 @@ export default function HistoricoCombustivel({
           </div>
         )}
 
-        <section data-comb-reveal aria-label="Abastecimentos" className={`${CARTAO} flex min-h-[22rem] flex-1 flex-col overflow-hidden`}>
-          <header className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-slate-200 px-3 py-1.5 lg:hidden" data-testid="historico-titulo">
-            <h3 className="text-sm font-black uppercase tracking-wide text-slate-900">{tituloLista}</h3>
-            <p className="text-sm font-semibold text-slate-500">
-              {/^\d{4}-\d{2}$/.test(filtros.aba) ? `${getFuelCompetencePeriodLabel(filtros.aba)} · ` : ''}
-              Total <span className="font-black tabular-nums text-[#176b4d]">{litrosTexto(totalLitros)}</span>
-            </p>
-          </header>
-          <div ref={listaRef} className="min-h-0 flex-1 overflow-auto" data-testid="combustivel-lista-historico">
-            <div className="sticky top-0 z-10 hidden items-center gap-2 border-b border-slate-300 bg-slate-100 px-3 py-0.5 text-xs font-black uppercase leading-tight tracking-wide text-slate-500 lg:grid" style={{ gridTemplateColumns: gradeColunas }}>
-              <button type="button" onClick={alternarPagina} aria-label={todosDaPaginaMarcados ? 'Desmarcar a página' : 'Marcar a página'} className={`grid size-8 place-items-center rounded-md text-slate-500 hover:text-[#176b4d] ${FOCO}`}>
-                {todosDaPaginaMarcados ? <CheckSquare className="size-4" aria-hidden="true" /> : <Square className="size-4" aria-hidden="true" />}
-              </button>
-              {colunas.map(item => cabecalhoOrdenavel(item.id, item.rotulo, item.ordenavel))}
-              <span />
-            </div>
-            {filtrados.length === 0 ? (
-              <div className="px-4 py-14 text-center">
+        <header className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-1 md:hidden" data-testid="historico-titulo">
+          <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">{tituloLista}</h2>
+          <p className="text-sm font-semibold text-[#5b6870]">
+            {/^\d{4}-\d{2}$/.test(filtros.aba) ? `${getFuelCompetencePeriodLabel(filtros.aba)} · ` : ''}
+            Total <span className="font-black tabular-nums text-[#176b4d]">{litrosTexto(totalLitros)}</span>
+          </p>
+        </header>
+        {/* No celular os meses ficam em cima da lista, para não sumirem depois de 100 cartões. */}
+        {!telaLarga && <div className="shrink-0 rounded-2xl border border-slate-200 bg-[#f3f6f4] px-1">{mesesNav}</div>}
+
+        <div data-comb-reveal className="flex min-h-[22rem] min-w-0 flex-1 flex-col">
+          <TabelaPadrao
+            titulo={tituloLista}
+            linhas={linhasTabela}
+            colunas={colunasTabela}
+            idDaLinha={item => item.id}
+            nomeDoItem={{ um: 'abastecimento', varios: 'abastecimentos' }}
+            densa
+            ordenacao={{ chave: ordem.coluna, direcao: ordem.direcao }}
+            onOrdenar={ordenar}
+            pagina={pagina}
+            onPagina={setPagina}
+            porPagina={preferencias.tamanhoPagina}
+            onPorPagina={valor => setPreferencias(atual => ({ ...atual, tamanhoPagina: valor }))}
+            selecao={{
+              marcados: selecionados,
+              onAlternar: alternarSelecao,
+              onAlternarVarios: alternarVarios,
+              rotulo: item => `Marcar ${nomes.prefixo(item) || 'máquina'} de ${dataCurta(item.data)}`,
+            }}
+            onAbrirLinha={abrir}
+            linhaAtivaId={abertoId || null}
+            testIdLinha="historico-linha"
+            refArea={listaRef}
+            grupos={gruposDoResultado.length ? {
+              chaveDe: item => grupoDe.get(item.id) ?? '',
+              fechados,
+              onAlternar: alternarGrupo,
+              cabecalho: chave => {
+                const total = totaisGrupo.get(chave);
+                return <>
+                  <span className="min-w-0 flex-1 truncate font-black text-slate-900">{preferencias.agrupamento === 'dia' ? dataLonga(chave) : chave}</span>
+                  <span className="shrink-0 text-xs font-semibold text-[#5b6870]">{(total?.itens.length ?? 0).toLocaleString('pt-BR')} abast.</span>
+                  <span className="shrink-0 font-black tabular-nums text-[#176b4d]">{litrosTexto(total?.litros ?? 0)}</span>
+                </>;
+              },
+            } : undefined}
+            rodapeInicio={telaLarga ? mesesNav : undefined}
+            resumo={filtrados.length > 0 && (
+              <span className="max-lg:hidden">
+                {' · '}{maquinas.toLocaleString('pt-BR')} máquinas
+                {conferir > 0 && <> · <span className="font-bold text-[#c2410c]">{conferir.toLocaleString('pt-BR')} a conferir</span></>}
+                {repetidosNoFiltro > 0 && !filtros.soRepetidos && <> · <button type="button" onClick={() => mudarFiltro('soRepetidos', true)} className={`inline-flex min-h-6 items-center gap-1 rounded font-bold text-rose-700 hover:underline ${FOCO}`} data-testid="historico-ver-repetidos"><CopyX className="size-3.5" aria-hidden="true" />{repetidosNoFiltro.toLocaleString('pt-BR')} repetidos</button></>}
+                {' · '}Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span>
+              </span>
+            )}
+            vazio={(
+              <div className="flex-1 px-4 py-14 text-center">
                 <History className="mx-auto size-8 text-slate-300" aria-hidden="true" />
                 <p className="mt-3 font-semibold text-slate-700">Nenhum abastecimento neste mês</p>
-                <p className="mt-1 text-sm text-slate-500">Toque em outro mês nas abas de baixo ou em "Ver tudo".</p>
+                <p className="mt-1 text-sm text-[#5b6870]">Toque em outro mês {telaLarga ? 'no rodapé' : 'logo acima'} ou em "Ver tudo".</p>
                 <button type="button" onClick={() => { escolherAba(ABA_TUDO); limparFiltros(); }} className={`${BOTAO_SECUNDARIO} mt-4`}>Ver tudo</button>
               </div>
-            ) : grupos.map(grupo => {
-              const total = totaisGrupo.get(grupo.chave);
-              const fechado = fechados.has(grupo.chave);
-              return (
-                <div key={grupo.chave} role="rowgroup">
-                  {preferencias.agrupamento !== 'nenhum' && (
-                    <button type="button" aria-expanded={!fechado} onClick={() => setFechados(atual => { const proximo = new Set(atual); if (proximo.has(grupo.chave)) proximo.delete(grupo.chave); else proximo.add(grupo.chave); return proximo; })}
-                      className={`sticky top-0 z-[5] flex w-full items-center gap-2 border-b border-slate-200 bg-emerald-50 px-3 py-2 text-left text-sm lg:top-[2.25rem] ${FOCO}`}>
-                      <ChevronDown className={`size-4 shrink-0 text-[#176b4d] transition ${fechado ? '-rotate-90' : ''}`} aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate font-black text-slate-900">{preferencias.agrupamento === 'dia' ? dataLonga(grupo.rotulo) : grupo.rotulo}</span>
-                      <span className="shrink-0 text-xs font-semibold text-slate-500">{total?.itens.length ?? grupo.itens.length} abast.</span>
-                      <span className="shrink-0 font-black tabular-nums text-[#176b4d]">{litrosTexto(total?.litros ?? grupo.litros)}</span>
-                    </button>
-                  )}
-                  {!fechado && <ul className="divide-y divide-slate-200/70">
-                    {grupo.itens.map((item, indice) => {
-                      const marcado = selecionados.has(item.id);
-                      const ativo = item.id === abertoId;
-                      return (
-                        <li key={item.id} className={`group relative transition-colors ${ativo ? 'bg-emerald-50' : marcado ? 'bg-emerald-50/50' : `${indice % 2 ? 'bg-[#f7f8f6]' : 'bg-white'} hover:bg-emerald-50/40`}`}>
-                          <div className="hidden h-7 items-center gap-2 px-3 lg:grid" style={{ gridTemplateColumns: gradeColunas }}>
-                            <button type="button" onClick={() => alternarSelecao(item.id)} aria-pressed={marcado} aria-label={`${marcado ? 'Desmarcar' : 'Marcar'} ${nomes.prefixo(item)} de ${dataCurta(item.data)}`} className={`relative z-[2] grid size-7 place-items-center rounded-md ${marcado ? 'text-[#176b4d]' : 'text-slate-400 hover:text-slate-700'} ${FOCO}`}>
-                              {marcado ? <CheckSquare className="size-4" aria-hidden="true" /> : <Square className="size-4" aria-hidden="true" />}
-                            </button>
-                            {colunas.map(coluna => celula(coluna.id, item))}
-                            <ChevronRight className={`size-4 justify-self-end ${ativo ? 'text-[#176b4d]' : 'text-slate-300 group-hover:text-slate-500'}`} aria-hidden="true" />
-                          </div>
-                          <div className="flex items-start gap-2 px-3 py-2.5 lg:hidden">
-                            <button type="button" onClick={() => alternarSelecao(item.id)} aria-pressed={marcado} aria-label={`${marcado ? 'Desmarcar' : 'Marcar'} ${nomes.prefixo(item)} de ${dataCurta(item.data)}`} className={`relative z-[2] grid size-10 shrink-0 place-items-center rounded-lg ${marcado ? 'text-[#176b4d]' : 'text-slate-400'} ${FOCO}`}>
-                              {marcado ? <CheckSquare className="size-5" aria-hidden="true" /> : <Square className="size-5" aria-hidden="true" />}
-                            </button>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-baseline justify-between gap-2">
-                                <span className="font-mono text-base font-black text-slate-950">{nomes.prefixo(item) || 'Sem prefixo'}</span>
-                                <span className="text-lg font-black tabular-nums text-[#176b4d]">{litrosTexto(Number(item.quantidadeLitros || 0))}</span>
-                              </div>
-                              <p className="truncate text-sm text-slate-600">{porId.get(item.equipamentoId)?.nome || 'Sem cadastro'}</p>
-                              <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs font-semibold text-slate-500">
-                                <span>{dataCurta(item.data)} {item.hora}</span>
-                                {nomes.comboio(item) && <span>{nomes.comboio(item)}</span>}
-                                {item.horimetroInicial > 0 && <span>{numeroTexto(item.horimetroInicial)} h</span>}
-                                {item.kmInicial > 0 && <span>{numeroTexto(item.kmInicial)} km</span>}
-                                {precisaConferir(item) && <span className="text-amber-700">Conferir</span>}
-                                {repetidos.has(item.id) && <span className="text-rose-700">Repetido</span>}
-                              </p>
-                            </div>
-                          </div>
-                          <button type="button" onClick={() => abrir(item)} aria-label={`Abrir abastecimento de ${nomes.prefixo(item) || 'máquina'} em ${dataCurta(item.data)}`} className={`absolute inset-0 z-[1] rounded-none ${FOCO}`} data-testid="historico-linha" />
-                        </li>
-                      );
-                    })}
-                  </ul>}
-                </div>
-              );
-            })}
-          </div>
-          {/* No computador as abas de mês e a paginação dividem uma barra só, para sobrar altura para as linhas. */}
-          <div className="contents lg:flex lg:shrink-0 lg:items-center lg:border-t lg:border-slate-200 lg:bg-slate-100">
-          <nav ref={abasRef} aria-label="Meses" className="relative order-first flex shrink-0 items-end gap-1 overflow-x-auto border-b border-slate-200 bg-slate-100 px-2 pt-1 lg:order-none lg:min-w-0 lg:flex-1 lg:self-end lg:border-b-0" data-testid="historico-abas">
-            {[...abas, ABA_TUDO].map(aba => {
-              const ativa = filtros.aba === aba;
-              return (
-                <button key={aba} type="button" aria-pressed={ativa} onClick={() => escolherAba(aba)} data-testid={`historico-aba-${aba}`}
-                  title={aba === ABA_TUDO ? 'Todos os meses' : getFuelCompetencePeriodLabel(aba)}
-                  className={`min-h-10 shrink-0 whitespace-nowrap rounded-t-lg px-3 text-xs font-black uppercase tracking-wide transition sm:text-sm ${ativa ? 'border-b-2 border-[#176b4d] bg-white text-[#176b4d] shadow-sm' : 'text-slate-500 hover:bg-white/70 hover:text-slate-800'} ${FOCO}`}>
-                  {aba === ABA_TUDO ? 'Tudo' : nomeDoMes(aba)}
-                </button>
-              );
-            })}
-          </nav>
-          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2 lg:flex-nowrap lg:border-t-0 lg:py-1">
-            <p className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-500 lg:text-sm">
-              {filtrados.length ? `${paginaAtual * preferencias.tamanhoPagina + 1}–${Math.min((paginaAtual + 1) * preferencias.tamanhoPagina, filtrados.length)} de ${filtrados.length.toLocaleString('pt-BR')}` : '0 abastecimentos'}
-              <span className="hidden lg:inline"> · {maquinas.toLocaleString('pt-BR')} máquinas{conferir ? <> · <span className="font-bold text-[#c2410c]">{conferir.toLocaleString('pt-BR')} a conferir</span></> : ''}{repetidosNoFiltro && !filtros.soRepetidos ? <> · <button type="button" onClick={() => mudarFiltro('soRepetidos', true)} className={`inline-flex items-center gap-1 rounded font-bold text-rose-700 hover:underline ${FOCO}`} data-testid="historico-ver-repetidos"><CopyX className="size-3.5" aria-hidden="true" />{repetidosNoFiltro.toLocaleString('pt-BR')} repetidos</button></> : ''} · Total <span className="font-black text-[#176b4d]">{litrosTexto(totalLitros)}</span></span>
-            </p>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500">
-                Mostrar
-                <select value={preferencias.tamanhoPagina} onChange={event => { setPreferencias(atual => ({ ...atual, tamanhoPagina: Number(event.target.value) })); irParaInicio(); }} className={`min-h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-800 ${FOCO}`}>
-                  {TAMANHOS_PAGINA.map(valor => <option key={valor} value={valor}>{valor}</option>)}
-                </select>
-              </label>
-              <button type="button" aria-label="Página anterior" onClick={() => setPagina(Math.max(0, paginaAtual - 1))} disabled={paginaAtual === 0} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronLeft className="size-4" aria-hidden="true" /></button>
-              <span className="text-xs font-semibold tabular-nums text-slate-500">{paginaAtual + 1}/{totalPaginas}</span>
-              <button type="button" aria-label="Próxima página" onClick={() => setPagina(Math.min(totalPaginas - 1, paginaAtual + 1))} disabled={paginaAtual >= totalPaginas - 1} className={`grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}><ChevronRight className="size-4" aria-hidden="true" /></button>
-            </div>
-          </footer>
-          </div>
-        </section>
+            )}
+            testId="combustivel-lista-historico"
+          />
+        </div>
       </div>
 
       {aberto && (
-        <aside ref={fichaRef} aria-label="Ficha do abastecimento" className={`${CARTAO} flex shrink-0 flex-col overflow-hidden xl:w-80`} data-testid="historico-ficha">
+        <section ref={fichaRef} aria-label="Ficha do abastecimento" className={`${CARTAO} flex shrink-0 flex-col overflow-hidden xl:w-80`} data-testid="historico-ficha">
           <header className="flex items-start justify-between gap-2 border-b border-slate-100 px-4 py-3">
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{dataLonga(aberto.data)} · {aberto.hora || 'sem hora'}</p>
-              <h3 className="font-mono text-2xl font-black text-slate-950">{nomes.prefixo(aberto) || 'Sem prefixo'}</h3>
+              <h2 className="font-mono text-2xl font-black text-slate-950">{nomes.prefixo(aberto) || 'Sem prefixo'}</h2>
               <p className="truncate text-sm text-slate-600">{porId.get(aberto.equipamentoId)?.nome || 'Sem cadastro'}</p>
             </div>
             <button type="button" onClick={() => setAbertoId('')} aria-label="Fechar ficha" className={`grid size-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${FOCO}`}><X className="size-5" aria-hidden="true" /></button>
@@ -636,7 +621,7 @@ export default function HistoricoCombustivel({
             <button type="button" onClick={() => onRepetir(aberto)} className={`${BOTAO_SECUNDARIO} whitespace-nowrap px-2 ${onExcluir ? '' : 'col-span-2'}`} title="Abre um lançamento novo já com a máquina e o comboio"><Copy className="size-4" aria-hidden="true" />Lançar outro</button>
             {onExcluir && <button type="button" onClick={() => onExcluir([aberto])} className={BOTAO_PERIGO_LEVE}><Trash2 className="size-4" aria-hidden="true" />Excluir</button>}
           </footer>
-        </aside>
+        </section>
       )}
     </div>
   );
