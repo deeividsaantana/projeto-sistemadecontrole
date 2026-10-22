@@ -75,13 +75,6 @@
   .cortina-anel, .cortina-contorno { transition: none; }
 }
 
-.estacas-menu {
-  max-height: calc(100dvh - 2rem);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-
 @media (max-width: 639px) {
   #main-tab-viewport .estacas-header .renea-page-actions,
   .estacas-header .renea-page-actions {
