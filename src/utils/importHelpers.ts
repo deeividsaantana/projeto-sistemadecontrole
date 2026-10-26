@@ -27,14 +27,20 @@ export const cleanImportValue = (value: unknown): string => {
   return String(value).trim().replace(/\s+/g, ' ');
 };
 
+/**
+ * Número que chegou como texto na planilha. Vírgula é decimal; sem vírgula,
+ * "1.234" e "12.500" são milhar (três dígitos depois de cada ponto), igual ao
+ * leitor do lançamento de diesel, e "7.5" é decimal (M16).
+ */
 export const parseImportNumber = (value: unknown) => {
   if (typeof value === 'number' && Number.isFinite(value)) return Number(value.toFixed(4));
-  const raw = cleanImportValue(value).replace(/\s/g, '');
+  const raw = cleanImportValue(value).replace(/[^0-9.,-]/g, '');
   if (!raw) return 0;
-  const text = raw.includes(',') && raw.includes('.')
-    ? raw.replace(/\./g, '').replace(',', '.')
-    : raw.replace(',', '.');
-  const num = Number(text.replace(/[^0-9.-]/g, ''));
+  let text = raw;
+  if (raw.includes(',') && raw.includes('.')) text = raw.replace(/\./g, '').replace(',', '.');
+  else if (raw.includes(',')) text = raw.replace(',', '.');
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(raw)) text = raw.replace(/\./g, '');
+  const num = Number(text);
   return Number.isFinite(num) ? Number(num.toFixed(4)) : 0;
 };
 
