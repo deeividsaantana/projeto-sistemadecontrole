@@ -4,7 +4,7 @@ import type { ControleEstacas, LoteEstaca, ObraLocal } from '../../types';
 import { buildStakeBalances, reconcileStakeInvoice } from '../../utils/stakeOperations';
 import { inativar, somenteAtivos } from '../../utils/inativacao';
 import { formatarData, moeda, numero } from '../../utils/formato';
-import { ConfirmDialog } from '../../shared/ui';
+import { ConfirmDialog, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
 import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from '../cadastros/estilos';
 
@@ -37,7 +37,7 @@ export default function RecebimentosEstacas({ hoje, controle, obras, responsavel
   const [lote, setLote] = useState<Rascunho>(() => loteVazio(hoje, responsavel));
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [erro, setErro] = useState('');
-  const [marcados, setMarcados] = useState<string[]>([]);
+  const [marcados, setMarcados] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmando, setConfirmando] = useState<string[] | null>(null);
 
   const lotes = useMemo(() => somenteAtivos(controle.lotes), [controle.lotes]);
@@ -92,6 +92,36 @@ export default function RecebimentosEstacas({ hoje, controle, obras, responsavel
     cravacoes: controle.cravacoes.map(item => (item.loteId && ids.includes(item.loteId) ? { ...item, loteId: undefined } : item)),
   }, ids.length === 1 ? 'Inativou um lote e preservou as cravações para reassociação.' : `Inativou ${ids.length} lote(s) e preservou as cravações.`);
 
+  const alternar = (id: string) => setMarcados(atual => {
+    const proximo = new Set(atual);
+    if (proximo.has(id)) proximo.delete(id);
+    else proximo.add(id);
+    return proximo;
+  });
+  const alternarVarios = (ids: string[], marcar: boolean) => setMarcados(atual => {
+    const proximo = new Set(atual);
+    ids.forEach(id => (marcar ? proximo.add(id) : proximo.delete(id)));
+    return proximo;
+  });
+
+  const colunas = useMemo<ColunaTabela<LoteEstaca>[]>(() => [
+    { chave: 'nota', titulo: 'Nota e dia', larguraMinima: 130, render: item => <><b className="text-slate-900">NF {item.notaFiscal}</b><br /><span className="text-slate-600">{formatarData(item.data)}</span></>, dica: item => `NF ${item.notaFiscal} · ${formatarData(item.data)}`, valorOrdenacao: item => item.data },
+    { chave: 'material', titulo: 'Material', larguraMinima: 200, render: item => <>{item.descricao}<br /><span className="text-slate-600">{item.perfilModelo || item.materialCodigo}</span></>, dica: item => `${item.descricao} · ${item.perfilModelo || item.materialCodigo}`, valorOrdenacao: item => item.descricao },
+    { chave: 'recebido', titulo: 'Recebido', alinhamento: 'direita', render: item => `${numero(saldos.get(item.id)?.recebidoM ?? 0, 2)} m`, valorOrdenacao: item => saldos.get(item.id)?.recebidoM ?? 0 },
+    { chave: 'cravado', titulo: 'Cravado', alinhamento: 'direita', render: item => `${numero(saldos.get(item.id)?.cravadoM ?? 0, 2)} m`, valorOrdenacao: item => saldos.get(item.id)?.cravadoM ?? 0 },
+    {
+      chave: 'saldo',
+      titulo: 'Saldo',
+      alinhamento: 'direita',
+      render: item => {
+        const saldo = saldos.get(item.id);
+        return <span className={`font-bold ${saldo?.status === 'Divergente' ? 'text-rose-700' : 'text-[#176b4d]'}`}>{numero(saldo?.saldoConfirmadoM ?? 0, 2)} m</span>;
+      },
+      valorOrdenacao: item => saldos.get(item.id)?.saldoConfirmadoM ?? 0,
+    },
+    { chave: 'conferida', titulo: 'Nota', render: item => <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${item.nfConferida ? TOM_SITUACAO.ok : TOM_SITUACAO.alerta}`}>{item.nfConferida ? 'Conferida' : 'Conferir'}</span>, valorOrdenacao: item => (item.nfConferida ? 'Conferida' : 'Conferir') },
+  ], [saldos]);
+
   const campo = (rotulo: string, filho: ReactNode, largo = false) => (
     <label className={`space-y-1.5 ${largo ? 'sm:col-span-2' : ''}`}>
       <span className={ROTULO}>{rotulo}</span>
@@ -141,52 +171,31 @@ export default function RecebimentosEstacas({ hoje, controle, obras, responsavel
         </form>
       )}
 
-      {marcados.length > 0 && (
-        <div className="flex justify-end"><button type="button" onClick={() => setConfirmando(marcados)} className={BOTAO_PERIGO_LEVE}><Trash2 className="size-4" aria-hidden="true" /> Tirar {marcados.length} marcado(s)</button></div>
-      )}
-
-      {!lotes.length ? (
-        <p data-estacas-reveal className={`${CARTAO} p-8 text-center text-sm font-semibold text-slate-500`}>Nenhum recebimento lançado.</p>
-      ) : (
-        <div ref={lista} data-estacas-reveal className={`${CARTAO} overflow-x-auto`}>
-          <table className="w-full min-w-[46rem] text-left text-sm">
-            <thead className="bg-[#f7f8f6] text-xs font-bold uppercase tracking-wide text-[#5b6870]">
-              <tr>
-                <th className="w-10 px-3 py-3"><span className="sr-only">Marcar</span></th>
-                <th className="px-3 py-3">Nota e dia</th>
-                <th className="px-3 py-3">Material</th>
-                <th className="px-3 py-3 text-right">Recebido</th>
-                <th className="px-3 py-3 text-right">Cravado</th>
-                <th className="px-3 py-3 text-right">Saldo</th>
-                <th className="px-3 py-3">Nota</th>
-                <th className="px-3 py-3"><span className="sr-only">Ações</span></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {lotes.map(item => {
-                const saldo = saldos.get(item.id);
-                return (
-                  <tr key={item.id} data-linha-lista>
-                    <td className="px-3 py-2"><input type="checkbox" aria-label={`Marcar NF ${item.notaFiscal}`} checked={marcados.includes(item.id)} onChange={() => setMarcados(atual => (atual.includes(item.id) ? atual.filter(id => id !== item.id) : [...atual, item.id]))} className="size-4 accent-[#176b4d]" /></td>
-                    <td className="px-3 py-2"><b className="text-slate-900">NF {item.notaFiscal}</b><br /><span className="text-slate-600">{formatarData(item.data)}</span></td>
-                    <td className="px-3 py-2 text-slate-700">{item.descricao}<br /><span className="text-slate-500">{item.perfilModelo || item.materialCodigo}</span></td>
-                    <td className="px-3 py-2 text-right tabular-nums text-slate-700">{numero(saldo?.recebidoM ?? 0, 2)} m</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-slate-700">{numero(saldo?.cravadoM ?? 0, 2)} m</td>
-                    <td className={`px-3 py-2 text-right font-bold tabular-nums ${saldo?.status === 'Divergente' ? 'text-rose-700' : 'text-[#176b4d]'}`}>{numero(saldo?.saldoConfirmadoM ?? 0, 2)} m</td>
-                    <td className="px-3 py-2"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.nfConferida ? TOM_SITUACAO.ok : TOM_SITUACAO.alerta}`}>{item.nfConferida ? 'Conferida' : 'Conferir'}</span></td>
-                    <td className="px-3 py-1">
-                      <div className="flex justify-end gap-1">
-                        <button type="button" onClick={() => editar(item)} aria-label={`Corrigir NF ${item.notaFiscal}`} className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-[#176b4d] hover:bg-emerald-50 ${FOCO}`}><Pencil className="size-4" aria-hidden="true" /></button>
-                        <button type="button" onClick={() => setConfirmando([item.id])} aria-label={`Tirar NF ${item.notaFiscal}`} className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-rose-700 hover:bg-rose-50 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {marcados.size > 0 && (
+        <div role="region" aria-label="Recebimentos marcados" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 sm:pl-4">
+          <p className="text-sm font-bold text-emerald-900" aria-live="polite">{marcados.size.toLocaleString('pt-BR')} {marcados.size === 1 ? 'marcado' : 'marcados'}</p>
+          <button type="button" onClick={() => setConfirmando([...marcados])} className={BOTAO_PERIGO_LEVE}><Trash2 className="size-4" aria-hidden="true" /> Tirar {marcados.size} marcado(s)</button>
         </div>
       )}
+
+      <div ref={lista} data-estacas-reveal>
+        <TabelaPadrao
+          titulo="Recebimentos de estacas"
+          linhas={lotes}
+          colunas={colunas}
+          idDaLinha={item => item.id}
+          nomeDoItem={{ um: 'lote', varios: 'lotes' }}
+          acoes={item => (
+            <>
+              <button type="button" onClick={() => editar(item)} aria-label={`Corrigir NF ${item.notaFiscal}`} className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-[#176b4d] hover:bg-emerald-50 md:min-h-8 md:min-w-8 ${FOCO}`}><Pencil className="size-4" aria-hidden="true" /></button>
+              <button type="button" onClick={() => setConfirmando([item.id])} aria-label={`Tirar NF ${item.notaFiscal}`} className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-rose-700 hover:bg-rose-50 md:min-h-8 md:min-w-8 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button>
+            </>
+          )}
+          selecao={{ marcados, onAlternar: alternar, onAlternarVarios: alternarVarios, rotulo: item => `Marcar NF ${item.notaFiscal}` }}
+          vazio={<p className="p-8 text-center text-sm font-semibold text-slate-600">Nenhum recebimento lançado.</p>}
+          testId="estacas-recebimentos"
+        />
+      </div>
 
       {notas.length > 0 && (
         <section data-estacas-reveal aria-labelledby="estacas-notas-titulo">
@@ -220,7 +229,7 @@ export default function RecebimentosEstacas({ hoje, controle, obras, responsavel
         confirmLabel="Tirar"
         onConfirm={() => {
           if (confirmando) inativarLotes(confirmando);
-          setMarcados(atual => atual.filter(id => !confirmando?.includes(id)));
+          setMarcados(atual => new Set([...atual].filter(id => !confirmando?.includes(id))));
           setConfirmando(null);
         }}
         onCancel={() => setConfirmando(null)}

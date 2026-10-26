@@ -32,6 +32,12 @@ export interface AbaDaTela<T extends string = string> {
   contador?: number;
   /** O que o número quer dizer, lido pelo leitor de tela: "a confirmar". */
   contadorRotulo?: string;
+  /**
+   * `alerta` (padrão): selo laranja, o número pede atenção e soma no grupo.
+   * `neutro`: selo cinza, só o total da subtela (ex.: quantos cadastros);
+   * não soma no grupo, porque somar totais de listas que se repetem engana.
+   */
+  tom?: 'alerta' | 'neutro';
   /** data-testid do botão; sem ele fica `${testId}-${id}` quando o grupo tem testId. */
   testId?: string;
 }
@@ -77,6 +83,7 @@ interface BotaoDaLinha {
   icone?: Icone;
   contador: number;
   contadorRotulo?: string;
+  tom?: 'alerta' | 'neutro';
   testId?: string;
   selecionada: boolean;
   controla?: string;
@@ -153,7 +160,9 @@ function LinhaDeAbas({ botoes, rotulo, testId, secundaria = false }: { botoes: B
               <span className="hidden sm:inline">{botao.rotulo}</span>
             </> : <span>{botao.rotulo}</span>}
             {botao.contador > 0 && <>
-              <span aria-hidden="true" className={cn('min-w-5 rounded-full px-1.5 text-center text-xs font-bold leading-5 tabular-nums', botao.selecionada && !secundaria ? 'bg-white text-[#176b4d]' : 'bg-[#c2410c] text-white')}>{botao.contador}</span>
+              <span aria-hidden="true" className={cn('min-w-5 rounded-full px-1.5 text-center text-xs font-bold leading-5 tabular-nums', botao.tom === 'neutro'
+                ? (botao.selecionada ? (secundaria ? 'bg-emerald-50 text-[#176b4d]' : 'bg-white text-[#176b4d]') : 'bg-slate-100 text-slate-700')
+                : (botao.selecionada && !secundaria ? 'bg-white text-[#176b4d]' : 'bg-[#c2410c] text-white'))}>{botao.contador.toLocaleString('pt-BR')}</span>
               <span className="sr-only">, {botao.contador} {botao.contadorRotulo ?? ''}</span>
             </>}
           </button>
@@ -181,6 +190,7 @@ export function AbasDaTela<T extends string>({ abas, ativa, onTrocar, rotulo, id
     icone: aba.icone,
     contador: contadorDe(aba.contador),
     contadorRotulo: aba.contadorRotulo,
+    tom: aba.tom,
     testId: aba.testId ?? (testId ? `${testId}-${aba.id}` : undefined),
     selecionada: aba.id === ativa,
     controla: idPainel,
@@ -189,7 +199,7 @@ export function AbasDaTela<T extends string>({ abas, ativa, onTrocar, rotulo, id
 
   const primeiraLinha = abas.map((item): BotaoDaLinha => {
     if (!ehGrupo(item)) return botaoDaAba(item);
-    const total = item.abas.reduce((soma, aba) => soma + contadorDe(aba.contador), 0);
+    const total = item.abas.reduce((soma, aba) => soma + (aba.tom === 'neutro' ? 0 : contadorDe(aba.contador)), 0);
     return {
       chave: `grupo-${item.grupo}`,
       // Grupo de uma aba só não abre segunda linha: o botão do grupo é a própria aba.
@@ -198,8 +208,10 @@ export function AbasDaTela<T extends string>({ abas, ativa, onTrocar, rotulo, id
       rotulo: item.rotulo,
       curto: item.curto,
       icone: item.icone,
-      contador: total,
-      contadorRotulo: 'no grupo',
+      // Grupo de uma aba só mostra o selo da própria aba, com o mesmo tom.
+      ...(item.abas.length === 1
+        ? { contador: contadorDe(item.abas[0].contador), contadorRotulo: item.abas[0].contadorRotulo, tom: item.abas[0].tom }
+        : { contador: total, contadorRotulo: 'no grupo' }),
       testId: testId ? `${testId}-grupo-${item.grupo}` : undefined,
       selecionada: item === grupoAtivo,
       escolher: () => {

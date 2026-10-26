@@ -215,4 +215,5 @@ import './relatorioDiesel.test';
 import './edicoesLocais.test';
 import './moldeTelaCheia.test';
 import './jazidaTela.test';
+import './cadastrosEstacasMolde.test';
 import './guardaDeMovimento.test';

@@ -99,10 +99,9 @@ test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({
   await dialog.getByTestId('cadastro-confirmar').click();
   const aviso = page.getByTestId('cadastro-aviso');
   await expect(aviso).toContainText('excluído');
-  // No celular os tipos ficam num seletor que abre de baixo para cima.
-  const seletor = page.getByTestId('cadastro-escolher-tipo');
-  if (await seletor.isVisible()) await seletor.click();
-  await page.locator('[data-testid="cadastro-categoria-lixeira"]:visible').click();
+  // Os tipos são abas no topo, também no celular; a Lixeira é a última.
+  await page.getByTestId('cadastro-categoria-lixeira').click();
+  await expect(page.getByTestId('cadastro-categoria-lixeira')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('cadastro-lixeira')).toContainText('excluído por');
   await aviso.getByRole('button', { name: 'Desfazer' }).click();
   await expect(page.getByTestId('cadastro-lixeira')).toContainText('A Lixeira está vazia');

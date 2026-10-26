@@ -73,7 +73,9 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
   ];
 
   return (
-    <div className="space-y-4">
+    // relative: os textos só para leitor de tela (sr-only) ficam presos aqui
+    // dentro e não esticam a página atrás da área que rola.
+    <div className="relative space-y-4">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <div data-estacas-reveal className={`${CARTAO} estacas-vivo flex items-center gap-4 p-4 col-span-2 xl:col-span-1`}>
           <Anel valor={total.porcentagem} />
