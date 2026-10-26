@@ -33,10 +33,17 @@ test('os avisos de conferência ficam na faixa de filtros, não num bloco à par
   assert.match(filtros, /data-testid="frota-conferencia"/);
 });
 
-test('rótulo de indicador não quebra no meio da palavra', () => {
-  for (const arquivo of ['src/components/fleet/FleetKpiStrip.tsx', 'src/components/quadroFrota/QuadroFrota.tsx']) {
-    assert.match(ler(arquivo), /whitespace-nowrap[^"]*truncate|truncate[^"]*whitespace-nowrap/, arquivo);
-  }
+test('rótulo de indicador do Quadro não quebra no meio da palavra', () => {
+  assert.match(ler('src/components/quadroFrota/QuadroFrota.tsx'), /truncate whitespace-nowrap/);
+});
+
+test('a Situação do dia abre com o panorama: anel por situação, canteiros e conferência', () => {
+  const aba = ler('src/components/ControleEquipamentosDiarioTab.tsx');
+  const panorama = ler('src/components/fleet/PanoramaDoDia.tsx');
+  assert.match(aba, /<PanoramaDoDia/);
+  assert.match(panorama, /frota-fatia-/);
+  assert.match(panorama, /frota-canteiro-/);
+  assert.match(panorama, /Quem já foi lançado/);
 });
 
 test('a tabela do dia tem uma linha por lançamento e aprova na própria coluna', () => {

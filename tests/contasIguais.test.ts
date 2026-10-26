@@ -37,7 +37,7 @@ test('A19: Painel, Quadro e relatório semanal dão o mesmo número para o mesmo
 
 test('M35: sem dado aparece "—", não 0%, e a média ignora dia vazio', () => {
   assert.match(ler('src/components/quadroFrota/QuadroFrota.tsx'), /texto: indicadores\.disponibilidade === null \? '—' : undefined/);
-  assert.match(ler('src/components/fleet/FleetKpiStrip.tsx'), /texto: metrics\.availabilityRate === null \? '—' : undefined/);
+  assert.match(ler('src/components/fleet/PanoramaDoDia.tsx'), /metrics\.availabilityRate === null \? '—'/);
   const semana = buildWeeklyFleetReport([
     { id: 'a', chave: 'a', data: DIA, status: 'Em operação', prefixo: 'CB1', criadoEm: DIA } as ControleEquipamentoDiario,
   ], DIA);
