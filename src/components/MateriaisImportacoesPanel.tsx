@@ -171,7 +171,7 @@ export default function MateriaisImportacoesPanel({ movimentos, materiais, respo
                 {abasComLinhas.map(aba => {
                   const dentro = !abasFora.has(aba);
                   return (
-                    <label key={aba} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition duration-200 ${dentro ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-slate-50 text-slate-400 line-through'}`}>
+                    <label key={aba} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition duration-200 ${dentro ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-slate-50 text-slate-500 line-through'}`}>
                       <input type="checkbox" checked={dentro} onChange={() => alternarAba(aba)} className="size-4 accent-[#176b4d]" />
                       {aba}
                     </label>

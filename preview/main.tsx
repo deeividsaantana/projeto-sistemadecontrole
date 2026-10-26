@@ -327,7 +327,6 @@ function MateriaisPreview() {
         return { ok: Boolean(volta), mensagem: volta ? `${volta.nome} voltou para a lista.` : 'Já foi restaurado.' };
       }}
       secaoInicial={(new URLSearchParams(window.location.search).get('secao') || undefined) as SecaoMateriais | undefined}
-      totalViagensJazida={fx.ticketsJazida.length}
       viagensJazida={(
         <TicketsJazidaTab
           tickets={fx.ticketsJazida}

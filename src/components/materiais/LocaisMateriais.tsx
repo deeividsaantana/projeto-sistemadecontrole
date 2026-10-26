@@ -29,7 +29,8 @@ import {
   resolverLocal,
   rotuloDoLocal,
 } from '../../modules/materials/locaisSge';
-import { ConfirmDialog, EmptyState, Modal } from '../../shared/ui';
+import { ConfirmDialog, EmptyState, Modal, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
+import { AbasDaTela, type AbaDaTela } from '../../shared/ui/AbasDaTela';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
 
 type Vista = 'locais' | 'sem-local' | 'viagens';
@@ -67,7 +68,7 @@ const plural = (quantidade: number, um: string, varios: string) => `${quantidade
 
 const Codigo = ({ codigo }: { codigo?: string }) => (codigo
   ? <span className="inline-flex min-w-12 shrink-0 self-start justify-center rounded-lg bg-emerald-50 px-2 py-1 font-mono text-sm font-bold tabular-nums text-[#176b4d] ring-1 ring-inset ring-emerald-200">{codigo}</span>
-  : <span className="inline-flex min-w-12 shrink-0 self-start justify-center rounded-lg bg-slate-50 px-2 py-1 text-sm font-semibold text-slate-400 ring-1 ring-inset ring-slate-200" title="Sem código SGE">—</span>);
+  : <span className="inline-flex min-w-12 shrink-0 self-start justify-center rounded-lg bg-slate-50 px-2 py-1 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-200" title="Sem código SGE">—</span>);
 
 export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar, onSaveEtapas, onExcluirLocal, onRestaurarLocal, locaisApagados }: Props) {
   const raiz = useRef<HTMLDivElement>(null);
@@ -257,10 +258,17 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
     { rotulo: 'Nomes sem local', valor: faltando.length, detalhe: faltando.length ? `${plural(movimentosSemLocal, 'movimento', 'movimentos')} fora da conta` : 'tudo reconhecido', alerta: faltando.length > 0 },
   ];
 
-  const vistas: ReadonlyArray<{ id: Vista; nome: string; curto: string; Icone: typeof MapPin; contagem?: number; alerta?: boolean }> = [
-    { id: 'locais', nome: 'Locais', curto: 'Locais', Icone: MapPin },
-    { id: 'sem-local', nome: 'Nomes sem local', curto: 'Sem local', Icone: Link2, contagem: faltando.length, alerta: faltando.length > 0 },
-    { id: 'viagens', nome: 'Códigos de viagem', curto: 'Viagens', Icone: Route },
+  const vistas: ReadonlyArray<AbaDaTela<Vista>> = [
+    { id: 'locais', rotulo: 'Locais', icone: MapPin, testId: 'locais-vista-locais' },
+    { id: 'sem-local', rotulo: 'Nomes sem local', curto: 'Sem local', icone: Link2, contador: faltando.length, contadorRotulo: 'nomes sem local', testId: 'locais-vista-sem-local' },
+    { id: 'viagens', rotulo: 'Códigos de viagem', curto: 'Viagens', icone: Route, testId: 'locais-vista-viagens' },
+  ];
+
+  type Rota = typeof ROTAS_VIAGEM_SGE[number];
+  const colunasRotas: ColunaTabela<Rota>[] = [
+    { chave: 'codigo', titulo: 'SGE', valorOrdenacao: rota => Number(rota.codigo) || rota.codigo, render: rota => <Codigo codigo={rota.codigo} /> },
+    { chave: 'origem', titulo: 'Origem', larguraMinima: 200, valorOrdenacao: rota => rota.origem, render: rota => lado(rota.origem), dica: rota => rota.origem },
+    { chave: 'destino', titulo: 'Destino', larguraMinima: 200, valorOrdenacao: rota => rota.destino, render: rota => lado(rota.destino), dica: rota => rota.destino },
   ];
 
   const listaLocais = () => {
@@ -311,7 +319,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
                             <span className="mt-0.5 block text-xs leading-snug text-slate-500">Na planilha: {(etapa.apelidos || []).join(' · ')}</span>
                           )}
                         </span>
-                        <span className={`shrink-0 text-sm font-bold tabular-nums ${uso ? 'text-slate-700' : 'text-slate-300'}`}>
+                        <span className={`shrink-0 text-sm font-bold tabular-nums ${uso ? 'text-slate-700' : 'text-slate-500'}`}>
                           {uso.toLocaleString('pt-BR')}
                           <span className="sr-only"> movimentos</span>
                         </span>
@@ -431,33 +439,14 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
           </h3>
           <span className="text-sm font-semibold tabular-nums text-slate-500">{plural(rotasFiltradas.length, 'código', 'códigos')}</span>
         </header>
-        <table className="hidden w-full text-left text-sm md:table">
-          <caption className="sr-only">Código SGE de cada viagem, por origem e destino</caption>
-          <thead className="bg-white text-xs uppercase tracking-wide text-slate-500">
-            <tr><th className="w-20 p-3">SGE</th><th className="p-3">Origem</th><th className="p-3">Destino</th></tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rotasFiltradas.map(rota => (
-              <tr key={rota.codigo} className="align-top">
-                <td className="p-3"><Codigo codigo={rota.codigo} /></td>
-                <td className="p-3 text-slate-700">{lado(rota.origem)}</td>
-                <td className="p-3 text-slate-700">{lado(rota.destino)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <ul className="divide-y divide-slate-100 md:hidden">
-          {rotasFiltradas.map(rota => (
-            <li key={rota.codigo} className="flex gap-3 p-4">
-              <Codigo codigo={rota.codigo} />
-              <div className="min-w-0 flex-1 space-y-1 text-base text-slate-700">
-                {lado(rota.origem)}
-                <span className="block pl-5 text-xs font-semibold uppercase tracking-wide text-[#5b6870]">para</span>
-                {lado(rota.destino)}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <TabelaPadrao
+          titulo="Código SGE de cada viagem, por origem e destino"
+          linhas={rotasFiltradas}
+          colunas={colunasRotas}
+          idDaLinha={rota => rota.codigo}
+          nomeDoItem={{ um: 'código', varios: 'códigos' }}
+          className="rounded-none border-0"
+        />
       </section>
     );
   };
@@ -513,28 +502,8 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
       )}
 
       <div data-locais-reveal className="flex flex-wrap items-center gap-2">
-        <div role="tablist" aria-label="O que ver em ramos e locais" className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:flex">
-          {vistas.map(({ id, nome, curto, Icone, contagem, alerta }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={vista === id}
-              onClick={() => escolherVista(id)}
-              data-testid={`locais-vista-${id}`}
-              className={`relative inline-flex min-h-11 min-w-0 shrink-0 items-center justify-center gap-1.5 rounded-full border px-2 text-sm sm:gap-2 sm:px-4 font-semibold transition duration-200 active:scale-[0.98] ${FOCO} ${vista === id
-                ? 'border-[#176b4d] bg-[#176b4d] text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
-            >
-              <Icone className="size-4 shrink-0 max-sm:hidden" aria-hidden="true" />
-              <span className="truncate sm:hidden">{curto}</span>
-              <span className="max-sm:hidden">{nome}</span>
-              {contagem && alerta ? <span className="absolute right-2.5 top-2 size-2 rounded-full bg-[#f26a2e] sm:hidden" aria-hidden="true" /> : null}
-              {contagem ? (
-                <span className={`rounded-full px-2 max-sm:sr-only py-0.5 text-xs font-bold tabular-nums ${vista === id ? 'bg-white text-[#c2410c]' : alerta ? 'bg-[#c2410c] text-white' : 'bg-slate-100 text-slate-600'}`}>{contagem.toLocaleString('pt-BR')}</span>
-              ) : null}
-            </button>
-          ))}
+        <div className="min-w-0 flex-1">
+          <AbasDaTela<Vista> id="locais" rotulo="O que ver em ramos e locais" abas={vistas} ativa={vista} onTrocar={escolherVista} idPainel="locais-conteudo" />
         </div>
         {podeEditar && vista === 'locais' && (
           <button type="button" onClick={() => abrirEdicao()} className={`${BOTAO_SECUNDARIO} max-sm:w-full`} data-testid="locais-novo">
@@ -544,7 +513,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
         )}
       </div>
 
-      <div role="tabpanel">
+      <div id="locais-conteudo">
         {vista === 'locais' && listaLocais()}
         {vista === 'sem-local' && listaSemLocal()}
         {vista === 'viagens' && listaViagens()}

@@ -257,6 +257,7 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
       {telaLarga ? (
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className={`w-full border-collapse text-left text-sm ${comValores ? 'min-w-[1260px]' : 'min-w-[1040px]'}`} data-testid="viagens-grade">
+            <caption className="sr-only">Viagens a lançar, uma por linha</caption>
             <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
               <tr>
                 <th scope="col" className="w-10 px-2 py-2 text-center">#</th>
@@ -276,7 +277,7 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
             <tbody className="divide-y divide-slate-100">
               {linhas.map((linha, indice) => (
                 <tr key={indice} className={linhaComErro === indice ? 'bg-rose-50' : ''}>
-                  <td className="px-2 text-center text-xs font-bold tabular-nums text-slate-400">{indice + 1}</td>
+                  <td className="px-2 text-center text-xs font-bold tabular-nums text-slate-500">{indice + 1}</td>
                   <td className="p-1"><input type="date" value={linha.data} onChange={event => mudar(indice, 'data', event.target.value)} aria-label={`Data da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'data')} /></td>
                   <td className="p-1">
                     <select value={linha.tipo} onChange={event => mudar(indice, 'tipo', event.target.value)} aria-label={`Tipo da viagem ${indice + 1}`} className={CELULA} {...celula(indice, 'tipo')}>
@@ -287,7 +288,7 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
                   <td className="p-1">
                     <div className="relative">
                       <input inputMode="decimal" value={linha.quantidade} onChange={event => mudar(indice, 'quantidade', event.target.value)} aria-label={`Quantidade da viagem ${indice + 1}`} className={`${CELULA} pr-9 font-semibold tabular-nums`} {...celula(indice, 'quantidade')} />
-                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">{unidadeDa(linha)}</span>
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-500">{unidadeDa(linha)}</span>
                     </div>
                   </td>
                   <td className="p-1">{campoFornecedor(linha, indice)}</td>
@@ -314,7 +315,7 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
               <div className="grid grid-cols-2 gap-2">
                 <div className="relative">
                   <input inputMode="decimal" value={linha.quantidade} onChange={event => mudar(indice, 'quantidade', event.target.value)} placeholder="Quantidade" aria-label={`Quantidade da viagem ${indice + 1}`} className={`${CELULA} min-h-11 pr-9 text-base font-semibold`} {...celula(indice, 'quantidade')} />
-                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">{unidadeDa(linha)}</span>
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-500">{unidadeDa(linha)}</span>
                 </div>
                 <select value={linha.tipo} onChange={event => mudar(indice, 'tipo', event.target.value)} aria-label={`Tipo da viagem ${indice + 1}`} className={`${CELULA} min-h-11 text-base`}>
                   {TIPOS.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}

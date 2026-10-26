@@ -79,12 +79,12 @@ export default function GraficoSemanas({ hoje, materiais, movimentos }: Props) {
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Movimento por semana, em {medida}</caption>
             <thead className="sticky top-0 bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
-              <tr><th className="px-3 py-2">Semana de</th>{SERIES.map(serie => <th key={serie.chave} className="px-3 py-2 text-right">{serie.nome}</th>)}</tr>
+              <tr><th scope="col" className="px-3 py-2">Semana de</th>{SERIES.map(serie => <th key={serie.chave} scope="col" className="px-3 py-2 text-right">{serie.nome}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {[...pontos].reverse().map(item => (
                 <tr key={item.inicio}>
-                  <td className="px-3 py-2 tabular-nums text-slate-700">{item.rotulo}</td>
+                  <th scope="row" className="px-3 py-2 font-normal tabular-nums text-slate-700">{item.rotulo}</th>
                   {SERIES.map(serie => <td key={serie.chave} className="px-3 py-2 text-right tabular-nums text-slate-900">{br(item[serie.chave])}</td>)}
                 </tr>
               ))}
@@ -94,7 +94,7 @@ export default function GraficoSemanas({ hoje, materiais, movimentos }: Props) {
       ) : (
         <div className="relative mt-3">
           {/* Valor da maior barra no topo: a escala fica clara sem uma régua cheia de números. */}
-          <span className="absolute left-0 top-0 text-xs tabular-nums text-slate-400">{br(maior)}</span>
+          <span className="absolute left-0 top-0 text-xs tabular-nums text-slate-500">{br(maior)}</span>
           <div className="ml-8 grid h-44 items-end gap-1 border-b border-slate-200 sm:gap-2" style={{ gridTemplateColumns: `repeat(${SEMANAS}, minmax(0, 1fr))` }} onMouseLeave={() => setDestaque(null)}>
             {pontos.map((item, indice) => (
               <div

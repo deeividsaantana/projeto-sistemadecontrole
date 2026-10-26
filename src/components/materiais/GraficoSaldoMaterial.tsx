@@ -51,12 +51,12 @@ export default function GraficoSaldoMaterial({ materialId, unidade, hoje, movime
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Saldo por semana, em {unidade}</caption>
             <thead className="sticky top-0 bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
-              <tr><th className="px-3 py-2">Semana de</th><th className="px-3 py-2 text-right">Saldo</th></tr>
+              <tr><th scope="col" className="px-3 py-2">Semana de</th><th scope="col" className="px-3 py-2 text-right">Saldo</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {[...pontos].reverse().map(item => (
                 <tr key={item.inicio}>
-                  <td className="px-3 py-2 tabular-nums text-slate-700">{item.rotulo}</td>
+                  <th scope="row" className="px-3 py-2 font-normal tabular-nums text-slate-700">{item.rotulo}</th>
                   <td className={`px-3 py-2 text-right tabular-nums font-semibold ${item.saldo < 0 ? 'text-rose-700' : 'text-slate-900'}`}>{br(item.saldo)}</td>
                 </tr>
               ))}
