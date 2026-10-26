@@ -4,6 +4,7 @@ import { normalizeImportDateOrNull, normalizeImportTextOrNull } from '../normali
 import { getImportValue, normalizeImportText } from '../../utils/importHelpers';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { buildImportPreview } from '../preview';
+import type { ControleEstacas } from '../../types';
 
 /**
  * Diferente dos arquivos de recebimentos/materiais, o nome real das abas de
@@ -27,6 +28,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   perfil: ['Perfil', 'Modelo'],
   notaOuLote: ['NF', 'Lote', 'NF/Lote'],
   data: ['Data'],
+  identificacao: ['Identificação', 'Identificacao'],
   observacao: ['Observação', 'Observacao'],
 };
 
@@ -36,6 +38,7 @@ export interface NormalizedStakeRow {
   readonly perfil: string | null;
   readonly notaOuLote: string | null;
   readonly data: string | null;
+  readonly identificacao: string | null;
   readonly observacao: string | null;
 }
 
@@ -46,12 +49,41 @@ const describeColumns = (headers: readonly string[]): readonly ImportColumnMappi
   return { column, mappedTo: matched ? matched[0] : null };
 });
 
+const isCravacaoSheet = (sheetName: string) => normalizeComparable(sheetName).includes('cravac');
+
+const chaveDeLote = (notaFiscal: string, descricao: string, data: string) =>
+  ['estaca', normalizeComparable(notaFiscal), normalizeComparable(descricao), data].join('|');
+
+// A aba Cravações não tem NF: a estaca é identificada pela frente
+// (identificação), pelo nome (perfil) e pelo dia em que foi cravada.
+const chaveDeCravacao = (identificacao: string, perfil: string, data: string) =>
+  ['cravacao', normalizeComparable(identificacao), normalizeComparable(perfil), data].join('|');
+
 const buildOperationalKey = (row: NormalizedStakeRow): string | undefined => {
+  if (isCravacaoSheet(row.categoria) && row.identificacao) {
+    if (!row.data) return undefined;
+    return chaveDeCravacao(row.identificacao, row.perfil || '', row.data);
+  }
   if (!row.notaOuLote || !row.item || !row.data) return undefined;
-  return ['estaca', row.notaOuLote, normalizeComparable(row.item), row.data].join('|');
+  return chaveDeLote(row.notaOuLote, row.item, row.data);
 };
 
-export const stakesAdapter: SpreadsheetImportAdapter<NormalizedStakeRow, undefined> = {
+/**
+ * Chaves do que já está no app, inclusive o que foi inativado: quem tirou um
+ * lote ou uma cravação não quer que a reimportação semanal traga de volta.
+ */
+const chavesExistentes = (controle: ControleEstacas | undefined): Set<string> => {
+  const chaves = new Set<string>();
+  controle?.lotes.forEach(lote => {
+    if (lote.notaFiscal && lote.descricao && lote.data) chaves.add(chaveDeLote(lote.notaFiscal, lote.descricao, lote.data));
+  });
+  controle?.cravacoes.forEach(cravacao => {
+    if (cravacao.identificacao && cravacao.data) chaves.add(chaveDeCravacao(cravacao.identificacao, cravacao.perfil || '', cravacao.data));
+  });
+  return chaves;
+};
+
+export const stakesAdapter: SpreadsheetImportAdapter<NormalizedStakeRow, ControleEstacas | undefined> = {
   domain: 'stakes',
   supports: matchesStakeSheet,
   describeColumns,
@@ -63,12 +95,17 @@ export const stakesAdapter: SpreadsheetImportAdapter<NormalizedStakeRow, undefin
       perfil: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.perfil)),
       notaOuLote: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.notaOuLote)),
       data: normalizeImportDateOrNull(getImportValue(raw, FIELD_ALIASES.data)),
+      identificacao: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.identificacao)),
       observacao: normalizeImportTextOrNull(getImportValue(raw, FIELD_ALIASES.observacao)),
     };
     const messages: string[] = [];
     if (!value.item) messages.push('Item/perfil não identificado nesta linha.');
     const operationalKey = buildOperationalKey(value);
-    if (!operationalKey) messages.push('Chave operacional incompleta (NF/lote + item/perfil + data): linha fica em conferência.');
+    if (!operationalKey) {
+      messages.push(isCravacaoSheet(context.sourceSheet) && value.identificacao
+        ? 'Cravação sem data: linha fica em conferência.'
+        : 'Chave operacional incompleta (NF/lote + item/perfil + data): linha fica em conferência.');
+    }
     return {
       lineage: buildRowLineage({
         sourceFile: context.sourceFile,
@@ -86,15 +123,15 @@ export const stakesAdapter: SpreadsheetImportAdapter<NormalizedStakeRow, undefin
       rawRow: raw,
     } satisfies ImportRow<NormalizedStakeRow>;
   }),
-  reconcile: rows => {
+  reconcile: (rows, current) => {
     const seenKeys = new Set<string>();
+    const existentes = chavesExistentes(current);
     const previewRows = rows.map(row => {
       if (!row.operationalKey) return { row, disposition: 'review' as const };
       if (seenKeys.has(row.operationalKey)) return { row, disposition: 'duplicate-in-file' as const };
       seenKeys.add(row.operationalKey);
-      // Fase 1 não recebe o estado atual de lotes/cravações: toda linha com
-      // chave completa e inédita no arquivo é "new". A comparação contra
-      // lotes/cravações já existentes é adicionada na Fase 3.
+      // Reimportar a planilha da semana não pode dobrar lotes e cravações (A23).
+      if (existentes.has(row.operationalKey)) return { row, disposition: 'unchanged' as const };
       return { row, disposition: 'new' as const };
     });
     return buildImportPreview({
